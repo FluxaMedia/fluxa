@@ -1,0 +1,26 @@
+/.codex
+/.idea/
+/.kotlin/
+/.vscode/
+/.gradle/
+/build/
+/app/build/
+/rust/**/target/
+/local.properties
+**/debug.keystore
+*.jks
+/server.log
+/adb_logcat.txt
+/build_log.txt
+/build_log_2.txt
+*.log
+*.pyc
+__pycache__/
+
+# Profiling / tracing artifacts
+*.perfetto-trace
+/record_android_trace
+
+# Local agent / tool config
+/.claude/settings.local.json
+/.agents/

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- 🎙️ PLAY MEDIA FROM SEARCH (Main Assistant Goal) -->
+    <capability android:name="actions.intent.PLAY_MEDIA_FROM_SEARCH">
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="com.fluxa.app"
+            android:targetClass="com.fluxa.app.ui.MainActivity">
+            <parameter
+                android:name="query"
+                android:key="query"/>
+        </intent>
+    </capability>
+
+    <!-- 🔍 SEARCH ON APP (Fallback) -->
+    <capability android:name="actions.intent.GET_THING">
+        <intent
+            android:action="android.intent.action.SEARCH"
+            android:targetPackage="com.fluxa.app"
+            android:targetClass="com.fluxa.app.ui.MainActivity">
+            <parameter
+                android:name="thing.name"
+                android:key="query"/>
+        </intent>
+    </capability>
+
+    <!-- 🎬 PLAY ENTITY (Specific matching) -->
+    <capability android:name="actions.intent.PLAY_ENTITY">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.fluxa.app"
+            android:targetClass="com.fluxa.app.ui.MainActivity">
+            <parameter
+                android:name="entityName"
+                android:key="query"/>
+        </intent>
+    </capability>
+
+</shortcuts>

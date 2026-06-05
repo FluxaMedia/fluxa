@@ -1,0 +1,83 @@
+package com.fluxa.app.ui.catalog
+
+import androidx.compose.runtime.Immutable
+import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.domain.discovery.DiscoverCatalogOption
+
+@Immutable
+data class HomeCatalogSource(
+    val transportUrl: String,
+    val catalogId: String,
+    val type: String,
+    val genre: String? = null
+)
+
+@Immutable
+data class HomeCategory(
+    val name: String,
+    val items: List<Meta>,
+    val id: String,
+    val type: String,
+    val semanticName: String = name,
+    val movieGenre: String? = null,
+    val seriesGenre: String? = null,
+    val skip: Int = 0,
+    val canLoadMore: Boolean = true,
+    val catalogId: String = id,
+    val addonTransportUrl: String? = null,
+    val addonGenre: String? = null,
+    val catalogSources: List<HomeCatalogSource>? = emptyList(),
+    val addonIconUrl: String? = null
+)
+
+@Immutable
+data class SearchResultRow(
+    val title: String,
+    val items: List<Meta>,
+    val id: String,
+    val type: String,
+    val sourceAddonTransportUrl: String? = null,
+    val sourceAddonCatalogType: String? = null
+)
+
+@Immutable
+data class DiscoverGenreOption(
+    val id: String?,
+    val label: String
+)
+
+@Immutable
+data class DirectPlaybackTarget(
+    val meta: Meta,
+    val videoId: String?,
+    val streams: List<Stream>
+)
+
+@Immutable
+data class DiscoverUiState(
+    val results: List<Meta> = emptyList(),
+    val isLoading: Boolean = false,
+    val genres: List<DiscoverGenreOption> = emptyList(),
+    val catalogs: List<DiscoverCatalogOption> = emptyList(),
+    val resultSources: Map<String, HomeCatalogSource> = emptyMap()
+)
+
+@Immutable
+data class CalendarUiState(
+    val items: List<CalendarUpcomingItem> = emptyList(),
+    val isLoading: Boolean = false
+)
+
+@Immutable
+data class CalendarUpcomingItem(
+    val dateIso: String,
+    val meta: Meta,
+    val title: String,
+    val subtitle: String?,
+    val poster: String?,
+    val episodePoster: String? = null,
+    val seasonNumber: Int? = null,
+    val episodeNumber: Int? = null,
+    val episodeTitle: String? = null
+)

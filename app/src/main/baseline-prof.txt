@@ -1,0 +1,37 @@
+# Fluxa baseline profile (hand-written starter).
+#
+# AGP compiles this into the release artifact and maps it through the R8 mapping to obfuscated
+# names; the profileinstaller dependency installs it into ART at first launch.
+#
+# This is a hand-written starter. For an optimal profile, generate one on a device with the
+# androidx.baselineprofile plugin + a benchmark module (./gradlew :app:generateBaselineProfile)
+# and paste the output here. Until then these broad rules warm up scrolling.
+#
+# Rule format: H=hot, S=startup, P=post-startup. ** = wildcard including the package separator.
+
+# --- Fluxa hot paths: home + catalog UI and models ---
+HSPLcom/fluxa/app/ui/catalog/**->**(**)**
+Lcom/fluxa/app/ui/catalog/**
+HSPLcom/fluxa/app/data/remote/**->**(**)**
+Lcom/fluxa/app/data/remote/**
+HSPLcom/fluxa/app/data/local/**->**(**)**
+Lcom/fluxa/app/data/local/**
+HSPLcom/fluxa/app/common/**->**(**)**
+Lcom/fluxa/app/common/**
+
+# --- Jetpack Compose: scroll-critical (lazy + foundation + runtime + ui) ---
+HSPLandroidx/compose/foundation/lazy/**->**(**)**
+Landroidx/compose/foundation/lazy/**
+HSPLandroidx/compose/foundation/**->**(**)**
+Landroidx/compose/foundation/**
+HSPLandroidx/compose/runtime/**->**(**)**
+Landroidx/compose/runtime/**
+HSPLandroidx/compose/ui/**->**(**)**
+Landroidx/compose/ui/**
+HSPLandroidx/compose/animation/**->**(**)**
+Landroidx/compose/animation/**
+HSPLandroidx/compose/material3/**->**(**)**
+
+# --- Coil 3: image decode/draw during scroll ---
+HSPLcoil3/**->**(**)**
+Lcoil3/**

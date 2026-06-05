@@ -1,0 +1,146 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 7,
+    "identityHash": "042e3197561264c60178ca25ea720e85",
+    "entities": [
+      {
+        "tableName": "watchlist",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `profileId` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `poster` TEXT, `background` TEXT, `logo` TEXT, `description` TEXT, `rating` TEXT, `releaseInfo` TEXT, `addedAt` INTEGER NOT NULL, `isLiked` INTEGER, `timeOffset` INTEGER, `duration` INTEGER, `lastVideoId` TEXT, `lastStreamIndex` INTEGER, `lastEpisodeName` TEXT, `lastAudioTrackId` TEXT, `lastSubtitleTrackId` TEXT, `lastStreamUrl` TEXT, `lastStreamTitle` TEXT, `lastAudioLanguage` TEXT, `lastSubtitleLanguage` TEXT, PRIMARY KEY(`id`, `profileId`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "poster",
+            "columnName": "poster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "background",
+            "columnName": "background",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "logo",
+            "columnName": "logo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "releaseInfo",
+            "columnName": "releaseInfo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "addedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isLiked",
+            "columnName": "isLiked",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "timeOffset",
+            "columnName": "timeOffset",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastVideoId",
+            "columnName": "lastVideoId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastStreamIndex",
+            "columnName": "lastStreamIndex",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastEpisodeName",
+            "columnName": "lastEpisodeName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastAudioTrackId",
+            "columnName": "lastAudioTrackId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastSubtitleTrackId",
+            "columnName": "lastSubtitleTrackId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastStreamUrl",
+            "columnName": "lastStreamUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastStreamTitle",
+            "columnName": "lastStreamTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastAudioLanguage",
+            "columnName": "lastAudioLanguage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastSubtitleLanguage",
+            "columnName": "lastSubtitleLanguage",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id",
+            "profileId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '042e3197561264c60178ca25ea720e85')"
+    ]
+  }
+}

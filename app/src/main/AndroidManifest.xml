@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <uses-feature
+        android:name="android.hardware.wifi"
+        android:required="false" />
+
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognizerIntent" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".AppApplication"
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:largeHeap="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:banner="@drawable/tv_banner"
+        android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+
+        <!-- Lets Perfetto/profilers trace the release build without making it debuggable.
+             Does not affect runtime performance. -->
+        <profileable android:shell="true" />
+
+        <service
+            android:name=".data.local.OfflineDownloadService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTask">
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+            <meta-data android:name="android.app.searchable" android:resource="@xml/searchable" />
+
+            <!-- 🎙️ HIGH PRIORITY VOICE SEARCH & PLAY (V235.00) -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.SEARCH" />
+                <action android:name="com.google.android.gms.actions.SEARCH_ACTION" />
+                <action android:name="com.google.android.gms.actions.SEARCH_AND_PLAY" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            
+            <intent-filter android:priority="999">
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="app" />
+                <data android:host="play" />
+                <data android:host="search" />
+                <data android:host="trakt" />
+                <data android:host="mal" />
+                <data android:host="simkl" />
+            </intent-filter>
+            
+        </activity>
+
+        <!-- Disable WorkManager auto-init so HiltWorkerFactory can be injected first.
+             WorkManager 2.7+ uses App Startup — remove the initializer from InitializationProvider. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                tools:node="remove" />
+        </provider>
+
+    </application>
+</manifest>
