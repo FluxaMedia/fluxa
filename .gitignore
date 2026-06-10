@@ -1,0 +1,15 @@
+CLAUDE.md
+scripts/
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+.env
+*.log
+
+# mpv/FFmpeg binaries — fetched by CI, not stored in repo
+src-tauri/lib/*.so
+src-tauri/lib/*.so.*
+src-tauri/lib/*.dll
+src-tauri/lib/*.dylib
+src-tauri/lib/*.jar

@@ -1,0 +1,306 @@
+name: Build
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+# ─── Version pins ────────────────────────────────────────────────────────────
+# Bump MPV_WIN_TAG to update Windows mpv. macOS follows Homebrew; Linux follows
+# the Ubuntu LTS package. ffmpeg-next is Linux-only (seek thumbnails) and links
+# against the same system FFmpeg that libmpv uses — no dual-FFmpeg issue.
+env:
+  MPV_WIN_TAG: "20260609"      # shinchiro release date tag (YYYYMMDD)
+  MPV_WIN_ARCH: "x86_64"
+  NODE_VERSION: "22"
+  RUST_VERSION: "stable"
+
+permissions:
+  contents: write
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WINDOWS
+  # mpv-2.dll from shinchiro statically links FFmpeg — one file, no external
+  # FFmpeg deps. ffmpeg-next is not compiled on Windows (#[cfg(target_os="linux")])
+  # so there is no dual-FFmpeg situation here; no FFMPEG_DIR env needed.
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: KhooLy/FluxaCore
+          path: fluxa-core
+          token: ${{ secrets.FLUXA_CORE_PAT }}
+      - name: Link sibling repos
+        shell: bash
+        run: |
+          PARENT="$(dirname "$GITHUB_WORKSPACE")"
+          cmd //c mklink //J "$PARENT\\fluxa-core" "$GITHUB_WORKSPACE\\fluxa-core"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Download mpv (shinchiro)
+        shell: bash
+        run: |
+          TAG="${{ env.MPV_WIN_TAG }}"
+          ARCH="${{ env.MPV_WIN_ARCH }}"
+
+          RELEASE_URL="https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/tags/${TAG}"
+          ASSETS=$(curl -fsSL "$RELEASE_URL" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          for a in data['assets']:
+              print(a['name'], a['browser_download_url'])
+          ")
+
+          MPV_URL=$(echo "$ASSETS" | grep "^mpv-dev-${ARCH}-[0-9]" | grep -v '\-v3-' | awk '{print $2}')
+          curl -fsSL -o mpv.7z "$MPV_URL"
+
+      - name: Extract and copy mpv
+        shell: bash
+        run: |
+          7z x mpv.7z -ompv-bin -y
+          mkdir -p src-tauri/lib
+          DLL=$(find mpv-bin \( -name 'mpv-2.dll' -o -name 'libmpv-2.dll' \) | head -1)
+          [ -n "$DLL" ] || { echo "mpv-2.dll not found in archive"; find mpv-bin; exit 1; }
+          cp "$DLL" src-tauri/lib/mpv-2.dll
+
+      - name: Verify mpv-2.dll has no external FFmpeg deps
+        shell: bash
+        run: |
+          BAD=$(strings src-tauri/lib/mpv-2.dll 2>/dev/null \
+                | grep -iE "^(avcodec|avformat|avutil|swscale|swresample)-[0-9]+\.dll$" || true)
+          if [ -n "$BAD" ]; then
+            echo "mpv-2.dll has external FFmpeg DLL deps: $BAD"
+            exit 1
+          fi
+          echo "OK: mpv-2.dll is self-contained"
+
+      - name: Log mpv version
+        shell: bash
+        run: |
+          7z e mpv.7z mpv.exe -ompv-bin -y 2>/dev/null || true
+          ./mpv-bin/mpv.exe --version 2>/dev/null | head -3 || echo "version log skipped"
+
+      - name: npm install
+        run: npm ci
+
+      - name: Build Tauri (Windows installer)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+          FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+          FLUXA_MAL_CLIENT_ID: ${{ secrets.FLUXA_MAL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Fluxa Desktop ${{ github.ref_name }}"
+          releaseDraft: false
+          generateReleaseNotes: true
+          args: --target x86_64-pc-windows-msvc
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # macOS
+  # Homebrew libmpv.dylib has dynamic FFmpeg deps. dylibbundler copies them
+  # into src-tauri/lib/ and rewrites paths to @rpath so Tauri's .app bundle
+  # resolves them. FFmpeg stays invisible to the user. ffmpeg-next is not
+  # compiled on macOS — no FFMPEG_DIR env needed here either.
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: KhooLy/FluxaCore
+          path: fluxa-core
+          token: ${{ secrets.FLUXA_CORE_PAT }}
+      - name: Link sibling repos
+        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install mpv and dylibbundler
+        run: brew install mpv dylibbundler
+
+      - name: Bundle libmpv with its FFmpeg deps
+        run: |
+          mkdir -p src-tauri/lib
+          MPV_LIB=$(brew --prefix mpv)/lib/libmpv.dylib
+          cp "$MPV_LIB" src-tauri/lib/libmpv.dylib
+
+          dylibbundler \
+            --bundle-deps \
+            --fix-file src-tauri/lib/libmpv.dylib \
+            --dest-dir src-tauri/lib/ \
+            --install-path @rpath/ \
+            --overwrite-files
+
+      - name: Verify libmpv has no absolute FFmpeg refs
+        run: |
+          BAD=$(otool -L src-tauri/lib/libmpv.dylib \
+                | grep -E 'libavcodec|libavformat|libavutil|libavfilter|libswscale|libswresample' \
+                | grep -v '@rpath' || true)
+          if [ -n "$BAD" ]; then
+            echo "libmpv.dylib still has absolute FFmpeg references:"
+            echo "$BAD"
+            exit 1
+          fi
+          echo "OK: all FFmpeg deps are @rpath-relative"
+
+      - name: Log mpv and FFmpeg versions
+        run: |
+          mpv --version | head -3
+          ffmpeg -version | head -3
+
+      - name: npm install
+        run: npm ci
+
+      - name: Build Tauri (macOS DMG — universal binary)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+          FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+          FLUXA_MAL_CLIENT_ID: ${{ secrets.FLUXA_MAL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Fluxa Desktop ${{ github.ref_name }}"
+          releaseDraft: false
+          generateReleaseNotes: true
+          args: --target universal-apple-darwin
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # LINUX
+  # System libmpv2 (Ubuntu 22.04) + system FFmpeg. ffmpeg-next (seek thumbnails)
+  # links the same system FFmpeg — single copy, shared. AppImage via linuxdeploy
+  # bundles all .so deps including FFmpeg; users get zero-install executable.
+  # Version of both mpv and FFmpeg is logged as artifact metadata.
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: KhooLy/FluxaCore
+          path: fluxa-core
+          token: ${{ secrets.FLUXA_CORE_PAT }}
+      - name: Link sibling repos
+        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libmpv-dev \
+            libavcodec-dev libavformat-dev libavutil-dev \
+            libswscale-dev libswresample-dev \
+            pkg-config \
+            libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev \
+            patchelf
+
+      - name: Copy libmpv to lib/
+        run: |
+          mkdir -p src-tauri/lib
+          SO=$(find /usr/lib/x86_64-linux-gnu /usr/lib -name 'libmpv.so.*' ! -type l 2>/dev/null | sort -V | tail -1)
+          [ -n "$SO" ] || { echo "libmpv.so not found"; ldconfig -p | grep mpv; exit 1; }
+          SONAME=$(basename "$SO")
+          cp "$SO" src-tauri/lib/"$SONAME"
+          [ "$SONAME" = "libmpv.so.2" ] || ln -sf "$SONAME" src-tauri/lib/libmpv.so.2
+          ln -sf "$SONAME" src-tauri/lib/libmpv.so
+
+      - name: Verify libmpv.so is intact
+        run: |
+          ldd src-tauri/lib/libmpv.so.2 | grep 'not found' && exit 1 || true
+          echo "OK: all libmpv deps resolvable on this runner"
+
+      # Logged into the job summary so crash reports can be correlated to versions.
+      - name: Log mpv and FFmpeg versions
+        run: |
+          mpv --version | head -3
+          ffmpeg -version | head -3
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "### Runtime library versions" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          mpv --version | head -1 >> $GITHUB_STEP_SUMMARY
+          ffmpeg -version | head -1 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: npm install
+        run: npm ci
+
+      - name: Build Tauri (AppImage + deb)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+          FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+          FLUXA_MAL_CLIENT_ID: ${{ secrets.FLUXA_MAL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Fluxa Desktop ${{ github.ref_name }}"
+          releaseDraft: false
+          generateReleaseNotes: true
+          args: --target x86_64-unknown-linux-gnu

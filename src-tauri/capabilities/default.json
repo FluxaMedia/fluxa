@@ -1,0 +1,19 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for Fluxa Desktop",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "http://*" },
+        { "url": "https://*" }
+      ]
+    },
+    "libmpv:default",
+    "updater:default",
+    "process:allow-restart"
+  ]
+}

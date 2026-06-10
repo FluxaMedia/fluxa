@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --backdrop-filter: blur(10px) saturate(180%);
+  --box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.1);
+  --background: rgba(10, 12, 20, 0.55);
+  --accent: rgba(232, 93, 63, 0.35);
+  --outer-glow: 0 0 16px rgba(232, 93, 63, 0.2);
+  --shadow: drop-shadow(2px 4px 6px black);
+  --border-radius: 12px;
+  --overlay-color: rgba(255, 255, 255, 0.1);
+  --primary-accent-color: #E85D3F;
+  --primary-foreground-color: #FFFFFF;
+  --secondary-foreground-color: #000000;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #040508;
+}
+
+html[data-native-player-active],
+html[data-native-player-active] body,
+html[data-native-player-active] #root {
+  background: transparent !important;
+}
+
+body {
+  color: #FFFFFF;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+input:focus {
+  border-color: rgba(255,255,255,0.3) !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.08);
+}
+
+button {
+  cursor: pointer;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+[data-animations="off"] *,
+[data-animations="off"] *::before,
+[data-animations="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}
+
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] *::before,
+[data-reduce-motion="true"] *::after {
+  animation: none !important;
+  transition-duration: 80ms !important;
+  scroll-behavior: auto !important;
+}
+
+[data-density="small"] {
+  --density-scale: 0.92;
+}
+
+[data-density="medium"] {
+  --density-scale: 1;
+}
+
+[data-density="large"] {
+  --density-scale: 1.08;
+}

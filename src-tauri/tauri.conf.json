@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Fluxa Desktop",
+  "version": "0.1.0",
+  "identifier": "com.fluxa.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Fluxa Desktop",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "decorations": true,
+        "transparent": true,
+        "theme": "Dark"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' asset: http: https: data: blob:; media-src 'self' http: https: blob:; connect-src 'self' ipc: http://ipc.localhost http: https: ws://localhost:* http://localhost:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "rpm", "appimage", "nsis", "dmg"],
+    "windows": {
+      "nsis": {
+        "installMode": "both"
+      }
+    },
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "resources": ["lib/**/*"]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZEQjVBNEMxQUVDRUQ0M0QKUldROTFNNnV3YVMxYlczdUU1aEFEOXUwQXBEbGdKR0FqZ3BESjcxL0pzNEdIcG4zV2c0NjRmTUEK",
+      "endpoints": [
+        "https://github.com/KhooLy/FluxaDesktop/releases/latest/download/latest.json"
+      ]
+    },
+    "deep-link": {
+      "mobile": [],
+      "desktop": {
+        "schemes": ["fluxa"]
+      }
+    }
+  }
+}

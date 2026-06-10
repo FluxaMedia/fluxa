@@ -1,0 +1,46 @@
+name: ci
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - README.md
+  pull_request:
+    paths-ignore:
+      - README.md
+  workflow_dispatch:
+
+jobs:
+  build-libmpv-example-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Setup node
+        uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build example
+        shell: pwsh
+        run: |
+          npm install -g pnpm
+          pnpm install
+          pnpm build
+          cd examples/react
+          pnpm install
+          pnpm setup-lib
+          pnpm tauri build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-plugin-libmpv-example-windows
+          path: |
+            examples/react/src-tauri/target/release/tauri-plugin-libmpv-example.exe
+            examples/react/src-tauri/target/release/lib/libmpv-wrapper.dll
+            examples/react/src-tauri/target/release/lib/libmpv-2.dll
