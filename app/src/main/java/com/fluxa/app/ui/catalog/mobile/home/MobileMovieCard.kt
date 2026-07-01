@@ -264,7 +264,7 @@ internal fun MobileMovieCard(
                     text = meta.name,
                     color = Color.White,
                     fontSize = FluxaDimensions.CardText.titleSize,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 6.dp)
@@ -274,7 +274,7 @@ internal fun MobileMovieCard(
                         text = secondaryText,
                         color = Color.White.copy(alpha = FluxaDimensions.Alpha.cardSubtitle),
                         fontSize = FluxaDimensions.CardText.subtitleSize,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 1.dp)

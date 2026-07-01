@@ -489,6 +489,7 @@ private fun HomeCollectionHeader(
     ) {
         androidx.compose.material3.Text(
             text = title,
+            fontFamily = FluxaDisplay,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             fontSize = 18.sp,
@@ -709,6 +710,7 @@ private fun HomeRowHeader(
             }
             androidx.compose.material3.Text(
                 text = fullTitle,
+                fontFamily = FluxaDisplay,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 fontSize = 18.sp,
