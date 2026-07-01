@@ -98,8 +98,8 @@ internal fun mobileSettingsPalette(
     val onAccent = if (accentLuma > 0.68f) Color.Black else Color.White
     val text = Color.White
     return MobileSettingsPalette(
-        background = if (amoledMode) Color.Black else FluxaColors.background,
-        card = if (amoledMode) Color(0xFF050505) else FluxaColors.surfaceCard,
+        background = if (amoledMode) Color.Black else Color(0xFF0E0E0F),
+        card = if (amoledMode) Color(0xFF050505) else Color(0xFF181818),
         text = text,
         mutedText = text.copy(alpha = 0.42f),
         divider = text.copy(alpha = 0.055f),
