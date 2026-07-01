@@ -275,7 +275,11 @@ internal fun TvMovieCard(
                 },
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(radius)),
             colors = ClickableSurfaceDefaults.colors(containerColor = FluxaColors.surface, focusedContainerColor = FluxaColors.surfaceRaised),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f)
+            scale = ClickableSurfaceDefaults.scale(focusedScale = if (profile?.safeAnimationsEnabled == false) 1f else 1.05f),
+            border = ClickableSurfaceDefaults.border(
+                focusedBorder = Border(BorderStroke(2.5.dp, Color(profile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt())), shape = RoundedCornerShape(radius))
+            ),
+            glow = ClickableSurfaceDefaults.glow(focusedGlow = Glow(elevationColor = Color.Black.copy(alpha = 0.6f), elevation = 18.dp))
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 val lang = profile?.safeLanguage ?: "en"
@@ -332,7 +336,6 @@ internal fun TvMovieCard(
                         .height(imageHeight)
                         .clip(RoundedCornerShape(radius))
                         .background(if (isEpisodeStyle) FluxaColors.surfaceCard else Color.White.copy(alpha = FluxaDimensions.Alpha.emptyCardBackground))
-                        .border(3.5.dp, if (isFocused) Color(profile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt()) else Color.Transparent, RoundedCornerShape(radius))
                 ) {
                     if (trailerUrl != null && trailerPlayer != null) {
                         androidx.compose.ui.viewinterop.AndroidView(
@@ -458,16 +461,5 @@ internal fun TvMovieCard(
             }
         }
 
-        if (isFocused && onFocusedPositioned == null) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .width(effectiveWidth)
-                    .height(imageHeight)
-                    .zIndex(101f)
-                    .padding(4.dp)
-                    .border(3.5.dp, Color(profile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt()), RoundedCornerShape(radius))
-            )
-        }
     }
 }

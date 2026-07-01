@@ -321,9 +321,6 @@ internal fun HomeShelfRow(
                                 expandedOffsetX = with(density) { xPx.toDp() }
                             }
                         },
-                        onFocusedPositioned = {},
-                        onFocusChanged = { focused ->
-                        },
                         onResolveTrailer = onResolveTrailer
                     )
                 }
