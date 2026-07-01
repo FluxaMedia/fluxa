@@ -160,8 +160,8 @@ internal fun TvMovieCard(
     LaunchedEffect(trailerUrl) {
         val url = trailerUrl
         if (url == null) {
-            trailerPlayer?.stop()
-            trailerPlayer?.clearMediaItems()
+            trailerPlayer?.release()
+            trailerPlayer = null
         } else {
             val playerInstance = trailerPlayer ?: androidx.media3.exoplayer.ExoPlayer.Builder(context).build().also { trailerPlayer = it }
             playerInstance.volume = 0f
