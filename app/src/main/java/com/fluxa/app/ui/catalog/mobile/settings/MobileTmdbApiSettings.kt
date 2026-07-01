@@ -1,6 +1,7 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -68,7 +69,7 @@ internal fun MobileTmdbApiSettings(
                     hasKey -> tmdbGreen.copy(alpha = 0.55f)
                     else -> colors.text.copy(alpha = 0.12f)
                 },
-                animationSpec = tween(200),
+                animationSpec = tween(FluxaDimensions.AnimDuration.fadeIn),
                 label = "tmdbBorder"
             )
             Column(
@@ -104,7 +105,7 @@ internal fun MobileTmdbApiSettings(
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text(
-                                text = if (settingsIsEnglish(lang)) "Active" else "Aktif",
+                                text = AppStrings.t(lang, "common.active"),
                                 color = tmdbGreen,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
@@ -158,7 +159,7 @@ internal fun MobileTmdbApiSettings(
                 }
                 val lineWidth by animateFloatAsState(
                     targetValue = if (isFocused) 1f else 0f,
-                    animationSpec = tween(250),
+                    animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpandAlt),
                     label = "tmdbLine"
                 )
                 if (lineWidth > 0f) {

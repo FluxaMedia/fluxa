@@ -1,6 +1,7 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -158,8 +159,8 @@ internal fun MobileCategoryDetail(
             Text(
                 text = title,
                 color = colors.text,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Black
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
             )
         }
 
@@ -497,8 +498,8 @@ internal fun MobileCategoryDetail(
                             )
                             AnimatedVisibility(
                                 visible = heroFeedsExpanded,
-                                enter = expandVertically(animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
-                                exit = shrinkVertically(animationSpec = tween(180)) + fadeOut(animationSpec = tween(140))
+                                enter = expandVertically(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand)) + fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha)),
+                                exit = shrinkVertically(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha)) + fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.fadeOut))
                             ) {
                                 Column {
                                 heroProviderGroups.forEach { (provider, options) ->
@@ -548,8 +549,8 @@ internal fun MobileCategoryDetail(
                             )
                             AnimatedVisibility(
                                 visible = homeFeedsExpanded,
-                                enter = expandVertically(animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
-                                exit = shrinkVertically(animationSpec = tween(180)) + fadeOut(animationSpec = tween(140))
+                                enter = expandVertically(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand)) + fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha)),
+                                exit = shrinkVertically(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha)) + fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.fadeOut))
                             ) {
                                 Column {
                                     homeFeedOptions.forEachIndexed { index, option ->
@@ -579,8 +580,8 @@ internal fun MobileCategoryDetail(
                             )
                             AnimatedVisibility(
                                 visible = topTenFeedsExpanded,
-                                enter = expandVertically(animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
-                                exit = shrinkVertically(animationSpec = tween(180)) + fadeOut(animationSpec = tween(140))
+                                enter = expandVertically(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand)) + fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha)),
+                                exit = shrinkVertically(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha)) + fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.fadeOut))
                             ) {
                                 Column {
                                     homeVisibleFeedOptions.forEachIndexed { index, option ->
@@ -802,54 +803,6 @@ internal fun MobileCategoryDetail(
                     item {
                         MobileSettingsGroup(AppStrings.t(lang, "settings.decoder")) {
                             MobileChoiceRow(
-                                title = AppStrings.t(lang, "settings.dv_fallback"),
-                                value = dolbyVisionFallbackLabel(profile.safeDolbyVisionFallbackMode, lang),
-                                subtitle = AppStrings.t(lang, "settings.dv_fallback_desc"),
-                                onClick = {
-                                    choiceDialog = MobileChoiceDialogState(
-                                        title = AppStrings.t(lang, "settings.dv_fallback"),
-                                        options = dolbyVisionFallbackOptions(lang),
-                                        selected = profile.safeDolbyVisionFallbackMode,
-                                        onSelect = { onUpdateProfile(profile.sanitizedUpdate(dolbyVisionFallbackMode = it)) }
-                                    )
-                                }
-                            )
-                            if (profile.safeDolbyVisionFallbackMode == "convert_dv81") {
-                                MobileChoiceRow(
-                                    title = AppStrings.t(lang, "settings.dv_rpu_mode"),
-                                    value = dvRpuModeLabel(profile.safeDvRpuMode, lang),
-                                    subtitle = AppStrings.t(lang, "settings.dv_rpu_mode_desc"),
-                                    onClick = {
-                                        choiceDialog = MobileChoiceDialogState(
-                                            title = AppStrings.t(lang, "settings.dv_rpu_mode"),
-                                            options = dvRpuModeOptions(lang),
-                                            selected = profile.safeDvRpuMode.toString(),
-                                            onSelect = { onUpdateProfile(profile.sanitizedUpdate(dvRpuMode = it.toIntOrNull() ?: 2)) }
-                                        )
-                                    }
-                                )
-                                MobileToggleRow(
-                                    title = AppStrings.t(lang, "settings.dv_zero_level5"),
-                                    subtitle = AppStrings.t(lang, "settings.dv_zero_level5_desc"),
-                                    checked = profile.safeDvZeroLevel5,
-                                    onToggle = { onUpdateProfile(profile.sanitizedUpdate(dvZeroLevel5 = !profile.safeDvZeroLevel5)) }
-                                )
-                                MobileChoiceRow(
-                                    title = AppStrings.t(lang, "settings.dv_hdr10plus_mode"),
-                                    value = dvHdr10PlusModeOptions(lang).firstOrNull { it.value == profile.safeDvHdr10PlusMode }?.label
-                                        ?: AppStrings.t(lang, "settings.dv_hdr10plus_mode_auto"),
-                                    subtitle = AppStrings.t(lang, "settings.dv_hdr10plus_mode_desc"),
-                                    onClick = {
-                                        choiceDialog = MobileChoiceDialogState(
-                                            title = AppStrings.t(lang, "settings.dv_hdr10plus_mode"),
-                                            options = dvHdr10PlusModeOptions(lang),
-                                            selected = profile.safeDvHdr10PlusMode,
-                                            onSelect = { onUpdateProfile(profile.sanitizedUpdate(dvHdr10PlusMode = it)) }
-                                        )
-                                    }
-                                )
-                            }
-                            MobileChoiceRow(
                                 title = AppStrings.t(lang, "settings.audio_decoder_mode"),
                                 value = audioDecoderModeLabel(profile.safeAudioDecoderMode, lang),
                                 subtitle = AppStrings.t(lang, "settings.audio_decoder_mode_desc"),
@@ -867,12 +820,6 @@ internal fun MobileCategoryDetail(
                                 subtitle = AppStrings.t(lang, "settings.tunneled_playback_desc"),
                                 checked = profile.safeTunneledPlayback,
                                 onToggle = { onUpdateProfile(profile.sanitizedUpdate(tunneledPlayback = !profile.safeTunneledPlayback)) }
-                            )
-                            MobileToggleRow(
-                                title = AppStrings.t(lang, "settings.fps_counter"),
-                                subtitle = AppStrings.t(lang, "settings.fps_counter_desc"),
-                                checked = profile.safeShowFpsCounter,
-                                onToggle = { onUpdateProfile(profile.sanitizedUpdate(showFpsCounter = !profile.safeShowFpsCounter)) }
                             )
                         }
                     }

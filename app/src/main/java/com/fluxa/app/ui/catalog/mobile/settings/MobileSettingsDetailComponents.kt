@@ -2,6 +2,7 @@
 
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -83,15 +84,15 @@ internal fun MobileSettingsGroup(
 ) {
     val colors = LocalMobileSettingsPalette.current
     Column(
-        modifier = modifier.animateContentSize(animationSpec = tween(240)),
+        modifier = modifier.animateContentSize(animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpand)),
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         title?.let {
             Text(
                 text = it,
                 color = colors.mutedText,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 4.dp)
             )
         }
@@ -119,14 +120,14 @@ internal fun OfflineDownloadRow(
     val artwork = if (item.metaType == "series") item.background ?: item.poster else item.poster ?: item.background
     val cardAlpha by animateFloatAsState(
         targetValue = if (item.status == "failed") 0.72f else 1f,
-        animationSpec = tween(220),
+        animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand),
         label = "downloadAlpha"
     )
     Column(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer { alpha = cardAlpha }
-            .animateContentSize(animationSpec = tween(260))
+            .animateContentSize(animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpandAlt))
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White.copy(alpha = 0.07f))
             .clickable(enabled = item.isPlayable) { onClick() }
@@ -293,15 +294,15 @@ internal fun MobileCollapsibleSettingsGroup(
             Text(
                 text = title,
                 color = colors.mutedText,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
             Text(
                 text = count.toString(),
                 color = colors.mutedText.copy(alpha = 0.62f),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
             )
             Icon(
                 if (expanded) FluxaIcons.KeyboardArrowUp else FluxaIcons.KeyboardArrowDown,

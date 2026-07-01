@@ -6,13 +6,7 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,7 +28,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -56,7 +49,6 @@ internal fun MobileChoiceRow(title: String, value: String, subtitle: String? = n
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(220))
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = colors.rowVerticalPadding),
         verticalAlignment = Alignment.CenterVertically,
@@ -67,19 +59,19 @@ internal fun MobileChoiceRow(title: String, value: String, subtitle: String? = n
                 text = title,
                 color = colors.text.copy(alpha = 0.9f),
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
             subtitle?.let {
                 Text(
                     text = it,
                     color = colors.text.copy(alpha = 0.44f),
                     fontSize = 12.sp,
-                    lineHeight = 15.sp
+                    lineHeight = 16.sp
                 )
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(value, color = colors.text.copy(alpha = 0.52f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = colors.text.copy(alpha = 0.52f), fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Icon(FluxaIcons.ChevronRight, null, tint = colors.text.copy(alpha = 0.32f), modifier = Modifier.size(18.dp))
         }
     }
@@ -93,30 +85,11 @@ internal fun MobileToggleRow(
     subtitle: String? = null
 ) {
     val colors = LocalMobileSettingsPalette.current
-    // Optimistic local state — flips immediately on tap without waiting for
-    // the activeProfile to propagate back through the composition tree.
     var localChecked by remember { mutableStateOf(checked) }
     LaunchedEffect(checked) { localChecked = checked }
-    val duration = if (localChecked) 220 else 180
-    val trackColor by animateColorAsState(
-        targetValue = if (localChecked) colors.accent else colors.text.copy(alpha = 0.16f),
-        animationSpec = tween(duration),
-        label = "toggleTrack"
-    )
-    val thumbColor by animateColorAsState(
-        targetValue = if (localChecked) colors.onAccent else colors.text.copy(alpha = 0.82f),
-        animationSpec = tween(duration),
-        label = "toggleThumb"
-    )
-    val thumbOffset by animateDpAsState(
-        targetValue = if (localChecked) 20.dp else 0.dp,
-        animationSpec = tween(duration),
-        label = "toggleOffset"
-    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(220))
             .clickable {
                 localChecked = !localChecked
                 onToggle()
@@ -130,34 +103,27 @@ internal fun MobileToggleRow(
                 text = title,
                 color = colors.text.copy(alpha = 0.9f),
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
             subtitle?.let {
                 Text(
                     text = it,
                     color = colors.text.copy(alpha = 0.44f),
                     fontSize = 12.sp,
-                    lineHeight = 15.sp
+                    lineHeight = 16.sp
                 )
             }
         }
-        Box(
-            modifier = Modifier
-                .width(48.dp)
-                .height(28.dp)
-                .clip(CircleShape)
-                .background(trackColor)
-                .padding(3.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .offset { IntOffset(thumbOffset.roundToPx(), 0) }
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(thumbColor)
+        Switch(
+            checked = localChecked,
+            onCheckedChange = { localChecked = it; onToggle() },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = colors.onAccent,
+                checkedTrackColor = colors.accent,
+                uncheckedThumbColor = colors.text.copy(alpha = 0.72f),
+                uncheckedTrackColor = colors.text.copy(alpha = 0.16f)
             )
-        }
+        )
     }
 }
 
@@ -173,19 +139,18 @@ internal fun MobileExpandableHeaderRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(220))
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = colors.rowVerticalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = colors.text.copy(alpha = 0.9f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = colors.text.copy(alpha = 0.9f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 subtitle ?: count.toString(),
                 color = colors.text.copy(alpha = 0.42f),
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Normal,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -220,7 +185,6 @@ internal fun MobileOrderedToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(220))
             .padding(start = 8.dp, end = 8.dp, top = colors.rowVerticalPadding + 2.dp, bottom = colors.rowVerticalPadding + 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp)
@@ -235,7 +199,7 @@ internal fun MobileOrderedToggleRow(
                 text = display.title,
                 color = colors.text,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
@@ -243,7 +207,7 @@ internal fun MobileOrderedToggleRow(
                 text = display.provider,
                 color = colors.text.copy(alpha = 0.42f),
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
@@ -325,7 +289,7 @@ internal fun MobileProviderToggleRow(
                 text = title,
                 color = colors.text,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
@@ -333,7 +297,7 @@ internal fun MobileProviderToggleRow(
                 text = allLabel,
                 color = colors.text.copy(alpha = 0.42f),
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Normal
             )
         }
         Switch(
@@ -351,34 +315,53 @@ internal fun MobileProviderToggleRow(
 
 @Composable
 internal fun MobileStepperRow(title: String, value: String, subtitle: String? = null, onDecrease: () -> Unit, onIncrease: () -> Unit) {
+    val colors = LocalMobileSettingsPalette.current
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = colors.rowVerticalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = Color.White.copy(alpha = 0.9f),
+                color = colors.text.copy(alpha = 0.9f),
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
             subtitle?.let {
                 Text(
                     text = it,
-                    color = Color.White.copy(alpha = 0.44f),
+                    color = colors.text.copy(alpha = 0.44f),
                     fontSize = 12.sp,
-                    lineHeight = 15.sp
+                    lineHeight = 16.sp
                 )
             }
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("-", color = Color.White, fontSize = 26.sp, modifier = Modifier.clickable { onDecrease() }.padding(horizontal = 10.dp))
-            Text(value, color = Color.White.copy(alpha = 0.78f), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Text("+", color = Color.White, fontSize = 26.sp, modifier = Modifier.clickable { onIncrease() }.padding(horizontal = 10.dp))
+            Icon(
+                FluxaIcons.Remove,
+                null,
+                tint = colors.text.copy(alpha = 0.82f),
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .clickable { onDecrease() }
+                    .padding(5.dp)
+            )
+            Text(value, color = colors.text.copy(alpha = 0.78f), fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Icon(
+                FluxaIcons.Add,
+                null,
+                tint = colors.text.copy(alpha = 0.82f),
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .clickable { onIncrease() }
+                    .padding(5.dp)
+            )
         }
     }
 }
@@ -397,7 +380,7 @@ internal fun MobilePercentSliderRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = colors.rowVerticalPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
@@ -410,14 +393,14 @@ internal fun MobilePercentSliderRow(
                     text = title,
                     color = colors.text.copy(alpha = 0.9f),
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
                 subtitle?.let {
                     Text(
                         text = it,
                         color = colors.text.copy(alpha = 0.44f),
                         fontSize = 12.sp,
-                        lineHeight = 15.sp
+                        lineHeight = 16.sp
                     )
                 }
             }
@@ -425,7 +408,7 @@ internal fun MobilePercentSliderRow(
                 text = "${safeValue.toInt()}%",
                 color = colors.text.copy(alpha = 0.64f),
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Medium
             )
         }
         Slider(
@@ -475,7 +458,7 @@ internal fun MobileColorOpacityRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(opacityTitle, color = colors.text.copy(alpha = 0.62f), fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Text(mobileOpacityLabel(opacity), color = colors.text.copy(alpha = 0.52f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(mobileOpacityLabel(opacity), color = colors.text.copy(alpha = 0.52f), fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
             Slider(
                 value = opacity.coerceIn(0f, 1f),
