@@ -41,6 +41,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -285,6 +289,23 @@ internal fun HomeShelfRow(
                     .onGloballyPositioned { coordinates ->
                         rowCoordinates = coordinates
                         rowWidth = with(density) { coordinates.size.width.toDp() }
+                    }
+                    .graphicsLayer {
+                        compositingStrategy = if (lazyListState.canScrollBackward) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        if (lazyListState.canScrollBackward) {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    0f to Color.Transparent,
+                                    1f to Color.Black,
+                                    endX = titleStartPadding.toPx()
+                                ),
+                                size = androidx.compose.ui.geometry.Size(titleStartPadding.toPx(), size.height),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
                     },
                 contentPadding = PaddingValues(start = titleStartPadding, end = 50.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
