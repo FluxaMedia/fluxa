@@ -160,7 +160,7 @@ fun TVSeekbar(
             }
         }
         Canvas(modifier = Modifier.fillMaxSize().padding(vertical = 22.dp)) {
-            val trackHeight = 3.dp.toPx()
+            val trackHeight = FluxaDimensions.PlayerChrome.seekTrackHeight.toPx()
             val thumbRadius = if (isFocused) 6.dp.toPx() else 4.dp.toPx()
             val progress = if (duration > 0) internalPos / duration else 0f
             val visibleBufferedFraction = bufferedFraction.coerceIn(0f, 1f).coerceAtLeast(progress)
@@ -168,13 +168,13 @@ fun TVSeekbar(
 
             if (chapterBoundaries.isEmpty()) {
                 drawRoundRect(
-                    color = Color.Black,
+                    color = FluxaColors.seekTrack,
                     size = androidx.compose.ui.geometry.Size(size.width, trackHeight),
                     cornerRadius = cornerRadius
                 )
 
                 drawRoundRect(
-                    color = Color(0xFFBDBDBD),
+                    color = FluxaColors.seekBuffer,
                     size = androidx.compose.ui.geometry.Size(size.width * visibleBufferedFraction, trackHeight),
                     cornerRadius = cornerRadius
                 )
@@ -193,7 +193,7 @@ fun TVSeekbar(
                     val segWidth = right - left
                     if (segWidth > 0f) {
                         drawRoundRect(
-                            color = Color.Black,
+                            color = FluxaColors.seekTrack,
                             topLeft = androidx.compose.ui.geometry.Offset(left, 0f),
                             size = androidx.compose.ui.geometry.Size(segWidth, trackHeight),
                             cornerRadius = cornerRadius
@@ -201,7 +201,7 @@ fun TVSeekbar(
                         val bufferedRight = (size.width * visibleBufferedFraction).coerceIn(left, right)
                         if (bufferedRight > left) {
                             drawRoundRect(
-                                color = Color(0xFFBDBDBD),
+                                color = FluxaColors.seekBuffer,
                                 topLeft = androidx.compose.ui.geometry.Offset(left, 0f),
                                 size = androidx.compose.ui.geometry.Size(bufferedRight - left, trackHeight),
                                 cornerRadius = cornerRadius
@@ -267,8 +267,8 @@ internal fun TvPlayerUIContent(
 ) {
     val panelColor = Color(0x8010141A)
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxWidth().height(160.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent))))
-        Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(220.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.86f)))))
+        Box(modifier = Modifier.fillMaxWidth().height(FluxaDimensions.PlayerChrome.topScrimHeight).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = FluxaDimensions.PlayerChrome.topScrimAlpha), Color.Transparent))))
+        Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FluxaDimensions.PlayerChrome.bottomScrimHeight).background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = FluxaDimensions.PlayerChrome.bottomScrimAlpha)))))
         Box(
             modifier = Modifier
                 .fillMaxSize()

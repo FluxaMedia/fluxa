@@ -117,6 +117,14 @@ object FluxaDimensions {
     }
 
     // ── Focus indicator stroke ────────────────────────────────────────────────
+    object PlayerChrome {
+        val topScrimHeight = 160.dp
+        val bottomScrimHeight = 230.dp
+        const val topScrimAlpha = 0.72f
+        const val bottomScrimAlpha = 0.86f
+        val seekTrackHeight = 4.dp
+    }
+
     val mobileFocusBorderStroke = 2.dp
     val tvFocusBorderStroke = 3.dp
 

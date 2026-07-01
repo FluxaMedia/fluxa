@@ -259,12 +259,12 @@ internal fun MobilePlayerSeekbar(
 
                     if (chapterBoundaries.isEmpty()) {
                         drawRoundRect(
-                            color = Color.Black,
+                            color = FluxaColors.seekTrack,
                             size = androidx.compose.ui.geometry.Size(size.width, trackHeight),
                             cornerRadius = radius
                         )
                         drawRoundRect(
-                            color = Color(0xFFBDBDBD),
+                            color = FluxaColors.seekBuffer,
                             size = androidx.compose.ui.geometry.Size(size.width * visibleBufferedFraction, trackHeight),
                             cornerRadius = radius
                         )
@@ -291,7 +291,7 @@ internal fun MobilePlayerSeekbar(
                                 val bufferedRight = (size.width * visibleBufferedFraction).coerceIn(left, right)
                                 if (bufferedRight > left) {
                                     drawRoundRect(
-                                        color = Color(0xFFBDBDBD),
+                                        color = FluxaColors.seekBuffer,
                                         topLeft = androidx.compose.ui.geometry.Offset(left, 0f),
                                         size = androidx.compose.ui.geometry.Size(bufferedRight - left, trackHeight),
                                         cornerRadius = segRadius

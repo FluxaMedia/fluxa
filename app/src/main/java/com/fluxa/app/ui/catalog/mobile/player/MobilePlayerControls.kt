@@ -70,24 +70,24 @@ internal fun MobilePlayerUIContent(
     accentColor: Color = FluxaColors.accent
 ) {
     val topFade = Brush.verticalGradient(
-        listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent)
+        listOf(Color.Black.copy(alpha = FluxaDimensions.PlayerChrome.topScrimAlpha), Color.Transparent)
     )
     val bottomFade = Brush.verticalGradient(
-        listOf(Color.Transparent, Color.Black.copy(alpha = 0.88f))
+        listOf(Color.Transparent, Color.Black.copy(alpha = FluxaDimensions.PlayerChrome.bottomScrimAlpha))
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(156.dp)
+                .height(FluxaDimensions.PlayerChrome.topScrimHeight)
                 .background(topFade)
         )
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(230.dp)
+                .height(FluxaDimensions.PlayerChrome.bottomScrimHeight)
                 .background(bottomFade)
         )
 

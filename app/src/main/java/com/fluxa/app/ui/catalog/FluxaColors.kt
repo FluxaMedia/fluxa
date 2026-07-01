@@ -13,4 +13,6 @@ object FluxaColors {
     val accentArgb = 0xFFE85D3F.toInt()
     val progressFill = accent
     val progressTrack = Color.White.copy(alpha = 0.20f)
+    val seekBuffer = Color(0xFFBDBDBD)
+    val seekTrack = Color.Black
 }
