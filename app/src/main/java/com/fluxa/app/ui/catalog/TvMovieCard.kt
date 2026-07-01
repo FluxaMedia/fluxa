@@ -104,7 +104,7 @@ internal fun TvMovieCard(
                     context.imageLoader.execute(
                         ImageRequest.Builder(context)
                             .data(expandedArtwork)
-                            .memoryCacheKey(expandedArtwork)
+                            .memoryCacheKey(homeArtworkMemoryCacheKey(expandedArtwork, 640, 360))
                             .diskCacheKey(expandedArtwork)
                             .size(640, 360)
                             .build()
@@ -312,9 +312,9 @@ internal fun TvMovieCard(
                     ImageRequest.Builder(context)
                         .data(artwork)
                         .crossfade(false)
-                        .memoryCacheKey(artwork)
+                        .memoryCacheKey(homeArtworkMemoryCacheKey(artwork, requestWidth, requestHeight))
                         .diskCacheKey(artwork)
-                        .placeholderMemoryCacheKey(meta.poster)
+                        .placeholderMemoryCacheKey(homeArtworkMemoryCacheKey(meta.poster, 320, 480))
                         .size(requestWidth, requestHeight)
                         .build()
                 }

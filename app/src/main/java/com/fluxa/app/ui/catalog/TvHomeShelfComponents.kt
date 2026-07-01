@@ -241,7 +241,7 @@ internal fun HomeShelfRow(
                     context.imageLoader.execute(
                         ImageRequest.Builder(context)
                             .data(artwork)
-                            .memoryCacheKey(artwork)
+                            .memoryCacheKey(homeArtworkMemoryCacheKey(artwork, 640, 360))
                             .diskCacheKey(artwork)
                             .size(640, 360)
                             .build()

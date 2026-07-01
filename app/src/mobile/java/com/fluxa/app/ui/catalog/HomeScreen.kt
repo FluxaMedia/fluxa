@@ -50,6 +50,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.platform.LocalContext
@@ -106,7 +107,8 @@ fun HomeScreen(
     val stableLoadMoreCategory = remember<(String) -> Unit> { { categoryId -> viewModel.loadMore(categoryId) } }
     val homeListState = rememberLazyListState(
         initialFirstVisibleItemIndex = viewModel.savedHomeScrollIndex,
-        initialFirstVisibleItemScrollOffset = viewModel.savedHomeScrollOffset
+        initialFirstVisibleItemScrollOffset = viewModel.savedHomeScrollOffset,
+        prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 4) }
     )
 
     DisposableEffect(Unit) {
