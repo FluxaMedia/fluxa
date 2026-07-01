@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -285,7 +286,7 @@ private fun GridCatalogCard(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .fillMaxHeight()
-                            .background(Color(0xFFE50914))
+                            .background(FluxaColors.progressFill)
                     )
                 }
             }

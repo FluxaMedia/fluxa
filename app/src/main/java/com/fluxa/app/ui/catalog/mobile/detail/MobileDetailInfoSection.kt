@@ -1,6 +1,7 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -65,7 +66,7 @@ internal fun MobileDetailInfoSection(
     isInWatchlist: Boolean,
     onToggleWatchlist: () -> Unit,
     onFeedback: (Boolean) -> Unit,
-    accentColor: Color = Color(0xFFE50914)
+    accentColor: Color = FluxaColors.accent
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     val logoUrl = detail?.logo?.takeIf { it.isNotBlank() }

@@ -18,17 +18,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFE85D3F),
+    primary = FluxaColors.accent,
     secondary = Color(0xFF7A8799),
-    tertiary = Color(0xFFF0C674),
-    background = Color(0xFF090B10),
-    surface = Color(0xFF12161D),
-    surfaceVariant = Color(0xFF1B212B),
-    onPrimary = Color(0xFF090B10),
-    onSecondary = Color(0xFFF4F1EA),
-    onTertiary = Color(0xFF090B10),
-    onBackground = Color(0xFFF4F1EA),
-    onSurface = Color(0xFFF4F1EA)
+    tertiary = FluxaColors.accentGold,
+    background = FluxaColors.background,
+    surface = FluxaColors.surface,
+    surfaceVariant = FluxaColors.surfaceRaised,
+    onPrimary = FluxaColors.background,
+    onSecondary = FluxaColors.textPrimary,
+    onTertiary = FluxaColors.background,
+    onBackground = FluxaColors.textPrimary,
+    onSurface = FluxaColors.textPrimary
 )
 
 private val AppTypography = Typography(

@@ -5,9 +5,10 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
-import com.fluxa.app.player.AudioCodecBadge
-import com.fluxa.app.player.VideoFormatBadge
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -35,6 +36,7 @@ internal fun MobilePlayerUIContent(
     duration: Long,
     position: Long,
     bufferedFraction: Float,
+    chapters: List<com.fluxa.app.player.Chapter> = emptyList(),
     isPlaying: Boolean,
     isBuffering: Boolean,
     hasStartedPlaying: Boolean,
@@ -52,6 +54,7 @@ internal fun MobilePlayerUIContent(
     hasNextEpisode: Boolean,
     showSourcesButton: Boolean,
     showEpisodesButton: Boolean,
+    introDbMarkingEnabled: Boolean = false,
     onPlayPrevious: () -> Unit,
     onPlayNext: () -> Unit,
     onCast: () -> Unit,
@@ -63,9 +66,8 @@ internal fun MobilePlayerUIContent(
     isScrubbing: Boolean = false,
     scrubPosition: Long = 0L,
     onScrubbingChange: (Boolean, Long) -> Unit = { _, _ -> },
-    accentColor: Color = Color(0xFFE53935),
-    audioCodecBadge: AudioCodecBadge? = null,
-    videoFormatBadge: VideoFormatBadge? = null
+    onScrubSeek: (Long) -> Unit = {},
+    accentColor: Color = FluxaColors.accent
 ) {
     val topFade = Brush.verticalGradient(
         listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent)
@@ -88,6 +90,10 @@ internal fun MobilePlayerUIContent(
                 .height(230.dp)
                 .background(bottomFade)
         )
+
+        // Interactive content respects safe-area insets; the scrims above stay full-bleed
+        // so dimming still reaches the true screen edge once zoom removes letterboxing.
+        Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
 
         // Top bar
         Box(
@@ -147,48 +153,47 @@ internal fun MobilePlayerUIContent(
                     )
                 }
             }
-            Column(
+            Row(
                 modifier = Modifier.align(Alignment.TopEnd),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    PlayerTopIconButton(FluxaIcons.Cast, onCast)
-                    PlayerTopIconButton(FluxaIcons.OpenInNew, onOpenInExternalPlayer)
-                    PlayerTopIconButton(FluxaIcons.PictureInPictureAlt, onPictureInPicture)
-                }
-                audioCodecBadge?.let { AudioCodecBadgeView(it) }
-                videoFormatBadge?.let { VideoFormatBadgeView(it) }
+                PlayerTopIconButton(FluxaIcons.Cast, onCast)
+                PlayerTopIconButton(FluxaIcons.OpenInNew, onOpenInExternalPlayer)
+                PlayerTopIconButton(FluxaIcons.PictureInPictureAlt, onPictureInPicture)
             }
         }
 
-        // Transport controls — centered in the screen
-        Row(
+        // Transport controls
+        AnimatedVisibility(
+            visible = !isScrubbing,
             modifier = Modifier.align(Alignment.Center),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+            enter = fadeIn(),
+            exit = fadeOut()
         ) {
-            MobileTransportButton(FluxaIcons.SkipPrevious, enabled = hasPreviousEpisode) { onPlayPrevious() }
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.46f))
-                    .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
-                    .clickable { onPlayPause() },
-                contentAlignment = Alignment.Center
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
+                MobileTransportButton(FluxaIcons.SkipPrevious, enabled = hasPreviousEpisode) { onPlayPrevious() }
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.46f))
+                        .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
+                        .clickable { onPlayPause() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                MobileTransportButton(FluxaIcons.SkipNext, enabled = hasNextEpisode) { onPlayNext() }
             }
-            MobileTransportButton(FluxaIcons.SkipNext, enabled = hasNextEpisode) { onPlayNext() }
         }
 
         // Seekbar + bottom actions — pinned to bottom
@@ -214,15 +219,16 @@ internal fun MobilePlayerUIContent(
                         .weight(1f)
                         .padding(horizontal = 10.dp)
                 ) {
-                    val seekPreview = rememberSeekThumbnail(LocalSeekSurfaceView.current, scrubPosition, isScrubbing)
+                    val seekPreview = rememberSeekThumbnail(LocalSeekSurfaceView.current, scrubPosition, isScrubbing, position, isPlaying, onScrubSeek)
                     MobilePlayerSeekbar(
                         position = position,
                         duration = duration,
                         bufferedFraction = bufferedFraction,
                         onSeek = onSeek,
-                        accentColor = Color(0xFFE50914),
+                        accentColor = FluxaColors.accent,
                         onScrubbingChange = onScrubbingChange,
-                        seekPreviewBitmap = seekPreview
+                        seekPreviewBitmap = seekPreview,
+                        chapters = chapters
                     )
                 }
                 Text(
@@ -270,7 +276,16 @@ internal fun MobilePlayerUIContent(
                         modifier = Modifier.weight(1f)
                     )
                 }
+                if (introDbMarkingEnabled) {
+                    MobileBottomAction(
+                        icon = FluxaIcons.BookmarkBorder,
+                        label = playerText(lang, "mark_segment"),
+                        onClick = { onShowSettings(5) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
+        }
         }
     }
 }

@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -58,24 +59,28 @@ import com.fluxa.app.player.MediaTrack
 internal fun MobilePlayerEpisodeRow(
     episode: Video,
     isSelected: Boolean,
+    lang: String,
+    accentColor: Color,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
             .clickable { onClick() }
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
-                .width(110.dp)
-                .height(64.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .width(128.dp)
+                .height(72.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .then(
+                    if (isSelected) Modifier.border(2.dp, accentColor, RoundedCornerShape(10.dp)) else Modifier
+                )
         ) {
             AsyncImage(
                 model = episode.thumbnail,
@@ -86,31 +91,66 @@ internal fun MobilePlayerEpisodeRow(
             if (isSelected) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.5f)),
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.35f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = FluxaIcons.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.55f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = FluxaIcons.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+            episode.episodeRuntime?.takeIf { it > 0 }?.let { runtime ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.65f))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = AppStrings.runtimeMinutes(lang, runtime),
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
         }
 
-        Text(
-            text = "${episode.number ?: 0}. ${episode.name.orEmpty()}",
-            color = Color.White,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${episode.number ?: 0}. ${episode.name.orEmpty()}",
+                color = if (isSelected) accentColor else Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            episode.overview?.takeIf { it.isNotBlank() }?.let { overview ->
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = overview,
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }
 
@@ -141,7 +181,7 @@ internal fun MobilePlayerChoiceDialog(
                     .fillMaxWidth(0.84f)
                     .widthIn(max = 360.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF12161D))
+                    .background(FluxaColors.surface)
                     .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
                     .padding(22.dp)
             ) {

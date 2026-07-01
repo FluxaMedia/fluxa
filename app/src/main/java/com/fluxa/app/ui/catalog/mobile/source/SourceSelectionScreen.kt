@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -76,7 +77,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
-fun SourceSelectionScreen(
+fun MobileSourceSelectionScreen(
     meta: Meta,
     video: Video?,
     videoId: String?,
@@ -106,7 +107,7 @@ fun SourceSelectionScreen(
     var subtitleDialog by remember { androidx.compose.runtime.mutableStateOf<Pair<Stream, List<OfflineSubtitleOption>>?>(null) }
     var downloadActionStream by remember { androidx.compose.runtime.mutableStateOf<Stream?>(null) }
     var loadingDownloadStream by remember { androidx.compose.runtime.mutableStateOf<Stream?>(null) }
-    val accent = Color(activeProfile?.safeAccentColorArgb ?: 0xFFE50914.toInt())
+    val accent = Color(activeProfile?.safeAccentColorArgb ?: FluxaColors.accentArgb)
     val targetId = video?.id ?: videoId ?: meta.id
     val title = detail?.name?.takeIf { it.isNotBlank() } ?: meta.name
     var logoLoadFailed by remember(targetId) { androidx.compose.runtime.mutableStateOf(false) }
@@ -632,7 +633,7 @@ private fun MobileSourceDownloadActionSheet(
 }
 
 @Composable
-private fun SourceSubtitleOptionRow(label: String, onClick: () -> Unit) {
+internal fun SourceSubtitleOptionRow(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -645,7 +646,7 @@ private fun SourceSubtitleOptionRow(label: String, onClick: () -> Unit) {
     }
 }
 
-private suspend fun fetchDownloadSubtitleOptions(
+internal suspend fun fetchDownloadSubtitleOptions(
     viewModel: DetailViewModel,
     addons: List<AddonDescriptor>,
     profile: UserProfile?,
@@ -688,7 +689,7 @@ private suspend fun fetchDownloadSubtitleOptions(
     }
 }
 
-private suspend fun enqueueOfflineDownload(
+internal suspend fun enqueueOfflineDownload(
     downloadManager: OfflineDownloadManager,
     profile: UserProfile?,
     meta: Meta,
@@ -714,7 +715,7 @@ private suspend fun enqueueOfflineDownload(
     ).show()
 }
 
-private fun Stream.isOfflineDownloadable(): Boolean {
+internal fun Stream.isOfflineDownloadable(): Boolean {
     val url = playableUrl.orEmpty()
     if (!url.startsWith("http://") && !url.startsWith("https://")) return false
     val normalized = url.lowercase(Locale.ROOT)
@@ -726,7 +727,7 @@ private fun Stream.isOfflineDownloadable(): Boolean {
     return true
 }
 
-private fun formatSourceEpisodeDate(value: String?, lang: String): String? {
+internal fun formatSourceEpisodeDate(value: String?, lang: String): String? {
     val trimmed = value?.trim().orEmpty()
     if (trimmed.length < 10) return null
     val date = trimmed.take(10)

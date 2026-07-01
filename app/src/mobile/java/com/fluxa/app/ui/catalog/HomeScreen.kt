@@ -6,6 +6,7 @@
 
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -48,12 +49,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import androidx.compose.foundation.lazy.LazyListLayoutInfo
-import androidx.compose.foundation.lazy.LazyListPrefetchScope
-import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.layout.NestedPrefetchScope
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.platform.LocalContext
 import com.fluxa.app.data.local.LibraryUserCollection
@@ -61,12 +58,6 @@ import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import kotlinx.coroutines.flow.distinctUntilChanged
-
-private object NoopHomeLazyListPrefetchStrategy : LazyListPrefetchStrategy {
-    override fun LazyListPrefetchScope.onScroll(delta: Float, layoutInfo: LazyListLayoutInfo) = Unit
-    override fun LazyListPrefetchScope.onVisibleItemsUpdated(layoutInfo: LazyListLayoutInfo) = Unit
-    override fun NestedPrefetchScope.onNestedPrefetch(firstVisibleItemIndex: Int) = Unit
-}
 
 @Composable
 fun HomeScreen(
@@ -115,8 +106,7 @@ fun HomeScreen(
     val stableLoadMoreCategory = remember<(String) -> Unit> { { categoryId -> viewModel.loadMore(categoryId) } }
     val homeListState = rememberLazyListState(
         initialFirstVisibleItemIndex = viewModel.savedHomeScrollIndex,
-        initialFirstVisibleItemScrollOffset = viewModel.savedHomeScrollOffset,
-        prefetchStrategy = NoopHomeLazyListPrefetchStrategy
+        initialFirstVisibleItemScrollOffset = viewModel.savedHomeScrollOffset
     )
 
     DisposableEffect(Unit) {
@@ -540,7 +530,7 @@ private fun HomeCategoryRow(
     val currentOnPlayDirect = rememberUpdatedState(onPlayDirect)
     val currentOnProgressAction = rememberUpdatedState(onProgressAction)
     val currentOnLoadMore = rememberUpdatedState(onLoadMore)
-    val listState = rememberLazyListState(prefetchStrategy = NoopHomeLazyListPrefetchStrategy)
+    val listState = rememberLazyListState()
     val context = LocalContext.current
     val addonIconRequest = remember(addonIconUrl) {
         addonIconUrl?.takeIf { it.isNotBlank() }?.let {
@@ -832,7 +822,7 @@ private fun HomeCatalogCard(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .fillMaxHeight()
-                            .background(Color(0xFFE50914))
+                            .background(FluxaColors.progressFill)
                     )
                 }
             }

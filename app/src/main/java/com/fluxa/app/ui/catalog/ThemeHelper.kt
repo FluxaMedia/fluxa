@@ -17,9 +17,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 data class ContentColors(
-    val dominant: Color = Color(0xFFE85D3F),
-    val darkMuted: Color = Color(0xFF12161D),
-    val lightVibrant: Color = Color(0xFFF4F1EA)
+    val dominant: Color = FluxaColors.accent,
+    val darkMuted: Color = FluxaColors.surface,
+    val lightVibrant: Color = FluxaColors.textPrimary
 )
 
 object ThemeHelper {
@@ -42,9 +42,9 @@ object ThemeHelper {
             val palette = Palette.from(bitmap).generate()
             
             ContentColors(
-                dominant = palette.vibrantSwatch?.let { Color(it.rgb) } ?: Color(0xFFE85D3F),
-                darkMuted = palette.darkMutedSwatch?.let { Color(it.rgb) } ?: Color(0xFF12161D),
-                lightVibrant = palette.lightVibrantSwatch?.let { Color(it.rgb) } ?: Color(0xFFF4F1EA)
+                dominant = palette.vibrantSwatch?.let { Color(it.rgb) } ?: FluxaColors.accent,
+                darkMuted = palette.darkMutedSwatch?.let { Color(it.rgb) } ?: FluxaColors.surface,
+                lightVibrant = palette.lightVibrantSwatch?.let { Color(it.rgb) } ?: FluxaColors.textPrimary
             ).also { colorCache.put(url, it) }
         } catch (e: Exception) {
             ContentColors()
