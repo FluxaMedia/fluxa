@@ -41,7 +41,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -125,7 +125,10 @@ private fun WideContinueCard(
                 color = if (isFocused) Color(0xFF9AD4FF) else Color.White.copy(alpha = 0.08f),
                 shape = RoundedCornerShape(18.dp)
             )
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .then(
                 if (focusRequester != null || upFocusRequester != null) {
                     Modifier

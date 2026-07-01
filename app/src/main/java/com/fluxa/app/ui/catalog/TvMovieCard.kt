@@ -240,11 +240,15 @@ internal fun TvMovieCard(
                 .align(Alignment.TopEnd)
                 .width(effectiveWidth)
                 .height(imageHeight)
-                .onGloballyPositioned { coords ->
-                    lastCardCoordinates = coords
-                    if (expanded) onExpandedPositioned?.invoke(coords)
-                    if (isFocused) onFocusedPositioned?.invoke(coords)
-                }
+                .then(
+                    if (expandedPostersEnabled || onExpandedPositioned != null || onFocusedPositioned != null) {
+                        Modifier.onGloballyPositioned { coords ->
+                            lastCardCoordinates = coords
+                            if (expanded) onExpandedPositioned?.invoke(coords)
+                            if (isFocused) onFocusedPositioned?.invoke(coords)
+                        }
+                    } else Modifier
+                )
                 .onFocusChanged {
                     isFocused = it.isFocused
                     onFocusChanged?.invoke(it.isFocused)
@@ -277,7 +281,7 @@ internal fun TvMovieCard(
                 val lang = profile?.safeLanguage ?: "en"
                 val isUpcomingRelease = isUpcomingRelease(meta.released)
                 val isProgressCard = (meta.timeOffset ?: 0L) > 0L && (meta.duration ?: 0L) > 0L
-                val artwork = remember(meta.id, meta.poster, meta.background, meta.continueWatchingBackground, meta.focusGifUrl, effectiveCardLayout, artworkPreference, isFocused, expanded) {
+                val baseArtwork = remember(meta.id, meta.poster, meta.background, meta.continueWatchingBackground, effectiveCardLayout, artworkPreference) {
                     when {
                         isEpisodeStyle -> {
                             val seriesArtwork = when (artworkPreference) {
@@ -289,18 +293,21 @@ internal fun TvMovieCard(
                             val resolved = if (meta.type == "series" || meta.type == "tv" || meta.type == "anime") seriesArtwork ?: meta.background else meta.background
                             resolved ?: meta.poster
                         }
-                        isFocused && !meta.focusGifUrl.isNullOrBlank() && meta.type != "catalog_folder" -> meta.focusGifUrl
-                        expanded -> preferredHorizontalArtwork(meta) ?: meta.poster
                         isHorizontal -> preferredHorizontalArtwork(meta) ?: meta.poster
                         else -> meta.poster
                     }
+                }
+                val artwork = when {
+                    isFocused && !meta.focusGifUrl.isNullOrBlank() && meta.type != "catalog_folder" -> meta.focusGifUrl
+                    expanded -> preferredHorizontalArtwork(meta) ?: meta.poster
+                    else -> baseArtwork
                 }
                 val requestWidth = if (isEpisodeStyle) 512 else if (isHorizontal || expanded) 640 else 320
                 val requestHeight = if (isEpisodeStyle) 288 else if (isHorizontal || expanded) 360 else 480
                 val request = remember(context, artwork, requestWidth, requestHeight) {
                     ImageRequest.Builder(context)
                         .data(artwork)
-                        .crossfade(true)
+                        .crossfade(false)
                         .memoryCacheKey(artwork)
                         .diskCacheKey(artwork)
                         .placeholderMemoryCacheKey(meta.poster)
@@ -312,7 +319,7 @@ internal fun TvMovieCard(
                 val logoRequest = remember(meta.logo, showLogo) {
                     if (!showLogo) null else ImageRequest.Builder(context)
                         .data(meta.logo)
-                        .crossfade(true)
+                        .crossfade(false)
                         .memoryCacheKey("home-logo:${meta.logo}")
                         .diskCacheKey(meta.logo)
                         .transformations(TrimTransparentEdgesTransformation())
@@ -325,7 +332,7 @@ internal fun TvMovieCard(
                         .height(imageHeight)
                         .clip(RoundedCornerShape(radius))
                         .background(if (isEpisodeStyle) FluxaColors.surfaceCard else Color.White.copy(alpha = FluxaDimensions.Alpha.emptyCardBackground))
-                        .then(if (isFocused) Modifier.border(3.5.dp, Color(profile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt()), RoundedCornerShape(radius)) else Modifier)
+                        .border(3.5.dp, if (isFocused) Color(profile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt()) else Color.Transparent, RoundedCornerShape(radius))
                 ) {
                     if (trailerUrl != null && trailerPlayer != null) {
                         androidx.compose.ui.viewinterop.AndroidView(
