@@ -33,7 +33,7 @@ fun rememberAmbientHeroColor(artworkUrl: String?): Color {
         value = ThemeHelper.extractColors(context, artworkUrl)
     }
     val target = lerp(colors.darkMuted, FluxaColors.background, 0.35f)
-    return animateColorAsState(target, tween(700), label = "ambientHero").value
+    return animateColorAsState(target, tween(FluxaDimensions.AnimDuration.ambientColor), label = "ambientHero").value
 }
 
 object ThemeHelper {

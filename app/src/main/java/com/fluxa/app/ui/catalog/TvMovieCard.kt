@@ -77,7 +77,7 @@ internal fun TvMovieCard(
     val radius = posterCornerRadius(profile?.safeCardCornerPreset ?: "soft")
     val animationDuration = when {
         profile?.safeAnimationsEnabled == false -> 0
-        else -> if (isShelfStyle) 220 else 240
+        else -> if (isShelfStyle) FluxaDimensions.AnimDuration.contentExpand else FluxaDimensions.AnimDuration.cardFocusScale
     }
     val hidePosterTitles = profile?.safePosterHideTitles == true || meta.hideTitle == true
 

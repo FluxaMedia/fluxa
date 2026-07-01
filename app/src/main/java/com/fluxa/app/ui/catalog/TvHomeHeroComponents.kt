@@ -18,8 +18,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -284,6 +287,13 @@ private fun youtubeEmbedHtml(youtubeId: String): String {
     """.trimIndent()
 }
 
+private fun Modifier.heroReveal(progress: () -> Float, step: Int): Modifier = graphicsLayer {
+    val start = step * 0.15f
+    val f = ((progress() - start) / 0.55f).coerceIn(0f, 1f)
+    alpha = f
+    translationY = (1f - f) * 22.dp.toPx()
+}
+
 @Composable
 internal fun HomeHeroPanel(
     movie: Meta,
@@ -300,11 +310,15 @@ internal fun HomeHeroPanel(
 ) {
     val buttonsAlpha by animateFloatAsState(
         targetValue = if (showButtons) 1f else 0f,
-        animationSpec = tween(220),
+        animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand),
         label = "heroButtonsAlpha"
     )
     val logoCandidates = remember(movie.id, movie.logo, logoUrl) {
         listOfNotNull(logoUrl, movie.logo).distinct()
+    }
+    val reveal = remember(movie.id) { Animatable(0f) }
+    LaunchedEffect(movie.id) {
+        reveal.animateTo(1f, tween(FluxaDimensions.AnimDuration.heroReveal))
     }
 
     androidx.compose.foundation.layout.Column(modifier = modifier.widthIn(max = 560.dp)) {
@@ -314,7 +328,8 @@ internal fun HomeHeroPanel(
                 contentDescription = movie.name,
                 modifier = Modifier
                     .height(94.dp)
-                    .widthIn(max = 360.dp),
+                    .widthIn(max = 360.dp)
+                    .heroReveal({ reveal.value }, 0),
                 contentScale = ContentScale.Fit
             )
         } else {
@@ -323,20 +338,26 @@ internal fun HomeHeroPanel(
                 color = Color(0xFFFFD94B),
                 fontSize = 54.sp,
                 lineHeight = 56.sp,
+                fontFamily = FluxaDisplay,
                 fontWeight = FontWeight.Black,
                 style = TextStyle(
                     shadow = Shadow(
                         color = Color.Black.copy(alpha = 0.55f),
                         blurRadius = 20f
                     )
-                )
+                ),
+                modifier = Modifier.heroReveal({ reveal.value }, 0)
             )
         }
 
         Spacer(modifier = Modifier.height(18.dp))
-        HeroMetaLine(movie = movie, lang = lang)
-        Spacer(modifier = Modifier.height(10.dp))
-        HeroRatingLine(movie = movie)
+        Box(modifier = Modifier.heroReveal({ reveal.value }, 1)) {
+            androidx.compose.foundation.layout.Column {
+                HeroMetaLine(movie = movie, lang = lang)
+                Spacer(modifier = Modifier.height(10.dp))
+                HeroRatingLine(movie = movie)
+            }
+        }
         Spacer(modifier = Modifier.height(18.dp))
 
         if (!movie.description.isNullOrBlank()) {
@@ -347,14 +368,18 @@ internal fun HomeHeroPanel(
                 lineHeight = 27.sp,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 500.dp)
+                modifier = Modifier
+                    .widthIn(max = 500.dp)
+                    .heroReveal({ reveal.value }, 2)
             )
             Spacer(modifier = Modifier.height(22.dp))
         }
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.alpha(buttonsAlpha)
+            modifier = Modifier
+                .alpha(buttonsAlpha)
+                .heroReveal({ reveal.value }, 3)
         ) {
             Button(
                 onClick = onPlayClick,

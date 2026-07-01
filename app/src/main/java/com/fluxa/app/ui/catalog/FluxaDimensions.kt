@@ -77,7 +77,6 @@ object FluxaDimensions {
     // ── Profile screens ───────────────────────────────────────────────────────
     object Profile {
         val avatarSize = 120.dp
-        val avatarPickerThumbSize = 80.dp
     }
 
     // ── Card text sizes ───────────────────────────────────────────────────────
@@ -111,6 +110,10 @@ object FluxaDimensions {
         const val heightAnim = 130
         const val settingsExpand = 240
         const val settingsExpandAlt = 260
+        const val heroReveal = 650
+        const val fadeIn = 200
+        const val fadeOut = 150
+        const val ambientColor = 700
     }
 
     // ── Focus indicator stroke ────────────────────────────────────────────────

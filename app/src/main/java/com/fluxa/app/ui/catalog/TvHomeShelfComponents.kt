@@ -117,7 +117,7 @@ private fun WideContinueCard(
     onFocus: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.035f else 1f, tween(180), label = "continueScale")
+    val scale by animateFloatAsState(if (isFocused) 1.035f else 1f, tween(FluxaDimensions.AnimDuration.scaleAlpha), label = "continueScale")
 
     Row(
         modifier = Modifier
@@ -353,12 +353,12 @@ internal fun HomeShelfRow(
 
 @Composable
 private fun ShelfExpandedDescription(expandedMeta: Meta?, expandedOffsetX: Dp, rowWidth: Dp) {
-    val animatedOffsetX by animateDpAsState(expandedOffsetX, tween(220), label = "expandedInfoOffset")
+    val animatedOffsetX by animateDpAsState(expandedOffsetX, tween(FluxaDimensions.AnimDuration.contentExpand), label = "expandedInfoOffset")
     Box(modifier = Modifier.fillMaxWidth().height(90.dp)) {
         AnimatedVisibility(
             visible = expandedMeta != null,
-            enter = fadeIn(tween(200)),
-            exit = fadeOut(tween(150))
+            enter = fadeIn(tween(FluxaDimensions.AnimDuration.fadeIn)),
+            exit = fadeOut(tween(FluxaDimensions.AnimDuration.fadeOut))
         ) {
             val info = expandedMeta
             if (info != null) {
