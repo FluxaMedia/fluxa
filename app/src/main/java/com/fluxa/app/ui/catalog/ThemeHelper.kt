@@ -6,8 +6,12 @@ import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 
 import android.graphics.Bitmap
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
 import coil3.BitmapImage
 import coil3.imageLoader
@@ -21,6 +25,16 @@ data class ContentColors(
     val darkMuted: Color = FluxaColors.surface,
     val lightVibrant: Color = FluxaColors.textPrimary
 )
+
+@Composable
+fun rememberAmbientHeroColor(artworkUrl: String?): Color {
+    val context = LocalContext.current
+    val colors by produceState(ContentColors(), artworkUrl) {
+        value = ThemeHelper.extractColors(context, artworkUrl)
+    }
+    val target = lerp(colors.darkMuted, FluxaColors.background, 0.35f)
+    return animateColorAsState(target, tween(700), label = "ambientHero").value
+}
 
 object ThemeHelper {
     private val colorCache = android.util.LruCache<String, ContentColors>(80)

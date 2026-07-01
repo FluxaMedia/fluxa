@@ -2,6 +2,7 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -208,6 +209,18 @@ private fun MobileHeroBackground(movie: Meta, seasonPostersOnHero: Boolean) {
         )
 
         Box(modifier = Modifier.fillMaxSize().background(HERO_GRADIENT))
+        val ambient = rememberAmbientHeroColor(backgroundUrl)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.55f to Color.Transparent,
+                        0.84f to ambient.copy(alpha = 0.40f),
+                        1f to Color.Transparent
+                    )
+                )
+        )
     }
 }
 
