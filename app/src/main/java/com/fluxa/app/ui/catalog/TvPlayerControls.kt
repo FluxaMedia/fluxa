@@ -51,6 +51,8 @@ fun TVSeekbar(
 ) {
     var isFocused by remember { mutableStateOf(false) }
     var internalPos by remember { mutableFloatStateOf(position.toFloat()) }
+    var consecutivePresses by remember { mutableIntStateOf(0) }
+    var lastPressDirection by remember { mutableIntStateOf(0) }
     val seekbarAccent = FluxaColors.accent
     val seekPreview = rememberSeekThumbnail(LocalSeekSurfaceView.current, internalPos.toLong(), isFocused, position, isPlaying, onScrubSeek)
 
@@ -73,29 +75,37 @@ fun TVSeekbar(
             .fillMaxWidth()
             .height(48.dp)
             .focusRequester(focusRequester)
-            .onFocusChanged { 
-                isFocused = it.isFocused
-                onScrubbing(it.isFocused, internalPos.toLong()) 
+            .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+                if (!focusState.isFocused) { consecutivePresses = 0; lastPressDirection = 0 }
+                onScrubbing(focusState.isFocused, internalPos.toLong())
             }
             .focusProperties { up = playPauseFocusRequester }
             .focusable()
-            .onKeyEvent { 
+            .onKeyEvent {
                 if (it.type == KeyEventType.KeyDown) {
                     when (it.key) {
-                        Key.DirectionLeft -> { 
-                            internalPos = (internalPos - seekBackwardMs).coerceAtLeast(0f)
+                        Key.DirectionLeft -> {
+                            if (lastPressDirection != -1) { consecutivePresses = 0; lastPressDirection = -1 }
+                            consecutivePresses++
+                            val multiplier = when { consecutivePresses >= 8 -> 6L; consecutivePresses >= 3 -> 3L; else -> 1L }
+                            internalPos = (internalPos - seekBackwardMs * multiplier).coerceAtLeast(0f)
                             onScrubbing(true, internalPos.toLong())
-                            true 
+                            true
                         }
-                        Key.DirectionRight -> { 
-                            internalPos = (internalPos + seekForwardMs).coerceAtMost(duration.toFloat())
+                        Key.DirectionRight -> {
+                            if (lastPressDirection != 1) { consecutivePresses = 0; lastPressDirection = 1 }
+                            consecutivePresses++
+                            val multiplier = when { consecutivePresses >= 8 -> 6L; consecutivePresses >= 3 -> 3L; else -> 1L }
+                            internalPos = (internalPos + seekForwardMs * multiplier).coerceAtMost(duration.toFloat())
                             onScrubbing(true, internalPos.toLong())
-                            true 
+                            true
                         }
-                        Key.Enter, Key.DirectionCenter -> { 
+                        Key.Enter, Key.DirectionCenter -> {
+                            consecutivePresses = 0; lastPressDirection = 0
                             onSeek(internalPos.toLong())
                             onScrubbing(false, internalPos.toLong())
-                            true 
+                            true
                         }
                         else -> false
                     }
