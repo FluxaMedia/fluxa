@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -98,6 +100,8 @@ internal fun TvDetailScreenContent(
     val context = LocalContext.current
     var showEpisodeSortSelector by remember(detail?.id, selectedSeason) { mutableStateOf(false) }
     var episodeSort by remember(detail?.id, selectedSeason) { mutableStateOf("number_asc") }
+    val episodeLazyListState = rememberLazyListState()
+    LaunchedEffect(selectedSeason) { episodeLazyListState.scrollToItem(0) }
     val heroBg = detail?.background ?: detail?.poster ?: initialMeta?.background ?: initialMeta?.poster
     val detailBgRequest = remember(heroBg) {
         heroBg?.let { bg ->
@@ -240,7 +244,7 @@ Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) 
                 }
                 Column(modifier = Modifier.padding(top = 24.dp)) {
                     Text(text = AppStrings.t(lang, "auto.episodes"), style = androidx.compose.material3.MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.4f), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = horizontalPadding))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 20.dp)) {
+                    LazyRow(state = episodeLazyListState, horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 20.dp)) {
                         items(episodes, key = { it.id }) { episode ->
                 EpisodeCard(
                     episode = episode,
