@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 internal fun TvCollectionEditorPage(
@@ -292,10 +294,14 @@ private fun TvFolderEditorPage(
 
 @Composable
 private fun TvImageUrlField(label: String, value: String, onValueChange: (String) -> Unit) {
+    val context = LocalContext.current
+    val previewRequest = remember(value) {
+        ImageRequest.Builder(context).data(value).memoryCacheKey("tv-library-url:$value").diskCacheKey(value).build()
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (value.isNotBlank()) {
             AsyncImage(
-                model = value,
+                model = previewRequest,
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(10.dp)),
                 contentScale = ContentScale.Crop
@@ -314,6 +320,11 @@ private fun TvImageUrlField(label: String, value: String, onValueChange: (String
 
 @Composable
 private fun TvFolderRow(folder: LibraryUserCollectionFolder, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val folderImageUrl = folder.effectiveImageUrl()
+    val folderImageRequest = remember(folder.id, folderImageUrl) {
+        ImageRequest.Builder(context).data(folderImageUrl).memoryCacheKey("tv-library-folder:${folder.id}").diskCacheKey(folderImageUrl).build()
+    }
     var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
@@ -327,7 +338,7 @@ private fun TvFolderRow(folder: LibraryUserCollectionFolder, onClick: () -> Unit
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AsyncImage(
-                model = folder.effectiveImageUrl(),
+                model = folderImageRequest,
                 contentDescription = null,
                 modifier = Modifier.height(44.dp).clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop

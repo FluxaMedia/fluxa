@@ -37,6 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import com.fluxa.app.data.local.OfflineDownloadItem
 
 @Composable
@@ -117,6 +120,10 @@ private fun OfflineDownloadFolderRow(
     amoledMode: Boolean,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val posterRequest = remember(group.poster) {
+        ImageRequest.Builder(context).data(group.poster).memoryCacheKey("downloads-group:${group.poster}").diskCacheKey(group.poster).build()
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -136,7 +143,7 @@ private fun OfflineDownloadFolderRow(
             contentAlignment = Alignment.Center
         ) {
             if (!group.poster.isNullOrBlank()) {
-                AsyncImage(group.poster, group.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                AsyncImage(model = posterRequest, contentDescription = group.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             } else {
                 Icon(FluxaIcons.Download, null, tint = Color.White.copy(alpha = 0.38f), modifier = Modifier.size(24.dp))
             }
@@ -163,6 +170,11 @@ private fun OfflineDownloadEpisodeRow(
     amoledMode: Boolean,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val artwork = item.localBackgroundPath?.toFileImageModel() ?: item.background ?: item.localPosterPath?.toFileImageModel() ?: item.poster
+    val artworkRequest = remember(artwork) {
+        ImageRequest.Builder(context).data(artwork).memoryCacheKey("downloads-episode:$artwork").diskCacheKey(artwork).build()
+    }
     val statusText = when (item.status) {
         "downloaded" -> AppStrings.t(lang, "downloads.status_downloaded")
         "failed" -> AppStrings.t(lang, "downloads.status_failed")
@@ -187,9 +199,8 @@ private fun OfflineDownloadEpisodeRow(
                 .background(Color.White.copy(alpha = 0.08f)),
             contentAlignment = Alignment.Center
         ) {
-            val artwork = item.localBackgroundPath?.toFileImageModel() ?: item.background ?: item.localPosterPath?.toFileImageModel() ?: item.poster
             if (!artwork.isNullOrBlank()) {
-                AsyncImage(artwork, item.episodeTitle ?: item.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                AsyncImage(model = artworkRequest, contentDescription = item.episodeTitle ?: item.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             } else {
                 Icon(FluxaIcons.PlayCircle, null, tint = Color.White.copy(alpha = 0.38f), modifier = Modifier.size(24.dp))
             }

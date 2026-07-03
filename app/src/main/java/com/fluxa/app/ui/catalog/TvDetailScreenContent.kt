@@ -48,6 +48,7 @@ import kotlinx.coroutines.CoroutineScope
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.*
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -95,8 +96,13 @@ internal fun TvDetailScreenContent(
     val context = LocalContext.current
     var showEpisodeSortSelector by remember(detail?.id, selectedSeason) { mutableStateOf(false) }
     var episodeSort by remember(detail?.id, selectedSeason) { mutableStateOf("number_asc") }
+    val detailBgRequest = remember(detail?.background) {
+        detail?.background?.let { bg ->
+            ImageRequest.Builder(context).data(bg).memoryCacheKey("detail-bg:$bg").diskCacheKey(bg).build()
+        }
+    }
 Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) {
-    detail?.background?.let { bg -> AsyncImage(model = bg, contentDescription = null, modifier = Modifier.fillMaxSize().alpha(0.25f), contentScale = ContentScale.Crop) }
+    detailBgRequest?.let { AsyncImage(model = it, contentDescription = null, modifier = Modifier.fillMaxSize().alpha(0.25f), contentScale = ContentScale.Crop) }
     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.9f), Color.Black))))
 
     LazyColumn(state = lazyListState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 100.dp)) {
