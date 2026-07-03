@@ -11,6 +11,11 @@ import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.ui.graphics.vector.ImageVector
 
 object FluxaIcons {
@@ -25,10 +30,15 @@ object FluxaIcons {
     val Bookmark: ImageVector = Icons.Filled.Bookmark
     val BookmarkBorder: ImageVector = Icons.Filled.Bookmark
     val BottomCalendar: ImageVector = Icons.Filled.DateRange
+    val BottomCalendarOutline: ImageVector = Icons.Outlined.DateRange
     val BottomDiscover: ImageVector = Icons.Filled.Explore
+    val BottomDiscoverOutline: ImageVector = Icons.Outlined.Explore
     val BottomHome: ImageVector = Icons.Filled.Home
+    val BottomHomeOutline: ImageVector = Icons.Outlined.Home
     val BottomLibrary: ImageVector = Icons.Filled.VideoLibrary
+    val BottomLibraryOutline: ImageVector = Icons.Outlined.VideoLibrary
     val BottomSettings: ImageVector = Icons.Filled.Settings
+    val BottomSettingsOutline: ImageVector = Icons.Outlined.Settings
     val Cast: ImageVector = Icons.Filled.Cast
     val Check: ImageVector = Icons.Filled.Check
     val CheckCircle: ImageVector = Icons.Filled.CheckCircle

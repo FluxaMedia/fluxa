@@ -39,7 +39,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -48,6 +50,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -163,9 +166,10 @@ internal fun MobileBottomNav(
     onQuickProfileSelected: (UserProfile) -> Unit = {}
 ) {
     val selected = currentScreen.mobileNavDestination() ?: return
+    val lang = activeProfile?.safeLanguage ?: "en"
     val selectedColor = Color(activeProfile?.safeAccentColorArgb ?: Color.White.toArgb())
-    val navBackground = if (activeProfile?.safeAmoledMode == true) Color.Black else Color(0xFF090A0D)
-    val inactiveColor = Color(0xFFA7ADB8)
+    val navBackground = if (activeProfile?.safeAmoledMode == true) Color.Black else Color(0xFF0B0C10)
+    val inactiveColor = Color(0xFFA0A5AD)
     val quickProfiles = remember(profiles, activeProfile?.id) {
         val activeId = activeProfile?.id
         profiles.sortedWith(
@@ -175,18 +179,26 @@ internal fun MobileBottomNav(
     }
     var showQuickProfiles by remember { mutableStateOf(false) }
     val items = listOf(
-        MobileBottomNavItem(MobileNavDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHome),
-        MobileBottomNavItem(MobileNavDestination.Discover, FluxaIcons.BottomDiscover, FluxaIcons.BottomDiscover),
-        MobileBottomNavItem(MobileNavDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendar),
-        MobileBottomNavItem(MobileNavDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibrary),
-        MobileBottomNavItem(MobileNavDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettings)
+        MobileBottomNavItem(MobileNavDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHomeOutline, AppStrings.t(lang, "nav.home")),
+        MobileBottomNavItem(MobileNavDestination.Discover, FluxaIcons.BottomDiscover, FluxaIcons.BottomDiscoverOutline, AppStrings.t(lang, "nav.discover")),
+        MobileBottomNavItem(MobileNavDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendarOutline, AppStrings.t(lang, "nav.calendar")),
+        MobileBottomNavItem(MobileNavDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline, AppStrings.t(lang, "nav.library")),
+        MobileBottomNavItem(MobileNavDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline, AppStrings.t(lang, "nav.settings"))
     )
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(navBackground)
+            .drawBehind {
+                drawLine(
+                    color = Color.White.copy(alpha = 0.06f),
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, 0f),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .padding(horizontal = 6.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -194,8 +206,7 @@ internal fun MobileBottomNav(
             val isSelected = selected == item.destination
             Column(
                 modifier = Modifier
-                    .width(58.dp)
-                    .height(54.dp)
+                    .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
                     .combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -206,7 +217,8 @@ internal fun MobileBottomNav(
                                 showQuickProfiles = true
                             }
                         }
-                    ),
+                    )
+                    .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -267,13 +279,34 @@ internal fun MobileBottomNav(
                         }
                     }
                 } else {
-                    Icon(
-                        if (isSelected) item.selectedIcon else item.icon,
-                        null,
-                        tint = if (isSelected) selectedColor else inactiveColor,
-                        modifier = Modifier.size(27.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(width = 52.dp, height = 32.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isSelected) selectedColor.copy(alpha = 0.16f) else Color.Transparent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            if (isSelected) item.selectedIcon else item.icon,
+                            null,
+                            tint = if (isSelected) selectedColor else inactiveColor,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
                 }
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = if (item.destination == MobileNavDestination.Settings) {
+                        activeProfile?.displayName?.takeIf { it.isNotBlank() } ?: item.label
+                    } else {
+                        item.label
+                    },
+                    color = if (isSelected) selectedColor else inactiveColor,
+                    fontSize = 10.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -282,7 +315,8 @@ internal fun MobileBottomNav(
 private data class MobileBottomNavItem(
     val destination: MobileNavDestination,
     val selectedIcon: ImageVector,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val label: String
 )
 
 @Composable
