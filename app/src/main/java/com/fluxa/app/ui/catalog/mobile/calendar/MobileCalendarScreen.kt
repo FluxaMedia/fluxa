@@ -7,9 +7,11 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
@@ -40,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -124,6 +128,8 @@ fun MobileCalendarScreen(
             }
         }
         item {
+            val currentYearMonth = "%04d-%02d".format(Locale.US, todayIso.take(4).toInt(), todayIso.substring(5, 7).toInt())
+            val isCurrentMonth = "%04d-%02d".format(Locale.US, year, month) == currentYearMonth
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -139,6 +145,27 @@ fun MobileCalendarScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
                 )
+                if (!isCurrentMonth) {
+                    Text(
+                        text = AppStrings.t(lang, "calendar.today"),
+                        color = accent,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                visibleMonth = JavaCalendar.getInstance().apply {
+                                    set(JavaCalendar.DAY_OF_MONTH, 1)
+                                    set(JavaCalendar.HOUR_OF_DAY, 0)
+                                    set(JavaCalendar.MINUTE, 0)
+                                    set(JavaCalendar.SECOND, 0)
+                                    set(JavaCalendar.MILLISECOND, 0)
+                                }
+                                selectedGridDateIso = todayIso
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
                 IconButton(onClick = { visibleMonth = visibleMonth.shiftMonth(1) }) {
                     Icon(FluxaIcons.ChevronRight, null, tint = Color.White)
                 }
@@ -147,25 +174,55 @@ fun MobileCalendarScreen(
         item {
             when (viewMode) {
                 CalendarViewMode.Grid -> {
-                    CalendarMonthGrid(
-                        weekdays = weekdays,
-                        days = days,
-                        itemsByDate = itemsByDate,
-                        selectedDateIso = selectedGridDateIso,
-                        todayIso = todayIso,
-                        accent = accent,
-                        onDayClick = { day -> selectedGridDateIso = day.dateIso }
-                    )
-                    val selectedEvents = selectedGridDateIso?.let { itemsByDate[it] }.orEmpty()
-                    if (selectedEvents.isNotEmpty()) {
-                        Spacer(Modifier.height(20.dp))
-                        CalendarUpcomingSection(
-                            dateIso = selectedGridDateIso.orEmpty(),
-                            locale = locale,
-                            lang = lang,
-                            events = selectedEvents,
-                            onMovieClick = onMovieClick
+                    val currentShiftMonth = rememberUpdatedState { delta: Int -> visibleMonth = visibleMonth.shiftMonth(delta) }
+                    var dragAccumulator by remember { mutableStateOf(0f) }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = { dragAccumulator = 0f },
+                                    onHorizontalDrag = { _, dragAmount -> dragAccumulator += dragAmount },
+                                    onDragEnd = {
+                                        val threshold = 120f
+                                        if (dragAccumulator <= -threshold) currentShiftMonth.value(1)
+                                        else if (dragAccumulator >= threshold) currentShiftMonth.value(-1)
+                                        dragAccumulator = 0f
+                                    }
+                                )
+                            }
+                            .animateContentSize()
+                    ) {
+                        CalendarMonthGrid(
+                            weekdays = weekdays,
+                            days = days,
+                            itemsByDate = itemsByDate,
+                            selectedDateIso = selectedGridDateIso,
+                            todayIso = todayIso,
+                            accent = accent,
+                            onDayClick = { day -> selectedGridDateIso = day.dateIso }
                         )
+                        val selectedEvents = selectedGridDateIso?.let { itemsByDate[it] }.orEmpty()
+                        if (selectedGridDateIso != null) {
+                            Spacer(Modifier.height(20.dp))
+                            if (selectedEvents.isNotEmpty()) {
+                                CalendarUpcomingSection(
+                                    dateIso = selectedGridDateIso.orEmpty(),
+                                    locale = locale,
+                                    lang = lang,
+                                    events = selectedEvents,
+                                    onMovieClick = onMovieClick
+                                )
+                            } else {
+                                Text(
+                                    text = AppStrings.t(lang, "calendar.no_releases_this_day"),
+                                    color = Color.White.copy(alpha = 0.4f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
+                        }
                     }
                 }
                 CalendarViewMode.List -> {
@@ -180,15 +237,22 @@ fun MobileCalendarScreen(
         }
         if (!loading && calendarItems.isEmpty()) {
             item {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color.White.copy(alpha = 0.05f))
-                        .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
+                        .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(10.dp))
+                        .padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Icon(
+                        FluxaIcons.BottomCalendar,
+                        null,
+                        tint = Color.White.copy(alpha = 0.28f),
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(Modifier.height(10.dp))
                     Text(
                         text = AppStrings.t(lang, "calendar.empty"),
                         color = Color.White.copy(alpha = 0.64f),

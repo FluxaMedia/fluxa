@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,14 +62,16 @@ internal fun MobileDetailHero(
     onBack: () -> Unit,
     lang: String,
     activeTrailer: DetailTrailer? = null,
+    featuredTrailer: DetailTrailer? = null,
     onStopTrailer: () -> Unit = {},
     onSelectTrailer: ((DetailTrailer) -> Unit)? = null,
     accentColor: Color = Color.White
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
     val scope = rememberCoroutineScope()
 
-    val effectiveTrailer = activeTrailer
+    val effectiveTrailer = activeTrailer ?: featuredTrailer
 
     var trailerState by remember { mutableStateOf<HeroTrailerState>(HeroTrailerState.Idle) }
     var isPlaying by remember { mutableStateOf(true) }
@@ -216,7 +219,10 @@ internal fun MobileDetailHero(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        MobileDetailTopIcon(FluxaIcons.FullscreenExit) { isFullscreen = false }
+                        MobileDetailTopIcon(
+                            FluxaIcons.FullscreenExit,
+                            AppStrings.t(lang, "common.close")
+                        ) { isFullscreen = false }
                         if (availableSubtitles.isNotEmpty()) {
                             Box(
                                 modifier = Modifier
@@ -261,7 +267,8 @@ internal fun MobileDetailHero(
     }
 
     // Hero box
-    Box(modifier = Modifier.fillMaxWidth().height(286.dp)) {
+    val heroHeight = (configuration.screenWidthDp.dp * 0.62f).coerceIn(236.dp, 340.dp)
+    Box(modifier = Modifier.fillMaxWidth().height(heroHeight)) {
         when (val state = trailerState) {
             is HeroTrailerState.Ready -> {
                 val player = exoPlayer
@@ -416,7 +423,8 @@ internal fun MobileDetailHero(
                             .clip(CircleShape)
                             .background(if (state is HeroTrailerState.Loading) Color.Black.copy(0.60f) else accentColor.copy(0.92f))
                             .then(if (state !is HeroTrailerState.Loading) Modifier.clickable {
-                                retryCount++
+                                if (activeTrailer == null) onSelectTrailer?.invoke(effectiveTrailer)
+                                else retryCount++
                             } else Modifier),
                         contentAlignment = Alignment.Center
                     ) {
@@ -435,9 +443,9 @@ internal fun MobileDetailHero(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            MobileDetailTopIcon(FluxaIcons.ArrowBack, onBack)
+            MobileDetailTopIcon(FluxaIcons.ArrowBack, AppStrings.t(lang, "common.back"), onBack)
             if (trailerState is HeroTrailerState.Ready || trailerState is HeroTrailerState.GeoBlocked) {
-                MobileDetailTopIcon(FluxaIcons.Close) {
+                MobileDetailTopIcon(FluxaIcons.Close, AppStrings.t(lang, "common.close")) {
                     exoPlayer?.stop(); exoPlayer?.clearMediaItems(); exoPlayer?.release(); exoPlayer = null
                     trailerState = HeroTrailerState.Idle
                     onStopTrailer()

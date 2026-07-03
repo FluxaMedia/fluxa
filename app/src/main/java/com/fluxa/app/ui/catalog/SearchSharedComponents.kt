@@ -51,18 +51,26 @@ fun SearchSectionTitle(text: String) {
 }
 
 @Composable
-fun SearchEmptyState(title: String, subtitle: String) {
+fun SearchEmptyState(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector = FluxaIcons.Search) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 32.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(Color.White.copy(alpha = 0.04f))
-            .padding(28.dp)
+            .padding(28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(title, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+        Icon(
+            icon,
+            null,
+            tint = Color.White.copy(alpha = 0.28f),
+            modifier = Modifier.size(40.dp)
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         Spacer(Modifier.height(8.dp))
-        Text(subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+        Text(subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 

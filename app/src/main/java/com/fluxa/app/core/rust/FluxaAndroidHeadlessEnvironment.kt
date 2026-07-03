@@ -11,9 +11,14 @@ import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
 import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.AddonDescriptor
+import com.fluxa.app.data.remote.CastMember
+import com.fluxa.app.data.remote.DetailTrailer
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
+import com.fluxa.app.data.remote.MetaLink
+import com.fluxa.app.data.remote.MetaRating
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.data.remote.SubtitleData
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.repository.StremioRepository
@@ -27,6 +32,11 @@ import com.fluxa.app.data.repository.CloudStreamCatalogClient
 import com.fluxa.app.data.repository.toStremioType
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
+import com.fluxa.app.plugins.cloudstream.ScraperActor
+import com.fluxa.app.plugins.cloudstream.ScraperLoadResult
+import com.fluxa.app.plugins.cloudstream.ScraperSearchResult
+import com.fluxa.app.plugins.cloudstream.ScraperSubtitle
+import com.fluxa.app.plugins.cloudstream.ScraperTrailer
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.CalendarWidgetProvider
 import com.fluxa.app.ui.catalog.CalendarUpcomingItem
@@ -352,10 +362,13 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val payload = effect.payload
         val profile = payload.profile()
         val meta = gson.fromJson(gson.toJsonTree(payload["meta"]), Meta::class.java)
+        val requestedVideoId = payload.stringOrNull("videoId")
 
-        if (meta.id.startsWith("cs3:")) {
-            val streams = loadCsNativeStreams(meta.id)
-            return if (streams.isNotEmpty()) ok(effect, DirectPlaybackTarget(meta, null, streams)) else ok(effect, null)
+        val cs3PlaybackId = requestedVideoId?.takeIf { it.startsWith("cs3:") }
+            ?: meta.id.takeIf { it.startsWith("cs3:") }
+        if (cs3PlaybackId != null) {
+            val streams = loadCsNativeStreams(cs3PlaybackId)
+            return if (streams.isNotEmpty()) ok(effect, DirectPlaybackTarget(meta, requestedVideoId, streams)) else ok(effect, null)
         }
 
         val language = payload.string("language", profile?.safeLanguage ?: "en")
@@ -1175,9 +1188,11 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 name = ep.name ?: "Episode ${idx + 1}",
                 season = ep.season,
                 number = ep.episode,
-                released = null,
+                released = ep.date?.toCs3IsoDate(),
                 thumbnail = ep.posterUrl,
-                overview = ep.description
+                overview = ep.description,
+                rating = ep.rating?.let(::cs3RatingString),
+                episodeRuntime = ep.runTime
             )
         }
         Log.d("CS3Detail", "$apiName: built MetaDetail with ${videos?.size ?: "null"} videos")
@@ -1187,16 +1202,89 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             name = load.title,
             genres = load.tags,
             poster = load.posterUrl,
-            background = load.posterUrl,
-            logo = null,
+            background = load.backgroundPosterUrl ?: load.posterUrl,
+            logo = load.logoUrl,
             description = load.plot,
             releaseInfo = load.year?.toString(),
-            released = null,
+            released = load.year?.let { "$it-01-01" },
             runtime = load.duration?.let { "${it}m" },
             videos = videos,
-            imdbRating = load.rating?.let { "%.1f".format(it.toFloat() / 10f) },
-            cast = load.actors?.map { com.fluxa.app.data.remote.CastMember(it, null, null) }
+            trailers = load.trailers?.mapIndexedNotNull { index, trailer -> trailer.toDetailTrailer(apiName, index) },
+            imdbRating = load.rating?.let(::cs3RatingString),
+            ageRating = load.contentRating,
+            ratings = load.rating?.let { listOf(MetaRating("Cloudstream", cs3RatingString(it))) },
+            cast = load.actors?.map { it.toCastMember() },
+            links = load.toMetaLinks(),
+            status = when {
+                load.comingSoon -> "Coming Soon"
+                else -> load.status
+            },
+            originalName = load.synonyms?.firstOrNull { it != load.title },
+            collectionParts = load.recommendations?.mapNotNull { it.toCs3Meta(apiName) }
         )
+    }
+
+    private fun Long.toCs3IsoDate(): String {
+        val millis = if (this > 10_000_000_000L) this else this * 1000L
+        return java.time.Instant.ofEpochMilli(millis)
+            .atZone(java.time.ZoneOffset.UTC)
+            .toLocalDate()
+            .toString()
+    }
+
+    private fun cs3RatingString(rating: Int): String =
+        "%.1f".format(java.util.Locale.US, rating.toFloat() / 10f)
+
+    private fun ScraperActor.toCastMember(): CastMember =
+        CastMember(name = name, character = role, profilePath = image)
+
+    private fun ScraperTrailer.toDetailTrailer(apiName: String, index: Int): DetailTrailer? {
+        val targetUrl = url.takeIf { it.isNotBlank() } ?: return null
+        return DetailTrailer(
+            id = "cs3:$apiName:trailer:$index",
+            title = "Trailer ${index + 1}",
+            type = if (raw) "Trailer" else "Extractor",
+            url = targetUrl,
+            thumbnail = null,
+            source = apiName
+        )
+    }
+
+    private fun ScraperSearchResult.toCs3Meta(apiName: String): Meta? {
+        val title = title.takeIf { it.isNotBlank() } ?: return null
+        return Meta(
+            id = CloudStreamCatalogClient.encodeCsId(apiName, url),
+            name = title,
+            type = type?.toStremioType() ?: "movie",
+            poster = posterUrl,
+            releaseInfo = year?.toString(),
+            imdbRating = quality,
+            background = posterUrl
+        )
+    }
+
+    private fun ScraperLoadResult.toMetaLinks(): List<MetaLink>? {
+        val links = mutableListOf<MetaLink>()
+        uniqueUrl?.takeIf { it.isNotBlank() }?.let { links.add(MetaLink("Source", "Cloudstream", it)) }
+        url.takeIf { it.isNotBlank() && it != uniqueUrl }?.let { links.add(MetaLink("Page", "Cloudstream", it)) }
+        syncData.orEmpty().forEach { (key, value) ->
+            if (key.isNotBlank() && value.isNotBlank()) links.add(MetaLink(key, "Cloudstream Sync", value))
+        }
+        synonyms.orEmpty().forEach { synonym ->
+            links.add(MetaLink(synonym, "Cloudstream Synonym", synonym))
+        }
+        nextAiringUnixTime?.let { unix ->
+            val label = listOfNotNull(
+                nextAiringSeason?.let { "S$it" },
+                nextAiringEpisode?.let { "E$it" }
+            ).joinToString("").ifBlank { "Next airing" }
+            links.add(MetaLink(label, "Cloudstream Next Airing", unix.toString()))
+        }
+        seasonNames.orEmpty().forEach { season ->
+            val name = season.name?.takeIf { it.isNotBlank() } ?: "Season ${season.displaySeason ?: season.season}"
+            links.add(MetaLink(name, "Cloudstream Season", season.season.toString()))
+        }
+        return links.takeIf { it.isNotEmpty() }
     }
 
     internal suspend fun loadCsNativeStreams(id: String, directTimeoutMs: Long = 30_000L): List<Stream> {
@@ -1215,9 +1303,13 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                         name = " $apiName\n${link.quality}",
                         title = link.name,
                         url = link.url,
+                        subtitles = directResult.subtitles.map { it.toSubtitleData() },
                         behaviorHints = buildMap {
                             put("proxyHeaders", buildMap { put("request", link.headers) })
                             link.referer?.let { put("referer", it) }
+                            put("cs3Type", link.type)
+                            put("isM3u8", link.isM3u8)
+                            put("isDash", link.isDash)
                         },
                         addonName = " $apiName"
                     )
@@ -1239,14 +1331,23 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                     name = " $apiName\n${link.quality}",
                     title = link.name,
                     url = link.url,
+                    subtitles = result.subtitles.map { it.toSubtitleData() },
                     behaviorHints = buildMap {
                         put("proxyHeaders", buildMap { put("request", link.headers) })
                         link.referer?.let { put("referer", it) }
+                        put("cs3Type", link.type)
+                        put("isM3u8", link.isM3u8)
+                        put("isDash", link.isDash)
                     },
                     addonName = " $apiName"
                 )
             }
     }
+
+    private fun ScraperSubtitle.toSubtitleData() = SubtitleData(
+        url = url,
+        lang = lang
+    )
 
     internal fun csQualityScore(quality: String): Int {
         val q = quality.lowercase()

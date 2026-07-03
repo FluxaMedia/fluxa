@@ -46,6 +46,7 @@ internal fun Stream.cloudstreamPlaybackDetailLine(): String? {
         ?: effectiveFilename?.trim()?.takeIf { it.isNotBlank() }
         ?: url?.substringBefore('?')?.substringAfterLast('/')?.trim()?.takeIf { it.isNotBlank() }
         ?: return null
+    if (fileName.contains(quality, ignoreCase = true)) return fileName
     return listOf(fileName, quality).joinToString(" - ")
 }
 

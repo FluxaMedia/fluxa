@@ -42,8 +42,8 @@ android {
         buildConfigField("String", "MAL_CLIENT_SECRET", "\"${secret("MAL_CLIENT_SECRET")}\"")
         buildConfigField("String", "SIMKL_CLIENT_ID", "\"${secret("SIMKL_CLIENT_ID")}\"")
         buildConfigField("String", "SIMKL_CLIENT_SECRET", "\"${secret("SIMKL_CLIENT_SECRET")}\"")
-        buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL", "https://nuvio.invalid/")}\"")
-        buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY")}\"")
+        buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL", "https://api.nuvio.tv/")}\"")
+        buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY", "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN")}\"")
 
     }
 

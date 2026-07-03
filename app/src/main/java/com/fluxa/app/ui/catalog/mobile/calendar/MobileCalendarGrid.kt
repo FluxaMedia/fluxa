@@ -86,11 +86,12 @@ internal fun CalendarMonthGrid(
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 rowDays.forEach { day ->
+                    val dayEvents = day?.let { itemsByDate[it.dateIso] }.orEmpty()
                     CalendarDayCell(
                         day = day,
                         isSelected = day?.dateIso == selectedDateIso,
                         isToday = day?.dateIso == todayIso,
-                        hasEvents = day?.isCurrentMonth == true && itemsByDate[day.dateIso].orEmpty().isNotEmpty(),
+                        posterUrl = day?.takeIf { it.isCurrentMonth }?.let { dayEvents.firstOrNull()?.artworkUrl() },
                         accent = accent,
                         onClick = { day?.takeIf { it.isCurrentMonth }?.let(onDayClick) },
                         modifier = Modifier.weight(1f)
@@ -106,7 +107,7 @@ private fun CalendarDayCell(
     day: MonthCell?,
     isSelected: Boolean,
     isToday: Boolean,
-    hasEvents: Boolean,
+    posterUrl: String?,
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -156,14 +157,19 @@ private fun CalendarDayCell(
                     textAlign = TextAlign.Center
                 )
             }
-            if (hasEvents) {
-                Spacer(Modifier.height(5.dp))
-                Box(
+            Spacer(Modifier.height(5.dp))
+            if (posterUrl != null) {
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = null,
                     modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF39D98A))
+                        .size(width = 14.dp, height = 9.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.1f)),
+                    contentScale = ContentScale.Crop
                 )
+            } else {
+                Box(modifier = Modifier.size(6.dp))
             }
         }
     }

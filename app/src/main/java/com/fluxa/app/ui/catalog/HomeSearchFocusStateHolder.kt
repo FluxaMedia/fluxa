@@ -70,9 +70,9 @@ class HomeSearchFocusStateHolder(
 
     private fun applySnapshot(snapshotJson: String) {
         val state = gson.fromJson(snapshotJson, CoreStateSnapshot::class.java) ?: return
-        _searchResults.value = state.homeSearch.searchResults
-        _searchRows.value = state.homeSearch.searchRows
-        _searchHistory.value = state.homeSearch.searchHistory
+        _searchResults.value = state.homeSearch.searchResults ?: emptyList()
+        _searchRows.value = state.homeSearch.searchRows ?: emptyList()
+        _searchHistory.value = state.homeSearch.searchHistory ?: emptyList()
         _focusedMovie.value = state.homeSearch.focusedMovie
         _focusedMovieTrailerUrl.value = state.homeSearch.focusedMovieTrailerUrl
         _previewUrl.value = state.homeSearch.previewUrl

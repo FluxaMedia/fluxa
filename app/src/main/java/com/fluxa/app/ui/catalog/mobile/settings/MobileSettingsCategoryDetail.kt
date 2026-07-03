@@ -95,7 +95,7 @@ internal fun MobileCategoryDetail(
     val offlineDownloads by offlineDownloadManager.items.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val userAddons by viewModel.userAddons.collectAsStateWithLifecycle()
-    val loadedCs3ApiNames by viewModel.loadedCs3ApiNames.collectAsStateWithLifecycle()
+    val cs3FeedOptions by viewModel.loadedCs3CatalogFeedOptions.collectAsStateWithLifecycle()
     LaunchedEffect(category, profile.safeLocalAddons) {
         if (category == "content") {
             viewModel.refreshInstalledAddons(forceRefresh = true)
@@ -466,8 +466,7 @@ internal fun MobileCategoryDetail(
                     }
                 }
                 "content" -> {
-                    val metadataFeedOptions = buildMetadataFeedOptions(userAddons, lang) +
-                        buildCs3MetadataFeedOptions(loadedCs3ApiNames)
+                    val metadataFeedOptions = buildMetadataFeedOptions(userAddons, lang) + cs3FeedOptions
                     val heroFeedOptions = orderedMetadataFeeds(metadataFeedOptions, profile.heroFeedOrder)
                     val homeFeedOptions = orderedMetadataFeeds(metadataFeedOptions, profile.homeFeedOrder)
                     val metadataFeedKeys = metadataFeedOptions.map { it.key }
@@ -536,7 +535,7 @@ internal fun MobileCategoryDetail(
                         }
                     }
                     item {
-                        val hasCs3Options = loadedCs3ApiNames.isNotEmpty()
+                        val hasCs3Options = cs3FeedOptions.isNotEmpty()
                         var homeFeedsExpanded by remember { mutableStateOf(false) }
                         var topTenFeedsExpanded by remember { mutableStateOf(false) }
                         MobileSettingsGroup(AppStrings.t(lang, "settings.home_screen")) {
