@@ -178,7 +178,7 @@ private fun TvQrLoginView(
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
-                    colors = listOf(Color(0xFF221F1F), Color(0xFF0F0F0F)),
+                    colors = listOf(Color(0xFF221F1F), FluxaColors.backgroundNearBlack),
                     center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f)
                 )
             ),
@@ -292,9 +292,9 @@ private fun TvKeyboardAuthForm(
     fun continueAsGuest() {
         val guest = UserProfile(
             id = UUID.randomUUID().toString(),
-            email = AppStrings.t(lang, "auth.guest_name"),
+            email = AppStrings.t(lang, "auth.primary_profile_name"),
             authKey = "",
-            isGuest = true
+            isGuest = false
         )
         profileManager.saveProfile(guest)
         profileManager.setLastActiveProfile(guest)
@@ -350,7 +350,7 @@ private fun TvKeyboardAuthForm(
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
-                    colors = listOf(Color(0xFF221F1F), Color(0xFF0F0F0F)),
+                    colors = listOf(Color(0xFF221F1F), FluxaColors.backgroundNearBlack),
                     center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f)
                 )
             ),
@@ -416,7 +416,7 @@ private fun TvKeyboardAuthForm(
 
             errorMessage?.let {
                 Spacer(Modifier.height(8.dp))
-                Text(it, color = Color(0xFFFF6B6B))
+                Text(it, color = FluxaColors.errorRed)
             }
 
             Spacer(Modifier.height(20.dp))
@@ -462,7 +462,7 @@ private fun TvNuvioLoginView(
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
-                    colors = listOf(Color(0xFF221F1F), Color(0xFF0F0F0F)),
+                    colors = listOf(Color(0xFF221F1F), FluxaColors.backgroundNearBlack),
                     center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f)
                 )
             ),
@@ -517,7 +517,7 @@ private fun TvNuvioLoginView(
                 )
                 errorMessage?.let {
                     Spacer(Modifier.height(8.dp))
-                    Text(it, color = Color(0xFFFF6B6B))
+                    Text(it, color = FluxaColors.errorRed)
                 }
                 Spacer(Modifier.height(20.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -586,7 +586,7 @@ fun PremiumLoadingIndicator(text: String) {
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing)
+            animation = tween(FluxaDimensions.AnimDuration.loginPulse, easing = LinearEasing)
         ),
         label = ""
     )

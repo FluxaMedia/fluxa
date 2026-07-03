@@ -84,6 +84,7 @@ internal fun MobileDetailScreen(
     onPlayPrimary: () -> Unit,
     onStreamClick: (Stream) -> Unit,
     onPlayEpisode: (Video) -> Unit,
+    onSimilarClick: (Meta) -> Unit = {},
     onDownloadEpisode: (Video?) -> Unit = {},
     onDownloadEpisodes: (List<Video>) -> Unit = {},
     onMarkEpisodeWatched: (Video, Boolean) -> Unit,
@@ -114,7 +115,21 @@ internal fun MobileDetailScreen(
         ?: initialMeta?.poster
     var heroTrailer by remember(detail?.id) { mutableStateOf<DetailTrailer?>(null) }
     val listState = rememberLazyListState()
-    val showStickyBar by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
+    val heroCollapse by remember {
+        derivedStateOf {
+            val hero = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+            when {
+                listState.firstVisibleItemIndex > 0 -> 1f
+                hero == null || hero.size == 0 -> 0f
+                else -> (listState.firstVisibleItemScrollOffset.toFloat() / hero.size).coerceIn(0f, 1f)
+            }
+        }
+    }
+    val showStickyBar = heroCollapse > 0.6f
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex > 0 }
+            .collect { heroGone -> if (heroGone) heroTrailer = null }
+    }
     val scope = rememberCoroutineScope()
     var showSeasonSelector by remember(detail?.id) { mutableStateOf(false) }
     var showEpisodeSortSelector by remember(detail?.id, selectedSeason) { mutableStateOf(false) }
@@ -149,23 +164,48 @@ internal fun MobileDetailScreen(
             .filter { !detailIsUpcoming(it.released) }
             .sortedWith(compareBy<Video>({ it.season ?: selectedSeason }, { it.number ?: Int.MAX_VALUE }))
     }
+    val horizontalEpisodesState = rememberLazyListState()
+    var scrolledToResume by remember(detail?.id) { mutableStateOf(false) }
+    LaunchedEffect(visibleEpisodes, resumeVideoId, activeTab) {
+        if (scrolledToResume || activeTab != "episodes" || resumeVideoId == null) return@LaunchedEffect
+        val idx = visibleEpisodes.indexOfFirst { it.id == resumeVideoId }
+        if (idx < 0) return@LaunchedEffect
+        scrolledToResume = true
+        if (idx <= 2) return@LaunchedEffect
+        if (episodeCardsLayout == "horizontal") {
+            horizontalEpisodesState.scrollToItem(idx)
+        } else {
+            listState.scrollToItem(4 + idx)
+        }
+    }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF050505))) {
+    Box(modifier = Modifier.fillMaxSize().background(FluxaColors.background)) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
             item(key = "detail-hero") {
-                MobileDetailHero(
-                    heroImage = heroImage,
-                    onBack = onBack,
-                    lang = lang,
-                    activeTrailer = heroTrailer,
-                    onStopTrailer = { heroTrailer = null },
-                    onSelectTrailer = if (trailerOnHero) ({ heroTrailer = it }) else null,
-                    accentColor = accentColor
-                )
+                Box(
+                    modifier = Modifier.graphicsLayer {
+                        if (listState.firstVisibleItemIndex == 0) {
+                            val offset = listState.firstVisibleItemScrollOffset.toFloat()
+                            translationY = offset * 0.5f
+                            alpha = 1f - (offset / size.height.coerceAtLeast(1f)) * 0.85f
+                        }
+                    }
+                ) {
+                    MobileDetailHero(
+                        heroImage = heroImage,
+                        onBack = onBack,
+                        lang = lang,
+                        activeTrailer = heroTrailer,
+                        featuredTrailer = if (trailerOnHero) trailers.firstOrNull() else null,
+                        onStopTrailer = { heroTrailer = null },
+                        onSelectTrailer = if (trailerOnHero) ({ heroTrailer = it }) else null,
+                        accentColor = accentColor
+                    )
+                }
             }
 
             item {
@@ -189,9 +229,10 @@ internal fun MobileDetailScreen(
             }
 
             item {
-                val tabs = remember(type, trailers.isNotEmpty(), similarItems.isNotEmpty(), lang) {
+                val tabs = remember(type, hasStreamProviders, streams.isNotEmpty(), trailers.isNotEmpty(), similarItems.isNotEmpty(), lang) {
                     buildList {
                         if (type == "series") add("episodes" to AppStrings.t(lang, "auto.episodes"))
+                        if (hasStreamProviders || streams.isNotEmpty()) add("sources" to AppStrings.t(lang, "auto.sources"))
                         if (trailers.isNotEmpty()) add("trailers" to AppStrings.t(lang, "auto.trailers"))
                         if (similarItems.isNotEmpty()) add("similar" to AppStrings.t(lang, "auto.similar_titles"))
                     }
@@ -206,12 +247,12 @@ internal fun MobileDetailScreen(
                             val selected = activeTab == key
                             val textColor by animateColorAsState(
                                 targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
-                                animationSpec = tween(180),
+                                animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha),
                                 label = "detailTabText"
                             )
                             val indicatorWidth by animateDpAsState(
                                 targetValue = if (selected) 44.dp else 0.dp,
-                                animationSpec = tween(190),
+                                animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha),
                                 label = "detailTabIndicator"
                             )
                             Column(
@@ -359,16 +400,18 @@ internal fun MobileDetailScreen(
                         }
                     }
                     if (visibleEpisodes.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 28.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(color = Color.White.copy(alpha = 0.7f))
-                                } else {
+                        if (isLoading) {
+                            mobileItems((0 until 4).toList(), key = { "episode-skeleton-$it" }) {
+                                MobileEpisodeRowSkeleton()
+                            }
+                        } else {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 28.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
                                         text = AppStrings.t(lang, "auto.no_episode_information_found"),
                                         color = Color.White.copy(alpha = 0.58f),
@@ -381,6 +424,7 @@ internal fun MobileDetailScreen(
                     if (episodeCardsLayout == "horizontal" && visibleEpisodes.isNotEmpty()) {
                         item(key = "episodes-horizontal") {
                             LazyRow(
+                                state = horizontalEpisodesState,
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
@@ -509,7 +553,9 @@ internal fun MobileDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             mobileItems(similarItems, key = { "${it.type}:${it.id}" }) { item ->
-                                SimilarContentCard(item.toSimilarItemUiModel(), Color.White) {}
+                                SimilarContentCard(item.toSimilarItemUiModel(), Color.White) {
+                                    onSimilarClick(item)
+                                }
                             }
                         }
                     }
@@ -556,14 +602,14 @@ internal fun MobileDetailScreen(
 
         AnimatedVisibility(
             visible = showStickyBar,
-            enter = fadeIn(tween(150)) + slideInVertically { -it },
-            exit = fadeOut(tween(150)) + slideOutVertically { -it },
+            enter = fadeIn(tween(FluxaDimensions.AnimDuration.heroSnap)) + slideInVertically { -it },
+            exit = fadeOut(tween(FluxaDimensions.AnimDuration.heroSnap)) + slideOutVertically { -it },
             modifier = Modifier.align(Alignment.TopStart).fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF050505).copy(alpha = 0.96f))
+                    .background(FluxaColors.background.copy(alpha = 0.96f))
                     .statusBarsPadding()
                     .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -575,7 +621,12 @@ internal fun MobileDetailScreen(
                         .clickable { onBack() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(FluxaIcons.ArrowBack, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Icon(
+                        FluxaIcons.ArrowBack,
+                        contentDescription = AppStrings.t(lang, "common.back"),
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
                 Spacer(Modifier.width(4.dp))
                 Box(
@@ -615,7 +666,7 @@ internal fun MobileDetailScreen(
                 ) {
                     Icon(
                         if (isInWatchlist) FluxaIcons.Check else FluxaIcons.Add,
-                        null,
+                        contentDescription = AppStrings.t(lang, if (isInWatchlist) "auto.in_list" else "auto.my_list"),
                         tint = if (isInWatchlist) accentColor else Color.White,
                         modifier = Modifier.size(22.dp)
                     )

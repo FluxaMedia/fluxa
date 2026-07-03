@@ -48,8 +48,10 @@ import com.fluxa.app.ui.catalog.ProfileEditScreen
 import com.fluxa.app.ui.catalog.ProfileScreen
 import com.fluxa.app.ui.catalog.SearchScreen
 import com.fluxa.app.ui.catalog.UpdateManager
+import com.fluxa.app.ui.catalog.tvNavDestination
 import com.fluxa.app.ui.catalog.WatchlistScreen
 import com.fluxa.app.ui.catalog.WelcomeScreen
+import com.fluxa.app.ui.catalog.FluxaDimensions
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
@@ -75,6 +77,13 @@ internal fun AppRoutesHost(
     onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
     navigateBackSafely: () -> Unit
 ) {
+    val tvNavActions = com.fluxa.app.ui.catalog.TvNavActions(
+        onHome = { if (currentScreen.tvNavDestination() != com.fluxa.app.ui.catalog.TvNavDestination.Home) navigator.navigateTo(Screen.Home, clearStack = true) },
+        onSearch = { if (currentScreen.tvNavDestination() != com.fluxa.app.ui.catalog.TvNavDestination.Search) navigator.navigateTo(Screen.Search, clearStack = true) },
+        onWatchlist = { if (currentScreen.tvNavDestination() != com.fluxa.app.ui.catalog.TvNavDestination.Library) navigator.navigateTo(Screen.Watchlist, clearStack = true) },
+        onExplore = { if (currentScreen.tvNavDestination() != com.fluxa.app.ui.catalog.TvNavDestination.Discover) navigator.navigateTo(Screen.Explore(), clearStack = true) },
+        onSettings = { if (currentScreen.tvNavDestination() != com.fluxa.app.ui.catalog.TvNavDestination.Settings) navigator.navigateTo(Screen.Settings(), clearStack = true) }
+    )
     AnimatedContent(
         targetState = currentScreen,
         modifier = Modifier.then(
@@ -93,23 +102,23 @@ internal fun AppRoutesHost(
                 val direction = navDirection(initialState, targetState)
                 val distance = if (deviceType == DeviceType.Mobile) 92 else 54
                 (
-                    fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing)) +
+                    fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
-                            animationSpec = tween(260, easing = FastOutSlowInEasing),
+                            animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpandAlt, easing = FastOutSlowInEasing),
                             initialOffsetX = { direction * distance }
                         ) +
                         scaleIn(
-                            animationSpec = tween(260, easing = FastOutSlowInEasing),
+                            animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpandAlt, easing = FastOutSlowInEasing),
                             initialScale = 0.985f
                         )
                     ) togetherWith (
-                    fadeOut(animationSpec = tween(160, easing = LinearOutSlowInEasing)) +
+                    fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.routeExit, easing = LinearOutSlowInEasing)) +
                         slideOutHorizontally(
-                            animationSpec = tween(220, easing = FastOutSlowInEasing),
+                            animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing),
                             targetOffsetX = { -direction * distance }
                         ) +
                         scaleOut(
-                            animationSpec = tween(220, easing = FastOutSlowInEasing),
+                            animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing),
                             targetScale = 0.992f
                         )
                     )
@@ -155,9 +164,9 @@ internal fun AppRoutesHost(
                 onContinueWithoutAccount = {
                     val guest = UserProfile(
                         id = java.util.UUID.randomUUID().toString(),
-                        email = AppStrings.t("en", "auth.guest_name"),
+                        email = AppStrings.t("en", "auth.primary_profile_name"),
                         authKey = "",
-                        isGuest = true
+                        isGuest = false
                     )
                     profileManager.saveProfile(guest)
                     profileManager.setLastActiveProfile(guest)
@@ -191,7 +200,8 @@ internal fun AppRoutesHost(
                 navigateBackSafely,
                 homeViewModel,
                 initialType = screen.initialType,
-                initialGenre = screen.initialGenre
+                initialGenre = screen.initialGenre,
+                tvNavActions = tvNavActions
             )
             is Screen.Search -> SearchScreen(
                 activeProfile,
@@ -201,7 +211,8 @@ internal fun AppRoutesHost(
                     navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
                 },
                 navigateBackSafely,
-                homeViewModel
+                homeViewModel,
+                tvNavActions
             )
             is Screen.Calendar -> CalendarScreen(
                 activeProfile = activeProfile,
@@ -248,7 +259,8 @@ internal fun AppRoutesHost(
                     onActiveProfileChanged(it)
                     profileManager.saveProfile(it)
                     homeViewModel.applyUpdatedProfile(it)
-                }
+                },
+                tvNavActions = tvNavActions
             )
             is Screen.Detail -> DetailRoute(screen, activeProfile, navigator, navigateBackSafely)
             is Screen.Sources -> SourcesRoute(screen, activeProfile, navigator, navigateBackSafely)
@@ -293,7 +305,8 @@ internal fun AppRoutesHost(
                 onShowSimklSheet = onShowSimklSheet,
                 onTraktDeviceAuthChanged = onTraktDeviceAuthChanged,
                 onPendingMalCodeVerifierChanged = onPendingMalCodeVerifierChanged,
-                onUpdateInfoChanged = onUpdateInfoChanged
+                onUpdateInfoChanged = onUpdateInfoChanged,
+                tvNavActions = tvNavActions
             )
         }
     }

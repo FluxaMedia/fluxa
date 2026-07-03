@@ -289,7 +289,7 @@ fun MobileBrowseCategoryRow(
     cardLayout: String,
     activeProfile: UserProfile? = null
 ) {
-    Column(modifier = modifier.animateContentSize(animationSpec = tween(220))) {
+    Column(modifier = modifier.animateContentSize(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand))) {
         SearchSectionTitle(title)
         androidx.compose.foundation.lazy.LazyRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),

@@ -255,8 +255,8 @@ fun PlayerSidebarShell(
 ) {
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
-    val panelAlpha by animateFloatAsState(if (shown) 1f else 0f, animationSpec = tween(180), label = "sidebarAlpha")
-    val panelOffset by animateFloatAsState(if (shown) 0f else 44f, animationSpec = tween(220, easing = FastOutSlowInEasing), label = "sidebarOffset")
+    val panelAlpha by animateFloatAsState(if (shown) 1f else 0f, animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha), label = "sidebarAlpha")
+    val panelOffset by animateFloatAsState(if (shown) 0f else 44f, animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing), label = "sidebarOffset")
     val isMobile = deviceType == DeviceType.Mobile
     val panelShape = if (isMobile) {
         if (compactCenterOnMobile) {
@@ -409,7 +409,7 @@ fun TrackItem(
             isFocused  -> Color.White.copy(alpha = 0.18f)
             else       -> Color.White.copy(alpha = 0.04f)
         },
-        animationSpec = tween(150),
+        animationSpec = tween(FluxaDimensions.AnimDuration.heroSnap),
         label = "bg"
     )
     val textColor = if (isSelected) Color.Black else Color.White
@@ -423,7 +423,7 @@ fun TrackItem(
             isFocused -> 1.01f
             else -> 1f
         },
-        animationSpec = tween(170, easing = FastOutSlowInEasing),
+        animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing),
         label = "trackScale"
     )
     val minHeight = if (subtitle.isNullOrBlank()) {
@@ -440,7 +440,7 @@ fun TrackItem(
                 scaleX = scale
                 scaleY = scale
             }
-            .animateContentSize(animationSpec = tween(220, easing = FastOutSlowInEasing))
+            .animateContentSize(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing))
             .clip(RoundedCornerShape(if (resolvedDeviceType == DeviceType.TV) 18.dp else 16.dp))
             .background(bgColor)
             .clickable { onClick() }

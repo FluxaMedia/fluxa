@@ -7,6 +7,12 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +20,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as mobileGridItems
 import androidx.compose.foundation.lazy.grid.itemsIndexed as mobileGridItemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -83,168 +90,179 @@ fun MobileExploreScreen(
         }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        modifier = Modifier.fillMaxSize().background(Color(0xFF040508)),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 120.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color(0xFF040508))
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = AppStrings.t(lang, "nav.discover"),
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Black,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = AppStrings.t(lang, "nav.discover"),
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color.White.copy(alpha = 0.08f))
+                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(24.dp))
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color.White.copy(alpha = 0.08f))
-                            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(24.dp))
-                            .padding(horizontal = 16.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(FluxaIcons.Search, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(10.dp))
-                            androidx.compose.foundation.text.BasicTextField(
-                                value = searchQuery,
-                                onValueChange = {
-                                    searchQuery = it
-                                    viewModel.search(it)
-                                },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
-                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(activeProfile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt())),
-                                modifier = Modifier.fillMaxWidth(),
-                                decorationBox = { innerTextField ->
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            text = AppStrings.t(lang, "auto.explore_68dd9e4b"),
-                                            color = Color.White.copy(alpha = 0.3f),
-                                            fontSize = 15.sp
-                                        )
-                                    }
-                                    innerTextField()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(FluxaIcons.Search, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = {
+                                viewModel.search(searchQuery)
+                                focusManager.clearFocus()
+                            }),
+                            textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(activeProfile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt())),
+                            modifier = Modifier.weight(1f),
+                            decorationBox = { innerTextField ->
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = AppStrings.t(lang, "auto.explore_68dd9e4b"),
+                                        color = Color.White.copy(alpha = 0.3f),
+                                        fontSize = 15.sp
+                                    )
                                 }
+                                innerTextField()
+                            }
+                        )
+                        if (searchQuery.isNotEmpty()) {
+                            Icon(
+                                FluxaIcons.Close,
+                                null,
+                                tint = Color.White.copy(alpha = 0.5f),
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable {
+                                        searchQuery = ""
+                                        viewModel.search("")
+                                    }
                             )
                         }
                     }
                 }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    val exploreAccent = Color(activeProfile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt())
-                    Box(Modifier.weight(1f)) {
-                        ExploreDropdownFilter(
-                            title = AppStrings.t(lang, "auto.content_type"),
-                            options = exploreTypeOptions(lang),
-                            selected = selectedType,
-                            onSelect = { it?.let(onSelectType) },
-                            showTitle = false,
-                            accentColor = exploreAccent
-                        )
-                    }
-                    Box(Modifier.weight(1f)) {
-                        ExploreDropdownFilter(
-                            title = AppStrings.t(lang, "explore.catalog"),
-                            options = catalogOptions,
-                            selected = selectedCatalog,
-                            onSelect = onSelectCatalog,
-                            showTitle = false,
-                            accentColor = exploreAccent
-                        )
-                    }
-                    Box(Modifier.weight(1f)) {
-                        ExploreDropdownFilter(
-                            title = AppStrings.t(lang, "auto.genre_78cde1de"),
-                            options = genreOptions,
-                            selected = selectedGenre,
-                            onSelect = onSelectGenre,
-                            showTitle = false,
-                            accentColor = exploreAccent
-                        )
-                    }
-                }
-
-                if (!isSearchMode) {
-                    Text(
-                        text = AppStrings.t(lang, "auto.results"),
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                val exploreAccent = Color(activeProfile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt())
+                Box(Modifier.weight(1f)) {
+                    ExploreDropdownFilter(
+                        title = AppStrings.t(lang, "auto.content_type"),
+                        options = exploreTypeOptions(lang),
+                        selected = selectedType,
+                        onSelect = { it?.let(onSelectType) },
+                        showTitle = false,
+                        accentColor = exploreAccent
                     )
-                } else {
-                    Spacer(Modifier.height(12.dp))
                 }
+                Box(Modifier.weight(1f)) {
+                    ExploreDropdownFilter(
+                        title = AppStrings.t(lang, "explore.catalog"),
+                        options = catalogOptions,
+                        selected = selectedCatalog,
+                        onSelect = onSelectCatalog,
+                        showTitle = false,
+                        accentColor = exploreAccent
+                    )
+                }
+                Box(Modifier.weight(1f)) {
+                    ExploreDropdownFilter(
+                        title = AppStrings.t(lang, "auto.genre_78cde1de"),
+                        options = genreOptions,
+                        selected = selectedGenre,
+                        onSelect = onSelectGenre,
+                        showTitle = false,
+                        accentColor = exploreAccent
+                    )
+                }
+            }
+
+            if (!isSearchMode) {
+                Text(
+                    text = AppStrings.t(lang, "auto.results"),
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 12.dp)
+                )
+            } else {
+                Spacer(Modifier.height(12.dp))
             }
         }
 
-        if (!isSearchMode && displayedResults.isEmpty() && isDiscoverLoading) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator(color = Color.White)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            if (!isSearchMode && displayedResults.isEmpty() && isDiscoverLoading) {
+                mobileGridItems(items = List(9) { it }) {
+                    MobileExplorePosterCardSkeleton()
                 }
-            }
-        } else if (isSearchMode && displayedSearchRows.isNotEmpty()) {
-            displayedSearchRows.forEachIndexed { index, row ->
-                item(
-                    key = "search-row:${row.title}:$index",
-                    span = { GridItemSpan(maxLineSpan) }
-                ) {
-                    MobileBrowseCategoryRow(
-                        title = row.title,
-                        items = row.items,
-                        onMovieClick = { meta -> onMovieClick(meta, row.sourceAddonTransportUrl, row.sourceAddonCatalogType) },
-                        onSearchHistory = viewModel::addToSearchHistory,
-                        cardLayout = if (activeProfile?.safePosterLandscapeMode == true) "horizontal" else activeProfile?.safeCardLayout ?: "vertical",
-                        activeProfile = activeProfile
+            } else if (isSearchMode && displayedSearchRows.isNotEmpty()) {
+                displayedSearchRows.forEachIndexed { index, row ->
+                    item(
+                        key = "search-row:${row.title}:$index",
+                        span = { GridItemSpan(maxLineSpan) }
+                    ) {
+                        MobileBrowseCategoryRow(
+                            title = row.title,
+                            items = row.items,
+                            onMovieClick = { meta -> onMovieClick(meta, row.sourceAddonTransportUrl, row.sourceAddonCatalogType) },
+                            onSearchHistory = viewModel::addToSearchHistory,
+                            cardLayout = if (activeProfile?.safePosterLandscapeMode == true) "horizontal" else activeProfile?.safeCardLayout ?: "vertical",
+                            activeProfile = activeProfile
+                        )
+                    }
+                }
+            } else if (displayedResults.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    SearchEmptyState(
+                        title = if (isSearchMode) {
+                            AppStrings.t(lang, "auto.no_results_found")
+                        } else {
+                            AppStrings.t(lang, "auto.no_results_yet")
+                        },
+                        subtitle = if (isSearchMode) {
+                            AppStrings.t(lang, "auto.try_a_shorter_or_slightly_different_title")
+                        } else {
+                            AppStrings.t(lang, "auto.try_different_filters_to_discover_something__1ba561eb")
+                        },
+                        icon = if (isSearchMode) FluxaIcons.Search else FluxaIcons.Explore
                     )
                 }
-            }
-        } else if (displayedResults.isEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                SearchEmptyState(
-                    title = if (isSearchMode) {
-                        AppStrings.t(lang, "auto.no_results_found")
-                    } else {
-                        AppStrings.t(lang, "auto.no_results_yet")
-                    },
-                    subtitle = if (isSearchMode) {
-                        AppStrings.t(lang, "auto.try_a_shorter_or_slightly_different_title")
-                    } else {
-                        AppStrings.t(lang, "auto.try_different_filters_to_discover_something__1ba561eb")
-                    }
-                )
-            }
-        } else {
-            mobileGridItemsIndexed(
-                items = displayedResults,
-                key = { _, movie -> "${movie.type}:${movie.id}" }
-            ) { _, movie ->
-                val source = discoverSourceFor(movie, resultSources)
-                MobileExplorePosterCard(
-                    movie = movie,
-                    onClick = { onMovieClick(movie, source?.transportUrl, source?.type) }
-                )
+            } else {
+                mobileGridItemsIndexed(
+                    items = displayedResults,
+                    key = { _, movie -> "${movie.type}:${movie.id}" }
+                ) { _, movie ->
+                    val source = discoverSourceFor(movie, resultSources)
+                    MobileExplorePosterCard(
+                        movie = movie,
+                        onClick = { onMovieClick(movie, source?.transportUrl, source?.type) }
+                    )
+                }
             }
         }
     }
@@ -279,6 +297,37 @@ private fun MobileExplorePosterCard(
             lineHeight = 16.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun MobileExplorePosterCardSkeleton() {
+    val transition = rememberInfiniteTransition(label = "explore-skeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.05f,
+        targetValue = 0.12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(FluxaDimensions.AnimDuration.ambientColor, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "explore-skeleton-alpha"
+    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = alpha))
+        )
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .height(14.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color.White.copy(alpha = alpha))
         )
     }
 }

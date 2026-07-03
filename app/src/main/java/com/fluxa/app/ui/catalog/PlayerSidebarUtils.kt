@@ -80,7 +80,7 @@ fun SeekFeedback(direction: Int, seekMs: Long) {
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(620, easing = FastOutSlowInEasing),
+            animation = tween(FluxaDimensions.AnimDuration.sidebarSlide, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ), label = "chevronShift"
     )

@@ -173,7 +173,7 @@ internal fun TvProfileOrb(
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.04f else 1f, tween(180), label = "profileScale")
+    val scale by animateFloatAsState(if (isFocused) 1.04f else 1f, tween(FluxaDimensions.AnimDuration.scaleAlpha), label = "profileScale")
 
     Column(
         modifier = modifier
@@ -263,7 +263,7 @@ internal fun TvAddProfileOrb(
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.04f else 1f, tween(180), label = "addProfileScale")
+    val scale by animateFloatAsState(if (isFocused) 1.04f else 1f, tween(FluxaDimensions.AnimDuration.scaleAlpha), label = "addProfileScale")
 
     Column(
         modifier = modifier

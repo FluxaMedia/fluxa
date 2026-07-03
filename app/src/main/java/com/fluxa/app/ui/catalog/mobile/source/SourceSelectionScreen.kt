@@ -414,8 +414,8 @@ fun MobileSourceSelectionScreen(
         }
         AnimatedVisibility(
             visible = downloadActionStream != null,
-            enter = fadeIn(tween(140)) + slideInVertically(tween(220, easing = FastOutSlowInEasing)) { it / 4 },
-            exit = fadeOut(tween(120)) + slideOutVertically(tween(180, easing = FastOutSlowInEasing)) { it / 4 }
+            enter = fadeIn(tween(FluxaDimensions.AnimDuration.quick)) + slideInVertically(tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing)) { it / 4 },
+            exit = fadeOut(tween(FluxaDimensions.AnimDuration.heightAnim)) + slideOutVertically(tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing)) { it / 4 }
         ) {
             downloadActionStream?.let { stream ->
                 MobileSourceDownloadActionSheet(
@@ -482,12 +482,12 @@ private fun SourceChip(
 ) {
     val background by animateColorAsState(
         targetValue = if (selected) accent else Color.White.copy(alpha = 0.08f),
-        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing),
         label = "sourceChipBackground"
     )
     val scale by animateFloatAsState(
         targetValue = if (selected) 1.04f else 1f,
-        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing),
         label = "sourceChipScale"
     )
     Box(
@@ -526,7 +526,7 @@ private fun SourcePageStreamRow(
     val rawTitle = stream.streamRawBody()
     val rowAlpha by animateFloatAsState(
         targetValue = if (isLoading) 0.72f else 1f,
-        animationSpec = tween(180),
+        animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha),
         label = "sourceRowAlpha"
     )
     Column(
@@ -534,7 +534,7 @@ private fun SourcePageStreamRow(
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 5.dp)
             .graphicsLayer { alpha = rowAlpha }
-            .animateContentSize(animationSpec = tween(220, easing = FastOutSlowInEasing))
+            .animateContentSize(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing))
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xFF2B2A34))
             .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
@@ -586,7 +586,7 @@ private fun MobileSourceDownloadActionSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(Color(0xFF171717))
+                .background(FluxaColors.surfaceDark)
                 .pointerInput(stream) {
                     detectTapGestures(onTap = {})
                 }

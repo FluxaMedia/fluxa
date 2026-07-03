@@ -76,8 +76,8 @@ internal fun PlayerSkipSegmentOverlay(
 
     AnimatedVisibility(
         visible = activeSkipSegment != null || showNextEpisodeCard,
-        enter = fadeIn(animationSpec = tween(180)) + slideInVertically(animationSpec = tween(220, easing = FastOutSlowInEasing)) { it / 2 },
-        exit = fadeOut(animationSpec = tween(140)) + slideOutVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 2 },
+        enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha)) + slideInVertically(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing)) { it / 2 },
+        exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.quick)) + slideOutVertically(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing)) { it / 2 },
         modifier = modifier
             .padding(
                 start = 18.dp,
@@ -135,8 +135,8 @@ internal fun BoxScope.PlayerTransientOverlays(
 ) {
     AnimatedVisibility(
         visible = showSegmentSkipFeedback,
-        enter = fadeIn(animationSpec = tween(90)) + scaleIn(animationSpec = tween(140), initialScale = 0.82f),
-        exit = fadeOut(animationSpec = tween(260)) + scaleOut(animationSpec = tween(260), targetScale = 1.08f),
+        enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.blink)) + scaleIn(animationSpec = tween(FluxaDimensions.AnimDuration.quick), initialScale = 0.82f),
+        exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpandAlt)) + scaleOut(animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpandAlt), targetScale = 1.08f),
         modifier = Modifier
             .align(Alignment.Center)
             .zIndex(320f)
@@ -148,8 +148,8 @@ internal fun BoxScope.PlayerTransientOverlays(
 
     AnimatedVisibility(
         visible = showZoomOverlay,
-        enter = fadeIn(animationSpec = tween(100)) + scaleIn(animationSpec = tween(160, easing = FastOutSlowInEasing), initialScale = 0.80f),
-        exit = fadeOut(animationSpec = tween(220)) + scaleOut(animationSpec = tween(220), targetScale = 1.06f),
+        enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.routeExit)) + scaleIn(animationSpec = tween(FluxaDimensions.AnimDuration.routeExit, easing = FastOutSlowInEasing), initialScale = 0.80f),
+        exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand)) + scaleOut(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand), targetScale = 1.06f),
         modifier = Modifier
             .align(Alignment.TopCenter)
             .padding(top = if (deviceType == DeviceType.Mobile) 34.dp else 54.dp)
@@ -188,8 +188,8 @@ internal fun BoxScope.PlayerTransientOverlays(
 
     AnimatedVisibility(
         visible = holdSpeedVisible,
-        enter = fadeIn(animationSpec = tween(120)) + scaleIn(animationSpec = tween(180, easing = FastOutSlowInEasing), initialScale = 0.86f),
-        exit = fadeOut(animationSpec = tween(140)) + scaleOut(animationSpec = tween(140), targetScale = 0.92f),
+        enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.heightAnim)) + scaleIn(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing), initialScale = 0.86f),
+        exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.quick)) + scaleOut(animationSpec = tween(FluxaDimensions.AnimDuration.quick), targetScale = 0.92f),
         modifier = Modifier
             .align(Alignment.TopCenter)
             .padding(top = if (deviceType == DeviceType.Mobile) 34.dp else 54.dp)

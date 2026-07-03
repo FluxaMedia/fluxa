@@ -57,26 +57,26 @@ fun PlayerParentsGuideOverlay(
         if (isVisible && !animating) {
             animating = true
 
-            containerAlpha.animateTo(1f, tween(300))
-            lineHeightFraction.animateTo(1f, tween(400, easing = FastOutSlowInEasing))
+            containerAlpha.animateTo(1f, tween(FluxaDimensions.AnimDuration.parentsContainer))
+            lineHeightFraction.animateTo(1f, tween(FluxaDimensions.AnimDuration.parentsExpand, easing = FastOutSlowInEasing))
 
             for (i in 0 until count) {
                 delay(80)
-                itemAlphas[i].animateTo(1f, tween(200))
+                itemAlphas[i].animateTo(1f, tween(FluxaDimensions.AnimDuration.fadeIn))
             }
 
             delay(5000)
 
             for (i in (count - 1) downTo 0) {
                 delay(60)
-                itemAlphas[i].animateTo(0f, tween(150))
+                itemAlphas[i].animateTo(0f, tween(FluxaDimensions.AnimDuration.heroSnap))
             }
 
             delay(100)
-            lineHeightFraction.animateTo(0f, tween(300, easing = FastOutSlowInEasing))
+            lineHeightFraction.animateTo(0f, tween(FluxaDimensions.AnimDuration.parentsContainer, easing = FastOutSlowInEasing))
 
             delay(200)
-            containerAlpha.animateTo(0f, tween(200))
+            containerAlpha.animateTo(0f, tween(FluxaDimensions.AnimDuration.fadeIn))
 
             animating = false
             onAnimationComplete()

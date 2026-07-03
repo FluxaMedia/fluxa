@@ -425,7 +425,7 @@ internal fun MobileTrackPickerOverlay(
 
             Crossfade(
                 targetState = settingsMode,
-                animationSpec = tween(180),
+                animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),

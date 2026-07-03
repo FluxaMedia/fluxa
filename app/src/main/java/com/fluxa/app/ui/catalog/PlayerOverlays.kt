@@ -233,7 +233,7 @@ internal fun SegmentSkipChevronFeedback() {
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(560, easing = FastOutSlowInEasing),
+            animation = tween(FluxaDimensions.AnimDuration.nextEpisode, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "segmentSkipPhase"
@@ -301,7 +301,7 @@ internal fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, sta
         }
         val loadProgress by animateFloatAsState(
             targetValue = targetProgress,
-            animationSpec = tween(520, easing = FastOutSlowInEasing),
+            animationSpec = tween(FluxaDimensions.AnimDuration.progressRing, easing = FastOutSlowInEasing),
             label = "logoLoadProgress"
         )
         val hasProgress = bufferingMedia || loadProgress > 0.015f || targetProgress > 0.015f
@@ -311,7 +311,7 @@ internal fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, sta
             initialValue = 0.42f,
             targetValue = 0.66f,
             animationSpec = infiniteRepeatable(
-                animation = tween(1120, easing = FastOutSlowInEasing),
+                animation = tween(FluxaDimensions.AnimDuration.marquee, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "loadingLogoAlpha"

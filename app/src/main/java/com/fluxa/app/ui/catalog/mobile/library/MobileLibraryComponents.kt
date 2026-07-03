@@ -144,7 +144,7 @@ internal fun MobileLibraryDashboard(
         }
     }
     val backgroundColor = if (amoledMode) Color.Black else Color(0xFF05070B)
-    val cardColor = if (amoledMode) Color(0xFF050505) else Color(0xFF111620).copy(alpha = 0.82f)
+    val cardColor = if (amoledMode) FluxaColors.backgroundAmoled else FluxaColors.backgroundNavy.copy(alpha = 0.82f)
     val plannedChunked = remember(plannedItems) { plannedItems.chunked(3) }
     val completedChunked = remember(completedItems) { completedItems.chunked(3) }
     val favoritesChunked = remember(favoriteItems) { favoriteItems.chunked(3) }
@@ -188,17 +188,17 @@ internal fun MobileLibraryDashboard(
                     val onAccentColor = if (accent.luminance() > 0.5f) Color.Black else Color.White
                     val chipBackground by animateColorAsState(
                         targetValue = if (selected) accent else cardColor,
-                        animationSpec = tween(180, easing = FastOutSlowInEasing),
+                        animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing),
                         label = "libraryChipBackground"
                     )
                     val chipBorder by animateColorAsState(
                         targetValue = if (selected) accent else Color.White.copy(0.1f),
-                        animationSpec = tween(180, easing = FastOutSlowInEasing),
+                        animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing),
                         label = "libraryChipBorder"
                     )
                     val chipScale by animateFloatAsState(
                         targetValue = if (selected) 1.04f else 1f,
-                        animationSpec = tween(180, easing = FastOutSlowInEasing),
+                        animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing),
                         label = "libraryChipScale"
                     )
                     Box(
