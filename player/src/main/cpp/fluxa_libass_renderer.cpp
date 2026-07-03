@@ -323,3 +323,77 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeClearEvents(JNIEnv*, jobjec
     if (!session || !session->track || !ensure_api() || !g_api.flush_events) return;
     g_api.flush_events(session->track);
 }
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
+    JNIEnv* env, jobject, jlong handle, jlong time_ms, jint width, jint height,
+    jintArray out_meta, jbyteArray out_coverage
+) {
+    auto* session = reinterpret_cast<Session*>(handle);
+    if (!session || !session->renderer || !session->track || !ensure_api()) return -1;
+    if (width <= 0 || height <= 0 || !out_meta || !out_coverage) return -1;
+
+    const bool size_changed = session->width != width || session->height != height;
+    if (size_changed) {
+        session->width = width;
+        session->height = height;
+        g_api.set_frame_size(session->renderer, width, height);
+        if (g_api.set_aspect_ratio && height > 0) {
+            g_api.set_aspect_ratio(session->renderer, static_cast<double>(width) / height, 1.0);
+        }
+    }
+
+    int detect_change = 0;
+    ASS_Image* images = g_api.render_frame(session->renderer, session->track, time_ms, &detect_change);
+
+    if (detect_change == 0 && !size_changed) return -1;
+
+    const jsize meta_capacity = env->GetArrayLength(out_meta);
+    const jsize coverage_capacity = env->GetArrayLength(out_coverage);
+
+    jint* meta = env->GetIntArrayElements(out_meta, nullptr);
+    jbyte* coverage = env->GetByteArrayElements(out_coverage, nullptr);
+    if (!meta || !coverage) {
+        if (meta) env->ReleaseIntArrayElements(out_meta, meta, JNI_ABORT);
+        if (coverage) env->ReleaseByteArrayElements(out_coverage, coverage, JNI_ABORT);
+        return -1;
+    }
+
+    int image_count = 0;
+    int coverage_offset = 0;
+    const int max_images = (meta_capacity - 1) / 9;
+
+    for (ASS_Image* img = images; img && image_count < max_images; img = img->next) {
+        if (img->w <= 0 || img->h <= 0 || !img->bitmap) continue;
+        const int row_stride = (img->w + 3) & ~3;
+        const int coverage_len = row_stride * img->h;
+        if (coverage_offset + coverage_len > coverage_capacity) break;
+
+        for (int y = 0; y < img->h; ++y) {
+            const uint8_t* src = img->bitmap + y * img->stride;
+            jbyte* dst = coverage + coverage_offset + y * row_stride;
+            std::memcpy(dst, src, static_cast<size_t>(img->w));
+            if (row_stride > img->w) std::memset(dst + img->w, 0, static_cast<size_t>(row_stride - img->w));
+        }
+
+        const uintptr_t ptr = reinterpret_cast<uintptr_t>(img->bitmap);
+        const int base = 1 + image_count * 9;
+        meta[base + 0] = img->dst_x;
+        meta[base + 1] = img->dst_y;
+        meta[base + 2] = img->w;
+        meta[base + 3] = img->h;
+        meta[base + 4] = static_cast<jint>(img->color);
+        meta[base + 5] = static_cast<jint>(static_cast<uint64_t>(ptr) >> 32);
+        meta[base + 6] = static_cast<jint>(ptr & 0xFFFFFFFFu);
+        meta[base + 7] = coverage_offset;
+        meta[base + 8] = coverage_len;
+
+        coverage_offset += coverage_len;
+        ++image_count;
+    }
+
+    meta[0] = image_count;
+    env->ReleaseIntArrayElements(out_meta, meta, 0);
+    env->ReleaseByteArrayElements(out_coverage, coverage, 0);
+    return image_count;
+}

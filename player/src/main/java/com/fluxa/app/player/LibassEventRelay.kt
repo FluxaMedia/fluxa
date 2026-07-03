@@ -1,53 +1,75 @@
 package com.fluxa.app.player
 
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 
 class LibassEventRelay {
-    private val _activeRenderer = MutableStateFlow<NativeLibassRenderer?>(null)
-    val activeRenderer: StateFlow<NativeLibassRenderer?> = _activeRenderer
+    val renderThread = LibassRenderThread()
+
+    val activeRenderer: StateFlow<NativeLibassRenderer?> = renderThread.activeRendererFlow
 
     @Volatile var selectedTrackId: Int? = null
         private set
 
     private val generation = AtomicInteger(0)
+    private val eventCount = AtomicInteger(0)
 
     fun headerGeneration(): Int = generation.get()
 
     fun setSelectedTrackId(trackId: Int?) {
         if (selectedTrackId == trackId) return
+        LibassDebugLog.d("relay selected track changed from $selectedTrackId to $trackId")
         selectedTrackId = trackId
         generation.incrementAndGet()
+        eventCount.set(0)
         clearEvents()
     }
 
     fun setHeader(headerData: ByteArray, fonts: List<NativeAssFont>, fontsDir: String?) {
+        LibassDebugLog.d("relay creating renderer headerBytes=${headerData.size} fonts=${fonts.size} fontsDir=$fontsDir")
         val new = NativeLibassRenderer.create(headerData, fonts, fontsDir)
-        val old = _activeRenderer.value
-        _activeRenderer.value = new
-        old?.close()
+        if (new == null) {
+            LibassDebugLog.w("relay renderer creation returned null")
+            return
+        }
+        renderThread.setRelayRenderer(new)
+        LibassDebugLog.d("relay renderer active generation=${generation.get()}")
     }
 
     fun addEvent(startMs: Long, durationMs: Long, rawMkvBody: ByteArray) {
-        val renderer = _activeRenderer.value ?: return
         val endMs = startMs + durationMs
         val body = rawMkvBody.decodeToString().trim()
-        val fields = body.split(',', limit = 9)
-        if (fields.size < 9) return
-        val line = "Dialogue: ${fields[1]},${formatAssTime(startMs)},${formatAssTime(endMs)},${fields[2]},${fields[3]},${fields[4]},${fields[5]},${fields[6]},${fields[7]},${fields[8]}"
-        renderer.addEvent(line)
+        val line = if (body.startsWith("Dialogue:", ignoreCase = true)) {
+            val fields = body.substringAfter(':').trim().split(',', limit = 11)
+            if (fields.size < 11) {
+                LibassDebugLog.w("relay could not parse Media3 Dialogue sample fields=${fields.size} bodyPrefix=${body.take(96)}")
+                return
+            }
+            "Dialogue: ${fields[3]},${formatAssTime(startMs)},${formatAssTime(endMs)},${fields[4]},${fields[5]},${fields[6]},${fields[7]},${fields[8]},${fields[9]},${fields[10]}"
+        } else {
+            val fields = body.split(',', limit = 9)
+            if (fields.size < 9) {
+                LibassDebugLog.w("relay could not parse raw MKV ASS sample fields=${fields.size} bodyPrefix=${body.take(96)}")
+                return
+            }
+            "Dialogue: ${fields[1]},${formatAssTime(startMs)},${formatAssTime(endMs)},${fields[2]},${fields[3]},${fields[4]},${fields[5]},${fields[6]},${fields[7]},${fields[8]}"
+        }
+        renderThread.addEvent(line)
+        val count = eventCount.incrementAndGet()
+        if (count <= 8 || count % 50 == 0) {
+            LibassDebugLog.d("relay added ASS event count=$count startMs=$startMs durationMs=$durationMs sourceBytes=${rawMkvBody.size}")
+        }
     }
 
     fun clearEvents() {
-        _activeRenderer.value?.clearEvents()
+        renderThread.clearEvents()
+        LibassDebugLog.d("relay cleared events")
     }
 
     fun close() {
-        val old = _activeRenderer.value
-        _activeRenderer.value = null
-        old?.close()
+        renderThread.close()
+        LibassDebugLog.d("relay closed renderer")
     }
 
     private fun formatAssTime(ms: Long): String {

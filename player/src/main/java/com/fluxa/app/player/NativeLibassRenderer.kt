@@ -6,42 +6,35 @@ import java.io.Closeable
 class NativeLibassRenderer private constructor(
     private var handle: Long
 ) : Closeable {
-    private val lock = java.util.concurrent.locks.ReentrantLock()
 
     fun render(timeMs: Long, bitmap: Bitmap): Int {
         if (handle == 0L || bitmap.isRecycled) return -1
-        lock.lock()
-        return try {
-            nativeRender(handle, timeMs.coerceAtLeast(0L), bitmap)
-        } finally {
-            lock.unlock()
-        }
+        return nativeRender(handle, timeMs.coerceAtLeast(0L), bitmap)
+    }
+
+    fun renderImages(timeMs: Long, width: Int, height: Int, outMeta: IntArray, outCoverage: ByteArray): Int {
+        if (handle == 0L) return -1
+        return nativeRenderImages(handle, timeMs.coerceAtLeast(0L), width, height, outMeta, outCoverage)
     }
 
     fun addEvent(dialogueLine: String) {
         if (handle == 0L) return
-        lock.lock()
-        try { nativeAddEvent(handle, dialogueLine) } finally { lock.unlock() }
+        nativeAddEvent(handle, dialogueLine)
     }
 
     fun clearEvents() {
         if (handle == 0L) return
-        lock.lock()
-        try { nativeClearEvents(handle) } finally { lock.unlock() }
+        nativeClearEvents(handle)
     }
 
     override fun close() {
-        lock.lock()
-        try {
-            val current = handle
-            handle = 0L
-            if (current != 0L) nativeRelease(current)
-        } finally {
-            lock.unlock()
-        }
+        val current = handle
+        handle = 0L
+        if (current != 0L) nativeRelease(current)
     }
 
     private external fun nativeRender(handle: Long, timeMs: Long, bitmap: Bitmap): Int
+    private external fun nativeRenderImages(handle: Long, timeMs: Long, width: Int, height: Int, outMeta: IntArray, outCoverage: ByteArray): Int
     private external fun nativeRelease(handle: Long)
     private external fun nativeAddEvent(handle: Long, dialogueLine: String)
     private external fun nativeClearEvents(handle: Long)
@@ -56,14 +49,27 @@ class NativeLibassRenderer private constructor(
             fonts: List<NativeAssFont> = emptyList(),
             fontsDir: String? = null
         ): NativeLibassRenderer? {
-            if (assData.isEmpty()) return null
-            val handle = nativeCreate(
-                assData,
-                fonts.map { it.name }.toTypedArray(),
-                fonts.map { it.data }.toTypedArray(),
-                fontsDir
-            )
-            return handle.takeIf { it != 0L }?.let(::NativeLibassRenderer)
+            if (assData.isEmpty()) {
+                LibassDebugLog.w("native renderer create skipped empty ASS data")
+                return null
+            }
+            LibassDebugLog.d("native renderer create assBytes=${assData.size} fonts=${fonts.size} fontsDir=$fontsDir")
+            val handle = runCatching {
+                nativeCreate(
+                    assData,
+                    fonts.map { it.name }.toTypedArray(),
+                    fonts.map { it.data }.toTypedArray(),
+                    fontsDir
+                )
+            }.onFailure { error ->
+                LibassDebugLog.w("native renderer create threw", error)
+            }.getOrDefault(0L)
+            if (handle == 0L) {
+                LibassDebugLog.w("native renderer create failed handle=0")
+                return null
+            }
+            LibassDebugLog.d("native renderer create succeeded handle=$handle")
+            return NativeLibassRenderer(handle)
         }
 
         fun isAssUrl(url: String): Boolean {
