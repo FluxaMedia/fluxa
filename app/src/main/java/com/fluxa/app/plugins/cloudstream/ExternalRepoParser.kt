@@ -350,6 +350,7 @@ data class PluginInfo(
 
 // Local storage models
 data class InstalledPlugin(
+    val installId: String? = null,
     val internalName: String,
     val name: String,
     val description: String,

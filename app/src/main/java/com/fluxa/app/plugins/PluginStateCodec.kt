@@ -16,6 +16,7 @@ internal object PluginStateCodec {
             (0 until array.length()).map { i ->
                 val obj = array.getJSONObject(i)
                 InstalledPlugin(
+                    installId = obj.optString("installId").takeIf { it.isNotBlank() },
                     internalName = obj.getString("internalName"),
                     name = obj.getString("name"),
                     description = obj.optString("description", ""),
@@ -23,6 +24,7 @@ internal object PluginStateCodec {
                     url = obj.getString("url"),
                     filePath = obj.getString("filePath"),
                     repositoryUrl = obj.optString("repositoryUrl").takeIf { it.isNotBlank() },
+                    sha256 = obj.optString("sha256").takeIf { it.isNotBlank() },
                     installedAt = obj.optLong("installedAt", System.currentTimeMillis()),
                     iconUrl = obj.optString("iconUrl").takeIf { it.isNotBlank() }
                 )
@@ -37,6 +39,7 @@ internal object PluginStateCodec {
         val array = JSONArray()
         plugins.forEach { plugin ->
             val obj = JSONObject().apply {
+                plugin.installId?.let { put("installId", it) }
                 put("internalName", plugin.internalName)
                 put("name", plugin.name)
                 put("description", plugin.description)
@@ -44,6 +47,7 @@ internal object PluginStateCodec {
                 put("url", plugin.url)
                 put("filePath", plugin.filePath)
                 put("repositoryUrl", plugin.repositoryUrl)
+                plugin.sha256?.let { put("sha256", it) }
                 put("installedAt", plugin.installedAt)
                 plugin.iconUrl?.let { put("iconUrl", it) }
             }

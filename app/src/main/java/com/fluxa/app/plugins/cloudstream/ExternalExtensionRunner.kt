@@ -5,6 +5,7 @@ import com.fluxa.app.BuildConfig
 import com.lagradost.cloudstream3.AcraApplication
 import com.lagradost.cloudstream3.AnimeLoadResponse
 import com.lagradost.cloudstream3.AnimeSearchResponse
+import com.lagradost.cloudstream3.ActorData
 import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.LiveStreamLoadResponse
 import com.lagradost.cloudstream3.LoadResponse
@@ -13,6 +14,7 @@ import com.lagradost.cloudstream3.MovieLoadResponse
 import com.lagradost.cloudstream3.MovieSearchResponse
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.TrailerData
 import com.lagradost.cloudstream3.TvSeriesLoadResponse
 import com.lagradost.cloudstream3.TvSeriesSearchResponse
 import com.lagradost.cloudstream3.TvType
@@ -255,12 +257,10 @@ class ExternalExtensionRunner(
 
         logDebug { "${api.name}: ${links.size} links, ${subtitles.size} subs" }
 
-        // Process links through extractor registry for any additional resolution
         val validLinks = links.filter { link ->
             when {
                 link.url.isBlank() -> false
                 link.url == "error" || link.url == "null" -> false
-                !link.url.startsWith("http://") && !link.url.startsWith("https://") -> false
                 else -> true
             }
         }
@@ -526,7 +526,21 @@ data class ScraperLoadResult(
     val episodes: List<ScraperEpisode>?,
     val data: String?,
     val recommendations: List<ScraperSearchResult>?,
-    val actors: List<String>?
+    val actors: List<ScraperActor>?,
+    val trailers: List<ScraperTrailer>?,
+    val comingSoon: Boolean,
+    val syncData: Map<String, String>?,
+    val posterHeaders: Map<String, String>?,
+    val backgroundPosterUrl: String?,
+    val logoUrl: String?,
+    val contentRating: String?,
+    val uniqueUrl: String?,
+    val status: String?,
+    val nextAiringUnixTime: Long?,
+    val nextAiringEpisode: Int?,
+    val nextAiringSeason: Int?,
+    val seasonNames: List<ScraperSeason>?,
+    val synonyms: List<String>?
 )
 
 data class ScraperEpisode(
@@ -536,7 +550,30 @@ data class ScraperEpisode(
     val episode: Int?,
     val posterUrl: String?,
     val description: String?,
-    val date: Long?
+    val date: Long?,
+    val rating: Int?,
+    val runTime: Int?
+)
+
+data class ScraperActor(
+    val name: String,
+    val image: String?,
+    val role: String?,
+    val voiceActorName: String?,
+    val voiceActorImage: String?
+)
+
+data class ScraperTrailer(
+    val url: String,
+    val referer: String?,
+    val raw: Boolean,
+    val headers: Map<String, String>
+)
+
+data class ScraperSeason(
+    val season: Int,
+    val name: String?,
+    val displaySeason: Int?
 )
 
 data class ScraperStreamResult(
@@ -555,7 +592,8 @@ data class ScraperStreamLink(
     val qualityValue: Int,
     val isM3u8: Boolean,
     val isDash: Boolean,
-    val headers: Map<String, String>
+    val headers: Map<String, String>,
+    val type: String
 )
 
 data class ScraperSubtitle(
@@ -582,22 +620,136 @@ private fun LoadResponse.toScraperLoadResult(scraperName: String): ScraperLoadRe
     }
     val contentData = when (this) {
         is MovieLoadResponse -> this.dataUrl
+        is LiveStreamLoadResponse -> this.dataUrl
         else -> null
     }
-    val actorNames = this.actors?.map { it.actor.name }
-    return ScraperLoadResult(name, url, posterUrl, plot, type, year, score?.toInt(100), tags, duration, scraperName, epList.map { it.toScraperEpisode() }, contentData, recommendations?.map { it.toScraperResult(scraperName) }, actorNames)
+    val showStatus = when (this) {
+        is TvSeriesLoadResponse -> this.showStatus?.name
+        is AnimeLoadResponse -> this.showStatus?.name
+        else -> null
+    }
+    val nextAiring = when (this) {
+        is TvSeriesLoadResponse -> this.nextAiring
+        is AnimeLoadResponse -> this.nextAiring
+        else -> null
+    }
+    val seasonNames = when (this) {
+        is TvSeriesLoadResponse -> this.seasonNames
+        is AnimeLoadResponse -> this.seasonNames
+        else -> null
+    }
+    val synonyms = when (this) {
+        is AnimeLoadResponse -> listOfNotNull(this.engName, this.japName) + this.synonyms.orEmpty()
+        else -> emptyList()
+    }.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+    return ScraperLoadResult(
+        title = name,
+        url = url,
+        posterUrl = posterUrl,
+        plot = plot,
+        type = type,
+        year = year,
+        rating = score?.toInt(100),
+        tags = tags,
+        duration = duration,
+        scraperName = scraperName,
+        episodes = epList.map { it.toScraperEpisode() },
+        data = contentData,
+        recommendations = recommendations?.map { it.toScraperResult(scraperName) },
+        actors = actors?.mapNotNull { it.toScraperActor() },
+        trailers = trailers.map { it.toScraperTrailer() },
+        comingSoon = comingSoon,
+        syncData = syncData,
+        posterHeaders = posterHeaders,
+        backgroundPosterUrl = backgroundPosterUrl,
+        logoUrl = reflectString("getLogoUrl"),
+        contentRating = contentRating,
+        uniqueUrl = uniqueUrl,
+        status = showStatus,
+        nextAiringUnixTime = nextAiring?.unixTime,
+        nextAiringEpisode = nextAiring?.episode,
+        nextAiringSeason = nextAiring?.season,
+        seasonNames = seasonNames?.map { ScraperSeason(it.season, it.name, it.displaySeason) },
+        synonyms = synonyms.takeIf { it.isNotEmpty() }
+    )
 }
 
-private fun Episode.toScraperEpisode() = ScraperEpisode(data, name, season, episode, posterUrl, description, date)
-
-private fun ExtractorLink.toScraperStreamLink() = ScraperStreamLink(
-    source = source,
+private fun Episode.toScraperEpisode() = ScraperEpisode(
+    data = data,
     name = name,
-    url = url,
+    season = season,
+    episode = episode,
+    posterUrl = posterUrl,
+    description = description,
+    date = date,
+    rating = score?.toInt(100),
+    runTime = runTime
+)
+
+private fun ActorData.toScraperActor(): ScraperActor? {
+    val actorName = actor.name.takeIf { it.isNotBlank() } ?: return null
+    return ScraperActor(
+        name = actorName,
+        image = actor.image,
+        role = roleString?.takeIf { it.isNotBlank() } ?: role?.name,
+        voiceActorName = null,
+        voiceActorImage = null
+    )
+}
+
+private fun Any.reflectString(methodName: String): String? {
+    return runCatching {
+        javaClass.methods.firstOrNull { it.name == methodName && it.parameterTypes.isEmpty() }
+            ?.invoke(this) as? String
+    }.getOrNull()?.takeIf { it.isNotBlank() }
+}
+
+private fun TrailerData.toScraperTrailer() = ScraperTrailer(
+    url = extractorUrl,
     referer = referer,
-    quality = Qualities.getStringByIntFull(quality),
-    qualityValue = quality,
-    isM3u8 = type == ExtractorLinkType.M3U8,
-    isDash = type == ExtractorLinkType.DASH,
+    raw = raw,
     headers = headers
 )
+
+private fun ExtractorLink.toScraperStreamLink(): ScraperStreamLink {
+    val qualityLabel = resolvedQualityLabel()
+    return ScraperStreamLink(
+        source = source,
+        name = name,
+        url = url,
+        referer = referer,
+        quality = qualityLabel,
+        qualityValue = quality,
+        isM3u8 = type == ExtractorLinkType.M3U8,
+        isDash = type == ExtractorLinkType.DASH,
+        headers = headers,
+        type = type.name
+    )
+}
+
+private fun ExtractorLink.resolvedQualityLabel(): String {
+    val cloudstreamQuality = Qualities.getStringByIntFull(quality).takeUnless { it.equals("unknown", ignoreCase = true) }
+    if (!cloudstreamQuality.isNullOrBlank()) return cloudstreamQuality
+    val reflected = listOfNotNull(
+        reflectString("getDisplayName"),
+        reflectString("getQualityName"),
+        reflectString("getFullName")
+    ).firstNotNullOfOrNull(::extractResolutionLabel)
+    if (!reflected.isNullOrBlank()) return reflected
+    return extractResolutionLabel(listOf(source, name, url).joinToString(" ")) ?: "unknown"
+}
+
+private fun extractResolutionLabel(value: String): String? {
+    val text = value.takeIf { it.isNotBlank() } ?: return null
+    Regex("""\b\d{3,5}\s*x\s*\d{3,5}\b""")
+        .find(text)
+        ?.value
+        ?.replace(Regex("""\s+"""), "")
+        ?.let { return it }
+    Regex("""\b\d{3,4}p\b""", RegexOption.IGNORE_CASE)
+        .find(text)
+        ?.value
+        ?.lowercase()
+        ?.let { return it }
+    return null
+}

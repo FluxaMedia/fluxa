@@ -12,6 +12,8 @@
   "notification.release_now_episode": "%s S%s:E%s Released now",
   "notification.plugins_updated_title": "CloudStream Plugins Updated",
   "notification.plugins_updated_body": "%s plugin(s) updated: %s",
+  "notification.plugins_update_failed_title": "CloudStream Plugin Update Failed",
+  "notification.plugins_update_failed_body": "%s plugin update(s) failed: %s",
   "notification.plugin_updates_channel": "Plugin Updates",
   "library.empty": "No content in this list",
   "settings.subtitle.outline_color": "Outline Color",

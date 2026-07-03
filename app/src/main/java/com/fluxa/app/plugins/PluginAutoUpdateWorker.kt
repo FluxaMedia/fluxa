@@ -35,11 +35,16 @@ class PluginAutoUpdateWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             Log.d(TAG, "[AutoUpdate] Starting background plugin update check...")
-            val pluginUpdates = pluginManager.checkAndAutoUpdatePlugins()
-            if (pluginUpdates.isNotEmpty()) {
-                Log.i(TAG, "[AutoUpdate] Plugins auto-updated: $pluginUpdates")
-                postUpdateNotification(applicationContext, pluginUpdates)
-            } else {
+            val report = pluginManager.checkAndAutoUpdatePlugins()
+            if (report.updatedPlugins.isNotEmpty()) {
+                Log.i(TAG, "[AutoUpdate] Plugins auto-updated: ${report.updatedPlugins}")
+                postUpdateNotification(applicationContext, report.updatedPlugins)
+            }
+            if (report.failedPlugins.isNotEmpty()) {
+                Log.w(TAG, "[AutoUpdate] Plugin updates failed: ${report.failedPlugins}")
+                postFailureNotification(applicationContext, report.failedPlugins)
+            }
+            if (report.updatedPlugins.isEmpty() && report.failedPlugins.isEmpty()) {
                 Log.d(TAG, "[AutoUpdate] All plugins are up to date")
             }
             Result.success()
@@ -51,6 +56,41 @@ class PluginAutoUpdateWorker @AssistedInject constructor(
 
     @SuppressLint("MissingPermission")
     private fun postUpdateNotification(context: Context, updatedPlugins: List<String>) {
+        postPluginNotification(
+            context = context,
+            notificationId = PLUGIN_UPDATE_NOTIFICATION_ID,
+            title = AppStrings.t("en", "notification.plugins_updated_title"),
+            body = AppStrings.format(
+                "en",
+                "notification.plugins_updated_body",
+                updatedPlugins.size.toString(),
+                updatedPlugins.joinToString(", ")
+            )
+        )
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun postFailureNotification(context: Context, failedPlugins: List<String>) {
+        postPluginNotification(
+            context = context,
+            notificationId = PLUGIN_UPDATE_FAILED_NOTIFICATION_ID,
+            title = AppStrings.t("en", "notification.plugins_update_failed_title"),
+            body = AppStrings.format(
+                "en",
+                "notification.plugins_update_failed_body",
+                failedPlugins.size.toString(),
+                failedPlugins.joinToString(", ")
+            )
+        )
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun postPluginNotification(
+        context: Context,
+        notificationId: Int,
+        title: String,
+        body: String
+    ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
@@ -67,11 +107,9 @@ class PluginAutoUpdateWorker @AssistedInject constructor(
             )
         }
 
-        val names = updatedPlugins.joinToString(", ")
-        val body = AppStrings.format("en", "notification.plugins_updated_body", updatedPlugins.size.toString(), names)
         val notification = NotificationCompat.Builder(context, PLUGIN_UPDATE_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(AppStrings.t("en", "notification.plugins_updated_title"))
+            .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -79,7 +117,7 @@ class PluginAutoUpdateWorker @AssistedInject constructor(
             .build()
 
         runCatching {
-            NotificationManagerCompat.from(context).notify(PLUGIN_UPDATE_NOTIFICATION_ID, notification)
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
         }
     }
 
@@ -88,6 +126,7 @@ class PluginAutoUpdateWorker @AssistedInject constructor(
         private const val UNIQUE_WORK_NAME = "plugin_auto_update"
         private const val PLUGIN_UPDATE_CHANNEL_ID = "plugin_updates"
         private const val PLUGIN_UPDATE_NOTIFICATION_ID = 0x50_00
+        private const val PLUGIN_UPDATE_FAILED_NOTIFICATION_ID = 0x50_01
 
         fun enqueue(context: Context) {
             val work = OneTimeWorkRequestBuilder<PluginAutoUpdateWorker>()

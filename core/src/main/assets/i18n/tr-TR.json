@@ -12,6 +12,8 @@
   "notification.release_now_episode": "%s S%s:E%s Released now",
   "notification.plugins_updated_title": "CloudStream Eklentileri Güncellendi",
   "notification.plugins_updated_body": "%s eklenti güncellendi: %s",
+  "notification.plugins_update_failed_title": "CloudStream Eklenti Güncellemesi Başarısız",
+  "notification.plugins_update_failed_body": "%s eklenti güncellemesi başarısız oldu: %s",
   "notification.plugin_updates_channel": "Eklenti Güncellemeleri",
   "library.empty": "Bu listede içerik yok",
   "settings.subtitle.outline_color": "Dış Hat Rengi",

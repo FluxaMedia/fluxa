@@ -159,7 +159,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
         val pluginsFromRepo = _installedPlugins.value.filter { it.repositoryUrl != null && sameUrl(it.repositoryUrl, url) }
         pluginsFromRepo.forEach { plugin ->
             unloadPlugin(plugin.internalName)
-            loader.deleteExtensionFile(plugin.internalName)
+            loader.deleteExtensionFile(plugin.installKey())
         }
         _installedPlugins.value = _installedPlugins.value.filter { it.repositoryUrl == null || !sameUrl(it.repositoryUrl, url) }
         _repositories.value = _repositories.value.filter { !sameUrl(it.url, url) }
@@ -173,13 +173,13 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
     suspend fun refreshAvailablePlugins() {
         _isLoading.value = true
         
-        val allPlugins = mutableListOf<PluginInfo>()
+        val allPlugins = mutableListOf<Pair<PluginRepositoryEntry, PluginInfo>>()
         
         _repositories.value.forEach { repoEntry ->
             try {
                 when (val result = repoParser.fetchRepository(repoEntry.url)) {
                     is RepositoryResult.Success -> {
-                        allPlugins.addAll(result.manifest.plugins)
+                        allPlugins.addAll(result.manifest.plugins.map { repoEntry to it })
                     }
                     is RepositoryResult.Error -> {
                         Log.w(TAG, "Failed to fetch ${repoEntry.url}: ${result.message}")
@@ -190,9 +190,10 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             }
         }
         
-        // Filter out installed plugins
-        val installedNames = _installedPlugins.value.map { it.internalName }.toSet()
-        _availablePlugins.value = allPlugins.filter { it.internalName !in installedNames }
+        val installedKeys = _installedPlugins.value.map { it.installKey() }.toSet()
+        _availablePlugins.value = allPlugins
+            .filter { (repo, plugin) -> pluginInstallId(repo.url, plugin.internalName) !in installedKeys }
+            .map { it.second }
         
         _isLoading.value = false
     }
@@ -218,6 +219,14 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
     fun isPluginInstalled(internalName: String): Boolean {
         return _installedPlugins.value.any { it.internalName == internalName }
     }
+
+    fun pluginInstallKey(repositoryUrl: String?, internalName: String): String =
+        pluginInstallId(repositoryUrl, internalName)
+
+    fun isPluginInstalled(repositoryUrl: String?, internalName: String): Boolean {
+        val installId = pluginInstallId(repositoryUrl, internalName)
+        return _installedPlugins.value.any { it.installKey() == installId }
+    }
     
     // ==================== Plugin Installation ====================
     
@@ -235,7 +244,8 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                 return Result.failure(Exception("Plugin download URL must use HTTPS"))
             }
             // Check if already installed
-            if (_installedPlugins.value.any { it.internalName == pluginInfo.internalName }) {
+            val installId = pluginInstallId(repoUrl, pluginInfo.internalName)
+            if (_installedPlugins.value.any { it.installKey() == installId }) {
                 return Result.failure(Exception("Plugin already installed"))
             }
             
@@ -243,7 +253,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             
             // Download the .cs3 file
             val file = loader.downloadExtension(
-                scraperId = pluginInfo.internalName,
+                scraperId = installId,
                 downloadUrl = pluginInfo.url
             ) ?: run {
                 Log.e(TAG, "Failed to download plugin ${pluginInfo.internalName}")
@@ -258,6 +268,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             
             // Create installed plugin record
             val installed = InstalledPlugin(
+                installId = installId,
                 internalName = pluginInfo.internalName,
                 name = pluginInfo.name,
                 description = pluginInfo.description,
@@ -281,7 +292,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             
             // Refresh available plugins (remove from available)
             _availablePlugins.value = _availablePlugins.value.filter { 
-                it.internalName != pluginInfo.internalName 
+                pluginInstallId(repoUrl, it.internalName) != installId
             }
             
             Result.success(installed)
@@ -308,17 +319,19 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             }
             // Generate internal name from URL
             val internalName = PluginStateCodec.sha256(url).take(16)
+            val installId = pluginInstallId(null, internalName)
             
             // Check if already installed
-            if (_installedPlugins.value.any { it.internalName == internalName }) {
+            if (_installedPlugins.value.any { it.installKey() == installId }) {
                 return Result.failure(Exception("Plugin already installed"))
             }
             
             // Download
-            val file = loader.downloadExtension(internalName, url)
+            val file = loader.downloadExtension(installId, url)
                 ?: return Result.failure(Exception("Failed to download plugin"))
             
             val installed = InstalledPlugin(
+                installId = installId,
                 internalName = internalName,
                 name = name,
                 description = "Manual installation",
@@ -349,12 +362,24 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
     suspend fun uninstallPlugin(internalName: String) = mutex.withLock {
         val plugin = _installedPlugins.value.find { it.internalName == internalName }
             ?: return@withLock
+        uninstallPluginLocked(plugin)
+    }
+
+    suspend fun uninstallPlugin(repositoryUrl: String?, internalName: String) = mutex.withLock {
+        val installId = pluginInstallId(repositoryUrl, internalName)
+        val plugin = _installedPlugins.value.find { it.installKey() == installId }
+            ?: return@withLock
+        uninstallPluginLocked(plugin)
+    }
+
+    private suspend fun uninstallPluginLocked(plugin: InstalledPlugin) {
+        val internalName = plugin.internalName
         
         // Unload from memory
         unloadPlugin(internalName)
         
         // Delete file
-        loader.deleteExtensionFile(internalName)
+        loader.deleteExtensionFile(plugin.installKey())
         
         // Remove from list
         _installedPlugins.value = _installedPlugins.value.filter { it.internalName != internalName }
@@ -371,21 +396,23 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
         internalName: String,
         newPluginInfo: PluginInfo
     ): Result<InstalledPlugin> = mutex.withLock {
-        updatePluginInternal(internalName, newPluginInfo)
+        val oldPlugin = _installedPlugins.value.find { it.internalName == internalName }
+            ?: return@withLock Result.failure(Exception("Plugin is not installed"))
+        updatePluginInternal(oldPlugin, newPluginInfo)
     }
     
     /**
      * Internal update logic without lock - for use when already holding mutex
      */
     private suspend fun updatePluginInternal(
-        internalName: String,
+        oldPlugin: InstalledPlugin,
         newPluginInfo: PluginInfo
     ): Result<InstalledPlugin> {
         _isLoading.value = true
         
         return try {
-            val oldPlugin = _installedPlugins.value.find { it.internalName == internalName }
-                ?: return Result.failure(Exception("Plugin is not installed"))
+            val internalName = oldPlugin.internalName
+            val installId = oldPlugin.installKey()
             if (oldPlugin.repositoryUrl.isNullOrBlank() || _repositories.value.none { sameUrl(it.url, oldPlugin.repositoryUrl) }) {
                 return Result.failure(Exception("Plugin update repository is not trusted"))
             }
@@ -396,10 +423,10 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             unloadPlugin(internalName)
             
             // Delete old file
-            loader.deleteExtensionFile(internalName)
+            loader.deleteExtensionFile(installId)
             
             // Download new version
-            val file = loader.downloadExtension(internalName, newPluginInfo.url)
+            val file = loader.downloadExtension(installId, newPluginInfo.url)
                 ?: return Result.failure(Exception("Failed to download update"))
 
             verifyPluginChecksum(file, newPluginInfo.sha256)?.let { error ->
@@ -409,6 +436,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             
             // Update record
             val updated = InstalledPlugin(
+                installId = installId,
                 internalName = internalName,
                 name = newPluginInfo.name,
                 description = newPluginInfo.description,
@@ -429,7 +457,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             
             Result.success(updated)
         } catch (t: Throwable) {
-            Log.e(TAG, "Error updating plugin $internalName", t)
+            Log.e(TAG, "Error updating plugin ${oldPlugin.internalName}", t)
             Result.failure(if (t is Exception) t else Exception(t.message, t))
         } finally {
             _isLoading.value = false
@@ -452,9 +480,9 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             }
             logDebug { "[loadPlugin] File exists: ${file.absolutePath}, size=${file.length()}" }
             
-            val apis = loader.loadApisFromFile(installed.internalName, file)
+            val apis = loader.loadApisFromFile(installed.installKey(), file)
             if (apis.isNotEmpty()) {
-                _loadedApis.update { current -> (current + apis).distinctBy { it.name } }
+                _loadedApis.update { current -> (current + apis).distinctBy { "${it.sourcePlugin}:${it.name}" } }
                 logDebug { "[loadPlugin] SUCCESS: Loaded ${installed.name} with ${apis.size} APIs" }
             } else {
                 Log.e(TAG, "[loadPlugin] FAILED: ${installed.name} - No APIs loaded!")
@@ -482,9 +510,11 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
      * Unload a plugin from memory
      */
     private fun unloadPlugin(internalName: String) {
-        loader.unloadExtension(internalName)
+        val plugin = _installedPlugins.value.find { it.internalName == internalName }
+        val installId = plugin?.installKey() ?: internalName
+        loader.unloadExtension(installId)
         _loadedApis.value = _loadedApis.value.filter { 
-            it.sourcePlugin?.contains(internalName) != true 
+            it.sourcePlugin?.contains(installId) != true
         }
         logDebug { "Unloaded plugin $internalName" }
     }
@@ -532,6 +562,14 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
         return FluxaCoreNative.pluginSameRepositoryUrl(left, right)
     }
 
+    private fun pluginInstallId(repositoryUrl: String?, internalName: String): String {
+        val scope = repositoryUrl?.takeIf { it.isNotBlank() } ?: "manual"
+        return PluginStateCodec.sha256("$scope:$internalName").take(24)
+    }
+
+    private fun InstalledPlugin.installKey(): String =
+        installId ?: pluginInstallId(repositoryUrl, internalName)
+
     private fun verifyPluginChecksum(file: File, expectedSha256: String?): String? {
         val expected = expectedSha256?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: run {
             Log.w(TAG, "Plugin ${file.name} has no manifest checksum")
@@ -564,7 +602,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
      * Auto-updates plugins in background if newer version found.
      * Call this periodically (e.g., on app start or once per day).
      */
-    suspend fun checkAndAutoUpdatePlugins(): List<String> = mutex.withLock {
+    internal suspend fun checkAndAutoUpdatePlugins(): PluginAutoUpdater.UpdateReport = mutex.withLock {
         PluginAutoUpdater(
             repositories = { _repositories.value },
             installedPlugins = { _installedPlugins.value },
