@@ -6,6 +6,11 @@ import com.fluxa.app.common.AppStrings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -23,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -381,6 +387,43 @@ private fun ShelfExpandedDescription(expandedMeta: Meta?, expandedOffsetX: Dp, r
                         Text(it, color = Color.White.copy(alpha = 0.78f), fontSize = 13.sp, lineHeight = 18.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun TvHomeShelfSkeleton(titleStartPadding: Dp) {
+    val transition = rememberInfiniteTransition(label = "shelf-skeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.05f,
+        targetValue = 0.13f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(FluxaDimensions.AnimDuration.ambientColor, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shelf-skeleton-alpha"
+    )
+    Column(modifier = Modifier.padding(bottom = 28.dp)) {
+        Box(
+            modifier = Modifier
+                .padding(start = titleStartPadding, bottom = 12.dp)
+                .width(140.dp)
+                .height(18.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp))
+                .background(Color.White.copy(alpha = alpha))
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = titleStartPadding)
+        ) {
+            items(5) {
+                Box(
+                    modifier = Modifier
+                        .size(200.dp, 120.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                        .background(Color.White.copy(alpha = alpha))
+                )
             }
         }
     }

@@ -4,9 +4,17 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,9 +22,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -466,6 +477,43 @@ private fun HomeRowHeader(
                     indication = null
                 ) { onViewAllClick() }
             )
+        }
+    }
+}
+
+@Composable
+internal fun MobileHomeShelfSkeleton(horizontalPadding: androidx.compose.ui.unit.Dp) {
+    val transition = rememberInfiniteTransition(label = "shelf-skeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.05f,
+        targetValue = 0.13f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(FluxaDimensions.AnimDuration.ambientColor, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shelf-skeleton-alpha"
+    )
+    Column(modifier = Modifier.padding(bottom = 24.dp)) {
+        Box(
+            modifier = Modifier
+                .padding(start = horizontalPadding, bottom = 10.dp)
+                .width(120.dp)
+                .height(16.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color.White.copy(alpha = alpha))
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = horizontalPadding)
+        ) {
+            items(5) {
+                Box(
+                    modifier = Modifier
+                        .size(130.dp, 195.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = alpha))
+                )
+            }
         }
     }
 }

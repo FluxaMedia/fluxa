@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -228,6 +229,11 @@ fun HomeScreen(
                     }
                 }
 
+                if (catalogState.isLoading && rowSpecs.isEmpty()) {
+                    items(4, key = { "skeleton-$it" }, contentType = { "skeleton" }) {
+                        TvHomeShelfSkeleton(titleStartPadding = railGutter)
+                    }
+                }
                 itemsIndexed(
                     rowSpecs,
                     key = { _, row -> row.categoryId },

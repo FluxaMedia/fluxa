@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -95,6 +96,11 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
+            if (catalogState.isLoading && homeRowSpecs.isEmpty()) {
+                items(4, key = { "skeleton-$it" }, contentType = { "skeleton" }) {
+                    MobileHomeShelfSkeleton(horizontalPadding)
+                }
+            }
             if (catalogState.showHeroSection) {
                 item(key = "home-hero", contentType = "hero") {
                     MobileHomeHeroItem(
