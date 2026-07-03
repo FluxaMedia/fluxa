@@ -85,7 +85,7 @@ fun MobileInstalledAddonItem(
     isRefreshing: Boolean,
     onToggleEnabled: (Boolean) -> Unit,
     onRemove: () -> Unit,
-    accentColor: Color = Color(0xFF4CAF50)
+    accentColor: Color = FluxaColors.successGreen
 ) {
     var isFocused by remember { mutableStateOf(false) }
     Box(
@@ -192,6 +192,8 @@ fun MobileInstalledAddonItem(
             }
         }
         if (canRemove) {
+            val accentLuma = accentColor.red * 0.299f + accentColor.green * 0.587f + accentColor.blue * 0.114f
+            val checkedThumbColor = if (accentLuma > 0.68f) Color.Black else Color.White
             Switch(
                 checked = isEnabled,
                 onCheckedChange = onToggleEnabled,
@@ -199,7 +201,7 @@ fun MobileInstalledAddonItem(
                     .align(Alignment.TopEnd)
                     .height(40.dp),
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
+                    checkedThumbColor = checkedThumbColor,
                     checkedTrackColor = accentColor,
                     checkedBorderColor = Color.Transparent,
                     uncheckedThumbColor = Color.White.copy(alpha = 0.72f),
@@ -397,7 +399,7 @@ fun MobileCS3PluginItem(
     isInstalled: Boolean = false,
     onInstall: () -> Unit
 ) {
-    val accentColor = if (isInstalled) Color(0xFF4CAF50) else Color.White.copy(alpha = 0.6f)
+    val accentColor = if (isInstalled) FluxaColors.successGreen else Color.White.copy(alpha = 0.6f)
     var iconLoadFailed by remember(plugin.iconUrl) { mutableStateOf(false) }
 
     Row(
@@ -475,7 +477,7 @@ fun MobileCS3PluginItem(
             Icon(
                 imageVector = if (isInstalled) FluxaIcons.Delete else FluxaIcons.Download,
                 contentDescription = null,
-                tint = if (isInstalled) Color(0xFFFF6B6B) else Color.White.copy(alpha = 0.5f),
+                tint = if (isInstalled) FluxaColors.errorRed else Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -494,8 +496,8 @@ fun MobileCS3InstalledPluginItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFF4CAF50).copy(alpha = 0.1f))
-            .border(1.dp, Color(0xFF4CAF50).copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+            .background(FluxaColors.successGreen.copy(alpha = 0.1f))
+            .border(1.dp, FluxaColors.successGreen.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
             .onFocusChanged { isFocused = it.isFocused }
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
@@ -507,13 +509,13 @@ fun MobileCS3InstalledPluginItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF4CAF50).copy(alpha = 0.2f)),
+                    .background(FluxaColors.successGreen.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     FluxaIcons.Extension,
                     null,
-                    tint = Color(0xFF4CAF50),
+                    tint = FluxaColors.successGreen,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -541,7 +543,7 @@ fun MobileCS3InstalledPluginItem(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xFF4CAF50).copy(alpha = 0.2f))
+                    .background(FluxaColors.successGreen.copy(alpha = 0.2f))
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(

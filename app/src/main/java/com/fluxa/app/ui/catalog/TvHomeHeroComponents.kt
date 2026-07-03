@@ -139,10 +139,10 @@ internal fun HomeHeroBackdrop(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color(0xFF090B12),
-                            Color(0xFF090B12).copy(alpha = 0.98f),
-                            Color(0xFF090B12).copy(alpha = 0.82f),
-                            Color(0xFF090B12).copy(alpha = 0.34f),
+                            FluxaColors.backgroundHeroNavy,
+                            FluxaColors.backgroundHeroNavy.copy(alpha = 0.98f),
+                            FluxaColors.backgroundHeroNavy.copy(alpha = 0.82f),
+                            FluxaColors.backgroundHeroNavy.copy(alpha = 0.34f),
                             Color.Transparent
                         )
                     )
@@ -154,9 +154,9 @@ internal fun HomeHeroBackdrop(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF090B12).copy(alpha = 0.28f),
+                            FluxaColors.backgroundHeroNavy.copy(alpha = 0.28f),
                             Color.Transparent,
-                            Color(0xFF090B12).copy(alpha = 0.92f)
+                            FluxaColors.backgroundHeroNavy.copy(alpha = 0.92f)
                         )
                     )
                 )
@@ -168,8 +168,8 @@ internal fun HomeHeroBackdrop(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color(0xFF090B12),
-                            Color(0xFF090B12).copy(alpha = 0.88f),
+                            FluxaColors.backgroundHeroNavy,
+                            FluxaColors.backgroundHeroNavy.copy(alpha = 0.88f),
                             Color.Transparent
                         )
                     )

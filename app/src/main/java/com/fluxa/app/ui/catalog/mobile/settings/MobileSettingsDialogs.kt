@@ -119,7 +119,7 @@ internal fun MobileActionRow(
             Icon(
                 imageVector = FluxaIcons.Check,
                 contentDescription = null,
-                tint = Color(0xFF4CAF50),
+                tint = FluxaColors.successGreen,
                 modifier = Modifier.size(18.dp)
             )
         }

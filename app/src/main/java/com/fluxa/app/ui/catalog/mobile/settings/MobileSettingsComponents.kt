@@ -99,7 +99,7 @@ internal fun mobileSettingsPalette(
     val text = Color.White
     return MobileSettingsPalette(
         background = if (amoledMode) Color.Black else FluxaColors.background,
-        card = if (amoledMode) Color(0xFF050505) else FluxaColors.surfaceCard,
+        card = if (amoledMode) FluxaColors.backgroundAmoled else FluxaColors.surfaceCard,
         text = text,
         mutedText = text.copy(alpha = 0.42f),
         divider = text.copy(alpha = 0.055f),

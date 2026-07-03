@@ -4,6 +4,7 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.R
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,6 +65,9 @@ internal fun MobileLoginScreen(
     startOnNuvio: Boolean = false
 ) {
     var view by remember { mutableStateOf(if (startOnNuvio) MobileAuthView.Nuvio else MobileAuthView.Account) }
+    BackHandler(enabled = view != MobileAuthView.Account) {
+        view = MobileAuthView.Account
+    }
 
     when (view) {
         MobileAuthView.Account -> MobileAccountLoginView(
@@ -144,9 +148,9 @@ private fun MobileAccountCredentialsView(
     fun continueAsGuest() {
         val guest = UserProfile(
             id = UUID.randomUUID().toString(),
-            email = AppStrings.t(lang, "auth.guest_name"),
+            email = AppStrings.t(lang, "auth.primary_profile_name"),
             authKey = "",
-            isGuest = true
+            isGuest = false
         )
         profileManager.saveProfile(guest)
         profileManager.setLastActiveProfile(guest)
@@ -231,7 +235,7 @@ private fun MobileAccountCredentialsView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F0F0F))
+            .background(FluxaColors.backgroundNearBlack)
     ) {
         Column(
             modifier = Modifier
@@ -387,7 +391,7 @@ private fun MobileAccountCredentialsView(
             }
 
             globalError?.let {
-                Text(it, color = Color(0xFFFF6B6B), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(it, color = FluxaColors.errorRed, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
             }
 
             Spacer(Modifier.height(16.dp))

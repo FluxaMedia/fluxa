@@ -89,7 +89,11 @@ internal fun AddonRepoPluginsDialog(
 
     // Track installed state reactively inside the dialog
     var installedNames by remember(selectedRepoUrl) {
-        mutableStateOf(pluginManager.installedPlugins.value.map { it.internalName }.toSet())
+        mutableStateOf(
+            pluginManager.installedPlugins.value
+                .map { pluginManager.pluginInstallKey(it.repositoryUrl, it.internalName) }
+                .toSet()
+        )
     }
     // Track which plugins are currently being installed
     var installingNames by remember(selectedRepoUrl) { mutableStateOf(setOf<String>()) }
@@ -133,7 +137,7 @@ internal fun AddonRepoPluginsDialog(
                             item {
                                 Text(
                                     text = dialogError!!,
-                                    color = Color(0xFFFF6B6B),
+                                    color = FluxaColors.errorRed,
                                     fontSize = 13.sp,
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -142,9 +146,10 @@ internal fun AddonRepoPluginsDialog(
                             }
                         }
 
-                        itemsIndexed(selectedRepoPlugins, key = { _, p -> p.internalName }) { index, plugin ->
-                            val installed = plugin.internalName in installedNames
-                            val installing = plugin.internalName in installingNames
+                        itemsIndexed(selectedRepoPlugins, key = { _, p -> pluginManager.pluginInstallKey(selectedRepoUrl, p.internalName) }) { index, plugin ->
+                            val pluginKey = pluginManager.pluginInstallKey(selectedRepoUrl, plugin.internalName)
+                            val installed = pluginKey in installedNames
+                            val installing = pluginKey in installingNames
 
                             CS3PluginItem(
                                 plugin = plugin,
@@ -155,15 +160,15 @@ internal fun AddonRepoPluginsDialog(
                                     if (installing) return@CS3PluginItem
                                     scope.launch {
                                         dialogError = null
-                                        installingNames = installingNames + plugin.internalName
+                                        installingNames = installingNames + pluginKey
                                         if (installed) {
-                                            pluginManager.uninstallPlugin(plugin.internalName)
-                                            installedNames = installedNames - plugin.internalName
+                                            pluginManager.uninstallPlugin(selectedRepoUrl, plugin.internalName)
+                                            installedNames = installedNames - pluginKey
                                             onInstalledPluginsChanged()
                                         } else {
                                             val result = pluginManager.installPlugin(plugin, selectedRepoUrl)
                                             if (result.isSuccess) {
-                                                installedNames = installedNames + plugin.internalName
+                                                installedNames = installedNames + pluginKey
                                                 onInstalledPluginsChanged()
                                             } else {
                                                 dialogError = result.exceptionOrNull()?.message
@@ -171,7 +176,7 @@ internal fun AddonRepoPluginsDialog(
                                                 onError(dialogError)
                                             }
                                         }
-                                        installingNames = installingNames - plugin.internalName
+                                        installingNames = installingNames - pluginKey
                                     }
                                 }
                             )

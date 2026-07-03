@@ -34,7 +34,7 @@ fun ErrorScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F0F0F)),
+            .background(FluxaColors.backgroundNearBlack),
         contentAlignment = Alignment.Center
     ) {
         Column(

@@ -82,7 +82,7 @@ internal fun LibraryImportCollectionsDialog(
     }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = if (amoledMode) Color(0xFF050505) else Color(0xFF111620),
+        containerColor = if (amoledMode) FluxaColors.backgroundAmoled else FluxaColors.backgroundNavy,
         title = {
             Text(
                 text = AppStrings.t(lang, "library.import_collections"),
@@ -585,7 +585,7 @@ internal fun LibraryCollectionNameDialog(
     val trimmedTitle = title.trim()
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = if (amoledMode) Color(0xFF050505) else Color(0xFF111620),
+        containerColor = if (amoledMode) FluxaColors.backgroundAmoled else FluxaColors.backgroundNavy,
         title = {
             Text(
                 text = if (initialTitle.isBlank()) AppStrings.t(lang, "auto.new_collection") else AppStrings.t(lang, "auto.edit_collection"),

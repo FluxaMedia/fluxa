@@ -316,8 +316,8 @@ internal fun mobileColorOptions(lang: String): List<ChoiceOption> {
         ChoiceOption(Color.White.toArgb().toString(), AppStrings.t(lang, "auto.white")),
         ChoiceOption(Color.Black.toArgb().toString(), AppStrings.t(lang, "auto.black")),
         ChoiceOption(Color(0xFFFFE45C).toArgb().toString(), AppStrings.t(lang, "auto.yellow")),
-        ChoiceOption(Color(0xFFFF5D5D).toArgb().toString(), AppStrings.t(lang, "auto.red")),
-        ChoiceOption(Color(0xFF3F7CFF).toArgb().toString(), AppStrings.t(lang, "auto.blue"))
+        ChoiceOption(FluxaColors.subtitleRed.toArgb().toString(), AppStrings.t(lang, "auto.red")),
+        ChoiceOption(FluxaColors.subtitleBlue.toArgb().toString(), AppStrings.t(lang, "auto.blue"))
     )
 }
 
@@ -326,8 +326,8 @@ internal fun mobileSubtitleColorValues(): List<Int> {
         Color.White.toArgb(),
         Color.Black.toArgb(),
         Color(0xFFFFE45C).toArgb(),
-        Color(0xFFFF5D5D).toArgb(),
-        Color(0xFF3F7CFF).toArgb(),
+        FluxaColors.subtitleRed.toArgb(),
+        FluxaColors.subtitleBlue.toArgb(),
         Color(0xFF54D17A).toArgb(),
         Color(0xFFFF8A3D).toArgb(),
         Color(0xFFC084FC).toArgb()
@@ -338,8 +338,8 @@ internal fun mobileSubtitleColorOptions(lang: String): List<ChoiceOption> = list
     ChoiceOption(Color.White.toArgb().toString(), AppStrings.t(lang, "auto.white")),
     ChoiceOption(Color.Black.toArgb().toString(), AppStrings.t(lang, "auto.black")),
     ChoiceOption(Color(0xFFFFE45C).toArgb().toString(), AppStrings.t(lang, "auto.yellow")),
-    ChoiceOption(Color(0xFFFF5D5D).toArgb().toString(), AppStrings.t(lang, "auto.red")),
-    ChoiceOption(Color(0xFF3F7CFF).toArgb().toString(), AppStrings.t(lang, "auto.blue")),
+    ChoiceOption(FluxaColors.subtitleRed.toArgb().toString(), AppStrings.t(lang, "auto.red")),
+    ChoiceOption(FluxaColors.subtitleBlue.toArgb().toString(), AppStrings.t(lang, "auto.blue")),
     ChoiceOption(Color(0xFF54D17A).toArgb().toString(), AppStrings.t(lang, "auto.green")),
     ChoiceOption(Color(0xFFFF8A3D).toArgb().toString(), AppStrings.t(lang, "auto.orange")),
     ChoiceOption(Color(0xFFC084FC).toArgb().toString(), AppStrings.t(lang, "auto.purple"))
@@ -350,8 +350,8 @@ internal fun mobileColorLabel(value: Int, lang: String): String {
         Color.White.toArgb() -> AppStrings.t(lang, "auto.white")
         Color.Black.toArgb() -> AppStrings.t(lang, "auto.black")
         Color(0xFFFFE45C).toArgb() -> AppStrings.t(lang, "auto.yellow")
-        Color(0xFFFF5D5D).toArgb() -> AppStrings.t(lang, "auto.red")
-        Color(0xFF3F7CFF).toArgb() -> AppStrings.t(lang, "auto.blue")
+        FluxaColors.subtitleRed.toArgb() -> AppStrings.t(lang, "auto.red")
+        FluxaColors.subtitleBlue.toArgb() -> AppStrings.t(lang, "auto.blue")
         Color(0xFF54D17A).toArgb() -> AppStrings.t(lang, "auto.green")
         Color(0xFFFF8A3D).toArgb() -> AppStrings.t(lang, "auto.orange")
         Color(0xFFC084FC).toArgb() -> AppStrings.t(lang, "auto.purple")

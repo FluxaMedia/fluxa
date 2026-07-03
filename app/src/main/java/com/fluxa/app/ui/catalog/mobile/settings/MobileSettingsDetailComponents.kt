@@ -410,10 +410,10 @@ internal fun MobileAccentDots(profile: UserProfile, onUpdateProfile: (UserProfil
     ) {
         listOf(
             Color.White,
-            Color(0xFF3F7CFF),
+            FluxaColors.subtitleBlue,
             Color(0xFF35C2A0),
             Color(0xFFFF9D42),
-            Color(0xFFFF5D5D),
+            FluxaColors.subtitleRed,
             Color(0xFFFF4DA0)
         ).forEach { color ->
             val colorArgb = color.toArgb()

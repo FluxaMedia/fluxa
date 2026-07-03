@@ -56,6 +56,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -194,6 +195,8 @@ fun ProfileScreen(
     }
 }
 
+private const val PIN_LENGTH = 4
+
 @Composable
 private fun ProfilePinOverlay(
     profile: UserProfile,
@@ -205,6 +208,15 @@ private fun ProfilePinOverlay(
     val focusRequester = remember { FocusRequester() }
     val lang = profile.safeLanguage
 
+    fun submit() {
+        if (PinHasher.hash(pin) == profile.pinHash) {
+            onPinVerified()
+        } else {
+            showError = true
+            pin = ""
+        }
+    }
+
     LaunchedEffect(profile.id) {
         runCatching { focusRequester.requestFocus() }
     }
@@ -212,109 +224,126 @@ private fun ProfilePinOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f)),
+            .background(Color.Black.copy(alpha = 0.78f)),
         contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier
-                .widthIn(max = 420.dp)
-                .clip(RoundedCornerShape(28.dp))
-                .background(Color(0xFF16111B))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(28.dp))
-                .padding(28.dp),
+                .widthIn(max = 460.dp)
+                .clip(RoundedCornerShape(32.dp))
+                .background(Color(0xFF15121C))
+                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(32.dp))
+                .padding(horizontal = 40.dp, vertical = 36.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(Color(profile.safeColorArgb).copy(alpha = 0.95f))
+                    .border(2.dp, Color.White.copy(alpha = 0.28f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!profile.avatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = profile.avatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                } else {
+                    DefaultProfileAvatar(modifier = Modifier.size(46.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(18.dp))
             androidx.tv.material3.Text(
                 text = profile.displayName,
                 color = Color.White,
-                fontSize = 28.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             androidx.tv.material3.Text(
                 text = AppStrings.t(lang, "profiles.pin_prompt"),
-                color = Color.White.copy(alpha = 0.74f),
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 15.sp,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(22.dp))
-            BasicTextField(
-                value = pin,
-                onValueChange = {
-                    pin = it.filter(Char::isDigit).take(6)
-                    showError = false
-                },
-                modifier = Modifier
-                    .focusRequester(focusRequester)
-                    .width(220.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.08f))
-                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(18.dp))
-                    .padding(vertical = 16.dp),
-                singleLine = true,
-                textStyle = TextStyle(
-                    color = Color.White,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                ),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.NumberPassword,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (PinHasher.hash(pin) == profile.pinHash) onPinVerified() else showError = true
-                    }
-                ),
-                decorationBox = { innerTextField ->
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        if (pin.isBlank()) {
-                            androidx.tv.material3.Text(
-                                text = "",
-                                color = Color.White.copy(alpha = 0.24f),
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        innerTextField()
-                    }
-                }
-            )
-            if (showError) {
-                Spacer(modifier = Modifier.height(12.dp))
-                androidx.tv.material3.Text(
-                    text = AppStrings.t(lang, "profiles.pin_error"),
-                    color = Color(0xFFFF8A8A),
-                    fontSize = 14.sp
-                )
-            }
-            Spacer(modifier = Modifier.height(22.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(
-                    onClick = onDismiss,
-                    modifier = Modifier.width(140.dp),
-                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                        containerColor = Color.White.copy(alpha = 0.08f),
-                        focusedContainerColor = Color.White.copy(alpha = 0.14f)
-                    )
-                ) {
-                    Box(modifier = Modifier.padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
-                        androidx.tv.material3.Text(text = AppStrings.t(lang, "common.cancel"), color = Color.White)
-                    }
-                }
-                Surface(
-                    onClick = {
-                        if (PinHasher.hash(pin) == profile.pinHash) onPinVerified() else showError = true
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Box {
+                BasicTextField(
+                    value = pin,
+                    onValueChange = {
+                        val digits = it.filter(Char::isDigit).take(PIN_LENGTH)
+                        pin = digits
+                        showError = false
+                        if (digits.length == PIN_LENGTH) submit()
                     },
-                    modifier = Modifier.width(140.dp),
-                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                        containerColor = Color(0xFF63D7FF),
-                        focusedContainerColor = Color(0xFF9AE7FF)
-                    )
-                ) {
-                    Box(modifier = Modifier.padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
-                        androidx.tv.material3.Text(text = AppStrings.t(lang, "profiles.enter"), color = Color(0xFF04131C), fontWeight = FontWeight.Bold)
+                    modifier = Modifier
+                        .focusRequester(focusRequester)
+                        .size(1.dp),
+                    singleLine = true,
+                    textStyle = TextStyle(color = Color.Transparent, fontSize = 1.sp),
+                    cursorBrush = SolidColor(Color.Transparent),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.NumberPassword,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { submit() })
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    repeat(PIN_LENGTH) { index ->
+                        val filled = index < pin.length
+                        val isCursor = index == pin.length
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White.copy(alpha = if (filled) 0.14f else 0.06f))
+                                .border(
+                                    width = if (isCursor) 2.dp else 1.dp,
+                                    color = when {
+                                        showError -> FluxaColors.errorRed
+                                        isCursor -> Color(0xFF63D7FF)
+                                        else -> Color.White.copy(alpha = 0.16f)
+                                    },
+                                    shape = RoundedCornerShape(16.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (filled) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White)
+                                )
+                            }
+                        }
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+            androidx.tv.material3.Text(
+                text = if (showError) AppStrings.t(lang, "profiles.pin_error") else "",
+                color = Color(0xFFFF8A8A),
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Surface(
+                onClick = onDismiss,
+                modifier = Modifier.width(160.dp),
+                shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
+                colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                    containerColor = Color.White.copy(alpha = 0.06f),
+                    focusedContainerColor = Color.White.copy(alpha = 0.16f)
+                )
+            ) {
+                Box(modifier = Modifier.padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
+                    androidx.tv.material3.Text(text = AppStrings.t(lang, "common.cancel"), color = Color.White)
                 }
             }
         }

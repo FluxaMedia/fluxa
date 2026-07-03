@@ -66,7 +66,7 @@ internal fun MobileNuvioLoginView(
     var authenticatedSession by remember { mutableStateOf<NuvioSession?>(null) }
     var importedProfile by remember { mutableStateOf<UserProfile?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F))) {
+    Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundNearBlack)) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp)) {
             IconButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) {
                 Icon(FluxaIcons.ArrowBack, contentDescription = AppStrings.t(lang, "common.back"), tint = Color.White)
@@ -125,7 +125,7 @@ internal fun MobileNuvioLoginView(
                     )
 
                     error?.let {
-                        Text(it, color = Color(0xFFFF6B6B), modifier = Modifier.padding(top = 8.dp))
+                        Text(it, color = FluxaColors.errorRed, modifier = Modifier.padding(top = 8.dp))
                     }
 
                     Spacer(Modifier.height(20.dp))

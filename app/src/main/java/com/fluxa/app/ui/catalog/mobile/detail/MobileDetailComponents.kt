@@ -47,16 +47,16 @@ import com.fluxa.app.data.remote.Video
 import java.util.Locale
 
 @Composable
-internal fun MobileDetailTopIcon(icon: ImageVector, onClick: () -> Unit) {
+internal fun MobileDetailTopIcon(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(34.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.34f))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription, tint = Color.White, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -128,7 +128,7 @@ internal fun MobileEpisodeActionsSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(Color(0xFF171717))
+                .background(FluxaColors.surfaceDark)
                 .pointerInput(episode.id) {
                     detectTapGestures(onTap = {})
                 }
@@ -229,7 +229,7 @@ internal fun MobileSeasonActionsSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(Color(0xFF171717))
+                .background(FluxaColors.surfaceDark)
                 .pointerInput(season) {
                     detectTapGestures(onTap = {})
                 }
@@ -399,15 +399,36 @@ internal fun MobileEpisodeRow(
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Text(
-                    text = "${episode.number ?: 0}. ${episode.name.orEmpty()}",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(
+                        text = "${episode.number ?: 0}. ${episode.name.orEmpty()}",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .clickable { onDownloadClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            FluxaIcons.Download,
+                            contentDescription = AppStrings.t(lang, "downloads.download"),
+                            tint = Color.White.copy(alpha = 0.86f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
                 if (hasMeta) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -454,6 +475,63 @@ internal fun MobileEpisodeRow(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+internal fun MobileEpisodeRowSkeleton() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .padding(10.dp)
+            .height(112.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(148.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = 0.07f))
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.82f)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.10f))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.52f)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.07f))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.06f))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.74f)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.06f))
+            )
         }
     }
 }

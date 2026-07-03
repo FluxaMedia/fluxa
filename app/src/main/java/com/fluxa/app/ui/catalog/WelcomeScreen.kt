@@ -39,7 +39,7 @@ fun WelcomeScreen(
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
-                    colors = listOf(Color(0xFF221F1F), Color(0xFF0F0F0F)),
+                    colors = listOf(Color(0xFF221F1F), FluxaColors.backgroundNearBlack),
                     center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f)
                 )
             ),

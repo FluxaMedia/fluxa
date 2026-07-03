@@ -107,8 +107,8 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.addAddonSmartInputSe
                                     },
                                     null,
                                     tint = when (smartInput.detectedType) {
-                                        DetectedType.STREMIO_MANIFEST -> Color(0xFF4CAF50)
-                                        DetectedType.CLOUDSTREAM_REPO -> Color(0xFF2196F3)
+                                        DetectedType.STREMIO_MANIFEST -> FluxaColors.successGreen
+                                        DetectedType.CLOUDSTREAM_REPO -> FluxaColors.infoBlue
                                         else -> Color.White.copy(alpha = 0.42f)
                                     }
                                 )
@@ -135,7 +135,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.addAddonSmartInputSe
                                         Icon(
                                             FluxaIcons.Add,
                                             null,
-                                            tint = if (smartInput.detectedType == DetectedType.STREMIO_MANIFEST) Color(0xFF4CAF50) else Color(0xFF2196F3),
+                                            tint = if (smartInput.detectedType == DetectedType.STREMIO_MANIFEST) FluxaColors.successGreen else FluxaColors.infoBlue,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -143,8 +143,8 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.addAddonSmartInputSe
                             },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = when (smartInput.detectedType) {
-                                    DetectedType.STREMIO_MANIFEST -> Color(0xFF4CAF50).copy(alpha = 0.5f)
-                                    DetectedType.CLOUDSTREAM_REPO -> Color(0xFF2196F3).copy(alpha = 0.5f)
+                                    DetectedType.STREMIO_MANIFEST -> FluxaColors.successGreen.copy(alpha = 0.5f)
+                                    DetectedType.CLOUDSTREAM_REPO -> FluxaColors.infoBlue.copy(alpha = 0.5f)
                                     else -> Color.White.copy(alpha = 0.2f)
                                 },
                                 unfocusedBorderColor = Color.White.copy(alpha = 0.1f),

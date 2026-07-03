@@ -123,7 +123,7 @@ internal fun LibraryItemRow(item: Meta, onClick: () -> Unit) {
             .fillMaxWidth()
             .height(72.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF111620).copy(alpha = 0.78f))
+            .background(FluxaColors.backgroundNavy.copy(alpha = 0.78f))
             .clickable { onClick() }
             .padding(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -179,7 +179,7 @@ internal fun LibraryCollectionRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(62.dp)
-            .background(if (amoledMode) Color(0xFF050505) else Color(0xFF111620).copy(alpha = 0.78f), RoundedCornerShape(8.dp))
+            .background(if (amoledMode) FluxaColors.backgroundAmoled else FluxaColors.backgroundNavy.copy(alpha = 0.78f), RoundedCornerShape(8.dp))
             .border(1.dp, Color.White.copy(alpha = if (amoledMode) 0.045f else 0.035f), RoundedCornerShape(8.dp))
             .clickable(enabled = collection.items.isNotEmpty() && !editMode) { onClick() }
             .padding(6.dp),
@@ -225,7 +225,7 @@ internal fun LibraryCollectionRow(
                 Icon(FluxaIcons.Edit, null, tint = Color.White.copy(alpha = 0.76f), modifier = Modifier.size(18.dp))
             }
             IconButton(onClick = { onDelete(collection) }, modifier = Modifier.size(36.dp)) {
-                Icon(FluxaIcons.Delete, null, tint = Color(0xFFFF6B6B), modifier = Modifier.size(18.dp))
+                Icon(FluxaIcons.Delete, null, tint = FluxaColors.errorRed, modifier = Modifier.size(18.dp))
             }
         } else if (collection.locked) {
             Icon(FluxaIcons.Lock, null, tint = Color.White.copy(alpha = 0.58f), modifier = Modifier.size(18.dp))

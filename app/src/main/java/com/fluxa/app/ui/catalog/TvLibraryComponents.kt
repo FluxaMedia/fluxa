@@ -75,20 +75,25 @@ internal fun TvLibraryScreenContent(
     onOpenDownload: (OfflineDownloadItem) -> Unit,
     onDeleteCollection: (LibraryCollectionUi) -> Unit,
     onSaveUserCollection: (LibraryUserCollection) -> Unit,
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    tvNavActions: TvNavActions
 ) {
     var section by remember { mutableStateOf(TvLibrarySection.Planned) }
     var selectedDownloadGroup by remember { mutableStateOf<OfflineDownloadGroup?>(null) }
     var selectedCollection by remember { mutableStateOf<LibraryCollectionUi?>(null) }
     var editingCollection by remember { mutableStateOf<LibraryUserCollection?>(null) }
     val catalogOptions by viewModel.categories.collectAsStateWithLifecycle()
+    val useTopBar = activeProfile?.safeTvNavLayout == "top"
+    val railGutter = if (useTopBar) 56.dp else 126.dp
+    val contentTopPadding = if (useTopBar) 108.dp else 40.dp
 
     LaunchedEffect(section) {
         selectedDownloadGroup = null
         selectedCollection = null
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(start = railGutter, top = contentTopPadding)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -185,7 +190,7 @@ internal fun TvLibraryScreenContent(
                                     Icon(FluxaIcons.Edit, null, tint = Color.White)
                                 }
                                 IconButton(onClick = { onDeleteCollection(collection); selectedCollection = null }) {
-                                    Icon(FluxaIcons.Delete, null, tint = Color(0xFFFF6B6B))
+                                    Icon(FluxaIcons.Delete, null, tint = FluxaColors.errorRed)
                                 }
                             }
                         }
@@ -240,6 +245,30 @@ internal fun TvLibraryScreenContent(
                     onSaveUserCollection(saved)
                     editingCollection = null
                 }
+            )
+        }
+    }
+        if (useTopBar) {
+            TvHomeTopBar(
+                lang = lang,
+                selected = TvNavDestination.Library,
+                onHomeClick = tvNavActions.onHome,
+                onSearchClick = tvNavActions.onSearch,
+                onWatchlistClick = {},
+                onExploreClick = tvNavActions.onExplore,
+                onProfileClick = tvNavActions.onSettings,
+                contentFocusRequester = null
+            )
+        } else {
+            TvHomeNavRail(
+                lang = lang,
+                selected = TvNavDestination.Library,
+                onHomeClick = tvNavActions.onHome,
+                onSearchClick = tvNavActions.onSearch,
+                onWatchlistClick = {},
+                onExploreClick = tvNavActions.onExplore,
+                onProfileClick = tvNavActions.onSettings,
+                contentFocusRequester = null
             )
         }
     }

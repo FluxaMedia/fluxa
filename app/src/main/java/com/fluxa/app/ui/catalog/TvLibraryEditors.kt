@@ -192,7 +192,7 @@ private fun TvFolderEditorPage(
             .sortedBy { it.lowercase() }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF050505))) {
+    Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 58.dp, vertical = 40.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)

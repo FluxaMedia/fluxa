@@ -43,7 +43,7 @@ fun InstalledAddonItem(
     isRefreshing: Boolean,
     onToggleEnabled: (Boolean) -> Unit,
     onRemove: () -> Unit,
-    accentColor: Color = Color(0xFF4CAF50)
+    accentColor: Color = FluxaColors.successGreen
 ) {
     if (LocalDeviceType.current == DeviceType.Mobile) {
         MobileInstalledAddonItem(

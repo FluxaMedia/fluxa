@@ -121,7 +121,7 @@ private fun OfflineDownloadFolderRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(92.dp)
-            .background(if (amoledMode) Color(0xFF050505) else Color(0xFF111620).copy(alpha = 0.82f), RoundedCornerShape(8.dp))
+            .background(if (amoledMode) FluxaColors.backgroundAmoled else FluxaColors.backgroundNavy.copy(alpha = 0.82f), RoundedCornerShape(8.dp))
             .border(1.dp, Color.White.copy(alpha = if (amoledMode) 0.045f else 0.04f), RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(8.dp),
@@ -173,7 +173,7 @@ private fun OfflineDownloadEpisodeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (amoledMode) Color(0xFF050505) else Color(0xFF111620).copy(alpha = 0.82f), RoundedCornerShape(8.dp))
+            .background(if (amoledMode) FluxaColors.backgroundAmoled else FluxaColors.backgroundNavy.copy(alpha = 0.82f), RoundedCornerShape(8.dp))
             .border(1.dp, Color.White.copy(alpha = if (amoledMode) 0.045f else 0.04f), RoundedCornerShape(8.dp))
             .clickable(enabled = item.isPlayable) { onClick() }
             .padding(8.dp),

@@ -95,7 +95,7 @@ internal fun TvDetailScreenContent(
     val context = LocalContext.current
     var showEpisodeSortSelector by remember(detail?.id, selectedSeason) { mutableStateOf(false) }
     var episodeSort by remember(detail?.id, selectedSeason) { mutableStateOf("number_asc") }
-Box(modifier = Modifier.fillMaxSize().background(Color(0xFF050505))) {
+Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) {
     detail?.background?.let { bg -> AsyncImage(model = bg, contentDescription = null, modifier = Modifier.fillMaxSize().alpha(0.25f), contentScale = ContentScale.Crop) }
     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.9f), Color.Black))))
 

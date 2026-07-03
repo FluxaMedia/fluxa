@@ -203,14 +203,14 @@ fun MobileProfileItem(
                     modifier = Modifier
                         .size(30.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFFF6B6B).copy(alpha = 0.16f))
+                        .background(FluxaColors.errorRed.copy(alpha = 0.16f))
                         .clickable { onDeleteClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     androidx.compose.material3.Icon(
                         imageVector = FluxaIcons.Delete,
                         contentDescription = AppStrings.t(profile.safeLanguage, "profiles.delete"),
-                        tint = Color(0xFFFF6B6B),
+                        tint = FluxaColors.errorRed,
                         modifier = Modifier.size(15.dp)
                     )
                 }
