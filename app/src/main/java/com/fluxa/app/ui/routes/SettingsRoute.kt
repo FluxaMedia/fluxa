@@ -18,6 +18,7 @@ import com.fluxa.app.ui.generateOAuthCodeVerifier
 import com.fluxa.app.ui.requiresHomeReload
 import com.fluxa.app.ui.catalog.HomeViewModel
 import com.fluxa.app.ui.catalog.SettingsScreen
+import com.fluxa.app.ui.catalog.TvNavActions
 import com.fluxa.app.ui.catalog.UpdateManager
 import com.fluxa.app.data.repository.TraktIntegration
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +41,8 @@ internal fun SettingsRoute(
     onShowSimklSheet: () -> Unit,
     onTraktDeviceAuthChanged: (TraktDeviceAuthUiState?) -> Unit,
     onPendingMalCodeVerifierChanged: (String?) -> Unit,
-    onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit
+    onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
+    tvNavActions: TvNavActions
 ) {
     val scope = rememberCoroutineScope()
     SettingsScreen(
@@ -104,7 +106,8 @@ internal fun SettingsRoute(
             }
         },
         onUpdateInfoChanged = onUpdateInfoChanged,
-        viewModel = homeViewModel
+        viewModel = homeViewModel,
+        tvNavActions = tvNavActions
     )
 }
 

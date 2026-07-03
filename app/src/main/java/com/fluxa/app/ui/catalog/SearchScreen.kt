@@ -18,7 +18,8 @@ fun SearchScreen(
     onSearch: (String) -> Unit,
     onMovieClick: (Meta, String?, String?) -> Unit,
     onBack: () -> Unit,
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    tvNavActions: TvNavActions
 ) {
     val deviceType = LocalDeviceType.current
     val lang = activeProfile?.language ?: "en"
@@ -35,6 +36,6 @@ fun SearchScreen(
     if (deviceType == DeviceType.Mobile) {
         MobileSearchScreen(activeProfile, searchResults, searchRows, query, onSearch = { query = it; onSearch(it) }, onBack, onMovieClick, focusRequester, lang, viewModel)
     } else {
-        TvSearchScreenContent(activeProfile, searchResults, searchRows, query, onSearch = { query = it; onSearch(it) }, onBack, onMovieClick, focusRequester, lang, viewModel)
+        TvSearchScreenContent(activeProfile, searchResults, searchRows, query, onSearch = { query = it; onSearch(it) }, onBack, onMovieClick, focusRequester, lang, viewModel, tvNavActions)
     }
 }

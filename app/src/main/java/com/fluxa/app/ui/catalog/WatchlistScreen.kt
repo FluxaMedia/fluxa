@@ -55,7 +55,8 @@ fun WatchlistScreen(
     viewModel: HomeViewModel,
     offlineDownloadManager: OfflineDownloadManager? = null,
     onOpenDownload: (OfflineDownloadItem) -> Unit = {},
-    onUpdateProfile: (UserProfile) -> Unit = {}
+    onUpdateProfile: (UserProfile) -> Unit = {},
+    tvNavActions: TvNavActions
 ) {
     val watchlist by viewModel.watchlist.collectAsState()
     val likedItems by viewModel.likedItems.collectAsState()
@@ -303,7 +304,8 @@ fun WatchlistScreen(
                     )
                 }
             },
-            viewModel = viewModel
+            viewModel = viewModel,
+            tvNavActions = tvNavActions
         )
     }
 }

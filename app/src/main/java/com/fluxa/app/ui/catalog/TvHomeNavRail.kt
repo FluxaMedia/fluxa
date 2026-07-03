@@ -3,6 +3,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.ui.Screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.Brush
@@ -36,22 +37,54 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 
+internal enum class TvNavDestination { Home, Search, Library, Discover, Settings }
+
+internal fun Screen.tvNavDestination(): TvNavDestination? = when (this) {
+    is Screen.Home -> TvNavDestination.Home
+    is Screen.Search -> TvNavDestination.Search
+    is Screen.Watchlist -> TvNavDestination.Library
+    is Screen.Explore -> TvNavDestination.Discover
+    is Screen.Settings -> TvNavDestination.Settings
+    else -> null
+}
+
+data class TvNavActions(
+    val onHome: () -> Unit,
+    val onSearch: () -> Unit,
+    val onWatchlist: () -> Unit,
+    val onExplore: () -> Unit,
+    val onSettings: () -> Unit
+)
+
+@Composable
+private fun tvNavItems(
+    lang: String,
+    selected: TvNavDestination,
+    onHomeClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onWatchlistClick: () -> Unit,
+    onExploreClick: () -> Unit,
+    onProfileClick: () -> Unit
+): List<HomeNavItem> = listOf(
+    HomeNavItem(AppStrings.t(lang, "nav.home"), FluxaIcons.BottomHome, isActive = selected == TvNavDestination.Home, onClick = onHomeClick),
+    HomeNavItem(AppStrings.t(lang, "auto.search"), FluxaIcons.Search, isActive = selected == TvNavDestination.Search, onClick = onSearchClick),
+    HomeNavItem(AppStrings.t(lang, "nav.library"), FluxaIcons.BottomLibrary, isActive = selected == TvNavDestination.Library, onClick = onWatchlistClick),
+    HomeNavItem(AppStrings.t(lang, "nav.discover"), FluxaIcons.BottomDiscover, isActive = selected == TvNavDestination.Discover, onClick = onExploreClick),
+    HomeNavItem(AppStrings.t(lang, "nav.settings"), FluxaIcons.BottomSettings, isActive = selected == TvNavDestination.Settings, onClick = onProfileClick)
+)
+
 @Composable
 internal fun TvHomeNavRail(
     lang: String,
+    selected: TvNavDestination,
+    onHomeClick: () -> Unit,
     onSearchClick: () -> Unit,
     onWatchlistClick: () -> Unit,
     onExploreClick: () -> Unit,
     onProfileClick: () -> Unit,
     contentFocusRequester: FocusRequester?
 ) {
-    val items = listOf(
-        HomeNavItem(AppStrings.t(lang, "nav.home"), FluxaIcons.Home, isActive = true, onClick = {}),
-        HomeNavItem(AppStrings.t(lang, "auto.search"), FluxaIcons.Search, onClick = onSearchClick),
-        HomeNavItem(AppStrings.t(lang, "nav.library"), FluxaIcons.Bookmark, onClick = onWatchlistClick),
-        HomeNavItem(AppStrings.t(lang, "nav.discover"), FluxaIcons.Extension, onClick = onExploreClick),
-        HomeNavItem(AppStrings.t(lang, "nav.settings"), FluxaIcons.Settings, onClick = onProfileClick)
-    )
+    val items = tvNavItems(lang, selected, onHomeClick, onSearchClick, onWatchlistClick, onExploreClick, onProfileClick)
 
     Box(modifier = Modifier.fillMaxHeight()) {
         Box(
@@ -84,11 +117,10 @@ private fun NavRailItem(item: HomeNavItem, contentFocusRequester: FocusRequester
         onClick = item.onClick,
         modifier = Modifier
             .height(44.dp)
-            .then(
-                if (contentFocusRequester != null)
-                    Modifier.focusProperties { right = contentFocusRequester }
-                else Modifier
-            ),
+            .focusProperties {
+                left = FocusRequester.Cancel
+                if (contentFocusRequester != null) right = contentFocusRequester
+            },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
@@ -122,6 +154,8 @@ private data class HomeNavItem(
 @Composable
 internal fun TvHomeTopBar(
     lang: String,
+    selected: TvNavDestination,
+    onHomeClick: () -> Unit,
     onSearchClick: () -> Unit,
     onWatchlistClick: () -> Unit,
     onExploreClick: () -> Unit,
@@ -129,13 +163,7 @@ internal fun TvHomeTopBar(
     contentFocusRequester: FocusRequester?,
     firstItemFocusRequester: FocusRequester? = null
 ) {
-    val items = listOf(
-        HomeNavItem(AppStrings.t(lang, "nav.home"), FluxaIcons.Home, isActive = true, onClick = {}),
-        HomeNavItem(AppStrings.t(lang, "auto.search"), FluxaIcons.Search, onClick = onSearchClick),
-        HomeNavItem(AppStrings.t(lang, "nav.library"), FluxaIcons.Bookmark, onClick = onWatchlistClick),
-        HomeNavItem(AppStrings.t(lang, "nav.discover"), FluxaIcons.Extension, onClick = onExploreClick),
-        HomeNavItem(AppStrings.t(lang, "nav.settings"), FluxaIcons.Settings, onClick = onProfileClick)
-    )
+    val items = tvNavItems(lang, selected, onHomeClick, onSearchClick, onWatchlistClick, onExploreClick, onProfileClick)
 
     Box(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -171,11 +199,10 @@ private fun TopBarItem(item: HomeNavItem, contentFocusRequester: FocusRequester?
         modifier = Modifier
             .height(36.dp)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .then(
-                if (contentFocusRequester != null)
-                    Modifier.focusProperties { down = contentFocusRequester }
-                else Modifier
-            ),
+            .focusProperties {
+                if (focusRequester != null) left = FocusRequester.Cancel
+                if (contentFocusRequester != null) down = contentFocusRequester
+            },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(999.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,

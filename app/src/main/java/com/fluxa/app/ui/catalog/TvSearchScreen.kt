@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -54,28 +53,22 @@ fun TvSearchScreenContent(
     onMovieClick: (Meta, String?, String?) -> Unit,
     focusRequester: FocusRequester,
     lang: String,
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    tvNavActions: TvNavActions
 ) {
     val searchHistory by viewModel.searchHistory.collectAsState()
     val suggestions = remember(lang) { recommendedSearches(lang) }
+    val useTopBar = activeProfile?.safeTvNavLayout == "top"
+    val railGutter = if (useTopBar) 56.dp else 126.dp
+    val contentTopPadding = if (useTopBar) 108.dp else 40.dp
 
-    Row(modifier = Modifier.fillMaxSize().background(Color(0xFF040508))) {
-        Column(
-            modifier = Modifier.fillMaxHeight().width(80.dp).background(Color.Black.copy(0.3f)),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            val sidebarIcons = listOf(FluxaIcons.Search, FluxaIcons.Home, FluxaIcons.Store, FluxaIcons.Tv, FluxaIcons.VideoLibrary)
-            sidebarIcons.forEachIndexed { idx, icon ->
-                Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-                    androidx.tv.material3.Icon(icon, null, tint = if(idx == 0) Color.White else Color.White.copy(0.3f), modifier = Modifier.size(28.dp))
-                }
-                Spacer(Modifier.height(24.dp))
-            }
-        }
-
-        Row(modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 40.dp)) {
-            Column(modifier = Modifier.width(340.dp)) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF040508))) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = railGutter, end = 56.dp, top = contentTopPadding, bottom = 40.dp)
+    ) {
+        Column(modifier = Modifier.width(340.dp)) {
                 Text(
                     text = query.ifEmpty { AppStrings.t(lang, "auto.search") },
                     color = Color.White,
@@ -185,17 +178,9 @@ fun TvSearchScreenContent(
                     )
                 }
 
-                Row(modifier = Modifier.padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.padding(bottom = 32.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     topChips.forEach { tag ->
                         TagButton(tag) { onSearch(tag) }
-                    }
-                }
-
-                if (query.isBlank()) {
-                    Row(modifier = Modifier.padding(bottom = 32.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        FilterChip(AppStrings.t(lang, "auto.action"))
-                        FilterChip(AppStrings.t(lang, "auto.thriller"))
-                        FilterChip(AppStrings.t(lang, "auto.sci_fi"))
                     }
                 }
 
@@ -254,6 +239,29 @@ fun TvSearchScreenContent(
                 }
             }
         }
+        if (useTopBar) {
+            TvHomeTopBar(
+                lang = lang,
+                selected = TvNavDestination.Search,
+                onHomeClick = tvNavActions.onHome,
+                onSearchClick = {},
+                onWatchlistClick = tvNavActions.onWatchlist,
+                onExploreClick = tvNavActions.onExplore,
+                onProfileClick = tvNavActions.onSettings,
+                contentFocusRequester = null
+            )
+        } else {
+            TvHomeNavRail(
+                lang = lang,
+                selected = TvNavDestination.Search,
+                onHomeClick = tvNavActions.onHome,
+                onSearchClick = {},
+                onWatchlistClick = tvNavActions.onWatchlist,
+                onExploreClick = tvNavActions.onExplore,
+                onProfileClick = tvNavActions.onSettings,
+                contentFocusRequester = null
+            )
+        }
     }
 }
 
@@ -282,19 +290,6 @@ fun TagButton(text: String, onClick: () -> Unit) {
         colors = ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(0.05f), focusedContainerColor = Color.White)
     ) {
         Text(text = text, color = if(isFocused) Color.Black else Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-    }
-}
-
-@Composable
-fun FilterChip(text: String) {
-    var isFocused by remember { mutableStateOf(false) }
-    Surface(
-        onClick = {},
-        modifier = Modifier.onFocusChanged { isFocused = it.isFocused },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(24.dp)),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(0.05f), focusedContainerColor = Color.White)
-    ) {
-        Text(text = text, color = if (isFocused) Color.Black else Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
     }
 }
 

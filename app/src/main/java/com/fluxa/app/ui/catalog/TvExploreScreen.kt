@@ -40,9 +40,15 @@ fun TvExploreScreen(
     onSelectGenre: (String?) -> Unit,
     onMovieClick: (Meta, HomeCatalogSource?) -> Unit,
     onBack: () -> Unit,
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    tvNavActions: TvNavActions
 ) {
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF040508))) {
+    val useTopBar = activeProfile?.safeTvNavLayout == "top"
+    val railGutter = if (useTopBar) 56.dp else 126.dp
+    val contentTopPadding = if (useTopBar) 108.dp else 40.dp
+
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF040508))) {
+    Column(modifier = Modifier.fillMaxSize().padding(start = railGutter, top = contentTopPadding)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -113,6 +119,30 @@ fun TvExploreScreen(
                     profile = activeProfile
                 )
             }
+        }
+    }
+        if (useTopBar) {
+            TvHomeTopBar(
+                lang = lang,
+                selected = TvNavDestination.Discover,
+                onHomeClick = tvNavActions.onHome,
+                onSearchClick = tvNavActions.onSearch,
+                onWatchlistClick = tvNavActions.onWatchlist,
+                onExploreClick = {},
+                onProfileClick = tvNavActions.onSettings,
+                contentFocusRequester = null
+            )
+        } else {
+            TvHomeNavRail(
+                lang = lang,
+                selected = TvNavDestination.Discover,
+                onHomeClick = tvNavActions.onHome,
+                onSearchClick = tvNavActions.onSearch,
+                onWatchlistClick = tvNavActions.onWatchlist,
+                onExploreClick = {},
+                onProfileClick = tvNavActions.onSettings,
+                contentFocusRequester = null
+            )
         }
     }
 }

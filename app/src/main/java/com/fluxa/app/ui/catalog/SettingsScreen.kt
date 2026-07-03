@@ -71,10 +71,14 @@ fun SettingsScreen(
     onReboot: () -> Unit,
     onUpdateProfile: (UserProfile) -> Unit,
     onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit = {},
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    tvNavActions: TvNavActions
 ) {
     val deviceType = LocalDeviceType.current
     val lang = activeProfile?.safeLanguage ?: "en"
+    val useTopBar = activeProfile?.safeTvNavLayout == "top"
+    val railGutter = if (useTopBar) 56.dp else 126.dp
+    val contentTopPadding = if (useTopBar) 108.dp else 40.dp
     val accountTitle = activeProfile?.displayName ?: AppStrings.t(lang, "auto.guest")
     val userAddons by viewModel.userAddons.collectAsState()
     val totalWatchedContentDuration by viewModel.totalWatchedContentDuration.collectAsState()
@@ -83,10 +87,12 @@ fun SettingsScreen(
     val tabs = remember(lang, accountTitle) {
         listOf(
             SettingsTab("account", accountTitle, FluxaIcons.AccountCircle),
-            SettingsTab("interface", AppStrings.t(lang, "auto.interface"), FluxaIcons.Palette),
+            SettingsTab("general", AppStrings.t(lang, "auto.general"), FluxaIcons.Settings),
+            SettingsTab("appearance", AppStrings.t(lang, "auto.appearance"), FluxaIcons.Palette),
             SettingsTab("playback", AppStrings.t(lang, "auto.playback"), FluxaIcons.PlayCircle),
-            SettingsTab("downloads", AppStrings.t(lang, "auto.downloads"), FluxaIcons.Download),
+            SettingsTab("content", AppStrings.t(lang, "auto.catalogs"), FluxaIcons.MenuBook),
             SettingsTab("addons", AppStrings.t(lang, "auto.add_ons"), FluxaIcons.Extension),
+            SettingsTab("downloads", AppStrings.t(lang, "auto.downloads"), FluxaIcons.Download),
             SettingsTab("system", AppStrings.t(lang, "auto.system"), FluxaIcons.Settings),
             SettingsTab("developer", AppStrings.t(lang, "settings.developer"), FluxaIcons.Memory)
         )
@@ -102,7 +108,8 @@ fun SettingsScreen(
             )
     ) {
         if (deviceType == DeviceType.TV) {
-            Row(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.fillMaxSize().padding(start = railGutter, top = contentTopPadding)) {
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -143,7 +150,8 @@ fun SettingsScreen(
                         .fillMaxHeight()
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(36.dp)
+                        .padding(36.dp),
+                    verticalArrangement = Arrangement.spacedBy(28.dp)
                 ) {
                     SettingsContent(
                         tabId = selectedTab,
@@ -156,9 +164,34 @@ fun SettingsScreen(
                         onConnectSimkl = onConnectSimkl,
                         onManageAddons = onManageAddons,
                         onReboot = onReboot,
-                        onUpdateProfile = onUpdateProfile
+                        onUpdateProfile = onUpdateProfile,
+                        viewModel = viewModel
                     )
                 }
+            }
+            if (useTopBar) {
+                TvHomeTopBar(
+                    lang = lang,
+                    selected = TvNavDestination.Settings,
+                    onHomeClick = tvNavActions.onHome,
+                    onSearchClick = tvNavActions.onSearch,
+                    onWatchlistClick = tvNavActions.onWatchlist,
+                    onExploreClick = tvNavActions.onExplore,
+                    onProfileClick = {},
+                    contentFocusRequester = null
+                )
+            } else {
+                TvHomeNavRail(
+                    lang = lang,
+                    selected = TvNavDestination.Settings,
+                    onHomeClick = tvNavActions.onHome,
+                    onSearchClick = tvNavActions.onSearch,
+                    onWatchlistClick = tvNavActions.onWatchlist,
+                    onExploreClick = tvNavActions.onExplore,
+                    onProfileClick = {},
+                    contentFocusRequester = null
+                )
+            }
             }
         } else {
             var mobileCategory by remember { mutableStateOf<String?>(null) }

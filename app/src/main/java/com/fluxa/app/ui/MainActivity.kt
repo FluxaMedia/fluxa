@@ -420,7 +420,9 @@ class MainActivity : FragmentActivity() {
                     }
 
                     val navigateBackSafely = {
-                        if (deviceType == DeviceType.Mobile && activeProfile != null && !navigator.canNavigateBack() && currentScreen !is Screen.Home) {
+                        if (deviceType == DeviceType.Mobile && activeProfile == null && profileManager.getProfiles().isEmpty()) {
+                            navigator.navigateTo(Screen.Login(), true)
+                        } else if (deviceType == DeviceType.Mobile && activeProfile != null && !navigator.canNavigateBack() && currentScreen !is Screen.Home) {
                             navigator.navigateTo(Screen.Home, true)
                         } else {
                             navigator.navigateBack()

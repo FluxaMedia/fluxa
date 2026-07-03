@@ -35,7 +35,8 @@ fun ExploreScreen(
     onBack: () -> Unit,
     viewModel: HomeViewModel,
     initialType: String = "all",
-    initialGenre: String? = null
+    initialGenre: String? = null,
+    tvNavActions: TvNavActions
 ) {
     val deviceType = LocalDeviceType.current
     val lang = activeProfile?.language ?: "en"
@@ -140,7 +141,8 @@ fun ExploreScreen(
                 onMovieClick(meta, source?.transportUrl, source?.type)
             },
             onBack = onBack,
-            viewModel = viewModel
+            viewModel = viewModel,
+            tvNavActions = tvNavActions
         )
     }
 }
