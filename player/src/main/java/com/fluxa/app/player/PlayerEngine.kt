@@ -4,6 +4,7 @@ package com.fluxa.app.player
 
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
+import androidx.media3.common.C
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaLocalStreamServer
 import com.fluxa.app.core.rust.models.NativeDvProxyPlan
@@ -88,6 +89,8 @@ class ExoPlayerEngine(
             dvRpuMode = request.dvRpuMode,
             dvZeroLevel5 = request.dvZeroLevel5,
             dvHdr10PlusMode = request.dvHdr10PlusMode,
+            iptPqc2UseHdr = resolved.iptPqc2UseHdr,
+            iptPqc2PreDecide = resolved.iptPqc2PreDecide,
             stream = request.stream
         )
         if (request.startPositionMs > 0L) {
@@ -147,7 +150,13 @@ class ExoPlayerEngine(
 
     override fun setSubtitleDelayMs(delayMs: Long) = Unit
 
-    override fun setZoomed(zoomed: Boolean) = Unit
+    override fun setZoomed(zoomed: Boolean) {
+        exoPlayer.videoScalingMode = if (zoomed) {
+            C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+        } else {
+            C.VIDEO_SCALING_MODE_SCALE_TO_FIT
+        }
+    }
 
     override fun selectAudio(track: MediaTrack) {
         controller.selectAudio(track)
@@ -183,33 +192,32 @@ class ExoPlayerEngine(
         val dvPlan = resolveDvProxyPlan(url, stream, dvMode, caps)
         controller.notifyDvProxyPlan(dvPlan)
 
-        // Primary: Rust-decided proxy plan (fluxa_core metadata-based decision).
-        // User-configured RPU mode and Level-5 zeroing override the plan defaults.
+        val isP5 = dvPlan?.profile == "P5"
+        val useHdr = caps.displaySupportsHdr10
+
         if (dvPlan != null && dvPlan.action != "none") {
+            val isHlsConvert = dvPlan.action == "hls_rpu_convert"
             val dvSession = FluxaLocalStreamServer.startWithDvRewrite(
                 targetUrl = url,
                 headers = StreamRequestPolicy.headersFor(url, headers),
                 action = dvPlan.action,
-                rpuMode = if (dvPlan.action == "rpu_convert") dvRpuMode else dvPlan.rpuMode,
+                rpuMode = if (dvPlan.action == "rpu_convert" || isHlsConvert) dvRpuMode else dvPlan.rpuMode,
                 deviceHasDvDecoder = caps.mediaCodecSupportsDolbyVision,
                 deviceHasDvDisplay = caps.displaySupportsDolbyVision,
-                zeroLevel5 = dvPlan.action == "rpu_convert" && dvZeroLevel5,
+                zeroLevel5 = (dvPlan.action == "rpu_convert" || isHlsConvert) && dvZeroLevel5,
                 removeHdr10Plus = when (dvHdr10PlusMode) {
                     "always" -> true
                     "never" -> false
-                    else -> dvPlan.action == "rpu_convert" // auto: strip only when converting RPU
+                    else -> dvPlan.action == "rpu_convert" || isHlsConvert
                 },
                 fallbackMode = fallbackModeStr
             )
             if (dvSession != null) {
                 localStreamSession = dvSession
-                return ResolvedPlaybackUrl(dvSession.url, emptyMap())
+                return ResolvedPlaybackUrl(dvSession.url, emptyMap(), iptPqc2PreDecide = isP5, iptPqc2UseHdr = useHdr)
             }
         }
 
-        // Secondary: Kodi-style container-level DV auto-detection for MKV/MP4.
-        // Only used when auth headers require a proxy — the OkHttp interceptor handles
-        // DVCC stripping (including P5 IPTPQc2 signalling) for direct streams.
         if (dvMode != DolbyVisionFallbackMode.Off && (dvPlan == null || dvPlan.action == "none")) {
             val lowerUrl = url.lowercase()
             val isContainerFile = lowerUrl.endsWith(".mkv") || lowerUrl.contains(".mkv?") ||
@@ -226,24 +234,24 @@ class ExoPlayerEngine(
                     removeHdr10Plus = when (dvHdr10PlusMode) {
                         "always" -> true
                         "never" -> false
-                        else -> dvPlan?.action == "rpu_convert" // auto: strip only when converting RPU
+                        else -> false
                     },
                     fallbackMode = fallbackModeStr
                 )
                 if (autoSession != null) {
                     localStreamSession = autoSession
-                    return ResolvedPlaybackUrl(autoSession.url, emptyMap())
+                    return ResolvedPlaybackUrl(autoSession.url, emptyMap(), iptPqc2PreDecide = isP5, iptPqc2UseHdr = useHdr)
                 }
             }
         }
 
-        if (!shouldUseLocalStreamServer(url, headers)) return ResolvedPlaybackUrl(url, headers)
+        if (!shouldUseLocalStreamServer(url, headers)) return ResolvedPlaybackUrl(url, headers, iptPqc2PreDecide = isP5, iptPqc2UseHdr = useHdr)
         val session = FluxaLocalStreamServer.start(
             targetUrl = url,
             headers = StreamRequestPolicy.headersFor(url, headers)
-        ) ?: return ResolvedPlaybackUrl(url, headers)
+        ) ?: return ResolvedPlaybackUrl(url, headers, iptPqc2PreDecide = isP5, iptPqc2UseHdr = useHdr)
         localStreamSession = session
-        return ResolvedPlaybackUrl(session.url, emptyMap())
+        return ResolvedPlaybackUrl(session.url, emptyMap(), iptPqc2PreDecide = isP5, iptPqc2UseHdr = useHdr)
     }
 
     private fun resolveDvProxyPlan(
@@ -373,7 +381,9 @@ class MpvPlayerEngine(
 
 private data class ResolvedPlaybackUrl(
     val url: String,
-    val headers: Map<String, String>
+    val headers: Map<String, String>,
+    val iptPqc2PreDecide: Boolean = false,
+    val iptPqc2UseHdr: Boolean = false
 )
 
 private fun shouldUseLocalStreamServer(url: String, headers: Map<String, String>): Boolean {

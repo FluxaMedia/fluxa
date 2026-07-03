@@ -42,6 +42,8 @@ private fun markSegmentCooldownRemainingSec(state: PlayerScreenState, meta: Meta
     return if (remainingMs > 0) remainingMs / 1000 else null
 }
 
+private const val MIN_MANUAL_FILL_SCALE = 1.34f
+
 @Composable
 internal fun PlayerScreenContent(
     meta: Meta,
@@ -83,7 +85,7 @@ internal fun PlayerScreenContent(
     switchToStream: (Int) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val gestureState = remember { object { var startedInOriginal = false; var pinchBelowFitAccum = 1.0f } }
+    val gestureState = remember { object { var startedInOriginal = false; var snappedToFillThisGesture = false } }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     val emptyVideoAspectRatio = remember { MutableStateFlow<Float?>(null) }
     val mpvVideoAspectRatio by (mpvPlayer?.videoAspectRatio ?: emptyVideoAspectRatio).collectAsStateWithLifecycle()
@@ -91,7 +93,8 @@ internal fun PlayerScreenContent(
     DisposableEffect(exoPlayer) {
         fun applyVideoSize(videoSize: androidx.media3.common.VideoSize) {
             if (videoSize.width > 0 && videoSize.height > 0) {
-                exoVideoAspectRatio = videoSize.width.toFloat() / videoSize.height.toFloat()
+                val pixelWidthHeightRatio = videoSize.pixelWidthHeightRatio.takeIf { it > 0f } ?: 1f
+                exoVideoAspectRatio = (videoSize.width.toFloat() * pixelWidthHeightRatio) / videoSize.height.toFloat()
             }
         }
         applyVideoSize(exoPlayer.videoSize)
@@ -106,12 +109,13 @@ internal fun PlayerScreenContent(
     val activeVideoAspectRatio = if (useMpvBackend) mpvVideoAspectRatio else exoVideoAspectRatio
     val fillScale = remember(activeVideoAspectRatio, containerSize) {
         val aspectRatio = activeVideoAspectRatio
-        if (aspectRatio == null || aspectRatio <= 0f || containerSize.width <= 0 || containerSize.height <= 0) {
+        val measuredFillScale = if (aspectRatio == null || aspectRatio <= 0f || containerSize.width <= 0 || containerSize.height <= 0) {
             1.0f
         } else {
             val containerAspectRatio = containerSize.width.toFloat() / containerSize.height.toFloat()
             maxOf(containerAspectRatio / aspectRatio, aspectRatio / containerAspectRatio)
         }
+        maxOf(measuredFillScale, MIN_MANUAL_FILL_SCALE)
     }
     val playerContent = remember(meta) { meta.toPlayerContentUiModel() }
     val currentStreamDetailLine = remember(state.currentStreams, state.currentStreamIndex) {
@@ -153,35 +157,38 @@ internal fun PlayerScreenContent(
                 onClosePlayer = closePlayer,
                 onPinchZoomGestureStart = {
                     gestureState.startedInOriginal = (state.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT)
-                    gestureState.pinchBelowFitAccum = 1.0f
+                    gestureState.snappedToFillThisGesture = false
                 },
-                onPinchZoom = { zoomDelta ->
+                onPinchZoom = pinch@ { zoomDelta ->
+                    if (gestureState.snappedToFillThisGesture) {
+                        state.showZoomOverlay = true
+                        state.zoomOverlayVersion += 1
+                        return@pinch
+                    }
                     if (zoomDelta > 1.0f) {
-                        gestureState.pinchBelowFitAccum = 1.0f
                         if (gestureState.startedInOriginal && state.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
-                            // Snap straight to fill on the first pinch-in, like YouTube — this
+                            // Snap straight to fill on the first pinch-in. This
                             // frame's delta triggers the snap rather than adding extra zoom on top of it.
-                            // For mpv (no native crop-to-fill resize mode), fillScale is the
-                            // computed scale that actually removes the letterboxing; for ExoPlayer,
-                            // RESIZE_MODE_ZOOM already crops automatically so fillScale is just 1.0.
                             state.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                             state.videoZoomScale = fillScale
                             gestureState.startedInOriginal = false
+                            gestureState.snappedToFillThisGesture = true
                         } else {
-                            state.videoZoomScale = (state.videoZoomScale * zoomDelta).coerceAtMost(fillScale * 4.0f)
-                        }
-                    } else {
-                        if (state.videoZoomScale > fillScale * 1.05f) {
-                            state.videoZoomScale = (state.videoZoomScale * zoomDelta).coerceAtLeast(fillScale)
-                            gestureState.pinchBelowFitAccum = 1.0f
-                        } else if (state.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM && !gestureState.startedInOriginal) {
-                            // Keep pinch-out at Fill instead of falling back to letterboxed Original.
-                            gestureState.pinchBelowFitAccum = (gestureState.pinchBelowFitAccum * zoomDelta).coerceAtMost(1.0f)
-                            if (gestureState.pinchBelowFitAccum < 0.75f) {
+                            if (state.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
                                 state.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                                 state.videoZoomScale = fillScale
-                                gestureState.pinchBelowFitAccum = 1.0f
+                            } else {
+                                state.videoZoomScale = (state.videoZoomScale * zoomDelta)
+                                    .coerceIn(fillScale, fillScale * 4.0f)
                             }
+                        }
+                    } else if (zoomDelta < 1.0f && state.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                        val nextScale = state.videoZoomScale * zoomDelta
+                        if (nextScale < fillScale) {
+                            state.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            state.videoZoomScale = 1.0f
+                        } else {
+                            state.videoZoomScale = nextScale.coerceAtMost(fillScale * 4.0f)
                         }
                     }
                     state.showZoomOverlay = true

@@ -44,6 +44,8 @@ object FluxaStreamingNative {
 
     fun dvGetStreamStats(): String = call { dvGetStreamStatsJsonNative() }
 
+    fun dvGetCurrentL1Json(): String = call { dvGetCurrentL1JsonNative() }
+
     fun parseMkvChapters(data: ByteArray): String = call { parseMkvChaptersNative(data) }
 
     private inline fun <T> call(block: () -> T): T {
@@ -60,5 +62,6 @@ object FluxaStreamingNative {
     private external fun dvAutoDetectWasIptPqc2Native(): Boolean
     private external fun dvRewriteSegmentBytesNative(data: ByteArray, rpuMode: Int, zeroLevel5: Boolean, removeHdr10Plus: Boolean): ByteArray
     private external fun dvGetStreamStatsJsonNative(): String
+    private external fun dvGetCurrentL1JsonNative(): String
     private external fun parseMkvChaptersNative(data: ByteArray): String
 }
