@@ -373,6 +373,7 @@ fun DetailScreen(
     TvDetailScreenContent(
         detail = detail,
         initialMeta = initialMeta,
+        blurUnwatchedEpisodes = activeProfile?.safeBlurUnwatchedEpisodes ?: false,
         id = id,
         type = effectiveType,
         activeProfile = activeProfile,

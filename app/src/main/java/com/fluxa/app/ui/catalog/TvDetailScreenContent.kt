@@ -57,6 +57,7 @@ import java.util.*
 internal fun TvDetailScreenContent(
     detail: MetaDetail?,
     initialMeta: com.fluxa.app.data.remote.Meta? = null,
+    blurUnwatchedEpisodes: Boolean = false,
     id: String,
     type: String,
     activeProfile: UserProfile?,
@@ -242,9 +243,10 @@ Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) 
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 20.dp)) {
                         items(episodes, key = { it.id }) { episode ->
                 EpisodeCard(
-                    episode = episode, 
-                    isSelected = selectedEpisode?.id == episode.id, 
-                    isWatched = effectiveWatchedVideoIds.contains(episode.id), 
+                    episode = episode,
+                    isSelected = selectedEpisode?.id == episode.id,
+                    isWatched = effectiveWatchedVideoIds.contains(episode.id),
+                    blurUnwatched = blurUnwatchedEpisodes,
                     progress = when {
                         effectiveWatchedVideoIds.contains(episode.id) -> 1f
                         episode.id == effectiveLastVideoId && (effectiveInitialProgress ?: 0L) > 0L -> episodeProgressFraction(effectiveInitialProgress ?: 0L, detail.runtime)

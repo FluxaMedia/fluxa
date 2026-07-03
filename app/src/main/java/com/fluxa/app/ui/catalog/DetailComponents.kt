@@ -324,6 +324,7 @@ fun EpisodeCard(
     episode: Video,
     isSelected: Boolean,
     isWatched: Boolean = false,
+    blurUnwatched: Boolean = false,
     progress: Float = 0f,
     durationLabel: String? = null,
     accentColor: Color,
@@ -338,6 +339,12 @@ fun EpisodeCard(
     val isUpcoming = detailIsUpcoming(episode.released)
     val thumbnailRequest = rememberEpisodeThumbnailRequest(episode)
     val runtimeText = durationLabel?.takeIf { it.isNotBlank() }?.let { formatRuntimeLabel(it, lang) }
+    val thumbnailAlpha = when {
+        isUpcoming -> 0.4f
+        blurUnwatched && !isWatched -> 0.5f
+        !blurUnwatched && isWatched -> 0.45f
+        else -> 1.0f
+    }
     Column(
         modifier = Modifier
             .width(300.dp)
@@ -375,7 +382,7 @@ fun EpisodeCard(
                         model = thumbnailRequest,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().alpha(if (isUpcoming) 0.4f else if (isWatched) 0.45f else 1.0f),
+                        modifier = Modifier.fillMaxSize().alpha(thumbnailAlpha),
                         onState = { state -> if (state is AsyncImagePainter.State.Error) thumbnailFailed = true }
                     )
                 }
