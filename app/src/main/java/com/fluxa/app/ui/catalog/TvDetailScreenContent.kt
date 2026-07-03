@@ -56,6 +56,7 @@ import java.util.*
 @Composable
 internal fun TvDetailScreenContent(
     detail: MetaDetail?,
+    initialMeta: com.fluxa.app.data.remote.Meta? = null,
     id: String,
     type: String,
     activeProfile: UserProfile?,
@@ -96,8 +97,9 @@ internal fun TvDetailScreenContent(
     val context = LocalContext.current
     var showEpisodeSortSelector by remember(detail?.id, selectedSeason) { mutableStateOf(false) }
     var episodeSort by remember(detail?.id, selectedSeason) { mutableStateOf("number_asc") }
-    val detailBgRequest = remember(detail?.background) {
-        detail?.background?.let { bg ->
+    val heroBg = detail?.background ?: detail?.poster ?: initialMeta?.background ?: initialMeta?.poster
+    val detailBgRequest = remember(heroBg) {
+        heroBg?.let { bg ->
             ImageRequest.Builder(context).data(bg).memoryCacheKey("detail-bg:$bg").diskCacheKey(bg).build()
         }
     }

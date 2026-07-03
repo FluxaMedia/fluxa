@@ -184,6 +184,7 @@ fun DetailScreen(
         val validTabs = buildSet {
             if (trailers.isNotEmpty()) add("trailers")
             if (effectiveType == "series") add("episodes")
+            if (hasStreamProviders || streams.isNotEmpty()) add("sources")
             if (similarItems.isNotEmpty()) add("similar")
         }
         if (activeTab !in validTabs) {
@@ -345,6 +346,9 @@ fun DetailScreen(
             },
             onStreamClick = { stream -> onStreamClick(stream, selectedEpisode) },
             onPlayEpisode = onPlayEpisode,
+            onSimilarClick = { item ->
+                viewModel.loadDetail(item.type, item.id, activeProfile, initialMeta = item)
+            },
             onDownloadEpisode = onDownloadEpisode,
             onDownloadEpisodes = onDownloadEpisodes,
             onMarkEpisodeWatched = { episode, watched -> viewModel.markEpisodeWatched(detail?.id ?: id, episode, watched) },
@@ -368,6 +372,7 @@ fun DetailScreen(
 
     TvDetailScreenContent(
         detail = detail,
+        initialMeta = initialMeta,
         id = id,
         type = effectiveType,
         activeProfile = activeProfile,
