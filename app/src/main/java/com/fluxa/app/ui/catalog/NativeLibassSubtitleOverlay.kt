@@ -24,26 +24,24 @@ import com.fluxa.app.player.MediaTrack
 import com.fluxa.app.player.MkvNativeAssExtractor
 import com.fluxa.app.player.NativeAssTrack
 import com.fluxa.app.player.NativeLibassRenderer
+import com.fluxa.app.player.StreamRequestPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 internal fun selectedNativeAssSubtitle(
     currentSubtitle: MediaTrack?,
     externalSubtitles: List<ExternalSubtitleTrack>
 ): ExternalSubtitleTrack? {
     if (currentSubtitle == null) return null
-    return externalSubtitles.firstOrNull { subtitle ->
-        NativeLibassRenderer.isAssUrl(subtitle.url) &&
-            (
-                subtitle.label == currentSubtitle.label ||
-                    subtitle.language == currentSubtitle.language ||
-                    subtitle.url == currentSubtitle.label
-                )
-    }
+    val assOnly = externalSubtitles.filter { NativeLibassRenderer.isAssUrl(it.url) }
+    return assOnly.firstOrNull { it.label != null && it.label == currentSubtitle.label }
+        ?: assOnly.firstOrNull { it.url == currentSubtitle.label }
+        ?: assOnly.firstOrNull { it.label != null && it.language != null && it.language == currentSubtitle.language }
 }
 
 internal fun selectedEmbeddedNativeAssTrack(
@@ -107,7 +105,11 @@ internal fun NativeLibassSubtitleOverlay(
         }
     }
 
-    val activeRenderer = relayRenderer ?: localRenderer
+    val activeRenderer = when {
+        embeddedSubtitle != null -> relayRenderer ?: localRenderer
+        externalSubtitle != null -> localRenderer
+        else -> null
+    }
 
     AndroidView(
         factory = { NativeLibassSubtitleView(it) },
@@ -126,13 +128,13 @@ private class NativeLibassSubtitleView(context: Context) : View(context) {
             field?.removeListener(playerListener)
             field = value
             value?.addListener(playerListener)
-            scheduleNextFrame()
+            if (isAttachedToWindow) postInvalidateOnAnimation()
         }
 
     var renderer: NativeLibassRenderer? = null
         set(value) {
             field = value
-            scheduleNextFrame()
+            if (isAttachedToWindow) postInvalidateOnAnimation()
         }
 
     var subtitleDelayMs: Long = 0L
@@ -145,7 +147,7 @@ private class NativeLibassSubtitleView(context: Context) : View(context) {
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (isPlaying) invalidate()
+            if (isPlaying) postInvalidateOnAnimation()
         }
 
         override fun onPositionDiscontinuity(
@@ -160,7 +162,7 @@ private class NativeLibassSubtitleView(context: Context) : View(context) {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         player?.addListener(playerListener)
-        scheduleNextFrame()
+        postInvalidateOnAnimation()
     }
 
     override fun onDetachedFromWindow() {
@@ -182,17 +184,20 @@ private class NativeLibassSubtitleView(context: Context) : View(context) {
                 bitmap = it
             }
 
-        val hasImage = activeRenderer.render(activePlayer.currentPosition + subtitleDelayMs, targetBitmap)
-        if (hasImage) {
-            canvas.drawBitmap(targetBitmap, 0f, 0f, null)
-        }
-        scheduleNextFrame()
-    }
+        val result = activeRenderer.render(activePlayer.currentPosition + subtitleDelayMs, targetBitmap)
+        if (result > 0) canvas.drawBitmap(targetBitmap, 0f, 0f, null)
 
-    private fun scheduleNextFrame() {
-        if (renderer == null || player == null || !isAttachedToWindow) return
-        if (player?.isPlaying == true) postInvalidateOnAnimation()
+        if (activePlayer.isPlaying || activePlayer.playWhenReady) {
+            if (result == 0) postInvalidateDelayed(100) else postInvalidateOnAnimation()
+        }
     }
+}
+
+private val subtitleHttpClient: OkHttpClient by lazy {
+    OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .build()
 }
 
 private suspend fun fetchSubtitleBytes(context: Context, rawUrl: String): ByteArray = withContext(Dispatchers.IO) {
@@ -201,18 +206,13 @@ private suspend fun fetchSubtitleBytes(context: Context, rawUrl: String): ByteAr
         "content" -> context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
         "file" -> File(requireNotNull(uri.path)).readBytes()
         "http", "https" -> {
-            val connection = (URL(rawUrl).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 15_000
-                readTimeout = 20_000
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", com.fluxa.app.player.StreamRequestPolicy.DEFAULT_USER_AGENT)
-            }
-            try {
-                connection.inputStream.use { it.readBytes() }
-            } finally {
-                connection.disconnect()
+            val headers = StreamRequestPolicy.headersFor(rawUrl, emptyMap())
+            val requestBuilder = Request.Builder().url(rawUrl)
+            headers.forEach { (k, v) -> requestBuilder.header(k, v) }
+            subtitleHttpClient.newCall(requestBuilder.build()).execute().use { response ->
+                response.body.bytes()
             }
         }
-        else -> URL(rawUrl).openStream().use { it.readBytes() }
+        else -> java.net.URL(rawUrl).openStream().use { it.readBytes() }
     }
 }

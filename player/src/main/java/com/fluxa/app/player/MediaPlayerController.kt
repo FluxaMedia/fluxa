@@ -74,6 +74,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             @Volatile var lastDolbyVisionDecision: String = "dv_fallback=not_checked"
             @Volatile var dvProxyPlanDebug: String = ""
             @Volatile var needsIptPqc2ToneMap: Boolean = false
+            @Volatile var iptPqc2UseHdr: Boolean = false
             @Volatile var shouldConvertRpuP7: Boolean = false
             @Volatile var cachedCapabilities: DolbyVisionCapabilities? = null
             @Volatile var dvRpuMode: Int = 2
@@ -281,7 +282,8 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             // localhost (torrent proxy) to avoid a seek-to-end probe, but that made torrent
             // MKV streams non-seekable — ExoPlayer reverts to position 0 on seekTo() without cues.
             val relay = LibassEventRelay()
-            val extractorsFactory = LibassInjectingExtractorsFactory(relay, DefaultExtractorsFactory())
+            val fontsDir = context.applicationContext.filesDir.resolve("fonts").absolutePath
+            val extractorsFactory = LibassInjectingExtractorsFactory(relay, DefaultExtractorsFactory(), fontsDir)
             val mediaSourceFactory = DefaultMediaSourceFactory(context, extractorsFactory)
                 .setDataSourceFactory(dataSourceFactory)
 
@@ -515,20 +517,15 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             ) {
                 updateTechnicalInfo()
                 val ctx = requestContexts[exoPlayer] ?: return
-                // Check proxy auto_detect IPTPQc2 flag (MKV P5 via Rust proxy path).
-                // Must be checked before the flag is tested below, as the proxy may set it
-                // only after the first bytes of the stream are read — which happens before
-                // onVideoInputFormatChanged is called.
                 if (!ctx.needsIptPqc2ToneMap) {
                     if (runCatching { com.fluxa.app.core.rust.FluxaStreamingNative.dvAutoDetectWasIptPqc2() }.getOrDefault(false)) {
                         ctx.needsIptPqc2ToneMap = true
                     }
                 }
-                // HLS/direct-stream P5 CID=0: needsIptPqc2ToneMap set by manifest rewrite or
-                // container DVCC interceptor. Activates the IPTPQc2 → SDR color correction shader.
                 if (ctx.needsIptPqc2ToneMap) {
+                    updateIptPqc2L1State()
                     ctx.videoEffectsActive = true
-                    exoPlayer.setVideoEffects(listOf(IptPqc2ToneMapEffect()))
+                    exoPlayer.setVideoEffects(listOf(IptPqc2ToneMapEffect(ctx.iptPqc2UseHdr)))
                 }
             }
 
@@ -540,6 +537,28 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                 saveBandwidthEstimate(context.applicationContext, bitrateEstimate)
             }
         })
+    }
+
+    private fun updateIptPqc2L1State() {
+        runCatching {
+            val json = com.fluxa.app.core.rust.FluxaStreamingNative.dvGetCurrentL1Json()
+            val obj = com.google.gson.JsonParser.parseString(json).asJsonObject
+            if (obj.get("available")?.asBoolean == true) {
+                val minPq = obj.get("min_pq")?.asInt ?: return
+                val maxPq = obj.get("max_pq")?.asInt ?: return
+                IptPqc2L1State.sdrWhiteLinear = pqCodeToLinear(minPq).coerceIn(0.001f, 0.1f)
+                IptPqc2L1State.hdrPeakLinear = pqCodeToLinear(maxPq).coerceIn(0.05f, 1.0f)
+                IptPqc2L1State.available = true
+            }
+        }
+    }
+
+    private fun pqCodeToLinear(pqCode: Int): Float {
+        val e = (pqCode.coerceIn(0, 4095) / 4095.0f)
+        val ep = Math.pow(e.toDouble(), 1.0 / 78.84375).toFloat()
+        val num = (ep - 0.8359375f).coerceAtLeast(0f)
+        val den = (18.8515625f - 18.6875f * ep).coerceAtLeast(1e-6f)
+        return Math.pow((num / den).toDouble(), 1.0 / 0.1593017578125).toFloat()
     }
 
     private fun updateTechnicalInfo(extraDroppedFrames: Int? = null) {
@@ -607,7 +626,15 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         _availableAudios.value = audios
         _availableSubtitles.value = subtitles
         _currentAudio.value = audios.find { it.isSelected }
-        _currentSubtitle.value = subtitles.find { it.isSelected }
+        val selectedSub = subtitles.find { it.isSelected }
+        _currentSubtitle.value = selectedSub
+        val relay = libassRelays[exoPlayer]
+        if (relay != null) {
+            val selectedFormat = if (selectedSub != null) {
+                tracks.groups.getOrNull(selectedSub.groupIndex)?.getTrackFormat(selectedSub.trackIndex)
+            } else null
+            relay.setSelectedTrackId(selectedFormat?.id?.toIntOrNull())
+        }
     }
 
     fun selectTrack(track: MediaTrack) {
@@ -627,6 +654,8 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         dvRpuMode: Int = 2,
         dvZeroLevel5: Boolean = false,
         dvHdr10PlusMode: String = "auto",
+        iptPqc2UseHdr: Boolean = false,
+        iptPqc2PreDecide: Boolean = false,
         stream: com.fluxa.app.data.remote.Stream? = null
     ) {
         currentUrl = url
@@ -648,7 +677,8 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                 DolbyVisionFallbackMode.Off -> "dv_fallback=off"
                 else -> "dv_fallback=pending_manifest_check"
             }
-            ctx.needsIptPqc2ToneMap = false
+            ctx.needsIptPqc2ToneMap = iptPqc2PreDecide
+            ctx.iptPqc2UseHdr = iptPqc2UseHdr
             ctx.shouldConvertRpuP7 = false
             ctx.cachedCapabilities = null
             ctx.dvRpuMode = dvRpuMode

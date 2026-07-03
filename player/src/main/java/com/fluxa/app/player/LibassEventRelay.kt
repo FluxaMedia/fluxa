@@ -3,10 +3,25 @@ package com.fluxa.app.player
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 
 class LibassEventRelay {
     private val _activeRenderer = MutableStateFlow<NativeLibassRenderer?>(null)
     val activeRenderer: StateFlow<NativeLibassRenderer?> = _activeRenderer
+
+    @Volatile var selectedTrackId: Int? = null
+        private set
+
+    private val generation = AtomicInteger(0)
+
+    fun headerGeneration(): Int = generation.get()
+
+    fun setSelectedTrackId(trackId: Int?) {
+        if (selectedTrackId == trackId) return
+        selectedTrackId = trackId
+        generation.incrementAndGet()
+        clearEvents()
+    }
 
     fun setHeader(headerData: ByteArray, fonts: List<NativeAssFont>, fontsDir: String?) {
         val new = NativeLibassRenderer.create(headerData, fonts, fontsDir)

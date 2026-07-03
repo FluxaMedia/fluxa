@@ -8,8 +8,8 @@ class NativeLibassRenderer private constructor(
 ) : Closeable {
     private val lock = java.util.concurrent.locks.ReentrantLock()
 
-    fun render(timeMs: Long, bitmap: Bitmap): Boolean {
-        if (handle == 0L || bitmap.isRecycled) return false
+    fun render(timeMs: Long, bitmap: Bitmap): Int {
+        if (handle == 0L || bitmap.isRecycled) return -1
         lock.lock()
         return try {
             nativeRender(handle, timeMs.coerceAtLeast(0L), bitmap)
@@ -41,7 +41,7 @@ class NativeLibassRenderer private constructor(
         }
     }
 
-    private external fun nativeRender(handle: Long, timeMs: Long, bitmap: Bitmap): Boolean
+    private external fun nativeRender(handle: Long, timeMs: Long, bitmap: Bitmap): Int
     private external fun nativeRelease(handle: Long)
     private external fun nativeAddEvent(handle: Long, dialogueLine: String)
     private external fun nativeClearEvents(handle: Long)

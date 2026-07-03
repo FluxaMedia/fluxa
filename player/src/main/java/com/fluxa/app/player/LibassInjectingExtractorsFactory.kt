@@ -19,7 +19,8 @@ import java.io.ByteArrayOutputStream
 
 class LibassInjectingExtractorsFactory(
     private val relay: LibassEventRelay,
-    private val baseFactory: ExtractorsFactory
+    private val baseFactory: ExtractorsFactory,
+    private val fontsDir: String? = null
 ) : ExtractorsFactory {
 
     override fun createExtractors(): Array<Extractor> =
@@ -29,19 +30,20 @@ class LibassInjectingExtractorsFactory(
         baseFactory.createExtractors(uri, responseHeaders).map(::wrapIfMkv).toTypedArray()
 
     private fun wrapIfMkv(extractor: Extractor): Extractor =
-        if (extractor is MatroskaExtractor) LibassInjectingMkvExtractor(extractor, relay) else extractor
+        if (extractor is MatroskaExtractor) LibassInjectingMkvExtractor(extractor, relay, fontsDir) else extractor
 }
 
 private class LibassInjectingMkvExtractor(
     private val delegate: MatroskaExtractor,
-    private val relay: LibassEventRelay
+    private val relay: LibassEventRelay,
+    private val fontsDir: String?
 ) : Extractor {
     private var interceptingOutput: LibassInterceptingExtractorOutput? = null
 
     override fun sniff(input: ExtractorInput): Boolean = delegate.sniff(input)
 
     override fun init(output: ExtractorOutput) {
-        val intercepting = LibassInterceptingExtractorOutput(output, relay)
+        val intercepting = LibassInterceptingExtractorOutput(output, relay, fontsDir)
         interceptingOutput = intercepting
         delegate.init(intercepting)
     }
@@ -59,7 +61,8 @@ private class LibassInjectingMkvExtractor(
 
 private class LibassInterceptingExtractorOutput(
     private val delegate: ExtractorOutput,
-    private val relay: LibassEventRelay
+    private val relay: LibassEventRelay,
+    val fontsDir: String?
 ) : ExtractorOutput {
     private val textTracks = mutableListOf<LibassInterceptingTrackOutput>()
     val collectedFonts = mutableListOf<NativeAssFont>()
@@ -67,7 +70,7 @@ private class LibassInterceptingExtractorOutput(
     override fun track(id: Int, type: Int): TrackOutput {
         val delegateTrack = delegate.track(id, type)
         return when (type) {
-            C.TRACK_TYPE_TEXT -> LibassInterceptingTrackOutput(delegateTrack, relay, this).also { textTracks.add(it) }
+            C.TRACK_TYPE_TEXT -> LibassInterceptingTrackOutput(delegateTrack, relay, this, id).also { textTracks.add(it) }
             C.TRACK_TYPE_METADATA -> LibassFontCollectingTrackOutput(delegateTrack) { font -> collectedFonts.add(font) }
             else -> delegateTrack
         }
@@ -133,14 +136,16 @@ private class LibassFontCollectingTrackOutput(
 private class LibassInterceptingTrackOutput(
     private val delegate: TrackOutput,
     private val relay: LibassEventRelay,
-    private val extractorOutput: LibassInterceptingExtractorOutput
+    private val extractorOutput: LibassInterceptingExtractorOutput,
+    private val trackId: Int
 ) : TrackOutput {
     private var format: Format? = null
     private var cachedHeader: ByteArray? = null
-    private var headerInitialized = false
+    private var primedGeneration: Int = -1
     private val pendingSample = ByteArrayOutputStream()
     private var pendingTimeUs = Long.MIN_VALUE
     private var pendingBody: ByteArray? = null
+    private var lastInterEventMs = 5_000L
 
     override fun format(format: Format) {
         this.format = format
@@ -186,16 +191,25 @@ private class LibassInterceptingTrackOutput(
         cryptoData: TrackOutput.CryptoData?
     ) {
         if (format?.sampleMimeType == MimeTypes.TEXT_SSA) {
+            val selectedId = relay.selectedTrackId
+            if (selectedId != null && selectedId != trackId) {
+                pendingSample.reset()
+                delegate.sampleMetadata(timeUs, flags, size, offset, cryptoData)
+                return
+            }
+
             val body = pendingSample.toByteArray()
             if (body.isNotEmpty()) {
-                if (!headerInitialized) {
-                    cachedHeader?.let { relay.setHeader(it, extractorOutput.collectedFonts, null) }
-                    headerInitialized = true
+                val currentGeneration = relay.headerGeneration()
+                if (primedGeneration != currentGeneration) {
+                    cachedHeader?.let { relay.setHeader(it, extractorOutput.collectedFonts, extractorOutput.fontsDir) }
+                    primedGeneration = currentGeneration
                 }
                 val prevTimeUs = pendingTimeUs
                 val prevBody = pendingBody
                 if (prevTimeUs != Long.MIN_VALUE && prevBody != null) {
-                    val durationMs = ((timeUs - prevTimeUs) / 1000L).coerceIn(100L, 60_000L)
+                    val durationMs = ((timeUs - prevTimeUs) / 1000L).coerceIn(100L, 30_000L)
+                    lastInterEventMs = durationMs
                     relay.addEvent(prevTimeUs / 1000L, durationMs, prevBody)
                 }
                 pendingTimeUs = timeUs
@@ -207,6 +221,11 @@ private class LibassInterceptingTrackOutput(
     }
 
     fun onSeekFlush() {
+        val prevBody = pendingBody
+        val prevTimeUs = pendingTimeUs
+        if (prevTimeUs != Long.MIN_VALUE && prevBody != null) {
+            relay.addEvent(prevTimeUs / 1000L, lastInterEventMs.coerceAtMost(5_000L), prevBody)
+        }
         pendingTimeUs = Long.MIN_VALUE
         pendingBody = null
         pendingSample.reset()

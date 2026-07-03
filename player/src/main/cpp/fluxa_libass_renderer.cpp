@@ -7,6 +7,9 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
+#include <string>
+#include <sys/stat.h>
 
 #define LOG_TAG "FluxaLibassRenderer"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -76,10 +79,14 @@ struct Session {
     ASS_Track* track = nullptr;
     int width = 0;
     int height = 0;
+    int last_bmp_width = 0;
+    int last_bmp_height = 0;
+    bool last_had_image = false;
 };
 
 static LibassApi g_api;
-static bool g_api_loaded = false;
+static bool g_api_ok = false;
+static std::once_flag g_once;
 
 static void* symbol(void* handle, const char* name) {
     void* value = dlsym(handle, name);
@@ -88,35 +95,37 @@ static void* symbol(void* handle, const char* name) {
 }
 
 static bool ensure_api() {
-    if (g_api_loaded) return g_api.handle != nullptr;
-    g_api_loaded = true;
-    g_api.handle = dlopen("libmpv.so", RTLD_LAZY | RTLD_LOCAL);
-    if (!g_api.handle) {
-        LOGE("Could not open libmpv.so: %s", dlerror());
-        return false;
-    }
-    g_api.library_init = reinterpret_cast<ass_library_init_fn>(symbol(g_api.handle, "ass_library_init"));
-    g_api.library_done = reinterpret_cast<ass_library_done_fn>(symbol(g_api.handle, "ass_library_done"));
-    g_api.renderer_init = reinterpret_cast<ass_renderer_init_fn>(symbol(g_api.handle, "ass_renderer_init"));
-    g_api.renderer_done = reinterpret_cast<ass_renderer_done_fn>(symbol(g_api.handle, "ass_renderer_done"));
-    g_api.read_memory = reinterpret_cast<ass_read_memory_fn>(symbol(g_api.handle, "ass_read_memory"));
-    g_api.free_track = reinterpret_cast<ass_free_track_fn>(symbol(g_api.handle, "ass_free_track"));
-    g_api.add_font = reinterpret_cast<ass_add_font_fn>(symbol(g_api.handle, "ass_add_font"));
-    g_api.set_fonts = reinterpret_cast<ass_set_fonts_fn>(symbol(g_api.handle, "ass_set_fonts"));
-    g_api.set_fonts_dir = reinterpret_cast<ass_set_fonts_dir_fn>(symbol(g_api.handle, "ass_set_fonts_dir"));
-    g_api.set_frame_size = reinterpret_cast<ass_set_frame_size_fn>(symbol(g_api.handle, "ass_set_frame_size"));
-    g_api.set_storage_size = reinterpret_cast<ass_set_storage_size_fn>(symbol(g_api.handle, "ass_set_storage_size"));
-    g_api.render_frame = reinterpret_cast<ass_render_frame_fn>(symbol(g_api.handle, "ass_render_frame"));
-    g_api.set_use_margins = reinterpret_cast<ass_set_use_margins_fn>(symbol(g_api.handle, "ass_set_use_margins"));
-    g_api.set_aspect_ratio = reinterpret_cast<ass_set_aspect_ratio_fn>(symbol(g_api.handle, "ass_set_aspect_ratio"));
-    g_api.set_font_scale = reinterpret_cast<ass_set_font_scale_fn>(symbol(g_api.handle, "ass_set_font_scale"));
-    g_api.set_line_spacing = reinterpret_cast<ass_set_line_spacing_fn>(symbol(g_api.handle, "ass_set_line_spacing"));
-    g_api.set_check_readorder = reinterpret_cast<ass_set_check_readorder_fn>(symbol(g_api.handle, "ass_set_check_readorder"));
-    g_api.process_data = reinterpret_cast<ass_process_data_fn>(symbol(g_api.handle, "ass_process_data"));
-    g_api.flush_events = reinterpret_cast<ass_flush_events_fn>(symbol(g_api.handle, "ass_flush_events"));
-    return g_api.library_init && g_api.library_done && g_api.renderer_init && g_api.renderer_done &&
-        g_api.read_memory && g_api.free_track && g_api.add_font && g_api.set_fonts && g_api.set_frame_size &&
-        g_api.set_storage_size && g_api.render_frame;
+    std::call_once(g_once, []() {
+        g_api.handle = dlopen("libmpv.so", RTLD_LAZY | RTLD_LOCAL);
+        if (!g_api.handle) {
+            LOGE("Could not open libmpv.so: %s", dlerror());
+            return;
+        }
+        g_api.library_init = reinterpret_cast<ass_library_init_fn>(symbol(g_api.handle, "ass_library_init"));
+        g_api.library_done = reinterpret_cast<ass_library_done_fn>(symbol(g_api.handle, "ass_library_done"));
+        g_api.renderer_init = reinterpret_cast<ass_renderer_init_fn>(symbol(g_api.handle, "ass_renderer_init"));
+        g_api.renderer_done = reinterpret_cast<ass_renderer_done_fn>(symbol(g_api.handle, "ass_renderer_done"));
+        g_api.read_memory = reinterpret_cast<ass_read_memory_fn>(symbol(g_api.handle, "ass_read_memory"));
+        g_api.free_track = reinterpret_cast<ass_free_track_fn>(symbol(g_api.handle, "ass_free_track"));
+        g_api.add_font = reinterpret_cast<ass_add_font_fn>(symbol(g_api.handle, "ass_add_font"));
+        g_api.set_fonts = reinterpret_cast<ass_set_fonts_fn>(symbol(g_api.handle, "ass_set_fonts"));
+        g_api.set_fonts_dir = reinterpret_cast<ass_set_fonts_dir_fn>(symbol(g_api.handle, "ass_set_fonts_dir"));
+        g_api.set_frame_size = reinterpret_cast<ass_set_frame_size_fn>(symbol(g_api.handle, "ass_set_frame_size"));
+        g_api.set_storage_size = reinterpret_cast<ass_set_storage_size_fn>(symbol(g_api.handle, "ass_set_storage_size"));
+        g_api.render_frame = reinterpret_cast<ass_render_frame_fn>(symbol(g_api.handle, "ass_render_frame"));
+        g_api.set_use_margins = reinterpret_cast<ass_set_use_margins_fn>(symbol(g_api.handle, "ass_set_use_margins"));
+        g_api.set_aspect_ratio = reinterpret_cast<ass_set_aspect_ratio_fn>(symbol(g_api.handle, "ass_set_aspect_ratio"));
+        g_api.set_font_scale = reinterpret_cast<ass_set_font_scale_fn>(symbol(g_api.handle, "ass_set_font_scale"));
+        g_api.set_line_spacing = reinterpret_cast<ass_set_line_spacing_fn>(symbol(g_api.handle, "ass_set_line_spacing"));
+        g_api.set_check_readorder = reinterpret_cast<ass_set_check_readorder_fn>(symbol(g_api.handle, "ass_set_check_readorder"));
+        g_api.process_data = reinterpret_cast<ass_process_data_fn>(symbol(g_api.handle, "ass_process_data"));
+        g_api.flush_events = reinterpret_cast<ass_flush_events_fn>(symbol(g_api.handle, "ass_flush_events"));
+        g_api_ok = g_api.library_init && g_api.library_done && g_api.renderer_init && g_api.renderer_done &&
+            g_api.read_memory && g_api.free_track && g_api.add_font && g_api.set_fonts && g_api.set_frame_size &&
+            g_api.set_storage_size && g_api.render_frame;
+        if (!g_api_ok) LOGE("libass not available via libmpv.so — embedded subtitles disabled");
+    });
+    return g_api_ok;
 }
 
 static void release_session(Session* session) {
@@ -205,7 +214,16 @@ Java_com_fluxa_app_player_NativeLibassRenderer_00024Companion_nativeCreate(
         release_session(session);
         return 0;
     }
-    g_api.set_fonts(session->renderer, nullptr, "sans-serif", 1, nullptr, 1);
+    const char* default_font = nullptr;
+    std::string default_font_path;
+    if (fonts_dir_chars) {
+        default_font_path = std::string(fonts_dir_chars) + "/NotoSans-Regular.ttf";
+        struct stat st;
+        if (::stat(default_font_path.c_str(), &st) == 0) {
+            default_font = default_font_path.c_str();
+        }
+    }
+    g_api.set_fonts(session->renderer, default_font, "sans-serif", 1, nullptr, 1);
     if (g_api.set_use_margins) g_api.set_use_margins(session->renderer, 0);
     if (g_api.set_font_scale) g_api.set_font_scale(session->renderer, 1.0);
     if (g_api.set_line_spacing) g_api.set_line_spacing(session->renderer, 0.0);
@@ -231,25 +249,24 @@ Java_com_fluxa_app_player_NativeLibassRenderer_00024Companion_nativeCreate(
     return reinterpret_cast<jlong>(session);
 }
 
-extern "C" JNIEXPORT jboolean JNICALL
+extern "C" JNIEXPORT jint JNICALL
 Java_com_fluxa_app_player_NativeLibassRenderer_nativeRender(JNIEnv* env, jobject, jlong handle, jlong time_ms, jobject bitmap) {
     auto* session = reinterpret_cast<Session*>(handle);
-    if (!session || !session->renderer || !session->track || !bitmap || !ensure_api()) return JNI_FALSE;
+    if (!session || !session->renderer || !session->track || !bitmap || !ensure_api()) return -1;
 
     AndroidBitmapInfo info;
-    if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS) return JNI_FALSE;
-    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 || info.width <= 0 || info.height <= 0) return JNI_FALSE;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS) return -1;
+    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 || info.width <= 0 || info.height <= 0) return -1;
 
-    void* raw_pixels = nullptr;
-    if (AndroidBitmap_lockPixels(env, bitmap, &raw_pixels) != ANDROID_BITMAP_RESULT_SUCCESS) return JNI_FALSE;
-    auto* pixels = static_cast<uint8_t*>(raw_pixels);
-    std::memset(pixels, 0, static_cast<size_t>(info.stride) * info.height);
+    const bool size_changed = session->width != static_cast<int>(info.width) ||
+        session->height != static_cast<int>(info.height);
+    const bool bmp_changed = session->last_bmp_width != static_cast<int>(info.width) ||
+        session->last_bmp_height != static_cast<int>(info.height);
 
-    if (session->width != static_cast<int>(info.width) || session->height != static_cast<int>(info.height)) {
+    if (size_changed) {
         session->width = static_cast<int>(info.width);
         session->height = static_cast<int>(info.height);
         g_api.set_frame_size(session->renderer, session->width, session->height);
-        g_api.set_storage_size(session->renderer, session->width, session->height);
         if (g_api.set_aspect_ratio && session->height > 0) {
             g_api.set_aspect_ratio(session->renderer, static_cast<double>(session->width) / session->height, 1.0);
         }
@@ -257,11 +274,24 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeRender(JNIEnv* env, jobject
 
     int detect_change = 0;
     ASS_Image* images = g_api.render_frame(session->renderer, session->track, static_cast<long long>(time_ms), &detect_change);
+
+    if (detect_change == 0 && !bmp_changed) {
+        return session->last_had_image ? 1 : 0;
+    }
+
+    void* raw_pixels = nullptr;
+    if (AndroidBitmap_lockPixels(env, bitmap, &raw_pixels) != ANDROID_BITMAP_RESULT_SUCCESS) return -1;
+    auto* pixels = static_cast<uint8_t*>(raw_pixels);
+    std::memset(pixels, 0, static_cast<size_t>(info.stride) * info.height);
     for (ASS_Image* image = images; image != nullptr; image = image->next) {
         blend_ass_image(pixels, static_cast<int>(info.width), static_cast<int>(info.height), static_cast<int>(info.stride), image);
     }
     AndroidBitmap_unlockPixels(env, bitmap);
-    return images != nullptr ? JNI_TRUE : JNI_FALSE;
+
+    session->last_had_image = (images != nullptr);
+    session->last_bmp_width = static_cast<int>(info.width);
+    session->last_bmp_height = static_cast<int>(info.height);
+    return session->last_had_image ? 1 : 0;
 }
 
 extern "C" JNIEXPORT void JNICALL
