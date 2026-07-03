@@ -143,6 +143,10 @@ fun PlayerScreen(
     val currentSubtitle by (activeEngine?.currentSubtitle ?: emptyTrack).collectAsStateWithLifecycle()
     val effectiveTechnicalInfo by (activeEngine?.technicalInfo ?: emptyTechnicalInfo).collectAsStateWithLifecycle()
 
+    LaunchedEffect(state.currentVideoId, state.currentStreams) {
+        state.failedAutoFallbackUrls = emptySet()
+    }
+
     PlayerEngineSettingsEffects(
         activeEngine = activeEngine,
         audioDelayMs = state.audioDelayMs,
@@ -322,6 +326,30 @@ fun PlayerScreen(
         }
     }
 
+    fun isCloudstreamPlayback(): Boolean {
+        return meta.id.startsWith("cs3:") ||
+            state.currentVideoId?.startsWith("cs3:") == true ||
+            state.currentStreams.getOrNull(state.currentStreamIndex)?.addonName?.trim() in viewModel.loadedCs3ApiNames.value
+    }
+
+    fun fallbackToNextCloudstreamStream(): Boolean {
+        if (!isCloudstreamPlayback()) return false
+        val failedUrl = state.currentStreams.getOrNull(state.currentStreamIndex)?.playableUrl
+            ?: state.currentUrl
+        if (!failedUrl.isNullOrBlank()) {
+            state.failedAutoFallbackUrls = state.failedAutoFallbackUrls + failedUrl
+        }
+        val indices = state.currentStreams.indices.drop(state.currentStreamIndex + 1) +
+            state.currentStreams.indices.take(state.currentStreamIndex)
+        val nextIndex = indices.firstOrNull { index ->
+            val candidateUrl = state.currentStreams[index].playableUrl
+            !candidateUrl.isNullOrBlank() && candidateUrl !in state.failedAutoFallbackUrls
+        }
+            ?: return false
+        switchToStream(nextIndex)
+        return true
+    }
+
     fun openSourceSelectionScreen() {
         val selectedStream = state.currentStreams.getOrNull(state.currentStreamIndex)
         val progress = if (useMpvBackend) state.engine.timeline.position else exoPlayer.currentPosition.takeIf { it > 0 } ?: state.engine.timeline.position
@@ -435,7 +463,9 @@ fun PlayerScreen(
         exoEngine = exoEngine,
         useMpvBackend = useMpvBackend,
         currentUrl = state.currentUrl,
+        currentStreamIndex = state.currentStreamIndex,
         currentStreamsSize = state.currentStreams.size,
+        autoFallbackOnStreamError = isCloudstreamPlayback(),
         returnToSourcesOnError = returnToSourcesOnError,
         lang = lang,
         mergeSkipSegments = { newSegments ->
@@ -443,6 +473,7 @@ fun PlayerScreen(
         },
         updateEngine = updateEngine,
         openSourceSelectionScreen = ::openSourceSelectionScreen,
+        fallbackToNextStream = ::fallbackToNextCloudstreamStream,
         torrentManager = torrentManager,
         retryPlayback = {
             val savedUrl = state.resolvedUrl
@@ -469,6 +500,7 @@ fun PlayerScreen(
         currentUrl = state.currentUrl,
         currentStreamIndex = state.currentStreamIndex,
         currentStreamsSize = state.currentStreams.size,
+        autoFallbackOnStreamError = isCloudstreamPlayback(),
         useMpvBackend = useMpvBackend,
         isBuffering = state.engine.playback.isBuffering,
         hasStartedPlaying = state.engine.playback.hasStartedPlaying,
@@ -477,7 +509,8 @@ fun PlayerScreen(
         returnToSourcesOnError = returnToSourcesOnError,
         lang = lang,
         updateEngine = updateEngine,
-        openSourceSelectionScreen = ::openSourceSelectionScreen
+        openSourceSelectionScreen = ::openSourceSelectionScreen,
+        fallbackToNextStream = ::fallbackToNextCloudstreamStream
     )
 
     PlayerResolveUrlEffect(
@@ -495,7 +528,8 @@ fun PlayerScreen(
         skipSegments = state.skipSegments,
         updateEngine = updateEngine,
         setResolvedUrl = { state.resolvedUrl = it },
-        openSourceSelectionScreen = ::openSourceSelectionScreen
+        openSourceSelectionScreen = ::openSourceSelectionScreen,
+        fallbackToNextStream = ::fallbackToNextCloudstreamStream
     )
 
     PlayerPreparePlaybackEffect(

@@ -36,12 +36,15 @@ internal fun ExoPlayerListenerEffect(
     exoEngine: ExoPlayerEngine,
     useMpvBackend: Boolean,
     currentUrl: String?,
+    currentStreamIndex: Int,
     currentStreamsSize: Int,
+    autoFallbackOnStreamError: Boolean,
     returnToSourcesOnError: Boolean,
     lang: String,
     mergeSkipSegments: (List<IntroTimestamps>) -> Unit,
     updateEngine: (PlayerEngineSnapshot.() -> PlayerEngineSnapshot) -> Unit,
     openSourceSelectionScreen: () -> Unit,
+    fallbackToNextStream: () -> Boolean,
     torrentManager: TorrentStreamManager,
     retryPlayback: () -> Unit = {}
 ) {
@@ -50,6 +53,10 @@ internal fun ExoPlayerListenerEffect(
     val latestRetryPlayback = rememberUpdatedState(retryPlayback)
     val latestMergeSkipSegments = rememberUpdatedState(mergeSkipSegments)
     val latestOpenSourceSelection = rememberUpdatedState(openSourceSelectionScreen)
+    val latestFallbackToNextStream = rememberUpdatedState(fallbackToNextStream)
+    val latestAutoFallbackOnStreamError by rememberUpdatedState(autoFallbackOnStreamError)
+    val latestCurrentStreamIndex by rememberUpdatedState(currentStreamIndex)
+    val latestCurrentStreamsSize by rememberUpdatedState(currentStreamsSize)
 
     DisposableEffect(exoPlayer, useMpvBackend) {
         val listener = object : Player.Listener {
@@ -125,6 +132,14 @@ internal fun ExoPlayerListenerEffect(
                     latestRetryPlayback.value()
                     return
                 }
+                if (
+                    latestAutoFallbackOnStreamError &&
+                    latestCurrentStreamIndex + 1 < latestCurrentStreamsSize &&
+                    latestFallbackToNextStream.value()
+                ) {
+                    android.util.Log.w("PlayerScreen", "Playback failed; trying next Cloudstream link")
+                    return
+                }
                 val detailedMsg = when (error.errorCode) {
                     androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> AppStrings.t(lang, "player.error_server")
                     androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> AppStrings.t(lang, "player.error_network")
@@ -156,6 +171,7 @@ internal fun PlayerStallWatchdogEffect(
     currentUrl: String?,
     currentStreamIndex: Int,
     currentStreamsSize: Int,
+    autoFallbackOnStreamError: Boolean,
     useMpvBackend: Boolean,
     isBuffering: Boolean,
     hasStartedPlaying: Boolean,
@@ -164,7 +180,8 @@ internal fun PlayerStallWatchdogEffect(
     returnToSourcesOnError: Boolean,
     lang: String,
     updateEngine: (PlayerEngineSnapshot.() -> PlayerEngineSnapshot) -> Unit,
-    openSourceSelectionScreen: () -> Unit
+    openSourceSelectionScreen: () -> Unit,
+    fallbackToNextStream: () -> Boolean
 ) {
     val latestIsBuffering by rememberUpdatedState(isBuffering)
     val latestHasStartedPlaying by rememberUpdatedState(hasStartedPlaying)
@@ -172,6 +189,8 @@ internal fun PlayerStallWatchdogEffect(
     val latestTorrentStatus by rememberUpdatedState(torrentStatus)
     val latestUpdateEngine = rememberUpdatedState(updateEngine)
     val latestOpenSourceSelection = rememberUpdatedState(openSourceSelectionScreen)
+    val latestFallbackToNextStream = rememberUpdatedState(fallbackToNextStream)
+    val latestAutoFallbackOnStreamError by rememberUpdatedState(autoFallbackOnStreamError)
     LaunchedEffect(currentUrl, currentStreamIndex, currentStreamsSize) {
         if (currentUrl.isNullOrBlank()) return@LaunchedEffect
         val watchedUrl = currentUrl
@@ -192,6 +211,14 @@ internal fun PlayerStallWatchdogEffect(
                     latestTorrentStatus.detailedStatus.isNotBlank())
             ) {
                 latestUpdateEngine.value { copy(playerError = null, playback = playback.copy(isBuffering = true)) }
+                return@LaunchedEffect
+            }
+            if (
+                latestAutoFallbackOnStreamError &&
+                currentStreamIndex + 1 < currentStreamsSize &&
+                latestFallbackToNextStream.value()
+            ) {
+                android.util.Log.w("PlayerScreen", "Playback stalled; trying next Cloudstream link")
                 return@LaunchedEffect
             }
             latestUpdateEngine.value { copy(playerError = AppStrings.format(lang, "player.error_load", AppStrings.t(lang, "player.error_source")), playback = playback.copy(isBuffering = false)) }
@@ -216,7 +243,8 @@ internal fun PlayerResolveUrlEffect(
     skipSegments: List<IntroTimestamps>,
     updateEngine: (PlayerEngineSnapshot.() -> PlayerEngineSnapshot) -> Unit,
     setResolvedUrl: (String?) -> Unit,
-    openSourceSelectionScreen: () -> Unit
+    openSourceSelectionScreen: () -> Unit,
+    fallbackToNextStream: () -> Boolean
 ) {
     LaunchedEffect(currentUrl) {
         val playbackUrl = currentUrl ?: return@LaunchedEffect
@@ -238,6 +266,7 @@ internal fun PlayerResolveUrlEffect(
             updateEngine { copy(playback = playback.copy(isBuffering = resolved.isBuffering)) }
         } else {
             android.util.Log.e("PlayerScreen", "Playback resolve error: ${resolved.playerError}")
+            if (fallbackToNextStream()) return@LaunchedEffect
             updateEngine { copy(playerError = localizedPlayerError(lang, resolved.playerError), playback = playback.copy(isBuffering = false)) }
             if (returnToSourcesOnError && currentStreams.size > 1) {
                 openSourceSelectionScreen()

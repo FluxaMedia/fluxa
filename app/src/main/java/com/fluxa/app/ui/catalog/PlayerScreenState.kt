@@ -59,6 +59,7 @@ internal class PlayerScreenState(
     var currentVideoId by mutableStateOf(initialVideoId)
     var currentStreams by mutableStateOf<List<Stream>>(emptyList())
     var currentStreamIndex by mutableIntStateOf(initialStreamIndex)
+    var failedAutoFallbackUrls by mutableStateOf<Set<String>>(emptySet())
     var zeroSpeedTicks by mutableIntStateOf(0)
     var lastSavedPosition by mutableLongStateOf(0L)
     var shouldApplyInitialProgress by mutableStateOf(true)

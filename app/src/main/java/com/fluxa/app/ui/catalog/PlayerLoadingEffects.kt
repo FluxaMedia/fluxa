@@ -17,6 +17,7 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.data.remote.Video
 import com.fluxa.app.player.DolbyVisionFallbackMode
 import com.fluxa.app.player.ExoPlayerEngine
 import com.fluxa.app.player.MpvPlaybackState
@@ -46,22 +47,38 @@ internal fun PlayerEpisodeMetadataEffect(
         setEpisodeArtwork(null)
         if (meta.type != "series") return@LaunchedEffect
         val targetId = currentVideoId ?: return@LaunchedEffect
+        val selectedEpisode = meta.videos?.firstOrNull { it.id == targetId }
+        if (selectedEpisode != null) {
+            setEpisodeArtwork(selectedEpisode.thumbnail)
+            setEpisodeLine(selectedEpisode.playerEpisodeLine() ?: fallbackEpisodeLine)
+            return@LaunchedEffect
+        }
         val parts = targetId.split(":")
         if (parts.size < 3) return@LaunchedEffect
         val season = parts[parts.size - 2].toIntOrNull() ?: return@LaunchedEffect
         val episode = parts[parts.size - 1].toIntOrNull() ?: return@LaunchedEffect
-        val shortEpisodeLine = "S$season E$episode"
+        val shortEpisodeLine = "S$season, E$episode"
         setEpisodeLine(fallbackEpisodeLine ?: shortEpisodeLine)
         runCatching {
             val episodes = viewModel.getSeasonEpisodes(meta.id, season, language)
             val matched = episodes.firstOrNull { it.id == targetId || (it.season == season && it.number == episode) }
             setEpisodeArtwork(matched?.thumbnail)
             setEpisodeLine(
-                matched?.name?.takeIf { it.isNotBlank() }?.let { "$shortEpisodeLine $it" }
+                matched?.name?.takeIf { it.isNotBlank() }?.let { "$shortEpisodeLine: $it" }
                     ?: fallbackEpisodeLine
                     ?: shortEpisodeLine
             )
         }
+    }
+}
+
+private fun Video.playerEpisodeLine(): String? {
+    val episodeCode = if (season != null && number != null) "S$season, E$number" else null
+    val title = name?.trim()?.takeIf { it.isNotBlank() }
+    return when {
+        episodeCode != null && title != null -> "$episodeCode: $title"
+        episodeCode != null -> episodeCode
+        else -> title
     }
 }
 
