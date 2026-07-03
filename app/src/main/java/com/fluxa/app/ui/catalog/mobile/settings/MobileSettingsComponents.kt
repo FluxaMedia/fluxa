@@ -226,6 +226,7 @@ internal fun MobileSettingsHub(
             Text(
                 text = AppStrings.t(lang, "nav.settings"),
                 color = colors.text,
+                fontFamily = FluxaDisplay,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -245,6 +246,7 @@ internal fun MobileSettingsHub(
                 Text(
                     text = section.label,
                     color = colors.mutedText,
+                    fontFamily = FluxaDisplay,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.6.sp,
@@ -318,6 +320,7 @@ private fun MobileWatchedContentCounter(duration: Long, lang: String) {
         Text(
             text = AppStrings.t(lang, "settings.watch_time").uppercase(AppStrings.locale(lang)),
             color = colors.text,
+            fontFamily = FluxaDisplay,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.fillMaxWidth(),
@@ -369,6 +372,7 @@ private fun WatchedCounterPart(
         Text(
             text = value.toString(),
             color = colors.text,
+            fontFamily = FluxaDisplay,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1
@@ -480,7 +484,7 @@ internal fun MobileSettingsRow(
             }
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, color = colors.text.copy(alpha = 0.94f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(text = title, color = colors.text.copy(alpha = 0.94f), fontFamily = FluxaDisplay, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             if (subtitle.isNotBlank()) {
                 Text(
                     text = subtitle,
@@ -545,6 +549,7 @@ private fun MobileSettingsProfileHeader(
             Text(
                 text = profile.displayName,
                 color = colors.text,
+                fontFamily = FluxaDisplay,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )

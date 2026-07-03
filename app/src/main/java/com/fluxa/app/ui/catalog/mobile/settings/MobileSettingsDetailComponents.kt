@@ -68,6 +68,7 @@ internal fun MobileSettingsSection(
             Text(
                 text = title,
                 color = Color.White.copy(alpha = 0.64f),
+                fontFamily = FluxaDisplay,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -91,6 +92,7 @@ internal fun MobileSettingsGroup(
             Text(
                 text = it,
                 color = colors.mutedText,
+                fontFamily = FluxaDisplay,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 4.dp)
@@ -294,6 +296,7 @@ internal fun MobileCollapsibleSettingsGroup(
             Text(
                 text = title,
                 color = colors.mutedText,
+                fontFamily = FluxaDisplay,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
@@ -301,6 +304,7 @@ internal fun MobileCollapsibleSettingsGroup(
             Text(
                 text = count.toString(),
                 color = colors.mutedText.copy(alpha = 0.62f),
+                fontFamily = FluxaDisplay,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold
             )
