@@ -25,6 +25,8 @@ internal fun UserProfile?.requiresHomeReload(next: UserProfile): Boolean {
         previous.safeDisabledLocalAddonIds != next.safeDisabledLocalAddonIds ||
         previous.heroFeedToggles != next.heroFeedToggles ||
         previous.heroFeedOrder != next.heroFeedOrder ||
+        previous.homeFeedToggles != next.homeFeedToggles ||
+        previous.homeFeedOrder != next.homeFeedOrder ||
         previous.safeContinueWatchingEnabled != next.safeContinueWatchingEnabled ||
         previous.safeShowHeroSection != next.safeShowHeroSection
 }
@@ -45,14 +47,6 @@ internal fun initialScreenForProfile(profile: UserProfile?): Screen {
             else -> Screen.Home
         }
     } ?: Screen.Profiles
-}
-
-internal fun isUpcoming(dateStr: String?): Boolean {
-    if (dateStr.isNullOrEmpty()) return false
-    return try {
-        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-        sdf.parse(dateStr)?.after(java.util.Date()) ?: false
-    } catch (e: Exception) { false }
 }
 
 internal fun generateOAuthCodeVerifier(): String {

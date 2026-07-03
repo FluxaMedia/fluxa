@@ -71,27 +71,27 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
     init {
         // Initialize AcraApplication context for plugins
         AcraApplication.init(context.applicationContext as android.app.Application)
-        
+
         // Load saved state
-        loadSavedState()
+        scope.launch {
+            loadSavedState()
+        }
     }
-    
+
     // ==================== State Persistence ====================
-    
-    private fun loadSavedState() {
+
+    private suspend fun loadSavedState() {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        
+
         // Load installed plugins
         val pluginsJson = prefs.getString(KEY_INSTALLED_PLUGINS, "[]") ?: "[]"
         _installedPlugins.value = PluginStateCodec.parseInstalledPlugins(pluginsJson)
-        
+
         // Load repositories
         val reposJson = prefs.getString(KEY_REPOSITORIES, "[]") ?: "[]"
         _repositories.value = PluginStateCodec.parseRepositories(reposJson)
-        
-        scope.launch {
-            loadAllInstalledPlugins()
-        }
+
+        loadAllInstalledPlugins()
     }
     
     private fun saveState() {

@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google()
         mavenCentral()
@@ -15,4 +16,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Fluxa"
+include(":core")
+include(":data")
+include(":player")
 include(":app")

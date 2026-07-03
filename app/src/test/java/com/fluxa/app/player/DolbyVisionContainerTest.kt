@@ -31,20 +31,34 @@ class DolbyVisionContainerTest {
         return buf
     }
 
-    // Helpers to apply the strip-decision logic against explicit expected values,
-    // rather than repeating the formula inline in every test.
-    private fun deviceSupportsDv(info: DvContainerInfo, caps: DolbyVisionCapabilities): Boolean =
-        caps.mediaCodecSupportsDolbyVision && (caps.displaySupportsDolbyVision || info.notHasHdrFallback)
+    private fun caps(
+        dvDisplay: Boolean = false,
+        hdr10Display: Boolean = false,
+        nativeP7: Boolean = false,
+        p8Decoder: Boolean = false,
+        anyDv: Boolean = p8Decoder || nativeP7,
+    ) = DolbyVisionCapabilities(
+        displaySupportsDolbyVision = dvDisplay,
+        displaySupportsHdr10 = hdr10Display,
+        displaySupportsHdr10Plus = false,
+        displaySupportsHlg = false,
+        decoderNativeP7 = nativeP7,
+        decoderP5 = anyDv,
+        decoderP8 = p8Decoder,
+        decoderAnyDv = anyDv,
+    )
 
-    private fun shouldStrip(info: DvContainerInfo, caps: DolbyVisionCapabilities): Boolean =
-        !deviceSupportsDv(info, caps) && (info.profile == 5 || !info.notHasHdrFallback)
+    private fun shouldStrip(info: DvContainerInfo, caps: DolbyVisionCapabilities): Boolean {
+        val deviceSupportsDv = DolbyVisionFallbackPolicy.containerDvSupportedForCaps(info, caps)
+        return !deviceSupportsDv && (info.profile == 5 || !info.notHasHdrFallback)
+    }
 
     private fun needsIptPqc2(info: DvContainerInfo): Boolean =
         info.profile == 5 && info.compatId != 1
 
-    private val noDevice = DolbyVisionCapabilities(displaySupportsDolbyVision = false, mediaCodecSupportsDolbyVision = false)
-    private val decoderOnly = DolbyVisionCapabilities(displaySupportsDolbyVision = false, mediaCodecSupportsDolbyVision = true)
-    private val fullDevice = DolbyVisionCapabilities(displaySupportsDolbyVision = true, mediaCodecSupportsDolbyVision = true)
+    private val noDevice = caps()
+    private val decoderOnly = caps(p8Decoder = true)
+    private val fullDevice = caps(dvDisplay = true, nativeP7 = true)
 
     // ── DvContainerInfo.notHasHdrFallback ─────────────────────────────────────
 
@@ -283,9 +297,9 @@ class DolbyVisionContainerTest {
         assertFalse("P8 strip must not signal IPTPQc2", needsIptPqc2(info))
     }
 
-    @Test fun decision_p8_decoderOnly_strip() {
+    @Test fun decision_p8_decoderOnly_keep() {
         val info = DolbyVisionFallbackPolicy.scanDvContainerInfo(bufferWithDvccAt(0, 8, 4))!!
-        assertTrue("P8, decoder but no DV display → strip to HDR10", shouldStrip(info, decoderOnly))
+        assertFalse("P8, any DV decoder is sufficient — DvheSt cert covers the full pipeline", shouldStrip(info, decoderOnly))
     }
 
     @Test fun decision_p8_fullDevice_keep() {
@@ -320,10 +334,9 @@ class DolbyVisionContainerTest {
         assertFalse("P5 CID=1 strip must NOT signal IPTPQc2 (it has HDR10 base)", needsIptPqc2(info))
     }
 
-    @Test fun decision_p5cid1_decoderOnly_strip() {
-        // P5 CID=1 notHasHdrFallback=false, so DV display is also required.
+    @Test fun decision_p5cid1_decoderOnly_keep() {
         val info = DolbyVisionFallbackPolicy.scanDvContainerInfo(bufferWithDvccAt(0, 5, 1))!!
-        assertTrue("P5 CID=1, decoder but no DV display → strip to HDR10 (same as P7/P8)", shouldStrip(info, decoderOnly))
+        assertFalse("P5 CID=1, any DV decoder is sufficient — no display check needed", shouldStrip(info, decoderOnly))
     }
 
     @Test fun decision_p5cid1_fullDevice_keep() {

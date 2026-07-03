@@ -2,6 +2,7 @@
 
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -78,7 +79,8 @@ internal fun MobileProfileSelectionScene(
     profiles: List<UserProfile>,
     onProfileSelected: (UserProfile) -> Unit,
     onAddProfileClick: () -> Unit,
-    onEditProfileClick: (UserProfile) -> Unit
+    onEditProfileClick: (UserProfile) -> Unit,
+    onDeleteClick: (UserProfile) -> Unit = {}
 ) {
     val lang = profiles.firstOrNull()?.safeLanguage ?: "en"
     var isManagingProfiles by remember { mutableStateOf(false) }
@@ -111,7 +113,8 @@ internal fun MobileProfileSelectionScene(
                     profile = profile,
                     isManaging = isManagingProfiles,
                     onClick = { onProfileSelected(profile) },
-                    onEditClick = { onEditProfileClick(profile) }
+                    onEditClick = { onEditProfileClick(profile) },
+                    onDeleteClick = { onDeleteClick(profile) }
                 )
             }
             item {
@@ -144,7 +147,8 @@ fun MobileProfileItem(
     isManaging: Boolean,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDeleteClick: () -> Unit = {}
 ) {
     Column(
         modifier = modifier.wrapContentWidth(Alignment.CenterHorizontally),
@@ -154,8 +158,8 @@ fun MobileProfileItem(
             modifier = Modifier
                 .size(100.dp)
                 .clip(CircleShape)
-                .background(Color(profile.colorArgb))
-                .clickable { onClick() },
+                .background(Color(profile.safeColorArgb))
+                .clickable(enabled = !isManaging) { onClick() },
             contentAlignment = Alignment.Center
         ) {
             if (!profile.avatarUrl.isNullOrBlank()) {
@@ -167,28 +171,7 @@ fun MobileProfileItem(
                     alignment = Alignment.Center
                 )
             } else {
-                androidx.tv.material3.Text(
-                    text = profile.displayName.take(1).uppercase(),
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White
-                )
-            }
-            if (isManaging) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.42f))
-                        .clickable { onEditClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.Icon(
-                        imageVector = FluxaIcons.Edit,
-                        contentDescription = AppStrings.t(profile.safeLanguage, "auto.edit"),
-                        tint = Color.White.copy(alpha = 0.82f),
-                        modifier = Modifier.size(34.dp)
-                    )
-                }
+                DefaultProfileAvatar(modifier = Modifier.size(66.dp))
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -198,6 +181,41 @@ fun MobileProfileItem(
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium
         )
+        if (isManaging) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.1f))
+                        .clickable { onEditClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = FluxaIcons.Edit,
+                        contentDescription = AppStrings.t(profile.safeLanguage, "auto.edit"),
+                        tint = Color.White.copy(alpha = 0.82f),
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFF6B6B).copy(alpha = 0.16f))
+                        .clickable { onDeleteClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = FluxaIcons.Delete,
+                        contentDescription = AppStrings.t(profile.safeLanguage, "profiles.delete"),
+                        tint = Color(0xFFFF6B6B),
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+            }
+        }
     }
 }
 

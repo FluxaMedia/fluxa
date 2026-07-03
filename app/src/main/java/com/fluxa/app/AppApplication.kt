@@ -19,21 +19,28 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import okio.Path.Companion.toOkioPath
 import com.lagradost.cloudstream3.AcraApplication
 import com.lagradost.cloudstream3.app
-import com.fluxa.app.ui.catalog.AppStrings
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.EpisodeReleaseWorker
 import com.fluxa.app.plugins.PluginAutoUpdateWorker
+import com.fluxa.app.ui.catalog.TrailerResolver
 import okhttp3.OkHttpClient
 import androidx.work.Configuration
 import androidx.hilt.work.HiltWorkerFactory
 import javax.inject.Inject
 import javax.inject.Named
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 @HiltAndroidApp
 class AppApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject @Named("ImageClient") lateinit var imageClient: OkHttpClient
+    @Inject lateinit var profileManager: ProfileManager
 
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -43,9 +50,11 @@ class AppApplication : Application(), SingletonImageLoader.Factory, Configuratio
         // CloudStream library's app singleton is auto-initialized by the library
 
         AppStrings.initialize(this)
+        TrailerResolver.init(cacheDir)
         PluginAutoUpdateWorker.enqueue(this)
         EpisodeReleaseWorker.enqueue(this)
         com.fluxa.app.player.TorrentStreamManager.getInstance(this).startEngineEarly(this)
+        appScope.launch { profileManager.getProfiles() }
     }
 
     override fun onTerminate() {

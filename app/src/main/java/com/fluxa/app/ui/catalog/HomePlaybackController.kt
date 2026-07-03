@@ -88,6 +88,18 @@ internal class HomePlaybackController(
                     )
                 }
             }
+            val simklToken = profile?.simklAccessToken
+            if (!simklToken.isNullOrBlank() && duration > 0L && timeOffset > 5_000L) {
+                SimklScrobbleWorker.enqueue(
+                    context = context,
+                    profileId = profile.id,
+                    mediaType = meta.type,
+                    mediaId = TraktIntegration.scrobbleMediaId(meta.id, videoId, meta.type),
+                    action = "pause",
+                    positionMs = timeOffset,
+                    durationMs = duration
+                )
+            }
         }
     }
 

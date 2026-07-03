@@ -1,7 +1,9 @@
 package com.fluxa.app.ui.catalog
 
 import android.util.LruCache
+import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
+import com.fluxa.app.data.remote.DetailTrailer
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import kotlinx.coroutines.CoroutineScope
@@ -23,21 +25,26 @@ internal class HomeBillboardRuntime(
     private val language: () -> String,
     private val setMovie: (Meta?) -> Unit,
     private val setLogo: (String?) -> Unit,
+    private val watchlistValue: () -> Boolean,
     private val setWatchlist: (Boolean) -> Unit,
     private val setTrailerUrl: (String?) -> Unit,
     private val setNextEpisode: (String?) -> Unit,
     private val setSeasonPosterUrl: (String?) -> Unit,
     private val getMetaDetail: suspend (String, String) -> MetaDetail?,
     private val parseSeasonEpisode: (String, String) -> String?,
-    private val prefetchDirectPlayback: (Meta, MetaDetail?) -> Unit
+    private val prefetchDirectPlayback: (Meta, MetaDetail?) -> Unit,
+    private val activeProfile: () -> UserProfile? = { null },
+    private val getTrailers: suspend (String, String, String) -> List<DetailTrailer> = { _, _, _ -> emptyList() }
 ) {
     private var rotationJob: Job? = null
     private var prefetchJob: Job? = null
+    private var trailerJob: Job? = null
     private val enrichedCache = LruCache<String, Meta>(50)
 
     fun reset() {
         rotationJob?.cancel()
         prefetchJob?.cancel()
+        trailerJob?.cancel()
         setPool(emptyList())
         setIndex(0)
         setMovie(null)
@@ -98,10 +105,16 @@ internal class HomeBillboardRuntime(
     }
 
     fun toggleWatchlist(movie: Meta?) {
+        val currentMovie = movie ?: return
+        val previous = watchlistValue()
+        setWatchlist(!previous)
         scope.launch {
-            val currentMovie = movie ?: return@launch
-            watchlistManager.toggleWatchlist(currentMovie)
-            setWatchlist(watchlistManager.isInWatchlist(currentMovie.id))
+            try {
+                watchlistManager.toggleWatchlist(currentMovie)
+                setWatchlist(watchlistManager.isInWatchlist(currentMovie.id))
+            } catch (e: Exception) {
+                setWatchlist(previous)
+            }
         }
     }
 
@@ -163,13 +176,14 @@ internal class HomeBillboardRuntime(
     }
 
     suspend fun updateContent(item: Meta) {
+        trailerJob?.cancel()
+        setTrailerUrl(null)
         val cacheKey = HomeBillboardRanking.contentIdentityKey(item)
         val cached = enrichedCache.get(cacheKey)
         if (cached != null) {
             setMovie(cached)
             setLogo(cached.logo)
             setWatchlist(watchlistManager.isInWatchlist(item.id))
-            setTrailerUrl(null)
             setNextEpisode(null)
             setSeasonPosterUrl(null)
         } else {
@@ -179,6 +193,21 @@ internal class HomeBillboardRuntime(
             setWatchlist(watchlistManager.isInWatchlist(item.id))
             // Enrich in background without blocking the caller
             scope.launch(Dispatchers.IO) { enrichAndPublish(item) }
+        }
+        maybeAutoPlayTrailer(item)
+    }
+
+    private fun maybeAutoPlayTrailer(item: Meta) {
+        if (activeProfile()?.safeTrailerOnHomeHeroEnabled != true) return
+        val delaySeconds = activeProfile()?.safeTrailerOnHomeHeroDelaySeconds ?: 4
+        val cacheKey = HomeBillboardRanking.contentIdentityKey(item)
+        trailerJob = scope.launch {
+            if (delaySeconds > 0) delay(delaySeconds * 1000L)
+            val isStillActive = HomeBillboardRanking.contentIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
+            if (!isStillActive) return@launch
+            val resolved = resolvePlayableTrailerUrl(getTrailers(item.type, item.id, language())) ?: return@launch
+            val stillActive = HomeBillboardRanking.contentIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
+            if (stillActive) setTrailerUrl(resolved)
         }
     }
 
@@ -257,4 +286,10 @@ internal class HomeBillboardRuntime(
             .distinctBy { HomeBillboardRanking.normalizeTitle(it.originalName ?: it.name) }
             .take(10)
     }
+}
+
+internal suspend fun resolvePlayableTrailerUrl(trailers: List<DetailTrailer>): String? {
+    val trailerUrl = trailers.firstOrNull { it.url.isNotBlank() }?.url ?: return null
+    if (trailerUrl.isDirectVideoPreviewUrl()) return trailerUrl
+    return (TrailerResolver.resolve(trailerUrl) as? TrailerResolveResult.Ok)?.data?.streamUrl
 }

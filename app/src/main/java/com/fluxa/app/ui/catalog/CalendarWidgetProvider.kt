@@ -10,6 +10,7 @@ import android.graphics.Color as AndroidColor
 import android.view.View
 import android.widget.RemoteViews
 import com.fluxa.app.R
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.MainActivity
 import org.json.JSONArray
 import org.json.JSONObject

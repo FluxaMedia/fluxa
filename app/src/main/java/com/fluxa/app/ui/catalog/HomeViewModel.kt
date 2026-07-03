@@ -10,7 +10,7 @@ import com.fluxa.app.core.rust.FluxaCoreStateHandle
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
 import com.fluxa.app.domain.discovery.cs3PluginFeedKey
-import com.fluxa.app.domain.discovery.effectiveMetadataFeedSelection
+import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
 import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -59,6 +59,7 @@ class HomeViewModel @Inject constructor(
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
     private val pluginManager: PluginManager,
     private val cloudStreamCatalogClient: CloudStreamCatalogClient,
+    private val imdbApiService: ImdbApiService,
     private val gson: Gson,
     @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context
 ) : ViewModel() {
@@ -178,6 +179,31 @@ class HomeViewModel @Inject constructor(
     private val _userAddons = MutableStateFlow<List<AddonDescriptor>>(emptyList())
     val userAddons: StateFlow<List<AddonDescriptor>> = _userAddons
 
+    private val parentsGuideCache = java.util.concurrent.ConcurrentHashMap<String, List<ParentsGuideCategory>>()
+    private val _parentsGuide = MutableStateFlow<List<ParentsGuideCategory>>(emptyList())
+    val parentsGuide: StateFlow<List<ParentsGuideCategory>> = _parentsGuide.asStateFlow()
+
+    fun loadParentsGuide(metaId: String) {
+        val imdbId = com.fluxa.app.core.StremioId.imdbId(metaId)
+        if (imdbId == null) {
+            _parentsGuide.value = emptyList()
+            return
+        }
+        parentsGuideCache[imdbId]?.let {
+            _parentsGuide.value = it
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val guide = imdbApiService.getParentsGuide(imdbId).parentsGuide
+                parentsGuideCache[imdbId] = guide
+                _parentsGuide.value = guide
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     val searchHistory: StateFlow<List<Meta>> = searchFocusState.searchHistory
     val focusedMovie: StateFlow<Meta?> = searchFocusState.focusedMovie
     val focusedMovieTrailerUrl: StateFlow<String?> = searchFocusState.focusedMovieTrailerUrl
@@ -196,6 +222,10 @@ class HomeViewModel @Inject constructor(
         coordinatorFactory.library(repository, traktRepository, viewModelScope, coreState, gson)
     }
     val libraryUiState: StateFlow<LibraryUiState> get() = libraryCoordinator.state
+
+    fun loadLibraryItems(activeProfile: UserProfile?) {
+        libraryCoordinator.load(activeProfile)
+    }
 
     val loadedCs3ApiNames: StateFlow<List<String>> = pluginManager.loadedApis
         .map { apis -> apis.map { it.name } }
@@ -257,6 +287,7 @@ class HomeViewModel @Inject constructor(
             language = { currentActiveProfile?.safeLanguage ?: "en" },
             setMovie = { billboardState.movieValue = it },
             setLogo = { billboardState.logoValue = it },
+            watchlistValue = { billboardState.watchlistValue },
             setWatchlist = { billboardState.watchlistValue = it },
             setTrailerUrl = { billboardState.trailerUrlValue = it },
             setNextEpisode = { billboardState.nextEpisodeValue = it },
@@ -266,7 +297,9 @@ class HomeViewModel @Inject constructor(
                 addonRepository.getAddonMetaDetail(type, id, profile?.authKey ?: "", profile?.safeLocalAddons)
             },
             parseSeasonEpisode = ::formatSeasonEpisode,
-            prefetchDirectPlayback = ::prefetchDirectPlayback
+            prefetchDirectPlayback = ::prefetchDirectPlayback,
+            activeProfile = { currentActiveProfile },
+            getTrailers = { type, id, lang -> getConfiguredMetaDetailResult(type, id, lang).trailers }
         )
     }
 
@@ -355,15 +388,11 @@ class HomeViewModel @Inject constructor(
                 val apis = pluginManager.loadedApis.value
                     .filter { it.hasMainPage }
                     .filter { api ->
-                        // Apply whitelist only when user has explicitly configured CS3 toggles.
-                        // cs3FeedsConfigured is set to true the first time the user interacts
-                        // with home-feed toggles while CS3 plugins are loaded.
                         if (homeFeedToggles == null || !cs3FeedsConfigured) true
                         else homeFeedToggles.contains(cs3PluginFeedKey(api.name))
                     }
                 android.util.Log.d("HomeViewModel", "CS3 refresh: ${apis.size} APIs: ${apis.map { it.name }}")
                 if (apis.isEmpty()) {
-                    // All CS3 plugins unloaded — remove any stale CS3 rows regardless of toggle state
                     val withoutCs3 = _categories.value.filter { !it.id.startsWith("cs3_") }
                     if (withoutCs3.size != _categories.value.size) setCategoriesAndCache(withoutCs3)
                     return@launch
@@ -374,8 +403,6 @@ class HomeViewModel @Inject constructor(
                 val cs3Rows = cloudStreamCatalogClient.fetchHomeCatalogCategories(apis, iconsByApiName)
                 android.util.Log.d("HomeViewModel", "CS3 refresh: got ${cs3Rows.size} rows from ${apis.size} APIs")
                 if (!isActive) return@launch
-                // Merge CS3 rows into the existing list, preserving the position of rows that
-                // were already present. New rows are appended at the end.
                 val cs3RowsById = cs3Rows.associateBy { it.id }
                 val currentCategories = _categories.value
                 val existingCs3Ids = currentCategories.filter { it.id.startsWith("cs3_") }.map { it.id }.toSet()
@@ -670,16 +697,21 @@ class HomeViewModel @Inject constructor(
     }
 
     suspend fun prepareDirectPlayback(meta: Meta): DirectPlaybackTarget? {
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "directPlaybackRequested",
-                "meta" to meta,
-                "profile" to currentActiveProfile,
-                "language" to (currentActiveProfile?.safeLanguage ?: "en")
+        setDirectLoadingState(true)
+        try {
+            val result = dispatchHeadless(
+                mapOf(
+                    "type" to "directPlaybackRequested",
+                    "meta" to meta,
+                    "profile" to currentActiveProfile,
+                    "language" to (currentActiveProfile?.safeLanguage ?: "en")
+                )
             )
-        )
-        val player = result.state["player"] as? Map<*, *>
-        return fromStateObject(player?.get("directPlaybackTarget"), DirectPlaybackTarget::class.java)
+            val player = result.state["player"] as? Map<*, *>
+            return fromStateObject(player?.get("directPlaybackTarget"), DirectPlaybackTarget::class.java)
+        } finally {
+            setDirectLoadingState(false)
+        }
     }
 
     suspend fun getSeasonEpisodes(id: String, seasonNumber: Int, language: String): List<Video> {
@@ -734,6 +766,18 @@ class HomeViewModel @Inject constructor(
         return fromStateList(player?.get("introSegments"), introTimestampsListType)
     }
 
+    suspend fun submitIntroSegment(
+        apiKey: String,
+        segmentType: String,
+        imdbId: String,
+        season: Int,
+        episode: Int,
+        startSec: Double,
+        endSec: Double
+    ): IntroDbSubmitResult {
+        return repository.submitIntroSegment(apiKey, segmentType, imdbId, season, episode, startSec, endSec)
+    }
+
     suspend fun resolvePlaybackIntroImdbId(meta: Meta, videoId: String?, language: String): String? {
         val result = dispatchHeadless(
             mapOf(
@@ -776,6 +820,12 @@ class HomeViewModel @Inject constructor(
             emptyList()
         }
         return HomeMetaDetailResult(detail = detail, trailers = tmdbTrailers)
+    }
+
+    suspend fun resolveExpandedPosterTrailer(meta: Meta): String? {
+        val lang = currentActiveProfile?.safeLanguage ?: "en"
+        val trailers = runCatching { getConfiguredMetaDetailResult(meta.type, meta.id, lang).trailers }.getOrElse { emptyList() }
+        return resolvePlayableTrailerUrl(trailers)
     }
 
     fun search(query: String) {
@@ -1057,13 +1107,9 @@ class HomeViewModel @Inject constructor(
                 val home = result.state["home"] as? Map<*, *> ?: return@launch
                 setActiveProfileState(activeProfile)
                 val rawCategories = fromStateList<HomeCategory>(home["categories"], categoryListType)
-                // Strip CS3 keys before filtering so they don't interfere with Stremio
-                // feed selection (CS3 category IDs are not in the same key space).
-                val stremioToggles = activeProfile?.homeFeedToggles
-                    ?.filter { !it.startsWith("cs3_plugin_") }
-                val filteredCategories = if (stremioToggles != null) {
+                val filteredCategories = if (activeProfile?.homeFeedToggles != null) {
                     val allIds = rawCategories.map { it.id }
-                    val selectedKeys = effectiveMetadataFeedSelection(stremioToggles, allIds)
+                    val selectedKeys = effectiveHomeMetadataFeedSelection(activeProfile.homeFeedToggles, allIds)
                     rawCategories.filter { isMetadataFeedEnabled(selectedKeys, it.id) }
                 } else rawCategories
                 setUserAddonsState(fromStateList(home["userAddons"], addonListType))
@@ -1085,11 +1131,19 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshTraktTokenIfNeeded(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
+        refreshAuthTokenIfNeeded("trakt", profile, onProfileUpdated)
+    }
+
+    fun refreshMalTokenIfNeeded(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
+        refreshAuthTokenIfNeeded("mal", profile, onProfileUpdated)
+    }
+
+    private fun refreshAuthTokenIfNeeded(provider: String, profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
         viewModelScope.launch {
             val result = dispatchHeadless(
                 mapOf(
                     "type" to "authRefreshRequested",
-                    "provider" to "trakt",
+                    "provider" to provider,
                     "profile" to profile
                 )
             )
@@ -1225,6 +1279,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun setUserAddonsState(addons: List<AddonDescriptor>) {
+        if (addons.isEmpty() && _userAddons.value.isNotEmpty()) return
         _userAddons.value = addons
     }
 
@@ -1287,6 +1342,8 @@ class HomeViewModel @Inject constructor(
         return withContext(Dispatchers.Default) {
             runCatching {
                 gson.fromJson(gson.toJsonTree(value), clazz)
+            }.onFailure {
+                android.util.Log.e("HomeViewModel", "fromStateObject failed for ${clazz.simpleName}: $value", it)
             }.getOrNull()
         }
     }

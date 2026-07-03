@@ -5,8 +5,10 @@ import android.util.Log
 import com.fluxa.app.core.StremioId
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.OfflineSubtitleOption
+import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
+import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
 import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.Meta
@@ -25,7 +27,7 @@ import com.fluxa.app.data.repository.CloudStreamCatalogClient
 import com.fluxa.app.data.repository.toStremioType
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
-import com.fluxa.app.ui.catalog.AppStrings
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.CalendarWidgetProvider
 import com.fluxa.app.ui.catalog.CalendarUpcomingItem
 import com.fluxa.app.ui.catalog.EpisodeCalendarLoader
@@ -34,7 +36,7 @@ import com.fluxa.app.ui.catalog.HomeCategory
 import com.fluxa.app.ui.catalog.HomeCatalogSource
 import com.fluxa.app.domain.discovery.buildDiscoverCatalogOptions
 import com.fluxa.app.domain.discovery.buildMetadataFeedOptions
-import com.fluxa.app.domain.discovery.effectiveMetadataFeedSelection
+import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
 import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
 import com.fluxa.app.domain.discovery.orderedMetadataFeeds
 import com.fluxa.app.common.ReleaseDateUtils
@@ -42,6 +44,7 @@ import com.fluxa.app.ui.catalog.DiscoverGenreOption
 import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.ui.catalog.DirectPlaybackTarget
 import com.fluxa.app.ui.catalog.TraktScrobbleWorker
+import com.fluxa.app.ui.catalog.SimklScrobbleWorker
 import com.fluxa.app.core.rust.models.NativeHeadlessEffect
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -80,7 +83,9 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal val watchlistManager: WatchlistManager,
     internal val streamDiscovery: StreamDiscoveryUseCase,
     internal val pluginManager: PluginManager,
-    internal val gson: Gson
+    internal val gson: Gson,
+    internal val profileManager: ProfileManager,
+    internal val externalSyncPushCoordinator: ExternalSyncPushCoordinator
 ) : HeadlessPlatformEnvironment {
 
     internal val primeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -136,6 +141,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 else -> error(effect, "unsupported_effect")
             }
         }.getOrElse { throwable ->
+            android.util.Log.e("HeadlessEnv", "effect ${effect.type} failed", throwable)
             error(effect, throwable.message ?: throwable::class.java.simpleName)
         }
     }
@@ -561,11 +567,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val allFeeds = buildMetadataFeedOptions(addons, language)
         val metadataFeeds = orderedMetadataFeeds(allFeeds, profile?.homeFeedOrder).let { feeds ->
             val availableKeys = feeds.map { it.key }
-            // Strip CS3 keys before filtering Stremio feeds — CS3 keys are not in
-            // availableKeys and can cause effectiveMetadataFeedSelection to return
-            // unexpected results.
-            val stremioToggles = profile?.homeFeedToggles?.filter { !it.startsWith("cs3_plugin_") }
-            val selectedKeys = effectiveMetadataFeedSelection(stremioToggles, availableKeys)
+            val selectedKeys = effectiveHomeMetadataFeedSelection(profile?.homeFeedToggles, availableKeys)
             feeds.filter { isMetadataFeedEnabled(selectedKeys, it.key) }
         }
         val categories = metadataFeeds.mapNotNull { feed ->
@@ -618,22 +620,43 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
 
     private suspend fun writeLibraryCommand(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val command = effect.payload.objectValue("command").orEmpty()
+        val profileId = effect.payload.stringOrNull("profileId")
+        val profile = profileId?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
         val value = when (command.string("type")) {
             "toggleWatchlist" -> {
                 val item = command.objectValue("item")?.let { gson.fromJson(gson.toJsonTree(it), Meta::class.java) }
                 if (item != null) {
+                    val wasInWatchlist = watchlistManager.isInWatchlist(item.id)
                     watchlistManager.toggleWatchlist(item)
-                    mapOf("watchlist" to watchlistManager.getWatchlistSnapshot(), "isInWatchlist" to watchlistManager.isInWatchlist(item.id))
+                    val isInWatchlist = watchlistManager.isInWatchlist(item.id)
+                    if (profile != null && isInWatchlist != wasInWatchlist) {
+                        primeScope.launch {
+                            runCatching { externalSyncPushCoordinator.pushWatchlist(profile, item, isInWatchlist) }
+                        }
+                    }
+                    mapOf("watchlist" to watchlistManager.getWatchlistSnapshot(), "isInWatchlist" to isInWatchlist)
                 } else {
                     mapOf("watchlist" to watchlistManager.getWatchlistSnapshot())
                 }
             }
             "markWatched" -> {
+                val watched = command.boolean("watched", true)
                 val localWatched = watchlistManager.markEpisodesWatched(
                 seriesId = command.string("seriesId"),
                 videoIds = command.list("videoIds").mapNotNull { it?.toString() },
-                watched = command.boolean("watched", true)
+                watched = watched
                 )
+                if (profile != null) {
+                    val meta = command.objectValue("meta")?.let { gson.fromJson(gson.toJsonTree(it), Meta::class.java) }
+                    val episodes = command.list("episodes").mapNotNull {
+                        runCatching { gson.fromJson(gson.toJsonTree(it), Video::class.java) }.getOrNull()
+                    }
+                    if (meta != null) {
+                        primeScope.launch {
+                            runCatching { externalSyncPushCoordinator.pushMarkWatched(profile, meta, episodes, watched) }
+                        }
+                    }
+                }
                 mapOf("watchlist" to watchlistManager.getWatchlistSnapshot(), "localWatchedVideoIds" to localWatched.toList())
             }
             else -> mapOf("watchlist" to watchlistManager.getWatchlistSnapshot())
@@ -696,6 +719,18 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                     action = "pause"
                 )
             }
+        }
+        val simklToken = profile?.simklAccessToken
+        if (!simklToken.isNullOrBlank() && duration > 0L && timeOffset > 5_000L) {
+            SimklScrobbleWorker.enqueue(
+                context = context,
+                profileId = profile.id,
+                mediaType = meta.type,
+                mediaId = TraktIntegration.scrobbleMediaId(meta.id, progress.stringOrNull("lastVideoId"), meta.type),
+                action = "pause",
+                positionMs = timeOffset,
+                durationMs = duration
+            )
         }
         return ok(effect, emptyMap<String, Any?>())
     }
@@ -919,7 +954,8 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 val response = repository.exchangeMalCode(payload.string("code"), payload.string("codeVerifier"))
                 profile.copy(
                     malAccessToken = response.accessToken,
-                    malRefreshToken = response.refreshToken
+                    malRefreshToken = response.refreshToken,
+                    malTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
                 )
             }
             "simkl" -> {
@@ -934,13 +970,21 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     private suspend fun refreshAuthToken(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val payload = effect.payload
         val profile = payload.profile() ?: return error(effect, "missing_profile")
-        if (payload.string("provider") != "trakt") return error(effect, "unsupported_auth_provider")
-        val refreshToken = profile.traktRefreshToken?.takeIf { it.isNotBlank() } ?: return ok(effect, mapOf("profile" to profile))
+        val updated = when (payload.string("provider")) {
+            "trakt" -> refreshTraktTokenIfNeeded(profile)
+            "mal" -> refreshMalTokenIfNeeded(profile)
+            else -> return error(effect, "unsupported_auth_provider")
+        }
+        return ok(effect, mapOf("profile" to updated))
+    }
+
+    private suspend fun refreshTraktTokenIfNeeded(profile: UserProfile): UserProfile {
+        val refreshToken = profile.traktRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
         val refreshWindowMs = 24L * 60L * 60L * 1000L
         if (!profile.traktAccessToken.isNullOrBlank() && profile.safeTraktTokenExpiresAt > System.currentTimeMillis() + refreshWindowMs) {
-            return ok(effect, mapOf("profile" to profile))
+            return profile
         }
-        val updated = runCatching {
+        return runCatching {
             val response = traktRepository.refreshTraktToken(refreshToken)
             profile.copy(
                 traktAccessToken = response.accessToken,
@@ -951,26 +995,46 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             Log.w("Trakt", "Token refresh failed", throwable)
             val status = (throwable as? retrofit2.HttpException)?.code()
             if (status == 400 || status == 401) {
-                profile.copy(
-                    traktAccessToken = null,
-                    traktRefreshToken = null,
-                    traktTokenExpiresAt = null
-                )
+                profile.copy(traktAccessToken = null, traktRefreshToken = null, traktTokenExpiresAt = null)
             } else {
-                return error(effect, throwable.message ?: "token_refresh_failed")
+                profile
             }
         }
-        return ok(effect, mapOf("profile" to updated))
+    }
+
+    private suspend fun refreshMalTokenIfNeeded(profile: UserProfile): UserProfile {
+        val refreshToken = profile.malRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
+        val refreshWindowMs = 24L * 60L * 60L * 1000L
+        if (!profile.malAccessToken.isNullOrBlank() && profile.safeMalTokenExpiresAt > System.currentTimeMillis() + refreshWindowMs) {
+            return profile
+        }
+        return runCatching {
+            val response = repository.refreshMalToken(refreshToken)
+            profile.copy(
+                malAccessToken = response.accessToken,
+                malRefreshToken = response.refreshToken ?: refreshToken,
+                malTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
+            )
+        }.getOrElse { throwable ->
+            Log.w("Mal", "Token refresh failed", throwable)
+            val status = (throwable as? retrofit2.HttpException)?.code()
+            if (status == 400 || status == 401) {
+                profile.copy(malAccessToken = null, malRefreshToken = null, malTokenExpiresAt = null)
+            } else {
+                profile
+            }
+        }
     }
 
     private suspend fun syncExternalIntegration(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val payload = effect.payload
         val profile = payload.profile() ?: return error(effect, "missing_profile")
-        if (profile.traktAccessToken.isNullOrBlank()) return error(effect, "missing_trakt_token")
+        val traktToken = profile.traktAccessToken
+        if (traktToken.isNullOrBlank()) return error(effect, "missing_trakt_token")
         val language = payload.string("language", profile.safeLanguage)
         val snapshot = traktRepository.getTraktSyncSnapshot(profile, language)
         val watchedState = withTimeoutOrNull(8_000L) {
-            traktRepository.getTraktWatchedState(profile.traktAccessToken)
+            traktRepository.getTraktWatchedState(traktToken)
         }
         if (watchedState != null) {
             watchlistManager.replaceExternalWatchedEpisodes("trakt", watchedState.episodeIdsBySeries)
@@ -1140,8 +1204,6 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val api = pluginManager.loadedApis.value.firstOrNull { it.name == apiName } ?: return emptyList()
         val runner = ExternalExtensionRunner()
 
-        // Try direct stream loading first — works for episodes where `data` is already stream-ready.
-        // Falls back to loadContent + loadStreams for catalog-level URLs that need an extra page load.
         val directResult = try {
             withTimeoutOrNull(directTimeoutMs) { runner.loadStreams(api, data) }
         } catch (_: Throwable) { null }

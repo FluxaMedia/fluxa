@@ -5,8 +5,13 @@
 /.gradle/
 /build/
 /app/build/
+**/build/
+**/.cxx/
 /rust/**/target/
 /local.properties
+/.env
+/.env.*
+*.env
 **/debug.keystore
 *.jks
 /server.log
@@ -24,3 +29,6 @@ __pycache__/
 # Local agent / tool config
 /.claude/settings.local.json
 /.agents/
+*.md
+!README.md
+/docs/

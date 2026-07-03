@@ -37,13 +37,18 @@ class FluxaHeadlessAppRuntime(
 
     private suspend fun drain(initial: NativeHeadlessEngineResult): NativeHeadlessEngineResult {
         var current = initial
+        val patches = mutableListOf(current)
         var remaining = maxEffectsPerDispatch
         while (current.effects.isNotEmpty() && remaining > 0) {
             val completion = environment.execute(current.effects.first())
             current = engine.completeEffect(completion)
+            patches += current
             remaining--
         }
-        return current
+        return NativeHeadlessEngineResult(
+            effects = current.effects,
+            stateProvider = { patches.fold(emptyMap<String, Any?>()) { acc, patch -> acc + patch.state } }
+        )
     }
 
     override fun close() {

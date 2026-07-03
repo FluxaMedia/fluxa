@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -23,7 +24,7 @@ fun homeCategoryTitleParts(category: HomeCategory, language: String?): Pair<Stri
 
 fun displayHomeCategoryTitle(category: HomeCategory, language: String?): String {
     val (title, typeLabel) = homeCategoryTitleParts(category, language)
-    return if (typeLabel != null) "$title  $typeLabel" else title
+    return if (typeLabel != null) "$title  —  $typeLabel" else title
 }
 
 private fun stripTypeSuffix(title: String, type: String, language: String?): String {

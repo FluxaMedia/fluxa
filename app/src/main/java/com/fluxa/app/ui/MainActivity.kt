@@ -22,7 +22,7 @@ import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.util.Log
 import com.lagradost.cloudstream3.CommonActivity
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
@@ -66,6 +66,7 @@ import androidx.lifecycle.viewModelScope
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import com.fluxa.app.ui.catalog.*
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.R
 import androidx.media3.exoplayer.ExoPlayer
@@ -79,12 +80,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     @Inject lateinit var profileManager: ProfileManager
     @Inject lateinit var pluginManager: PluginManager
     @Inject lateinit var stremioRepository: StremioRepository
     @Inject lateinit var authService: StremioService
+    @Inject lateinit var nuvioImportCoordinator: com.fluxa.app.data.repository.NuvioAccountImportCoordinator
 
     private val searchIntentFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val traktAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
@@ -112,15 +114,14 @@ class MainActivity : ComponentActivity() {
 
         if (intent.action == android.content.Intent.ACTION_VIEW) {
             val data = intent.data ?: return
-            val scheme = data.scheme
-            val isSupportedScheme = scheme == "app"
-            if (isSupportedScheme && data.host == "trakt") {
+            val isOAuthRedirect = data.scheme == "fluxa" && data.host == "oauth"
+            if (isOAuthRedirect && data.lastPathSegment == "trakt") {
                 data.getQueryParameter("code")?.let { traktAuthFlow.tryEmit(it) }
             }
-            if (isSupportedScheme && data.host == "mal") {
+            if (isOAuthRedirect && data.lastPathSegment == "mal") {
                 data.getQueryParameter("code")?.let { malAuthFlow.tryEmit(it) }
             }
-            if (isSupportedScheme && data.host == "simkl") {
+            if (isOAuthRedirect && data.lastPathSegment == "simkl") {
                 data.getQueryParameter("code")?.let { simklAuthFlow.tryEmit(it) }
             }
         }
@@ -144,7 +145,7 @@ class MainActivity : ComponentActivity() {
         
         handleIntent(intent)
 
-        AppContainer.initialize(profileManager, pluginManager, stremioRepository, authService)
+        AppContainer.initialize(profileManager, pluginManager, stremioRepository, authService, nuvioImportCoordinator)
 
         setContent {
             AppTheme {
@@ -152,19 +153,42 @@ class MainActivity : ComponentActivity() {
                 val deviceType = remember { if (com.fluxa.app.BuildConfig.IS_TV) DeviceType.TV else DeviceType.Mobile }
                 
                 CompositionLocalProvider(LocalDeviceType provides deviceType) {
-                    val initialProfile = remember(deviceType) {
-                        initialProfileForDevice(profileManager, deviceType)
+                    var loadedInitialProfile by remember { mutableStateOf<UserProfile?>(null) }
+                    var profilesReady by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(deviceType) {
+                        val profile = withContext(Dispatchers.IO) {
+                            initialProfileForDevice(profileManager, deviceType)
+                        }
+                        loadedInitialProfile = profile
+                        profilesReady = true
                     }
-                    val initialScreen = remember(initialProfile) {
-                        initialScreenForProfile(initialProfile)
+
+                    if (!profilesReady) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(Color.Black),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color.White)
+                        }
+                        return@CompositionLocalProvider
+                    }
+
+                    val initialProfile = loadedInitialProfile
+                    val initialScreen = remember(initialProfile, deviceType) {
+                        if (profileManager.getProfiles().isEmpty() && deviceType == DeviceType.Mobile) Screen.Login()
+                        else if (profileManager.getProfiles().isEmpty()) Screen.Welcome
+                        else initialScreenForProfile(initialProfile)
                     }
                     val navigator = rememberAppNavigator(initialScreen)
-                    
+
                     var activeProfile by remember { mutableStateOf<UserProfile?>(initialProfile) }
                     var profiles by remember { mutableStateOf(profileManager.getProfiles()) }
                     var traktDeviceAuth by remember { mutableStateOf<TraktDeviceAuthUiState?>(null) }
                     var showTraktSheet by remember { mutableStateOf(false) }
                     var isTraktSyncing by remember { mutableStateOf(false) }
+                    var showMalSheet by remember { mutableStateOf(false) }
+                    var showSimklSheet by remember { mutableStateOf(false) }
                     val coroutineScope = rememberCoroutineScope()
                     
 
@@ -216,6 +240,19 @@ class MainActivity : ComponentActivity() {
                             }) { success ->
                                 android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, if (success) "toast.trakt_connected" else "toast.trakt_connect_failed"), android.widget.Toast.LENGTH_SHORT).show()
                                 activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
+                                if (success) {
+                                    activeProfile?.let { profile ->
+                                        isTraktSyncing = true
+                                        homeViewModel.syncTraktIntegration(
+                                            profile = profile,
+                                            onProfileUpdated = { updated ->
+                                                activeProfile = updated
+                                                profileManager.saveProfile(updated)
+                                                profileManager.setLastActiveProfile(updated)
+                                            }
+                                        ) { isTraktSyncing = false }
+                                    }
+                                }
                             }
                         }
                     }
@@ -266,7 +303,10 @@ class MainActivity : ComponentActivity() {
                         activeProfile?.playerBufferCacheMb,
                         activeProfile?.playerForwardBufferSeconds,
                         activeProfile?.playerBackBufferSeconds,
-                        activeProfile?.tunneledPlayback
+                        activeProfile?.tunneledPlayback,
+                        activeProfile?.playerMinBufferSeconds,
+                        activeProfile?.playerPlaybackBufferMs,
+                        activeProfile?.playerRebufferBufferMs
                     ) {
                         MediaPlayerController.createExoPlayer(
                             context,
@@ -275,7 +315,10 @@ class MainActivity : ComponentActivity() {
                             activeProfile?.safePlayerBufferCacheMb ?: 100,
                             activeProfile?.safePlayerForwardBufferSeconds ?: 30,
                             activeProfile?.safePlayerBackBufferSeconds ?: 30,
-                            activeProfile?.safeTunneledPlayback == true
+                            activeProfile?.safeTunneledPlayback == true,
+                            activeProfile?.safePlayerMinBufferSeconds ?: 8,
+                            activeProfile?.safePlayerPlaybackBufferMs ?: 1500,
+                            activeProfile?.safePlayerRebufferBufferMs ?: 2500
                         )
                     }
                     val previewPlayer = remember(activeProfile?.id, activeProfile?.safeAudioDecoderMode, activeProfile?.preferredAudioLanguage) {
@@ -305,7 +348,7 @@ class MainActivity : ComponentActivity() {
                             homeViewModel.loadInitialData(null)
                         }
                         while (isActive) {
-                            val update = UpdateManager.checkUpdate(com.fluxa.app.BuildConfig.UPDATE_URL)
+                            val update = UpdateManager.checkUpdate()
                             if (update != null) {
                                 updateInfo = update
                                 break // Stop checking if update found
@@ -321,7 +364,23 @@ class MainActivity : ComponentActivity() {
                                 profileManager.saveProfile(updated)
                                 profileManager.setLastActiveProfile(updated)
                             }
+                            homeViewModel.refreshMalTokenIfNeeded(profile) { updated ->
+                                activeProfile = updated
+                                profileManager.saveProfile(updated)
+                                profileManager.setLastActiveProfile(updated)
+                            }
                             homeViewModel.loadInitialData(profile)
+                            if (!profile.traktAccessToken.isNullOrBlank()) {
+                                isTraktSyncing = true
+                                homeViewModel.syncTraktIntegration(
+                                    profile = profile,
+                                    onProfileUpdated = { updated ->
+                                        activeProfile = updated
+                                        profileManager.saveProfile(updated)
+                                        profileManager.setLastActiveProfile(updated)
+                                    }
+                                ) { isTraktSyncing = false }
+                            }
                         }
                     }
 
@@ -386,8 +445,11 @@ class MainActivity : ComponentActivity() {
                             offlineDownloadManager = offlineDownloadManager,
                             oauthPrefs = oauthPrefs,
                             onShowTraktSheet = { showTraktSheet = true },
+                            onShowMalSheet = { showMalSheet = true },
+                            onShowSimklSheet = { showSimklSheet = true },
                             onTraktDeviceAuthChanged = { traktDeviceAuth = it },
                             onPendingMalCodeVerifierChanged = { pendingMalCodeVerifier = it },
+                            onUpdateInfoChanged = { updateInfo = it },
                             navigateBackSafely = navigateBackSafely
                         )
 
@@ -413,11 +475,15 @@ class MainActivity : ComponentActivity() {
                             showTraktSheet = showTraktSheet,
                             isTraktSyncing = isTraktSyncing,
                             traktContinueWatchingLastUpdatedAt = traktContinueWatchingLastUpdatedAt,
+                            showMalSheet = showMalSheet,
+                            showSimklSheet = showSimklSheet,
                             onUpdateInfoChanged = { updateInfo = it },
                             onDownloadingChanged = { isDownloading = it },
                             onDownloadProgressChanged = { downloadProgress = it },
                             onShowTraktSheetChanged = { showTraktSheet = it },
-                            onTraktSyncingChanged = { isTraktSyncing = it }
+                            onTraktSyncingChanged = { isTraktSyncing = it },
+                            onShowMalSheetChanged = { showMalSheet = it },
+                            onShowSimklSheetChanged = { showSimklSheet = it }
                         )
                     }
                 }

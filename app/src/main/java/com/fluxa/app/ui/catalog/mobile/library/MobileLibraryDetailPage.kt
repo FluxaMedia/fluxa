@@ -1,6 +1,7 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.remote.Meta
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -145,8 +146,7 @@ private fun LibraryContinueListCard(item: Meta, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.07f))
+            .background(Color.White.copy(alpha = 0.07f), RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -191,7 +191,7 @@ private fun LibraryContinueListCard(item: Meta, onClick: () -> Unit) {
     }
 }
 
-private fun libraryTypeFilterOptions(items: List<Meta>, lang: String): List<Pair<String, String>> {
+internal fun libraryTypeFilterOptions(items: List<Meta>, lang: String): List<Pair<String, String>> {
     val options = mutableListOf("all" to AppStrings.t(lang, "auto.all_24e2815b"))
     if (items.any { it.type == "series" }) {
         options += "series" to AppStrings.t(lang, "auto.series_02b3bdba")

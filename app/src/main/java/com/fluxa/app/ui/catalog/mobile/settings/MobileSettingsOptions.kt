@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -158,10 +159,10 @@ internal fun mobileSeasonSelectorLabel(value: String, lang: String): String {
 }
 
 internal fun settingsContinueWatchingTitle(lang: String): String =
-    if (lang.startsWith("en", ignoreCase = true)) "CONTINUE WATCHING" else "İZLEMEYE DEVAM ET"
+    AppStrings.t(lang, "auto.continue_watching").uppercase()
 
 internal fun settingsPipTitle(lang: String): String =
-    if (lang.startsWith("en", ignoreCase = true)) "PiP Mode" else "PiP Modu"
+    AppStrings.t(lang, "settings.pip_mode")
 
 internal fun settingsSecondsLabel(lang: String, seconds: Int): String =
     AppStrings.format(lang, "format.seconds", seconds)
@@ -173,6 +174,18 @@ internal fun bufferSecondOptions(lang: String, includeZero: Boolean = false): Li
     val values = if (includeZero) listOf(0, 15, 30, 60, 120, 300) else listOf(30, 60, 120, 300, 600)
     return values.map { ChoiceOption(it.toString(), settingsSecondsLabel(lang, it)) }
 }
+
+internal fun minBufferSecondOptions(lang: String): List<ChoiceOption> =
+    listOf(2, 4, 8, 15, 30).map { ChoiceOption(it.toString(), settingsSecondsLabel(lang, it)) }
+
+internal fun bufferMsLabel(ms: Int): String =
+    if (ms % 1000 == 0) "${ms / 1000} s" else "${"%.1f".format(ms / 1000.0)} s"
+
+internal fun playbackBufferMsOptions(): List<ChoiceOption> =
+    listOf(500, 1000, 1500, 2000, 3000, 5000).map { ChoiceOption(it.toString(), bufferMsLabel(it)) }
+
+internal fun rebufferBufferMsOptions(): List<ChoiceOption> =
+    listOf(1000, 1500, 2000, 3000, 5000, 8000).map { ChoiceOption(it.toString(), bufferMsLabel(it)) }
 
 internal fun audioDecoderModeOptions(lang: String): List<ChoiceOption> = listOf(
     ChoiceOption("hw_only", AppStrings.t(lang, "settings.audio_decoder_hw_only")),
@@ -187,7 +200,7 @@ internal fun audioDecoderModeLabel(value: String, lang: String): String {
 
 internal fun dolbyVisionFallbackOptions(lang: String): List<ChoiceOption> = listOf(
     ChoiceOption("auto", AppStrings.t(lang, "settings.dv_fallback_auto")),
-    ChoiceOption("convert_dv81", AppStrings.t(lang, "settings.dv_fallback_convert_dv81")),
+    ChoiceOption("force_hdr10", AppStrings.t(lang, "settings.dv_fallback_force_hdr10")),
     ChoiceOption("off", AppStrings.t(lang, "settings.dv_fallback_off"))
 )
 
@@ -213,18 +226,18 @@ internal fun dvHdr10PlusModeOptions(lang: String): List<ChoiceOption> = listOf(
 )
 
 internal fun verticalPosterLabel(lang: String): String =
-    if (lang.startsWith("en", ignoreCase = true)) "Vertical poster" else "Dikey afi"
+    AppStrings.t(lang, "settings.vertical_poster")
 
 internal fun horizontalPosterLabel(lang: String): String =
-    if (lang.startsWith("en", ignoreCase = true)) "Horizontal poster" else "Yatay afi"
+    AppStrings.t(lang, "settings.horizontal_poster")
 
 internal fun languageDisplayName(language: String, lang: String): String = when (language.lowercase()) {
     "none", "", "__off__" -> AppStrings.t(lang, "settings.none")
     "forced" -> AppStrings.t(lang, "settings.forced")
     "original" -> AppStrings.t(lang, "settings.original")
     "device_language" -> AppStrings.t(lang, "settings.device_language")
-    "tr", "tr_tr" -> Locale.forLanguageTag("tr").getDisplayLanguage(Locale.forLanguageTag("tr"))
-    "en", "en_us", "english_us" -> "English"
+    "tr", "tr-tr" -> Locale.forLanguageTag("tr").getDisplayLanguage(Locale.forLanguageTag("tr"))
+    "en", "en-us" -> "English"
     else -> Locale.forLanguageTag(language).getDisplayLanguage(Locale.forLanguageTag(language)).takeIf { it.isNotBlank() } ?: language
 }
 

@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
@@ -13,53 +14,146 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import java.io.ByteArrayOutputStream
 import kotlin.coroutines.resume
 
 internal val LocalSeekSurfaceView = compositionLocalOf<SurfaceView?> { null }
+internal val LocalSeekExoPlayer = compositionLocalOf<ExoPlayer?> { null }
+
+private const val BucketMs = 10_000L
+private const val BackgroundCaptureIntervalMs = 60_000L
+private const val ThumbWidth = 480
+private const val ThumbHeight = 270
+private const val CacheMaxBytes = 32 * 1024 * 1024
+private const val FrameTimeoutMs = 300L
 
 @Composable
 internal fun rememberSeekThumbnail(
     surfaceView: SurfaceView?,
     scrubPosition: Long,
-    isScrubbing: Boolean
+    isScrubbing: Boolean,
+    livePosition: Long,
+    isPlaying: Boolean,
+    onScrubSeek: (Long) -> Unit
 ): ImageBitmap? {
+    val exoPlayer = LocalSeekExoPlayer.current
     var thumbnail by remember { mutableStateOf<ImageBitmap?>(null) }
-    val cache = remember { LruCache<Long, ImageBitmap>(30) }
+    val cache = remember {
+        object : LruCache<Long, ByteArray>(CacheMaxBytes) {
+            override fun sizeOf(key: Long, value: ByteArray) = value.size
+        }
+    }
+    val latestScrubPosition by rememberUpdatedState(scrubPosition)
+    val bucket = (scrubPosition / BucketMs) * BucketMs
 
-    LaunchedEffect(scrubPosition, isScrubbing) {
+    LaunchedEffect(bucket, isScrubbing, surfaceView != null) {
         if (!isScrubbing) { thumbnail = null; return@LaunchedEffect }
         val sv = surfaceView ?: return@LaunchedEffect
         if (android.os.Build.VERSION.SDK_INT < 26) return@LaunchedEffect
 
-        val quantized = (scrubPosition / 1000L) * 1000L
-        cache[quantized]?.let { thumbnail = it; return@LaunchedEffect }
+        cache[bucket]?.let { thumbnail = decodeJpeg(it); return@LaunchedEffect }
 
-        // Wait for the existing scrub seek (80ms debounce) to render the frame.
-        delay(220)
+        delay(80)
+        if (!isScrubbing) return@LaunchedEffect
+        val target = latestScrubPosition
+
+        if (exoPlayer != null) {
+            val listener = FirstFrameListener(exoPlayer)
+            onScrubSeek(target)
+            withTimeoutOrNull(FrameTimeoutMs) { listener.await() }
+            listener.detach()
+        } else {
+            onScrubSeek(target)
+            delay(140)
+        }
         if (!isScrubbing) return@LaunchedEffect
 
-        val bitmap = Bitmap.createBitmap(320, 180, Bitmap.Config.ARGB_8888)
-        val captured = capturePixelCopy(sv, bitmap) ?: return@LaunchedEffect
+        val captured = capturePixelCopy(sv) ?: return@LaunchedEffect
+        val bytes = compressToJpeg(captured)
+        cache.put(bucket, bytes)
+        thumbnail = decodeJpeg(bytes)
+    }
 
-        val imgBitmap = captured.asImageBitmap()
-        cache.put(quantized, imgBitmap)
-        thumbnail = imgBitmap
+    val latestIsScrubbing by rememberUpdatedState(isScrubbing)
+    val latestIsPlaying by rememberUpdatedState(isPlaying)
+    val latestLivePosition by rememberUpdatedState(livePosition)
+    LaunchedEffect(surfaceView) {
+        val sv = surfaceView ?: return@LaunchedEffect
+        if (android.os.Build.VERSION.SDK_INT < 26) return@LaunchedEffect
+        var lastCapturedAt = -1L
+        while (true) {
+            delay(2000)
+            if (latestIsScrubbing || !latestIsPlaying) continue
+            val pos = latestLivePosition
+            if (lastCapturedAt >= 0 && pos - lastCapturedAt < BackgroundCaptureIntervalMs) continue
+            val posBucket = (pos / BucketMs) * BucketMs
+            if (cache[posBucket] != null) { lastCapturedAt = pos; continue }
+            val captured = capturePixelCopy(sv)
+            if (captured != null) {
+                cache.put(posBucket, compressToJpeg(captured))
+                lastCapturedAt = pos
+            }
+        }
     }
 
     return thumbnail
 }
 
+private class FirstFrameListener(private val player: ExoPlayer) : Player.Listener {
+    private var continuation: kotlinx.coroutines.CancellableContinuation<Unit>? = null
+
+    init { player.addListener(this) }
+
+    override fun onRenderedFirstFrame() {
+        val cont = continuation ?: return
+        continuation = null
+        player.removeListener(this)
+        cont.resume(Unit)
+    }
+
+    suspend fun await() = suspendCancellableCoroutine<Unit> { cont ->
+        continuation = cont
+        cont.invokeOnCancellation { continuation = null }
+    }
+
+    fun detach() {
+        continuation = null
+        runCatching { player.removeListener(this) }
+    }
+}
+
+private fun compressToJpeg(captured: Bitmap): ByteArray {
+    val composed = Bitmap.createBitmap(ThumbWidth, ThumbHeight, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(composed)
+    canvas.drawColor(android.graphics.Color.BLACK)
+    canvas.drawBitmap(captured, 0f, 0f, null)
+    captured.recycle()
+    val out = ByteArrayOutputStream()
+    composed.compress(Bitmap.CompressFormat.JPEG, 75, out)
+    composed.recycle()
+    return out.toByteArray()
+}
+
+private fun decodeJpeg(bytes: ByteArray): ImageBitmap? =
+    runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
+
 @RequiresApi(26)
-private suspend fun capturePixelCopy(surfaceView: SurfaceView, dest: Bitmap): Bitmap? =
+private suspend fun capturePixelCopy(surfaceView: SurfaceView): Bitmap? =
     suspendCancellableCoroutine { cont ->
+        val dest = Bitmap.createBitmap(ThumbWidth, ThumbHeight, Bitmap.Config.ARGB_8888)
         runCatching {
             PixelCopy.request(surfaceView, null, dest, { result ->
-                cont.resume(if (result == PixelCopy.SUCCESS) dest else null)
+                if (result == PixelCopy.SUCCESS) cont.resume(dest)
+                else { dest.recycle(); cont.resume(null) }
             }, Handler(Looper.getMainLooper()))
-        }.onFailure { cont.resume(null) }
+        }.onFailure { dest.recycle(); cont.resume(null) }
     }

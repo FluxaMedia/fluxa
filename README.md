@@ -1,46 +1,76 @@
 <div align="center">
 
+<img src="app/src/mobile/res/mipmap-nodpi/ic_launcher.png" alt="Fluxa" width="96" />
+
 # Fluxa
 
-  [![Contributors][contributors-shield]][contributors-url]
-  [![Forks][forks-shield]][forks-url]
-  [![Stars][stars-shield]][stars-url]
-  [![Issues][issues-shield]][issues-url]
-  [![License][license-shield]][license-url]
+A fast, native media client for Android phones, tablets, and TV.<br/>
+Browse catalogs, track what you watch, and play anything the Stremio addon ecosystem exposes.
 
-  <p>
-    A native Android media hub powered by a platform-agnostic Rust core.<br/>
-    Stremio addon ecosystem · Mobile & Android TV
-  </p>
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stars][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![License][license-shield]][license-url]
+
+[Download](#download) · [Features](#features) · [Building from source](#building-from-source)
 
 </div>
 
 ---
 
-## What is Fluxa?
+## What it does
 
-Fluxa is a content discovery and playback app for Android. It connects to the Stremio addon ecosystem, letting you browse catalogs, track your watch history, and play media from any source those addons expose.
+Fluxa connects to any Stremio-compatible addon and turns it into a proper Android app: a home feed with genre and category browsing, a calendar of upcoming episodes, a library with continue-watching and resume positions, and two-way watch tracking with Trakt, MyAnimeList, and Simkl. Playback runs through Media3/ExoPlayer and MPV, including direct torrent/magnet support, with no telemetry.
 
 The Android shell handles all platform I/O — HTTP, Room, ExoPlayer, audio, notifications — but the actual decision-making lives in **[fluxa-core](https://github.com/KhooLy/fluxa-core)**, a headless Rust library that runs the same logic across Android and desktop targets. Rust never touches the network directly; it emits typed effects that the Kotlin layer fulfills.
 
-**Requires Android 8.0+ (API 26). Android TV / Google TV supported.**
+## Features
 
----
+- **Catalogs & discovery** — home feed, genre/category grids, search across every installed addon, and a calendar of upcoming episodes for what you're following
+- **Library** — watchlist, continue watching with resume position, and custom collections, with import support for existing lists
+- **Watch tracking** — two-way sync with Trakt, MyAnimeList, and Simkl
+- **Playback** — subtitle and audio track selection, intro/outro/recap skip, and direct torrent/magnet support
+- **Profiles** — multiple local profiles on one install, each with its own library, addons, and sync accounts
+- **Addons** — install and manage Stremio-compatible addons directly from the app
+- **TV-ready** — a dedicated Android TV / Google TV interface, not a stretched phone layout
+- **Auto-update** — checks for and installs new versions in-app
 
-## Installation
+## Download
 
-Download the latest release from [GitHub Releases](https://github.com/KhooLy/Fluxa/releases/latest).
-
-Two APK variants are available:
+Grab the latest build from [Releases](https://github.com/KhooLy/Fluxa/releases/latest). Requires Android 8.0+ (API 26).
 
 | Variant | Package | Target |
-|---------|---------|--------|
+| --- | --- | --- |
 | `mobile` | `com.fluxa.app.mobile` | Phone & tablet |
 | `tv` | `com.fluxa.app.tv` | Android TV / Google TV |
 
-Each variant ships per-ABI splits: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`.
+Each variant ships per-ABI APKs — pick the one matching your device, or let the in-app updater do it for you:
 
----
+| ABI | Devices |
+| --- | --- |
+| `arm64-v8a` | Most phones/tablets/TVs from the last ~6 years |
+| `armeabi-v7a` | Older 32-bit ARM devices |
+| `x86` | Intel-based Android (emulators, some set-top boxes) |
+
+## Building from source
+
+```bash
+git clone https://github.com/KhooLy/Fluxa.git
+cd Fluxa
+./gradlew :app:assembleMobileDebug
+# or for TV
+./gradlew :app:assembleTvDebug
+```
+
+**Prerequisites**
+
+- JDK 17+
+- Rust stable with the Android NDK targets (`aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`)
+- Android NDK (version pinned in `app/build.gradle.kts`)
+- [`fluxa-core`](https://github.com/KhooLy/fluxa-core) checked out as a sibling directory (`../fluxa-core`) — it also provides `fluxa-streaming-engine` (`../fluxa-streaming-engine`)
+
+The Rust libraries (`fluxa_core`, `fluxa_streaming_engine`) are cross-compiled for all Android ABIs automatically as part of the Gradle build; no manual `cargo build` step is needed.
 
 ## Architecture
 
@@ -57,9 +87,7 @@ Fluxa is split into two native Rust libraries and an Android Kotlin shell:
 └───────────────────────────┴─────────────────────────────┘
 ```
 
-### The Effect Loop
-
-Rust never calls the network. Instead it emits typed effects that Kotlin executes:
+Rust never calls the network directly. Instead it emits typed effects that Kotlin executes:
 
 ```
 Kotlin  →  dispatch(action)
@@ -69,58 +97,20 @@ Kotlin  →  executes each effect (OkHttp / Room / audio / ...)
         ←  { state, effects: [...] }
 ```
 
-This keeps `fluxa_core` fully portable — the same crate compiles for Android (JNI), desktop (native Rust), and future targets (WASM) without any platform-specific code inside Rust.
+This keeps `fluxa_core` fully portable — the same crate compiles for Android (JNI), desktop (native Rust), and future targets without any platform-specific code inside Rust.
+
+## Stack
+
+[Kotlin](https://kotlinlang.org/) · [Jetpack Compose](https://developer.android.com/compose) · [Rust](https://www.rust-lang.org/) · [AndroidX Media3 / ExoPlayer](https://developer.android.com/media/media3) · [MPV](https://mpv.io/) · [librqbit](https://github.com/ikatson/rqbit) · [UniFFI](https://mozilla.github.io/uniffi-rs/) · [Hilt](https://dagger.dev/hilt/) · [Room](https://developer.android.com/training/data-storage/room) · [OkHttp](https://square.github.io/okhttp/) + [Retrofit](https://square.github.io/retrofit/) · [Coil](https://coil-kt.github.io/coil/)
 
 ---
 
-## Project Structure
+**Legal** — Fluxa is a client-side interface for user-installed Stremio addons. It does not host, serve, or distribute any media content. All streams come from third-party addons chosen by the user. Fluxa is not affiliated with any addon developer, repository, or content provider. Users are responsible for ensuring they have the right to access what they stream.
 
-```
-Fluxa/
-├── app/          ← Android application module
-├── core/         ← Shared Kotlin modules
-├── player/       ← Player module
-└── build-logic/  ← Convention plugins
-```
+## Related projects
 
----
-
-## Development
-
-```bash
-git clone https://github.com/KhooLy/Fluxa.git
-cd Fluxa
-./gradlew :app:assembleMobileDebug
-# or for TV
-./gradlew :app:assembleTvDebug
-```
-
-The Rust libraries ship as prebuilt `.so` files bundled with the project. Rebuilding `fluxa_core` or `fluxa_streaming_engine` from source requires a Rust toolchain with the Android NDK targets installed.
-
----
-
-## Built With
-
-- [Kotlin](https://kotlinlang.org/) + [Jetpack Compose](https://developer.android.com/compose)
-- [Rust](https://www.rust-lang.org/) — headless core and streaming engine
-- [AndroidX Media3 / ExoPlayer](https://developer.android.com/media/media3)
-- [MPV](https://mpv.io/) — advanced format and subtitle support
-- [librqbit](https://github.com/ikatson/rqbit) — BitTorrent engine
-- [UniFFI](https://mozilla.github.io/uniffi-rs/) — Rust ↔ Kotlin FFI
-- [Hilt](https://dagger.dev/hilt/) — dependency injection
-- [Room](https://developer.android.com/training/data-storage/room) — local database
-- [OkHttp](https://square.github.io/okhttp/) + [Retrofit](https://square.github.io/retrofit/)
-- [Coil](https://coil-kt.github.io/coil/) — image loading
-
----
-
-## Legal & DMCA
-
-Fluxa is a client-side interface that connects to user-installed Stremio addons. It does not host, serve, or distribute any media content. All streams are sourced from third-party addons chosen by the user.
-
-Fluxa is not affiliated with any addon developer, repository, or content provider. Users are responsible for ensuring they have the right to access any content they stream or download.
-
----
+- [Fluxa Desktop](https://github.com/FluxaMedia/fluxa-desktop) — the desktop counterpart to this app
+- [fluxa-core](https://github.com/KhooLy/fluxa-core) — the shared Rust library powering both
 
 <!-- MARKDOWN LINKS -->
 [contributors-shield]: https://img.shields.io/github/contributors/KhooLy/Fluxa.svg?style=for-the-badge

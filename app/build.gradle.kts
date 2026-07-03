@@ -4,18 +4,12 @@ import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.testing.Test
 
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.dagger.hilt.android")
+    alias(libs.plugins.fluxa.android.application)
+    alias(libs.plugins.fluxa.android.compose)
+    alias(libs.plugins.fluxa.android.hilt)
+    alias(libs.plugins.ksp)
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-    arg("room.incremental", "true")
-    arg("room.generateKotlin", "true")
-}
 
 val localProperties = Properties().apply {
     val localFile = rootProject.file("local.properties")
@@ -43,20 +37,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "TRAKT_CLIENT_ID", "\"${secret("TRAKT_CLIENT_ID")}\"")
-        buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"\"")
+        buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${secret("TRAKT_CLIENT_SECRET")}\"")
         buildConfigField("String", "MAL_CLIENT_ID", "\"${secret("MAL_CLIENT_ID")}\"")
-        buildConfigField("String", "MAL_CLIENT_SECRET", "\"\"")
+        buildConfigField("String", "MAL_CLIENT_SECRET", "\"${secret("MAL_CLIENT_SECRET")}\"")
         buildConfigField("String", "SIMKL_CLIENT_ID", "\"${secret("SIMKL_CLIENT_ID")}\"")
-        buildConfigField("String", "SIMKL_CLIENT_SECRET", "\"\"")
-        buildConfigField("String", "UPDATE_URL", "\"${secret("FLUXA_UPDATE_URL")}\"")
+        buildConfigField("String", "SIMKL_CLIENT_SECRET", "\"${secret("SIMKL_CLIENT_SECRET")}\"")
+        buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL", "https://nuvio.invalid/")}\"")
+        buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY")}\"")
 
     }
 
     splits {
         abi {
-            isEnable = true
+            isEnable = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
             reset()
-            include("arm64-v8a")
+            include("arm64-v8a", "armeabi-v7a", "x86")
             isUniversalApk = false
         }
     }
@@ -117,21 +112,8 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
     buildFeatures {
-        compose = true
         buildConfig = true
-    }
-    composeCompiler {
-        enableStrongSkippingMode = true
     }
     packaging {
         jniLibs {
@@ -149,7 +131,7 @@ android {
 }
 
 val rustCrateDir = rootProject.layout.projectDirectory.asFile.resolve("../fluxa-core").canonicalFile
-val rustStreamingCrateDir = rootProject.layout.projectDirectory.asFile.resolve("../fluxa-streaming-engine").canonicalFile
+val rustStreamingCrateDir = rootProject.layout.projectDirectory.asFile.resolve("../fluxa-core/fluxa-streaming-engine").canonicalFile
 val rustJniOutputDir = layout.buildDirectory.dir("generated/rustJniLibs")
 val androidNdkDir = providers.environmentVariable("ANDROID_NDK_HOME").orElse(
     providers.environmentVariable("ANDROID_NDK_ROOT").orElse(
@@ -170,6 +152,8 @@ val androidNdkDir = providers.environmentVariable("ANDROID_NDK_HOME").orElse(
 
 val rustAndroidTargets = listOf(
     Triple("arm64-v8a", "aarch64-linux-android", "AARCH64_LINUX_ANDROID"),
+    Triple("armeabi-v7a", "armv7-linux-androideabi", "ARMV7_LINUX_ANDROIDEABI"),
+    Triple("x86", "i686-linux-android", "I686_LINUX_ANDROID"),
 )
 
 val rustProfile = if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }) "release" else "debug"
@@ -196,7 +180,9 @@ val rustTargetTasks = rustAndroidTargets.map { (abi, target, envName) ->
             else -> "${target}26-clang"
         }
         commandLine("cargo", "build", "--target", target, *rustCargoProfileArgs.toTypedArray())
-        inputs.files(fileTree(rustCrateDir) { exclude("target/**") })
+        inputs.files(fileTree(rustCrateDir) {
+            exclude("target/**", ".git/**", ".agents/**", ".codex/**", "fluxa-streaming-engine/target/**")
+        })
         outputs.file(rustJniOutputDir.map { it.file("$abi/libfluxa_core.so") })
         doFirst {
             val ndkDir = androidNdkDir.get()
@@ -240,7 +226,9 @@ val rustStreamingTargetTasks = rustAndroidTargets.map { (abi, target, envName) -
             else -> "${target}26-clang"
         }
         commandLine("cargo", "build", "--target", target, *rustCargoProfileArgs.toTypedArray())
-        inputs.files(fileTree(rustStreamingCrateDir) { exclude("target/**") })
+        inputs.files(fileTree(rustStreamingCrateDir) {
+            exclude("target/**", ".git/**", ".agents/**", ".codex/**")
+        })
         outputs.file(rustJniOutputDir.map { it.file("$abi/libfluxa_streaming_engine.so") })
         doFirst {
             val ndkDir = androidNdkDir.get()
@@ -297,7 +285,9 @@ val generateFluxaCoreUniFfiBindings by tasks.registering(Exec::class) {
         "--out-dir",
         outDir.get().asFile.absolutePath
     )
-    inputs.files(fileTree(rustCrateDir) { exclude("target/**") })
+    inputs.files(fileTree(rustCrateDir) {
+        exclude("target/**", ".git/**", ".agents/**", ".codex/**", "fluxa-streaming-engine/target/**")
+    })
     outputs.dir(outDir)
 }
 
@@ -336,106 +326,70 @@ if (requiresSignedRelease && !listOf(
 }
 
 dependencies {
-    // AndroidX Core
-    implementation("androidx.core:core-ktx:1.18.0")
-    implementation("net.java.dev.jna:jna:5.17.0@aar")
-    testImplementation("net.java.dev.jna:jna:5.17.0")
-    implementation("androidx.activity:activity-compose:1.13.0")
-    
-    // Kotlin Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-    
-    // Lifecycle & ViewModel
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
-    implementation("androidx.work:work-runtime-ktx:2.11.2")
-    implementation("com.google.dagger:hilt-android:2.58")
-    ksp("com.google.dagger:hilt-compiler:2.58")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-    implementation("androidx.hilt:hilt-work:1.3.0")
-    ksp("androidx.hilt:hilt-compiler:1.3.0")
+    // Submodules
+    implementation(project(":core"))
+    implementation(project(":data"))
+    implementation(project(":player"))
 
-    // Compose BOM — Kotlin 2.0.21 uyumlu
-    val composeBom = platform("androidx.compose:compose-bom:2025.05.01")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.foundation:foundation")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    // Composition tracing: emits composable-named slices in system traces. ~No cost when tracing is off.
-    implementation("androidx.compose.runtime:runtime-tracing")
+    implementation(libs.androidx.core.ktx)
+    implementation("net.java.dev.jna:jna:${libs.versions.jna.get()}@aar")
+    testImplementation(libs.jna)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.bundles.coroutines)
+    implementation(libs.bundles.lifecycle)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
-    // TV Material3
-    implementation("androidx.tv:tv-foundation:1.0.0-alpha11")
-    implementation("androidx.tv:tv-material:1.0.0")
+    // Compose
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons)
+    implementation(libs.androidx.compose.foundation)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.runtime.tracing)
 
-    // Media3 (ExoPlayer)
-    val media3_version = "1.10.1"
-    implementation("androidx.media3:media3-common:$media3_version")
-    implementation("androidx.media3:media3-exoplayer:$media3_version")
-    implementation("androidx.media3:media3-exoplayer-hls:$media3_version")
-    implementation("androidx.media3:media3-ui:$media3_version")
-    implementation("androidx.media3:media3-datasource-okhttp:$media3_version")
-    implementation("androidx.media3:media3-effect:$media3_version")
-    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.9.0+1")
+    // TV
+    implementation(libs.androidx.tv.foundation)
+    implementation(libs.androidx.tv.material)
 
-    implementation("dev.jdtech.mpv:libmpv:1.0.0")
+    // Image loading
+    implementation(libs.bundles.coil3)
 
-    // Network & Logging
-    implementation("com.squareup.retrofit2:retrofit:3.0.0")
-    implementation("com.squareup.retrofit2:converter-gson:3.0.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:5.3.2")
-    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:5.3.2")
-    // Coil 3: network backend is a separate artifact (okhttp fetcher required).
-    val coil3_version = "3.5.0-beta01"
-    implementation("io.coil-kt.coil3:coil:$coil3_version")
-    implementation("io.coil-kt.coil3:coil-compose:$coil3_version")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:$coil3_version")
-    implementation("io.coil-kt.coil3:coil-svg:$coil3_version")
-    implementation("io.coil-kt.coil3:coil-gif:$coil3_version")
-    implementation("org.jsoup:jsoup:1.22.2")
+    // Room
+    implementation(libs.androidx.room.runtime)
 
-    // CloudStream extensions use Jackson at runtime.
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
+    // Media3 (for ExoPlayer access and @UnstableApi)
+    implementation(libs.bundles.media3)
 
-    // NewPipe Extractor — same artifact CloudStream brings transitively; explicit here for compile classpath
-    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.25.2")
+    // Serialization / networking
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp.logging)
 
-    // CloudStream3 library - includes NiceHttp
-    implementation("com.github.recloudstream.cloudstream:library:v4.7.0") {
+    // CloudStream plugin host
+    implementation(libs.cloudstream) {
         exclude(group = "org.mozilla", module = "rhino")
         exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")
         exclude(group = "com.github.AmaryllisVFX", module = "newpipeextractor")
         exclude(group = "com.github.AmaryllisVFX.newpipeextractor")
         exclude(group = "info.debatty", module = "java-string-similarity")
     }
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.module.kotlin)
 
-    // QR Code Generation
-    implementation("com.google.zxing:core:3.5.4")
+    // Misc
+    implementation(libs.zxing)
+    implementation(libs.androidx.palette)
+    implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.browser)
 
-    // Dynamic Theming
-    implementation("androidx.palette:palette-ktx:1.0.0")
-
-    // Local Integration Server (NanoHTTPD) for QR Login
-    implementation("org.nanohttpd:nanohttpd:2.3.1")
-
-    // Room Database
-    val room_version = "2.8.4"
-    implementation("androidx.room:room-runtime:$room_version")
-    implementation("androidx.room:room-ktx:$room_version")
-    ksp("androidx.room:room-compiler:$room_version")
-
-    // Installs src/main/baseline-prof.txt into ART at first launch (AOT-compiles hot scroll classes).
-    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
-
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test:runner:1.6.2")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.junit)
 }

@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.fluxa.app.BuildConfig
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
@@ -15,9 +16,9 @@ import com.fluxa.app.ui.Screen
 import com.fluxa.app.ui.TraktDeviceAuthUiState
 import com.fluxa.app.ui.generateOAuthCodeVerifier
 import com.fluxa.app.ui.requiresHomeReload
-import com.fluxa.app.ui.catalog.AppStrings
 import com.fluxa.app.ui.catalog.HomeViewModel
 import com.fluxa.app.ui.catalog.SettingsScreen
+import com.fluxa.app.ui.catalog.UpdateManager
 import com.fluxa.app.data.repository.TraktIntegration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,8 +36,11 @@ internal fun SettingsRoute(
     onBack: () -> Unit,
     onProfileChanged: (UserProfile?) -> Unit,
     onShowTraktSheet: () -> Unit,
+    onShowMalSheet: () -> Unit,
+    onShowSimklSheet: () -> Unit,
     onTraktDeviceAuthChanged: (TraktDeviceAuthUiState?) -> Unit,
-    onPendingMalCodeVerifierChanged: (String?) -> Unit
+    onPendingMalCodeVerifierChanged: (String?) -> Unit,
+    onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     SettingsScreen(
@@ -47,7 +51,7 @@ internal fun SettingsRoute(
             profileManager.setLastActiveProfile(null)
             navigator.navigateTo(Screen.Profiles, true)
         },
-        onConnectStremio = { navigator.navigateTo(Screen.Login) },
+        onConnectStremio = { navigator.navigateTo(Screen.Login()) },
         onConnectTrakt = {
             if (!activeProfile?.traktAccessToken.isNullOrBlank()) {
                 onShowTraktSheet()
@@ -56,10 +60,18 @@ internal fun SettingsRoute(
             }
         },
         onConnectMal = {
-            connectMal(context, activeProfile, oauthPrefs, onPendingMalCodeVerifierChanged)
+            if (!activeProfile?.malAccessToken.isNullOrBlank()) {
+                onShowMalSheet()
+            } else {
+                connectMal(context, activeProfile, oauthPrefs, onPendingMalCodeVerifierChanged)
+            }
         },
         onConnectSimkl = {
-            connectSimkl(context, activeProfile)
+            if (!activeProfile?.simklAccessToken.isNullOrBlank()) {
+                onShowSimklSheet()
+            } else {
+                connectSimkl(context, activeProfile)
+            }
         },
         onManageAddons = { navigator.navigateTo(Screen.AddonStore) },
         onWatchlistClick = { navigator.navigateTo(Screen.Watchlist) },
@@ -91,6 +103,7 @@ internal fun SettingsRoute(
                 homeViewModel.loadInitialData(it, force = true)
             }
         },
+        onUpdateInfoChanged = onUpdateInfoChanged,
         viewModel = homeViewModel
     )
 }

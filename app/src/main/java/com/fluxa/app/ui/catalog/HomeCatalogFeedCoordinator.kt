@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import android.util.Log
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
@@ -8,7 +9,7 @@ import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.domain.discovery.MetadataFeedOption
 import com.fluxa.app.domain.discovery.buildMetadataFeedOptions
-import com.fluxa.app.domain.discovery.effectiveMetadataFeedSelection
+import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
 import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
 import com.fluxa.app.domain.discovery.metadataFeedHomeTitle
 import com.fluxa.app.domain.discovery.orderedMetadataFeeds
@@ -52,7 +53,7 @@ internal class HomeCatalogFeedCoordinator(
             .let { orderedMetadataFeeds(it, profile?.homeFeedOrder) }
             .let { feeds ->
                 val availableKeys = feeds.map { it.key }
-                val selectedKeys = effectiveMetadataFeedSelection(profile?.homeFeedToggles, availableKeys)
+                val selectedKeys = effectiveHomeMetadataFeedSelection(profile?.homeFeedToggles, availableKeys)
                 feeds.filter { isMetadataFeedEnabled(selectedKeys, it.key) }
             }
             .take(2)
@@ -183,7 +184,7 @@ internal class HomeCatalogFeedCoordinator(
                     .let { orderedMetadataFeeds(it, profile?.homeFeedOrder) }
                     .let { feeds ->
                         val availableKeys = feeds.map { it.key }
-                        val selectedKeys = effectiveMetadataFeedSelection(profile?.homeFeedToggles, availableKeys)
+                        val selectedKeys = effectiveHomeMetadataFeedSelection(profile?.homeFeedToggles, availableKeys)
                         feeds.filter { isMetadataFeedEnabled(selectedKeys, it.key) }
                     }
                     .drop(2)

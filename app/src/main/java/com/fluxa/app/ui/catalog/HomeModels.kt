@@ -31,15 +31,7 @@ data class HomeCategory(
     val addonIconUrl: String? = null
 )
 
-@Immutable
-data class SearchResultRow(
-    val title: String,
-    val items: List<Meta>,
-    val id: String,
-    val type: String,
-    val sourceAddonTransportUrl: String? = null,
-    val sourceAddonCatalogType: String? = null
-)
+typealias SearchResultRow = com.fluxa.app.data.repository.SearchResultRow
 
 @Immutable
 data class DiscoverGenreOption(

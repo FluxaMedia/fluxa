@@ -57,7 +57,8 @@ internal fun MobileActionRow(
     @DrawableRes iconRes: Int? = null,
     onClick: () -> Unit,
     destructive: Boolean = false,
-    prominent: Boolean = false
+    prominent: Boolean = false,
+    connected: Boolean = false
 ) {
     val colors = LocalMobileSettingsPalette.current
 
@@ -114,6 +115,14 @@ internal fun MobileActionRow(
             }
         }
 
+        if (connected) {
+            Icon(
+                imageVector = FluxaIcons.Check,
+                contentDescription = null,
+                tint = Color(0xFF4CAF50),
+                modifier = Modifier.size(18.dp)
+            )
+        }
         Icon(
             imageVector = FluxaIcons.ChevronRight,
             contentDescription = null,

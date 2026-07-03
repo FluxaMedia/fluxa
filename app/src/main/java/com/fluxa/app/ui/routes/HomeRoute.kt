@@ -39,7 +39,7 @@ internal fun HomeRoute(
                         val streamIndex = when {
                             !item.lastStreamUrl.isNullOrBlank() -> target.streams.indexOfFirst { stream -> stream.playableUrl == item.lastStreamUrl }
                             !item.lastStreamTitle.isNullOrBlank() -> target.streams.indexOfFirst { stream -> stream.title == item.lastStreamTitle }
-                            item.lastStreamIndex != null && item.lastStreamIndex in target.streams.indices -> item.lastStreamIndex
+                            item.lastStreamIndex != null && item.lastStreamIndex in target.streams.indices -> item.lastStreamIndex!!
                             else -> 0
                         }.coerceAtLeast(0)
                         navigator.navigateTo(

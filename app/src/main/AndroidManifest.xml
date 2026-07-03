@@ -85,9 +85,15 @@
                 <data android:scheme="app" />
                 <data android:host="play" />
                 <data android:host="search" />
-                <data android:host="trakt" />
-                <data android:host="mal" />
-                <data android:host="simkl" />
+            </intent-filter>
+
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="fluxa" android:host="oauth" android:path="/trakt" />
+                <data android:scheme="fluxa" android:host="oauth" android:path="/mal" />
+                <data android:scheme="fluxa" android:host="oauth" android:path="/simkl" />
             </intent-filter>
             
         </activity>

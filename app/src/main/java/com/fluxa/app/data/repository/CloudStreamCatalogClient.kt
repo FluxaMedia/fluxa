@@ -125,8 +125,6 @@ class CloudStreamCatalogClient @Inject constructor() {
 
     private fun String.sanitize() = replace(Regex("[^a-zA-Z0-9]"), "_").lowercase()
 
-    private fun String.stableHash(): Int = fold(0) { acc, c -> acc * 31 + c.code }.and(0x7FFFFFFF)
-
     companion object {
         fun encodeCsId(apiName: String, data: String): String {
             val n = Base64.encodeToString(apiName.toByteArray(), Base64.NO_WRAP or Base64.NO_PADDING)

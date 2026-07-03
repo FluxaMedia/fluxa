@@ -1,36 +1,46 @@
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Exec
 
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
-    id("com.android.application") version "8.13.2" apply false
-    id("org.jetbrains.kotlin.android") version "2.3.0" apply false
-    id("com.google.devtools.ksp") version "2.3.0" apply false
-    id("org.jetbrains.kotlin.plugin.compose") version "2.3.0" apply false
-    id("com.google.dagger.hilt.android") version "2.58" apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.hilt) apply false
 }
 
 val maxKotlinFileLines = 1200
 val rustCoreProjectDir = rootProject.layout.projectDirectory.asFile.resolve("../fluxa-core").canonicalFile
+val rustHostLibraryName = when {
+    org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "libfluxa_core.dylib"
+    org.gradle.internal.os.OperatingSystem.current().isWindows -> "fluxa_core.dll"
+    else -> "libfluxa_core.so"
+}
+val rustStreamingHostLibraryName = when {
+    org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "libfluxa_streaming_engine.dylib"
+    org.gradle.internal.os.OperatingSystem.current().isWindows -> "fluxa_streaming_engine.dll"
+    else -> "libfluxa_streaming_engine.so"
+}
 val rustCoreDelegateFiles = mapOf(
-    "app/src/main/java/com/fluxa/app/domain/discovery/StremioAddonUrls.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/domain/discovery/StremioAddonUrls.kt" to listOf(
         "FluxaCoreNative.normalizeManifestUrl",
         "FluxaCoreNative.identity",
         "FluxaCoreNative.manifestCandidates",
         "FluxaCoreNative.baseUrl",
         "FluxaCoreNative.preferHttpsAssetUrl"
     ),
-    "app/src/main/java/com/fluxa/app/domain/discovery/StremioAddonProtocol.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/domain/discovery/StremioAddonProtocol.kt" to listOf(
         "FluxaCoreNative.supportsResource"
     ),
     "app/src/main/java/com/fluxa/app/core/StremioId.kt" to listOf(
         "FluxaCoreNative.parseEpisodeLocator",
         "FluxaCoreNative.streamRequestIds"
     ),
-    "app/src/main/java/com/fluxa/app/data/remote/Stream.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/data/remote/Stream.kt" to listOf(
         "FluxaCoreNative.streamPlaybackInfo"
     ),
-    "app/src/main/java/com/fluxa/app/player/TorrentStreamManager.kt" to listOf(
+    "player/src/main/java/com/fluxa/app/player/TorrentStreamManager.kt" to listOf(
         "TorrentCorePolicy.plan",
         "TorrentCorePolicy.statusInfo"
     ),
@@ -39,7 +49,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.streamPlaybackInfo",
         "FluxaCoreNative.isTorrentPlaybackUrl"
     ),
-    "app/src/main/java/com/fluxa/app/data/repository/StremioAddonManifestClient.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/data/repository/StremioAddonManifestClient.kt" to listOf(
         "FluxaCoreNative.buildResourceUrl",
         "FluxaCoreNative.manifestFetchPlan",
         "FluxaCoreNative.fetchAddonResource",
@@ -47,20 +57,20 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.resolveManifestAssets",
         "FluxaCoreNative.mergeLiveManifest"
     ),
-    "app/src/main/java/com/fluxa/app/data/repository/StremioAddonResourceClient.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/data/repository/StremioAddonResourceClient.kt" to listOf(
         "FluxaCoreNative.fetchAddonResource",
         "FluxaCoreNative.parseAddonResourceResult",
         "FluxaCoreNative.parseExtraArgs"
     ),
-    "app/src/main/java/com/fluxa/app/player/TorrServerEngine.kt" to listOf(
+    "player/src/main/java/com/fluxa/app/player/TorrServerEngine.kt" to listOf(
         "FluxaCoreNative.startTorrentServer",
         "FluxaCoreNative.stopTorrentServer"
     ),
-    "app/src/main/java/com/fluxa/app/player/TorrentCorePolicy.kt" to listOf(
+    "player/src/main/java/com/fluxa/app/player/TorrentCorePolicy.kt" to listOf(
         "FluxaCoreNative.torrentRuntimeInfo",
         "FluxaCoreNative.torrentStatusInfo"
     ),
-    "app/src/main/java/com/fluxa/app/player/MediaPlayerController.kt" to listOf(
+    "player/src/main/java/com/fluxa/app/player/MediaPlayerController.kt" to listOf(
         "FluxaCoreNative.rewriteDolbyVisionProfile7Codecs"
     ),
     "app/src/main/java/com/fluxa/app/ui/catalog/StreamSourceSelectionPolicy.kt" to listOf(
@@ -69,15 +79,15 @@ val rustCoreDelegateFiles = mapOf(
     "app/src/main/java/com/fluxa/app/ui/catalog/ContinueWatchingListMerger.kt" to listOf(
         "FluxaCoreNative.mergeContinueWatchingDuplicates"
     ),
-    "app/src/main/java/com/fluxa/app/domain/discovery/DiscoverCatalogContentLoader.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/domain/discovery/DiscoverCatalogContentLoader.kt" to listOf(
         "FluxaCoreNative.filterDiscoverResults",
         "FluxaCoreNative.discoverCatalogCacheKey",
         "FluxaCoreNative.providerSearchTerms"
     ),
-    "app/src/main/java/com/fluxa/app/domain/discovery/StreamDiscovery.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/domain/discovery/StreamDiscovery.kt" to listOf(
         "FluxaCoreNative.streamDiscoveryExecutionPolicy"
     ),
-    "app/src/main/java/com/fluxa/app/domain/discovery/MetadataFeeds.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/domain/discovery/MetadataFeeds.kt" to listOf(
         "FluxaCoreNative.discoverCatalogLabel",
         "FluxaCoreNative.normalizeContentType",
         "FluxaCoreNative.stableFeedPart",
@@ -127,7 +137,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.subtitleLanguageMatches",
         "preferredSubtitleIndex"
     ),
-    "app/src/main/java/com/fluxa/app/data/repository/TraktIntegration.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/data/repository/TraktIntegration.kt" to listOf(
         "FluxaCoreNative.traktHasClient",
         "FluxaCoreNative.traktBearer",
         "FluxaCoreNative.traktScrobbleUrl",
@@ -140,7 +150,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.traktScrobbleMediaId",
         "FluxaCoreNative.traktHistoryRequest"
     ),
-    "app/src/main/java/com/fluxa/app/data/repository/StremioRepository.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/data/repository/StremioRepository.kt" to listOf(
         "FluxaCoreNative.libraryContinueWatchingItems",
         "FluxaCoreNative.watchedVideoIds",
         "FluxaCoreNative.playbackProgressItem",
@@ -148,7 +158,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.watchedStateItems",
         "FluxaCoreNative.traktHistoryRequest"
     ),
-    "app/src/main/java/com/fluxa/app/data/local/ProfileManager.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/data/local/ProfileManager.kt" to listOf(
         "FluxaCoreNative.sanitizeProfile",
         "FluxaCoreNative.profileLocalAddonsKey",
         "FluxaCoreNative.safePlayerBufferCacheMb",
@@ -212,7 +222,7 @@ tasks.register("checkRustCoreBoundary") {
                 .map { call -> "$relativePath must delegate to $call" }
         }
 
-        val urlFacade = rootProject.file("app/src/main/java/com/fluxa/app/domain/discovery/StremioAddonUrls.kt")
+        val urlFacade = rootProject.file("data/src/main/java/com/fluxa/app/domain/discovery/StremioAddonUrls.kt")
         val duplicatedUrlLogic = if (urlFacade.exists()) {
             val text = urlFacade.readText()
             listOf("http://", "https://", "stremio://", "manifest.json", "Regex(")
@@ -267,12 +277,117 @@ tasks.register("checkRustCoreBoundary") {
     }
 }
 
+tasks.register("checkFluxaCoreJniSymbols") {
+    group = "verification"
+    description = "Fails when FluxaCoreNative declares JNI methods not exported by fluxa_core."
+    dependsOn("buildFluxaCoreHost")
+
+    doLast {
+        val nativeFile = rootProject.file("data/src/main/java/com/fluxa/app/core/rust/FluxaCoreNative.kt")
+        val libraryFile = rustCoreProjectDir.resolve("target/debug/$rustHostLibraryName")
+        if (!nativeFile.exists()) {
+            throw GradleException("${nativeFile.relativeTo(rootDir)} is missing")
+        }
+        if (!libraryFile.exists()) {
+            throw GradleException("Rust build did not produce ${libraryFile.absolutePath}")
+        }
+
+        val declaredMethods = Regex("""private\s+external\s+fun\s+([A-Za-z0-9_]+)\s*\(""")
+            .findAll(nativeFile.readText())
+            .map { it.groupValues[1] }
+            .toSortedSet()
+        val expectedSymbols = declaredMethods
+            .map { method -> "Java_com_fluxa_app_core_rust_FluxaCoreNative_$method" }
+            .toSortedSet()
+
+        val nmTools = listOf("llvm-nm", "nm")
+        val symbolOutput = nmTools.firstNotNullOfOrNull { tool ->
+            runCatching {
+                val process = ProcessBuilder(tool, "-g", libraryFile.absolutePath)
+                    .redirectErrorStream(true)
+                    .start()
+                val output = process.inputStream.bufferedReader().readText()
+                if (process.waitFor() == 0) output else null
+            }
+                .getOrNull()
+        } ?: throw GradleException("Could not run llvm-nm or nm to inspect ${libraryFile.absolutePath}")
+
+        val exportedSymbols = symbolOutput
+            .lineSequence()
+            .flatMap { line -> line.trim().split(Regex("""\s+""")).asSequence() }
+            .map { token -> token.trimStart('_') }
+            .filter { token -> token.startsWith("Java_com_fluxa_app_core_rust_FluxaCoreNative_") }
+            .toSet()
+
+        val missing = expectedSymbols.filterNot { symbol -> symbol in exportedSymbols }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "FluxaCoreNative declares JNI methods missing from fluxa_core:\n${missing.joinToString("\n")}"
+            )
+        }
+    }
+}
+
+
+tasks.register("checkFluxaStreamingJniSymbols") {
+    group = "verification"
+    description = "Fails when FluxaStreamingNative declares JNI methods not exported by fluxa_streaming_engine."
+    dependsOn("buildFluxaStreamingEngineHost")
+
+    doLast {
+        val nativeFile = rootProject.file("player/src/main/java/com/fluxa/app/core/rust/FluxaStreamingNative.kt")
+        val libraryFile = rustCoreProjectDir.resolve("fluxa-streaming-engine/target/debug/$rustStreamingHostLibraryName")
+        if (!nativeFile.exists()) {
+            throw GradleException("${nativeFile.relativeTo(rootDir)} is missing")
+        }
+        if (!libraryFile.exists()) {
+            throw GradleException("Rust build did not produce ${libraryFile.absolutePath}")
+        }
+
+        val declaredMethods = Regex("""private\s+external\s+fun\s+([A-Za-z0-9_]+)\s*\(""")
+            .findAll(nativeFile.readText())
+            .map { it.groupValues[1] }
+            .toSortedSet()
+        val expectedSymbols = declaredMethods
+            .map { method -> "Java_com_fluxa_app_core_rust_FluxaStreamingNative_$method" }
+            .toSortedSet()
+
+        val nmTools = listOf("llvm-nm", "nm")
+        val symbolOutput = nmTools.firstNotNullOfOrNull { tool ->
+            runCatching {
+                val process = ProcessBuilder(tool, "-g", libraryFile.absolutePath)
+                    .redirectErrorStream(true)
+                    .start()
+                val output = process.inputStream.bufferedReader().readText()
+                if (process.waitFor() == 0) output else null
+            }
+                .getOrNull()
+        } ?: throw GradleException("Could not run llvm-nm or nm to inspect ${libraryFile.absolutePath}")
+
+        val exportedSymbols = symbolOutput
+            .lineSequence()
+            .flatMap { line -> line.trim().split(Regex("""\s+""")).asSequence() }
+            .map { token -> token.trimStart('_') }
+            .filter { token -> token.startsWith("Java_com_fluxa_app_core_rust_FluxaStreamingNative_") }
+            .toSet()
+
+        val missing = expectedSymbols.filterNot { symbol -> symbol in exportedSymbols }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "FluxaStreamingNative declares JNI methods missing from fluxa_streaming_engine:\n${missing.joinToString("\n")}"
+            )
+        }
+    }
+}
+
 tasks.register("qualityCheck") {
     group = "verification"
     description = "Runs the default local quality gate for Fluxa."
     dependsOn(
         "checkKotlinFileSize",
         "checkRustCoreBoundary",
+        "checkFluxaCoreJniSymbols",
+        "checkFluxaStreamingJniSymbols",
         ":app:testMobileDebugUnitTest",
         ":app:assembleMobileDebug",
         ":app:assembleTvDebug"
@@ -283,6 +398,13 @@ tasks.register<Exec>("buildFluxaCoreHost") {
     group = "build"
     description = "Builds the Fluxa Rust core for the host toolchain."
     workingDir = rustCoreProjectDir
+    commandLine("cargo", "build")
+}
+
+tasks.register<Exec>("buildFluxaStreamingEngineHost") {
+    group = "build"
+    description = "Builds the Fluxa streaming engine for the host toolchain."
+    workingDir = rustCoreProjectDir.resolve("fluxa-streaming-engine")
     commandLine("cargo", "build")
 }
 

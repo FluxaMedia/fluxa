@@ -21,87 +21,90 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 
 object UpdateManager {
+    private const val RELEASES_URL = "https://api.github.com/repos/KhooLy/Fluxa/releases/latest"
+
     private val client = okhttp3.OkHttpClient.Builder()
-        .connectTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+        .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
     data class UpdateInfo(
-        val versionCode: Int,
+        val versionName: String,
         val url: String,
         val releaseNotes: String?,
         val sha256: String? = null
     )
 
-    suspend fun checkUpdate(serverUrl: String): UpdateInfo? = withContext(Dispatchers.IO) {
-        val urlsToTry = mutableListOf<String>()
-
-        if (BuildConfig.DEBUG) {
-            val ips = listOf("localhost", "10.0.2.2")
-            val ports = listOf(3000, 5050, 7000, 8000, 8080, 8888, 9999)
-            for (ip in ips) {
-                for (port in ports) {
-                    urlsToTry.add("http://$ip:$port")
+    suspend fun checkUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(RELEASES_URL)
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", "Fluxa-App")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w("UpdateManager", "GitHub releases request failed: ${response.code}")
+                    return@withContext null
                 }
-            }
-        }
+                val json = JSONObject(response.body.string())
+                val tagName = json.getString("tag_name").removePrefix("v")
 
-        if (serverUrl.isNotEmpty()) {
-            if (!BuildConfig.DEBUG && !serverUrl.startsWith("https://")) {
-                Log.w("UpdateManager", "Ignoring non-HTTPS update URL in release build")
-                return@withContext null
-            }
-            if (!urlsToTry.contains(serverUrl)) {
-                urlsToTry.add(serverUrl)
-            }
-        }
+                Log.i("UpdateManager", "Latest release: $tagName, current: ${BuildConfig.VERSION_NAME}")
 
-        if (urlsToTry.isEmpty()) return@withContext null
-
-        val fastClient = client.newBuilder()
-            .connectTimeout(2, java.util.concurrent.TimeUnit.SECONDS) //  RELIABLE TIMEOUT
-            .readTimeout(2, java.util.concurrent.TimeUnit.SECONDS)
-            .build()
-
-        for (baseUrl in urlsToTry) {
-            try {
-                Log.i("UpdateManager", "Checking: ${baseUrl}/update.json")
-                val request = Request.Builder().url("${baseUrl.removeSuffix("/")}/update.json").build()
-                fastClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        Log.w("UpdateManager", "Failed response from $baseUrl: ${response.code}")
-                        return@use
-                    }
-                    val responseBody = response.body
-                    val body = responseBody.string()
-                    val json = JSONObject(body)
-                    val serverVersion = json.getInt("versionCode")
-                    
-                    Log.i("UpdateManager", "Server version: $serverVersion, Current version: ${BuildConfig.VERSION_CODE}")
-                    
-                    if (serverVersion > BuildConfig.VERSION_CODE) {
-                        Log.i("UpdateManager", " Update FOUND! $serverVersion")
-                        val downloadUrl = json.getString("url")
-                        if (!BuildConfig.DEBUG && !downloadUrl.startsWith("https://")) {
-                            Log.w("UpdateManager", "Ignoring update with non-HTTPS download URL")
-                            return@use
-                        }
-                        return@withContext UpdateInfo(
-                            versionCode = serverVersion,
-                            url = downloadUrl,
-                            releaseNotes = json.optString("notes"),
-                            sha256 = json.optString("sha256").takeIf { it.isNotBlank() }
-                        )
-                    } else if (serverVersion == BuildConfig.VERSION_CODE) {
-                        Log.i("UpdateManager", "Already up to date on $baseUrl")
-                        return@withContext null
-                    }
+                if (!isNewerVersion(tagName, BuildConfig.VERSION_NAME)) {
+                    Log.i("UpdateManager", "Already up to date")
+                    return@withContext null
                 }
-            } catch (e: Exception) {
-                Log.w("UpdateManager", "Skip $baseUrl: ${e.message}")
+
+                val assets = json.getJSONArray("assets")
+                val apkAssets = (0 until assets.length())
+                    .map { assets.getJSONObject(it) }
+                    .filter { it.getString("name").endsWith(".apk") }
+
+                val apkUrl = findMatchingApk(apkAssets)
+                if (apkUrl == null) {
+                    Log.w("UpdateManager", "No matching APK asset found for ABIs ${Build.SUPPORTED_ABIS.joinToString()}")
+                    return@withContext null
+                }
+
+                UpdateInfo(
+                    versionName = tagName,
+                    url = apkUrl,
+                    releaseNotes = json.optString("body").takeIf { it.isNotBlank() }
+                )
             }
+        } catch (e: Exception) {
+            Log.w("UpdateManager", "Update check failed: ${e.message}")
+            null
         }
-        Log.e("UpdateManager", "No update found after checking all URLs")
-        null
+    }
+
+    private fun findMatchingApk(apkAssets: List<JSONObject>): String? {
+        val flavorMatches = apkAssets.filter {
+            it.getString("name").contains(BuildConfig.DEVICE_FLAVOR, ignoreCase = true)
+        }
+        val candidates = flavorMatches.ifEmpty { apkAssets }
+
+        for (abi in Build.SUPPORTED_ABIS) {
+            val match = candidates.find { it.getString("name").contains(abi, ignoreCase = true) }
+            if (match != null) return match.getString("browser_download_url")
+        }
+
+        return candidates.find { it.getString("name").contains("universal", ignoreCase = true) }
+            ?.getString("browser_download_url")
+    }
+
+    private fun isNewerVersion(remote: String, current: String): Boolean {
+        val remoteParts = remote.split(".").map { it.toIntOrNull() ?: 0 }
+        val currentParts = current.split(".").map { it.toIntOrNull() ?: 0 }
+        val size = maxOf(remoteParts.size, currentParts.size)
+        for (i in 0 until size) {
+            val r = remoteParts.getOrElse(i) { 0 }
+            val c = currentParts.getOrElse(i) { 0 }
+            if (r != c) return r > c
+        }
+        return false
     }
 
     suspend fun downloadAndInstall(

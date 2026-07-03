@@ -5,7 +5,7 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.domain.discovery.MetadataFeedOption
-import com.fluxa.app.domain.discovery.effectiveMetadataFeedSelection
+import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
 import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
 import com.fluxa.app.domain.discovery.orderedMetadataFeeds
 import kotlinx.coroutines.CoroutineScope
@@ -29,7 +29,7 @@ internal class HomeBillboardLoader(
                 .let { orderedMetadataFeeds(it, profile?.heroFeedOrder) }
                 .let { feeds ->
                     val availableKeys = feeds.map { it.key }
-                    val selectedKeys = effectiveMetadataFeedSelection(profile?.heroFeedToggles, availableKeys)
+                    val selectedKeys = effectiveHomeMetadataFeedSelection(profile?.heroFeedToggles, availableKeys)
                     feeds.filter { isMetadataFeedEnabled(selectedKeys, it.key) }
                 }
                 .take(2)

@@ -1,6 +1,7 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -415,8 +416,7 @@ internal fun MobileDetailHero(
                             .clip(CircleShape)
                             .background(if (state is HeroTrailerState.Loading) Color.Black.copy(0.60f) else accentColor.copy(0.92f))
                             .then(if (state !is HeroTrailerState.Loading) Modifier.clickable {
-                                if (activeTrailer == null) onSelectTrailer?.invoke(effectiveTrailer)
-                                else retryCount++
+                                retryCount++
                             } else Modifier),
                         contentAlignment = Alignment.Center
                     ) {

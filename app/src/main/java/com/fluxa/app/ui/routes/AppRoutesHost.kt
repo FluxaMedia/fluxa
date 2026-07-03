@@ -36,8 +36,8 @@ import com.fluxa.app.ui.moveLocalAddonForProfile
 import com.fluxa.app.ui.navDirection
 import com.fluxa.app.ui.removeLocalAddonForProfile
 import com.fluxa.app.ui.setLocalAddonEnabledForProfile
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.AddonStoreScreen
-import com.fluxa.app.ui.catalog.AppStrings
 import com.fluxa.app.ui.catalog.CalendarScreen
 import com.fluxa.app.ui.catalog.CategoryResultsScreen
 import com.fluxa.app.ui.catalog.DeviceType
@@ -47,7 +47,9 @@ import com.fluxa.app.ui.catalog.LoginScreen
 import com.fluxa.app.ui.catalog.ProfileEditScreen
 import com.fluxa.app.ui.catalog.ProfileScreen
 import com.fluxa.app.ui.catalog.SearchScreen
+import com.fluxa.app.ui.catalog.UpdateManager
 import com.fluxa.app.ui.catalog.WatchlistScreen
+import com.fluxa.app.ui.catalog.WelcomeScreen
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
@@ -66,8 +68,11 @@ internal fun AppRoutesHost(
     offlineDownloadManager: OfflineDownloadManager,
     oauthPrefs: SharedPreferences,
     onShowTraktSheet: () -> Unit,
+    onShowMalSheet: () -> Unit,
+    onShowSimklSheet: () -> Unit,
     onTraktDeviceAuthChanged: (TraktDeviceAuthUiState?) -> Unit,
     onPendingMalCodeVerifierChanged: (String?) -> Unit,
+    onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
     navigateBackSafely: () -> Unit
 ) {
     AnimatedContent(
@@ -144,13 +149,30 @@ internal fun AppRoutesHost(
                 },
                 onCancel = { navigator.navigateBack() }
             )
+            is Screen.Welcome -> WelcomeScreen(
+                onContinueWithNuvio = { navigator.navigateTo(Screen.Login(startOnNuvio = true)) },
+                onLoginWithStremio = { navigator.navigateTo(Screen.Login()) },
+                onContinueWithoutAccount = {
+                    val guest = UserProfile(
+                        id = java.util.UUID.randomUUID().toString(),
+                        email = AppStrings.t("en", "auth.guest_name"),
+                        authKey = "",
+                        isGuest = true
+                    )
+                    profileManager.saveProfile(guest)
+                    profileManager.setLastActiveProfile(guest)
+                    onActiveProfileChanged(guest)
+                    navigator.navigateTo(Screen.Home, true)
+                }
+            )
             is Screen.Login -> LoginScreen(
                 context,
                 onLoginSuccess = {
                     onActiveProfileChanged(it)
                     navigator.navigateTo(Screen.Home, true)
                 },
-                onCancel = navigateBackSafely
+                onCancel = navigateBackSafely,
+                startOnNuvio = screen.startOnNuvio
             )
             is Screen.Home -> HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope)
             is Screen.CategoryResults -> CategoryResultsScreen(
@@ -267,8 +289,11 @@ internal fun AppRoutesHost(
                 onBack = navigateBackSafely,
                 onProfileChanged = onActiveProfileChanged,
                 onShowTraktSheet = onShowTraktSheet,
+                onShowMalSheet = onShowMalSheet,
+                onShowSimklSheet = onShowSimklSheet,
                 onTraktDeviceAuthChanged = onTraktDeviceAuthChanged,
-                onPendingMalCodeVerifierChanged = onPendingMalCodeVerifierChanged
+                onPendingMalCodeVerifierChanged = onPendingMalCodeVerifierChanged,
+                onUpdateInfoChanged = onUpdateInfoChanged
             )
         }
     }

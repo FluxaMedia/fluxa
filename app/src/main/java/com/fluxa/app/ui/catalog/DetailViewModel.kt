@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 
@@ -254,7 +255,7 @@ class DetailViewModel @Inject constructor(
     }
 
     private fun seasonVideosForSelection(videos: List<Video>, seasonNumber: Int): List<Video> {
-        val hasSeasonData = videos.any { it.season != null && it.season > 0 }
+        val hasSeasonData = videos.any { it.season != null && it.season!! > 0 }
         if (!hasSeasonData) return videos
         val filtered = videos.filter { it.season == seasonNumber }
         if (filtered.isNotEmpty()) return filtered
@@ -329,35 +330,49 @@ class DetailViewModel @Inject constructor(
     }
 
     fun toggleWatchlist() {
+        val currentDetail = _uiState.value.detail ?: return
+        val meta = currentDetail.toMeta()
+        val previous = _uiState.value.isInWatchlist
+        _uiState.update { it.copy(isInWatchlist = !previous) }
         viewModelScope.launch {
-            val currentDetail = _uiState.value.detail ?: return@launch
-            val meta = currentDetail.toMeta()
-            headlessRuntime.dispatch(
-                mapOf(
-                    "type" to "toggleWatchlistRequested",
-                    "item" to meta
+            try {
+                headlessRuntime.dispatch(
+                    mapOf(
+                        "type" to "toggleWatchlistRequested",
+                        "item" to meta
+                    )
                 )
-            )
-            val detail = headlessRuntime.state.value["detail"] as? Map<*, *>
-            _uiState.update { it.copy(isInWatchlist = detail?.get("isInWatchlist") as? Boolean ?: false) }
+                val detail = headlessRuntime.state.value["detail"] as? Map<*, *>
+                (detail?.get("isInWatchlist") as? Boolean)?.let { confirmed ->
+                    _uiState.update { it.copy(isInWatchlist = confirmed) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isInWatchlist = previous) }
+            }
         }
     }
 
     fun setFeedback(isLike: Boolean) {
         if (currentProfile?.isGuest == true) return
+        val currentDetail = _uiState.value.detail ?: return
+        val previous = _uiState.value.feedback
+        val newValue = if (previous == isLike) null else isLike
+        _uiState.update { it.copy(feedback = newValue) }
         viewModelScope.launch {
-            val currentDetail = _uiState.value.detail ?: return@launch
-            val newValue = if (_uiState.value.feedback == isLike) null else isLike
-            val result = headlessRuntime.dispatch(
-                mapOf(
-                    "type" to "setFeedbackRequested",
-                    "id" to currentDetail.id,
-                    "value" to newValue,
-                    "meta" to currentDetail.toMeta()
+            try {
+                val result = headlessRuntime.dispatch(
+                    mapOf(
+                        "type" to "setFeedbackRequested",
+                        "id" to currentDetail.id,
+                        "value" to newValue,
+                        "meta" to currentDetail.toMeta()
+                    )
                 )
-            )
-            val detail = result.state["detail"] as? Map<*, *>
-            _uiState.update { it.copy(feedback = detail?.get("feedback") as? Boolean) }
+                val detail = result.state["detail"] as? Map<*, *>
+                _uiState.update { it.copy(feedback = detail?.get("feedback") as? Boolean) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(feedback = previous) }
+            }
         }
     }
 

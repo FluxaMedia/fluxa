@@ -15,28 +15,35 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.fluxa.app.BuildConfig
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.ui.catalog.AppStrings
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.UpdateManager
@@ -76,13 +83,20 @@ internal fun AppUpdateOverlay(
             Icon(FluxaIcons.SystemUpdate, null, tint = Color.White, modifier = Modifier.size(64.dp))
             Spacer(Modifier.height(24.dp))
             Text(AppStrings.t(activeProfile?.safeLanguage, "update.available"), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Text(AppStrings.format(activeProfile?.safeLanguage, "addons.version_badge", update.versionCode), color = Color.Gray, fontSize = 14.sp)
+            Text(
+                "${BuildConfig.VERSION_NAME} → ${update.versionName}",
+                color = Color.Gray,
+                fontSize = 14.sp
+            )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = update.releaseNotes ?: AppStrings.t(activeProfile?.safeLanguage, "update.default_notes"),
+                text = update.releaseNotes?.let(::formatReleaseNotes) ?: AppStrings.t(activeProfile?.safeLanguage, "update.default_notes"),
                 color = Color.White.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                fontSize = 14.sp
+                textAlign = TextAlign.Start,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .heightIn(max = 180.dp)
+                    .verticalScroll(rememberScrollState())
             )
             Spacer(Modifier.height(32.dp))
             if (isDownloading) {
@@ -107,11 +121,14 @@ internal fun AppUpdateOverlay(
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (deviceType == DeviceType.TV) {
+                        val updateNowFocusRequester = remember { FocusRequester() }
+                        LaunchedEffect(update) { updateNowFocusRequester.requestFocus() }
                         androidx.tv.material3.Button(
                             onClick = onUpdateNow,
                             modifier = Modifier
                                 .weight(1f)
-                                .height(54.dp),
+                                .height(54.dp)
+                                .focusRequester(updateNowFocusRequester),
                             colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = Color.White, contentColor = Color.Black),
                             shape = androidx.tv.material3.ButtonDefaults.shape(RoundedCornerShape(12.dp))
                         ) {
@@ -150,6 +167,18 @@ internal fun AppUpdateOverlay(
         }
     }
 }
+
+private fun formatReleaseNotes(raw: String): String = raw
+    .lines()
+    .joinToString("\n") { line ->
+        val trimmed = line.trim()
+        when {
+            trimmed.startsWith("- ") || trimmed.startsWith("* ") -> "•  ${trimmed.drop(2)}"
+            trimmed.startsWith("#") -> trimmed.trimStart('#').trim()
+            else -> trimmed
+        }
+    }
+    .trim()
 
 @Composable
 internal fun DirectLoadingOverlay(visible: Boolean) {

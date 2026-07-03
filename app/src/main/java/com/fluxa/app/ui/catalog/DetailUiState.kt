@@ -4,6 +4,7 @@ import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.DetailTrailer
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
+import com.fluxa.app.data.remote.ParentsGuideCategory
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.Video
 

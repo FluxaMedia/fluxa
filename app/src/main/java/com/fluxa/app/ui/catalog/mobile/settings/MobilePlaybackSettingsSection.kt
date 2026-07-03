@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -192,6 +193,13 @@ internal fun LazyListScope.mobilePlaybackSettingsSection(
                 checked = profile.safeUseIntroDb,
                 onToggle = { onUpdateProfile(profile.sanitizedUpdate(useIntroDb = !profile.safeUseIntroDb)) }
             )
+            if (profile.safeUseIntroDb) {
+                MobileIntroDbApiKeyField(
+                    lang = lang,
+                    value = profile.safeIntroDbApiKey,
+                    onValueChange = { onUpdateProfile(profile.copy(introDbApiKey = it.trim())) }
+                )
+            }
             MobileToggleRow(
                 title = AppStrings.t(lang, "settings.use_aniskip"),
                 subtitle = AppStrings.t(lang, "settings.use_aniskip_desc"),
@@ -207,6 +215,45 @@ internal fun LazyListScope.mobilePlaybackSettingsSection(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MobileIntroDbApiKeyField(
+    lang: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    val colors = LocalMobileSettingsPalette.current
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text(
+            text = AppStrings.t(lang, "settings.introdb_api_key"),
+            color = colors.text.copy(alpha = 0.9f),
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        )
+        Text(
+            text = AppStrings.t(lang, "settings.introdb_api_key_desc"),
+            color = colors.text.copy(alpha = 0.56f),
+            fontSize = 12.sp,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, color = colors.text),
+            placeholder = { Text("idb_...", fontSize = 13.sp, color = colors.text.copy(alpha = 0.32f)) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colors.accent,
+                unfocusedBorderColor = colors.text.copy(alpha = 0.16f),
+                focusedTextColor = colors.text,
+                unfocusedTextColor = colors.text,
+                cursorColor = colors.accent,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent
+            )
+        )
     }
 }
 

@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -33,7 +37,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileEditScreen(
+fun MobileProfileEditScreen(
     initialProfile: UserProfile? = null,
     onSave: (UserProfile) -> Unit,
     onDelete: ((UserProfile) -> Unit)? = null,
@@ -43,6 +47,17 @@ fun ProfileEditScreen(
     val lang = initialProfile?.safeLanguage ?: "en"
     var name by remember { mutableStateOf(initialProfile?.displayName ?: "") }
     var selectedAvatarUrl by remember { mutableStateOf(initialProfile?.avatarUrl) }
+    var pin by remember { mutableStateOf("") }
+    var removePin by remember { mutableStateOf(false) }
+    var biometricEnabled by remember { mutableStateOf(initialProfile?.biometricEnabled == true) }
+    val pinValid = pin.isEmpty() || pin.length == 4
+    fun resolvePinHash(): String? = when {
+        removePin -> null
+        pin.length == 4 -> PinHasher.hash(pin)
+        else -> initialProfile?.pinHash
+    }
+    fun resolveBiometricEnabled(): Boolean = resolvePinHash() != null && biometricEnabled
+    val biometricAvailable = remember { BiometricLockHelper.isAvailable(context) }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
@@ -89,23 +104,28 @@ fun ProfileEditScreen(
                         onClick = {
                             val profile = initialProfile?.copy(
                                 email = name,
-                                avatarUrl = selectedAvatarUrl
+                                avatarUrl = selectedAvatarUrl,
+                                pinHash = resolvePinHash(),
+                                biometricEnabled = resolveBiometricEnabled()
                             ) ?: UserProfile(
                                 id = java.util.UUID.randomUUID().toString(),
                                 email = name,
                                 authKey = "",
-                                isGuest = true,
+                                isGuest = false,
                                 language = "en",
-                                avatarUrl = selectedAvatarUrl
+                                avatarUrl = selectedAvatarUrl,
+                                pinHash = resolvePinHash(),
+                                biometricEnabled = resolveBiometricEnabled(),
+                                localAddons = listOf("https://v3-cinemeta.strem.io/manifest.json")
                             )
                             onSave(profile)
                         },
-                        enabled = name.isNotBlank()
+                        enabled = name.isNotBlank() && pinValid
                     ) {
                         Text(
                             AppStrings.t(lang, "profiles.done"),
                             fontWeight = FontWeight.Bold,
-                            color = if (name.isNotBlank()) Color.White else Color.White.copy(alpha = 0.35f)
+                            color = if (name.isNotBlank() && pinValid) Color.White else Color.White.copy(alpha = 0.35f)
                         )
                     }
                 },
@@ -151,12 +171,7 @@ fun ProfileEditScreen(
                             alignment = Alignment.Center
                         )
                     } else {
-                        Text(
-                            text = name.take(1).uppercase().ifBlank { "P" },
-                            fontSize = 56.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White
-                        )
+                        DefaultProfileAvatar(modifier = Modifier.size(90.dp))
                     }
                 }
 
@@ -196,6 +211,70 @@ fun ProfileEditScreen(
                 ),
                 singleLine = true
             )
+
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = pin,
+                onValueChange = {
+                    pin = it.filter(Char::isDigit).take(4)
+                    if (pin.isNotEmpty()) removePin = false
+                },
+                label = { Text(AppStrings.t(lang, "profiles.pin_lock")) },
+                placeholder = {
+                    Text(
+                        if (initialProfile?.pinHash != null && !removePin) {
+                            AppStrings.t(lang, "profiles.pin_set_placeholder")
+                        } else {
+                            AppStrings.t(lang, "profiles.pin_placeholder")
+                        }
+                    )
+                },
+                isError = !pinValid,
+                supportingText = if (!pinValid) {
+                    { Text(AppStrings.t(lang, "profiles.pin_invalid")) }
+                } else null,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    focusedLabelColor = Color.White,
+                    unfocusedLabelColor = Color.White.copy(alpha = 0.5f),
+                    cursorColor = Color.White
+                )
+            )
+            if (initialProfile?.pinHash != null && !removePin) {
+                TextButton(onClick = { removePin = true; pin = "" }) {
+                    Text(AppStrings.t(lang, "profiles.pin_remove"), color = Color(0xFFFF8A8A))
+                }
+            }
+
+            if (biometricAvailable && resolvePinHash() != null) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            AppStrings.t(lang, "profiles.biometric_lock"),
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            AppStrings.t(lang, "profiles.biometric_lock_desc"),
+                            color = Color.Gray,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Switch(checked = biometricEnabled, onCheckedChange = { biometricEnabled = it })
+                }
+            }
 
             Spacer(Modifier.height(32.dp))
 

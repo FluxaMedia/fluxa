@@ -49,6 +49,7 @@ object StreamSourceOrderPolicy {
 @Singleton
 class StreamDiscoveryUseCase @Inject constructor(
     private val repository: StremioRepository,
+    private val cloudStreamDiscoveryClient: CloudStreamDiscoveryClient,
     private val cache: StreamDiscoveryMemoryCache
 ) {
     suspend fun discover(request: StreamDiscoveryRequest): List<Stream> = supervisorScope {
@@ -88,7 +89,7 @@ class StreamDiscoveryUseCase @Inject constructor(
             if (cloudstream != null) {
                 try {
                     withTimeoutOrNull(cloudstream.timeoutMs) {
-                        repository.getStreamsFromCloudStreamPlugins(
+                        cloudStreamDiscoveryClient.getStreams(
                             pluginApis = request.cs3PluginApis,
                             id = cloudstream.id,
                             title = cloudstream.title,
@@ -146,7 +147,6 @@ class StreamDiscoveryUseCase @Inject constructor(
         val rawStreams = mutableListOf<Stream>()
         val completedAddons = mutableListOf<String>()
 
-        // Count pending requests per unique addon name so we only mark it done when all its ID variants finish.
         val pendingPerAddon = policy.addonRequests
             .filter { it.addonName.isNotBlank() }
             .groupBy { it.addonName }
@@ -208,7 +208,7 @@ class StreamDiscoveryUseCase @Inject constructor(
             if (cloudstream != null) {
                 try {
                     withTimeoutOrNull(cloudstream.timeoutMs) {
-                        repository.getStreamsFromCloudStreamPlugins(
+                        cloudStreamDiscoveryClient.getStreams(
                             pluginApis = request.cs3PluginApis,
                             id = cloudstream.id,
                             title = cloudstream.title,
@@ -287,5 +287,4 @@ class StreamDiscoveryUseCase @Inject constructor(
             request = request
         )
     }
-
 }

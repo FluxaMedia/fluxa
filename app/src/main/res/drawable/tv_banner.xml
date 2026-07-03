@@ -7,7 +7,10 @@
     </item>
     <item android:gravity="center">
         <item
-            android:drawable="@mipmap/ic_launcher"
-            android:gravity="center" />
+            android:drawable="@drawable/mobilelogo"
+            android:bottom="30dp"
+            android:left="110dp"
+            android:right="110dp"
+            android:top="30dp" />
     </item>
 </layer-list>

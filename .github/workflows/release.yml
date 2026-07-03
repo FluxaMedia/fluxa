@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  NDK_VERSION: "28.2.13676358"
+  RUST_VERSION: "stable"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/checkout@v4
+        with:
+          repository: KhooLy/fluxa-core
+          path: fluxa-core
+
+      - name: Link sibling Rust crates
+        run: |
+          ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+          ln -sfn "$GITHUB_WORKSPACE/fluxa-core/fluxa-streaming-engine" "$(dirname "$GITHUB_WORKSPACE")/fluxa-streaming-engine"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            fluxa-core
+            fluxa-core/fluxa-streaming-engine
+
+      - name: Install Android NDK
+        run: |
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${{ env.NDK_VERSION }}"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${{ env.NDK_VERSION }}" >> "$GITHUB_ENV"
+
+      - name: Decode release keystore
+        run: echo "${{ secrets.FLUXA_RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore.jks
+
+      - name: Build release APKs (per-ABI split)
+        env:
+          FLUXA_RELEASE_STORE_FILE: release.keystore.jks
+          FLUXA_RELEASE_STORE_PASSWORD: ${{ secrets.FLUXA_RELEASE_STORE_PASSWORD }}
+          FLUXA_RELEASE_KEY_ALIAS: ${{ secrets.FLUXA_RELEASE_KEY_ALIAS }}
+          FLUXA_RELEASE_KEY_PASSWORD: ${{ secrets.FLUXA_RELEASE_KEY_PASSWORD }}
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+          FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+        run: ./gradlew :app:assembleMobileRelease :app:assembleTvRelease --no-daemon
+
+      - name: Remove release keystore
+        if: always()
+        run: rm -f release.keystore.jks
+
+      - name: Build release notes from commits
+        run: |
+          PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || true)"
+          RANGE="${PREV_TAG:+$PREV_TAG..}${{ github.ref_name }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
+          : > notes.md
+          git log "$RANGE" --pretty=format:"%h%x09%s" | while IFS=$'\t' read -r hash subject; do
+            clean="$(sed -E 's/^[a-zA-Z]+(\([^)]*\))?: //; s/^(.)/\U\1/' <<< "$subject")"
+            echo "- $clean ([$hash]($REPO_URL/commit/$hash))" >> notes.md
+          done
+
+      - name: Append stable download links (Downloader app friendly)
+        run: |
+          REPO_URL="https://github.com/${{ github.repository }}"
+          {
+            echo ""
+            echo "## Downloads"
+            echo ""
+            echo "These links always point at the latest release, so a Downloader code created once for them keeps working forever:"
+            echo ""
+            for apk in app/build/outputs/apk/mobile/release/*.apk app/build/outputs/apk/tv/release/*.apk; do
+              name="$(basename "$apk")"
+              echo "- [$name]($REPO_URL/releases/latest/download/$name)"
+            done
+          } >> notes.md
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Fluxa ${{ github.ref_name }}"
+          body_path: notes.md
+          files: |
+            app/build/outputs/apk/mobile/release/*.apk
+            app/build/outputs/apk/tv/release/*.apk

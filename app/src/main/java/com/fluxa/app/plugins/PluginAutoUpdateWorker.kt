@@ -21,7 +21,7 @@ import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 import androidx.hilt.work.HiltWorker
 import com.fluxa.app.R
-import com.fluxa.app.ui.catalog.AppStrings
+import com.fluxa.app.common.AppStrings
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 

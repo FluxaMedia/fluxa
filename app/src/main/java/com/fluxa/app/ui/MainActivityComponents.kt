@@ -2,6 +2,7 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.fluxa.app.ui
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -31,7 +32,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -69,8 +70,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 sealed class Screen {
+    object Welcome : Screen()
     object Profiles : Screen()
-    object Login : Screen()
+    data class Login(val startOnNuvio: Boolean = false) : Screen()
     data class ProfileEdit(val profile: UserProfile? = null) : Screen()
     object Home : Screen()
     object Search : Screen()
@@ -164,6 +166,14 @@ internal fun MobileBottomNav(
     val selectedColor = Color(activeProfile?.safeAccentColorArgb ?: Color.White.toArgb())
     val navBackground = if (activeProfile?.safeAmoledMode == true) Color.Black else Color(0xFF090A0D)
     val inactiveColor = Color(0xFFA7ADB8)
+    val quickProfiles = remember(profiles, activeProfile?.id) {
+        val activeId = activeProfile?.id
+        profiles.sortedWith(
+            compareByDescending<UserProfile> { it.id == activeId }
+                .thenBy { it.displayName.lowercase() }
+        )
+    }
+    var showQuickProfiles by remember { mutableStateOf(false) }
     val items = listOf(
         MobileBottomNavItem(MobileNavDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHome),
         MobileBottomNavItem(MobileNavDestination.Discover, FluxaIcons.BottomDiscover, FluxaIcons.BottomDiscover),
@@ -182,10 +192,6 @@ internal fun MobileBottomNav(
     ) {
         items.forEach { item ->
             val isSelected = selected == item.destination
-            val quickProfiles = remember(profiles, activeProfile?.id) {
-                profiles.filter { it.id != activeProfile?.id }
-            }
-            var showQuickProfiles by remember { mutableStateOf(false) }
             Column(
                 modifier = Modifier
                     .width(58.dp)
@@ -205,40 +211,58 @@ internal fun MobileBottomNav(
                 verticalArrangement = Arrangement.Center
             ) {
                 if (item.destination == MobileNavDestination.Settings) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onNavigate(item.destination) },
+                            onLongClick = {
+                                if (quickProfiles.isNotEmpty()) showQuickProfiles = true
+                            }
+                        ),
+                        contentAlignment = Alignment.Center
+                    ) {
                         MobileBottomProfileAvatar(
                             profile = activeProfile,
                             selected = isSelected,
                             selectedColor = selectedColor
                         )
+                        val menuProfileCount = quickProfiles.size
+                        val menuWidth = (16 + menuProfileCount * 40 + (menuProfileCount - 1).coerceAtLeast(0) * 8)
+                            .coerceAtLeast(112)
                         DropdownMenu(
                             expanded = showQuickProfiles,
                             onDismissRequest = { showQuickProfiles = false },
+                            offset = DpOffset(x = (-((menuWidth - 32) / 2)).dp, y = (-8).dp),
                             containerColor = Color(0xFF171A21)
                         ) {
-                            quickProfiles.forEach { profile ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = profile.displayName,
-                                            color = Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1
-                                        )
-                                    },
-                                    leadingIcon = {
+                            Row(
+                                modifier = Modifier
+                                    .width(menuWidth.dp)
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                quickProfiles.forEach { profile ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                showQuickProfiles = false
+                                                if (profile.id != activeProfile?.id) {
+                                                    onQuickProfileSelected(profile)
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
                                         MobileBottomProfileAvatar(
                                             profile = profile,
-                                            selected = false,
+                                            selected = profile.id == activeProfile?.id,
                                             selectedColor = selectedColor
                                         )
-                                    },
-                                    onClick = {
-                                        showQuickProfiles = false
-                                        onQuickProfileSelected(profile)
                                     }
-                                )
+                                }
                             }
                         }
                     }
@@ -271,7 +295,7 @@ internal fun MobileBottomProfileAvatar(
         modifier = Modifier
             .size(32.dp)
             .clip(CircleShape)
-            .background(Color(profile?.colorArgb ?: 0xFF2A2D36.toInt()))
+            .background(Color(profile?.safeColorArgb ?: 0xFF2A2D36.toInt()))
             .border(
                 width = if (selected) 2.dp else 0.dp,
                 color = if (selected) selectedColor else Color.Transparent,
@@ -287,13 +311,7 @@ internal fun MobileBottomProfileAvatar(
                 contentScale = ContentScale.Crop
             )
         } else {
-            Text(
-                text = profile?.displayName?.take(1)?.uppercase().orEmpty().ifBlank { "?" },
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center
-            )
+            DefaultProfileAvatar(modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -389,6 +407,67 @@ internal fun TraktIntegrationSheet(
                 ) {
                     Text(AppStrings.t(lang, "integration.disconnect"), fontWeight = FontWeight.Black)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SimpleIntegrationSheet(
+    titleKey: String,
+    iconRes: Int,
+    lang: String,
+    onDismiss: () -> Unit,
+    onDisconnect: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF111318),
+        contentColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 10.dp)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.08f))
+                        .padding(10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(AppStrings.t(lang, titleKey), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        text = AppStrings.t(lang, "integration.connected"),
+                        color = Color.White.copy(alpha = 0.58f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Button(
+                onClick = onDisconnect,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4D4D).copy(alpha = 0.18f), contentColor = Color(0xFFFF8A8A)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(AppStrings.t(lang, "integration.disconnect"), fontWeight = FontWeight.Black)
             }
         }
     }
