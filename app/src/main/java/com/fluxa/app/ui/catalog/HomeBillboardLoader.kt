@@ -17,6 +17,8 @@ internal class HomeBillboardLoader(
     private val addonRepository: AddonRepository,
     private val scope: CoroutineScope,
     private val getMetadataFeeds: suspend (UserProfile?) -> List<MetadataFeedOption>,
+    private val getCs3MetadataFeeds: () -> List<MetadataFeedOption>,
+    private val fetchCs3FeedItems: suspend (MetadataFeedOption) -> List<Meta>,
     private val setPool: (List<Meta>) -> Unit,
     private val updateContent: suspend (Meta) -> Unit,
     private val normalizePool: (List<Meta>) -> List<Meta>,
@@ -25,7 +27,7 @@ internal class HomeBillboardLoader(
     suspend fun load(profile: UserProfile?) {
         val lang = profile?.safeLanguage ?: "en"
         try {
-            val enabledFeeds = getMetadataFeeds(profile)
+            val enabledFeeds = (getMetadataFeeds(profile) + getCs3MetadataFeeds())
                 .let { orderedMetadataFeeds(it, profile?.heroFeedOrder) }
                 .let { feeds ->
                     val availableKeys = feeds.map { it.key }
@@ -37,7 +39,11 @@ internal class HomeBillboardLoader(
             val spotlightCandidates = enabledFeeds
                 .map { feed ->
                     scope.async(Dispatchers.IO) {
-                        addonRepository.getAddonCatalog(feed.transportUrl, feed.type, feed.id, genre = feed.genre).take(10)
+                        if (feed.transportUrl.startsWith("cs3://")) {
+                            fetchCs3FeedItems(feed).take(10)
+                        } else {
+                            addonRepository.getAddonCatalog(feed.transportUrl, feed.type, feed.id, genre = feed.genre).take(10)
+                        }
                     }
                 }
                 .awaitAll()

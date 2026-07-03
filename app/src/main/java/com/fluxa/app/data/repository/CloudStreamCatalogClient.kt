@@ -3,6 +3,10 @@ package com.fluxa.app.data.repository
 import android.util.Base64
 import android.util.Log
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.domain.discovery.cs3CatalogFeedKey
+import com.fluxa.app.domain.discovery.cs3PluginFeedKey
+import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
+import com.fluxa.app.plugins.cloudstream.ScraperSearchResult
 import com.fluxa.app.ui.catalog.HomeCategory
 import com.lagradost.cloudstream3.AnimeSearchResponse
 import com.lagradost.cloudstream3.MainAPI
@@ -24,8 +28,6 @@ import javax.inject.Singleton
 
 private const val TAG = "CS3CatalogClient"
 private const val ROW_TIMEOUT_MS = 20_000L
-private const val MAX_ITEMS_PER_ROW = 25
-
 @Singleton
 class CloudStreamCatalogClient @Inject constructor() {
 
@@ -34,7 +36,8 @@ class CloudStreamCatalogClient @Inject constructor() {
      */
     suspend fun fetchHomeCatalogCategories(
         apis: List<MainAPI>,
-        iconsByApiName: Map<String, String> = emptyMap()
+        iconsByApiName: Map<String, String> = emptyMap(),
+        enabledFeedKeys: Set<String>? = null
     ): List<HomeCategory> =
         withContext(Dispatchers.IO) {
             val supported = apis.filter { it.hasMainPage }
@@ -43,7 +46,7 @@ class CloudStreamCatalogClient @Inject constructor() {
                 supported.map { api ->
                     async {
                         try {
-                            fetchApiCatalogRows(api, iconsByApiName[api.name])
+                            fetchApiCatalogRows(api, iconsByApiName[api.name], enabledFeedKeys)
                         } catch (t: Throwable) {
                             Log.w(TAG, "Catalog fetch failed for ${api.name}", t)
                             emptyList()
@@ -53,10 +56,62 @@ class CloudStreamCatalogClient @Inject constructor() {
             }
         }
 
-    private suspend fun fetchApiCatalogRows(api: MainAPI, iconUrl: String? = null): List<HomeCategory> {
+    suspend fun fetchFeedItems(
+        apis: List<MainAPI>,
+        feedKey: String,
+        page: Int = 1
+    ): List<Meta> =
+        withContext(Dispatchers.IO) {
+            apis.filter { it.hasMainPage }.forEach { api ->
+                val items = fetchApiFeedItems(api, feedKey, page)
+                if (items.isNotEmpty()) return@withContext items
+            }
+            emptyList()
+        }
+
+    suspend fun searchRows(
+        apis: List<MainAPI>,
+        query: String
+    ): List<SearchResultRow> =
+        withContext(Dispatchers.IO) {
+            if (query.isBlank() || apis.isEmpty()) return@withContext emptyList()
+            val runner = ExternalExtensionRunner()
+            coroutineScope {
+                apis.map { api ->
+                    async {
+                        try {
+                            val metas = runner.searchScraper(api, query)
+                                .mapNotNull { it.toMeta(api.name) }
+                            if (metas.isEmpty()) return@async null
+                            SearchResultRow(
+                                title = api.name,
+                                items = metas,
+                                id = "cs3_search_${api.name}",
+                                type = metas.first().type
+                            )
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "Search failed for ${api.name}", t)
+                            null
+                        }
+                    }
+                }.awaitAll().filterNotNull()
+            }
+        }
+
+    private suspend fun fetchApiCatalogRows(
+        api: MainAPI,
+        iconUrl: String? = null,
+        enabledFeedKeys: Set<String>? = null
+    ): List<HomeCategory> {
         val result = mutableListOf<HomeCategory>()
         api.mainPage.forEachIndexed { pageIdx, pageData ->
             try {
+                val catalogName = pageData.name.takeIf { it.isNotBlank() } ?: api.name
+                val feedKey = cs3CatalogFeedKey(api.name, catalogName, pageIdx)
+                val legacyPluginKey = cs3PluginFeedKey(api.name)
+                if (enabledFeedKeys != null && feedKey !in enabledFeedKeys && legacyPluginKey !in enabledFeedKeys) {
+                    return@forEachIndexed
+                }
                 val response = withTimeoutOrNull(ROW_TIMEOUT_MS) {
                     api.getMainPage(
                         1,
@@ -69,13 +124,13 @@ class CloudStreamCatalogClient @Inject constructor() {
                 } ?: return@forEachIndexed
 
                 response.items.forEachIndexed { listIdx, pageList ->
-                    val metas = pageList.list.take(MAX_ITEMS_PER_ROW).mapNotNull { it.toMeta(api) }
+                    val metas = pageList.list.mapNotNull { it.toMeta(api) }
                     if (metas.isEmpty()) return@forEachIndexed
-                    val categoryId = "cs3_${api.name.sanitize()}_${pageIdx}_$listIdx"
+                    val categoryId = if (listIdx == 0) feedKey else "${feedKey}_${listIdx}"
                     result.add(
                         HomeCategory(
                             name = pageList.name.takeIf { it.isNotBlank() }
-                                ?: "${api.name}: ${pageData.name}",
+                                ?: "${api.name}: $catalogName",
                             items = metas,
                             id = categoryId,
                             type = metas.first().type,
@@ -89,6 +144,36 @@ class CloudStreamCatalogClient @Inject constructor() {
             }
         }
         return result
+    }
+
+    private suspend fun fetchApiFeedItems(
+        api: MainAPI,
+        feedKey: String,
+        page: Int
+    ): List<Meta> {
+        val legacyPluginKey = cs3PluginFeedKey(api.name)
+        api.mainPage.forEachIndexed { pageIdx, pageData ->
+            val catalogName = pageData.name.takeIf { it.isNotBlank() } ?: api.name
+            val catalogFeedKey = cs3CatalogFeedKey(api.name, catalogName, pageIdx)
+            if (feedKey != catalogFeedKey && feedKey != legacyPluginKey) return@forEachIndexed
+            return try {
+                val response = withTimeoutOrNull(ROW_TIMEOUT_MS) {
+                    api.getMainPage(
+                        page,
+                        MainPageRequest(
+                            data = pageData.data,
+                            name = pageData.name,
+                            horizontalImages = pageData.horizontalImages
+                        )
+                    )
+                } ?: return emptyList()
+                response.items.flatMap { pageList -> pageList.list.mapNotNull { it.toMeta(api) } }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Feed '$catalogName' from ${api.name} failed: ${t.javaClass.simpleName}: ${t.message}")
+                emptyList()
+            }
+        }
+        return emptyList()
     }
 
     private fun SearchResponse.toMeta(api: MainAPI): Meta? {
@@ -111,6 +196,19 @@ class CloudStreamCatalogClient @Inject constructor() {
         )
     }
 
+    private fun ScraperSearchResult.toMeta(apiName: String): Meta? {
+        val title = this.title.takeIf { it.isNotBlank() } ?: return null
+        val id = encodeCsId(apiName, url)
+        return Meta(
+            id = id,
+            name = title,
+            type = type?.toStremioType() ?: "movie",
+            poster = posterUrl?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { if (it.startsWith("http://")) it.replaceFirst("http://", "https://") else it },
+            releaseInfo = year?.toString()
+        )
+    }
+
     private fun resolveId(result: SearchResponse, api: MainAPI): String {
         if (api is TmdbProvider) {
             result.id?.let { return "tmdb:$it" }
@@ -122,8 +220,6 @@ class CloudStreamCatalogClient @Inject constructor() {
     private fun extractTmdbId(url: String): Int? =
         Regex("""themoviedb\.org/(?:movie|tv)/(\d+)""")
             .find(url)?.groupValues?.get(1)?.toIntOrNull()
-
-    private fun String.sanitize() = replace(Regex("[^a-zA-Z0-9]"), "_").lowercase()
 
     companion object {
         fun encodeCsId(apiName: String, data: String): String {

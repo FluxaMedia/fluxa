@@ -3,8 +3,10 @@ package com.fluxa.app.data.repository
 import android.util.Log
 import com.fluxa.app.BuildConfig
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.data.remote.SubtitleData
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
 import com.fluxa.app.plugins.cloudstream.ScraperSearchResult
+import com.fluxa.app.plugins.cloudstream.ScraperSubtitle
 import com.fluxa.app.plugins.cloudstream.ScraperStreamLink
 import com.lagradost.cloudstream3.metaproviders.TmdbProvider
 import kotlinx.coroutines.async
@@ -82,7 +84,8 @@ class CloudStreamDiscoveryClient @Inject constructor() {
             Log.w("StremioRepo", "CS3 ${api.name}: no content data for type=$type s=$season e=$episode")
             return emptyList()
         }
-        return runner.loadStreams(api, streamData).links.map { it.toStream(api.name) }
+        val streamResult = runner.loadStreams(api, streamData)
+        return streamResult.links.map { it.toStream(api.name, streamResult.subtitles) }
     }
 
     private suspend fun loadSearchProviderStreams(
@@ -134,18 +137,28 @@ class CloudStreamDiscoveryClient @Inject constructor() {
             Log.w("StremioRepo", "CS3 ${api.name}: no content data for type=$type s=$season e=$episode")
             return emptyList()
         }
-        return runner.loadStreams(api, streamData).links.map { it.toStream(api.name) }
+        val streamResult = runner.loadStreams(api, streamData)
+        return streamResult.links.map { it.toStream(api.name, streamResult.subtitles) }
     }
 
-    private fun ScraperStreamLink.toStream(addonName: String) = Stream(
+    private fun ScraperStreamLink.toStream(addonName: String, subtitles: List<ScraperSubtitle>) = Stream(
         name = " $addonName\n$quality",
         title = name,
         url = url,
+        subtitles = subtitles.map { it.toSubtitleData() },
         behaviorHints = buildMap {
             put("proxyHeaders", buildMap { put("request", headers) })
             if (referer != null) put("referer", referer)
+            put("cs3Type", type)
+            put("isM3u8", isM3u8)
+            put("isDash", isDash)
         },
         addonName = " $addonName"
+    )
+
+    private fun ScraperSubtitle.toSubtitleData() = SubtitleData(
+        url = url,
+        lang = lang
     )
 
     private inline fun logDebug(tag: String, message: () -> String) {

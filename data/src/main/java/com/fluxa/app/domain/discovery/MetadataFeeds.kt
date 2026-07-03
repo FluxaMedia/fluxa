@@ -26,6 +26,12 @@ data class DiscoverCatalogOption(
     val requiresGenre: Boolean = false
 )
 
+data class Cs3CatalogFeedDescriptor(
+    val pluginName: String,
+    val catalogName: String,
+    val catalogIndex: Int
+)
+
 fun buildMetadataFeedOptions(addons: List<AddonDescriptor>, language: String? = "en"): List<MetadataFeedOption> {
     val addonFeeds = addons
         .flatMap { addon -> addon.toMetadataFeedOptions() }
@@ -99,14 +105,18 @@ private fun discoverCatalogLabel(rawName: String?, id: String): String {
 fun cs3PluginFeedKey(apiName: String): String =
     "cs3_plugin_${apiName.replace(Regex("[^a-zA-Z0-9]"), "_").lowercase()}"
 
-fun buildCs3MetadataFeedOptions(apiNames: List<String>): List<MetadataFeedOption> =
-    apiNames.map { name ->
+fun cs3CatalogFeedKey(pluginName: String, catalogName: String, catalogIndex: Int): String =
+    "cs3_catalog_${pluginName.stableFeedPart()}:${catalogIndex}:${catalogName.stableFeedPart()}"
+
+fun buildCs3MetadataFeedOptions(catalogs: List<Cs3CatalogFeedDescriptor>): List<MetadataFeedOption> =
+    catalogs.map { catalog ->
+        val key = cs3CatalogFeedKey(catalog.pluginName, catalog.catalogName, catalog.catalogIndex)
         MetadataFeedOption(
-            key = cs3PluginFeedKey(name),
-            label = name,
-            transportUrl = "cs3://${cs3PluginFeedKey(name)}",
+            key = key,
+            label = "${catalog.catalogName} - ${catalog.pluginName}",
+            transportUrl = "cs3://$key",
             type = "all",
-            id = cs3PluginFeedKey(name)
+            id = key
         )
     }
 

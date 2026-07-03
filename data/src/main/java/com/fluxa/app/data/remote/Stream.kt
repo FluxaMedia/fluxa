@@ -36,8 +36,10 @@ data class Stream(
                     headers[k.toString()] = v.toString() 
                 }
             }
-            // Direct referer hint
-            (hints["referer"] as? String)?.let { headers["Referer"] = it }
+            // Direct referer hint. Cloudstream sends this lower-case through Media3 request properties.
+            (hints["referer"] as? String)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { headers["referer"] = it }
         }
         return headers
     }

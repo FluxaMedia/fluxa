@@ -101,10 +101,14 @@ internal fun formatElapsedTime(ms: Long, lang: String? = "en"): String {
 }
 
 internal fun parseShortVideoId(id: String?): String? {
-    if (id == null) return null
+    if (id.isNullOrBlank() || id.startsWith("cs3:")) return null
     val parts = id.split(":")
     if (parts.size >= 3) {
-        return "S${parts[parts.size - 2]}, E${parts[parts.size - 1]}"
+        val season = parts[parts.size - 2].toIntOrNull()
+        val episode = parts[parts.size - 1].toIntOrNull()
+        if (season != null && episode != null) {
+            return "S$season, E$episode"
+        }
     }
     return null
 }

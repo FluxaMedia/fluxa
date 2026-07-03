@@ -182,9 +182,11 @@ fun mobileHeroArtworkCandidates(meta: Meta, seasonPostersOnHero: Boolean = true)
         ?.takeUnless { it == meta.poster }
         ?.takeUnless { it.contains("/poster/", ignoreCase = true) }
         ?.takeUnless { !seasonPostersOnHero && it == seasonPoster }
+    val posterFallback = meta.poster?.takeIf { it.isNotBlank() }
     return buildList {
         seasonPoster?.takeIf { seasonPostersOnHero }?.let(::add)
         existingBackdrop?.let(::add)
+        posterFallback?.let(::add)
     }.distinct()
 }
 
