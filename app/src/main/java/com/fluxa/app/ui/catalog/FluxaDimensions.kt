@@ -3,13 +3,8 @@ package com.fluxa.app.ui.catalog
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * Single source of truth for all tweakable UI dimensions, durations, and style values.
- * Change a value here to affect every screen that uses it.
- */
 object FluxaDimensions {
 
-    // ── Episode / continue-watching card ─────────────────────────────────────
     object EpisodeCard {
         val mobileWidth = 244.dp
         val mobileHeight = 148.dp
@@ -17,17 +12,13 @@ object FluxaDimensions {
         val tvHeight = 208.dp
     }
 
-    // ── TV poster card (non-episode vertical poster) ──────────────────────────
     object TvPosterCard {
         val width = 136.dp
         val height = 204.dp
     }
 
-    // ── Home billboard / hero ─────────────────────────────────────────────────
     val mobileBillboardHeight = 540.dp
 
-    // ── Poster card size presets ──────────────────────────────────────────────
-    // posterCardWidth(preset) and posterCardHeight(preset) in HomeScreen.kt consume these.
     object PosterPresets {
         val xsmall = 96.dp
         val small = 112.dp
@@ -37,18 +28,14 @@ object FluxaDimensions {
         const val heightRatio = 1.5f
     }
 
-    // ── Poster corner-radius presets ──────────────────────────────────────────
-    // posterCornerRadius(preset) in HomeScreen.kt consumes these.
     object CornerPresets {
         val sharp = 2.dp
         val classic = 8.dp
-        val soft = 12.dp     // default / "medium"
+        val soft = 12.dp
         val rounded = 18.dp
         val pill = 28.dp
     }
 
-    // ── Horizontal card (backdrop thumbnail) ─────────────────────────────────
-    // horizontalCardWidth/Height functions in HomeScreen.kt consume these.
     object HorizontalCard {
         val mobileBase = 166.dp
         val tvBase = 260.dp
@@ -59,14 +46,11 @@ object FluxaDimensions {
         val deltaXlarge = 61.dp
     }
 
-    // ── Card meta bar (title + year row rendered below the image) ─────────────
     val cardMetaBarHeight = 42.dp
     val cardMetaBarWithEpisodeLabelHeight = 50.dp
 
-    // ── In-card progress strip ────────────────────────────────────────────────
     val cardProgressBarHeight = 4.dp
 
-    // ── Library list-item ─────────────────────────────────────────────────────
     object LibraryListItem {
         val height = 132.dp
         val thumbnailWidth = 112.dp
@@ -74,12 +58,10 @@ object FluxaDimensions {
         val thumbnailCornerRadius = 10.dp
     }
 
-    // ── Profile screens ───────────────────────────────────────────────────────
     object Profile {
         val avatarSize = 120.dp
     }
 
-    // ── Card text sizes ───────────────────────────────────────────────────────
     object CardText {
         val titleSize = 12.sp
         val subtitleSize = 10.sp
@@ -87,7 +69,6 @@ object FluxaDimensions {
         val coverFallbackSize = 48.sp
     }
 
-    // ── Common alpha values ───────────────────────────────────────────────────
     object Alpha {
         const val emptyCardBackground = 0.05f
         const val cardSubtitle = 0.58f
@@ -101,22 +82,30 @@ object FluxaDimensions {
         const val coverFallbackText = 0.2f
     }
 
-    // ── Animation durations (milliseconds) ───────────────────────────────────
     object AnimDuration {
-        const val cardFocusScale = 240
-        const val contentExpand = 220
-        const val heroSnap = 150
+        const val blink = 90
+        const val quick = 140
         const val scaleAlpha = 180
-        const val heightAnim = 130
+        const val fadeIn = 200
+        const val contentExpand = 220
+        const val cardFocusScale = 240
         const val settingsExpand = 240
         const val settingsExpandAlt = 260
-        const val heroReveal = 650
-        const val fadeIn = 200
+        const val heightAnim = 130
+        const val heroSnap = 150
         const val fadeOut = 150
+        const val routeExit = 160
+        const val parentsContainer = 300
+        const val parentsExpand = 400
+        const val nextEpisode = 560
+        const val progressRing = 520
+        const val sidebarSlide = 620
+        const val heroReveal = 650
         const val ambientColor = 700
+        const val loginPulse = 1000
+        const val marquee = 1120
     }
 
-    // ── Focus indicator stroke ────────────────────────────────────────────────
     object PlayerChrome {
         val topScrimHeight = 160.dp
         val bottomScrimHeight = 230.dp
@@ -128,6 +117,5 @@ object FluxaDimensions {
     val mobileFocusBorderStroke = 2.dp
     val tvFocusBorderStroke = 3.dp
 
-    // ── Card focus scale factor ───────────────────────────────────────────────
     const val cardFocusedScale = 1.12f
 }
