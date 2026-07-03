@@ -2,7 +2,7 @@
 /.idea/
 /.kotlin/
 /.vscode/
-/.gradle/
+**/.gradle/
 /build/
 /app/build/
 **/build/
