@@ -484,6 +484,11 @@ fun TrailerCard(trailer: DetailTrailer, accentColor: Color, onPlay: (() -> Unit)
     val context = LocalContext.current
     val deviceType = LocalDeviceType.current
     val playableUrl = trailer.url.takeIf { it.isNotBlank() }
+    val thumbnailRequest = remember(trailer.thumbnail) {
+        trailer.thumbnail?.takeIf { it.isNotBlank() }?.let { url ->
+            ImageRequest.Builder(context).data(url).memoryCacheKey("trailer:$url").diskCacheKey(url).build()
+        }
+    }
     val handleClick = {
         if (onPlay != null) {
             onPlay()
@@ -514,9 +519,9 @@ fun TrailerCard(trailer: DetailTrailer, accentColor: Color, onPlay: (() -> Unit)
                     .height(146.dp)
                     .background(Color.Black.copy(alpha = 0.34f))
             ) {
-                if (!trailer.thumbnail.isNullOrBlank()) {
+                if (thumbnailRequest != null) {
                     AsyncImage(
-                        model = trailer.thumbnail,
+                        model = thumbnailRequest,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -628,9 +633,15 @@ fun SourceFilterPill(name: String, isSelected: Boolean, onClick: () -> Unit) {
 fun CastMemberCard(member: CastMember) {
     val size = if (LocalDeviceType.current == DeviceType.TV) 100.dp else 80.dp
     val cardWidth = if (LocalDeviceType.current == DeviceType.TV) 124.dp else 104.dp
+    val context = LocalContext.current
+    val photoRequest = remember(member.profilePath) {
+        member.profilePath?.let { path ->
+            ImageRequest.Builder(context).data(path).memoryCacheKey("cast:$path").diskCacheKey(path).build()
+        }
+    }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(cardWidth)) {
         Box(modifier = Modifier.size(size).clip(CircleShape).background(Color.White.copy(alpha = 0.1f))) {
-            if (member.profilePath != null) AsyncImage(member.profilePath, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            if (photoRequest != null) AsyncImage(photoRequest, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             else Icon(FluxaIcons.Person, null, modifier = Modifier.size(size/2).align(Alignment.Center), tint = Color.Gray)
         }
         Spacer(modifier = Modifier.height(12.dp))
@@ -653,6 +664,12 @@ fun CastMemberCard(member: CastMember) {
 @Composable
 fun SimilarContentCard(item: SimilarItemUiModel, accentColor: Color, onClick: () -> Unit) {
     val deviceType = LocalDeviceType.current
+    val context = LocalContext.current
+    val posterRequest = remember(item.id, item.poster) {
+        item.poster?.let { url ->
+            ImageRequest.Builder(context).data(url).memoryCacheKey("similar:${item.id}").diskCacheKey(url).build()
+        }
+    }
     Surface(
         onClick = onClick,
         modifier = Modifier
@@ -662,7 +679,7 @@ fun SimilarContentCard(item: SimilarItemUiModel, accentColor: Color, onClick: ()
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, Color.White)))
-    ) { AsyncImage(model = item.poster, null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+    ) { AsyncImage(model = posterRequest, null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
 }
 
 internal fun detailIsUpcoming(dateStr: String?): Boolean {
