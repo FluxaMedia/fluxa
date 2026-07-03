@@ -15,9 +15,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -94,12 +96,17 @@ fun HomeScreen(
             category.toTvHomeRowSpec(activeProfile, catalogState.topTenFeedKeys, lang)
         }
     }
-    val firstShelfFocusRequester = remember { FocusRequester() }
+    val shelfFocusRequesters = remember(rowSpecs.size) { List(rowSpecs.size) { FocusRequester() } }
     val heroPlayFocusRequester = remember { FocusRequester() }
     val heroFocusAnchor = remember { FocusRequester() }
     val topBarFirstItemFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
-    val listState = rememberLazyListState(prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 4) })
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = viewModel.savedTvHomeScrollIndex,
+        initialFirstVisibleItemScrollOffset = viewModel.savedTvHomeScrollOffset,
+        prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 4) }
+    )
+    var focusedRowIndex by remember { mutableIntStateOf(viewModel.savedTvFocusedRowIndex) }
     val scope = rememberCoroutineScope()
     val stableOnMovieClickState = rememberUpdatedState(onMovieClick)
     val stableOnPlayDirectState = rememberUpdatedState(onPlayDirect)
@@ -112,10 +119,19 @@ fun HomeScreen(
     val heroActiveState = remember { mutableStateOf(false) }
     var heroActive by heroActiveState
 
-    val onMovieFocus = remember<(Meta) -> Unit> { { meta ->
+    val onMovieFocus = remember<(Meta, Int) -> Unit> { { meta, rowIdx ->
         viewModel.onMovieFocused(meta)
+        focusedRowIndex = rowIdx
         heroActiveState.value = false
     } }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.savedTvHomeScrollIndex = listState.firstVisibleItemIndex
+            viewModel.savedTvHomeScrollOffset = listState.firstVisibleItemScrollOffset
+            viewModel.savedTvFocusedRowIndex = focusedRowIndex
+        }
+    }
 
     var pendingFocusJob by remember { mutableStateOf<Job?>(null) }
 
@@ -125,7 +141,7 @@ fun HomeScreen(
             heroActiveState.value = false
             pendingFocusJob = scope.launch {
                 if (hasHeroItem) listState.scrollToItem(1)
-                firstShelfFocusRequester.requestFocusWithRetry()
+                shelfFocusRequesters.firstOrNull()?.requestFocusWithRetry()
             }
         }
     }
@@ -144,7 +160,14 @@ fun HomeScreen(
     }
 
     LaunchedEffect(hasHeroItem) {
-        if (hasHeroItem) {
+        val savedRow = viewModel.savedTvFocusedRowIndex
+        if (savedRow >= 0 && shelfFocusRequesters.isNotEmpty()) {
+            pendingFocusJob?.cancel()
+            pendingFocusJob = scope.launch {
+                listState.scrollToItem(viewModel.savedTvHomeScrollIndex, viewModel.savedTvHomeScrollOffset)
+                shelfFocusRequesters.getOrNull(savedRow.coerceIn(0, shelfFocusRequesters.lastIndex))?.requestFocusWithRetry()
+            }
+        } else if (hasHeroItem) {
             heroActiveState.value = true
             pendingFocusJob?.cancel()
             pendingFocusJob = scope.launch { heroPlayFocusRequester.requestFocusWithRetry() }
@@ -211,6 +234,7 @@ fun HomeScreen(
                     contentType = { _, row -> "tv-shelf:${row.categoryType}:${row.cardLayout}:${row.isActionRow}:${row.topTenEnabled}" }
                 ) { index, row ->
                     val isFirstRow = index == 0 && catalogState.showHeroSection && heroMovie != null
+                    val onFocusForRow = remember(index) { { meta: Meta -> onMovieFocus(meta, index) } }
                     HomeShelfRow(
                         title = row.title,
                         titleStartPadding = railGutter,
@@ -223,8 +247,8 @@ fun HomeScreen(
                             if (row.isActionRow) stableOnPlayDirectState.value(meta)
                             else stableOnMovieClickState.value(meta, row.addonTransportUrl, row.addonCatalogType)
                         },
-                        onItemFocus = onMovieFocus,
-                        firstItemFocusRequester = if (index == 0) firstShelfFocusRequester else null,
+                        onItemFocus = onFocusForRow,
+                        firstItemFocusRequester = shelfFocusRequesters.getOrNull(index),
                         upFocusRequester = when {
                             isFirstRow -> null
                             index == 0 && useTopBar -> topBarFirstItemFocusRequester

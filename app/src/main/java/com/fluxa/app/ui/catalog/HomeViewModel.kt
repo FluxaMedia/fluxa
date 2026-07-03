@@ -9,7 +9,9 @@ import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreStateHandle
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
-import com.fluxa.app.domain.discovery.cs3PluginFeedKey
+import com.fluxa.app.domain.discovery.Cs3CatalogFeedDescriptor
+import com.fluxa.app.domain.discovery.MetadataFeedOption
+import com.fluxa.app.domain.discovery.buildCs3MetadataFeedOptions
 import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
 import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
 import com.google.gson.Gson
@@ -35,9 +37,8 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 
 import com.fluxa.app.plugins.PluginManager
-import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
 import com.fluxa.app.data.repository.CloudStreamCatalogClient
-import com.fluxa.app.data.repository.toStremioType
+import com.lagradost.cloudstream3.MainAPI
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -110,6 +111,9 @@ class HomeViewModel @Inject constructor(
 
     var savedHomeScrollIndex: Int = 0
     var savedHomeScrollOffset: Int = 0
+    var savedTvHomeScrollIndex: Int = 0
+    var savedTvHomeScrollOffset: Int = 0
+    var savedTvFocusedRowIndex: Int = -1
     val savedCategoryScrollPositions: HashMap<String, Pair<Int, Int>> = HashMap()
     private var categoriesRenderSignature: Int? = null
 
@@ -231,6 +235,10 @@ class HomeViewModel @Inject constructor(
         .map { apis -> apis.map { it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val loadedCs3CatalogFeedOptions: StateFlow<List<MetadataFeedOption>> = pluginManager.loadedApis
+        .map { apis -> buildCs3MetadataFeedOptions(apis.toCs3CatalogFeedDescriptors()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private var currentWatchlist: List<Meta> = emptyList()
     private var externalContinueWatching: List<Meta> = emptyList()
     private var traktWatchedState: TraktWatchedState = TraktWatchedState()
@@ -308,6 +316,10 @@ class HomeViewModel @Inject constructor(
             addonRepository = addonRepository,
             scope = viewModelScope,
             getMetadataFeeds = { profile -> feedCoordinator.getMetadataFeeds(profile) },
+            getCs3MetadataFeeds = { loadedCs3CatalogFeedOptions.value },
+            fetchCs3FeedItems = { feed ->
+                cloudStreamCatalogClient.fetchFeedItems(pluginManager.loadedApis.value, feed.key)
+            },
             setPool = { billboardState.poolValue = it },
             updateContent = billboardRuntime::updateContent,
             normalizePool = { items -> items.distinctBy(HomeBillboardRanking::contentIdentityKey) },
@@ -387,10 +399,16 @@ class HomeViewModel @Inject constructor(
                 val cs3FeedsConfigured = profile?.cs3FeedsConfigured == true
                 val apis = pluginManager.loadedApis.value
                     .filter { it.hasMainPage }
-                    .filter { api ->
-                        if (homeFeedToggles == null || !cs3FeedsConfigured) true
-                        else homeFeedToggles.contains(cs3PluginFeedKey(api.name))
-                    }
+                val cs3FeedOptions = buildCs3MetadataFeedOptions(apis.toCs3CatalogFeedDescriptors())
+                val enabledCs3FeedKeys = if (homeFeedToggles == null || !cs3FeedsConfigured) {
+                    null
+                } else if (homeFeedToggles.any { it.startsWith("cs3_catalog_") }) {
+                    effectiveHomeMetadataFeedSelection(homeFeedToggles, cs3FeedOptions.map { it.key })?.toSet()
+                } else if (homeFeedToggles.any { it.startsWith("cs3_plugin_") }) {
+                    homeFeedToggles.toSet()
+                } else {
+                    null
+                }
                 android.util.Log.d("HomeViewModel", "CS3 refresh: ${apis.size} APIs: ${apis.map { it.name }}")
                 if (apis.isEmpty()) {
                     val withoutCs3 = _categories.value.filter { !it.id.startsWith("cs3_") }
@@ -400,7 +418,11 @@ class HomeViewModel @Inject constructor(
                 val iconsByApiName = pluginManager.installedPlugins.value
                     .filter { !it.iconUrl.isNullOrBlank() }
                     .associate { it.name to it.iconUrl!! }
-                val cs3Rows = cloudStreamCatalogClient.fetchHomeCatalogCategories(apis, iconsByApiName)
+                val cs3Rows = cloudStreamCatalogClient.fetchHomeCatalogCategories(
+                    apis = apis,
+                    iconsByApiName = iconsByApiName,
+                    enabledFeedKeys = enabledCs3FeedKeys
+                )
                 android.util.Log.d("HomeViewModel", "CS3 refresh: got ${cs3Rows.size} rows from ${apis.size} APIs")
                 if (!isActive) return@launch
                 val cs3RowsById = cs3Rows.associateBy { it.id }
@@ -420,10 +442,15 @@ class HomeViewModel @Inject constructor(
     private fun observeCloudStreamPlugins() {
         viewModelScope.launch {
             pluginManager.loadedApis
-                .map { apis -> apis.filter { it.hasMainPage }.map { it.name }.toSet() }
+                .map { apis -> apis.toCs3CatalogFeedDescriptors().map { "${it.pluginName}:${it.catalogIndex}:${it.catalogName}" }.toSet() }
                 .distinctUntilChanged()
                 .collect {
                     scheduleCs3Refresh()
+                    if (billboardState.poolValue.isEmpty()) {
+                        viewModelScope.launch {
+                            billboardLoader.load(currentActiveProfile)
+                        }
+                    }
                 }
         }
     }
@@ -847,41 +874,7 @@ class HomeViewModel @Inject constructor(
                     localAddons = currentActiveProfile?.safeLocalAddons.orEmpty()
                 )
                 if (!isActive) return@launch
-                val cs3Apis = pluginManager.loadedApis.value
-                val cs3Rows: List<SearchResultRow> = if (cs3Apis.isNotEmpty()) {
-                    val runner = ExternalExtensionRunner()
-                    coroutineScope {
-                        cs3Apis.map { api ->
-                            async {
-                                try {
-                                    val results = runner.searchScraper(api, trimmedQuery)
-                                    if (results.isEmpty()) return@async null
-                                    val metas = results.mapNotNull { r ->
-                                        val poster = r.posterUrl?.trim()?.takeIf { it.isNotBlank() }
-                                            ?.let { if (it.startsWith("http://")) it.replaceFirst("http://", "https://") else it }
-                                        Meta(
-                                            id = CloudStreamCatalogClient.encodeCsId(api.name, r.url),
-                                            name = r.title,
-                                            type = r.type?.toStremioType() ?: "movie",
-                                            poster = poster,
-                                            releaseInfo = r.year?.toString()
-                                        )
-                                    }
-                                    if (metas.isEmpty()) return@async null
-                                    SearchResultRow(
-                                        title = api.name,
-                                        items = metas,
-                                        id = "cs3_search_${api.name}",
-                                        type = metas.first().type
-                                    )
-                                } catch (t: Throwable) {
-                                    android.util.Log.w("HomeViewModel", "CS3 search failed for ${api.name}", t)
-                                    null
-                                }
-                            }
-                        }.awaitAll().filterNotNull()
-                    }
-                } else emptyList()
+                val cs3Rows = cloudStreamCatalogClient.searchRows(pluginManager.loadedApis.value, trimmedQuery)
                 if (!isActive) return@launch
                 val allRows = rows + cs3Rows
                 searchFocusState.searchRowsValue = allRows
@@ -1091,6 +1084,9 @@ class HomeViewModel @Inject constructor(
         if (profileChanged) {
             savedHomeScrollIndex = 0
             savedHomeScrollOffset = 0
+            savedTvHomeScrollIndex = 0
+            savedTvHomeScrollOffset = 0
+            savedTvFocusedRowIndex = -1
             savedCategoryScrollPositions.clear()
         }
         viewModelScope.launch {
@@ -1476,6 +1472,18 @@ class HomeViewModel @Inject constructor(
 
 }
 
+private fun List<MainAPI>.toCs3CatalogFeedDescriptors(): List<Cs3CatalogFeedDescriptor> {
+    return filter { it.hasMainPage }.flatMap { api ->
+        api.mainPage.mapIndexed { index, page ->
+            Cs3CatalogFeedDescriptor(
+                pluginName = api.name,
+                catalogName = page.name.takeIf { it.isNotBlank() } ?: api.name,
+                catalogIndex = index
+            )
+        }
+    }
+}
+
 private fun List<HomeCategory>.renderSignatureForHome(): Int {
     var result = size
     for (category in this) {
@@ -1516,6 +1524,11 @@ private fun HomeCategory.isCollectionFolderCategory(): Boolean {
 }
 
 private fun Video.continueWatchingTitleForHome(): String {
-    val seasonEpisode = if (season != null && number != null) "S$season:E$number" else null
-    return listOfNotNull(seasonEpisode, name?.takeIf { it.isNotBlank() }).joinToString(" ").ifBlank { name.orEmpty() }
+    val seasonEpisode = if (season != null && number != null) "S$season, E$number" else null
+    val title = name?.trim()?.takeIf { it.isNotBlank() }
+    return when {
+        seasonEpisode != null && title != null -> "$seasonEpisode: $title"
+        seasonEpisode != null -> seasonEpisode
+        else -> title.orEmpty()
+    }
 }
