@@ -4,13 +4,12 @@ package com.fluxa.app.ui.catalog
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.UserProfile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,20 +19,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -49,7 +43,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun TvProfileEditScreen(
@@ -72,15 +68,11 @@ internal fun TvProfileEditScreen(
     }
     val scope = rememberCoroutineScope()
 
-    val categories = remember { AvatarLibrary.categories }
-    val avatarData = remember { mutableStateMapOf<String, List<AvatarCharacter>>() }
-
-    LaunchedEffect(categories) {
-        categories.forEach { category ->
-            if (avatarData[category.imdbId].isNullOrEmpty()) {
-                scope.launch {
-                    val characters = AvatarProvider.fetchAvatarsForShow(context, category.imdbId)
-                    avatarData[category.imdbId] = characters
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            scope.launch {
+                selectedAvatarUrl = withContext(Dispatchers.IO) {
+                    copyProfileImageToLocalUri(context, it) ?: it.toString()
                 }
             }
         }
@@ -221,61 +213,24 @@ internal fun TvProfileEditScreen(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    AppStrings.t(lang, "profiles.choose_image_desc"),
+                    color = Color.Gray,
+                    fontSize = 13.sp
+                )
                 Spacer(Modifier.height(16.dp))
-                categories.forEach { category ->
-                    val characters = avatarData[category.imdbId]
-                    if (!characters.isNullOrEmpty()) {
-                        Text(
-                            category.showName,
-                            color = Color.Gray,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            items(characters, key = { it.url }) { character ->
-                                TvAvatarItem(
-                                    character = character,
-                                    isSelected = selectedAvatarUrl == character.url,
-                                    onClick = { selectedAvatarUrl = character.url }
-                                )
-                            }
-                        }
+                OutlinedButton(onClick = { imagePicker.launch("image/*") }) {
+                    Icon(FluxaIcons.Upload, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(AppStrings.t(lang, "profiles.upload_image"))
+                }
+                if (selectedAvatarUrl != null) {
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { selectedAvatarUrl = null }) {
+                        Text(AppStrings.t(lang, "profiles.remove_image"), color = Color.White.copy(alpha = 0.6f))
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TvAvatarItem(character: AvatarCharacter, isSelected: Boolean, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    Box(
-        modifier = Modifier
-            .size(if (focused) 96.dp else 84.dp)
-            .clip(CircleShape)
-            .border(
-                width = if (isSelected) 3.dp else if (focused) 2.dp else 0.dp,
-                color = if (isSelected) Color(0xFFE50914) else Color.White,
-                shape = CircleShape
-            )
-            .onFocusChanged { focused = it.isFocused }
-            .clickable { onClick() }
-            .background(Color.White.copy(alpha = 0.05f))
-    ) {
-        AsyncImage(
-            model = character.url,
-            contentDescription = character.name,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-        if (isSelected) {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)), contentAlignment = Alignment.Center) {
-                Icon(FluxaIcons.Check, null, tint = Color.White)
             }
         }
     }

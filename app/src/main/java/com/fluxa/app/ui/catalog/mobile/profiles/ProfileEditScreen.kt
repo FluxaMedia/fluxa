@@ -11,8 +11,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -66,20 +64,6 @@ fun MobileProfileEditScreen(
             scope.launch {
                 selectedAvatarUrl = withContext(Dispatchers.IO) {
                     copyProfileImageToLocalUri(context, it) ?: it.toString()
-                }
-            }
-        }
-    }
-
-    val categories = remember { AvatarLibrary.categories }
-    val avatarData = remember { mutableStateMapOf<String, List<AvatarCharacter>>() }
-
-    LaunchedEffect(categories) {
-        categories.forEach { category ->
-            if (avatarData[category.imdbId].isNullOrEmpty()) {
-                scope.launch {
-                    val characters = AvatarProvider.fetchAvatarsForShow(context, category.imdbId)
-                    avatarData[category.imdbId] = characters
                 }
             }
         }
@@ -312,34 +296,10 @@ fun MobileProfileEditScreen(
                 Text(AppStrings.t(lang, "profiles.upload_image"))
             }
 
-            Spacer(Modifier.height(20.dp))
-
-            categories.forEach { category ->
-                val characters = avatarData[category.imdbId]
-                if (!characters.isNullOrEmpty()) {
-                    Text(
-                        category.showName,
-                        color = Color.Gray,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .align(Alignment.Start)
-                            .padding(vertical = 8.dp)
-                    )
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(characters, key = { it.url }) { character ->
-                            AvatarItem(
-                                character = character,
-                                isSelected = selectedAvatarUrl == character.url,
-                                onClick = { selectedAvatarUrl = character.url }
-                            )
-                        }
-                    }
+            if (selectedAvatarUrl != null) {
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { selectedAvatarUrl = null }) {
+                    Text(AppStrings.t(lang, "profiles.remove_image"), color = Color.White.copy(alpha = 0.6f))
                 }
             }
 
@@ -355,7 +315,7 @@ fun MobileProfileEditScreen(
     }
 }
 
-private fun copyProfileImageToLocalUri(context: android.content.Context, source: android.net.Uri): String? {
+internal fun copyProfileImageToLocalUri(context: android.content.Context, source: android.net.Uri): String? {
     return runCatching {
         val mimeType = context.contentResolver.getType(source) ?: "image/jpeg"
         val ext = when {
@@ -371,41 +331,4 @@ private fun copyProfileImageToLocalUri(context: android.content.Context, source:
         } ?: return null
         target.toURI().toString()
     }.getOrNull()
-}
-
-@Composable
-fun AvatarItem(
-    character: AvatarCharacter,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(FluxaDimensions.Profile.avatarPickerThumbSize)
-            .clip(CircleShape)
-            .border(
-                width = if (isSelected) 3.dp else 0.dp,
-                color = if (isSelected) Color(0xFFE50914) else Color.Transparent,
-                shape = CircleShape
-            )
-            .clickable { onClick() }
-    ) {
-        AsyncImage(
-            model = character.url,
-            contentDescription = character.name,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.Center
-        )
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(FluxaIcons.Check, null, tint = Color.White)
-            }
-        }
-    }
 }
