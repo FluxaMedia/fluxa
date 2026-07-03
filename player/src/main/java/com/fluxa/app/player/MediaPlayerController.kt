@@ -43,6 +43,11 @@ import android.media.MediaCodecList
 import java.util.Locale
 import java.util.Collections
 import java.util.WeakHashMap
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
 
 @UnstableApi
 class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPlayer) {
@@ -82,10 +87,15 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             @Volatile var dvHdr10PlusMode: String = "auto"
             @Volatile var disableDiskCache: Boolean = false
             @Volatile var videoEffectsActive: Boolean = false
+            @Volatile var embeddedAssFontFuture: Future<List<NativeAssFont>>? = null
+            @Volatile var streamOpenLatch = CountDownLatch(1)
         }
 
         private val requestContexts = Collections.synchronizedMap(WeakHashMap<ExoPlayer, ExoRequestContext>())
         private val libassRelays = Collections.synchronizedMap(WeakHashMap<ExoPlayer, LibassEventRelay>())
+        private val libassFontExecutor = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "fluxa-libass-fonts").apply { isDaemon = true }
+        }
 
         fun getLibassRelay(player: ExoPlayer): LibassEventRelay? = libassRelays[player]
 
@@ -112,6 +122,17 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             val heapBoundMb = (heapMb / 4).coerceIn(32, 150)
             return requestedMb.coerceIn(32, 2000)
                 .coerceAtMost(heapBoundMb) * BYTES_PER_MB
+        }
+
+        private fun shouldScanEmbeddedAssFonts(url: String, title: String?): Boolean {
+            fun String.looksMatroska(): Boolean {
+                val value = substringBefore('?').substringBefore('#').lowercase(Locale.ROOT)
+                return value.endsWith(".mkv") ||
+                    value.endsWith(".mks") ||
+                    value.endsWith(".mk3d") ||
+                    value.contains(".mkv")
+            }
+            return url.looksMatroska() || title?.looksMatroska() == true
         }
 
         internal fun playerCache(context: Context): SimpleCache {
@@ -283,7 +304,25 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             // MKV streams non-seekable — ExoPlayer reverts to position 0 on seekTo() without cues.
             val relay = LibassEventRelay()
             val fontsDir = context.applicationContext.filesDir.resolve("fonts").absolutePath
-            val extractorsFactory = LibassInjectingExtractorsFactory(relay, DefaultExtractorsFactory(), fontsDir)
+            val extractorsFactory = LibassInjectingExtractorsFactory(
+                relay,
+                DefaultExtractorsFactory().setMatroskaExtractorFlags(MatroskaExtractor.FLAG_EMIT_RAW_SUBTITLE_DATA),
+                fontsDir,
+                fontAttachmentsProvider = {
+                    val future = requestContext.embeddedAssFontFuture
+                    if (future == null) {
+                        LibassDebugLog.d("font attachment provider has no future")
+                        emptyList()
+                    } else {
+                        runCatching {
+                            future.get(250, TimeUnit.MILLISECONDS)
+                        }.onFailure { error ->
+                            LibassDebugLog.w("font attachment provider timed out or failed", error)
+                        }.getOrDefault(emptyList())
+                    }
+                },
+                onExtractorsCreated = { requestContext.streamOpenLatch.countDown() }
+            )
             val mediaSourceFactory = DefaultMediaSourceFactory(context, extractorsFactory)
                 .setDataSourceFactory(dataSourceFactory)
 
@@ -337,6 +376,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                     setWakeMode(C.WAKE_MODE_NETWORK)
                     requestContexts[this] = requestContext
                     libassRelays[this] = relay
+                    LibassDebugLog.d("created ExoPlayer with libass relay registered player=${System.identityHashCode(this)}")
                 }
         }
 
@@ -609,6 +649,9 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             } else if (group.type == C.TRACK_TYPE_TEXT) {
                 for (i in 0 until group.length) {
                     val format = group.getTrackFormat(i)
+                    LibassDebugLog.d(
+                        "track discovered group=$groupIndex track=$i selected=${group.isTrackSelected(i)} supported=${group.isTrackSupported(i)} ${LibassDebugLog.formatSummary(format)}"
+                    )
                     subtitles.add(MediaTrack(
                         id = "sub_$groupIndex-$i",
                         label = format.label ?: format.language ?: "Subtitle ${subtitles.size + 1}",
@@ -628,6 +671,11 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         _currentAudio.value = audios.find { it.isSelected }
         val selectedSub = subtitles.find { it.isSelected }
         _currentSubtitle.value = selectedSub
+        LibassDebugLog.d(
+            "tracks updated subtitles=${subtitles.size} selected=${
+                selectedSub?.let { "${it.id} mime=${it.sampleMimeType} label=${it.label} lang=${it.language}" } ?: "<none>"
+            }"
+        )
         val relay = libassRelays[exoPlayer]
         if (relay != null) {
             val selectedFormat = if (selectedSub != null) {
@@ -638,6 +686,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
     }
 
     fun selectTrack(track: MediaTrack) {
+        LibassDebugLog.d("select track id=${track.id} type=${track.type} group=${track.groupIndex} track=${track.trackIndex} mime=${track.sampleMimeType} label=${track.label} lang=${track.language}")
         exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
             .buildUpon()
             .setOverrideForType(TrackSelectionOverride(exoPlayer.currentTracks.groups[track.groupIndex].mediaTrackGroup, track.trackIndex))
@@ -661,12 +710,36 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         currentUrl = url
         currentStream = stream
         currentExternalSubtitles = subtitles
+        LibassDebugLog.d(
+            "prepare ExoPlayer url=${LibassDebugLog.urlSummary(url)} externalSubtitles=${subtitles.size} streamTitle=${stream?.effectiveFilename ?: stream?.rawDisplayTitle}"
+        )
+        val headersForPlayback = headers.orEmpty()
+        val streamTitle = stream?.effectiveFilename ?: stream?.rawDisplayTitle
         requestContexts[exoPlayer]?.let { ctx ->
             if (ctx.videoEffectsActive) {
                 exoPlayer.setVideoEffects(emptyList())
                 ctx.videoEffectsActive = false
             }
-            ctx.streamHeaders = headers.orEmpty()
+            ctx.streamHeaders = headersForPlayback
+            ctx.embeddedAssFontFuture?.cancel(true)
+            libassRelays[exoPlayer]?.resetFonts()
+            ctx.streamOpenLatch = CountDownLatch(1)
+            ctx.embeddedAssFontFuture = if (shouldScanEmbeddedAssFonts(url, streamTitle)) {
+                LibassDebugLog.d("scheduling embedded ASS font attachment scan url=${LibassDebugLog.urlSummary(url)} title=$streamTitle")
+                libassFontExecutor.submit(Callable {
+                    if (!ctx.streamOpenLatch.await(10, TimeUnit.SECONDS)) {
+                        LibassDebugLog.d("font scan proceeding without stream open signal")
+                    }
+                    val fonts = MkvNativeAssExtractor.extractFontAttachmentsForPlayback(url, headersForPlayback) {
+                        libassRelays[exoPlayer]?.hasFonts() == true
+                    }
+                    if (fonts.isNotEmpty()) libassRelays[exoPlayer]?.updateFonts(fonts)
+                    fonts
+                })
+            } else {
+                LibassDebugLog.d("skipping embedded ASS font attachment scan url=${LibassDebugLog.urlSummary(url)} title=$streamTitle")
+                null
+            }
             ctx.disableDiskCache = stream?.behaviorHints?.let { hints ->
                 hints["cs3Type"] != null ||
                     hints["isM3u8"] as? Boolean == true ||
@@ -702,8 +775,12 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         if (subtitles.isNotEmpty()) {
             builder.setSubtitleConfigurations(subtitles.mapNotNull { subtitle ->
                 val subtitleUrl = subtitle.url.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val mimeType = subtitleMimeType(subtitleUrl)
+                LibassDebugLog.d(
+                    "external subtitle config url=${LibassDebugLog.urlSummary(subtitleUrl)} mime=$mimeType label=${subtitle.label} lang=${subtitle.language}"
+                )
                 MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitleUrl))
-                    .setMimeType(subtitleMimeType(subtitleUrl))
+                    .setMimeType(mimeType)
                     .setLanguage(subtitle.language)
                     .setLabel(subtitle.label ?: subtitle.language)
                     .build()
@@ -748,20 +825,34 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
     }.getOrElse { "dv_stats=unavailable" }
 
     fun addExternalSubtitles(subtitles: List<ExternalSubtitleTrack>) {
-        if (subtitles.isEmpty()) return
-        val currentItem = exoPlayer.currentMediaItem ?: return
+        if (subtitles.isEmpty()) {
+            LibassDebugLog.d("addExternalSubtitles ignored empty list")
+            return
+        }
+        val currentItem = exoPlayer.currentMediaItem ?: run {
+            LibassDebugLog.w("addExternalSubtitles ignored because current media item is null")
+            return
+        }
         currentExternalSubtitles = (currentExternalSubtitles + subtitles).distinctBy { it.url }
         val subtitleConfigurations = subtitles.mapNotNull { subtitle ->
             val subtitleUrl = subtitle.url.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val mimeType = subtitleMimeType(subtitleUrl)
+            LibassDebugLog.d(
+                "adding external subtitle url=${LibassDebugLog.urlSummary(subtitleUrl)} mime=$mimeType label=${subtitle.label} lang=${subtitle.language}"
+            )
             MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitleUrl))
-                .setMimeType(subtitleMimeType(subtitleUrl))
+                .setMimeType(mimeType)
                 .setLanguage(subtitle.language)
                 .setLabel(subtitle.label ?: subtitle.language)
                 .build()
         }
-        if (subtitleConfigurations.isEmpty()) return
+        if (subtitleConfigurations.isEmpty()) {
+            LibassDebugLog.w("addExternalSubtitles produced no subtitle configurations")
+            return
+        }
         val currentPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
         val wasPlaying = exoPlayer.playWhenReady
+        LibassDebugLog.d("rebuilding media item with added external subtitles count=${subtitleConfigurations.size} positionMs=$currentPosition wasPlaying=$wasPlaying")
         exoPlayer.setMediaItem(currentItem.buildUpon().setSubtitleConfigurations(subtitleConfigurations).build(), currentPosition)
         exoPlayer.prepare()
         exoPlayer.playWhenReady = wasPlaying
@@ -775,6 +866,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
      * Disable subtitles by clearing text track override
      */
     fun disableSubtitles() {
+        LibassDebugLog.d("disable subtitles")
         exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
             .buildUpon()
             .clearOverridesOfType(C.TRACK_TYPE_TEXT)

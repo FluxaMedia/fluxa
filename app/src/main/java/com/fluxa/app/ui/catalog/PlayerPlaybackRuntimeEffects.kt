@@ -19,6 +19,7 @@ import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.player.DolbyVisionFallbackMode
 import com.fluxa.app.player.ExternalSubtitleTrack
 import com.fluxa.app.player.ExoPlayerEngine
+import com.fluxa.app.player.LibassDebugLog
 import com.fluxa.app.player.MpvPlaybackState
 import com.fluxa.app.player.MkvNativeAssExtractor
 import com.fluxa.app.player.NativeAssTrack
@@ -306,6 +307,9 @@ internal fun PlayerPreparePlaybackEffect(
         val playbackUrl = resolvedUrl
         if (!playbackUrl.isNullOrEmpty()) {
             val chosenStream = currentStreams.getOrNull(currentStreamIndex)
+            LibassDebugLog.d(
+                "playback effect start useMpv=$useMpvBackend url=${LibassDebugLog.urlSummary(playbackUrl)} streamIndex=$currentStreamIndex title=${chosenStream?.effectiveFilename ?: chosenStream?.rawDisplayTitle}"
+            )
             val target = when {
                 lastSavedPosition > 0L -> lastSavedPosition
                 shouldApplyInitialProgress -> initialProgress
@@ -337,7 +341,11 @@ internal fun PlayerPreparePlaybackEffect(
                     id = currentVideoId ?: meta.id,
                     stream = chosenStream
                 )
-            }.getOrElse { emptyList() }
+            }.getOrElse { error ->
+                LibassDebugLog.w("external subtitle fetch failed", error)
+                emptyList()
+            }
+            LibassDebugLog.d("playback effect externalSubtitles=${externalSubtitles.size}")
             if (externalSubtitles.isNotEmpty()) onExternalSubtitlesFetched(externalSubtitles)
             activeEngine?.prepareAndPlay(
                 PlayerEngineRequest(
@@ -358,16 +366,20 @@ internal fun PlayerPreparePlaybackEffect(
                 playbackUrl.startsWith("content:", ignoreCase = true)
             if (isLocalUrl) {
                 launch(Dispatchers.IO) {
+                    LibassDebugLog.d("starting local embedded ASS extraction url=${LibassDebugLog.urlSummary(playbackUrl)}")
                     val embeddedNativeAss = MkvNativeAssExtractor.extract(
                         url = playbackUrl,
                         headers = chosenStream?.getHeaders().orEmpty()
                     )
+                    LibassDebugLog.d("local embedded ASS extraction result tracks=${embeddedNativeAss.size}")
                     if (embeddedNativeAss.isNotEmpty()) {
                         launch(Dispatchers.Main) {
                             onNativeAssTracksExtracted(embeddedNativeAss)
                         }
                     }
                 }
+            } else {
+                LibassDebugLog.d("skipping pre-extraction for non-local stream; embedded ASS depends on ExoPlayer relay")
             }
             clearLastSavedPosition()
             clearInitialProgress()

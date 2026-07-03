@@ -1,26 +1,35 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.fluxa.app.player
 
+import androidx.media3.common.C
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.text.TextOutput
+import androidx.media3.exoplayer.text.TextRenderer
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import android.content.Context
 import android.util.Log
-import android.os.Build
 import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.AuxEffectInfo
 import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.util.Clock
+import androidx.media3.decoder.DecoderInputBuffer
+import androidx.media3.exoplayer.BaseRenderer
+import androidx.media3.exoplayer.FormatHolder
+import androidx.media3.exoplayer.RendererCapabilities
 import androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer
 import androidx.media3.decoder.ffmpeg.FfmpegLibrary
 import androidx.media3.exoplayer.analytics.PlayerId
 import androidx.media3.exoplayer.audio.AudioOffloadSupport
+import androidx.media3.exoplayer.source.MediaSource
 import android.media.AudioDeviceInfo
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicLong
@@ -94,6 +103,88 @@ class AppAudioRendererFactory(context: Context, private val audioDecoderMode: St
             out.add(mediaCodecRenderer)
             ffmpegRenderer?.let(out::add)
         }
+    }
+
+    override fun buildTextRenderers(
+        context: Context,
+        output: TextOutput,
+        outputLooper: Looper,
+        extensionRendererMode: Int,
+        out: ArrayList<Renderer>
+    ) {
+        LibassDebugLog.d("building text renderers with NativeAssTextRenderer before Media3 TextRenderer")
+        out.add(NativeAssTextRenderer())
+        out.add(TextRenderer(output, outputLooper))
+    }
+}
+
+private class NativeAssTextRenderer : BaseRenderer(C.TRACK_TYPE_TEXT) {
+    private val formatHolder = FormatHolder()
+    private val inputBuffer = DecoderInputBuffer(DecoderInputBuffer.BUFFER_REPLACEMENT_MODE_NORMAL)
+    private var inputStreamEnded = false
+    private var sampleCount = 0
+
+    override fun getName(): String = "NativeAssTextRenderer"
+
+    override fun supportsFormat(format: Format): Int {
+        val mimeType = format.sampleMimeType
+        return when {
+            mimeType == MimeTypes.TEXT_SSA -> {
+                LibassDebugLog.d("NativeAssTextRenderer handles ${LibassDebugLog.formatSummary(format)}")
+                RendererCapabilities.create(
+                    if (format.cryptoType == C.CRYPTO_TYPE_NONE) C.FORMAT_HANDLED else C.FORMAT_UNSUPPORTED_DRM
+                )
+            }
+            MimeTypes.isText(mimeType) -> RendererCapabilities.create(C.FORMAT_UNSUPPORTED_SUBTYPE)
+            else -> RendererCapabilities.create(C.FORMAT_UNSUPPORTED_TYPE)
+        }
+    }
+
+    override fun onStreamChanged(
+        formats: Array<Format>,
+        startPositionUs: Long,
+        offsetUs: Long,
+        mediaPeriodId: MediaSource.MediaPeriodId
+    ) {
+        LibassDebugLog.d(
+            "NativeAssTextRenderer stream changed startUs=$startPositionUs offsetUs=$offsetUs formats=${
+                formats.joinToString { LibassDebugLog.formatSummary(it) }
+            }"
+        )
+    }
+
+    override fun render(positionUs: Long, elapsedRealtimeUs: Long) {
+        if (inputStreamEnded) return
+
+        while (true) {
+            inputBuffer.clear()
+            when (readSource(formatHolder, inputBuffer, 0)) {
+                C.RESULT_FORMAT_READ -> Unit
+                C.RESULT_BUFFER_READ -> {
+                    if (inputBuffer.isEndOfStream) {
+                        inputStreamEnded = true
+                        LibassDebugLog.d("NativeAssTextRenderer reached end of stream samples=$sampleCount")
+                        return
+                    }
+                    sampleCount++
+                    if (sampleCount <= 8 || sampleCount % 50 == 0) {
+                        LibassDebugLog.d("NativeAssTextRenderer drained SSA sample count=$sampleCount timeUs=${inputBuffer.timeUs} bytes=${inputBuffer.data?.limit() ?: 0}")
+                    }
+                }
+                C.RESULT_NOTHING_READ -> return
+                else -> return
+            }
+        }
+    }
+
+    override fun isEnded(): Boolean = inputStreamEnded
+
+    override fun isReady(): Boolean = true
+
+    override fun onPositionReset(positionUs: Long, joining: Boolean, sampleStreamIsResetToKeyFrame: Boolean) {
+        inputStreamEnded = false
+        sampleCount = 0
+        LibassDebugLog.d("NativeAssTextRenderer position reset positionUs=$positionUs joining=$joining keyFrameReset=$sampleStreamIsResetToKeyFrame")
     }
 }
 

@@ -38,12 +38,23 @@ class LibassRenderThread {
         if (pts != Long.MIN_VALUE) onRender(pts)
     }
     @Volatile private var pendingPtsMs = Long.MIN_VALUE
+    private var forceNextRender = true
 
     fun setRelayRenderer(r: NativeLibassRenderer?) {
         handler.post {
             val old = relayRenderer
             relayRenderer = r
             if (old !== r) old?.close()
+            updateActive()
+        }
+    }
+
+    fun setRelayRendererAsync(factory: () -> NativeLibassRenderer?) {
+        handler.post {
+            val new = factory() ?: return@post
+            val old = relayRenderer
+            relayRenderer = new
+            if (old !== new) old?.close()
             updateActive()
         }
     }
@@ -59,14 +70,25 @@ class LibassRenderThread {
 
     fun setSurface(s: Surface?, w: Int, h: Int) {
         handler.post {
+            val changed = surface !== s || surfaceWidth != w || surfaceHeight != h
             surface = s
             surfaceWidth = w
             surfaceHeight = h
+            if (changed) {
+                forceNextRender = true
+                requestRenderLocked()
+            }
         }
     }
 
     fun setDelay(ms: Long) {
-        handler.post { delayMs = ms }
+        handler.post {
+            if (delayMs != ms) {
+                delayMs = ms
+                forceNextRender = true
+                requestRenderLocked()
+            }
+        }
     }
 
     fun onVideoFrame(ptsMs: Long) {
@@ -75,12 +97,20 @@ class LibassRenderThread {
         handler.post(renderRunnable)
     }
 
-    fun addEvent(line: String) {
-        handler.post { activeRenderer?.addEvent(line) }
+    fun addRelayEvent(line: String) {
+        handler.post {
+            relayRenderer?.addEvent(line)
+            forceNextRender = true
+            requestRenderLocked()
+        }
     }
 
-    fun clearEvents() {
-        handler.post { activeRenderer?.clearEvents() }
+    fun clearRelayEvents() {
+        handler.post {
+            relayRenderer?.clearEvents()
+            forceNextRender = true
+            requestRenderLocked()
+        }
     }
 
     fun drainForTesting() {
@@ -91,6 +121,7 @@ class LibassRenderThread {
 
     fun close() {
         handler.post {
+            handler.removeCallbacks(renderRunnable)
             relayRenderer?.close()
             localRenderer?.close()
             relayRenderer = null
@@ -109,6 +140,8 @@ class LibassRenderThread {
             activeRenderer = new
             _activeRendererFlow.value = new
             clearGlyphCache()
+            forceNextRender = true
+            requestRenderLocked()
         }
     }
 
@@ -119,15 +152,25 @@ class LibassRenderThread {
         glyphCache.clear()
     }
 
+    private fun requestRenderLocked() {
+        if (pendingPtsMs == Long.MIN_VALUE) return
+        handler.removeCallbacks(renderRunnable)
+        handler.post(renderRunnable)
+    }
+
     private fun onRender(ptsMs: Long) {
         val r = activeRenderer ?: return
         val s = surface ?: return
         if (surfaceWidth <= 0 || surfaceHeight <= 0) return
 
-        val count = r.renderImages(ptsMs + delayMs, surfaceWidth, surfaceHeight, outMeta, outCoverage)
+        val forceRender = forceNextRender
+        val count = r.renderImages(ptsMs + delayMs, surfaceWidth, surfaceHeight, outMeta, outCoverage, forceRender)
         if (count < 0) return
 
+        if (glyphCache.size() > 256) clearGlyphCache()
+
         val canvas = try { s.lockHardwareCanvas() } catch (_: Exception) { null } ?: return
+        forceNextRender = false
         try {
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
             if (count == 0) return
@@ -139,19 +182,13 @@ class LibassRenderThread {
                 val w = outMeta[metaIdx + 2]
                 val h = outMeta[metaIdx + 3]
                 val assColor = outMeta[metaIdx + 4]
-                val ptrHi = outMeta[metaIdx + 5]
-                val ptrLo = outMeta[metaIdx + 6]
                 val coverageOffset = outMeta[metaIdx + 7]
                 val coverageLen = outMeta[metaIdx + 8]
                 metaIdx += 9
 
-                val ptr = (ptrHi.toLong() shl 32) or (ptrLo.toLong() and 0xFFFFFFFFL)
-
-                val glyph = glyphCache[ptr]?.takeIf { !it.isRecycled && it.width == w && it.height == h }
-                    ?: Bitmap.createBitmap(w, h, Bitmap.Config.ALPHA_8).also { bmp ->
-                        bmp.copyPixelsFromBuffer(ByteBuffer.wrap(outCoverage, coverageOffset, coverageLen))
-                        glyphCache.put(ptr, bmp)
-                    }
+                val key = glyphKey(coverageOffset, coverageLen, w, h)
+                val glyph = glyphCache[key]?.takeIf { !it.isRecycled && it.width == w && it.height == h }
+                    ?: createGlyph(w, h, coverageOffset, coverageLen).also { glyphCache.put(key, it) }
 
                 val r_ch = (assColor ushr 24) and 0xFF
                 val g_ch = (assColor ushr 16) and 0xFF
@@ -163,5 +200,31 @@ class LibassRenderThread {
         } finally {
             s.unlockCanvasAndPost(canvas)
         }
+    }
+
+    private fun glyphKey(offset: Int, len: Int, w: Int, h: Int): Long {
+        var hash = -0x340d631b7bdddcdbL
+        hash = (hash xor w.toLong()) * 0x100000001b3L
+        hash = (hash xor h.toLong()) * 0x100000001b3L
+        for (i in offset until offset + len) {
+            hash = (hash xor (outCoverage[i].toLong() and 0xff)) * 0x100000001b3L
+        }
+        return hash
+    }
+
+    private fun createGlyph(w: Int, h: Int, offset: Int, len: Int): Bitmap {
+        val srcStride = (w + 3) and 3.inv()
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ALPHA_8)
+        val rowBytes = bmp.rowBytes
+        if (rowBytes == srcStride) {
+            bmp.copyPixelsFromBuffer(ByteBuffer.wrap(outCoverage, offset, len))
+        } else {
+            val packed = ByteArray(rowBytes * h)
+            for (y in 0 until h) {
+                System.arraycopy(outCoverage, offset + y * srcStride, packed, y * rowBytes, w)
+            }
+            bmp.copyPixelsFromBuffer(ByteBuffer.wrap(packed))
+        }
+        return bmp
     }
 }

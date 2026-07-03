@@ -27,21 +27,35 @@ import java.util.concurrent.TimeUnit
 @UnstableApi
 object MkvNativeAssExtractor {
     private const val ATTACHMENT_PREFIX_BYTES = 8L * 1024L * 1024L
+    private const val HEAD_SCAN_BYTES = 64L * 1024L
+    private const val MAX_ATTACHMENTS_BYTES = 128L * 1024L * 1024L
     private const val MAX_SUBTITLE_SCAN_BYTES = 512L * 1024L * 1024L
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.SECONDS)
+        .build()
+    private val playbackFontClient = OkHttpClient.Builder()
+        .connectTimeout(4, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
+        .callTimeout(30, TimeUnit.SECONDS)
         .build()
 
     suspend fun extract(
         url: String,
         headers: Map<String, String> = emptyMap()
     ): List<NativeAssTrack> = withContext(Dispatchers.IO) {
-        if (!looksLikeMatroska(url)) return@withContext emptyList()
+        if (!looksLikeMatroska(url)) {
+            LibassDebugLog.d("local MKV ASS extractor skipped non-Matroska url=${LibassDebugLog.urlSummary(url)}")
+            return@withContext emptyList()
+        }
+        LibassDebugLog.d("local MKV ASS extractor start url=${LibassDebugLog.urlSummary(url)} headers=${headers.keys}")
         runCatching {
             val fonts = extractFontAttachments(url, headers)
             val tracks = extractAssTracks(url, headers)
+            LibassDebugLog.d("local MKV ASS extractor found tracks=${tracks.size} fonts=${fonts.size}")
             tracks.map { track -> track.copy(fonts = fonts) }
+        }.onFailure { error ->
+            LibassDebugLog.w("local MKV ASS extractor failed url=${LibassDebugLog.urlSummary(url)}", error)
         }.getOrDefault(emptyList())
     }
 
@@ -50,15 +64,69 @@ object MkvNativeAssExtractor {
     ): List<NativeAssFont> = withContext(Dispatchers.IO) {
         runCatching {
             if (!subtitleUrl.startsWith("file:", ignoreCase = true) && !subtitleUrl.startsWith("content:", ignoreCase = true)) {
+                LibassDebugLog.d("external font hints skipped remote subtitle url=${LibassDebugLog.urlSummary(subtitleUrl)}")
                 return@runCatching emptyList()
             }
             val file = File(URI(subtitleUrl))
             val dir = file.parentFile ?: return@runCatching emptyList()
-            dir.listFiles()
+            val fonts = dir.listFiles()
                 ?.filter { it.isFile && it.extension.lowercase(Locale.ROOT) in setOf("ttf", "otf", "ttc") }
                 ?.map { NativeAssFont(it.name, it.readBytes()) }
                 .orEmpty()
+            LibassDebugLog.d("external font hints found fonts=${fonts.size} dir=${dir.absolutePath}")
+            fonts
         }.getOrDefault(emptyList())
+    }
+
+    fun extractFontAttachmentsForPlayback(
+        url: String,
+        headers: Map<String, String> = emptyMap(),
+        shouldAbort: () -> Boolean = { false }
+    ): List<NativeAssFont> {
+        LibassDebugLog.d("playback font attachment scan start url=${LibassDebugLog.urlSummary(url)} headers=${headers.keys}")
+        repeat(3) { attempt ->
+            if (attempt > 0) Thread.sleep(attempt * 8000L)
+            if (shouldAbort()) {
+                LibassDebugLog.d("playback font attachment scan aborted, fonts already available")
+                return emptyList()
+            }
+            val fonts = runCatching { fetchAttachmentsViaSeekHead(url, headers) }
+                .onFailure { LibassDebugLog.w("seek head font fetch failed attempt=$attempt", it) }
+                .getOrNull()
+                ?: runCatching {
+                    if (shouldAbort()) return@runCatching emptyList()
+                    LibassDebugLog.d("attachments seek head unavailable, falling back to prefix scan")
+                    val bytes = openStream(url, headers, range = 0L until ATTACHMENT_PREFIX_BYTES, httpClient = playbackFontClient).use { it.readBytes() }
+                    EbmlAttachmentScanner.scanFonts(bytes)
+                }.onFailure { LibassDebugLog.w("prefix font scan failed attempt=$attempt", it) }.getOrNull()
+            if (fonts != null) {
+                LibassDebugLog.d(
+                    "playback font attachment scan found fonts=${fonts.size} " +
+                        "names=${fonts.joinToString(prefix = "[", postfix = "]") { "${it.name}:${it.data.size}" }}"
+                )
+                return fonts
+            }
+        }
+        LibassDebugLog.w("playback font attachment scan gave up url=${LibassDebugLog.urlSummary(url)}")
+        return emptyList()
+    }
+
+    private fun fetchAttachmentsViaSeekHead(url: String, headers: Map<String, String>): List<NativeAssFont>? {
+        val head = openStream(url, headers, range = 0L until HEAD_SCAN_BYTES, httpClient = playbackFontClient).use { it.readBytes() }
+        val position = EbmlAttachmentScanner.findAttachmentsPosition(head) ?: return null
+        val header = openStream(url, headers, range = position until position + 16L, httpClient = playbackFontClient).use { it.readBytes() }
+        val length = EbmlAttachmentScanner.attachmentsElementLength(header) ?: return null
+        if (length > MAX_ATTACHMENTS_BYTES) {
+            LibassDebugLog.w("attachments element too large position=$position length=$length")
+            return null
+        }
+        LibassDebugLog.d("attachments element located position=$position length=$length")
+        val blob = openStream(url, headers, range = position until position + length, httpClient = playbackFontClient).use { it.readBytes() }
+        return EbmlAttachmentScanner.scanFonts(blob)
+    }
+
+    fun scanFontAttachments(bytes: ByteArray): List<NativeAssFont> {
+        return EbmlAttachmentScanner.scanFonts(bytes)
     }
 
     private fun looksLikeMatroska(url: String): Boolean {
@@ -90,12 +158,17 @@ object MkvNativeAssExtractor {
         return EbmlAttachmentScanner.scanFonts(bytes)
     }
 
-    private fun openStream(url: String, headers: Map<String, String>, range: LongRange?): InputStream {
+    private fun openStream(
+        url: String,
+        headers: Map<String, String>,
+        range: LongRange?,
+        httpClient: OkHttpClient = client
+    ): InputStream {
         val request = Request.Builder().url(url).apply {
             StreamRequestPolicy.headersFor(url, headers).forEach { (key, value) -> header(key, value) }
             if (range != null) header("Range", "bytes=${range.first}-${range.last}")
         }.build()
-        val response = client.newCall(request).execute()
+        val response = httpClient.newCall(request).execute()
         if (!response.isSuccessful) {
             response.close()
             error("HTTP ${response.code}")
@@ -129,7 +202,9 @@ object MkvNativeAssExtractor {
         override fun seekMap(seekMap: SeekMap) = Unit
 
         fun buildTracks(): List<NativeAssTrack> {
-            return outputs.values.mapNotNull { it.buildTrack() }
+            val tracks = outputs.values.mapNotNull { it.buildTrack() }
+            LibassDebugLog.d("raw ASS extractor output build tracks=${tracks.size}")
+            return tracks
         }
     }
 
@@ -190,6 +265,7 @@ object MkvNativeAssExtractor {
                 dialogueLines += "Dialogue: ${fields[1]},${formatAssTime(startUs)},${formatAssTime(endUs)},${fields[2]},${fields[3]},${fields[4]},${fields[5]},${fields[6]},${fields[7]},${fields[8]}"
             }
             if (dialogueLines.isEmpty()) return null
+            LibassDebugLog.d("raw ASS track built id=$id dialogueLines=${dialogueLines.size} format=${LibassDebugLog.formatSummary(currentFormat)}")
             val eventsIdx = codecPrivate.indexOf("[Events]", ignoreCase = true)
             val scriptHeader = if (eventsIdx >= 0) codecPrivate.substring(0, eventsIdx).trimEnd() else codecPrivate.trimEnd()
             val assDoc = buildString {
@@ -223,6 +299,11 @@ object MkvNativeAssExtractor {
     }
 
     private object EbmlAttachmentScanner {
+        private const val ID_SEGMENT = 0x18538067
+        private const val ID_SEEK_HEAD = 0x114D9B74
+        private const val ID_SEEK = 0x4DBB
+        private const val ID_SEEK_ID = 0x53AB
+        private const val ID_SEEK_POSITION = 0x53AC
         private const val ID_ATTACHMENTS = 0x1941A469
         private const val ID_ATTACHED_FILE = 0x61A7
         private const val ID_FILE_NAME = 0x466E
@@ -235,7 +316,91 @@ object MkvNativeAssExtractor {
             return fonts.distinctBy { it.name }
         }
 
-        private data class Attachment(var name: String? = null, var mime: String? = null, var data: ByteArray? = null)
+        fun findAttachmentsPosition(head: ByteArray): Long? {
+            var offset = 0
+            var segmentDataStart = -1L
+            while (offset < head.size - 2) {
+                val id = readElementId(head, offset) ?: return null
+                val sizeInfo = readElementSize(head, offset + id.length) ?: return null
+                val dataStart = offset + id.length + sizeInfo.length
+                when (id.value) {
+                    ID_SEGMENT -> {
+                        segmentDataStart = dataStart.toLong()
+                        offset = dataStart
+                    }
+                    ID_SEEK_HEAD -> {
+                        if (segmentDataStart < 0) return null
+                        val dataEnd = (dataStart + sizeInfo.value).coerceAtMost(head.size.toLong()).toInt()
+                        val position = seekPositionForAttachments(head, dataStart, dataEnd) ?: return null
+                        return segmentDataStart + position
+                    }
+                    else -> {
+                        val next = dataStart + sizeInfo.value
+                        if (next > head.size) return null
+                        offset = next.toInt()
+                    }
+                }
+            }
+            return null
+        }
+
+        fun attachmentsElementLength(bytes: ByteArray): Long? {
+            val id = readElementId(bytes, 0) ?: return null
+            if (id.value != ID_ATTACHMENTS) return null
+            val sizeInfo = readElementSize(bytes, id.length) ?: return null
+            return id.length + sizeInfo.length + sizeInfo.value
+        }
+
+        private fun seekPositionForAttachments(bytes: ByteArray, start: Int, end: Int): Long? {
+            var offset = start
+            while (offset < end - 2) {
+                val id = readElementId(bytes, offset) ?: return null
+                val sizeInfo = readElementSize(bytes, offset + id.length) ?: return null
+                val dataStart = offset + id.length + sizeInfo.length
+                val dataEnd = (dataStart + sizeInfo.value).coerceAtMost(end.toLong()).toInt()
+                if (dataEnd < dataStart) return null
+                if (id.value == ID_SEEK) {
+                    val entry = parseSeekEntry(bytes, dataStart, dataEnd)
+                    if (entry != null && entry.first == ID_ATTACHMENTS) return entry.second
+                }
+                offset = dataEnd
+            }
+            return null
+        }
+
+        private fun parseSeekEntry(bytes: ByteArray, start: Int, end: Int): Pair<Int, Long>? {
+            var offset = start
+            var target = 0
+            var position = -1L
+            while (offset < end) {
+                val id = readElementId(bytes, offset) ?: return null
+                val sizeInfo = readElementSize(bytes, offset + id.length) ?: return null
+                val dataStart = offset + id.length + sizeInfo.length
+                val dataEnd = (dataStart + sizeInfo.value).coerceAtMost(end.toLong()).toInt()
+                if (dataEnd < dataStart) return null
+                when (id.value) {
+                    ID_SEEK_ID -> {
+                        var value = 0
+                        for (i in dataStart until dataEnd) value = (value shl 8) or (bytes[i].toInt() and 0xff)
+                        target = value
+                    }
+                    ID_SEEK_POSITION -> {
+                        var value = 0L
+                        for (i in dataStart until dataEnd) value = (value shl 8) or (bytes[i].toLong() and 0xff)
+                        position = value
+                    }
+                }
+                offset = dataEnd
+            }
+            return if (position >= 0) target to position else null
+        }
+
+        private data class Attachment(
+            var name: String? = null,
+            var mime: String? = null,
+            var data: ByteArray? = null,
+            var truncated: Boolean = false
+        )
 
         private fun scan(bytes: ByteArray, start: Int, end: Int, fonts: MutableList<NativeAssFont>, attachment: Attachment?) {
             var offset = start
@@ -243,7 +408,8 @@ object MkvNativeAssExtractor {
                 val id = readElementId(bytes, offset) ?: break
                 val sizeInfo = readElementSize(bytes, offset + id.length) ?: break
                 val dataStart = offset + id.length + sizeInfo.length
-                val dataEnd = (dataStart + sizeInfo.value).coerceAtMost(end)
+                val fullEnd = dataStart + sizeInfo.value
+                val dataEnd = fullEnd.coerceAtMost(end.toLong()).toInt()
                 if (dataEnd < dataStart || dataStart > end) break
                 when (id.value) {
                     ID_ATTACHMENTS -> scan(bytes, dataStart, dataEnd, fonts, null)
@@ -252,13 +418,23 @@ object MkvNativeAssExtractor {
                         scan(bytes, dataStart, dataEnd, fonts, file)
                         val name = file.name
                         val data = file.data
-                        if (name != null && data != null && isFont(name, file.mime)) {
-                            fonts += NativeAssFont(name, data)
+                        if (name != null && isFont(name, file.mime)) {
+                            if (file.truncated || data == null) {
+                                LibassDebugLog.w("dropping truncated font attachment name=$name")
+                            } else {
+                                fonts += NativeAssFont(name, data)
+                            }
                         }
                     }
                     ID_FILE_NAME -> attachment?.name = bytes.copyOfRange(dataStart, dataEnd).decodeToString().trimEnd('\u0000')
                     ID_FILE_MIME_TYPE -> attachment?.mime = bytes.copyOfRange(dataStart, dataEnd).decodeToString().trimEnd('\u0000')
-                    ID_FILE_DATA -> attachment?.data = bytes.copyOfRange(dataStart, dataEnd)
+                    ID_FILE_DATA -> {
+                        if (fullEnd > end) {
+                            attachment?.truncated = true
+                        } else {
+                            attachment?.data = bytes.copyOfRange(dataStart, dataEnd)
+                        }
+                    }
                     else -> {
                         if (isLikelyMaster(id.value)) scan(bytes, dataStart, dataEnd, fonts, attachment)
                     }
@@ -277,7 +453,7 @@ object MkvNativeAssExtractor {
         private fun isLikelyMaster(id: Int): Boolean = id in setOf(0x18538067, 0x114D9B74, 0x1549A966, 0x1654AE6B, 0x1F43B675)
 
         private data class Vint(val value: Int, val length: Int)
-        private data class Size(val value: Int, val length: Int)
+        private data class Size(val value: Long, val length: Int)
 
         private fun readElementId(bytes: ByteArray, offset: Int): Vint? {
             if (offset >= bytes.size) return null
@@ -305,8 +481,8 @@ object MkvNativeAssExtractor {
                 length++
             }
             if (length > 8 || offset + length > bytes.size) return null
-            var value = first and mask.inv()
-            for (i in 1 until length) value = (value shl 8) or (bytes[offset + i].toInt() and 0xff)
+            var value = (first and mask.inv()).toLong()
+            for (i in 1 until length) value = (value shl 8) or (bytes[offset + i].toLong() and 0xff)
             return if (value < 0) null else Size(value, length)
         }
     }

@@ -12,9 +12,16 @@ class NativeLibassRenderer private constructor(
         return nativeRender(handle, timeMs.coerceAtLeast(0L), bitmap)
     }
 
-    fun renderImages(timeMs: Long, width: Int, height: Int, outMeta: IntArray, outCoverage: ByteArray): Int {
+    fun renderImages(
+        timeMs: Long,
+        width: Int,
+        height: Int,
+        outMeta: IntArray,
+        outCoverage: ByteArray,
+        forceRender: Boolean
+    ): Int {
         if (handle == 0L) return -1
-        return nativeRenderImages(handle, timeMs.coerceAtLeast(0L), width, height, outMeta, outCoverage)
+        return nativeRenderImages(handle, timeMs.coerceAtLeast(0L), width, height, outMeta, outCoverage, forceRender)
     }
 
     fun addEvent(dialogueLine: String) {
@@ -34,7 +41,15 @@ class NativeLibassRenderer private constructor(
     }
 
     private external fun nativeRender(handle: Long, timeMs: Long, bitmap: Bitmap): Int
-    private external fun nativeRenderImages(handle: Long, timeMs: Long, width: Int, height: Int, outMeta: IntArray, outCoverage: ByteArray): Int
+    private external fun nativeRenderImages(
+        handle: Long,
+        timeMs: Long,
+        width: Int,
+        height: Int,
+        outMeta: IntArray,
+        outCoverage: ByteArray,
+        forceRender: Boolean
+    ): Int
     private external fun nativeRelease(handle: Long)
     private external fun nativeAddEvent(handle: Long, dialogueLine: String)
     private external fun nativeClearEvents(handle: Long)
@@ -54,6 +69,13 @@ class NativeLibassRenderer private constructor(
                 return null
             }
             LibassDebugLog.d("native renderer create assBytes=${assData.size} fonts=${fonts.size} fontsDir=$fontsDir")
+            if (fontsDir != null) {
+                runCatching {
+                    val cache = java.io.File(fontsDir).resolveSibling("fontconfig-cache")
+                    cache.mkdirs()
+                    android.system.Os.setenv("XDG_CACHE_HOME", cache.absolutePath, false)
+                }
+            }
             val handle = runCatching {
                 nativeCreate(
                     assData,

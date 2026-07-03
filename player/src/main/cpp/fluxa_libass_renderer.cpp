@@ -4,7 +4,9 @@
 #include <jni.h>
 
 #include <algorithm>
+#include <cstdarg>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
@@ -49,6 +51,7 @@ using ass_set_line_spacing_fn = void (*)(ASS_Renderer*, double);
 using ass_set_check_readorder_fn = void (*)(ASS_Track*, int);
 using ass_process_data_fn = void (*)(ASS_Track*, char*, int);
 using ass_flush_events_fn = void (*)(ASS_Track*);
+using ass_set_message_cb_fn = void (*)(ASS_Library*, void (*)(int, const char*, va_list, void*), void*);
 
 struct LibassApi {
     void* handle = nullptr;
@@ -67,6 +70,7 @@ struct LibassApi {
     ass_set_use_margins_fn set_use_margins = nullptr;
     ass_set_aspect_ratio_fn set_aspect_ratio = nullptr;
     ass_set_font_scale_fn set_font_scale = nullptr;
+    ass_set_message_cb_fn set_message_cb = nullptr;
     ass_set_line_spacing_fn set_line_spacing = nullptr;
     ass_set_check_readorder_fn set_check_readorder = nullptr;
     ass_process_data_fn process_data = nullptr;
@@ -116,6 +120,7 @@ static bool ensure_api() {
         g_api.set_use_margins = reinterpret_cast<ass_set_use_margins_fn>(symbol(g_api.handle, "ass_set_use_margins"));
         g_api.set_aspect_ratio = reinterpret_cast<ass_set_aspect_ratio_fn>(symbol(g_api.handle, "ass_set_aspect_ratio"));
         g_api.set_font_scale = reinterpret_cast<ass_set_font_scale_fn>(symbol(g_api.handle, "ass_set_font_scale"));
+        g_api.set_message_cb = reinterpret_cast<ass_set_message_cb_fn>(symbol(g_api.handle, "ass_set_message_cb"));
         g_api.set_line_spacing = reinterpret_cast<ass_set_line_spacing_fn>(symbol(g_api.handle, "ass_set_line_spacing"));
         g_api.set_check_readorder = reinterpret_cast<ass_set_check_readorder_fn>(symbol(g_api.handle, "ass_set_check_readorder"));
         g_api.process_data = reinterpret_cast<ass_process_data_fn>(symbol(g_api.handle, "ass_process_data"));
@@ -126,6 +131,13 @@ static bool ensure_api() {
         if (!g_api_ok) LOGE("libass not available via libmpv.so — embedded subtitles disabled");
     });
     return g_api_ok;
+}
+
+static void libass_message(int level, const char* fmt, va_list args, void*) {
+    if (level > 5) return;
+    char buffer[512];
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    __android_log_print(level < 2 ? ANDROID_LOG_ERROR : ANDROID_LOG_DEBUG, LOG_TAG, "libass: %s", buffer);
 }
 
 static void release_session(Session* session) {
@@ -183,6 +195,7 @@ Java_com_fluxa_app_player_NativeLibassRenderer_00024Companion_nativeCreate(
         release_session(session);
         return 0;
     }
+    if (g_api.set_message_cb) g_api.set_message_cb(session->library, libass_message, nullptr);
 
     const char* fonts_dir_chars = fonts_dir ? env->GetStringUTFChars(fonts_dir, nullptr) : nullptr;
     if (fonts_dir_chars && g_api.set_fonts_dir) {
@@ -327,7 +340,7 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeClearEvents(JNIEnv*, jobjec
 extern "C" JNIEXPORT jint JNICALL
 Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
     JNIEnv* env, jobject, jlong handle, jlong time_ms, jint width, jint height,
-    jintArray out_meta, jbyteArray out_coverage
+    jintArray out_meta, jbyteArray out_coverage, jboolean force_render
 ) {
     auto* session = reinterpret_cast<Session*>(handle);
     if (!session || !session->renderer || !session->track || !ensure_api()) return -1;
@@ -346,7 +359,7 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
     int detect_change = 0;
     ASS_Image* images = g_api.render_frame(session->renderer, session->track, time_ms, &detect_change);
 
-    if (detect_change == 0 && !size_changed) return -1;
+    if (detect_change == 0 && !size_changed && !force_render) return -1;
 
     const jsize meta_capacity = env->GetArrayLength(out_meta);
     const jsize coverage_capacity = env->GetArrayLength(out_coverage);

@@ -15,6 +15,13 @@ class LibassEventRelay {
     private val generation = AtomicInteger(0)
     private val eventCount = AtomicInteger(0)
 
+    private val lock = Any()
+    private var lastHeader: ByteArray? = null
+    private var lastFontsDir: String? = null
+    private var lastFonts: List<NativeAssFont> = emptyList()
+    private var pendingFonts: List<NativeAssFont> = emptyList()
+    private val eventLines = mutableListOf<String>()
+
     fun headerGeneration(): Int = generation.get()
 
     fun setSelectedTrackId(trackId: Int?) {
@@ -27,14 +34,59 @@ class LibassEventRelay {
     }
 
     fun setHeader(headerData: ByteArray, fonts: List<NativeAssFont>, fontsDir: String?) {
-        LibassDebugLog.d("relay creating renderer headerBytes=${headerData.size} fonts=${fonts.size} fontsDir=$fontsDir")
-        val new = NativeLibassRenderer.create(headerData, fonts, fontsDir)
-        if (new == null) {
-            LibassDebugLog.w("relay renderer creation returned null")
+        val effectiveFonts = synchronized(lock) {
+            val chosen = if (fonts.isEmpty()) pendingFonts else fonts
+            lastHeader = headerData
+            lastFontsDir = fontsDir
+            lastFonts = chosen
+            chosen
+        }
+        LibassDebugLog.d("relay creating renderer headerBytes=${headerData.size} fonts=${effectiveFonts.size} fontsDir=$fontsDir")
+        renderThread.setRelayRendererAsync {
+            val new = NativeLibassRenderer.create(headerData, effectiveFonts, fontsDir)
+            if (new == null) {
+                LibassDebugLog.w("relay renderer creation returned null")
+            } else {
+                LibassDebugLog.d("relay renderer active generation=${generation.get()}")
+            }
+            new
+        }
+    }
+
+    fun hasFonts(): Boolean = synchronized(lock) {
+        lastFonts.isNotEmpty() || pendingFonts.isNotEmpty()
+    }
+
+    fun resetFonts() {
+        synchronized(lock) {
+            lastHeader = null
+            lastFontsDir = null
+            lastFonts = emptyList()
+            pendingFonts = emptyList()
+            eventLines.clear()
+        }
+        LibassDebugLog.d("relay font state reset for new stream")
+    }
+
+    fun updateFonts(fonts: List<NativeAssFont>) {
+        if (fonts.isEmpty()) return
+        val header: ByteArray?
+        val dir: String?
+        synchronized(lock) {
+            if (lastFonts.isNotEmpty()) return
+            pendingFonts = fonts
+            header = lastHeader
+            dir = lastFontsDir
+        }
+        if (header == null) {
+            LibassDebugLog.d("relay stored late fonts=${fonts.size}, renderer not created yet")
             return
         }
-        renderThread.setRelayRenderer(new)
-        LibassDebugLog.d("relay renderer active generation=${generation.get()}")
+        LibassDebugLog.d("relay recreating renderer with late fonts=${fonts.size}")
+        val replay = synchronized(lock) { eventLines.toList() }
+        setHeader(header, fonts, dir)
+        replay.forEach { renderThread.addRelayEvent(it) }
+        if (replay.isNotEmpty()) LibassDebugLog.d("relay replayed events=${replay.size} after font update")
     }
 
     fun addEvent(startMs: Long, durationMs: Long, rawMkvBody: ByteArray) {
@@ -55,7 +107,8 @@ class LibassEventRelay {
             }
             "Dialogue: ${fields[1]},${formatAssTime(startMs)},${formatAssTime(endMs)},${fields[2]},${fields[3]},${fields[4]},${fields[5]},${fields[6]},${fields[7]},${fields[8]}"
         }
-        renderThread.addEvent(line)
+        synchronized(lock) { eventLines += line }
+        renderThread.addRelayEvent(line)
         val count = eventCount.incrementAndGet()
         if (count <= 8 || count % 50 == 0) {
             LibassDebugLog.d("relay added ASS event count=$count startMs=$startMs durationMs=$durationMs sourceBytes=${rawMkvBody.size}")
@@ -63,7 +116,8 @@ class LibassEventRelay {
     }
 
     fun clearEvents() {
-        renderThread.clearEvents()
+        synchronized(lock) { eventLines.clear() }
+        renderThread.clearRelayEvents()
         LibassDebugLog.d("relay cleared events")
     }
 

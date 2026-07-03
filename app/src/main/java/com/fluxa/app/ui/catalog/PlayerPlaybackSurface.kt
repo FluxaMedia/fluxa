@@ -19,10 +19,12 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fluxa.app.player.LibassDebugLog
 import com.fluxa.app.player.MediaPlayerController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -171,6 +173,22 @@ internal fun BoxScope.PlayerPlaybackSurface(
             val nativeAssActive = relayRendererActive && currentSubtitle != null ||
                 selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles) != null ||
                 selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks) != null
+            LaunchedEffect(
+                nativeAssActive,
+                relayRendererActive,
+                currentSubtitle?.id,
+                currentSubtitle?.sampleMimeType,
+                currentExternalSubtitles.size,
+                embeddedNativeAssTracks.size
+            ) {
+                LibassDebugLog.d(
+                    "surface nativeAssActive=$nativeAssActive relayRendererActive=$relayRendererActive " +
+                        "currentSubtitle=${currentSubtitle?.id} mime=${currentSubtitle?.sampleMimeType} label=${currentSubtitle?.label} lang=${currentSubtitle?.language} " +
+                        "externalCount=${currentExternalSubtitles.size} embeddedAssCount=${embeddedNativeAssTracks.size} " +
+                        "selectedExternal=${selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles)?.let { LibassDebugLog.urlSummary(it.url) } ?: "<none>"} " +
+                        "selectedEmbedded=${selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks)?.id ?: "<none>"}"
+                )
+            }
 
             val exoSurfaceConfig = remember(
                 resizeMode, videoZoomScale,

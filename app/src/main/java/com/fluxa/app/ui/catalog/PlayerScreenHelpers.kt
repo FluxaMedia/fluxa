@@ -7,6 +7,7 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.domain.discovery.*
+import com.fluxa.app.player.LibassDebugLog
 
 import android.content.Context
 import android.content.ContextWrapper
@@ -153,6 +154,9 @@ internal suspend fun fetchExternalSubtitleTracks(
     val inlineSubtitleSource = stream?.addonName.orEmpty()
     val inlineSubtitles = stream?.subtitles.orEmpty().map { inlineSubtitleSource to it }
     val subtitleExtra = stream?.subtitleExtraArgs().orEmpty()
+    LibassDebugLog.d(
+        "fetch external subtitles type=$type id=$id subtitleAddons=${subAddons.size} inline=${inlineSubtitles.size} subtitleExtra=${subtitleExtra.isNotBlank()}"
+    )
     val subtitles = withTimeoutOrNull(2500L) {
         kotlinx.coroutines.supervisorScope {
             subAddons.map { addon ->
@@ -162,8 +166,9 @@ internal suspend fun fetchExternalSubtitleTracks(
             }.awaitAll().flatten()
         }
     }.orEmpty()
+    LibassDebugLog.d("external subtitle fetch completed addonSubtitles=${subtitles.size}")
 
-    (inlineSubtitles + subtitles)
+    val result = (inlineSubtitles + subtitles)
         .mapNotNull { (addonName, subtitle) ->
             val url = subtitle.subtitleUrl() ?: return@mapNotNull null
             val language = subtitle.subtitleLanguages().firstOrNull()?.lowercase(Locale.ROOT)
@@ -184,6 +189,14 @@ internal suspend fun fetchExternalSubtitleTracks(
                 else -> 2
             }
         }
+    LibassDebugLog.d(
+        "external subtitle tracks ready count=${result.size} assLike=${result.count { track ->
+            track.url.substringBefore('?').substringBefore('#').lowercase(Locale.ROOT).let { path ->
+                path.endsWith(".ass") || path.endsWith(".ssa")
+            }
+        }} items=${result.take(6).joinToString { "${LibassDebugLog.urlSummary(it.url)} lang=${it.language} label=${it.label}" }}"
+    )
+    result
 }
 
 internal fun Stream.subtitleExtraArgs(): String {
