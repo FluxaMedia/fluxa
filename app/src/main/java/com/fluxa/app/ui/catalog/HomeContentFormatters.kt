@@ -118,12 +118,13 @@ fun continueWatchingEpisodeLabel(meta: Meta): String? {
     val title = continueWatchingEpisodeTitle(meta)
     return when {
         code != null && title != null && !title.startsWith(code, ignoreCase = true) -> "$code: $title"
+        code != null && title != null -> title
         code != null -> code
         else -> title
     }
 }
 
-private val EPISODE_TITLE_PREFIX_REGEX = Regex("""(?i)^S\s*\d+\s*[: ]\s*E\s*\d+\s*""")
+private val EPISODE_TITLE_PREFIX_REGEX = Regex("""(?i)^S\s*\d+\s*[,: \-]*E\s*\d+\s*[:\-]?\s*""")
 
 fun continueWatchingEpisodeTitle(meta: Meta): String? {
     return meta.lastEpisodeName
