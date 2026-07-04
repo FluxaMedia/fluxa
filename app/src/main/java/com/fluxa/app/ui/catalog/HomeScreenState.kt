@@ -8,7 +8,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 
-// Fast-changing billboard fields (rotate within seconds) — separate partition
 @Immutable
 data class HomeBillboardState(
     val billboardIndex: Int,
@@ -22,7 +21,6 @@ data class HomeBillboardState(
     val billboardTrailerUrl: String?
 )
 
-// Slowly-changing catalog fields — separate partition
 @Immutable
 data class HomeCatalogState(
     val categories: List<HomeCategory>,

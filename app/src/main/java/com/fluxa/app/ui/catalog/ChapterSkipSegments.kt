@@ -26,11 +26,6 @@ private fun classifyChapterSkipType(title: String): String? {
     return null
 }
 
-/**
- * Mirrors fluxa-desktop's derive_skip_segments_from_chapters: chapter titles like
- * "OP"/"ED"/"Recap" double as ready-made skip-intro/outro markers when the file
- * has embedded chapters but no IntroDB data for it.
- */
 fun deriveSkipSegmentsFromChapters(chapters: List<Chapter>): List<IntroTimestamps> {
     return chapters.mapIndexedNotNull { index, chapter ->
         val type = classifyChapterSkipType(chapter.title) ?: return@mapIndexedNotNull null

@@ -89,7 +89,6 @@ fun DetailHeaderContentOfficial(
     }
 
     Column(modifier = Modifier.padding(start = horizontalPadding, top = if (deviceType == DeviceType.TV) 40.dp else 24.dp).fillMaxWidth()) {
-        // [LOGO]
         var logoLoadFailed by remember { mutableStateOf(false) }
         val resolvedLogo = detail?.logo
         
@@ -113,22 +112,21 @@ fun DetailHeaderContentOfficial(
             )
         } else {
             Text(
-                text = detail?.name?.uppercase() ?: stringResource(R.string.app_name).uppercase(), 
-                style = if (deviceType == DeviceType.TV) MaterialTheme.typography.displayLarge else MaterialTheme.typography.displayMedium, 
-                fontWeight = FontWeight.Black, 
-                color = Color.White, 
+                text = detail?.name?.uppercase() ?: stringResource(R.string.app_name).uppercase(),
+                style = if (deviceType == DeviceType.TV) MaterialTheme.typography.displayLarge else MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
                 letterSpacing = (-2).sp,
                 lineHeight = if(deviceType == DeviceType.TV) 60.sp else 44.sp,
                 modifier = Modifier.padding(bottom = 8.dp)
-            ) 
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // [ROW 1: OFFICIAL RATINGS]
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically, 
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
             detail?.ratings?.forEach { r -> OfficialRatingBadge(r.source, r.value.toString()) }
@@ -180,7 +178,6 @@ fun DetailHeaderContentOfficial(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // [ROW 3: TAGS]
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
             detail?.ageRating?.takeIf { it.isNotBlank() }?.let { ageRating ->
                 Box(modifier = Modifier.border(1.dp, Color.White.copy(0.4f), RoundedCornerShape(2.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
@@ -197,33 +194,32 @@ fun DetailHeaderContentOfficial(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // [ACTION BUTTONS]
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             val playButtonText = AppStrings.t(lang, "auto.play")
             
             Surface(
-                onClick = onPlayClick, 
+                onClick = onPlayClick,
                 modifier = Modifier
                     .height(48.dp)
                     .then(
                         if (deviceType == DeviceType.TV) Modifier.widthIn(min = 140.dp, max = 240.dp)
-                        else Modifier.wrapContentWidth() // Hug text on mobile
+                        else Modifier.wrapContentWidth()
                     )
                     .focusRequester(playButtonFocusRequester)
-                    .run { if (deviceType == DeviceType.Mobile) clickable { onPlayClick() } else this }, 
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)), 
+                    .run { if (deviceType == DeviceType.Mobile) clickable { onPlayClick() } else this },
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
                 colors = ClickableSurfaceDefaults.colors(containerColor = Color.White, focusedContainerColor = Color.White, contentColor = Color.Black, focusedContentColor = Color.Black)
-            ) { 
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight().padding(horizontal = if(deviceType == DeviceType.TV) 24.dp else 16.dp)) { 
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight().padding(horizontal = if(deviceType == DeviceType.TV) 24.dp else 16.dp)) {
                     Text(
-                        text = playButtonText, 
-                        fontWeight = FontWeight.Black, 
-                        fontSize = 14.sp, 
-                        maxLines = 1, 
+                        text = playButtonText,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 14.sp,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center
-                    ) 
-                } 
+                    )
+                }
             }
             
             ActionCircleBtn(if (isInWatchlist) FluxaIcons.Check else FluxaIcons.Add, onToggleWatchlist, tint = if(isInWatchlist) Color(0xFF00E054) else Color.White)
@@ -288,15 +284,15 @@ fun ActionCircleBtn(icon: ImageVector, onClick: () -> Unit, tint: Color = Color.
     var isFocused by remember { mutableStateOf(false) }
     val deviceType = LocalDeviceType.current
     Surface(
-        onClick = onClick, 
+        onClick = onClick,
         modifier = Modifier
             .size(52.dp)
             .onFocusChanged { isFocused = it.isFocused }
-            .run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this }, 
-        shape = ClickableSurfaceDefaults.shape(CircleShape), 
+            .run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this },
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(0.1f), focusedContainerColor = Color.White)
-    ) { 
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (isFocused) Color.Black else tint, modifier = Modifier.size(26.dp)) } 
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (isFocused) Color.Black else tint, modifier = Modifier.size(26.dp)) }
     }
 }
 
@@ -308,14 +304,14 @@ fun SeasonPill(seasonNumber: Int, isSelected: Boolean, accentColor: Color, lang:
     val contentColor = if (isSelected) Color.Black else Color.White
     val seasonName = if (seasonNumber == 0) (AppStrings.t(lang, "auto.specials")) else "${AppStrings.t(lang, "auto.season")} $seasonNumber"
     Surface(
-        onClick = onClick, 
-        modifier = Modifier.width(140.dp).height(50.dp).onFocusChanged { isFocused = it.isFocused }.run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this }, 
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)), 
+        onClick = onClick,
+        modifier = Modifier.width(140.dp).height(50.dp).onFocusChanged { isFocused = it.isFocused }.run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this },
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(containerColor = containerColor, contentColor = contentColor, focusedContainerColor = Color.White, focusedContentColor = Color.Black)
-    ) { 
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
-            Text(text = seasonName, fontSize = 14.sp, fontWeight = FontWeight.Bold) 
-        } 
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(text = seasonName, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -366,13 +362,13 @@ fun EpisodeCard(
             }
     ) {
         Surface(
-            onClick = onClick, 
+            onClick = onClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(170.dp)
-                .run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this }, 
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)), 
-            border = ClickableSurfaceDefaults.border(focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, Color.White))), 
+                .run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this },
+            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+            border = ClickableSurfaceDefaults.border(focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, Color.White))),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
         ) {
             var thumbnailFailed by remember(thumbnailRequest) { mutableStateOf(false) }
@@ -575,13 +571,13 @@ fun StreamCard(stream: StreamUiModel, accentColor: Color, onClick: () -> Unit) {
     val sourceName = stream.header
     val rawTitle = stream.body
     Surface(
-        onClick = onClick, 
+        onClick = onClick,
         modifier = Modifier
             .width(320.dp)
             .height(172.dp)
-            .run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this }, 
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)), 
-        colors = ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(0.08f), focusedContainerColor = Color.White, focusedContentColor = Color.Black, contentColor = Color.White), 
+            .run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this },
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(0.08f), focusedContainerColor = Color.White, focusedContentColor = Color.Black, contentColor = Color.White),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
     ) {
         Column(
@@ -616,16 +612,16 @@ fun SourceFilterPill(name: String, isSelected: Boolean, onClick: () -> Unit) {
     val containerColor = if (isSelected) Color.White else if (isFocused) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f)
     val contentColor = if (isSelected) Color.Black else Color.White
     Surface(
-        onClick = onClick, 
+        onClick = onClick,
         modifier = Modifier
             .onFocusChanged { isFocused = it.isFocused }
-            .run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this }, 
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)), 
+            .run { if (deviceType == DeviceType.Mobile) clickable { onClick() } else this },
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(containerColor = containerColor, contentColor = contentColor, focusedContainerColor = Color.White, focusedContentColor = Color.Black)
-    ) { 
-        Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), contentAlignment = Alignment.Center) { 
-            Text(text = name, fontSize = 13.sp, fontWeight = FontWeight.Bold) 
-        } 
+    ) {
+        Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+            Text(text = name, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 

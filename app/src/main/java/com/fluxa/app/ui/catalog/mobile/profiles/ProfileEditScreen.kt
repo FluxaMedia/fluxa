@@ -133,7 +133,6 @@ fun MobileProfileEditScreen(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            // Avatar with edit badge
             Box(
                 contentAlignment = Alignment.BottomEnd,
                 modifier = Modifier.size(140.dp)
@@ -159,7 +158,6 @@ fun MobileProfileEditScreen(
                     }
                 }
 
-                // Pencil badge at bottom-right
                 Box(
                     modifier = Modifier
                         .size(36.dp)

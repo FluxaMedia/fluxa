@@ -102,10 +102,10 @@ class MainActivity : FragmentActivity() {
 
     private fun handleIntent(intent: android.content.Intent?) {
         if (intent == null) return
-        val query = intent.getStringExtra(android.app.SearchManager.QUERY) 
+        val query = intent.getStringExtra(android.app.SearchManager.QUERY)
             ?: intent.getStringExtra("query")
             
-        if (intent.action == android.content.Intent.ACTION_SEARCH || 
+        if (intent.action == android.content.Intent.ACTION_SEARCH ||
             intent.action == "com.google.android.gms.actions.SEARCH_ACTION" ||
             intent.action == "com.google.android.gms.actions.SEARCH_AND_PLAY" ||
             intent.action == "android.media.action.MEDIA_PLAY_FROM_SEARCH") {
@@ -327,7 +327,6 @@ class MainActivity : FragmentActivity() {
                             activeProfile?.safeAudioDecoderMode ?: "hw_prefer",
                             activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" } ?: ""
                         ).apply { volume = 0f }
-                        //  WRAP TO ENABLE AUTO-SUBTITLES
                         MediaPlayerController(context, player)
                         player
                     }
@@ -351,7 +350,7 @@ class MainActivity : FragmentActivity() {
                             val update = UpdateManager.checkUpdate()
                             if (update != null) {
                                 updateInfo = update
-                                break // Stop checking if update found
+                                break
                             }
                             delay(if (com.fluxa.app.BuildConfig.DEBUG) 120000 else 21600000)
                         }

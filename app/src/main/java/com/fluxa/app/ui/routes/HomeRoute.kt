@@ -55,7 +55,6 @@ internal fun HomeRoute(
                             )
                         )
                     } else if (item.id.startsWith("cs3:")) {
-                        // CS3 content: Player handles stream loading via the plugin directly.
                         navigator.navigateTo(
                             Screen.Player(
                                 meta = item,

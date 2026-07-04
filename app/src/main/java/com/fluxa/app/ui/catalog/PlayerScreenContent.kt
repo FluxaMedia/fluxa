@@ -167,8 +167,6 @@ internal fun PlayerScreenContent(
                     }
                     if (zoomDelta > 1.0f) {
                         if (gestureState.startedInOriginal && state.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
-                            // Snap straight to fill on the first pinch-in. This
-                            // frame's delta triggers the snap rather than adding extra zoom on top of it.
                             state.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                             state.videoZoomScale = fillScale
                             gestureState.startedInOriginal = false

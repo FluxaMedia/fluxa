@@ -265,9 +265,14 @@ internal fun SegmentSkipChevronFeedback() {
 }
 
 @Composable
-internal fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, status: com.fluxa.app.player.TorrentStreamStatus, deviceType: DeviceType, buffer: BufferSnapshot = BufferSnapshot(), error: String? = null, currentUrl: String?, isSwitchingAudioSource: Boolean = false, currentSourceIdx: Int = 0, totalSources: Int = 0, playback: PlaybackSnapshot = PlaybackSnapshot(), lang: String? = "en") {
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        if (bg.isNotEmpty()) {
+internal fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, status: com.fluxa.app.player.TorrentStreamStatus, deviceType: DeviceType, buffer: BufferSnapshot = BufferSnapshot(), error: String? = null, currentUrl: String?, isSwitchingAudioSource: Boolean = false, currentSourceIdx: Int = 0, totalSources: Int = 0, playback: PlaybackSnapshot = PlaybackSnapshot(), hasRenderedFirstFrame: Boolean = false, lang: String? = "en") {
+    val startupLoading = !hasRenderedFirstFrame
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(if (startupLoading) Color.Black else Color.Transparent)
+    ) {
+        if (startupLoading && bg.isNotEmpty()) {
             AsyncImage(
                 bg,
                 null,
@@ -284,28 +289,39 @@ internal fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, sta
         }
         val currentUrlStr = currentUrl ?: ""
         val isTorrent = currentUrlStr.isTorrentPlaybackUrlForOverlay() || currentUrlStr.contains(".torrent")
-        val bufferingMedia = buffer.loadProgress > 0f ||
+        val byteProgress = buffer.loadProgress > 0.015f ||
             buffer.bufferPercent > 0 ||
             status.bufferProgress > 0 ||
-            status.downloadSpeed > 0.0 ||
-            status.activePeers > 0 ||
-            status.totalPeers > 0 ||
-            status.detailedStatus.isNotBlank()
+            status.downloadSpeed > 0.0
 
-        val targetProgress = when {
-            playback.hasStartedPlaying && !playback.isBuffering -> 1.0f
+        val rebufferProgress = when {
+            status.bufferProgress > 0 -> (status.bufferProgress / 100f).coerceIn(0f, 1f)
+            buffer.bufferPercent > 0 -> (buffer.bufferPercent.toFloat() / 100f).coerceIn(0f, 1f)
+            buffer.seekbarBufferedProgress > 0f -> buffer.seekbarBufferedProgress.coerceIn(0f, 1f)
+            else -> 0f
+        }
+        val activeRebuffer = hasRenderedFirstFrame && playback.isBuffering
+        val rawTargetProgress = when {
+            activeRebuffer -> rebufferProgress
+            hasRenderedFirstFrame && playback.hasStartedPlaying && !playback.isBuffering -> 1.0f
             buffer.loadProgress > 0f -> buffer.loadProgress.coerceIn(0f, 1f)
             status.bufferProgress > 0 -> (status.bufferProgress / 100f).coerceIn(0f, 1f)
             !isTorrent && buffer.bufferPercent > 0 -> (buffer.bufferPercent.toFloat() / 100f).coerceIn(0f, 1f)
             else -> 0f
+        }
+        val targetProgress = when {
+            startupLoading && rawTargetProgress > 0f -> rawTargetProgress.coerceAtMost(0.92f)
+            activeRebuffer && rawTargetProgress > 0f -> rawTargetProgress.coerceAtMost(0.96f)
+            else -> rawTargetProgress
         }
         val loadProgress by animateFloatAsState(
             targetValue = targetProgress,
             animationSpec = tween(FluxaDimensions.AnimDuration.progressRing, easing = FastOutSlowInEasing),
             label = "logoLoadProgress"
         )
-        val hasProgress = bufferingMedia || loadProgress > 0.015f || targetProgress > 0.015f
-        val visibleLoadProgress = if (hasProgress) maxOf(loadProgress, 0.045f) else 0f
+        val useBreathe = startupLoading && !byteProgress && loadProgress <= 0.015f && targetProgress <= 0.015f
+        val hasProgress = !useBreathe && (activeRebuffer || byteProgress || loadProgress > 0.015f || targetProgress > 0.015f)
+        val visibleLoadProgress = if (hasProgress) maxOf(loadProgress, if (activeRebuffer) 0.08f else 0.045f) else 0f
         val breatheTransition = rememberInfiniteTransition(label = "loadingLogoBreathe")
         val breatheAlpha by breatheTransition.animateFloat(
             initialValue = 0.42f,
@@ -336,7 +352,6 @@ internal fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, sta
                         )
                     }
                     !hasProgress -> {
-                        // Idle: logo breathes at low alpha
                         AsyncImage(
                             model = logo,
                             contentDescription = null,
@@ -346,7 +361,6 @@ internal fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, sta
                         )
                     }
                     else -> {
-                        // Ghost outline underneath
                         AsyncImage(
                             model = logo,
                             contentDescription = null,
@@ -354,7 +368,6 @@ internal fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, sta
                             contentScale = ContentScale.Fit,
                             onError = { logoFailed = true }
                         )
-                        // Left-to-right reveal: clip drawing to progress fraction of width
                         val revealProgress = visibleLoadProgress.coerceIn(0f, 1f)
                         AsyncImage(
                             model = logo,

@@ -244,7 +244,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
         (!render.isVideoRendered && !(useMpvBackend && playback.hasStartedPlaying)) ||
         (playback.hasStartedPlaying && playback.isBuffering)
     if (showLoadingOverlay) {
-        ArtisticLoadingOverlay(content.background, content.logo, content.title, torrentStatus, deviceType, buffer, playerError, currentUrl, isSwitchingAudioSource, currentSourceIdx = currentStreamIndex + 1, totalSources = currentStreamsSize, playback, lang = lang)
+        ArtisticLoadingOverlay(content.background, content.logo, content.title, torrentStatus, deviceType, buffer, playerError, currentUrl, isSwitchingAudioSource, currentSourceIdx = currentStreamIndex + 1, totalSources = currentStreamsSize, playback, hasRenderedFirstFrame = render.isVideoRendered, lang = lang)
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -375,7 +375,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
         zoomOverlayMode = zoomOverlayMode,
         zoomLabelText = zoomLabelText
     )
-    } // CompositionLocalProvider
+    }
 }
 
 private fun PlayerView.applyExoSurfaceConfig(config: ExoSurfaceConfig, profile: UserProfile?) {

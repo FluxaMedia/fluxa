@@ -183,10 +183,9 @@ object UpdateManager {
                 }
             }
             
-            //  Intent for confirmation (Still needed on non-root)
-            val intent = Intent(context, context.javaClass) // Placeholder, system handles it
+            val intent = Intent(context, context.javaClass)
             val pendingIntent = android.app.PendingIntent.getBroadcast(
-                context, sessionId, Intent("com.fluxa.app.INSTALL_COMPLETE"), 
+                context, sessionId, Intent("com.fluxa.app.INSTALL_COMPLETE"),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) android.app.PendingIntent.FLAG_MUTABLE else 0
             )
             

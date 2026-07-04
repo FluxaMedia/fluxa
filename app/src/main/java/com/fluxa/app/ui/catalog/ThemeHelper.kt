@@ -47,7 +47,7 @@ object ThemeHelper {
         try {
             val request = ImageRequest.Builder(context)
                 .data(url)
-                .allowHardware(false) // Required for Palette
+                .allowHardware(false)
                 .build()
             
             val result = context.imageLoader.execute(request)

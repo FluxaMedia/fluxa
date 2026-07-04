@@ -115,7 +115,7 @@ Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) 
     LazyColumn(state = lazyListState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 100.dp)) {
         item {
             DetailHeaderContentOfficial(
-                detail = detail, 
+                detail = detail,
                 selectedEpisode = selectedEpisode,
                 isInWatchlist = isInWatchlist,
                 feedback = feedback,
@@ -257,9 +257,9 @@ Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) 
                         else -> 0f
                     },
                     durationLabel = detail.runtime,
-                    accentColor = accentColor, 
-                    lang = lang, 
-                    onFocus = { onFocusedEpisodeChange(episode) }, 
+                    accentColor = accentColor,
+                    lang = lang,
+                    onFocus = { onFocusedEpisodeChange(episode) },
                     onClick = {
                         if (!detailIsUpcoming(episode.released)) {
                             onSelectedEpisodeChange(episode)
@@ -268,7 +268,7 @@ Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) 
                         }
                     },
                     onDownloadClick = { viewModel.downloadEpisodes(listOf(episode), context) }
-                ) 
+                )
             }
                     }
                     
@@ -315,7 +315,7 @@ Box(modifier = Modifier.fillMaxSize().background(FluxaColors.backgroundAmoled)) 
                 Column(modifier = Modifier.padding(top = 24.dp)) {
                     val title = if(detail?.type == "movie") (AppStrings.t(lang, "auto.sources")) else {
                         val ep = selectedEpisode ?: focusedEpisode
-                        if (ep != null) "S${ep.season} B${ep.number} - ${AppStrings.t(lang, "auto.sources")}" 
+                        if (ep != null) "S${ep.season} B${ep.number} - ${AppStrings.t(lang, "auto.sources")}"
                         else (AppStrings.t(lang, "auto.sources"))
                     }
                     Text(text = title, style = androidx.compose.material3.MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = horizontalPadding, bottom = 12.dp))

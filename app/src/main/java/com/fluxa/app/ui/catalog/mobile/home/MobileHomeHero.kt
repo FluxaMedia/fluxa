@@ -482,9 +482,9 @@ private fun MobileHeroMiniAction(icon: ImageVector, label: String, onClick: () -
             modifier = Modifier.size(24.dp)
         )
         Text(
-            label, 
-            color = Color.White, 
-            fontSize = 12.sp, 
+            label,
+            color = Color.White,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Black
         )
     }

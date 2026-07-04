@@ -354,9 +354,9 @@ fun PlayerSidebarShell(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = title, 
-                        color = Color.White, 
-                        fontSize = if (deviceType == DeviceType.TV) 18.sp else 17.sp, 
+                        text = title,
+                        color = Color.White,
+                        fontSize = if (deviceType == DeviceType.TV) 18.sp else 17.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.8.sp
                     )

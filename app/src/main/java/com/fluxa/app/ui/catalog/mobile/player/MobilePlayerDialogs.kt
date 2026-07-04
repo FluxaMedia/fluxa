@@ -345,11 +345,8 @@ internal fun MobileTrackPickerOverlay(
     BackHandler(enabled = settingsMode) { settingsMode = false }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Base scrim — dims the video without fully killing it
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.76f)))
-        // Cool-tinted overlay: shifts remaining video colors toward cold dark blue (simulates dimmed/desaturated look)
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF060B14).copy(alpha = 0.42f)))
-        // Radial vignette: edges collapse to near-black, center stays open
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.radialGradient(
@@ -361,7 +358,6 @@ internal fun MobileTrackPickerOverlay(
                 )
             )
         )
-        // Top edge darkening
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
@@ -370,7 +366,6 @@ internal fun MobileTrackPickerOverlay(
                 )
             )
         )
-        // Bottom edge darkening
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
@@ -384,7 +379,6 @@ internal fun MobileTrackPickerOverlay(
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 20.dp)
         ) {
-            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -432,7 +426,6 @@ internal fun MobileTrackPickerOverlay(
                 label = "trackPickerMode"
             ) { inSettings ->
                 if (inSettings) {
-                    // Settings mode: audio settings left | subtitle settings right
                     Row(
                         modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -500,7 +493,6 @@ internal fun MobileTrackPickerOverlay(
                         }
                     }
                 } else {
-                    // Tracks mode: audio tracks left | subtitle tracks right
                     Row(
                         modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)

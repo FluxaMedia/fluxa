@@ -94,7 +94,6 @@ private fun TvQrLoginView(
         onDispose { qrBitmap?.recycle() }
     }
 
-    // Start local server and generate QR
     LaunchedEffect(loginToken) {
         val ip = IntegrationServer.getLocalIpAddress()
         val port = 8585
@@ -164,7 +163,6 @@ private fun TvQrLoginView(
         }
     }
 
-    // Cleanup server on dispose
     DisposableEffect(Unit) {
         onDispose {
             server?.stop()
@@ -200,7 +198,6 @@ private fun TvQrLoginView(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(64.dp)
             ) {
-                // Left: QR with Glow
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
@@ -226,7 +223,6 @@ private fun TvQrLoginView(
                     )
                 }
 
-                // Right: Premium Instructions
                 Column(modifier = Modifier.weight(1.2f)) {
                     Text(
                         text = AppStrings.t(lang, "login.instant_title"),

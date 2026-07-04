@@ -50,9 +50,6 @@ internal fun PlayerMpvStateSyncEffect(
     updateEngine: (PlayerEngineSnapshot.() -> PlayerEngineSnapshot) -> Unit,
 ) {
     val latestUpdateEngine = rememberUpdatedState(updateEngine)
-    // Collect directly from the flow — one atomic snapshot write per MPV state change.
-    // Conditional copy preserves unchanged sub-snapshot references so Compose can skip
-    // composables that depend only on sub-snapshots that did not change.
     LaunchedEffect(useMpvBackend, mpvPlayer) {
         if (!useMpvBackend || mpvPlayer == null) return@LaunchedEffect
         mpvPlayer.state.collect { s ->

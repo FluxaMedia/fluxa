@@ -87,7 +87,6 @@ fun AddonStoreScreen(
     val pluginManager = remember { AppContainer.pluginManager }
     val repository = remember { AppContainer.repository }
     
-    // Smart input state
     var smartInput by remember { mutableStateOf(SmartInputState()) }
     var showRepoDialog by remember { mutableStateOf<RepositoryManifest?>(null) }
     var selectedRepoUrl by remember { mutableStateOf<String?>(null) }
@@ -99,7 +98,6 @@ fun AddonStoreScreen(
     var installedUserAddonsLoaded by remember { mutableStateOf(false) }
     var refreshingAddonUrl by remember { mutableStateOf<String?>(null) }
     
-    // Collect plugin manager state
     LaunchedEffect(Unit) {
         pluginManager.installedPlugins.collect { installedPlugins = it }
     }
@@ -125,7 +123,6 @@ fun AddonStoreScreen(
         installedUserAddonsLoaded = true
     }
     
-    // Detect input type
     fun detectInputType(text: String): DetectedType {
         return when (FluxaCoreNative.addonStoreInputType(text)) {
             "stremio_manifest" -> DetectedType.STREMIO_MANIFEST
@@ -135,7 +132,6 @@ fun AddonStoreScreen(
         }
     }
     
-    // Handle smart input
     fun handleSmartInput() {
         val text = smartInput.text.trim()
         if (text.isEmpty()) return
@@ -168,12 +164,10 @@ fun AddonStoreScreen(
                 }
             }
             else -> {
-                // Treat as search
             }
         }
     }
     
-    // Update detected type when text changes
     LaunchedEffect(smartInput.text) {
         if (smartInput.text.isBlank()) {
             smartInput = smartInput.copy(detectedType = DetectedType.UNKNOWN)
@@ -294,7 +288,6 @@ fun AddonStoreScreen(
                 onError = { smartInput = smartInput.copy(error = it) }
             )
 
-            // === INSTALLED STREMIO ADDONS SECTION ===
             if (installedStremioAddons.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(16.dp))

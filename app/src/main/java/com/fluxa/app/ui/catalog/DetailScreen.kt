@@ -65,8 +65,8 @@ internal fun preferredPlayStream(streams: List<Stream>, fallbackIndex: Int? = nu
 
 @Composable
 fun DetailScreen(
-    type: String, 
-    id: String, 
+    type: String,
+    id: String,
     activeProfile: UserProfile?,
     initialProgress: Long? = null,
     lastVideoId: String? = null,
@@ -110,8 +110,6 @@ fun DetailScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val lang = activeProfile?.safeLanguage ?: "en"
-    // For CS3 content the catalog type ("movie") may differ from the loaded detail type ("series").
-    // Once detail loads, prefer detail.type so episode/season logic works correctly.
     val effectiveType = detail?.type ?: type
     var selectedSeason by remember(id, type, targetSeason) { mutableIntStateOf(targetSeason ?: 1) }
     var selectedEpisode by remember(id, type, lastVideoId, targetSeason, targetEpisode) { mutableStateOf<Video?>(null) }
@@ -127,8 +125,6 @@ fun DetailScreen(
     }
     val effectiveLastVideoId = lastVideoId ?: savedPlayback?.lastVideoId
     val effectiveInitialProgress = initialProgress ?: savedPlayback?.timeOffset
-    // Tracks whether the resume-from-savedPlayback auto-selection has been applied or is no longer needed.
-    // Pre-consumed when the caller already provides an explicit target (targetSeason / lastVideoId).
     var autoResumeConsumed by remember(id, type, targetSeason, lastVideoId) {
         mutableStateOf(targetSeason != null || lastVideoId != null)
     }
@@ -166,11 +162,10 @@ fun DetailScreen(
                     ?: currentSeasonEpisodes.firstOrNull()
             }
             selectedEpisode?.season?.takeIf { it == selectedSeason }?.let {
-                selectedSeason = it 
-                //  AUTO-SCROLL TO SEASON
+                selectedSeason = it
                 if (it > 1) {
                     coroutineScope.launch {
-                        lazyListState.animateScrollToItem(if (effectiveType == "series") 1 else 0) // Focus back on meta info if needed OR to episodes row
+                        lazyListState.animateScrollToItem(if (effectiveType == "series") 1 else 0)
                     }
                 }
             }
@@ -198,13 +193,11 @@ fun DetailScreen(
     }
     
     LaunchedEffect(activeTab, detail, selectedEpisode) {
-        // Only fetch when user explicitly clicks "sources" tab
         if (activeTab != "sources") return@LaunchedEffect
         
         val currentDetail = detail ?: return@LaunchedEffect
         val effectiveEpisode = displaySelectedEpisode ?: selectedEpisode
         
-        // Don't re-fetch if already fetched for this episode
         val currentEpId = if (effectiveType == "movie") currentDetail.id else effectiveEpisode?.id
         if (hasFetchedStreams && loadedStreamEpisodeId == currentEpId) return@LaunchedEffect
         
@@ -270,8 +263,6 @@ fun DetailScreen(
         }
     }
 
-    // Auto-select the resume season + episode from savedPlayback when no explicit target was provided.
-    // Fires each time savedPlayback, detail videos, or season episodes change until resume is consumed.
     LaunchedEffect(savedPlayback?.lastVideoId, detail?.id, seasonEpisodes) {
         if (autoResumeConsumed) return@LaunchedEffect
         if (effectiveType != "series") return@LaunchedEffect
@@ -412,7 +403,6 @@ fun DetailScreen(
     )
 }
 
-// Parses the season number from Stremio-style video IDs ("imdbId:season:episode").
 private fun parseSeasonFromVideoId(videoId: String): Int? {
     val parts = videoId.split(":")
     if (parts.size < 3) return null

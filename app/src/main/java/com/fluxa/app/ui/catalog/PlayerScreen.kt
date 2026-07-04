@@ -178,8 +178,6 @@ fun PlayerScreen(
         state.timelinePosition = target
         state.engine = state.engine.copy(timeline = state.engine.timeline.copy(position = target))
         exoPlayer.seekTo(target)
-        // Skip retry for torrent streams: a second seekTo on a torrent proxy that hasn't
-        // buffered the target position yet causes the stream to restart from position 0.
         if (!state.resolvedUrl.isTorrentPlaybackUrl()) {
             scope.launch {
                 delay(900)
@@ -246,8 +244,6 @@ fun PlayerScreen(
     }
 
     fun openInExternalPlayer() {
-        // Use the raw stream URL, not the proxy/DV-rewrite URL — external players
-        // can't use Fluxa's internal local HTTP proxy.
         val rawUrl = state.currentStreams.getOrNull(state.currentStreamIndex)?.playableUrl
             ?: state.currentUrl
         if (rawUrl.isNullOrEmpty()) return
@@ -259,9 +255,7 @@ fun PlayerScreen(
             putExtra("title", meta.name)
             putExtra("position", currentPos)
             if (subs.isNotEmpty()) {
-                // VLC
                 putExtra("subtitles_location", subs.first().url)
-                // MX Player — expects Uri[] not ArrayList
                 putExtra("subs", subs.map { Uri.parse(it.url) }.toTypedArray())
                 putExtra("subs.name", subs.map { it.label ?: it.language ?: "" }.toTypedArray())
             }
@@ -277,18 +271,15 @@ fun PlayerScreen(
         if (url.isNullOrEmpty()) return
         val videoUrl = castReachableUrl(url)
         
-        //  PRO-CASTING INTENT: Target specialized casting apps first
         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
             setDataAndType(android.net.Uri.parse(videoUrl), "video/*")
             addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             
-            // Add metadata for smarter casting apps
             putExtra("title", meta.name)
             putExtra("poster", meta.poster)
         }
 
         try {
-            // Try to find Web Video Caster or BubbleUPnP directly if possible
             val chooser = android.content.Intent.createChooser(intent, AppStrings.t(activeProfile?.safeLanguage, "auto.choose_player"))
             context.startActivity(chooser)
         } catch (e: Exception) {
@@ -300,8 +291,8 @@ fun PlayerScreen(
         state.showControls = true
         state.controlsTimerJob?.cancel()
         state.controlsTimerJob = scope.launch {
-            delay(5000) //  5s AUTO-HIDE
-            if (!state.isScrubbing) state.showControls = false 
+            delay(5000)
+            if (!state.isScrubbing) state.showControls = false
         }
         scope.launch { delay(100); try { playPauseFocusRequester.requestFocus() } catch(e: Exception) {} }
     }
@@ -368,7 +359,7 @@ fun PlayerScreen(
     LaunchedEffect(Unit) { delay(1000); try { mainFocusRequester.requestFocus() } catch(e: Exception) {} }
 
     LaunchedEffect(Unit) {
-        if (!useMpvBackend) exoPlayer.volume = 1.0f // Ensure main player is not muted
+        if (!useMpvBackend) exoPlayer.volume = 1.0f
     }
 
     LaunchedEffect(initialBingeGroup) {
@@ -648,8 +639,6 @@ fun PlayerScreen(
         setNextEpisode = { state.nextEpisodePending = it }
     )
 
-    // Scrub live preview: seek to keyframe while user drags the seekbar.
-    // Debounced 80ms so rapid slider changes coalesce into one seek call.
     val latestIsScrubbing by rememberUpdatedState(state.isScrubbing)
     val latestActiveEngine by rememberUpdatedState(activeEngine)
     LaunchedEffect(state.scrubPosition) {
@@ -696,7 +685,6 @@ fun PlayerScreen(
         state.showSeekFeedback = true
     }
 
-    // Auto-play when finished
     LaunchedEffect(state.engine.playback.playbackEnded) {
         if (state.engine.playback.playbackEnded && state.engine.playback.hasStartedPlaying) {
             if (activeProfile?.safeAutoPlayNextEpisode == true) {

@@ -187,11 +187,9 @@ internal class HomeBillboardRuntime(
             setNextEpisode(null)
             setSeasonPosterUrl(null)
         } else {
-            // Show raw catalog data immediately — no mutex blocking here
             setMovie(item)
             setLogo(item.logo)
             setWatchlist(watchlistManager.isInWatchlist(item.id))
-            // Enrich in background without blocking the caller
             scope.launch(Dispatchers.IO) { enrichAndPublish(item) }
         }
         maybeAutoPlayTrailer(item)
@@ -219,7 +217,6 @@ internal class HomeBillboardRuntime(
             val isSeries = item.type == "series" || item.type == "tv"
             val videos = detail.videos
 
-            // If season posters are available, use the latest season's poster as hero backdrop.
             val seasonBackground: String? = if (isSeries) {
                 detail.seasonPosters
                     ?.maxByOrNull { (key, _) -> key.toIntOrNull() ?: 0 }
@@ -267,7 +264,6 @@ internal class HomeBillboardRuntime(
             }
             prefetchDirectPlayback(enrichedMeta, detail)
         } catch (e: Exception) {
-            // non-critical
         }
     }
 

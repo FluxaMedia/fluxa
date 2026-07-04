@@ -87,7 +87,6 @@ internal fun AddonRepoPluginsDialog(
 ) {
     val scope = rememberCoroutineScope()
 
-    // Track installed state reactively inside the dialog
     var installedNames by remember(selectedRepoUrl) {
         mutableStateOf(
             pluginManager.installedPlugins.value
@@ -95,9 +94,7 @@ internal fun AddonRepoPluginsDialog(
                 .toSet()
         )
     }
-    // Track which plugins are currently being installed
     var installingNames by remember(selectedRepoUrl) { mutableStateOf(setOf<String>()) }
-    // Error shown inside the dialog
     var dialogError by remember(selectedRepoUrl) { mutableStateOf<String?>(null) }
 
     if (selectedRepoUrl != null) {
@@ -132,7 +129,6 @@ internal fun AddonRepoPluginsDialog(
                             )
                         }
                     } else {
-                        // In-dialog error message
                         if (dialogError != null) {
                             item {
                                 Text(

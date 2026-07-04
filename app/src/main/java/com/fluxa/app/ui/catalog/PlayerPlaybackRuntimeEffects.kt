@@ -49,7 +49,6 @@ internal fun ExoPlayerListenerEffect(
     torrentManager: TorrentStreamManager,
     retryPlayback: () -> Unit = {}
 ) {
-    // Capture latest callback so listener always sees current version without being recreated.
     val latestUpdateEngine = rememberUpdatedState(updateEngine)
     val latestRetryPlayback = rememberUpdatedState(retryPlayback)
     val latestMergeSkipSegments = rememberUpdatedState(mergeSkipSegments)
@@ -401,7 +400,6 @@ internal fun PlayerBufferProgressEffect(
     val currentUrlState = rememberUpdatedState(currentUrl)
     val latestUpdateEngine = rememberUpdatedState(updateEngine)
 
-    // MPV: binary buffer state driven by isVideoRendered
     LaunchedEffect(useMpvBackend, isVideoRendered) {
         if (useMpvBackend) {
             val ready = isVideoRendered
@@ -409,7 +407,6 @@ internal fun PlayerBufferProgressEffect(
         }
     }
 
-    // ExoPlayer: event-driven — one atomic snapshot update per player event
     DisposableEffect(exoPlayer) {
         fun update() {
             if (useMpvBackend) return
@@ -448,7 +445,6 @@ internal fun PlayerBufferProgressEffect(
                 newPosition: Player.PositionInfo,
                 reason: Int
             ) {
-                // Update buffer bar after seek; skip auto-transitions (frequent HLS/DASH period changes)
                 if (reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION) update()
             }
         }
@@ -456,7 +452,6 @@ internal fun PlayerBufferProgressEffect(
         onDispose { exoPlayer.removeListener(listener) }
     }
 
-    // Torrent only: slow poll for load progress (torrent progress has no ExoPlayer events)
     LaunchedEffect(currentUrl) {
         if (!currentUrl.isTorrentPlaybackUrl()) return@LaunchedEffect
         while (true) {

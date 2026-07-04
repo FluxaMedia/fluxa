@@ -94,7 +94,6 @@ internal fun MobileCategoryResultsContent(
             }
     }
 
-    // Per-category rendering constants — stable across item recompositions.
     val widthPreset = activeProfile?.safePosterWidthPreset ?: "medium"
     val isHorizontal = layout == "horizontal"
     val isSquare = layout == "square"
@@ -114,7 +113,6 @@ internal fun MobileCategoryResultsContent(
     val hideTitles = activeProfile?.safePosterHideTitles == true
     val lang = activeProfile?.safeLanguage ?: "en"
     val upNextLabel = remember(lang) { AppStrings.t(lang, "auto.up_next") }
-    // rememberUpdatedState ensures click lambdas memoized per item always call the latest handler.
     val currentOnMovieClick = rememberUpdatedState(onMovieClick)
 
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFF040508))) {
@@ -159,10 +157,6 @@ internal fun MobileCategoryResultsContent(
                 key = { _, movie -> "${movie.type}:${movie.id}" },
                 contentType = { _, movie -> layoutForGridContentType(movie, layout) }
             ) { _, movie ->
-                // Pre-compute all display data once per composition slot. Meta is @Immutable so
-                // these values never change for the same item. remember {} (no keys) skips
-                // recomputation on parent recompositions (e.g. loadArtwork toggle), which is
-                // the main source of unnecessary per-frame work in this grid.
                 val isUpNext = remember { movie.isUpNextContinueItem() }
                 val isProgressCard = remember {
                     isUpNext || ((movie.timeOffset ?: 0L) > 0L && (movie.duration ?: 0L) > 0L)
@@ -211,9 +205,6 @@ internal fun MobileCategoryResultsContent(
     }
 }
 
-// Pure drawing card — no Meta, no UserProfile, no logic. All data pre-computed by caller.
-// All parameters are stable primitives/strings, so Compose can skip this composable when
-// only unrelated state in the parent changes.
 @Composable
 private fun GridCatalogCard(
     artwork: String?,

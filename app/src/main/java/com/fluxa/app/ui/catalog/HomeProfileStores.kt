@@ -19,7 +19,6 @@ class SearchHistoryStore @Inject constructor(
     private val gson: Gson
 ) {
     private val prefs = context.getSharedPreferences("fluxa_search", Context.MODE_PRIVATE)
-    // ... rest of implementation remains same
     fun load(profile: UserProfile?): List<Meta> {
         val saved = prefs.getString(key(profile), null) ?: return emptyList()
         return runCatching {

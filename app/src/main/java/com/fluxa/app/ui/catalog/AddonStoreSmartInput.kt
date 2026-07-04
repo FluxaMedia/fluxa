@@ -92,8 +92,8 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.addAddonSmartInputSe
                     ) {
                         OutlinedTextField(
                             value = smartInput.text,
-                            onValueChange = { 
-                                onTextChange(it) 
+                            onValueChange = {
+                                onTextChange(it)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -159,7 +159,6 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.addAddonSmartInputSe
                         )
                     }
                     
-                    // Error message
                     val error = smartInput.error
                     if (error != null) {
                         Row(

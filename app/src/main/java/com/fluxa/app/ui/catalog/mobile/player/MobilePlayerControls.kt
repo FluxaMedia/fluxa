@@ -91,11 +91,8 @@ internal fun MobilePlayerUIContent(
                 .background(bottomFade)
         )
 
-        // Interactive content respects safe-area insets; the scrims above stay full-bleed
-        // so dimming still reaches the true screen edge once zoom removes letterboxing.
         Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
 
-        // Top bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -164,7 +161,6 @@ internal fun MobilePlayerUIContent(
             }
         }
 
-        // Transport controls
         AnimatedVisibility(
             visible = !isScrubbing,
             modifier = Modifier.align(Alignment.Center),
@@ -196,7 +192,6 @@ internal fun MobilePlayerUIContent(
             }
         }
 
-        // Seekbar + bottom actions — pinned to bottom
         Column(
             modifier = Modifier
                 .fillMaxWidth()

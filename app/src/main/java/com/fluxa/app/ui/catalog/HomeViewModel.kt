@@ -1231,10 +1231,6 @@ class HomeViewModel @Inject constructor(
     private var cacheSaveJob: Job? = null
     private fun setCategoriesAndCache(categories: List<HomeCategory>) {
         setCategoriesState(categories)
-        // Serialize + persist the whole catalog off the main thread, debounced: gson.toJson over
-        // the full home feed is CPU/allocation heavy and was running on the main thread on every
-        // emit (load waves, CW, watchlist, cs3), causing scroll freezes. Only the last emit in a
-        // burst is saved.
         val profile = currentActiveProfile
         cacheSaveJob?.cancel()
         cacheSaveJob = viewModelScope.launch(Dispatchers.Default) {

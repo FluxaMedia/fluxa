@@ -89,7 +89,7 @@ fun ErrorScreen(
                 }
                 
                 OutlinedButton(
-                    onClick = { /* Yardm Sayfas */ },
+                    onClick = {  },
                     modifier = Modifier.width(220.dp)
                 ) {
                     Text(AppStrings.t(lang, "common.help"))

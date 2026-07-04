@@ -45,8 +45,6 @@ object HomeRowRankingPolicy {
         )
         val json = FluxaCoreNative.optimizeHomeRowsJson(gson.toJson(request))
         val optimized = gson.fromJson<List<HomeCategory>>(json, homeCategoryListType) ?: emptyList()
-        // Rust may reorder items within categories for scoring — restore original item lists
-        // so Compose LazyRow doesn't treat reordered items as prepended and jump scroll.
         return optimized.map { category ->
             val original = originalItemsById[category.id]
             if (original != null) category.copy(items = original.items) else category

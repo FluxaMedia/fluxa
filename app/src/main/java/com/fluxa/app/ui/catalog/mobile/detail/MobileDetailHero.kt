@@ -80,7 +80,6 @@ internal fun MobileDetailHero(
     var selectedSubtitleTag by remember { mutableStateOf<String?>(null) }
     var isFullscreen by remember { mutableStateOf(false) }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
-    // Incremented to force a retry when the same trailer fails (Error state).
     var retryCount by remember(activeTrailer?.id, activeTrailer?.url) { mutableStateOf(0) }
     DisposableEffect(Unit) {
         onDispose {
@@ -148,7 +147,6 @@ internal fun MobileDetailHero(
     val readyState = trailerState as? HeroTrailerState.Ready
     val availableSubtitles = readyState?.result?.subtitles ?: emptyList()
 
-    // Fullscreen dialog
     if (isFullscreen && trailerState is HeroTrailerState.Ready && exoPlayer != null) {
         val player = exoPlayer
         Dialog(
@@ -174,7 +172,6 @@ internal fun MobileDetailHero(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Tap to show/pause controls
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -206,7 +203,6 @@ internal fun MobileDetailHero(
                     }
                 }
 
-                // Top bar in fullscreen
                 AnimatedVisibility(
                     visible = showControls || !isPlaying,
                     enter = fadeIn(), exit = fadeOut(),
@@ -241,7 +237,6 @@ internal fun MobileDetailHero(
                     }
                 }
 
-                // Subtitle picker in fullscreen
                 AnimatedVisibility(
                     visible = showSubtitlePicker,
                     enter = fadeIn(), exit = fadeOut(),
@@ -266,7 +261,6 @@ internal fun MobileDetailHero(
         }
     }
 
-    // Hero box
     val heroHeight = (configuration.screenWidthDp.dp * 0.62f).coerceIn(236.dp, 340.dp)
     Box(modifier = Modifier.fillMaxWidth().height(heroHeight)) {
         when (val state = trailerState) {
@@ -300,7 +294,6 @@ internal fun MobileDetailHero(
                             else showControls = !showControls
                         }
                 ) {
-                    // Play/pause centre button
                     AnimatedVisibility(
                         visible = showControls || !isPlaying,
                         enter = fadeIn(), exit = fadeOut(),
@@ -322,7 +315,6 @@ internal fun MobileDetailHero(
                         }
                     }
 
-                    // Bottom-right buttons: subtitle + fullscreen
                     AnimatedVisibility(
                         visible = showControls || !isPlaying,
                         enter = fadeIn(), exit = fadeOut(),
@@ -355,7 +347,6 @@ internal fun MobileDetailHero(
                     }
                 }
 
-                // Subtitle picker
                 AnimatedVisibility(
                     visible = showSubtitlePicker,
                     enter = fadeIn(), exit = fadeOut(),
