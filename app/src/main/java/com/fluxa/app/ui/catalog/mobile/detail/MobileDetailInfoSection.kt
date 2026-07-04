@@ -102,7 +102,7 @@ internal fun MobileDetailInfoSection(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = it,
-                            color = Color(0xFF45D483),
+                            color = FluxaColors.releaseGreen,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         )

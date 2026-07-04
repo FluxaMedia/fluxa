@@ -120,7 +120,7 @@ fun WatchlistScreen(
             userCollections = userCollections
         )
     }
-    Box(modifier = Modifier.fillMaxSize().background(if (amoledMode) Color.Black else Color(0xFF0A0A0A))) {
+    Box(modifier = Modifier.fillMaxSize().background(if (amoledMode) Color.Black else FluxaColors.background)) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

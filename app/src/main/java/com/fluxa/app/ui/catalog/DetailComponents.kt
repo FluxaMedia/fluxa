@@ -171,7 +171,7 @@ fun DetailHeaderContentOfficial(
         scheduleLabel?.let {
             Text(
                 text = it,
-                color = Color(0xFF45D483),
+                color = FluxaColors.releaseGreen,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )

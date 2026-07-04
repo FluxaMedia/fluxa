@@ -459,7 +459,7 @@ internal fun MobileEpisodeRow(
                                     modifier = Modifier.height(14.dp).widthIn(max = 52.dp),
                                     contentScale = ContentScale.Fit
                                 )
-                                Text(text = rating, color = Color(0xFFF5C518), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(text = rating, color = FluxaColors.imdbYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
