@@ -56,7 +56,7 @@ internal fun MobileLibraryDetailPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onBack) {
-                        Icon(FluxaIcons.ArrowBack, null, tint = Color.White)
+                        Icon(FluxaIcons.ArrowBack, AppStrings.t(lang, "common.back"), tint = Color.White)
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)

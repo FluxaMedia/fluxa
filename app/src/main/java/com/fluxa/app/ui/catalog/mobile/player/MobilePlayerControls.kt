@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -103,7 +104,8 @@ internal fun MobilePlayerUIContent(
             PlayerTopIconButton(
                 icon = FluxaIcons.ArrowBack,
                 onClick = onClose,
-                modifier = Modifier.align(Alignment.TopStart)
+                modifier = Modifier.align(Alignment.TopStart),
+                contentDescription = AppStrings.t(lang, "common.back")
             )
             Column(
                 modifier = Modifier
@@ -155,9 +157,9 @@ internal fun MobilePlayerUIContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                PlayerTopIconButton(FluxaIcons.Cast, onCast)
-                PlayerTopIconButton(FluxaIcons.OpenInNew, onOpenInExternalPlayer)
-                PlayerTopIconButton(FluxaIcons.PictureInPictureAlt, onPictureInPicture)
+                PlayerTopIconButton(FluxaIcons.Cast, onCast, contentDescription = AppStrings.t(lang, "auto.cast"))
+                PlayerTopIconButton(FluxaIcons.OpenInNew, onOpenInExternalPlayer, contentDescription = AppStrings.t(lang, "common.external_player"))
+                PlayerTopIconButton(FluxaIcons.PictureInPictureAlt, onPictureInPicture, contentDescription = AppStrings.t(lang, "common.picture_in_picture"))
             }
         }
 

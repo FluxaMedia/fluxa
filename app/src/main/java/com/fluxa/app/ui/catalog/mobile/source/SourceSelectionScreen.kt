@@ -245,7 +245,7 @@ fun MobileSourceSelectionScreen(
                                 .clip(CircleShape)
                                 .background(Color.Black.copy(alpha = 0.24f))
                         ) {
-                            Icon(FluxaIcons.ArrowBack, null, tint = Color.White)
+                            Icon(FluxaIcons.ArrowBack, AppStrings.t(lang, "common.back"), tint = Color.White)
                         }
                         if (logoUrl != null && !logoLoadFailed) {
                             AsyncImage(

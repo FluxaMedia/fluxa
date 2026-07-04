@@ -80,7 +80,7 @@ fun MobileProfileEditScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(FluxaIcons.ArrowBack, null)
+                        Icon(FluxaIcons.ArrowBack, AppStrings.t(lang, "common.back"))
                     }
                 },
                 actions = {

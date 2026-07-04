@@ -54,7 +54,7 @@ private fun Modifier.overlayAboveBottom(gap: androidx.compose.ui.unit.Dp): Modif
 }
 
 @Composable
-internal fun PlayerTopIconButton(icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun PlayerTopIconButton(icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier, contentDescription: String? = null) {
     Box(
         modifier = modifier
             .size(34.dp)
@@ -64,7 +64,7 @@ internal fun PlayerTopIconButton(icon: ImageVector, onClick: () -> Unit, modifie
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription, tint = Color.White, modifier = Modifier.size(18.dp))
     }
 }
 

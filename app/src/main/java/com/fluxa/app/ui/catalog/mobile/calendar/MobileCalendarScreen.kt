@@ -135,7 +135,7 @@ fun MobileCalendarScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { visibleMonth = visibleMonth.shiftMonth(-1) }) {
-                    Icon(FluxaIcons.ChevronLeft, null, tint = Color.White)
+                    Icon(FluxaIcons.ChevronLeft, AppStrings.t(lang, "common.previous_month"), tint = Color.White)
                 }
                 Text(
                     text = monthTitle,
@@ -167,7 +167,7 @@ fun MobileCalendarScreen(
                     )
                 }
                 IconButton(onClick = { visibleMonth = visibleMonth.shiftMonth(1) }) {
-                    Icon(FluxaIcons.ChevronRight, null, tint = Color.White)
+                    Icon(FluxaIcons.ChevronRight, AppStrings.t(lang, "common.next_month"), tint = Color.White)
                 }
             }
         }

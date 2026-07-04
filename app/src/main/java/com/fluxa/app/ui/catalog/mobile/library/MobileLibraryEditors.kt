@@ -196,7 +196,7 @@ internal fun LibraryCollectionEditorPage(
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onDismiss) { Icon(FluxaIcons.ArrowBack, null, tint = Color.White) }
+                    IconButton(onClick = onDismiss) { Icon(FluxaIcons.ArrowBack, AppStrings.t(lang, "common.back"), tint = Color.White) }
                     Text(
                         text = if (initial.title.isBlank()) AppStrings.t(lang, "auto.new_collection") else AppStrings.t(lang, "auto.edit_collection"),
                         color = Color.White,
@@ -395,7 +395,7 @@ private fun LibraryFolderEditorPage(
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onDismiss) { Icon(FluxaIcons.ArrowBack, null, tint = Color.White) }
+                    IconButton(onClick = onDismiss) { Icon(FluxaIcons.ArrowBack, AppStrings.t(lang, "common.back"), tint = Color.White) }
                     Text(text = AppStrings.t(lang, "library.folder"), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
                 }
             }

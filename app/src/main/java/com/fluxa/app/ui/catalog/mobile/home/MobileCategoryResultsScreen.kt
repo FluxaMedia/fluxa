@@ -125,7 +125,7 @@ internal fun MobileCategoryResultsContent(
                 onClick = onBack,
                 modifier = Modifier.size(44.dp).background(Color.White.copy(alpha = 0.06f), CircleShape)
             ) {
-                Icon(FluxaIcons.ArrowBack, null, tint = Color.White)
+                Icon(FluxaIcons.ArrowBack, AppStrings.t(lang, "common.back"), tint = Color.White)
             }
             Text(
                 text = title,
