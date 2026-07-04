@@ -21,12 +21,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -137,6 +136,7 @@ internal fun MobileCategoryResultsContent(
             )
         }
 
+        val skeletonBrush = rememberShimmerBrush()
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             state = gridState,
@@ -146,10 +146,8 @@ internal fun MobileCategoryResultsContent(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             if (items.isEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color.White)
-                    }
+                items(count = 9) {
+                    PosterCardSkeleton(cardWidth, cardImageHeight, !hideTitles, skeletonBrush)
                 }
             }
             itemsIndexed(
