@@ -35,6 +35,17 @@ internal fun downloadSubtitleLabel(value: String, lang: String): String {
         ?: AppStrings.t(lang, "settings.download_subtitle_preferred")
 }
 
+internal fun torrentSpeedPresetOptions(lang: String): List<ChoiceOption> = listOf(
+    ChoiceOption("default", AppStrings.t(lang, "settings.torrent_speed_default")),
+    ChoiceOption("fast", AppStrings.t(lang, "settings.torrent_speed_fast")),
+    ChoiceOption("ultra_fast", AppStrings.t(lang, "settings.torrent_speed_ultra_fast"))
+)
+
+internal fun torrentSpeedPresetLabel(value: String, lang: String): String {
+    return torrentSpeedPresetOptions(lang).firstOrNull { it.value == value }?.label
+        ?: AppStrings.t(lang, "settings.torrent_speed_default")
+}
+
 internal fun selectStreamIndex(
     streams: List<Stream>,
     currentVideoId: String?,

@@ -497,6 +497,8 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val payload = effect.payload
         val url = payload.string("url")
         val stream = payload.objectValue("stream")?.let { gson.fromJson(gson.toJsonTree(it), Stream::class.java) }
+        val activeProfile = profileManager.getLastActiveProfileId()
+            ?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
         val result = suspendCancellableCoroutine<TorrentStreamResult> { continuation ->
             TorrentStreamManager.getInstance(context).startStream(
                 link = url,
@@ -506,7 +508,8 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 preferredFilename = payload.stringOrNull("preferredFilename") ?: stream?.effectiveFilename,
                 sources = payload.list("sources").mapNotNull { it?.toString() }.ifEmpty { stream?.sources.orEmpty() },
                 fileSizeBytes = stream?.effectiveVideoSize ?: stream?.videoSize ?: 0L,
-                durationMs = payload.number("durationMs")?.toLong() ?: 0L
+                durationMs = payload.number("durationMs")?.toLong() ?: 0L,
+                wifiOnly = activeProfile?.safeTorrentWifiOnly == true
             ) { torrentResult ->
                 if (continuation.isActive) continuation.resume(torrentResult)
             }

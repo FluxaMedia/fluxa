@@ -164,6 +164,19 @@ internal fun AddonSettings(profile: UserProfile, lang: String, onManageAddons: (
             icon = FluxaIcons.Extension,
             onClick = onManageAddons
         )
+        SettingsChoiceTile(
+            title = AppStrings.t(lang, "auto.torrent_speed"),
+            subtitle = AppStrings.t(lang, "settings.torrent_speed_desc"),
+            options = torrentSpeedPresetOptions(lang),
+            selected = profile.safeTorrentSpeedPreset,
+            onSelect = { onUpdateProfile(profile.sanitizedUpdate(torrentSpeedPreset = it)) }
+        )
+        SettingsToggleTile(
+            title = AppStrings.t(lang, "settings.torrent_wifi_only"),
+            subtitle = AppStrings.t(lang, "settings.torrent_wifi_only_desc"),
+            checked = profile.safeTorrentWifiOnly,
+            onToggle = { onUpdateProfile(profile.copy(torrentWifiOnly = it)) }
+        )
     }
 }
 

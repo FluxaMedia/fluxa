@@ -263,7 +263,7 @@ internal fun MobileSettingsHub(
                             icon = category.icon,
                             onClick = {
                                 when (category.id) {
-                                    "addons" -> onManageAddons()
+                                    "addons" -> onNavigate("addons")
                                     "subtitles" -> onNavigate("subtitles")
                                     "advanced_settings" -> onNavigate("advanced_settings")
                                     "developer" -> onNavigate("developer")
