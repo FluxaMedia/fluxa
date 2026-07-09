@@ -171,6 +171,8 @@ class StremioRepository @Inject constructor(
 
     suspend fun exchangeSimklCode(code: String): ExternalOAuthTokenResponse = oauthClient.exchangeSimklCode(code)
 
+    suspend fun exchangeAnilistCode(code: String): ExternalOAuthTokenResponse = oauthClient.exchangeAnilistCode(code)
+
     suspend fun getExternalContinueWatching(profile: UserProfile, language: String = profile.safeLanguage): List<Meta> =
         externalLibraryClient.getExternalContinueWatching(profile, language)
 

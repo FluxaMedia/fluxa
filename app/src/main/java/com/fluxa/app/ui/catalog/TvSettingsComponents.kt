@@ -67,6 +67,7 @@ internal fun SettingsContent(
     onConnectTrakt: () -> Unit,
     onConnectMal: () -> Unit,
     onConnectSimkl: () -> Unit,
+    onConnectAnilist: () -> Unit,
     onManageAddons: () -> Unit,
     onReboot: () -> Unit,
     onUpdateProfile: (UserProfile) -> Unit,
@@ -74,7 +75,7 @@ internal fun SettingsContent(
 ) {
     val profileValue = profile ?: return
     when (tabId) {
-        "account" -> AccountSettings(profileValue, lang, onLogout, onConnectTrakt, onConnectMal, onConnectSimkl, onUpdateProfile)
+        "account" -> AccountSettings(profileValue, lang, onLogout, onConnectTrakt, onConnectMal, onConnectSimkl, onConnectAnilist, onUpdateProfile)
         "general" -> GeneralSettings(profileValue, lang, onUpdateProfile)
         "appearance" -> {
             val categories by viewModel.categories.collectAsStateWithLifecycle()

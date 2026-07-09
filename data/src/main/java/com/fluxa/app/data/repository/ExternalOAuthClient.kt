@@ -83,4 +83,15 @@ class ExternalOAuthClient @Inject constructor(
             redirectUri = "fluxa://oauth/simkl"
         )
     }
+
+    suspend fun exchangeAnilistCode(code: String): ExternalOAuthTokenResponse {
+        return traktApi.exchangeAnilistCode(
+            com.fluxa.app.data.remote.AnilistTokenRequest(
+                client_id = BuildConfig.ANILIST_CLIENT_ID,
+                client_secret = BuildConfig.ANILIST_CLIENT_SECRET,
+                redirect_uri = AnilistIntegration.REDIRECT_URI,
+                code = code
+            )
+        )
+    }
 }

@@ -150,6 +150,9 @@ interface TraktApi {
         @Field("redirect_uri") redirectUri: String
     ): ExternalOAuthTokenResponse
 
+    @POST("https://anilist.co/api/v2/oauth/token")
+    suspend fun exchangeAnilistCode(@Body request: AnilistTokenRequest): ExternalOAuthTokenResponse
+
     @GET("https://api.myanimelist.net/v2/users/@me/animelist")
     suspend fun getMalAnimeList(
         @Header("Authorization") token: String,

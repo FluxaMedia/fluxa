@@ -94,6 +94,7 @@
                 <data android:scheme="fluxa" android:host="oauth" android:path="/trakt" />
                 <data android:scheme="fluxa" android:host="oauth" android:path="/mal" />
                 <data android:scheme="fluxa" android:host="oauth" android:path="/simkl" />
+                <data android:scheme="fluxa" android:host="oauth" android:path="/anilist" />
             </intent-filter>
             
         </activity>

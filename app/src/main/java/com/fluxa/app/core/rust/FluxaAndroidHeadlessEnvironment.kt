@@ -978,6 +978,14 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 val response = repository.exchangeSimklCode(payload.string("code"))
                 profile.copy(simklAccessToken = response.accessToken)
             }
+            "anilist" -> {
+                val response = repository.exchangeAnilistCode(payload.string("code"))
+                profile.copy(
+                    anilistAccessToken = response.accessToken,
+                    anilistRefreshToken = response.refreshToken,
+                    anilistTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
+                )
+            }
             else -> return error(effect, "unsupported_auth_provider")
         }
         return ok(effect, mapOf("profile" to updated))

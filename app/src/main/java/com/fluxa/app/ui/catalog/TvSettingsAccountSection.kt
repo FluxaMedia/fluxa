@@ -61,6 +61,7 @@ internal fun AccountSettings(
     onConnectTrakt: () -> Unit,
     onConnectMal: () -> Unit,
     onConnectSimkl: () -> Unit,
+    onConnectAnilist: () -> Unit,
     onUpdateProfile: (UserProfile) -> Unit
 ) {
     var tmdbExpanded by remember { mutableStateOf(false) }
@@ -101,7 +102,19 @@ internal fun AccountSettings(
             value = if (!profile.simklAccessToken.isNullOrBlank()) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
             onClick = onConnectSimkl
         )
-        if (!profile.traktAccessToken.isNullOrBlank() || !profile.malAccessToken.isNullOrBlank() || !profile.simklAccessToken.isNullOrBlank()) {
+        SettingsConnectionTile(
+            title = AppStrings.t(lang, "brand.anilist"),
+            iconRes = com.fluxa.app.R.drawable.ic_anilist,
+            value = if (!profile.anilistAccessToken.isNullOrBlank()) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+            onClick = {
+                if (!profile.anilistAccessToken.isNullOrBlank()) {
+                    onUpdateProfile(profile.copy(anilistAccessToken = null, anilistRefreshToken = null, anilistTokenExpiresAt = null))
+                } else {
+                    onConnectAnilist()
+                }
+            }
+        )
+        if (!profile.traktAccessToken.isNullOrBlank() || !profile.malAccessToken.isNullOrBlank() || !profile.simklAccessToken.isNullOrBlank() || !profile.anilistAccessToken.isNullOrBlank()) {
             SettingsActionTile(
                 title = AppStrings.t(lang, "auto.disconnect"),
                 subtitle = AppStrings.t(lang, "integration.connected_accounts"),
@@ -118,7 +131,10 @@ internal fun AccountSettings(
                             traktLastWatchlistCount = null,
                             malAccessToken = null,
                             malRefreshToken = null,
-                            simklAccessToken = null
+                            simklAccessToken = null,
+                            anilistAccessToken = null,
+                            anilistRefreshToken = null,
+                            anilistTokenExpiresAt = null
                         )
                     )
                 }

@@ -1432,6 +1432,10 @@ class HomeViewModel @Inject constructor(
         exchangeAuthCode("simkl", code, null, onProfileUpdated, onComplete)
     }
 
+    fun exchangeAnilistCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) {
+        exchangeAuthCode("anilist", code, null, onProfileUpdated, onComplete)
+    }
+
     private fun exchangeAuthCode(
         provider: String,
         code: String,

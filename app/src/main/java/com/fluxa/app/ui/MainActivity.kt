@@ -92,6 +92,7 @@ class MainActivity : FragmentActivity() {
     private val traktAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val malAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val simklAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
+    private val anilistAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private var pendingMalCodeVerifier: String? = null
     private val oauthPrefs by lazy { getSharedPreferences("fluxa_oauth", MODE_PRIVATE) }
 
@@ -123,6 +124,9 @@ class MainActivity : FragmentActivity() {
             }
             if (isOAuthRedirect && data.lastPathSegment == "simkl") {
                 data.getQueryParameter("code")?.let { simklAuthFlow.tryEmit(it) }
+            }
+            if (isOAuthRedirect && data.lastPathSegment == "anilist") {
+                data.getQueryParameter("code")?.let { anilistAuthFlow.tryEmit(it) }
             }
         }
     }
@@ -285,6 +289,18 @@ class MainActivity : FragmentActivity() {
                                 profileManager.saveProfile(updated)
                             }) { success ->
                                 android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, if (success) "toast.simkl_connected" else "toast.simkl_connect_failed"), android.widget.Toast.LENGTH_SHORT).show()
+                                activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(Unit) {
+                        anilistAuthFlow.collect { code ->
+                            homeViewModel.exchangeAnilistCode(code, onProfileUpdated = { updated ->
+                                activeProfile = updated
+                                profileManager.saveProfile(updated)
+                            }) { success ->
+                                android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, if (success) "toast.anilist_connected" else "toast.anilist_connect_failed"), android.widget.Toast.LENGTH_SHORT).show()
                                 activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
                             }
                         }

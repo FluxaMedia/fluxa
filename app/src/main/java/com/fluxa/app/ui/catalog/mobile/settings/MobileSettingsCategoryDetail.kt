@@ -80,6 +80,7 @@ internal fun MobileCategoryDetail(
     onConnectTrakt: () -> Unit,
     onConnectMal: () -> Unit,
     onConnectSimkl: () -> Unit,
+    onConnectAnilist: () -> Unit,
     onManageAddons: () -> Unit,
     onWatchlistClick: () -> Unit,
     onOpenDownload: (OfflineDownloadItem) -> Unit = {},
@@ -250,7 +251,20 @@ internal fun MobileCategoryDetail(
                                 onClick = onConnectSimkl,
                                 prominent = true
                             )
-                            if (!profile.traktAccessToken.isNullOrBlank() || !profile.malAccessToken.isNullOrBlank() || !profile.simklAccessToken.isNullOrBlank()) {
+                            MobileActionRow(
+                                title = AppStrings.t(lang, "brand.anilist"),
+                                iconRes = R.drawable.ic_anilist,
+                                value = if (!profile.anilistAccessToken.isNullOrBlank()) AppStrings.t(lang, "auto.sync_active") else AppStrings.t(lang, "auto.connect_anilist_account"),
+                                onClick = {
+                                    if (!profile.anilistAccessToken.isNullOrBlank()) {
+                                        onUpdateProfile(profile.copy(anilistAccessToken = null, anilistRefreshToken = null, anilistTokenExpiresAt = null))
+                                    } else {
+                                        onConnectAnilist()
+                                    }
+                                },
+                                prominent = true
+                            )
+                            if (!profile.traktAccessToken.isNullOrBlank() || !profile.malAccessToken.isNullOrBlank() || !profile.simklAccessToken.isNullOrBlank() || !profile.anilistAccessToken.isNullOrBlank()) {
                             MobileActionRow(
                                 title = AppStrings.t(lang, "auto.disconnect"),
                                 icon = FluxaIcons.Logout,
@@ -267,7 +281,10 @@ internal fun MobileCategoryDetail(
                                                 traktLastWatchlistCount = null,
                                                 malAccessToken = null,
                                                 malRefreshToken = null,
-                                                simklAccessToken = null
+                                                simklAccessToken = null,
+                                                anilistAccessToken = null,
+                                                anilistRefreshToken = null,
+                                                anilistTokenExpiresAt = null
                                             )
                                         )
                                     }

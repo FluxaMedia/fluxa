@@ -42,6 +42,8 @@ android {
         buildConfigField("String", "MAL_CLIENT_SECRET", "\"${secret("MAL_CLIENT_SECRET")}\"")
         buildConfigField("String", "SIMKL_CLIENT_ID", "\"${secret("SIMKL_CLIENT_ID")}\"")
         buildConfigField("String", "SIMKL_CLIENT_SECRET", "\"${secret("SIMKL_CLIENT_SECRET")}\"")
+        buildConfigField("String", "ANILIST_CLIENT_ID", "\"${secret("ANILIST_CLIENT_ID")}\"")
+        buildConfigField("String", "ANILIST_CLIENT_SECRET", "\"${secret("ANILIST_CLIENT_SECRET")}\"")
         buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL", "https://api.nuvio.tv/")}\"")
         buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY", "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN")}\"")
 
@@ -243,7 +245,7 @@ val rustStreamingTargetTasks = rustAndroidTargets.map { (abi, target, envName) -
             environment("AR_${envName}", file(toolchainBin.resolve("llvm-ar")).absolutePath)
         }
         doLast {
-            val builtLibrary = file("$rustStreamingCrateDir/target/$target/$rustProfile/libfluxa_streaming_engine.so")
+            val builtLibrary = file("$rustCrateDir/target/$target/$rustProfile/libfluxa_streaming_engine.so")
             if (!builtLibrary.exists()) {
                 throw GradleException("Rust build did not produce ${builtLibrary.absolutePath}")
             }

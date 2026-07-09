@@ -75,6 +75,9 @@ internal fun SettingsRoute(
                 connectSimkl(context, activeProfile)
             }
         },
+        onConnectAnilist = {
+            connectAnilist(context, activeProfile)
+        },
         onManageAddons = { navigator.navigateTo(Screen.AddonStore) },
         onWatchlistClick = { navigator.navigateTo(Screen.Watchlist) },
         onOpenDownload = { item ->
@@ -183,6 +186,17 @@ private fun connectSimkl(context: Context, activeProfile: UserProfile?) {
     } else {
         val redirect = URLEncoder.encode("app://simkl", "UTF-8")
         val url = "https://simkl.com/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirect"
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+}
+
+private fun connectAnilist(context: Context, activeProfile: UserProfile?) {
+    val clientId = BuildConfig.ANILIST_CLIENT_ID
+    if (clientId.isBlank()) {
+        Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.anilist_client_missing"), Toast.LENGTH_SHORT).show()
+    } else {
+        val redirect = URLEncoder.encode(com.fluxa.app.data.repository.AnilistIntegration.REDIRECT_URI, "UTF-8")
+        val url = "https://anilist.co/api/v2/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirect"
         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url)))
     }
 }

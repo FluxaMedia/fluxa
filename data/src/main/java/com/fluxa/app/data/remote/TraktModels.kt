@@ -188,6 +188,14 @@ data class ExternalOAuthTokenResponse(
     @SerializedName("expires_in") val expiresIn: Long? = null
 )
 
+data class AnilistTokenRequest(
+    val grant_type: String = "authorization_code",
+    val client_id: String,
+    val client_secret: String,
+    val redirect_uri: String,
+    val code: String
+)
+
 data class MalAnimeListResponse(
     val data: List<MalAnimeListEntry> = emptyList()
 )
