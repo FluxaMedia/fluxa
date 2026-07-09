@@ -1,6 +1,8 @@
 package com.fluxa.app.player
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
 import com.fluxa.app.common.Constants
 import com.google.gson.Gson
@@ -14,6 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -38,20 +42,30 @@ class TorrentStreamManager private constructor() {
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)
         .build()
+    private val healthClient = OkHttpClient.Builder()
+        .connectTimeout(2, TimeUnit.SECONDS)
+        .readTimeout(2, TimeUnit.SECONDS)
+        .writeTimeout(2, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
+        .build()
     private val gson = Gson()
     private val api = TorrServerApi.create()
+    private val engineLock = Mutex()
     private var statusJob: Job? = null
     @Volatile private var appliedSettings: TorrSettings? = null
     @Volatile private var pendingSettings = defaultSettings()
+    @Volatile private var appContext: Context? = null
+    @Volatile private var engine: TorrServerEngine? = null
 
     private val _status = MutableStateFlow(TorrentStreamStatus())
     val status: StateFlow<TorrentStreamStatus> = _status.asStateFlow()
 
     // Called once from Application.onCreate() — starts engine in app process, no service, no notification.
     fun startEngineEarly(context: Context) {
+        attachContext(context)
         scope.launch {
             runCatching {
-                TorrServerEngine(context.applicationContext).start()
+                ensureEngineReady()
                 Log.d(TAG, "Torrent engine started early (in-process, no notification)")
             }.onFailure { Log.w(TAG, "Early engine start failed", it) }
         }
@@ -69,6 +83,7 @@ class TorrentStreamManager private constructor() {
     fun preWarm(link: String, title: String, fileIdx: Int? = null) {
         scope.launch {
             runCatching {
+                ensureEngineReady()
                 val plan = TorrentCorePolicy.plan(
                     link = link,
                     title = title,
@@ -100,10 +115,16 @@ class TorrentStreamManager private constructor() {
         sources: List<String>?,
         fileSizeBytes: Long = 0L,
         durationMs: Long = 0L,
+        wifiOnly: Boolean = false,
         callback: (TorrentStreamResult) -> Unit
     ) {
         scope.launch {
             try {
+                if (wifiOnly && !isOnUnmeteredNetwork()) {
+                    callback(TorrentStreamResult.Error("Torrent streaming is restricted to Wi-Fi in Settings"))
+                    return@launch
+                }
+                ensureEngineReady()
                 applySettingsIfChanged()
                 val smartPreload = estimatePreloadMb(fileSizeBytes, durationMs)
                 if (smartPreload != appliedSettings?.preloadSize) {
@@ -162,6 +183,7 @@ class TorrentStreamManager private constructor() {
     private suspend fun applySettingsIfChanged() {
         val desired = pendingSettings
         if (desired == appliedSettings) return
+        ensureEngineReady()
         runCatching { api.updateSettings(desired) }
             .onSuccess { appliedSettings = desired }
             .onFailure { Log.w(TAG, "TorrServer settings update failed", it) }
@@ -207,6 +229,59 @@ class TorrentStreamManager private constructor() {
         }
     }
 
+    private fun attachContext(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    private fun isOnUnmeteredNetwork(): Boolean {
+        val context = appContext ?: return true
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return true
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+    }
+
+    private suspend fun ensureEngineReady() {
+        engineLock.withLock {
+            if (isEngineHealthy()) return@withLock
+            val context = appContext ?: error("Torrent engine context is unavailable")
+            val current = engine ?: TorrServerEngine(context).also { engine = it }
+            if (!current.isRunning()) {
+                current.start()
+                appliedSettings = null
+            }
+            if (isEngineHealthy()) return@withLock
+
+            Log.w(TAG, "Torrent engine health check failed. Restarting engine.")
+            current.stop()
+            val restarted = TorrServerEngine(context).also { engine = it }
+            restarted.start()
+            appliedSettings = null
+            if (!isEngineHealthy()) {
+                error("Torrent engine health check failed after restart")
+            }
+        }
+    }
+
+    private suspend fun isEngineHealthy(): Boolean = withContext(Dispatchers.IO) {
+        requestHealth("${Constants.LocalServer.TORR_SERVER_BASE_URL}/health") ||
+            requestHealth(Constants.LocalServer.TORR_SERVER_BASE_URL)
+    }
+
+    private fun requestHealth(url: String): Boolean {
+        return runCatching {
+            healthClient.newCall(
+                Request.Builder()
+                    .url(url)
+                    .get()
+                    .build()
+            ).execute().use { response ->
+                response.isSuccessful
+            }
+        }.getOrDefault(false)
+    }
+
     // 1% of file size, clamped between 3 MB and 24 MB.
     // Falls back to the speed-preset default when file size is unknown.
     private fun estimatePreloadMb(fileSizeBytes: Long, durationMs: Long): Long {
@@ -226,9 +301,9 @@ class TorrentStreamManager private constructor() {
         @Volatile private var instance: TorrentStreamManager? = null
 
         fun getInstance(context: Context): TorrentStreamManager =
-            instance ?: synchronized(this) {
+            (instance ?: synchronized(this) {
                 instance ?: TorrentStreamManager().also { instance = it }
-            }
+            }).also { it.attachContext(context) }
 
         // Overload for callers that don't have a context (engine already started)
         fun getInstance(): TorrentStreamManager =
