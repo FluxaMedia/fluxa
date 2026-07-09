@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun DownloadSettings(profile: UserProfile, lang: String, onUpdateProfile: (UserProfile) -> Unit) {
@@ -74,6 +75,12 @@ internal fun SubtitleSettings(profile: UserProfile, lang: String, onUpdateProfil
             subtitle = AppStrings.t(lang, "auto.enable_subtitles_automatically_when_availabl"),
             checked = profile.safeAutoEnableSubtitles,
             onToggle = { onUpdateProfile(profile.copy(autoEnableSubtitles = it)) }
+        )
+        SettingsToggleTile(
+            title = AppStrings.t(lang, "settings.subtitle_shadow"),
+            subtitle = AppStrings.t(lang, "settings.subtitle_shadow_desc"),
+            checked = profile.safeSubtitleShadow,
+            onToggle = { onUpdateProfile(profile.copy(subtitleShadow = it)) }
         )
         SettingsChoiceTile(
             title = AppStrings.t(lang, "auto.preferred_subtitle_language"),
@@ -161,9 +168,41 @@ internal fun AddonSettings(profile: UserProfile, lang: String, onManageAddons: (
 }
 
 @Composable
-internal fun SystemSettings(profile: UserProfile, lang: String, onReboot: () -> Unit, onLogout: () -> Unit) {
+internal fun SystemSettings(profile: UserProfile, lang: String, onReboot: () -> Unit, onLogout: () -> Unit, onUpdateProfile: (UserProfile) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateStatus by remember { mutableStateOf<String?>(null) }
     SettingsSection(AppStrings.t(lang, "auto.system"), AppStrings.t(lang, "auto.app_and_device_actions")) {
-        SettingsInfoTile(AppStrings.t(lang, "auto.version"), "1.2.5", FluxaIcons.Settings)
+        SettingsInfoTile(
+            AppStrings.t(lang, "auto.version"),
+            "${com.fluxa.app.BuildConfig.VERSION_NAME} (${com.fluxa.app.BuildConfig.VERSION_CODE})",
+            FluxaIcons.Settings
+        )
+        SettingsToggleTile(
+            title = AppStrings.t(lang, "settings.automatic_updates"),
+            subtitle = AppStrings.t(lang, "settings.automatic_updates_desc"),
+            checked = profile.safeAutomaticUpdates,
+            onToggle = { onUpdateProfile(profile.copy(automaticUpdates = it)) }
+        )
+        SettingsActionTile(
+            title = AppStrings.t(lang, "settings.check_for_updates"),
+            subtitle = updateStatus ?: AppStrings.t(lang, "settings.check_for_updates_desc"),
+            icon = FluxaIcons.Settings,
+            onClick = {
+                if (!isCheckingUpdate) {
+                    isCheckingUpdate = true
+                    updateStatus = AppStrings.t(lang, "settings.checking_for_updates")
+                    scope.launch {
+                        val update = UpdateManager.checkUpdate()
+                        isCheckingUpdate = false
+                        updateStatus = if (update != null)
+                            AppStrings.format(lang, "settings.update_available", update.versionName)
+                        else
+                            AppStrings.t(lang, "settings.up_to_date")
+                    }
+                }
+            }
+        )
         SettingsActionTile(
             title = AppStrings.t(lang, "auto.restart_app"),
             subtitle = AppStrings.t(lang, "auto.refresh_the_app_after_playback_or_network_ch"),

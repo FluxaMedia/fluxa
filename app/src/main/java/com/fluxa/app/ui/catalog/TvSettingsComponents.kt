@@ -113,7 +113,7 @@ internal fun SettingsContent(
         }
         "downloads" -> DownloadSettings(profileValue, lang, onUpdateProfile)
         "addons" -> AddonSettings(profileValue, lang, onManageAddons, onUpdateProfile)
-        "system" -> SystemSettings(profileValue, lang, onReboot, onLogout)
+        "system" -> SystemSettings(profileValue, lang, onReboot, onLogout, onUpdateProfile)
         "developer" -> DeveloperSettings(lang)
     }
 }

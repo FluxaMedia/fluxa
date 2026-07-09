@@ -214,7 +214,8 @@ fun SettingsScreen(
                         onBack = onBack,
                         onLogout = onLogout,
                         onManageAddons = onManageAddons,
-                        onUpdateInfoChanged = onUpdateInfoChanged
+                        onUpdateInfoChanged = onUpdateInfoChanged,
+                        onUpdateProfile = onUpdateProfile
                     )
                 } else mobileCategory?.let { category ->
                     MobileCategoryDetail(

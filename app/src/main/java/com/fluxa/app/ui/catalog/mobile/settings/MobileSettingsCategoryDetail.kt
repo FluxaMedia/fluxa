@@ -295,6 +295,12 @@ internal fun MobileCategoryDetail(
                     item {
                         MobileSettingsGroup(AppStrings.t(lang, "settings.notifications")) {
                             MobileToggleRow(
+                                title = AppStrings.t(lang, "settings.enable_notifications"),
+                                subtitle = AppStrings.t(lang, "settings.enable_notifications_desc"),
+                                checked = profile.safeNotificationsEnabled,
+                                onToggle = { onUpdateProfile(profile.sanitizedUpdate(notificationsEnabled = !profile.safeNotificationsEnabled)) }
+                            )
+                            MobileToggleRow(
                                 title = AppStrings.t(lang, "settings.alert_new_episodes"),
                                 subtitle = AppStrings.t(lang, "settings.alert_new_episodes_desc"),
                                 checked = profile.safeAlertNewEpisodes,
@@ -395,6 +401,21 @@ internal fun MobileCategoryDetail(
                                 checked = profile.safeHomeSeasonPostersOnHero,
                                 onToggle = { onUpdateProfile(profile.copy(homeSeasonPostersOnHero = !profile.safeHomeSeasonPostersOnHero)) }
                             )
+                            MobileToggleRow(
+                                title = AppStrings.t(lang, "settings.trailer_on_home_hero"),
+                                subtitle = AppStrings.t(lang, "settings.trailer_on_home_hero_desc"),
+                                checked = profile.safeTrailerOnHomeHeroEnabled,
+                                onToggle = { onUpdateProfile(profile.copy(trailerOnHomeHeroEnabled = !profile.safeTrailerOnHomeHeroEnabled)) }
+                            )
+                            if (profile.safeTrailerOnHomeHeroEnabled) {
+                                MobileStepperRow(
+                                    title = AppStrings.t(lang, "settings.trailer_on_home_hero_delay"),
+                                    value = "${profile.safeTrailerOnHomeHeroDelaySeconds}s",
+                                    subtitle = AppStrings.t(lang, "settings.trailer_on_home_hero_delay_desc"),
+                                    onDecrease = { onUpdateProfile(profile.copy(trailerOnHomeHeroDelaySeconds = (profile.safeTrailerOnHomeHeroDelaySeconds - 1).coerceIn(0, 15))) },
+                                    onIncrease = { onUpdateProfile(profile.copy(trailerOnHomeHeroDelaySeconds = (profile.safeTrailerOnHomeHeroDelaySeconds + 1).coerceIn(0, 15))) }
+                                )
+                            }
                         }
                     }
                     item {
@@ -687,6 +708,12 @@ internal fun MobileCategoryDetail(
                                 subtitle = AppStrings.t(lang, "auto.enable_subtitles_automatically_when_availabl"),
                                 checked = profile.safeAutoEnableSubtitles,
                                 onToggle = { onUpdateProfile(profile.copy(autoEnableSubtitles = !profile.safeAutoEnableSubtitles)) }
+                            )
+                            MobileToggleRow(
+                                title = AppStrings.t(lang, "settings.subtitle_shadow"),
+                                subtitle = AppStrings.t(lang, "settings.subtitle_shadow_desc"),
+                                checked = profile.safeSubtitleShadow,
+                                onToggle = { onUpdateProfile(profile.copy(subtitleShadow = !profile.safeSubtitleShadow)) }
                             )
                             MobileSubtitlePreview(profile = profile, lang = lang)
                             MobileStepperRow(

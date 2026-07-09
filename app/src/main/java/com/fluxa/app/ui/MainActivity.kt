@@ -346,6 +346,10 @@ class MainActivity : FragmentActivity() {
                         if (initialProfile == null) {
                             homeViewModel.loadInitialData(null)
                         }
+                    }
+
+                    LaunchedEffect(activeProfile?.safeAutomaticUpdates) {
+                        if (activeProfile?.safeAutomaticUpdates == false) return@LaunchedEffect
                         while (isActive) {
                             val update = UpdateManager.checkUpdate()
                             if (update != null) {

@@ -158,6 +158,21 @@ internal fun AppearanceSettings(profile: UserProfile, lang: String, previewMeta:
             onToggle = { onUpdateProfile(profile.copy(homeSeasonPostersOnHero = it)) }
         )
         SettingsToggleTile(
+            title = AppStrings.t(lang, "settings.trailer_on_home_hero"),
+            subtitle = AppStrings.t(lang, "settings.trailer_on_home_hero_desc"),
+            checked = profile.safeTrailerOnHomeHeroEnabled,
+            onToggle = { onUpdateProfile(profile.copy(trailerOnHomeHeroEnabled = it)) }
+        )
+        if (profile.safeTrailerOnHomeHeroEnabled) {
+            SettingsSecondsSliderTile(
+                title = AppStrings.t(lang, "settings.trailer_on_home_hero_delay"),
+                subtitle = AppStrings.t(lang, "settings.trailer_on_home_hero_delay_desc"),
+                value = profile.safeTrailerOnHomeHeroDelaySeconds,
+                valueRange = 0..15,
+                onValueChange = { onUpdateProfile(profile.copy(trailerOnHomeHeroDelaySeconds = it)) }
+            )
+        }
+        SettingsToggleTile(
             title = AppStrings.t(lang, "auto.continue_watching"),
             subtitle = "",
             checked = profile.safeContinueWatchingEnabled,

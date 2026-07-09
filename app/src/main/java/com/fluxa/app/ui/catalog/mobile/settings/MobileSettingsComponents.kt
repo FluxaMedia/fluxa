@@ -132,7 +132,8 @@ internal fun MobileSettingsHub(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onManageAddons: () -> Unit,
-    onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit = {}
+    onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit = {},
+    onUpdateProfile: (UserProfile) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     var updateDialogMessage by remember { mutableStateOf<String?>(null) }
@@ -275,6 +276,13 @@ internal fun MobileSettingsHub(
                         }
                     }
                     if (isSystemSection) {
+                        MobileToggleRow(
+                            title = AppStrings.t(lang, "settings.automatic_updates"),
+                            subtitle = AppStrings.t(lang, "settings.automatic_updates_desc"),
+                            checked = profile.safeAutomaticUpdates,
+                            onToggle = { onUpdateProfile(profile.sanitizedUpdate(automaticUpdates = !profile.safeAutomaticUpdates)) }
+                        )
+                        MobileSettingsRowDivider()
                         MobileSettingsRow(
                             title = AppStrings.t(lang, "settings.check_for_updates"),
                             subtitle = if (availableUpdate != null)
