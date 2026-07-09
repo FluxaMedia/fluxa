@@ -77,6 +77,7 @@ internal fun MobileCategoryDetail(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onConnectStremio: () -> Unit,
+    onConnectNuvio: () -> Unit,
     onConnectTrakt: () -> Unit,
     onConnectMal: () -> Unit,
     onConnectSimkl: () -> Unit,
@@ -224,6 +225,20 @@ internal fun MobileCategoryDetail(
                                 value = AppStrings.t(lang, "settings.switch_profiles_desc"),
                                 icon = FluxaIcons.AccountCircle,
                                 onClick = onLogout,
+                                prominent = true
+                            )
+                            MobileActionRow(
+                                title = AppStrings.t(lang, "brand.stremio"),
+                                iconRes = R.drawable.ic_stremio,
+                                value = if (!profile.isGuest) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+                                onClick = onConnectStremio,
+                                prominent = true
+                            )
+                            MobileActionRow(
+                                title = AppStrings.t(lang, "brand.nuvio"),
+                                iconRes = R.drawable.ic_nuvio,
+                                value = AppStrings.t(lang, "auto.import_nuvio_account"),
+                                onClick = onConnectNuvio,
                                 prominent = true
                             )
                         }

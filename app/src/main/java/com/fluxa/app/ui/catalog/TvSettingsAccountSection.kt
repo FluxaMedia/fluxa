@@ -58,6 +58,7 @@ internal fun AccountSettings(
     profile: UserProfile,
     lang: String,
     onSwitchProfiles: () -> Unit,
+    onConnectStremio: () -> Unit,
     onConnectTrakt: () -> Unit,
     onConnectMal: () -> Unit,
     onConnectSimkl: () -> Unit,
@@ -74,6 +75,12 @@ internal fun AccountSettings(
             subtitle = AppStrings.t(lang, "settings.switch_profiles_desc"),
             icon = FluxaIcons.AccountCircle,
             onClick = onSwitchProfiles
+        )
+        SettingsConnectionTile(
+            title = AppStrings.t(lang, "brand.stremio"),
+            iconRes = com.fluxa.app.R.drawable.ic_stremio,
+            value = if (!profile.isGuest) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+            onClick = onConnectStremio
         )
     }
     SettingsSection(

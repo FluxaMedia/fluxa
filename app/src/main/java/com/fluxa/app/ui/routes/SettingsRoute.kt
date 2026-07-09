@@ -54,6 +54,7 @@ internal fun SettingsRoute(
             navigator.navigateTo(Screen.Profiles, true)
         },
         onConnectStremio = { navigator.navigateTo(Screen.Login()) },
+        onConnectNuvio = { navigator.navigateTo(Screen.Login(startOnNuvio = true)) },
         onConnectTrakt = {
             if (!activeProfile?.traktAccessToken.isNullOrBlank()) {
                 onShowTraktSheet()
