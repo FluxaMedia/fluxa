@@ -93,6 +93,8 @@ data class UserProfile(
     val autoEnableSubtitles: Boolean? = true,
     val autoSkipIntro: Boolean? = false,
     val autoPlayNextEpisode: Boolean? = true,
+    val autoPlayCountdownSecs: Int? = 10,
+    val autoRetryNextSource: Boolean? = false,
     val nextEpisodeThresholdPercent: Float? = 90f,
     val watchedThresholdPercent: Float? = 80f,
     val seekForwardSeconds: Int? = 10,
@@ -138,6 +140,7 @@ data class UserProfile(
     val tunneledPlayback: Boolean? = false,
     val useIntroDb: Boolean? = true,
     val useAniSkip: Boolean? = true,
+    val useChapterSkip: Boolean? = true,
     val defaultQuality: String? = "1080p",
     val mobileDataUsage: String? = "medium",
     val hdrPlayback: Boolean? = true,
@@ -151,6 +154,7 @@ data class UserProfile(
     val tryBingeGroup: Boolean? = false,
     val mpvCustomOptions: String? = null,
     val animeUseMpv: Boolean? = false,
+    val animePreferJapaneseAudio: Boolean? = false,
     val heroFeedToggles: List<String>? = null,
     val homeFeedToggles: List<String>? = null,
     val topTenFeedToggles: List<String>? = null,
@@ -219,6 +223,8 @@ data class UserProfile(
     val safeAutoEnableSubtitles: Boolean get() = safePrefs.autoEnableSubtitles
     val safeAutoSkipIntro: Boolean get() = safePrefs.autoSkipIntro
     val safeAutoPlayNextEpisode: Boolean get() = safePrefs.autoPlayNextEpisode
+    val safeAutoPlayCountdownSecs: Int get() = (autoPlayCountdownSecs ?: 10).coerceIn(0, 15)
+    val safeAutoRetryNextSource: Boolean get() = autoRetryNextSource ?: false
     val safeNextEpisodeThresholdPercent: Float get() = safePrefs.nextEpisodeThresholdPercent
     val safeWatchedThresholdPercent: Float get() = safePrefs.watchedThresholdPercent
     val safeSeekForwardSeconds: Int get() = safePrefs.seekForwardSeconds.toInt()
@@ -267,6 +273,7 @@ data class UserProfile(
     val safeTunneledPlayback: Boolean get() = safePrefs.tunneledPlayback
     val safeUseIntroDb: Boolean get() = safePrefs.useIntroDb
     val safeUseAniSkip: Boolean get() = safePrefs.useAniSkip
+    val safeUseChapterSkip: Boolean get() = useChapterSkip ?: true
     val safeDefaultQuality: String get() = safePrefs.defaultQuality
     val safeMobileDataUsage: String get() = safePrefs.mobileDataUsage
     val safeHdrPlayback: Boolean get() = safePrefs.hdrPlayback
@@ -280,6 +287,7 @@ data class UserProfile(
     val safeTryBingeGroup: Boolean get() = safePrefs.tryBingeGroup
     val safeMpvCustomOptions: String get() = mpvCustomOptions.orEmpty()
     val safeAnimeUseMpv: Boolean get() = animeUseMpv ?: false
+    val safeAnimePreferJapaneseAudio: Boolean get() = animePreferJapaneseAudio ?: false
     val safeHeroFeedToggles: Set<String> get() = heroFeedToggles?.toSet() ?: defaultHeroFeedKeys
     val safeHomeFeedToggles: Set<String> get() = homeFeedToggles?.toSet() ?: defaultHomeFeedKeys
     val safeTopTenFeedToggles: Set<String> get() = topTenFeedToggles.orEmpty().toSet()

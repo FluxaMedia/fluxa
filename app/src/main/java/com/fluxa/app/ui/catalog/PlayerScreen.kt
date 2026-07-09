@@ -440,7 +440,7 @@ fun PlayerScreen(
     LaunchedEffect(activeEngine, state.currentVideoId) {
         activeEngine?.chapters?.collect { chapters ->
             state.chapters = chapters
-            if (chapters.isNotEmpty() && state.skipSegments.isEmpty()) {
+            if (chapters.isNotEmpty() && state.skipSegments.isEmpty() && activeProfile?.safeUseChapterSkip != false) {
                 val derived = deriveSkipSegmentsFromChapters(chapters)
                 if (derived.isNotEmpty()) {
                     state.skipSegments = derived
@@ -456,7 +456,7 @@ fun PlayerScreen(
         currentUrl = state.currentUrl,
         currentStreamIndex = state.currentStreamIndex,
         currentStreamsSize = state.currentStreams.size,
-        autoFallbackOnStreamError = isCloudstreamPlayback(),
+        autoFallbackOnStreamError = isCloudstreamPlayback() || activeProfile?.safeAutoRetryNextSource == true,
         returnToSourcesOnError = returnToSourcesOnError,
         lang = lang,
         mergeSkipSegments = { newSegments ->
@@ -491,7 +491,7 @@ fun PlayerScreen(
         currentUrl = state.currentUrl,
         currentStreamIndex = state.currentStreamIndex,
         currentStreamsSize = state.currentStreams.size,
-        autoFallbackOnStreamError = isCloudstreamPlayback(),
+        autoFallbackOnStreamError = isCloudstreamPlayback() || activeProfile?.safeAutoRetryNextSource == true,
         useMpvBackend = useMpvBackend,
         isBuffering = state.engine.playback.isBuffering,
         hasStartedPlaying = state.engine.playback.hasStartedPlaying,

@@ -61,6 +61,12 @@ internal fun LazyListScope.mobilePlaybackSettingsSection(
                 checked = profile.safeAnimeUseMpv,
                 onToggle = { onUpdateProfile(profile.sanitizedUpdate(animeUseMpv = !profile.safeAnimeUseMpv)) }
             )
+            MobileToggleRow(
+                title = AppStrings.t(lang, "settings.anime_prefer_japanese_audio"),
+                subtitle = AppStrings.t(lang, "settings.anime_prefer_japanese_audio_desc"),
+                checked = profile.safeAnimePreferJapaneseAudio,
+                onToggle = { onUpdateProfile(profile.copy(animePreferJapaneseAudio = !profile.safeAnimePreferJapaneseAudio)) }
+            )
             MobileChoiceRow(
                 AppStrings.t(lang, "auto.playback_speed"),
                 mobilePlaybackSpeedLabel(profile.safePlaybackSpeed),
@@ -165,6 +171,33 @@ internal fun LazyListScope.mobilePlaybackSettingsSection(
                     onUpdateProfile(profile.sanitizedUpdate(autoplayMode = if (enabled) "next_episode" else "off", autoPlayNextEpisode = enabled))
                 }
             )
+            if (profile.safeAutoplayMode != "off") {
+                MobileChoiceRow(
+                    title = AppStrings.t(lang, "settings.autoplay_countdown"),
+                    value = "${profile.safeAutoPlayCountdownSecs}s",
+                    subtitle = AppStrings.t(lang, "settings.autoplay_countdown_desc")
+                ) {
+                    onChoiceDialog(
+                        MobileChoiceDialogState(
+                            title = AppStrings.t(lang, "settings.autoplay_countdown"),
+                            options = listOf(
+                                ChoiceOption("5", "5s"),
+                                ChoiceOption("7", "7s"),
+                                ChoiceOption("10", "10s"),
+                                ChoiceOption("15", "15s")
+                            ),
+                            selected = profile.safeAutoPlayCountdownSecs.toString(),
+                            onSelect = { onUpdateProfile(profile.copy(autoPlayCountdownSecs = it.toInt())) }
+                        )
+                    )
+                }
+            }
+            MobileToggleRow(
+                title = AppStrings.t(lang, "settings.auto_retry_next_source"),
+                subtitle = AppStrings.t(lang, "settings.auto_retry_next_source_desc"),
+                checked = profile.safeAutoRetryNextSource,
+                onToggle = { onUpdateProfile(profile.copy(autoRetryNextSource = !profile.safeAutoRetryNextSource)) }
+            )
             MobileToggleRow(
                 title = AppStrings.t(lang, "settings.try_binge_group"),
                 subtitle = AppStrings.t(lang, "settings.try_binge_group_desc"),
@@ -205,6 +238,12 @@ internal fun LazyListScope.mobilePlaybackSettingsSection(
                 subtitle = AppStrings.t(lang, "settings.use_aniskip_desc"),
                 checked = profile.safeUseAniSkip,
                 onToggle = { onUpdateProfile(profile.sanitizedUpdate(useAniSkip = !profile.safeUseAniSkip)) }
+            )
+            MobileToggleRow(
+                title = AppStrings.t(lang, "settings.use_chapter_skip"),
+                subtitle = AppStrings.t(lang, "settings.use_chapter_skip_desc"),
+                checked = profile.safeUseChapterSkip,
+                onToggle = { onUpdateProfile(profile.sanitizedUpdate(useChapterSkip = !profile.safeUseChapterSkip)) }
             )
             if (profile.safeUseIntroDb || profile.safeUseAniSkip) {
                 MobileToggleRow(

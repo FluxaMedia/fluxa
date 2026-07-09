@@ -337,6 +337,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
         nextEpisodeThresholdReached = timeline.duration > 0L &&
             currentPosition >= (timeline.duration * ((activeProfile?.safeNextEpisodeThresholdPercent ?: 90f) / 100f)).toLong(),
         autoSkipSegments = activeProfile?.safeAutoSkipIntro == true,
+        autoPlayCountdownSeconds = if (activeProfile?.safeAutoPlayNextEpisode == true) activeProfile.safeAutoPlayCountdownSecs else null,
         lang = lang,
         onSkipSegment = onSkipSegment,
         onPlayNextEpisode = onPlayNext,

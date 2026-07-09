@@ -94,6 +94,7 @@ internal fun SkipSegmentCard(
     type: String,
     nextEpisode: Video? = null,
     lang: String? = "en",
+    autoAdvanceSeconds: Int? = null,
     onSkip: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -102,6 +103,7 @@ internal fun SkipSegmentCard(
             deviceType = deviceType,
             episode = nextEpisode,
             lang = lang,
+            autoAdvanceSeconds = autoAdvanceSeconds,
             onSkip = onSkip
         )
         return
@@ -152,8 +154,19 @@ private fun NextEpisodeSkipCard(
     deviceType: DeviceType,
     episode: Video,
     lang: String?,
+    autoAdvanceSeconds: Int? = null,
     onSkip: () -> Unit
 ) {
+    var remainingSeconds by remember(episode.id, autoAdvanceSeconds) { mutableStateOf(autoAdvanceSeconds) }
+    LaunchedEffect(episode.id, autoAdvanceSeconds) {
+        var remaining = autoAdvanceSeconds ?: return@LaunchedEffect
+        while (remaining > 0) {
+            kotlinx.coroutines.delay(1000)
+            remaining -= 1
+            remainingSeconds = remaining
+        }
+        onSkip()
+    }
     val thumbnailSize = if (deviceType == DeviceType.Mobile) 46.dp else 74.dp
     val cardWidth = if (deviceType == DeviceType.Mobile) 240.dp else 364.dp
     val focusRequester = remember { FocusRequester() }
@@ -190,7 +203,8 @@ private fun NextEpisodeSkipCard(
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = AppStrings.t(lang, "auto.next_episode").uppercase(Locale.ROOT),
+                text = remainingSeconds?.let { "${AppStrings.t(lang, "auto.next_episode").uppercase(Locale.ROOT)} · ${it}s" }
+                    ?: AppStrings.t(lang, "auto.next_episode").uppercase(Locale.ROOT),
                 color = Color.White,
                 fontWeight = FontWeight.Black,
                 fontSize = if (deviceType == DeviceType.Mobile) 10.sp else 14.sp,

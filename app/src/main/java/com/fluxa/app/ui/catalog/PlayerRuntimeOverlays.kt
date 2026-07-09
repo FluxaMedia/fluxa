@@ -54,6 +54,7 @@ internal fun PlayerSkipSegmentOverlay(
     nextEpisode: Video?,
     nextEpisodeThresholdReached: Boolean,
     autoSkipSegments: Boolean,
+    autoPlayCountdownSeconds: Int? = null,
     lang: String,
     onSkipSegment: (IntroTimestamps) -> Unit,
     onPlayNextEpisode: () -> Unit,
@@ -97,6 +98,7 @@ internal fun PlayerSkipSegmentOverlay(
                 type = "outro",
                 nextEpisode = episode,
                 lang = lang,
+                autoAdvanceSeconds = autoPlayCountdownSeconds,
                 onSkip = onPlayNextEpisode,
                 onDismiss = {}
             )
