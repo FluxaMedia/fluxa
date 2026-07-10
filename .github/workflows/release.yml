@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          repository: KhooLy/fluxa-core
+          repository: FluxaMedia/fluxa-core
           path: fluxa-core
 
       - name: Link sibling Rust crates

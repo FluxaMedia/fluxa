@@ -23,7 +23,7 @@ Browse catalogs, track what you watch, and play anything the Stremio addon ecosy
 
 Fluxa connects to any Stremio-compatible addon and turns it into a proper Android app: a home feed with genre and category browsing, a calendar of upcoming episodes, a library with continue-watching and resume positions, and two-way watch tracking with Trakt, MyAnimeList, and Simkl. Playback runs through Media3/ExoPlayer and MPV, including direct torrent/magnet support, with no telemetry.
 
-The Android shell handles all platform I/O — HTTP, Room, ExoPlayer, audio, notifications — but the actual decision-making lives in **[fluxa-core](https://github.com/KhooLy/fluxa-core)**, a headless Rust library that runs the same logic across Android and desktop targets. Rust never touches the network directly; it emits typed effects that the Kotlin layer fulfills.
+The Android shell handles all platform I/O — HTTP, Room, ExoPlayer, audio, notifications — but the actual decision-making lives in **[fluxa-core](https://github.com/FluxaMedia/fluxa-core)**, a headless Rust library that runs the same logic across Android and desktop targets. Rust never touches the network directly; it emits typed effects that the Kotlin layer fulfills.
 
 ## Features
 
@@ -68,7 +68,7 @@ cd Fluxa
 - JDK 17+
 - Rust stable with the Android NDK targets (`aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`)
 - Android NDK (version pinned in `app/build.gradle.kts`)
-- [`fluxa-core`](https://github.com/KhooLy/fluxa-core) checked out as a sibling directory (`../fluxa-core`) — it also provides `fluxa-streaming-engine` (`../fluxa-streaming-engine`)
+- [`fluxa-core`](https://github.com/FluxaMedia/fluxa-core) checked out as a sibling directory (`../fluxa-core`) — it also provides `fluxa-streaming-engine` (`../fluxa-streaming-engine`)
 
 The Rust libraries (`fluxa_core`, `fluxa_streaming_engine`) are cross-compiled for all Android ABIs automatically as part of the Gradle build; no manual `cargo build` step is needed.
 
@@ -110,7 +110,7 @@ This keeps `fluxa_core` fully portable — the same crate compiles for Android (
 ## Related projects
 
 - [Fluxa Desktop](https://github.com/FluxaMedia/fluxa-desktop) — the desktop counterpart to this app
-- [fluxa-core](https://github.com/KhooLy/fluxa-core) — the shared Rust library powering both
+- [fluxa-core](https://github.com/FluxaMedia/fluxa-core) — the shared Rust library powering both
 
 <!-- MARKDOWN LINKS -->
 [contributors-shield]: https://img.shields.io/github/contributors/KhooLy/Fluxa.svg?style=for-the-badge
