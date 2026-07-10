@@ -124,6 +124,7 @@ data class UserProfile(
     val homeSeasonPostersOnHero: Boolean? = true,
     val animationsEnabled: Boolean? = true,
     val reduceMotion: Boolean? = false,
+    val gifAutoplayEnabled: Boolean? = true,
     val startPage: String? = "home",
     val notificationsEnabled: Boolean? = true,
     val alertNewEpisodes: Boolean? = true,
@@ -250,6 +251,7 @@ data class UserProfile(
     val safePosterHideTitles: Boolean get() = safePrefs.posterHideTitles
     val safeAnimationsEnabled: Boolean get() = safePrefs.animationsEnabled
     val safeReduceMotion: Boolean get() = safePrefs.reduceMotion
+    val safeGifAutoplayEnabled: Boolean get() = gifAutoplayEnabled ?: true
     val safeStartPage: String get() = safePrefs.startPage
     val safeNotificationsEnabled: Boolean get() = safePrefs.notificationsEnabled
     val safeAlertNewEpisodes: Boolean get() = safePrefs.alertNewEpisodes
