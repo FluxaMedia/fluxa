@@ -392,7 +392,7 @@ fun MobileSourceSelectionScreen(
                 }
             }
 
-            itemsIndexed(streams, key = { i, s -> s.playableUrl ?: "${s.title.orEmpty()}$i" }) { index, stream ->
+            itemsIndexed(streams, key = { i, s -> "$i:${s.playableUrl ?: s.title.orEmpty()}" }) { index, stream ->
                 SourcePageStreamRow(
                     modifier = Modifier.animateItem(),
                     stream = stream,
