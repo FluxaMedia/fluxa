@@ -159,9 +159,18 @@ class LibassRenderThread {
     }
 
     private fun onRender(ptsMs: Long) {
-        val r = activeRenderer ?: return
         val s = surface ?: return
         if (surfaceWidth <= 0 || surfaceHeight <= 0) return
+
+        val r = activeRenderer
+        if (r == null) {
+            if (!forceNextRender) return
+            val canvas = try { s.lockHardwareCanvas() } catch (_: Exception) { null } ?: return
+            forceNextRender = false
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+            s.unlockCanvasAndPost(canvas)
+            return
+        }
 
         val forceRender = forceNextRender
         val count = r.renderImages(ptsMs + delayMs, surfaceWidth, surfaceHeight, outMeta, outCoverage, forceRender)
