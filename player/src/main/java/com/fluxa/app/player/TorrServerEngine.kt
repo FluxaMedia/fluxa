@@ -34,8 +34,12 @@ class TorrServerEngine(private val context: Context) {
             castAccessToken = UUID.randomUUID().toString()
             val result = FluxaStreamingNative.startTorrentServer(dataDir.absolutePath, port, castAccessToken)
             running = result.isNotBlank()
-            Log.i("TorrServer", "Rust torrent engine started on port $port")
-            startWatcher()
+            if (running) {
+                Log.i("TorrServer", "Rust torrent engine started on port $port")
+                startWatcher()
+            } else {
+                Log.w("TorrServer", "Rust torrent engine did not report readiness on port $port")
+            }
         } catch (e: IOException) {
             Log.e("TorrServer", "Failed to start engine", e)
             running = false
