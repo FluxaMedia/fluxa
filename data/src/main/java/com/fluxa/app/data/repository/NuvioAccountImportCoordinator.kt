@@ -10,6 +10,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.NuvioCredentials
 import com.fluxa.app.data.remote.NuvioService
 import com.fluxa.app.data.remote.NuvioSession
+import retrofit2.Response
 
 enum class NuvioImportStep { PROFILE, ADDONS, LIBRARY, PROGRESS, HISTORY, COLLECTIONS }
 
@@ -20,12 +21,46 @@ class NuvioAccountImportCoordinator(
     private val addonRepository: AddonRepository,
     private val supabaseUrl: String
 ) {
+    suspend fun refreshProfileIfNeeded(profile: UserProfile): UserProfile {
+        val refreshToken = profile.nuvioRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
+        val expiresAt = profile.nuvioTokenExpiresAt ?: 0L
+        if (!profile.nuvioAccessToken.isNullOrBlank() && expiresAt > System.currentTimeMillis() + 60_000L) return profile
+        val session = nuvioService.refreshToken(request = com.fluxa.app.data.remote.NuvioRefreshRequest(refreshToken)).requireBody()
+        val refreshed = profile.copy(
+            nuvioAccessToken = session.accessToken,
+            nuvioRefreshToken = session.refreshToken.ifBlank { refreshToken },
+            nuvioTokenExpiresAt = session.expiresIn?.let { System.currentTimeMillis() + it * 1000L },
+            nuvioUserId = session.user?.id ?: profile.nuvioUserId,
+            nuvioEmail = session.user?.email ?: profile.nuvioEmail
+        )
+        profileManager.saveProfile(refreshed)
+        return refreshed
+    }
+
     suspend fun signIn(email: String, password: String): Result<NuvioSession> = authenticate {
         nuvioService.signIn(credentials = NuvioCredentials(email, password))
     }
 
     suspend fun signUp(email: String, password: String): Result<NuvioSession> = authenticate {
         nuvioService.signUp(NuvioCredentials(email, password))
+    }
+
+    suspend fun sync(profile: UserProfile, onStep: (NuvioImportStep) -> Unit): UserProfile {
+        val refreshedProfile = refreshProfileIfNeeded(profile)
+        val accessToken = refreshedProfile.nuvioAccessToken?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("Nuvio is not connected")
+        val refreshToken = refreshedProfile.nuvioRefreshToken.orEmpty()
+        val session = NuvioSession(
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            expiresIn = refreshedProfile.nuvioTokenExpiresAt?.let { expiresAt ->
+                ((expiresAt - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
+            },
+            user = refreshedProfile.nuvioUserId?.let { userId ->
+                com.fluxa.app.data.remote.NuvioUser(userId, refreshedProfile.nuvioEmail ?: refreshedProfile.email)
+            }
+        )
+        return import(refreshedProfile, session, onStep)
     }
 
     private suspend inline fun authenticate(call: suspend () -> retrofit2.Response<NuvioSession>): Result<NuvioSession> {
@@ -47,38 +82,47 @@ class NuvioAccountImportCoordinator(
         session: NuvioSession,
         onStep: (NuvioImportStep) -> Unit
     ): UserProfile {
+        val connectedProfile = baseProfile.copy(
+            email = session.user?.email ?: baseProfile.email,
+            nuvioAccessToken = session.accessToken,
+            nuvioRefreshToken = session.refreshToken,
+            nuvioTokenExpiresAt = session.expiresIn?.let { System.currentTimeMillis() + it * 1000L },
+            nuvioUserId = session.user?.id,
+            nuvioEmail = session.user?.email ?: baseProfile.email
+        )
         val token = "Bearer ${session.accessToken}"
         watchlistManager.setActiveProfile(baseProfile.id)
 
-        var profile = baseProfile
-        val profiles = runCatching { nuvioService.pullProfiles(token).body() }.getOrNull().orEmpty()
-        val primary = profiles.firstOrNull() ?: profiles.firstOrNull()
-        val profileId = primary?.id ?: session.user?.id ?: baseProfile.id
+        var profile = connectedProfile
+        val profiles = nuvioService.pullProfiles(token).requireBody()
+        val primary = profiles.firstOrNull { it.profileIndex == connectedProfile.nuvioProfileIndex }
+            ?: profiles.minByOrNull { it.profileIndex }
+        val profileIndex = primary?.profileIndex ?: connectedProfile.nuvioProfileIndex ?: 1
 
         if (primary != null) {
             val avatarUrl = primary.avatarUrl ?: primary.avatarId?.let { avatarId ->
-                runCatching { nuvioService.listAvatars().body() }.getOrNull()
+                nuvioService.listAvatars().requireBody()
                     ?.firstOrNull { it.id == avatarId }
                     ?.storagePath
                     ?.let { "${supabaseUrl}storage/v1/object/public/avatars/$it" }
             }
             profile = profile.copy(
-                email = primary.name?.takeIf { it.isNotBlank() } ?: profile.email,
-                avatarUrl = avatarUrl ?: profile.avatarUrl
+                avatarUrl = avatarUrl ?: profile.avatarUrl,
+                nuvioProfileIndex = profileIndex
             )
+        } else {
+            profile = profile.copy(nuvioProfileIndex = profileIndex)
         }
         onStep(NuvioImportStep.PROFILE)
 
-        val addons = runCatching { nuvioService.pullAddons(token, profileId = profileId).body() }.getOrNull().orEmpty()
+        val addons = nuvioService.pullAddons(token, profileId = "eq.$profileIndex").requireBody()
         if (addons.isNotEmpty()) {
             val enabledUrls = addons.filter { it.enabled }.sortedBy { it.sortOrder }.map { it.url }
             profile = profile.copy(localAddons = (profile.localAddons.orEmpty() + enabledUrls).distinct())
         }
         onStep(NuvioImportStep.ADDONS)
 
-        val libraryItems = runCatching {
-            nuvioService.pullLibrary(token, mapOf("p_profile_id" to profileId, "p_limit" to 500, "p_offset" to 0)).body()
-        }.getOrNull().orEmpty()
+        val libraryItems = nuvioService.pullLibrary(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 500, "p_offset" to 0)).requireBody()
         val metaById = libraryItems.associate { item ->
             item.contentId to Meta(
                 id = item.contentId,
@@ -99,9 +143,7 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.LIBRARY)
 
-        val watchProgress = runCatching {
-            nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to profileId, "p_limit" to 200)).body()
-        }.getOrNull().orEmpty()
+        val watchProgress = nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 200)).requireBody()
         for (entry in watchProgress) {
             val meta = metaById[entry.contentId] ?: run {
                 val detail = runCatching {
@@ -134,9 +176,7 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.PROGRESS)
 
-        val watchedItems = runCatching {
-            nuvioService.pullWatchedItems(token, mapOf("p_profile_id" to profileId, "p_page" to 1, "p_page_size" to 500)).body()
-        }.getOrNull().orEmpty()
+        val watchedItems = nuvioService.pullWatchedItems(token, mapOf("p_profile_id" to profileIndex, "p_page" to 1, "p_page_size" to 500)).requireBody()
         val watchedBySeries = mutableMapOf<String, MutableSet<String>>()
         for (item in watchedItems) {
             val videoId = if (item.season != null && item.episode != null) {
@@ -151,9 +191,7 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.HISTORY)
 
-        val collectionRows = runCatching {
-            nuvioService.pullCollections(token, mapOf("p_profile_id" to profileId)).body()
-        }.getOrNull().orEmpty()
+        val collectionRows = nuvioService.pullCollections(token, mapOf("p_profile_id" to profileIndex)).requireBody()
         val collections = collectionRows.firstOrNull()?.collectionsJson.orEmpty().map { collection ->
             LibraryUserCollection(
                 id = collection.id ?: java.util.UUID.randomUUID().toString(),
@@ -189,8 +227,14 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.COLLECTIONS)
 
+        profile = profile.copy(nuvioLastSyncAt = System.currentTimeMillis())
         profileManager.saveProfile(profile)
         profileManager.setLastActiveProfile(profile)
         return profile
     }
+}
+
+private fun <T> Response<T>.requireBody(): T {
+    if (!isSuccessful) throw IllegalStateException("Nuvio request failed (${code()})")
+    return body() ?: throw IllegalStateException("Nuvio returned an empty response")
 }

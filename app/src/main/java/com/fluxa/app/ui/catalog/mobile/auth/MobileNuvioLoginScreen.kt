@@ -175,22 +175,28 @@ internal fun MobileNuvioLoginView(
                     var done by remember { mutableStateOf(false) }
 
                     LaunchedEffect(Unit) {
-                        val session = authenticatedSession ?: coordinator.signIn(email.trim(), password).getOrNull() ?: run {
-                            error = AppStrings.t(lang, "auth.error.invalid_credentials")
+                        try {
+                            val session = authenticatedSession ?: coordinator.signIn(email.trim(), password).getOrNull() ?: run {
+                                error = AppStrings.t(lang, "auth.error.invalid_credentials")
+                                submitting = false
+                                view = MobileNuvioView.Credentials
+                                return@LaunchedEffect
+                            }
+                            val baseProfile = UserProfile(
+                                id = java.util.UUID.randomUUID().toString(),
+                                email = session.user?.email ?: email,
+                                authKey = ""
+                            )
+                            val result = coordinator.import(baseProfile, session) { step ->
+                                steps.value = steps.value + step
+                            }
+                            importedProfile = result
+                            done = true
+                        } catch (_: Exception) {
+                            error = AppStrings.t(lang, "auth.error.network")
                             submitting = false
                             view = MobileNuvioView.Credentials
-                            return@LaunchedEffect
                         }
-                        val baseProfile = UserProfile(
-                            id = java.util.UUID.randomUUID().toString(),
-                            email = session.user?.email ?: email,
-                            authKey = ""
-                        )
-                        val result = coordinator.import(baseProfile, session) { step ->
-                            steps.value = steps.value + step
-                        }
-                        importedProfile = result
-                        done = true
                     }
 
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

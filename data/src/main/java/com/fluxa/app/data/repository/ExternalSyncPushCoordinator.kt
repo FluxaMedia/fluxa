@@ -26,7 +26,8 @@ import javax.inject.Inject
 class ExternalSyncPushCoordinator @Inject constructor(
     private val api: TraktApi,
     private val repository: StremioRepository,
-    private val profileManager: ProfileManager
+    private val profileManager: ProfileManager,
+    private val nuvioSyncCoordinator: NuvioSyncCoordinator
 ) {
     suspend fun pushMarkWatched(profile: UserProfile, meta: Meta, episodes: List<Video>, watched: Boolean) = coroutineScope {
         if (!profile.traktAccessToken.isNullOrBlank()) {
@@ -37,6 +38,9 @@ class ExternalSyncPushCoordinator @Inject constructor(
         }
         if (watched && !profile.malAccessToken.isNullOrBlank()) {
             launch { pushMalWithTokenHandling(profile) { token -> pushMalMarkWatched(token, meta, episodes) } }
+        }
+        if (!profile.nuvioAccessToken.isNullOrBlank()) {
+            launch { runCatching { nuvioSyncCoordinator.pushWatched(profile, meta, episodes, watched) } }
         }
     }
 
@@ -49,6 +53,15 @@ class ExternalSyncPushCoordinator @Inject constructor(
         }
         if (isInWatchlist && !profile.malAccessToken.isNullOrBlank()) {
             launch { pushMalWithTokenHandling(profile) { token -> pushMalWatchlist(token, meta) } }
+        }
+        if (!profile.nuvioAccessToken.isNullOrBlank()) {
+            launch { runCatching { nuvioSyncCoordinator.pushWatchlist(profile, meta, isInWatchlist) } }
+        }
+    }
+
+    suspend fun pushPlaybackProgress(profile: UserProfile, meta: Meta, videoId: String?, position: Long, duration: Long) {
+        if (!profile.nuvioAccessToken.isNullOrBlank()) {
+            runCatching { nuvioSyncCoordinator.pushPlaybackProgress(profile, meta, videoId, position, duration) }
         }
     }
 

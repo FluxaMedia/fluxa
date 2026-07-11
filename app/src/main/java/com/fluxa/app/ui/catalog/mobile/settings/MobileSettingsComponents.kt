@@ -169,12 +169,6 @@ internal fun MobileSettingsHub(
 
     val sections = listOf(
         MobileSettingsSection(
-            label = AppStrings.t(lang, "settings.section_account"),
-            categories = listOf(
-                MobileSettingsCategory("account", AppStrings.t(lang, "auto.account_sync"), AppStrings.t(lang, "auto.account_devices_and_sync"), FluxaIcons.AccountCircle)
-            )
-        ),
-        MobileSettingsSection(
             label = AppStrings.t(lang, "settings.section_preferences"),
             categories = listOf(
                 MobileSettingsCategory("general", AppStrings.t(lang, "auto.general"), AppStrings.t(lang, "auto.language_theme_startup"), FluxaIcons.Settings),

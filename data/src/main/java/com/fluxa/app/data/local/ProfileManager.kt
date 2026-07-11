@@ -43,6 +43,13 @@ data class UserProfile(
     val forceSoftwareAudio: Boolean? = false,
     val audioDecoderMode: String? = null,
     val preferredPlayer: String? = "internal",
+    val nuvioAccessToken: String? = null,
+    val nuvioRefreshToken: String? = null,
+    val nuvioTokenExpiresAt: Long? = null,
+    val nuvioUserId: String? = null,
+    val nuvioEmail: String? = null,
+    val nuvioProfileIndex: Int? = null,
+    val nuvioLastSyncAt: Long? = null,
     val traktAccessToken: String? = null, 
     val traktRefreshToken: String? = null,
     val traktTokenExpiresAt: Long? = null,
@@ -488,7 +495,9 @@ class ProfileManager @Inject constructor(
         synchronized(profilesLock) {
             val profiles = getProfiles().toMutableList()
             val existingIndex = profiles.indexOfFirst {
-                (it.id == sanitizedProfile.id) || (it.email == sanitizedProfile.email && !it.isGuest)
+                it.id == sanitizedProfile.id ||
+                    (it.email == sanitizedProfile.email && !it.isGuest &&
+                        it.nuvioUserId.isNullOrBlank() && sanitizedProfile.nuvioUserId.isNullOrBlank())
             }
             if (existingIndex != -1) {
                 profiles[existingIndex] = sanitizedProfile
@@ -521,7 +530,13 @@ class ProfileManager @Inject constructor(
         val list: List<UserProfile> = gson.fromJson(json, type)
         return list
             .map { sanitizeProfile(it, mergeMirroredAddons = true) }
-            .distinctBy { if (it.isGuest) it.id else it.email }
+            .distinctBy { profile ->
+                when {
+                    profile.isGuest -> profile.id
+                    !profile.nuvioUserId.isNullOrBlank() -> "nuvio:${profile.nuvioUserId}:${profile.nuvioProfileIndex ?: 1}"
+                    else -> profile.email
+                }
+            }
     }
 
     private fun sanitizeProfile(profile: UserProfile, mergeMirroredAddons: Boolean): UserProfile {

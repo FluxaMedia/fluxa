@@ -9,6 +9,7 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
+import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
 import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.CastMember
@@ -95,7 +96,8 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal val pluginManager: PluginManager,
     internal val gson: Gson,
     internal val profileManager: ProfileManager,
-    internal val externalSyncPushCoordinator: ExternalSyncPushCoordinator
+    internal val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
+    internal val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator
 ) : HeadlessPlatformEnvironment {
 
     internal val primeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -722,6 +724,17 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             lastAudioLanguage = progress.stringOrNull("lastAudioLanguage"),
             lastSubtitleLanguage = progress.stringOrNull("lastSubtitleLanguage")
         )
+        if (profile != null) {
+            runCatching {
+                externalSyncPushCoordinator.pushPlaybackProgress(
+                    profile = profile,
+                    meta = meta,
+                    videoId = progress.stringOrNull("lastVideoId"),
+                    position = timeOffset,
+                    duration = duration
+                )
+            }
+        }
         val token = profile?.traktAccessToken
         if (effect.payload.boolean("scrobbleTraktPause", true) && !token.isNullOrBlank() && duration > 0L && timeOffset > 5_000L) {
             val playbackPercent = (timeOffset.toFloat() / duration.toFloat() * 100f).coerceIn(0f, 100f)
@@ -912,6 +925,10 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
 
     private suspend fun runExternalSync(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val profile = effect.payload.profile() ?: return ok(effect, emptyMap<String, Any?>())
+        if (effect.payload.string("provider") == "nuvio") {
+            val updatedProfile = nuvioAccountImportCoordinator.sync(profile) {}
+            return ok(effect, mapOf("profile" to updatedProfile))
+        }
         return ok(
             effect,
             mapOf(
@@ -1053,6 +1070,20 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     private suspend fun syncExternalIntegration(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val payload = effect.payload
         val profile = payload.profile() ?: return error(effect, "missing_profile")
+        if (payload.string("provider") == "stremio") {
+            if (profile.authKey.isBlank()) return error(effect, "missing_stremio_token")
+            val addons = repository.getUserAddons(profile.authKey, forceRefresh = true)
+            val library = repository.getLibraryItems(profile.authKey)
+            val updated = profile.copy(localAddons = addons.map { addon -> addon.transportUrl }.distinct())
+            return ok(
+                effect,
+                mapOf(
+                    "profile" to updated,
+                    "snapshot" to mapOf("addons" to addons, "library" to library),
+                    "externalContinueWatching" to library
+                )
+            )
+        }
         val traktToken = profile.traktAccessToken
         if (traktToken.isNullOrBlank()) return error(effect, "missing_trakt_token")
         val language = payload.string("language", profile.safeLanguage)

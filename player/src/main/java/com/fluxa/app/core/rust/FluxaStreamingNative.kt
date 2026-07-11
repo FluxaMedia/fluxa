@@ -48,10 +48,6 @@ object FluxaStreamingNative {
 
     fun parseMkvChapters(data: ByteArray): String = call { parseMkvChaptersNative(data) }
 
-    fun resolveYoutubeTrailerJson(videoId: String, cacheDir: String): String? = call {
-        resolveYoutubeTrailerJsonNative(videoId, cacheDir)
-    }
-
     private inline fun <T> call(block: () -> T): T {
         check(loaded) { "Fluxa streaming engine native library is not loaded." }
         return block()
@@ -68,5 +64,4 @@ object FluxaStreamingNative {
     private external fun dvGetStreamStatsJsonNative(): String
     private external fun dvGetCurrentL1JsonNative(): String
     private external fun parseMkvChaptersNative(data: ByteArray): String
-    private external fun resolveYoutubeTrailerJsonNative(videoId: String, cacheDir: String): String?
 }

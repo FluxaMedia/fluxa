@@ -16,6 +16,7 @@ data class NuvioSession(
 
 data class NuvioProfile(
     val id: String,
+    @SerializedName("user_id") val userId: String? = null,
     @SerializedName("profile_index") val profileIndex: Int,
     val name: String?,
     @SerializedName("avatar_color_hex") val avatarColorHex: String?,
@@ -24,6 +25,9 @@ data class NuvioProfile(
 )
 
 data class NuvioAddon(
+    val id: String? = null,
+    @SerializedName("user_id") val userId: String? = null,
+    @SerializedName("profile_id") val profileId: Int? = null,
     val url: String,
     val name: String?,
     val enabled: Boolean,

@@ -31,6 +31,33 @@ interface NuvioService {
         @Query("order") order: String = "sort_order"
     ): Response<List<NuvioAddon>>
 
+    @POST("rest/v1/rpc/sync_push_profiles")
+    suspend fun pushProfiles(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_push_addons")
+    suspend fun pushAddons(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_push_library")
+    suspend fun pushLibrary(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_push_watch_progress")
+    suspend fun pushWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_delete_watch_progress")
+    suspend fun deleteWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_push_watched_items")
+    suspend fun pushWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_delete_watched_items")
+    suspend fun deleteWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_push_collections")
+    suspend fun pushCollections(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_push_profile_settings_blob")
+    suspend fun pushProfileSettings(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+
     @POST("rest/v1/rpc/sync_pull_library")
     suspend fun pullLibrary(@Header("Authorization") authorization: String, @Body body: Map<String, Any>): Response<List<NuvioLibraryItem>>
 

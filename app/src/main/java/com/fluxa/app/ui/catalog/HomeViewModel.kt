@@ -1199,6 +1199,60 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun syncNuvioIntegration(
+        profile: UserProfile,
+        onProfileUpdated: (UserProfile) -> Unit,
+        onComplete: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = dispatchHeadless(
+                mapOf(
+                    "type" to "externalSyncRequested",
+                    "provider" to "nuvio",
+                    "profile" to profile,
+                    "language" to profile.safeLanguage
+                )
+            )
+            val sync = result.state["sync"] as? Map<*, *>
+            val updated = fromStateObject(
+                (sync?.get("snapshot") as? Map<*, *>)?.get("profile"),
+                UserProfile::class.java
+            )
+            if (updated != null) {
+                setActiveProfileState(updated)
+                onProfileUpdated(updated)
+            }
+            onComplete(sync?.get("error") == null)
+        }
+    }
+
+    fun syncStremioIntegration(
+        profile: UserProfile,
+        onProfileUpdated: (UserProfile) -> Unit,
+        onComplete: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = dispatchHeadless(
+                mapOf(
+                    "type" to "externalIntegrationSyncRequested",
+                    "provider" to "stremio",
+                    "profile" to profile,
+                    "language" to profile.safeLanguage
+                )
+            )
+            val sync = result.state["sync"] as? Map<*, *>
+            val snapshot = sync?.get("snapshot") as? Map<*, *>
+            val updated = fromStateObject(snapshot?.get("profile") ?: (result.state["profile"] as? Map<*, *>)?.get("active"), UserProfile::class.java)
+            if (updated != null) {
+                setActiveProfileState(updated)
+                setExternalContinueWatchingState(fromStateList((result.state["home"] as? Map<*, *>)?.get("externalContinueWatching"), metaListType))
+                onProfileUpdated(updated)
+                refreshDynamicRows()
+            }
+            onComplete(sync?.get("error") == null && updated != null)
+        }
+    }
+
     private fun buildUserCollectionHomeCategories(profile: UserProfile?, showAboveContinueWatching: Boolean? = null): List<HomeCategory> {
         return feedCoordinator.buildUserCollectionHomeCategories(profile, showAboveContinueWatching)
     }

@@ -71,6 +71,7 @@ internal fun MobileHomeHeroItem(
         MobileStreamingHero(
             movie = heroMovie,
             logoUrl = billboardState.billboardLogo,
+            trailerUrl = billboardState.billboardTrailerUrl,
             lang = lang,
             isWatchlisted = billboardState.billboardWatchlist,
             onPlayClick = { onMovieClick(heroMovie) },
@@ -113,6 +114,7 @@ internal fun MobileHomeHeroItem(
         movies = pool,
         currentMovie = billboardState.displayBillboardMovie,
         currentLogoUrl = billboardState.billboardLogo,
+        trailerUrl = billboardState.billboardTrailerUrl,
         pagerState = pagerState,
         lang = lang,
         isWatchlisted = billboardState.billboardWatchlist,

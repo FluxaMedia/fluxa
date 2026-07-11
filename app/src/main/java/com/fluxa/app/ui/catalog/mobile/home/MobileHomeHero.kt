@@ -51,6 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.palette.graphics.Palette
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -82,6 +85,7 @@ internal fun MobileStreamingHeroPager(
     movies: List<Meta>,
     currentMovie: Meta?,
     currentLogoUrl: String?,
+    trailerUrl: String?,
     pagerState: androidx.compose.foundation.pager.PagerState,
     lang: String,
     isWatchlisted: Boolean,
@@ -109,7 +113,11 @@ internal fun MobileStreamingHeroPager(
             )
         ) { page ->
             val pageMovie = movies.getOrNull(page.floorMod(movies.size)) ?: return@HorizontalPager
-            MobileHeroBackground(pageMovie, seasonPostersOnHero)
+            MobileHeroBackground(
+                movie = pageMovie,
+                seasonPostersOnHero = seasonPostersOnHero,
+                trailerUrl = trailerUrl?.takeIf { pageMovie.id == movie.id }
+            )
         }
 
         MobileHeroForeground(
@@ -137,6 +145,7 @@ internal fun MobileStreamingHeroPager(
 internal fun MobileStreamingHero(
     movie: Meta?,
     logoUrl: String?,
+    trailerUrl: String?,
     lang: String,
     isWatchlisted: Boolean,
     onPlayClick: () -> Unit,
@@ -152,7 +161,7 @@ internal fun MobileStreamingHero(
             .height(FluxaDimensions.mobileBillboardHeight)
     ) {
         if (movie != null) {
-            MobileHeroBackground(movie, seasonPostersOnHero)
+            MobileHeroBackground(movie, seasonPostersOnHero, trailerUrl)
             MobileHeroForeground(
                 movie = movie,
                 logoUrl = logoUrl,
@@ -176,7 +185,7 @@ internal fun MobileStreamingHero(
 }
 
 @Composable
-private fun MobileHeroBackground(movie: Meta, seasonPostersOnHero: Boolean) {
+private fun MobileHeroBackground(movie: Meta, seasonPostersOnHero: Boolean, trailerUrl: String?) {
     val context = LocalContext.current
     val backgroundCandidates = remember(movie.id, movie.poster, movie.background, movie.seasonPosters, seasonPostersOnHero) {
         mobileHeroArtworkCandidates(movie, seasonPostersOnHero)
@@ -197,16 +206,20 @@ private fun MobileHeroBackground(movie: Meta, seasonPostersOnHero: Boolean) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AsyncImage(
-            model = backgroundRequest,
-            contentDescription = null,
-            onError = {
-                backgroundIndex = backgroundCandidates.size
-            },
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.Center
-        )
+        if (trailerUrl != null) {
+            MobileHeroTrailerPreview(trailerUrl)
+        } else {
+            AsyncImage(
+                model = backgroundRequest,
+                contentDescription = null,
+                onError = {
+                    backgroundIndex = backgroundCandidates.size
+                },
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center
+            )
+        }
 
         Box(modifier = Modifier.fillMaxSize().background(HERO_GRADIENT))
         val ambient = rememberAmbientHeroColor(backgroundUrl)
@@ -220,6 +233,40 @@ private fun MobileHeroBackground(movie: Meta, seasonPostersOnHero: Boolean) {
                         1f to Color.Transparent
                     )
                 )
+        )
+    }
+}
+
+@Composable
+private fun MobileHeroTrailerPreview(trailerUrl: String) {
+    val context = LocalContext.current
+    var player by remember { mutableStateOf<ExoPlayer?>(null) }
+
+    DisposableEffect(trailerUrl) {
+        val previewPlayer = ExoPlayer.Builder(context).build().apply {
+            volume = 0f
+            repeatMode = Player.REPEAT_MODE_ONE
+            setMediaItem(MediaItem.fromUri(trailerUrl))
+            prepare()
+            playWhenReady = true
+        }
+        player = previewPlayer
+        onDispose {
+            player = null
+            previewPlayer.release()
+        }
+    }
+
+    player?.let { previewPlayer ->
+        AndroidView(
+            factory = { ctx ->
+                androidx.media3.ui.PlayerView(ctx).apply {
+                    useController = false
+                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                }
+            },
+            update = { playerView -> playerView.player = previewPlayer },
+            modifier = Modifier.fillMaxSize()
         )
     }
 }

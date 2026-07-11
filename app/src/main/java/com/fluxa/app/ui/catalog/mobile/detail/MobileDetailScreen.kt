@@ -114,6 +114,9 @@ internal fun MobileDetailScreen(
         ?: initialMeta?.background
         ?: initialMeta?.poster
     var heroTrailer by remember(detail?.id) { mutableStateOf<DetailTrailer?>(null) }
+    LaunchedEffect(detail?.id, trailerOnHero, trailers) {
+        heroTrailer = if (trailerOnHero) trailers.firstOrNull() else null
+    }
     val listState = rememberLazyListState()
     val heroCollapse by remember {
         derivedStateOf {

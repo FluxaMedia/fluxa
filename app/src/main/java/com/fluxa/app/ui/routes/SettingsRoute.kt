@@ -53,8 +53,48 @@ internal fun SettingsRoute(
             profileManager.setLastActiveProfile(null)
             navigator.navigateTo(Screen.Profiles, true)
         },
-        onConnectStremio = { navigator.navigateTo(Screen.Login()) },
-        onConnectNuvio = { navigator.navigateTo(Screen.Login(startOnNuvio = true)) },
+        onConnectStremio = {
+            val profile = activeProfile
+            if (profile?.authKey.isNullOrBlank()) {
+                navigator.navigateTo(Screen.Login())
+            } else {
+                homeViewModel.syncStremioIntegration(
+                    profile = profile!!,
+                    onProfileUpdated = { updated ->
+                        onProfileChanged(updated)
+                        profileManager.saveProfile(updated)
+                        profileManager.setLastActiveProfile(updated)
+                        homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                    },
+                    onComplete = { success ->
+                        Toast.makeText(context, AppStrings.t(profile.safeLanguage, if (success) "toast.stremio_synced" else "toast.stremio_sync_failed"), Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        },
+        onConnectNuvio = {
+            val profile = activeProfile
+            if (profile?.nuvioAccessToken.isNullOrBlank()) {
+                navigator.navigateTo(Screen.Login(startOnNuvio = true))
+            } else {
+                homeViewModel.syncNuvioIntegration(
+                    profile = profile!!,
+                    onProfileUpdated = { updated ->
+                        onProfileChanged(updated)
+                        profileManager.saveProfile(updated)
+                        profileManager.setLastActiveProfile(updated)
+                        homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                    },
+                    onComplete = { success ->
+                        Toast.makeText(
+                            context,
+                            AppStrings.t(profile.safeLanguage, if (success) "toast.nuvio_synced" else "toast.nuvio_sync_failed"),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                )
+            }
+        },
         onConnectTrakt = {
             if (!activeProfile?.traktAccessToken.isNullOrBlank()) {
                 onShowTraktSheet()
