@@ -1,9 +1,12 @@
 package com.fluxa.app.common
 
-import android.content.Context
-import org.json.JSONObject
-import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+internal expect fun readI18nAssetText(fileName: String): String?
+internal expect fun createStringsCache(): MutableMap<String, AppStrings>
 
 class AppStrings private constructor(
     private val values: Map<String, String>,
@@ -12,21 +15,15 @@ class AppStrings private constructor(
     fun get(key: String): String = values[key] ?: fallback[key] ?: key
 
     companion object {
-        private val cache = ConcurrentHashMap<String, AppStrings>()
-        private var appContext: Context? = null
+        private val cache = createStringsCache()
         private val RUNTIME_UNIT_REGEX = Regex("""\b(min|m|dk)\.?\b""", RegexOption.IGNORE_CASE)
         private val WHITESPACE_REGEX = Regex("""\s+""")
         private val ISO_DURATION_REGEX = Regex("""^PT(?:(\d+)H)?(?:(\d+)M)?$""", RegexOption.IGNORE_CASE)
         private val HOURS_REGEX = Regex("""(\d+)\s*(?:h|hr|hour|hours|sa|saat)""", RegexOption.IGNORE_CASE)
         private val MINUTES_REGEX = Regex("""(\d+)\s*(?:m|min|minute|minutes|dk)""", RegexOption.IGNORE_CASE)
 
-        fun initialize(context: Context) {
-            appContext = context.applicationContext
-        }
-
         fun t(language: String?, key: String): String {
-            val context = appContext ?: return key
-            return load(context, language).get(key)
+            return load(language).get(key)
         }
 
         fun format(language: String?, key: String, vararg args: Any?): String {
@@ -37,14 +34,6 @@ class AppStrings private constructor(
 
         fun list(language: String?, key: String): List<String> {
             return t(language, key).split("|").map { it.trim() }.filter { it.isNotEmpty() }
-        }
-
-        fun locale(language: String?): Locale {
-            val tag = language
-                ?.substringBefore('_')
-                ?.takeIf { it.isNotBlank() }
-                ?: return Locale.US
-            return Locale.forLanguageTag(tag)
         }
 
         fun runtimeMinutes(language: String?, minutes: Int): String {
@@ -102,11 +91,11 @@ class AppStrings private constructor(
             return normalized.toIntOrNull()?.takeIf { it > 0 }
         }
 
-        fun load(context: Context, language: String?): AppStrings {
+        private fun load(language: String?): AppStrings {
             val fileName = languageFileName(language)
             return cache.getOrPut(fileName) {
-                val fallback = readAsset(context, "i18n/en-US.json")
-                val values = if (fileName == "en-US.json") fallback else readAsset(context, "i18n/$fileName")
+                val fallback = readAsset("en-US.json")
+                val values = if (fileName == "en-US.json") fallback else readAsset(fileName)
                 AppStrings(values, fallback)
             }
         }
@@ -116,7 +105,7 @@ class AppStrings private constructor(
                 ?.trim()
                 .orEmpty()
             val languageCode = normalized.removeSuffix(".json")
-            return when (languageCode.lowercase(Locale.ROOT)) {
+            return when (languageCode.lowercase()) {
                 "" -> "en-US.json"
                 "en", "en-us" -> "en-US.json"
                 "tr", "tr-tr" -> "tr-TR.json"
@@ -124,11 +113,12 @@ class AppStrings private constructor(
             }
         }
 
-        private fun readAsset(context: Context, path: String): Map<String, String> {
+        private fun readAsset(fileName: String): Map<String, String> {
+            val json = readI18nAssetText(fileName) ?: return emptyMap()
             return runCatching {
-                val json = context.assets.open(path).bufferedReader().use { it.readText() }
-                val obj = JSONObject(json)
-                obj.keys().asSequence().associateWith { key -> obj.optString(key, key) }
+                Json.parseToJsonElement(json).jsonObject
+                    .entries
+                    .associate { (key, value) -> key to (value.jsonPrimitive.contentOrNull ?: key) }
             }.getOrDefault(emptyMap())
         }
     }

@@ -1,16 +1,22 @@
 package com.fluxa.app.common
 
-import java.time.Instant
-import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
+@OptIn(ExperimentalTime::class)
 object ReleaseDateUtils {
     private val isoDateRegex = Regex("""\d{4}-\d{2}-\d{2}""")
     private val offsetSuffixRegex = Regex(""".*[+-]\d{2}:?\d{2}$""")
 
-    fun todayIso(): String = LocalDate.now(ZoneId.systemDefault()).toString()
+    private fun todayDate(): LocalDate =
+        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+    fun todayIso(): String = todayDate().toString()
 
     fun isoDate(value: String?): String? {
         if (value.isNullOrBlank()) return null
@@ -21,16 +27,16 @@ object ReleaseDateUtils {
         return runCatching {
             val instant = when {
                 trimmed.endsWith("Z", ignoreCase = true) -> Instant.parse(trimmed)
-                offsetSuffixRegex.matches(trimmed) -> OffsetDateTime.parse(trimmed).toInstant()
+                offsetSuffixRegex.matches(trimmed) -> Instant.parse(trimmed)
                 else -> Instant.parse("${trimmed.substringBefore(".")}Z")
             }
-            instant.atZone(ZoneId.systemDefault()).toLocalDate().toString()
+            instant.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
         }.getOrNull() ?: trimmed.take(10).takeIf { it.matches(isoDateRegex) }
     }
 
     fun daysSince(value: String?): Long? {
         val date = isoDate(value)?.let(LocalDate::parse) ?: return null
-        return ChronoUnit.DAYS.between(date, LocalDate.now(ZoneId.systemDefault()))
+        return date.daysUntil(todayDate()).toLong()
     }
 
     fun isUpcoming(value: String?): Boolean {

@@ -29,5 +29,9 @@ gradlePlugin {
             id = "fluxa.android.hilt"
             implementationClass = "FluxaAndroidHiltPlugin"
         }
+        register("fluxaKmpLibrary") {
+            id = "fluxa.kmp.library"
+            implementationClass = "FluxaKmpLibraryPlugin"
+        }
     }
 }

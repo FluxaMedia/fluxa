@@ -36,6 +36,8 @@ androidxTestRunner    = "1.6.2"
 androidxTestJunit     = "1.2.1"
 jackson               = "2.13.1"
 kotlinMetadataJvm     = "2.4.0"
+kotlinxSerialization  = "1.11.0"
+kotlinxDatetime       = "0.8.0"
 
 [libraries]
 # Build-logic plugin artifacts (compileOnly in build-logic)
@@ -116,6 +118,10 @@ zxing       = { group = "com.google.zxing",  name = "core",       version.ref = 
 
 kotlin-metadata-jvm   = { group = "org.jetbrains.kotlin", name = "kotlin-metadata-jvm", version.ref = "kotlinMetadataJvm" }
 
+# Kotlinx serialization (KMP-portable JSON, replaces org.json in shared code)
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-datetime           = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",           version.ref = "kotlinxDatetime" }
+
 # Jackson
 jackson-databind      = { group = "com.fasterxml.jackson.core",   name = "jackson-databind",      version.ref = "jackson" }
 jackson-module-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin", version.ref = "jackson" }
@@ -136,10 +142,13 @@ retrofit    = ["retrofit", "retrofit-gson"]
 android-application = { id = "com.android.application",             version.ref = "androidGradlePlugin" }
 android-library     = { id = "com.android.library",                 version.ref = "androidGradlePlugin" }
 kotlin-android      = { id = "org.jetbrains.kotlin.android",        version.ref = "kotlin" }
+kotlin-multiplatform= { id = "org.jetbrains.kotlin.multiplatform",  version.ref = "kotlin" }
 kotlin-compose      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization= { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp                 = { id = "com.google.devtools.ksp",             version.ref = "ksp" }
 hilt                = { id = "com.google.dagger.hilt.android",      version.ref = "hilt" }
 fluxa-android-library     = { id = "fluxa.android.library" }
 fluxa-android-application = { id = "fluxa.android.application" }
 fluxa-android-compose     = { id = "fluxa.android.compose" }
 fluxa-android-hilt        = { id = "fluxa.android.hilt" }
+fluxa-kmp-library         = { id = "fluxa.kmp.library" }

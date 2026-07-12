@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.common.locale
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 

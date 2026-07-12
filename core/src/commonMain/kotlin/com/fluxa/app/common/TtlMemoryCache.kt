@@ -1,11 +1,9 @@
 package com.fluxa.app.common
 
-import java.util.concurrent.ConcurrentHashMap
-
 class TtlMemoryCache<T>(
     private val maxEntries: Int,
     private val ttlMillis: Long,
-    private val nowMillis: () -> Long = System::currentTimeMillis
+    private val nowMillis: () -> Long = ::epochMillisNow
 ) {
     private data class Entry<T>(
         val value: T,
@@ -13,18 +11,18 @@ class TtlMemoryCache<T>(
         val insertionOrder: Long
     )
 
-    private val entries = ConcurrentHashMap<String, Entry<T>>()
+    private val lock = SimpleLock()
+    private val entries = mutableMapOf<String, Entry<T>>()
     private var nextInsertionOrder = 0L
 
-    fun get(key: String): T? {
-        val entry = entries[key] ?: return null
-        return if (nowMillis() < entry.expiresAtMillis) entry.value else {
+    fun get(key: String): T? = lock.withLock {
+        val entry = entries[key] ?: return@withLock null
+        if (nowMillis() < entry.expiresAtMillis) entry.value else {
             entries.remove(key); null
         }
     }
 
-    @Synchronized
-    fun put(key: String, value: T) {
+    fun put(key: String, value: T) = lock.withLock {
         val now = nowMillis()
         trimExpired(now)
         entries[key] = Entry(
@@ -35,23 +33,20 @@ class TtlMemoryCache<T>(
         trimToMaxSize()
     }
 
-    @Synchronized
-    fun firstWithPrefix(prefix: String): T? {
+    fun firstWithPrefix(prefix: String): T? = lock.withLock {
         val now = nowMillis()
         trimExpired(now)
-        val key = entries.keys.asSequence().filter { it.startsWith(prefix) }.minOrNull() ?: return null
-        return entries[key]?.value
+        val key = entries.keys.asSequence().filter { it.startsWith(prefix) }.minOrNull() ?: return@withLock null
+        entries[key]?.value
     }
 
-    @Synchronized
-    fun invalidatePrefix(prefix: String) {
+    fun invalidatePrefix(prefix: String) = lock.withLock {
         entries.keys.removeAll { it.startsWith(prefix) }
     }
 
-    @Synchronized
-    fun size(): Int {
+    fun size(): Int = lock.withLock {
         trimExpired(nowMillis())
-        return entries.size
+        entries.size
     }
 
     private fun trimExpired(now: Long) {

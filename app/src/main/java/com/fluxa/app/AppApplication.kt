@@ -20,6 +20,7 @@ import okio.Path.Companion.toOkioPath
 import com.lagradost.cloudstream3.AcraApplication
 import com.lagradost.cloudstream3.app
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.common.initialize
 import com.fluxa.app.ui.catalog.EpisodeReleaseWorker
 import com.fluxa.app.plugins.PluginAutoUpdateWorker
 import com.fluxa.app.ui.catalog.TrailerResolver
