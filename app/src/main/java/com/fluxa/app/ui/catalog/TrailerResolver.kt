@@ -7,6 +7,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
@@ -80,6 +81,7 @@ internal object TrailerResolver {
             if (playability?.optString("status") != "OK") return TrailerResolveResult.Failed
             val streaming = payload.optJSONObject("streamingData") ?: return TrailerResolveResult.Failed
             val streamUrl = streaming.optString("hlsManifestUrl").takeIf { it.isNotBlank() }
+                ?.let(::bestHlsVariant)
                 ?: streaming.optJSONArray("formats")?.let { formats ->
                     (0 until formats.length())
                         .asSequence()
@@ -112,6 +114,37 @@ internal object TrailerResolver {
                 }.orEmpty()
             return TrailerResolveResult.Ok(TrailerResult(streamUrl, subtitles))
         }
+    }
+
+    private fun bestHlsVariant(masterUrl: String): String {
+        val request = Request.Builder()
+            .url(masterUrl)
+            .header("Accept", "application/vnd.apple.mpegurl, application/x-mpegURL, */*")
+            .build()
+        val manifest = runCatching {
+            httpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) response.body.string() else null
+            }
+        }.getOrNull() ?: return masterUrl
+        var attributes: String? = null
+        var best: Triple<Long, Long, String>? = null
+        manifest.lineSequence().map(String::trim).filter(String::isNotBlank).forEach { line ->
+            if (line.startsWith("#EXT-X-STREAM-INF:")) {
+                attributes = line.removePrefix("#EXT-X-STREAM-INF:")
+            } else if (!line.startsWith("#")) {
+                val streamAttributes = attributes ?: return@forEach
+                attributes = null
+                if (streamAttributes.contains("AUDIO=")) return@forEach
+                val resolution = Regex("RESOLUTION=(\\d+)x(\\d+)").find(streamAttributes)
+                val pixels = resolution?.let { it.groupValues[1].toLong() * it.groupValues[2].toLong() } ?: 0L
+                val bandwidth = Regex("BANDWIDTH=(\\d+)").find(streamAttributes)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+                val url = masterUrl.toHttpUrlOrNull()?.resolve(line)?.toString() ?: return@forEach
+                if (best == null || pixels > best!!.first || (pixels == best!!.first && bandwidth > best!!.second)) {
+                    best = Triple(pixels, bandwidth, url)
+                }
+            }
+        }
+        return best?.third ?: masterUrl
     }
 
     private fun parseResult(response: JSONObject): TrailerResolveResult = when (response.optString("status")) {
