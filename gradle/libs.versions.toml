@@ -38,6 +38,7 @@ jackson               = "2.13.1"
 kotlinMetadataJvm     = "2.4.0"
 kotlinxSerialization  = "1.11.0"
 kotlinxDatetime       = "0.8.0"
+composeMultiplatform  = "1.11.1"
 
 [libraries]
 # Build-logic plugin artifacts (compileOnly in build-logic)
@@ -45,6 +46,7 @@ android-gradlePlugin  = { group = "com.android.tools.build", name = "gradle",   
 kotlin-gradlePlugin   = { group = "org.jetbrains.kotlin",    name = "kotlin-gradle-plugin",             version.ref = "kotlin" }
 kotlin-composeCompilerGradlePlugin = { group = "org.jetbrains.kotlin", name = "compose-compiler-gradle-plugin", version.ref = "kotlin" }
 ksp-gradlePlugin      = { group = "com.google.devtools.ksp", name = "symbol-processing-gradle-plugin",  version.ref = "ksp" }
+compose-multiplatform-gradlePlugin = { group = "org.jetbrains.compose", name = "compose-gradle-plugin", version.ref = "composeMultiplatform" }
 
 # AndroidX
 androidx-core-ktx                   = { group = "androidx.core",              name = "core-ktx",                    version.ref = "coreKtx" }
@@ -144,6 +146,7 @@ android-library     = { id = "com.android.library",                 version.ref 
 kotlin-android      = { id = "org.jetbrains.kotlin.android",        version.ref = "kotlin" }
 kotlin-multiplatform= { id = "org.jetbrains.kotlin.multiplatform",  version.ref = "kotlin" }
 kotlin-compose      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 kotlin-serialization= { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp                 = { id = "com.google.devtools.ksp",             version.ref = "ksp" }
 hilt                = { id = "com.google.dagger.hilt.android",      version.ref = "hilt" }
@@ -152,3 +155,4 @@ fluxa-android-application = { id = "fluxa.android.application" }
 fluxa-android-compose     = { id = "fluxa.android.compose" }
 fluxa-android-hilt        = { id = "fluxa.android.hilt" }
 fluxa-kmp-library         = { id = "fluxa.kmp.library" }
+fluxa-kmp-compose         = { id = "fluxa.kmp.compose" }

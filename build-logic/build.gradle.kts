@@ -9,6 +9,7 @@ dependencies {
     compileOnly(libs.kotlin.gradlePlugin)
     compileOnly(libs.kotlin.composeCompilerGradlePlugin)
     compileOnly(libs.ksp.gradlePlugin)
+    compileOnly(libs.compose.multiplatform.gradlePlugin)
 }
 
 gradlePlugin {
@@ -32,6 +33,10 @@ gradlePlugin {
         register("fluxaKmpLibrary") {
             id = "fluxa.kmp.library"
             implementationClass = "FluxaKmpLibraryPlugin"
+        }
+        register("fluxaKmpCompose") {
+            id = "fluxa.kmp.compose"
+            implementationClass = "FluxaKmpComposePlugin"
         }
     }
 }
