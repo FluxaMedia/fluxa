@@ -330,6 +330,7 @@ if (requiresSignedRelease && !listOf(
 dependencies {
     // Submodules
     implementation(project(":core"))
+    implementation(project(":shared"))
     implementation(project(":data"))
     implementation(project(":player"))
 
