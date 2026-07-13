@@ -356,6 +356,7 @@ class MainActivity : FragmentActivity() {
                                 detailViewModel = sharedDetailViewModel,
                                 profileManager = profileManager,
                                 activeProfile = { activeProfile },
+                                onActiveProfileChanged = { updated -> activeProfile = updated },
                                 player = mainPlayer,
                                 playerContent = { null }
                             )

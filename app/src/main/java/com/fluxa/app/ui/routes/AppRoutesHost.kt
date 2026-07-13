@@ -120,6 +120,7 @@ internal fun AppRoutesHost(
             is Screen.Search -> com.fluxa.app.shared.FluxaDestination.Search
             is Screen.Explore -> com.fluxa.app.shared.FluxaDestination.Discover
             is Screen.Calendar -> com.fluxa.app.shared.FluxaDestination.Calendar
+            is Screen.AddonStore -> com.fluxa.app.shared.FluxaDestination.AddonStore
             else -> null
         }
     } else {
@@ -133,6 +134,10 @@ internal fun AppRoutesHost(
             destination = mobileSharedDestination,
             showNavigationBar = false,
             onPlayRequested = onSharedPlayRequested,
+            onOpenUrlRequested = { url ->
+                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+            },
+            onAddonStoreBackRequested = navigateBackSafely,
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))

@@ -7,6 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
+import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
+import com.fluxa.app.shared.feature.addonstore.AddonStoreStore
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeStore
@@ -30,6 +33,7 @@ import com.fluxa.app.shared.feature.search.SearchStore
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.profile.ProfileSettingsStore
 import com.fluxa.app.shared.feature.profile.ProfileStore
+import com.fluxa.app.shared.platform.FluxaAddonStoreServices
 import com.fluxa.app.shared.platform.FluxaDetailServices
 import com.fluxa.app.shared.platform.FluxaCalendarServices
 import com.fluxa.app.shared.platform.FluxaDiscoverServices
@@ -47,6 +51,8 @@ fun FluxaAppHost(
     destination: FluxaDestination? = null,
     showNavigationBar: Boolean = true,
     onPlayRequested: () -> Unit = {},
+    onOpenUrlRequested: (String) -> Unit = {},
+    onAddonStoreBackRequested: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     FluxaAppHost(
@@ -57,11 +63,14 @@ fun FluxaAppHost(
         libraryDataSource = (platformServices as? FluxaLibraryServices)?.libraryDataSource,
         searchDataSource = (platformServices as? FluxaSearchServices)?.searchDataSource,
         profileDataSource = (platformServices as? FluxaProfileServices)?.profileDataSource,
+        addonStoreDataSource = (platformServices as? FluxaAddonStoreServices)?.addonStoreDataSource,
         language = language,
         onCatalogAction = onCatalogAction,
         destination = destination,
         showNavigationBar = showNavigationBar,
         onPlayRequested = onPlayRequested,
+        onOpenUrlRequested = onOpenUrlRequested,
+        onAddonStoreBackRequested = onAddonStoreBackRequested,
         modifier = modifier
     )
 }
@@ -75,11 +84,14 @@ fun FluxaAppHost(
     libraryDataSource: LibraryDataSource? = null,
     searchDataSource: SearchDataSource? = null,
     profileDataSource: ProfileDataSource? = null,
+    addonStoreDataSource: AddonStoreDataSource? = null,
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     destination: FluxaDestination? = null,
     showNavigationBar: Boolean = true,
     onPlayRequested: () -> Unit = {},
+    onOpenUrlRequested: (String) -> Unit = {},
+    onAddonStoreBackRequested: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -113,6 +125,10 @@ fun FluxaAppHost(
         }
     }
     val settingsState = settingsStore?.state?.collectAsState()?.value
+    val addonStoreStore = addonStoreDataSource?.let { source ->
+        remember(source) { AddonStoreStore(source, scope) }
+    }
+    val addonStoreState = addonStoreStore?.state?.collectAsState()?.value
     val appState = rememberFluxaAppState()
     val selectedDetail = appState.uiState.selectedDetail
     val detailStore = selectedDetail?.let { item ->
@@ -152,6 +168,11 @@ fun FluxaAppHost(
     LaunchedEffect(appState.uiState.destination, calendarStore) {
         if (appState.uiState.destination == FluxaDestination.Calendar) {
             calendarStore?.dispatch(CalendarAction.Refresh)
+        }
+    }
+    LaunchedEffect(appState.uiState.destination, addonStoreStore) {
+        if (appState.uiState.destination == FluxaDestination.AddonStore) {
+            addonStoreStore?.dispatch(AddonStoreAction.Refresh)
         }
     }
 
@@ -227,6 +248,14 @@ fun FluxaAppHost(
                 settingsStore?.update(settings)
             }
         },
+        addonStoreState = addonStoreState,
+        onAddonStoreAction = { action ->
+            scope.launch {
+                addonStoreStore?.dispatch(action)
+            }
+        },
+        onOpenUrlRequested = onOpenUrlRequested,
+        onAddonStoreBackRequested = onAddonStoreBackRequested,
         showNavigationBar = showNavigationBar,
         modifier = modifier
     )
