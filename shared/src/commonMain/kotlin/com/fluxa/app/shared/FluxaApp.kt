@@ -24,12 +24,20 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.calendar.CalendarAction
+import com.fluxa.app.shared.feature.calendar.CalendarScreen
+import com.fluxa.app.shared.feature.calendar.CalendarUiState
 import com.fluxa.app.shared.feature.detail.DetailAction
 import com.fluxa.app.shared.feature.detail.DetailScreen
 import com.fluxa.app.shared.feature.detail.DetailUiState
 import com.fluxa.app.shared.feature.discover.DiscoverAction
 import com.fluxa.app.shared.feature.discover.DiscoverScreen
 import com.fluxa.app.shared.feature.discover.DiscoverUiState
+import com.fluxa.app.shared.feature.library.LibraryScreen
+import com.fluxa.app.shared.feature.library.LibraryUiState
+import com.fluxa.app.shared.feature.profile.ProfileSettingsScreen
+import com.fluxa.app.shared.feature.profile.ProfileUiState
+import com.fluxa.app.shared.feature.profile.SettingsUiState
 import com.fluxa.app.shared.feature.search.SearchAction
 import com.fluxa.app.shared.feature.search.SearchScreen
 import com.fluxa.app.shared.feature.search.SearchUiState
@@ -63,6 +71,15 @@ fun FluxaApp(
     onSearchAction: (SearchAction) -> Unit = {},
     discoverState: DiscoverUiState? = null,
     onDiscoverAction: (DiscoverAction) -> Unit = {},
+    calendarState: CalendarUiState? = null,
+    onCalendarAction: (CalendarAction) -> Unit = {},
+    libraryState: LibraryUiState? = null,
+    onLibraryItemSelected: (CatalogItemUiModel) -> Unit = {},
+    profileState: ProfileUiState? = null,
+    settingsState: SettingsUiState? = null,
+    onProfileSelected: (String) -> Unit = {},
+    onSettingsChanged: (SettingsUiState) -> Unit = {},
+    showNavigationBar: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     MaterialTheme {
@@ -71,11 +88,13 @@ fun FluxaApp(
                 .fillMaxSize()
                 .background(FluxaColors.background)
         ) {
-            FluxaNavigationBar(
-                language = state.language,
-                destination = state.destination,
-                onDestinationSelected = onDestinationSelected
-            )
+            if (showNavigationBar) {
+                FluxaNavigationBar(
+                    language = state.language,
+                    destination = state.destination,
+                    onDestinationSelected = onDestinationSelected
+                )
+            }
             when {
                 state.selectedDetail != null && detailState != null -> DetailScreen(
                     state = detailState,
@@ -95,6 +114,26 @@ fun FluxaApp(
                     language = state.language,
                     onFiltersChanged = { filters -> onDiscoverAction(DiscoverAction.FiltersChanged(filters)) },
                     onItemSelected = { item -> onDiscoverAction(DiscoverAction.ItemSelected(item)) },
+                    modifier = Modifier.weight(1f)
+                )
+                state.destination == FluxaDestination.Calendar && calendarState != null -> CalendarScreen(
+                    state = calendarState,
+                    language = state.language,
+                    onAction = onCalendarAction,
+                    modifier = Modifier.weight(1f)
+                )
+                state.destination == FluxaDestination.Library && libraryState != null -> LibraryScreen(
+                    state = libraryState,
+                    language = state.language,
+                    onItemSelected = onLibraryItemSelected,
+                    modifier = Modifier.weight(1f)
+                )
+                state.destination == FluxaDestination.Settings && profileState != null && settingsState != null -> ProfileSettingsScreen(
+                    profileState = profileState,
+                    settingsState = settingsState,
+                    language = state.language,
+                    onProfileSelected = { profile -> onProfileSelected(profile.id) },
+                    onSettingsChanged = onSettingsChanged,
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(

@@ -29,6 +29,7 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.ui.AppNavigator
 import com.fluxa.app.ui.Screen
+import com.fluxa.app.ui.asNavigationMeta
 import com.fluxa.app.ui.TraktDeviceAuthUiState
 import com.fluxa.app.ui.installLocalAddonForProfile
 import com.fluxa.app.ui.mobileNavDestination
@@ -59,6 +60,8 @@ internal fun AppRoutesHost(
     context: Context,
     currentScreen: Screen,
     deviceType: DeviceType,
+    androidFluxaPlatformServices: com.fluxa.app.ui.AndroidFluxaPlatformServices?,
+    sharedDetailViewModel: com.fluxa.app.ui.catalog.DetailViewModel,
     activeProfile: UserProfile?,
     onActiveProfileChanged: (UserProfile?) -> Unit,
     navigator: AppNavigator,
@@ -183,7 +186,40 @@ internal fun AppRoutesHost(
                 onCancel = navigateBackSafely,
                 startOnNuvio = screen.startOnNuvio
             )
-            is Screen.Home -> HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope)
+            is Screen.Home -> if (deviceType == DeviceType.Mobile && androidFluxaPlatformServices != null) {
+                com.fluxa.app.shared.FluxaAppHost(
+                    platformServices = androidFluxaPlatformServices,
+                    language = activeProfile?.language,
+                    destination = com.fluxa.app.shared.FluxaDestination.Home,
+                    showNavigationBar = false,
+                    onPlayRequested = {
+                        sharedDetailViewModel.uiState.value.detail?.let { meta ->
+                            val savedPlayback = sharedDetailViewModel.uiState.value.savedPlayback
+                            val targetVideoId = if (meta.type == "series") savedPlayback?.lastVideoId else null
+                            val resumeProgress = if (targetVideoId != null) savedPlayback?.timeOffset ?: 0L else 0L
+                            if (meta.id.startsWith("cs3:") || targetVideoId?.startsWith("cs3:") == true) {
+                                navigator.navigateTo(
+                                    Screen.Player(
+                                        meta = meta.asNavigationMeta(),
+                                        videoId = targetVideoId,
+                                        initialProgress = resumeProgress
+                                    )
+                                )
+                            } else {
+                                navigator.navigateTo(
+                                    Screen.Sources(
+                                        meta = meta.asNavigationMeta(),
+                                        videoId = targetVideoId,
+                                        initialProgress = resumeProgress
+                                    )
+                                )
+                            }
+                        }
+                    }
+                )
+            } else {
+                HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope)
+            }
             is Screen.CategoryResults -> CategoryResultsScreen(
                 activeProfile = activeProfile,
                 categoryId = screen.categoryId,

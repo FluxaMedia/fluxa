@@ -202,6 +202,8 @@ class MainActivity : FragmentActivity() {
                     var isDownloading by remember { mutableStateOf(false) }
 
                     val homeViewModel: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                    val sharedDetailViewModel: com.fluxa.app.ui.catalog.DetailViewModel =
+                        androidx.hilt.navigation.compose.hiltViewModel(key = "SharedMobileDetailViewModel")
                     val offlineDownloadManager = remember(context) { OfflineDownloadManager.getInstance(context) }
                     val isDirectLoading by homeViewModel.isDirectLoading.collectAsState()
                     val traktContinueWatchingLastUpdatedAt by homeViewModel.traktContinueWatchingLastUpdatedAt.collectAsState()
@@ -347,6 +349,21 @@ class MainActivity : FragmentActivity() {
                         player
                     }
 
+                    val androidFluxaPlatformServices = remember(deviceType, mainPlayer, homeViewModel, sharedDetailViewModel, profileManager) {
+                        if (deviceType == DeviceType.Mobile) {
+                            AndroidFluxaPlatformServices(
+                                homeViewModel = homeViewModel,
+                                detailViewModel = sharedDetailViewModel,
+                                profileManager = profileManager,
+                                activeProfile = { activeProfile },
+                                player = mainPlayer,
+                                playerContent = { null }
+                            )
+                        } else {
+                            null
+                        }
+                    }
+
                     PlayerLifecycleEffect(
                         currentScreen = currentScreen,
                         activeProfile = activeProfile,
@@ -455,6 +472,8 @@ class MainActivity : FragmentActivity() {
                             context = context,
                             currentScreen = currentScreen,
                             deviceType = deviceType,
+                            androidFluxaPlatformServices = androidFluxaPlatformServices,
+                            sharedDetailViewModel = sharedDetailViewModel,
                             activeProfile = activeProfile,
                             onActiveProfileChanged = { activeProfile = it },
                             navigator = navigator,
