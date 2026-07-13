@@ -39,6 +39,20 @@ struct FluxaAppleAddonCatalogResolver {
         return requests
     }
 
+    func resourceUrl(
+        transportUrl: String,
+        resource: String,
+        contentType: String,
+        id: String
+    ) -> URL? {
+        URL(string: resourceUrlString(
+            transportUrl: transportUrl,
+            resource: resource,
+            contentType: contentType,
+            id: id
+        ))
+    }
+
     private func makeRequest(
         catalog: FluxaAppleAddonCatalog,
         manifest: FluxaAppleAddonManifest,
@@ -49,12 +63,12 @@ struct FluxaAppleAddonCatalogResolver {
               let contentType = catalog.type?.trimmingCharacters(in: .whitespacesAndNewlines),
               !contentType.isEmpty,
               catalog.supportsInitialLoad,
-              let url = URL(string: resourceUrl(
+              let url = resourceUrl(
                   transportUrl: transportUrl,
                   resource: "catalog",
                   contentType: contentType,
                   id: catalogId
-              )) else {
+              ) else {
             return nil
         }
         let title = catalog.name?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -89,7 +103,7 @@ struct FluxaAppleAddonCatalogResolver {
         return withScheme.hasSuffix("/") ? "\(withScheme)manifest.json" : "\(withScheme)/manifest.json"
     }
 
-    private func resourceUrl(
+    private func resourceUrlString(
         transportUrl: String,
         resource: String,
         contentType: String,

@@ -3,13 +3,16 @@ import Foundation
 final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
     private let configurationStore: FluxaAppleAddonConfigurationStore
     private let catalogBootstrap: FluxaAppleCatalogBootstrap
+    private let addonResourceLoader: FluxaAppleAddonResourceLoader
 
     init(
         configurationStore: FluxaAppleAddonConfigurationStore,
-        catalogBootstrap: FluxaAppleCatalogBootstrap
+        catalogBootstrap: FluxaAppleCatalogBootstrap,
+        addonResourceLoader: FluxaAppleAddonResourceLoader = FluxaAppleAddonResourceLoader()
     ) {
         self.configurationStore = configurationStore
         self.catalogBootstrap = catalogBootstrap
+        self.addonResourceLoader = addonResourceLoader
     }
 
     func execute(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
@@ -28,6 +31,10 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             ])
         case "refreshContinueWatching":
             return .object(["continueWatching": .array([])])
+        case "fetchMetaDetail":
+            return try await loadMeta(effect: effect)
+        case "readPlaybackProgress":
+            return .null
         default:
             throw NSError(domain: "FluxaAppleUnsupportedEffect", code: 1)
         }
@@ -59,5 +66,30 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
 
     private func optionalString(_ value: String?) -> FluxaAppleJsonValue {
         value.map(FluxaAppleJsonValue.string) ?? .null
+    }
+
+    private func string(_ value: FluxaAppleJsonValue?) -> String? {
+        guard case .string(let text)? = value else {
+            return nil
+        }
+        return text
+    }
+
+    private func loadMeta(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
+        guard case .object(let payload) = effect.payload,
+              let contentType = string(payload["contentType"]),
+              let id = string(payload["id"]) else {
+            throw URLError(.cannotParseResponse)
+        }
+        let transportUrl = string(payload["sourceAddonTransportUrl"])
+            ?? configurationStore.localAddonUrls().first
+        guard let transportUrl else {
+            throw URLError(.fileDoesNotExist)
+        }
+        return try await addonResourceLoader.loadMeta(
+            transportUrl: transportUrl,
+            contentType: contentType,
+            id: id
+        )
     }
 }
