@@ -2,13 +2,16 @@ import SwiftUI
 
 @main
 struct FluxaIosApp: App {
-    private let coreVersion = FluxaRustCoreRuntime.version()
-    private let headlessRuntime = requireFluxaAppleHeadlessRuntime()
+    private let coreVersion: String
+    private let headlessRuntime: FluxaAppleHeadlessRuntime
     private let catalogStartup: FluxaAppleCatalogStartup
     @State private var hasStartedCatalog = false
 
     init() {
-        catalogStartup = FluxaAppleCatalogStartup(runtime: headlessRuntime)
+        let runtime = requireFluxaAppleHeadlessRuntime()
+        coreVersion = FluxaRustCoreRuntime.version()
+        headlessRuntime = runtime
+        catalogStartup = FluxaAppleCatalogStartup(runtime: runtime)
     }
 
     var body: some Scene {
