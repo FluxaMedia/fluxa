@@ -20,32 +20,40 @@ final class FluxaAppleCatalogLoader {
 
     func loadSnapshot(requests: [FluxaAppleCatalogRequest]) async throws -> String {
         var rows = [FluxaAppleCatalogRow]()
+        var lastError: Error?
         for request in requests {
-            let (data, response) = try await session.data(from: request.url)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200..<300).contains(httpResponse.statusCode) else {
-                throw URLError(.badServerResponse)
-            }
-            let catalog = try decoder.decode(FluxaAppleStremioCatalogResponse.self, from: data)
-            rows.append(
-                FluxaAppleCatalogRow(
-                    id: request.id,
-                    title: request.title,
-                    canLoadMore: false,
-                    items: catalog.metas.map {
-                        FluxaAppleCatalogItem(
-                            id: $0.id,
-                            type: $0.type ?? request.contentType,
-                            title: $0.name,
-                            subtitle: $0.releaseInfo ?? "",
-                            artworkUrl: $0.poster,
-                            logoUrl: $0.logo,
-                            addonTransportUrl: request.addonTransportUrl,
-                            catalogType: request.catalogType
-                        )
-                    }
+            do {
+                let (data, response) = try await session.data(from: request.url)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200..<300).contains(httpResponse.statusCode) else {
+                    throw URLError(.badServerResponse)
+                }
+                let catalog = try decoder.decode(FluxaAppleStremioCatalogResponse.self, from: data)
+                rows.append(
+                    FluxaAppleCatalogRow(
+                        id: request.id,
+                        title: request.title,
+                        canLoadMore: false,
+                        items: catalog.metas.map {
+                            FluxaAppleCatalogItem(
+                                id: $0.id,
+                                type: $0.type ?? request.contentType,
+                                title: $0.name,
+                                subtitle: $0.releaseInfo ?? "",
+                                artworkUrl: $0.poster,
+                                logoUrl: $0.logo,
+                                addonTransportUrl: request.addonTransportUrl,
+                                catalogType: request.catalogType
+                            )
+                        }
+                    )
                 )
-            )
+            } catch {
+                lastError = error
+            }
+        }
+        if rows.isEmpty, let lastError {
+            throw lastError
         }
         return String(decoding: try encoder.encode(FluxaAppleCatalogSnapshot(rows: rows)), as: UTF8.self)
     }
