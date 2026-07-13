@@ -1,5 +1,6 @@
 name: FluxaApple
 options:
+  xcodeVersion: "15.4"
   deploymentTarget:
     iOS: "16.0"
     tvOS: "16.0"
