@@ -10,7 +10,23 @@ import androidx.compose.ui.Modifier
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeStore
+import com.fluxa.app.shared.platform.FluxaPlatformServices
 import kotlinx.coroutines.launch
+
+@Composable
+fun FluxaAppHost(
+    platformServices: FluxaPlatformServices,
+    language: String? = null,
+    onCatalogAction: (CatalogAction) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    FluxaAppHost(
+        catalogHomeDataSource = platformServices.catalogHomeDataSource,
+        language = language,
+        onCatalogAction = onCatalogAction,
+        modifier = modifier
+    )
+}
 
 @Composable
 fun FluxaAppHost(
