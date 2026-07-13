@@ -1,11 +1,8 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-
 package com.fluxa.app.ui.catalog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -22,47 +19,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.fluxa.app.data.remote.Meta
-
-internal fun collectionFolderCardImageHeight(
-    fallbackLayout: String,
-    widthPreset: String
-): androidx.compose.ui.unit.Dp {
-    return when (fallbackLayout) {
-        "horizontal" -> horizontalCardHeight(widthPreset, DeviceType.Mobile)
-        "square" -> posterCardWidth(widthPreset)
-        else -> posterCardHeight(widthPreset)
-    }
-}
-
-internal fun collectionFolderTitleSlotHeight(hidePosterTitles: Boolean): androidx.compose.ui.unit.Dp {
-    return if (hidePosterTitles) 0.dp else 30.dp
-}
-
-internal fun collectionFolderLayout(reason: String?, fallbackLayout: String): String {
-    return when (reason) {
-        "wide" -> "horizontal"
-        "square" -> "square"
-        "poster" -> "vertical"
-        else -> fallbackLayout
-    }
-}
-
-internal const val HOME_CATALOG_LOAD_MORE_THRESHOLD = 5
 
 @Composable
-private fun LegacyHomeCatalogCard(
+fun HomeCatalogCard(
     artwork: String?,
-    width: androidx.compose.ui.unit.Dp,
-    imageHeight: androidx.compose.ui.unit.Dp,
+    width: Dp,
+    imageHeight: Dp,
     showTitle: Boolean,
     title: String,
     secondary: String,
@@ -76,7 +47,7 @@ private fun LegacyHomeCatalogCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?
 ) {
-    val context = LocalContext.current
+    val context = LocalPlatformContext.current
     val request = remember(context, artwork) {
         ImageRequest.Builder(context)
             .data(artwork)
@@ -188,91 +159,6 @@ private fun LegacyHomeCatalogCard(
                     modifier = Modifier.padding(top = 0.dp)
                 )
             }
-        }
-    }
-}
-
-@Composable
-internal fun MobileCollectionFolderCard(
-    title: String,
-    poster: String?,
-    coverEmoji: String?,
-    hideTitle: Boolean,
-    reason: String?,
-    hideTitlesByProfile: Boolean,
-    fallbackLayout: String,
-    widthPreset: String,
-    titleSlotHeight: androidx.compose.ui.unit.Dp,
-    onClick: () -> Unit
-) {
-    val context = LocalContext.current
-    val layout = collectionFolderLayout(reason, fallbackLayout)
-    val width = when (layout) {
-        "horizontal" -> horizontalCardWidth(widthPreset, DeviceType.Mobile)
-        else -> posterCardWidth(widthPreset)
-    }
-    val imageHeight = when (layout) {
-        "horizontal" -> horizontalCardHeight(widthPreset, DeviceType.Mobile)
-        "square" -> posterCardWidth(widthPreset)
-        else -> posterCardHeight(widthPreset)
-    }
-    val displayPoster = poster?.takeIf { it.isNotBlank() }
-    val request = remember(context, displayPoster) {
-        ImageRequest.Builder(context)
-            .data(displayPoster)
-            .crossfade(false)
-            .memoryCacheKey(displayPoster?.let { "home-collection:$it" })
-            .diskCacheKey(displayPoster)
-            .build()
-    }
-    val showTitle = !(hideTitlesByProfile || hideTitle)
-    val totalHeight = imageHeight + titleSlotHeight
-
-    Column(
-        modifier = Modifier
-            .width(width)
-            .height(totalHeight)
-            .clickable(
-                interactionSource = null,
-                indication = null,
-                onClick = onClick
-            ),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(imageHeight)
-                .background(Color.White.copy(alpha = 0.05f)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (displayPoster != null) {
-                AsyncImage(
-                    model = request,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                androidx.compose.material3.Text(
-                    text = coverEmoji?.takeIf { it.isNotBlank() } ?: title.take(1).uppercase(),
-                    color = Color.White.copy(alpha = if (coverEmoji.isNullOrBlank()) 0.2f else 0.82f),
-                    fontSize = if (coverEmoji.isNullOrBlank()) 42.sp else 36.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
-        }
-        if (showTitle) {
-            androidx.compose.material3.Text(
-                text = title,
-                color = Color.White,
-                fontSize = 12.sp,
-                lineHeight = 15.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.height(titleSlotHeight - 4.dp)
-            )
         }
     }
 }

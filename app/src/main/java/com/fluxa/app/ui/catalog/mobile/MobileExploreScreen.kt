@@ -259,7 +259,8 @@ fun MobileExploreScreen(
                 ) { _, movie ->
                     val source = discoverSourceFor(movie, resultSources)
                     MobileExplorePosterCard(
-                        movie = movie,
+                        title = movie.name,
+                        artworkUrl = movie.poster,
                         onClick = { onMovieClick(movie, source?.transportUrl, source?.type) }
                     )
                 }
@@ -269,7 +270,7 @@ fun MobileExploreScreen(
 }
 
 @Composable
-private fun MobileExplorePosterCard(
+private fun LegacyMobileExplorePosterCard(
     movie: Meta,
     onClick: () -> Unit
 ) {
@@ -302,7 +303,7 @@ private fun MobileExplorePosterCard(
 }
 
 @Composable
-private fun MobileExplorePosterCardSkeleton() {
+private fun LegacyMobileExplorePosterCardSkeleton() {
     val transition = rememberInfiniteTransition(label = "explore-skeleton")
     val alpha by transition.animateFloat(
         initialValue = 0.05f,

@@ -8,6 +8,7 @@ actual fun epochMillisNow(): Long = (NSDate().timeIntervalSince1970 * 1000).toLo
 
 internal actual class SimpleLock actual constructor() {
     private val lock = NSLock()
+
     actual fun <T> withLock(block: () -> T): T {
         lock.lock()
         try {

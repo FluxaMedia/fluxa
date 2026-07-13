@@ -2,7 +2,7 @@
 
 <img src="app/src/mobile/res/mipmap-nodpi/ic_launcher.png" alt="Fluxa" width="96" />
 
-# Fluxa
+# Fluxa for Android
 
 A fast, native media client for Android phones, tablets, and TV.<br/>
 Browse catalogs, track what you watch, and play anything the Stremio addon ecosystem exposes.
@@ -10,10 +10,11 @@ Browse catalogs, track what you watch, and play anything the Stremio addon ecosy
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stars][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
+[![Releases][releases-shield]][releases-url]
 [![License][license-shield]][license-url]
+[![Discord][discord-shield]][discord-url]
 
-[Download](#download) · [Features](#features) · [Building from source](#building-from-source)
+[Download](#download) · [Features](#features) · [Building from source](#building-from-source) · [Discord][discord-url]
 
 </div>
 
@@ -38,7 +39,7 @@ The Android shell handles all platform I/O — HTTP, Room, ExoPlayer, audio, not
 
 ## Download
 
-Grab the latest build from [Releases](https://github.com/KhooLy/Fluxa/releases/latest). Requires Android 8.0+ (API 26).
+Grab the latest build from [Releases](https://github.com/FluxaMedia/fluxa/releases/latest). Requires Android 8.0+ (API 26).
 
 | Variant | Package | Target |
 | --- | --- | --- |
@@ -56,8 +57,8 @@ Each variant ships per-ABI APKs — pick the one matching your device, or let th
 ## Building from source
 
 ```bash
-git clone https://github.com/KhooLy/Fluxa.git
-cd Fluxa
+git clone https://github.com/FluxaMedia/fluxa.git
+cd fluxa
 ./gradlew :app:assembleMobileDebug
 # or for TV
 ./gradlew :app:assembleTvDebug
@@ -99,6 +100,10 @@ Kotlin  →  executes each effect (OkHttp / Room / audio / ...)
 
 This keeps `fluxa_core` fully portable — the same crate compiles for Android (JNI), desktop (native Rust), and future targets without any platform-specific code inside Rust.
 
+## Platform roadmap
+
+Fluxa for Android ships phone, tablet, and Android TV builds today. The UI is being migrated to Compose Multiplatform so iOS can use the same application interface, while tvOS uses the same shared domain logic with native system integration.
+
 ## Stack
 
 [Kotlin](https://kotlinlang.org/) · [Jetpack Compose](https://developer.android.com/compose) · [Rust](https://www.rust-lang.org/) · [AndroidX Media3 / ExoPlayer](https://developer.android.com/media/media3) · [MPV](https://mpv.io/) · [librqbit](https://github.com/ikatson/rqbit) · [UniFFI](https://mozilla.github.io/uniffi-rs/) · [Hilt](https://dagger.dev/hilt/) · [Room](https://developer.android.com/training/data-storage/room) · [OkHttp](https://square.github.io/okhttp/) + [Retrofit](https://square.github.io/retrofit/) · [Coil](https://coil-kt.github.io/coil/)
@@ -107,19 +112,25 @@ This keeps `fluxa_core` fully portable — the same crate compiles for Android (
 
 **Legal** — Fluxa is a client-side interface for user-installed Stremio addons. It does not host, serve, or distribute any media content. All streams come from third-party addons chosen by the user. Fluxa is not affiliated with any addon developer, repository, or content provider. Users are responsible for ensuring they have the right to access what they stream.
 
+## Community
+
+Questions, bug reports, feature requests, or just want to hang out — join the [Fluxa Discord][discord-url].
+
 ## Related projects
 
-- [Fluxa Desktop](https://github.com/FluxaMedia/fluxa-desktop) — the desktop counterpart to this app
+- [Fluxa Desktop](https://github.com/FluxaMedia/fluxa-desktop) — the Windows, macOS, and Linux counterpart
 - [fluxa-core](https://github.com/FluxaMedia/fluxa-core) — the shared Rust library powering both
 
 <!-- MARKDOWN LINKS -->
-[contributors-shield]: https://img.shields.io/github/contributors/KhooLy/Fluxa.svg?style=for-the-badge
-[contributors-url]: https://github.com/KhooLy/Fluxa/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/KhooLy/Fluxa.svg?style=for-the-badge
-[forks-url]: https://github.com/KhooLy/Fluxa/network/members
-[stars-shield]: https://img.shields.io/github/stars/KhooLy/Fluxa.svg?style=for-the-badge
-[stars-url]: https://github.com/KhooLy/Fluxa/stargazers
-[issues-shield]: https://img.shields.io/github/issues/KhooLy/Fluxa.svg?style=for-the-badge
-[issues-url]: https://github.com/KhooLy/Fluxa/issues
-[license-shield]: https://img.shields.io/github/license/KhooLy/Fluxa.svg?style=for-the-badge
-[license-url]: https://github.com/KhooLy/Fluxa/blob/master/LICENSE
+[contributors-shield]: https://img.shields.io/github/contributors/FluxaMedia/fluxa.svg?style=for-the-badge
+[contributors-url]: https://github.com/FluxaMedia/fluxa/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/FluxaMedia/fluxa.svg?style=for-the-badge
+[forks-url]: https://github.com/FluxaMedia/fluxa/network/members
+[stars-shield]: https://img.shields.io/github/stars/FluxaMedia/fluxa.svg?style=for-the-badge
+[stars-url]: https://github.com/FluxaMedia/fluxa/stargazers
+[releases-shield]: https://img.shields.io/github/v/release/FluxaMedia/fluxa.svg?style=for-the-badge
+[releases-url]: https://github.com/FluxaMedia/fluxa/releases/latest
+[license-shield]: https://img.shields.io/github/license/FluxaMedia/fluxa.svg?style=for-the-badge
+[license-url]: https://github.com/FluxaMedia/fluxa/blob/master/LICENSE
+[discord-shield]: https://img.shields.io/badge/Discord-Join-5865F2.svg?style=for-the-badge&logo=discord&logoColor=white
+[discord-url]: https://discord.gg/wan9FeDEfe

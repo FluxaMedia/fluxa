@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+
 plugins {
     alias(libs.plugins.fluxa.kmp.compose)
 }
@@ -7,6 +9,17 @@ android {
 }
 
 kotlin {
+    targets
+        .withType<KotlinNativeTarget>()
+        .matching { it.name.startsWith("ios") }
+        .configureEach {
+            binaries.framework {
+                baseName = "FluxaShared"
+                isStatic = true
+                export(project(":core"))
+            }
+        }
+
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core"))

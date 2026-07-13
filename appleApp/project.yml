@@ -1,0 +1,29 @@
+name: FluxaApple
+options:
+  deploymentTarget:
+    iOS: "16.0"
+    tvOS: "16.0"
+targets:
+  FluxaIos:
+    type: application
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: iOS
+    resources:
+      - path: ../core/src/androidMain/assets/i18n
+    preBuildScripts:
+      - name: Build FluxaShared
+        script: ../gradlew :shared:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
+  FluxaTvos:
+    type: application
+    platform: tvOS
+    sources:
+      - path: tvOS
+    resources:
+      - path: ../core/src/androidMain/assets/i18n
+    preBuildScripts:
+      - name: Build FluxaCore
+        script: ../gradlew :core:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
