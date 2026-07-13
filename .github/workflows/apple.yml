@@ -81,6 +81,9 @@ jobs:
         working-directory: appleApp
         run: xcodegen generate
 
+      - name: Build Fluxa Rust core
+        run: appleApp/scripts/build-rust-core-xcframework.sh
+
       - name: Build iOS host
         run: >-
           xcodebuild
@@ -136,6 +139,9 @@ jobs:
       - name: Generate Apple host project
         working-directory: appleApp
         run: xcodegen generate
+
+      - name: Build Fluxa Rust core
+        run: appleApp/scripts/build-rust-core-xcframework.sh
 
       - name: Build tvOS host
         run: >-

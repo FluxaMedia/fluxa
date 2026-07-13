@@ -7,6 +7,12 @@ options:
 settings:
   base:
     GENERATE_INFOPLIST_FILE: YES
+    HEADER_SEARCH_PATHS: "$(SRCROOT)/Generated/FluxaRustCoreFFI"
+    LIBRARY_SEARCH_PATHS: "$(SRCROOT)/Generated"
+    OTHER_LDFLAGS[sdk=iphoneos*]: "-lfluxa_core-ios"
+    OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_core-ios-simulator"
+    OTHER_LDFLAGS[sdk=appletvos*]: "-lfluxa_core-tvos"
+    OTHER_LDFLAGS[sdk=appletvsimulator*]: "-lfluxa_core-tvos-simulator"
 targets:
   FluxaIos:
     type: application
@@ -19,7 +25,6 @@ targets:
       - path: ../core/src/androidMain/assets/i18n
     dependencies:
       - framework: UIKit.framework
-      - framework: Generated/FluxaRustCore.xcframework
     preBuildScripts:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh
@@ -35,8 +40,6 @@ targets:
       - path: Generated/FluxaRustCore.swift
     resources:
       - path: ../core/src/androidMain/assets/i18n
-    dependencies:
-      - framework: Generated/FluxaRustCore.xcframework
     preBuildScripts:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh

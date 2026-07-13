@@ -51,6 +51,9 @@ lipo -create \
     "target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_core.a" \
     "target/x86_64-apple-ios/$cargo_profile/libfluxa_core.a" \
     -output "$output_dir/libfluxa_core-ios-simulator.a"
+cp "target/aarch64-apple-ios/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-ios.a"
+cp "target/aarch64-apple-tvos/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-tvos.a"
+cp "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-tvos-simulator.a"
 cp "$output_dir/FluxaRustCoreFFI.h" "$headers_dir/FluxaRustCoreFFI.h"
 cp "$output_dir/FluxaRustCoreFFI.modulemap" "$headers_dir/module.modulemap"
 
