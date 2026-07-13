@@ -10,6 +10,9 @@ import androidx.compose.ui.Modifier
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
 import com.fluxa.app.shared.feature.addonstore.AddonStoreStore
+import com.fluxa.app.shared.feature.auth.AuthAction
+import com.fluxa.app.shared.feature.auth.AuthDataSource
+import com.fluxa.app.shared.feature.auth.AuthStore
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeStore
@@ -34,6 +37,7 @@ import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.profile.ProfileSettingsStore
 import com.fluxa.app.shared.feature.profile.ProfileStore
 import com.fluxa.app.shared.platform.FluxaAddonStoreServices
+import com.fluxa.app.shared.platform.FluxaAuthServices
 import com.fluxa.app.shared.platform.FluxaDetailServices
 import com.fluxa.app.shared.platform.FluxaCalendarServices
 import com.fluxa.app.shared.platform.FluxaDiscoverServices
@@ -53,6 +57,11 @@ fun FluxaAppHost(
     onPlayRequested: () -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
     onAddonStoreBackRequested: () -> Unit = {},
+    onAuthBackRequested: () -> Unit = {},
+    onAuthCompleted: () -> Unit = {},
+    authStartOnNuvio: Boolean = false,
+    nuvioIcon: @Composable () -> Unit = {},
+    stremioIcon: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     FluxaAppHost(
@@ -64,6 +73,7 @@ fun FluxaAppHost(
         searchDataSource = (platformServices as? FluxaSearchServices)?.searchDataSource,
         profileDataSource = (platformServices as? FluxaProfileServices)?.profileDataSource,
         addonStoreDataSource = (platformServices as? FluxaAddonStoreServices)?.addonStoreDataSource,
+        authDataSource = (platformServices as? FluxaAuthServices)?.authDataSource,
         language = language,
         onCatalogAction = onCatalogAction,
         destination = destination,
@@ -71,6 +81,11 @@ fun FluxaAppHost(
         onPlayRequested = onPlayRequested,
         onOpenUrlRequested = onOpenUrlRequested,
         onAddonStoreBackRequested = onAddonStoreBackRequested,
+        onAuthBackRequested = onAuthBackRequested,
+        onAuthCompleted = onAuthCompleted,
+        authStartOnNuvio = authStartOnNuvio,
+        nuvioIcon = nuvioIcon,
+        stremioIcon = stremioIcon,
         modifier = modifier
     )
 }
@@ -85,6 +100,7 @@ fun FluxaAppHost(
     searchDataSource: SearchDataSource? = null,
     profileDataSource: ProfileDataSource? = null,
     addonStoreDataSource: AddonStoreDataSource? = null,
+    authDataSource: AuthDataSource? = null,
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     destination: FluxaDestination? = null,
@@ -92,6 +108,11 @@ fun FluxaAppHost(
     onPlayRequested: () -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
     onAddonStoreBackRequested: () -> Unit = {},
+    onAuthBackRequested: () -> Unit = {},
+    onAuthCompleted: () -> Unit = {},
+    authStartOnNuvio: Boolean = false,
+    nuvioIcon: @Composable () -> Unit = {},
+    stremioIcon: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -129,6 +150,10 @@ fun FluxaAppHost(
         remember(source) { AddonStoreStore(source, scope) }
     }
     val addonStoreState = addonStoreStore?.state?.collectAsState()?.value
+    val authStore = authDataSource?.let { source ->
+        remember(source) { AuthStore(source, scope) }
+    }
+    val authState = authStore?.state?.collectAsState()?.value
     val appState = rememberFluxaAppState()
     val selectedDetail = appState.uiState.selectedDetail
     val detailStore = selectedDetail?.let { item ->
@@ -173,6 +198,11 @@ fun FluxaAppHost(
     LaunchedEffect(appState.uiState.destination, addonStoreStore) {
         if (appState.uiState.destination == FluxaDestination.AddonStore) {
             addonStoreStore?.dispatch(AddonStoreAction.Refresh)
+        }
+    }
+    LaunchedEffect(authStartOnNuvio, authStore) {
+        if (authStartOnNuvio) {
+            authStore?.dispatch(AuthAction.ContinueWithNuvio)
         }
     }
 
@@ -256,6 +286,16 @@ fun FluxaAppHost(
         },
         onOpenUrlRequested = onOpenUrlRequested,
         onAddonStoreBackRequested = onAddonStoreBackRequested,
+        authState = authState,
+        onAuthAction = { action ->
+            when (action) {
+                AuthAction.BackRequested -> onAuthBackRequested()
+                AuthAction.Completed -> onAuthCompleted()
+                else -> scope.launch { authStore?.dispatch(action) }
+            }
+        },
+        nuvioIcon = nuvioIcon,
+        stremioIcon = stremioIcon,
         showNavigationBar = showNavigationBar,
         modifier = modifier
     )

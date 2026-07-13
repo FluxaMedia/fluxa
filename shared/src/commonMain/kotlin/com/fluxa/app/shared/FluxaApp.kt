@@ -45,6 +45,9 @@ import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreScreen
 import com.fluxa.app.shared.feature.addonstore.AddonStoreUiState
+import com.fluxa.app.shared.feature.auth.AuthAction
+import com.fluxa.app.shared.feature.auth.AuthScreen
+import com.fluxa.app.shared.feature.auth.AuthUiState
 import com.fluxa.app.shared.feature.calendar.CalendarAction
 import com.fluxa.app.shared.feature.calendar.CalendarScreen
 import com.fluxa.app.shared.feature.calendar.CalendarUiState
@@ -87,7 +90,8 @@ enum class FluxaDestination(val titleKey: String) {
     Calendar("nav.calendar"),
     Library("nav.library"),
     Settings("nav.settings"),
-    AddonStore("auto.addons")
+    AddonStore("auto.addons"),
+    Auth("auth.log_in")
 }
 
 data class FluxaAppUiState(
@@ -120,6 +124,10 @@ fun FluxaApp(
     onAddonStoreAction: (AddonStoreAction) -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
     onAddonStoreBackRequested: () -> Unit = {},
+    authState: AuthUiState? = null,
+    onAuthAction: (AuthAction) -> Unit = {},
+    nuvioIcon: @Composable () -> Unit = {},
+    stremioIcon: @Composable () -> Unit = {},
     showNavigationBar: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -190,6 +198,14 @@ fun FluxaApp(
                     onAction = onAddonStoreAction,
                     onConfigureRequested = onOpenUrlRequested,
                     onBackRequested = onAddonStoreBackRequested,
+                    modifier = Modifier.weight(1f)
+                )
+                state.destination == FluxaDestination.Auth && authState != null -> AuthScreen(
+                    state = authState,
+                    language = state.language,
+                    onAction = onAuthAction,
+                    nuvioIcon = nuvioIcon,
+                    stremioIcon = stremioIcon,
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(

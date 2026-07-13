@@ -7,6 +7,7 @@ import com.fluxa.app.player.AndroidPlaybackController
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
 import com.fluxa.app.shared.platform.FluxaMobilePlatformServices
 import com.fluxa.app.ui.catalog.AndroidAddonStoreDataSource
+import com.fluxa.app.ui.catalog.AndroidAuthDataSource
 import com.fluxa.app.ui.catalog.AndroidCatalogHomeDataSource
 import com.fluxa.app.ui.catalog.AndroidCalendarDataSource
 import com.fluxa.app.ui.catalog.AndroidDetailDataSource
@@ -42,5 +43,12 @@ class AndroidFluxaPlatformServices(
         homeViewModel = homeViewModel,
         activeProfile = activeProfile,
         onProfileChanged = onActiveProfileChanged
+    )
+    override val authDataSource = AndroidAuthDataSource(
+        authService = AppContainer.authService,
+        nuvioCoordinator = AppContainer.nuvioImportCoordinator,
+        profileManager = profileManager,
+        language = { activeProfile()?.language ?: "en" },
+        onAuthenticated = onActiveProfileChanged
     )
 }

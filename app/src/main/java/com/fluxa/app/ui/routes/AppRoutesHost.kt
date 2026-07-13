@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
@@ -121,6 +123,7 @@ internal fun AppRoutesHost(
             is Screen.Explore -> com.fluxa.app.shared.FluxaDestination.Discover
             is Screen.Calendar -> com.fluxa.app.shared.FluxaDestination.Calendar
             is Screen.AddonStore -> com.fluxa.app.shared.FluxaDestination.AddonStore
+            is Screen.Welcome, is Screen.Login -> com.fluxa.app.shared.FluxaDestination.Auth
             else -> null
         }
     } else {
@@ -138,6 +141,23 @@ internal fun AppRoutesHost(
                 context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
             },
             onAddonStoreBackRequested = navigateBackSafely,
+            onAuthBackRequested = navigateBackSafely,
+            onAuthCompleted = { navigator.navigateTo(Screen.Home, true) },
+            authStartOnNuvio = (currentScreen as? Screen.Login)?.startOnNuvio == true,
+            nuvioIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_nuvio),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp)
+                )
+            },
+            stremioIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_stremio),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp)
+                )
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))

@@ -1,6 +1,7 @@
 package com.fluxa.app.shared.platform
 
 import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
+import com.fluxa.app.shared.feature.auth.AuthDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.calendar.CalendarDataSource
 import com.fluxa.app.shared.feature.detail.DetailDataSource
@@ -46,6 +47,10 @@ interface FluxaAddonStoreServices {
     val addonStoreDataSource: AddonStoreDataSource
 }
 
+interface FluxaAuthServices {
+    val authDataSource: AuthDataSource
+}
+
 interface FluxaMobilePlatformServices :
     FluxaPlatformServices,
     FluxaSearchServices,
@@ -55,4 +60,5 @@ interface FluxaMobilePlatformServices :
     FluxaDetailServices,
     FluxaProfileServices,
     FluxaPlaybackServices,
-    FluxaAddonStoreServices
+    FluxaAddonStoreServices,
+    FluxaAuthServices
