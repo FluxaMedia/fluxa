@@ -24,7 +24,7 @@ targets:
     resources:
       - path: ../core/src/androidMain/assets/i18n
     dependencies:
-      - framework: UIKit.framework
+      - sdk: UIKit.framework
     preBuildScripts:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh
