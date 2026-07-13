@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +60,21 @@ import com.fluxa.app.shared.feature.search.SearchScreen
 import com.fluxa.app.shared.feature.search.SearchUiState
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
+
+private val FluxaColorScheme = darkColorScheme(
+    background = FluxaColors.background,
+    surface = FluxaColors.surface,
+    surfaceVariant = FluxaColors.surfaceCard,
+    primary = FluxaColors.accent,
+    secondary = FluxaColors.accent,
+    onBackground = Color.White,
+    onSurface = Color.White,
+    onSurfaceVariant = Color.White.copy(alpha = 0.85f),
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    outline = Color.White.copy(alpha = 0.3f),
+    error = FluxaColors.errorRed
+)
 
 enum class FluxaDestination(val titleKey: String) {
     Home("nav.home"),
@@ -98,7 +114,7 @@ fun FluxaApp(
     showNavigationBar: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    MaterialTheme {
+    MaterialTheme(colorScheme = FluxaColorScheme) {
         Column(
             modifier = modifier
                 .fillMaxSize()
