@@ -8,7 +8,8 @@ data class CatalogItemUiModel(
     val type: String,
     val card: CatalogCardUiModel,
     val source: CatalogSourceUiModel = CatalogSourceUiModel(),
-    val resume: CatalogResumeUiModel? = null
+    val resume: CatalogResumeUiModel? = null,
+    val backdropUrl: String? = null
 )
 
 data class CatalogSourceUiModel(

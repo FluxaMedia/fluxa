@@ -6,24 +6,40 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.shared.feature.calendar.CalendarAction
 import com.fluxa.app.shared.feature.calendar.CalendarScreen
 import com.fluxa.app.shared.feature.calendar.CalendarUiState
@@ -197,11 +213,23 @@ private fun FluxaHomeContent(
         return
     }
 
-    Column(
-        modifier = modifier.padding(vertical = 8.dp),
+    val heroItems = state.catalogHome.rows.firstOrNull()?.items?.take(5).orEmpty()
+
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        state.catalogHome.rows.forEach { row ->
+        if (heroItems.isNotEmpty()) {
+            item(key = "hero") {
+                FluxaHomeHero(
+                    items = heroItems,
+                    language = state.language,
+                    onCatalogAction = onCatalogAction
+                )
+            }
+        }
+        items(state.catalogHome.rows, key = { it.id }) { row ->
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     modifier = Modifier
@@ -213,15 +241,21 @@ private fun FluxaHomeContent(
                     Text(
                         text = row.title,
                         color = Color.White,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
                     if (row.canLoadMore) {
                         Text(
                             text = AppStrings.t(state.language, "common.view_all"),
                             color = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.clickable {
-                                onCatalogAction(CatalogAction.LoadMore(row.id))
-                            }
+                            maxLines = 1,
+                            modifier = Modifier
+                                .padding(start = 12.dp)
+                                .clickable {
+                                    onCatalogAction(CatalogAction.LoadMore(row.id))
+                                }
                         )
                     }
                 }
@@ -236,6 +270,115 @@ private fun FluxaHomeContent(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+private const val HERO_AUTO_SWIPE_DELAY_MS = 5000L
+
+@Composable
+private fun FluxaHomeHero(
+    items: List<CatalogItemUiModel>,
+    language: String?,
+    onCatalogAction: (CatalogAction) -> Unit
+) {
+    val loop = items.size > 1
+    val virtualPageCount = if (loop) Int.MAX_VALUE else items.size
+    val startPage = if (loop) (Int.MAX_VALUE / 2) - (Int.MAX_VALUE / 2) % items.size else 0
+    val pagerState = rememberPagerState(initialPage = startPage, pageCount = { virtualPageCount })
+
+    if (loop) {
+        LaunchedEffect(pagerState) {
+            while (true) {
+                delay(HERO_AUTO_SWIPE_DELAY_MS)
+                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(3f / 4f)
+        ) { page ->
+            val item = items[page % items.size]
+            FluxaHomeHeroSlide(item = item, language = language, onCatalogAction = onCatalogAction)
+        }
+        if (items.size > 1) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items.indices.forEach { index ->
+                    val selected = index == pagerState.currentPage % items.size
+                    Box(
+                        modifier = Modifier
+                            .size(if (selected) 8.dp else 6.dp)
+                            .background(
+                                color = Color.White.copy(alpha = if (selected) 0.95f else 0.4f),
+                                shape = CircleShape
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FluxaHomeHeroSlide(
+    item: CatalogItemUiModel,
+    language: String?,
+    onCatalogAction: (CatalogAction) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable { onCatalogAction(CatalogAction.ItemSelected(item)) }
+    ) {
+        val heroArtworkUrl = item.backdropUrl ?: item.card.artworkUrl
+        FluxaRemoteImage(
+            imageUrl = heroArtworkUrl,
+            cacheKey = heroArtworkUrl?.let { "home-hero:$it" },
+            contentDescription = item.card.title,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, FluxaColors.background),
+                        startY = 0.35f
+                    )
+                )
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = item.card.title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Button(
+                onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+            ) {
+                Text(text = AppStrings.t(language, "common.play"), color = Color.Black)
             }
         }
     }

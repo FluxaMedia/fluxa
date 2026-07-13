@@ -186,9 +186,9 @@ internal fun AppRoutesHost(
                 onCancel = navigateBackSafely,
                 startOnNuvio = screen.startOnNuvio
             )
-            is Screen.Home -> if (deviceType == DeviceType.Mobile && androidFluxaPlatformServices != null) {
+            is Screen.Home -> if (deviceType == DeviceType.Mobile) {
                 com.fluxa.app.shared.FluxaAppHost(
-                    platformServices = androidFluxaPlatformServices,
+                    platformServices = androidFluxaPlatformServices!!,
                     language = activeProfile?.language,
                     destination = com.fluxa.app.shared.FluxaDestination.Home,
                     showNavigationBar = false,

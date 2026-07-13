@@ -23,7 +23,7 @@ class AndroidCatalogHomeDataSource(
             rows = orderHomeCategories(categories).map { category ->
                 CatalogRowUiModel(
                     id = category.id,
-                    title = category.semanticName,
+                    title = displayHomeCategoryTitle(category, profile?.language),
                     canLoadMore = category.canLoadMore,
                     items = category.items.map { meta ->
                         CatalogItemUiModel(
@@ -44,7 +44,8 @@ class AndroidCatalogHomeDataSource(
                                     ?: category.catalogSources?.firstOrNull()?.transportUrl,
                                 catalogType = category.catalogSources?.firstOrNull()?.type ?: category.type
                             ),
-                            resume = meta.toCatalogResumeUiModel()
+                            resume = meta.toCatalogResumeUiModel(),
+                            backdropUrl = meta.homeHeroBackdrop()
                         )
                     }
                 )
