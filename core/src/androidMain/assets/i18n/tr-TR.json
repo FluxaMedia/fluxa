@@ -1,5 +1,6 @@
 {
   "nav.home": "Ana Sayfa",
+  "auto.detail_metadata_separator": " · ",
   "nav.discover": "Keşfet",
   "nav.calendar": "Takvim",
   "nav.library": "Kütüphane",
@@ -24,6 +25,7 @@
   "common.off": "Kapalı",
   "common.close": "Kapat",
   "common.play": "Oynat",
+  "common.pause": "Duraklat",
   "common.details": "Detaylar",
   "common.view_all": "Tümünü Gör",
   "common.forget": "Unut",
@@ -160,6 +162,7 @@
   "auto.start_searching": "Aramaya başla",
   "auto.use_the_chips_above_or_type_a_few_letters_wi": "Yukarıdaki önerilere dokunabilir ya da klavyeden birkaç harf yazabilirsin.",
   "auto.no_results_found": "Sonuç bulunamadı",
+  "auto.no_results_found_for": "“%s” için sonuç bulunamadı",
   "auto.try_a_shorter_or_slightly_different_title": "Daha kısa veya farklı bir isim dene.",
   "auto.choose_player": "Oynatıcı Seç",
   "auto.explore_68dd9e4b": "Keşfet...",

@@ -1,5 +1,6 @@
 {
   "nav.home": "Home",
+  "auto.detail_metadata_separator": " · ",
   "nav.discover": "Discover",
   "nav.calendar": "Calendar",
   "nav.library": "Library",
@@ -24,6 +25,7 @@
   "common.off": "Off",
   "common.close": "Close",
   "common.play": "Play",
+  "common.pause": "Pause",
   "common.details": "Details",
   "common.view_all": "View All",
   "common.forget": "Forget",
@@ -160,6 +162,7 @@
   "auto.start_searching": "Start searching",
   "auto.use_the_chips_above_or_type_a_few_letters_wi": "Use the chips above or type a few letters with the keyboard.",
   "auto.no_results_found": "No results found",
+  "auto.no_results_found_for": "No results found for “%s”",
   "auto.try_a_shorter_or_slightly_different_title": "Try a shorter or slightly different title.",
   "auto.choose_player": "Choose Player",
   "auto.explore_68dd9e4b": "Explore...",

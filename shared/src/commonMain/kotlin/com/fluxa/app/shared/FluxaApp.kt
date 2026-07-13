@@ -123,6 +123,7 @@ fun FluxaApp(
                     language = state.language,
                     onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
                     onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
+                    onClearHistory = { onSearchAction(SearchAction.ClearHistory) },
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.Discover && discoverState != null -> DiscoverScreen(

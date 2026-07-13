@@ -16,7 +16,7 @@ class SearchStore(
         when (action) {
             is SearchAction.QueryChanged -> dataSource.search(action.value)
             SearchAction.ClearHistory -> dataSource.clearHistory()
-            is SearchAction.ItemSelected -> Unit
+            is SearchAction.ItemSelected -> dataSource.recordSelection(action.item)
         }
     }
 }
