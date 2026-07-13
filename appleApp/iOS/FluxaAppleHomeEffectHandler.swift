@@ -35,6 +35,8 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             return try await loadMeta(effect: effect)
         case "runSearch":
             return try await runSearch(effect: effect)
+        case "runDiscover":
+            return try await runDiscover(effect: effect)
         case "readPlaybackProgress":
             return .null
         default:
@@ -105,5 +107,35 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             query: query
         )
         return .object(["results": .array(items.map(homeMeta))])
+    }
+
+    private func runDiscover(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
+        guard case .object(let payload) = effect.payload,
+              let contentType = string(payload["contentType"]) else {
+            throw URLError(.cannotParseResponse)
+        }
+        let genre: String?
+        if case .object(let filters)? = payload["filters"],
+           case .string(let value)? = filters["genre"] {
+            genre = value
+        } else {
+            genre = nil
+        }
+        let rows = try await catalogBootstrap.loadRows(
+            localAddonUrls: configurationStore.localAddonUrls()
+        )
+        let items = rows.flatMap(\.items).filter { item in
+            guard item.type == contentType else {
+                return false
+            }
+            guard let genre else {
+                return true
+            }
+            return item.subtitle.localizedCaseInsensitiveContains(genre)
+        }
+        return .object([
+            "results": .array(items.map(homeMeta)),
+            "resultSources": .object([:])
+        ])
     }
 }
