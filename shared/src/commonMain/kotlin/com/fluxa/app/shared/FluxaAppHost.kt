@@ -13,10 +13,14 @@ import com.fluxa.app.shared.feature.catalog.CatalogHomeStore
 import com.fluxa.app.shared.feature.detail.DetailAction
 import com.fluxa.app.shared.feature.detail.DetailDataSource
 import com.fluxa.app.shared.feature.detail.DetailStore
+import com.fluxa.app.shared.feature.discover.DiscoverAction
+import com.fluxa.app.shared.feature.discover.DiscoverDataSource
+import com.fluxa.app.shared.feature.discover.DiscoverStore
 import com.fluxa.app.shared.feature.search.SearchAction
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.search.SearchStore
 import com.fluxa.app.shared.platform.FluxaDetailServices
+import com.fluxa.app.shared.platform.FluxaDiscoverServices
 import com.fluxa.app.shared.platform.FluxaPlatformServices
 import com.fluxa.app.shared.platform.FluxaSearchServices
 import kotlinx.coroutines.launch
@@ -31,6 +35,7 @@ fun FluxaAppHost(
     FluxaAppHost(
         catalogHomeDataSource = platformServices.catalogHomeDataSource,
         detailDataSource = (platformServices as? FluxaDetailServices)?.detailDataSource,
+        discoverDataSource = (platformServices as? FluxaDiscoverServices)?.discoverDataSource,
         searchDataSource = (platformServices as? FluxaSearchServices)?.searchDataSource,
         language = language,
         onCatalogAction = onCatalogAction,
@@ -42,6 +47,7 @@ fun FluxaAppHost(
 fun FluxaAppHost(
     catalogHomeDataSource: CatalogHomeDataSource,
     detailDataSource: DetailDataSource? = null,
+    discoverDataSource: DiscoverDataSource? = null,
     searchDataSource: SearchDataSource? = null,
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
@@ -56,6 +62,10 @@ fun FluxaAppHost(
         remember(source) { SearchStore(source, scope) }
     }
     val searchState = searchStore?.state?.collectAsState()?.value
+    val discoverStore = discoverDataSource?.let { source ->
+        remember(source) { DiscoverStore(source, scope) }
+    }
+    val discoverState = discoverStore?.state?.collectAsState()?.value
     val appState = rememberFluxaAppState()
     val selectedDetail = appState.uiState.selectedDetail
     val detailStore = selectedDetail?.let { item ->
@@ -110,6 +120,16 @@ fun FluxaAppHost(
             }
             scope.launch {
                 searchStore?.dispatch(action)
+            }
+        },
+        discoverState = discoverState,
+        onDiscoverAction = { action ->
+            if (action is DiscoverAction.ItemSelected) {
+                appState.selectDetail(action.item)
+                onCatalogAction(CatalogAction.ItemSelected(action.item))
+            }
+            scope.launch {
+                discoverStore?.dispatch(action)
             }
         },
         modifier = modifier

@@ -27,6 +27,9 @@ import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.detail.DetailAction
 import com.fluxa.app.shared.feature.detail.DetailScreen
 import com.fluxa.app.shared.feature.detail.DetailUiState
+import com.fluxa.app.shared.feature.discover.DiscoverAction
+import com.fluxa.app.shared.feature.discover.DiscoverScreen
+import com.fluxa.app.shared.feature.discover.DiscoverUiState
 import com.fluxa.app.shared.feature.search.SearchAction
 import com.fluxa.app.shared.feature.search.SearchScreen
 import com.fluxa.app.shared.feature.search.SearchUiState
@@ -58,6 +61,8 @@ fun FluxaApp(
     onDetailAction: (DetailAction) -> Unit = {},
     searchState: SearchUiState? = null,
     onSearchAction: (SearchAction) -> Unit = {},
+    discoverState: DiscoverUiState? = null,
+    onDiscoverAction: (DiscoverAction) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     MaterialTheme {
@@ -83,6 +88,13 @@ fun FluxaApp(
                     language = state.language,
                     onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
                     onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
+                    modifier = Modifier.weight(1f)
+                )
+                state.destination == FluxaDestination.Discover && discoverState != null -> DiscoverScreen(
+                    state = discoverState,
+                    language = state.language,
+                    onFiltersChanged = { filters -> onDiscoverAction(DiscoverAction.FiltersChanged(filters)) },
+                    onItemSelected = { item -> onDiscoverAction(DiscoverAction.ItemSelected(item)) },
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
