@@ -16,7 +16,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -107,10 +111,10 @@ private fun CalendarMonthHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "‹",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
+        Icon(
+            imageVector = Icons.Filled.KeyboardArrowLeft,
+            contentDescription = null,
+            tint = Color.White,
             modifier = Modifier
                 .clickable {
                     val (prevYear, prevMonth) = shiftMonth(year, month, -1)
@@ -123,10 +127,10 @@ private fun CalendarMonthHeader(
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        Text(
-            text = "›",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
+        Icon(
+            imageVector = Icons.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Color.White,
             modifier = Modifier
                 .clickable {
                     val (nextYear, nextMonth) = shiftMonth(year, month, 1)

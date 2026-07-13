@@ -19,10 +19,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +61,12 @@ fun DiscoverScreen(
     isSearching: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    LaunchedEffect(state.catalogOptions, state.filters.contentType) {
+        if (state.filters.catalogKey == null && state.catalogOptions.isNotEmpty()) {
+            onFiltersChanged(state.filters.copy(catalogKey = state.catalogOptions.first().id))
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -134,7 +144,12 @@ private fun DiscoverSearchField(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "⌕", color = Color.White.copy(alpha = 0.5f), fontSize = 18.sp)
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.width(20.dp)
+            )
             Spacer(modifier = Modifier.width(10.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (query.isEmpty()) {
@@ -216,6 +231,7 @@ private fun DiscoverFilters(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun DiscoverDropdownFilter(
     label: String,
@@ -223,47 +239,73 @@ private fun DiscoverDropdownFilter(
     selectedId: String?,
     onSelected: (String?) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var showSheet by remember { mutableStateOf(false) }
     val selectedLabel = options.firstOrNull { it.id == selectedId }?.label ?: label
-    Box {
-        Row(
-            modifier = Modifier
-                .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(999.dp))
-                .clickable { expanded = true }
-                .padding(horizontal = 14.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically
+    Row(
+        modifier = Modifier
+            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(999.dp))
+            .clickable { showSheet = true }
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = selectedLabel,
+            color = Color.White,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.width(2.dp))
+        Icon(
+            imageVector = Icons.Filled.KeyboardArrowDown,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.6f),
+            modifier = Modifier.width(18.dp)
+        )
+    }
+
+    if (showSheet) {
+        val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            sheetState = sheetState,
+            containerColor = FluxaColors.surfaceRaised
         ) {
-            Text(
-                text = selectedLabel,
-                color = Color.White,
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "⌄", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(FluxaColors.surfaceRaised, RoundedCornerShape(12.dp))
-        ) {
-            options.forEach { option ->
-                val selected = option.id == selectedId
-                DropdownMenuItem(
-                    text = {
+            Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                Text(
+                    text = label,
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                )
+                options.forEach { option ->
+                    val selected = option.id == selectedId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onSelected(option.id)
+                                showSheet = false
+                            }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             text = option.label,
                             color = if (selected) FluxaColors.accent else Color.White,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                         )
-                    },
-                    onClick = {
-                        onSelected(option.id)
-                        expanded = false
+                        if (selected) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = FluxaColors.accent
+                            )
+                        }
                     }
-                )
+                }
             }
         }
     }

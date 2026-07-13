@@ -55,7 +55,8 @@ class AndroidCatalogHomeDataSource(
     }
 
     override suspend fun refresh() {
-        homeViewModel.loadInitialData(activeProfile(), force = true)
+        if (homeViewModel.categories.value.isNotEmpty() || homeViewModel.isLoading.value) return
+        homeViewModel.loadInitialData(activeProfile())
     }
 
     override suspend fun loadMore(rowId: String) {
