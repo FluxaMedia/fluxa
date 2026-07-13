@@ -19,6 +19,10 @@ object FluxaApple {
     fun updateCatalogHome(home: CatalogHomeUiState) {
         catalogHomeDataSource.update(home)
     }
+
+    fun updateCatalogHomeJson(homeJson: String) {
+        catalogHomeDataSource.updateJson(homeJson)
+    }
 }
 
 @Composable
