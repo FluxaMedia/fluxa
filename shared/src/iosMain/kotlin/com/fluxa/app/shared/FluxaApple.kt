@@ -5,10 +5,12 @@ import androidx.compose.ui.window.ComposeUIViewController
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.platform.AppleCatalogHomeDataSource
+import com.fluxa.app.shared.platform.AppleFluxaPlatformServices
 import platform.UIKit.UIViewController
 
 object FluxaApple {
     internal val catalogHomeDataSource = AppleCatalogHomeDataSource()
+    internal val platformServices = AppleFluxaPlatformServices(catalogHomeDataSource)
 
     fun rootViewController(): UIViewController = ComposeUIViewController {
         FluxaAppleApp()
@@ -22,7 +24,7 @@ object FluxaApple {
 @Composable
 private fun FluxaAppleApp() {
     FluxaAppHost(
-        catalogHomeDataSource = FluxaApple.catalogHomeDataSource,
+        platformServices = FluxaApple.platformServices,
         onCatalogAction = { action ->
             when (action) {
                 CatalogAction.Refresh,
