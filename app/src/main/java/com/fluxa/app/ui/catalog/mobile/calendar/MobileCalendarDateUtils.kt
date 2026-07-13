@@ -2,6 +2,9 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.common.localizedMonthTitle
+import com.fluxa.app.common.localizedShortMonthDay
+import com.fluxa.app.common.localizedShortWeekdayNames
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -47,10 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import java.text.DateFormatSymbols
-import java.text.ParseException
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.Calendar as JavaCalendar
 
@@ -77,12 +77,8 @@ internal fun buildMonthCells(monthStart: JavaCalendar): List<MonthCell?> {
         cell
     }
 }
-internal fun shortWeekdays(locale: Locale): List<String> {
-    val symbols = DateFormatSymbols(locale).shortWeekdays
-    return (0 until 7).map { index ->
-        symbols[((JavaCalendar.MONDAY - 1 + index) % 7) + 1].take(3)
-    }
-}
+internal fun shortWeekdays(locale: Locale): List<String> =
+    localizedShortWeekdayNames(locale.toLanguageTag())
 
 internal fun JavaCalendar.shiftMonth(delta: Int): JavaCalendar {
     return (clone() as JavaCalendar).apply {
@@ -91,19 +87,15 @@ internal fun JavaCalendar.shiftMonth(delta: Int): JavaCalendar {
     }
 }
 
-internal fun JavaCalendar.monthTitle(locale: Locale): String {
-    return SimpleDateFormat("MMMM yyyy", locale).format(time).replaceFirstChar {
-        if (it.isLowerCase()) it.titlecase(locale) else it.toString()
-    }
-}
+internal fun JavaCalendar.monthTitle(locale: Locale): String =
+    localizedMonthTitle(get(JavaCalendar.YEAR), get(JavaCalendar.MONTH) + 1, locale.toLanguageTag())
 
 internal fun formatCalendarListDate(dateIso: String, locale: Locale): String {
-    return try {
-        val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateIso)
-        parsed?.let { SimpleDateFormat("MMM d", locale).format(it) } ?: dateIso
-    } catch (_: ParseException) {
-        dateIso
-    }
+    val parts = dateIso.split("-")
+    val year = parts.getOrNull(0)?.toIntOrNull() ?: return dateIso
+    val month = parts.getOrNull(1)?.toIntOrNull() ?: return dateIso
+    val day = parts.getOrNull(2)?.toIntOrNull() ?: return dateIso
+    return localizedShortMonthDay(year, month, day, locale.toLanguageTag())
 }
 
 internal fun CalendarUpcomingItem.calendarEpisodeLabel(): String {
