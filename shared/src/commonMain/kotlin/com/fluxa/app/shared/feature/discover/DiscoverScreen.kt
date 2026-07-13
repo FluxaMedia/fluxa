@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items as columnItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -272,14 +275,19 @@ private fun DiscoverDropdownFilter(
             sheetState = sheetState,
             containerColor = FluxaColors.surfaceRaised
         ) {
-            Column(modifier = Modifier.padding(bottom = 24.dp)) {
-                Text(
-                    text = label,
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                )
-                options.forEach { option ->
+            Text(
+                text = label,
+                color = Color.White.copy(alpha = 0.6f),
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                columnItems(options, key = { it.id ?: it.label }) { option ->
                     val selected = option.id == selectedId
                     Row(
                         modifier = Modifier

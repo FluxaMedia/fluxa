@@ -66,13 +66,13 @@ private val FluxaColorScheme = darkColorScheme(
     background = FluxaColors.background,
     surface = FluxaColors.surface,
     surfaceVariant = FluxaColors.surfaceCard,
-    primary = FluxaColors.accent,
-    secondary = FluxaColors.accent,
+    primary = Color.White,
+    secondary = Color.White,
     onBackground = Color.White,
     onSurface = Color.White,
     onSurfaceVariant = Color.White.copy(alpha = 0.85f),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
+    onPrimary = Color.Black,
+    onSecondary = Color.Black,
     outline = Color.White.copy(alpha = 0.3f),
     error = FluxaColors.errorRed
 )
