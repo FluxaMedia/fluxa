@@ -2,7 +2,7 @@ name: FluxaApple
 options:
   xcodeVersion: "16.4"
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "18.5"
     tvOS: "17.0"
 settings:
   base:
