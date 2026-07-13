@@ -61,7 +61,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim,x86_64-apple-tvos
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -117,7 +117,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim,x86_64-apple-tvos
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2

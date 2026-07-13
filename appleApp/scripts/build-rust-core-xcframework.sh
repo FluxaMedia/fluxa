@@ -21,7 +21,6 @@ targets=(
     x86_64-apple-ios
     aarch64-apple-tvos
     aarch64-apple-tvos-sim
-    x86_64-apple-tvos
 )
 
 installed_targets="$(rustup target list --installed)"
@@ -52,11 +51,6 @@ lipo -create \
     "target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_core.a" \
     "target/x86_64-apple-ios/$cargo_profile/libfluxa_core.a" \
     -output "$output_dir/libfluxa_core-ios-simulator.a"
-lipo -create \
-    "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_core.a" \
-    "target/x86_64-apple-tvos/$cargo_profile/libfluxa_core.a" \
-    -output "$output_dir/libfluxa_core-tvos-simulator.a"
-
 cp "$output_dir/FluxaRustCoreFFI.h" "$headers_dir/FluxaRustCoreFFI.h"
 cp "$output_dir/FluxaRustCoreFFI.modulemap" "$headers_dir/module.modulemap"
 
@@ -64,6 +58,6 @@ xcodebuild -create-xcframework \
     -library "target/aarch64-apple-ios/$cargo_profile/libfluxa_core.a" -headers "$headers_dir" \
     -library "$output_dir/libfluxa_core-ios-simulator.a" -headers "$headers_dir" \
     -library "target/aarch64-apple-tvos/$cargo_profile/libfluxa_core.a" -headers "$headers_dir" \
-    -library "$output_dir/libfluxa_core-tvos-simulator.a" -headers "$headers_dir" \
+    -library "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_core.a" -headers "$headers_dir" \
     -output "$output_dir/FluxaRustCore.xcframework"
 popd >/dev/null
