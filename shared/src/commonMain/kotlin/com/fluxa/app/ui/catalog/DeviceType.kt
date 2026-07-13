@@ -1,10 +1,5 @@
 package com.fluxa.app.ui.catalog
 
-import com.fluxa.app.data.local.*
-import com.fluxa.app.data.remote.*
-import com.fluxa.app.data.repository.*
-import com.fluxa.app.domain.discovery.*
-
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
