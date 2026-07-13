@@ -26,7 +26,7 @@ struct FluxaAppleAddonCatalogResolver {
                 guard manifest.supportsCatalog else {
                     continue
                 }
-                requests.append(contentsOf: manifest.catalogs.orEmpty().compactMap {
+                requests.append(contentsOf: (manifest.catalogs ?? []).compactMap {
                     makeRequest(catalog: $0, manifest: manifest, transportUrl: transportUrl)
                 })
             } catch {
