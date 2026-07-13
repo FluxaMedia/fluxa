@@ -307,7 +307,7 @@ private fun FluxaHomeSkeleton(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(3f / 4f)
-                    .background(FluxaColors.surfaceCard)
+                    .skeletonShimmer(shape = androidx.compose.ui.graphics.RectangleShape)
             )
         }
         items(3, key = { "row-skeleton-$it" }) {
@@ -317,7 +317,7 @@ private fun FluxaHomeSkeleton(modifier: Modifier = Modifier) {
                         .padding(horizontal = 20.dp)
                         .width(120.dp)
                         .height(16.dp)
-                        .background(FluxaColors.surfaceCard)
+                        .skeletonShimmer()
                 )
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 20.dp),
@@ -328,7 +328,7 @@ private fun FluxaHomeSkeleton(modifier: Modifier = Modifier) {
                             modifier = Modifier
                                 .width(110.dp)
                                 .aspectRatio(2f / 3f)
-                                .background(FluxaColors.surfaceCard)
+                                .skeletonShimmer()
                         )
                     }
                 }

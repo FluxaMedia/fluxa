@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
+import com.fluxa.app.shared.skeletonShimmer
 import com.fluxa.app.shared.feature.search.SearchResultRows
 import com.fluxa.app.shared.feature.search.SearchResults
 import com.fluxa.app.ui.catalog.CatalogCard
@@ -131,7 +132,7 @@ private fun DiscoverSkeletonGrid(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(2f / 3f)
-                    .background(FluxaColors.surfaceCard, RoundedCornerShape(10.dp))
+                    .skeletonShimmer()
             )
         }
     }

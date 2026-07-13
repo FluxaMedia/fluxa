@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
+import com.fluxa.app.shared.skeletonShimmer
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
 
@@ -210,7 +211,7 @@ private fun SearchSkeletonGrid(modifier: Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(2f / 3f)
-                    .background(FluxaColors.surfaceCard, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .skeletonShimmer()
             )
         }
     }

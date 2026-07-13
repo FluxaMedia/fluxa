@@ -244,6 +244,8 @@ class HomeViewModel @Inject constructor(
     private var traktWatchedState: TraktWatchedState = TraktWatchedState()
     private var currentActiveProfile: UserProfile? = null
     private var searchJob: Job? = null
+    private val _isSearchLoading = MutableStateFlow(false)
+    val isSearchLoading: StateFlow<Boolean> = _isSearchLoading.asStateFlow()
     private val loadMoreInFlight = mutableSetOf<String>()
     private val playbackController by lazy {
         coordinatorFactory.playback(
@@ -860,12 +862,14 @@ class HomeViewModel @Inject constructor(
         if (query.isEmpty()) {
             searchFocusState.searchResultsValue = emptyList()
             searchFocusState.searchRowsValue = emptyList()
+            _isSearchLoading.value = false
             return
         }
         searchJob = viewModelScope.launch {
-            delay(400)
-            if (!isActive) return@launch
             try {
+                _isSearchLoading.value = true
+                delay(400)
+                if (!isActive) return@launch
                 val trimmedQuery = query.trim()
                 val rows = addonRepository.searchRows(
                     query = trimmedQuery,
@@ -881,6 +885,8 @@ class HomeViewModel @Inject constructor(
                 searchFocusState.searchResultsValue = allRows.flatMap { it.items }.distinctBy { it.id }.take(80)
             } catch (e: Exception) {
                 e.printStackTrace()
+            } finally {
+                _isSearchLoading.value = false
             }
         }
     }
@@ -892,6 +898,18 @@ class HomeViewModel @Inject constructor(
         val updated = (listOf(meta.copy(description = null, cast = null, ratings = null, awards = null)) + current).take(10)
         searchHistoryStore.save(updated, currentActiveProfile)
         searchFocusState.searchHistoryValue = updated
+    }
+
+    fun recordSearchSelection(id: String, type: String) {
+        val selected = searchFocusState.searchResultsValue.firstOrNull { meta ->
+            meta.id == id && meta.type == type
+        } ?: searchFocusState.searchResultsValue.firstOrNull { it.id == id }
+        selected?.let(::addToSearchHistory)
+    }
+
+    fun clearSearchHistory() {
+        searchHistoryStore.save(emptyList(), currentActiveProfile)
+        searchFocusState.searchHistoryValue = emptyList()
     }
 
     fun loadMore(categoryId: String) {
@@ -1088,6 +1106,12 @@ class HomeViewModel @Inject constructor(
             savedTvHomeScrollOffset = 0
             savedTvFocusedRowIndex = -1
             savedCategoryScrollPositions.clear()
+        }
+        if (_categories.value.isEmpty()) {
+            val cached = homeCategoryCache.load(activeProfile)
+            if (cached.isNotEmpty()) {
+                setCategoriesState(cached)
+            }
         }
         viewModelScope.launch {
             setLoadingState(true)
