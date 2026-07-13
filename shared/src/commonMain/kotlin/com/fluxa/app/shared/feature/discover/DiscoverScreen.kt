@@ -28,8 +28,10 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +59,7 @@ fun DiscoverScreen(
     language: String?,
     onFiltersChanged: (DiscoverFiltersUiModel) -> Unit,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    onLoadMore: () -> Unit = {},
     searchQuery: String = "",
     onSearchQueryChanged: (String) -> Unit = {},
     searchResultRows: List<CatalogRowUiModel> = emptyList(),
@@ -115,15 +118,31 @@ fun DiscoverScreen(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) { Text(AppStrings.t(language, "auto.no_results_yet"), color = Color.White) }
-                else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(bottom = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(state.results, key = { "${it.type}:${it.id}" }) { item ->
-                        CatalogCard(model = item.card, onClick = { onItemSelected(item) })
+                else -> {
+                    val gridState = rememberLazyGridState()
+                    val shouldLoadMore by remember {
+                        derivedStateOf {
+                            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            val totalItems = gridState.layoutInfo.totalItemsCount
+                            totalItems > 0 && lastVisible >= totalItems - 6
+                        }
+                    }
+                    LaunchedEffect(shouldLoadMore, state.isLoading) {
+                        if (shouldLoadMore && !state.isLoading) {
+                            onLoadMore()
+                        }
+                    }
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(3),
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        contentPadding = PaddingValues(bottom = 120.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.results, key = { "${it.type}:${it.id}" }) { item ->
+                            CatalogCard(model = item.card, onClick = { onItemSelected(item) })
+                        }
                     }
                 }
             }
@@ -177,7 +196,7 @@ private fun DiscoverSkeletonGrid(modifier: Modifier = Modifier) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 20.dp),
+        contentPadding = PaddingValues(bottom = 120.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {

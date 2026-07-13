@@ -26,9 +26,11 @@ data class DiscoverUiState(
 sealed interface DiscoverAction {
     data class FiltersChanged(val filters: DiscoverFiltersUiModel) : DiscoverAction
     data class ItemSelected(val item: CatalogItemUiModel) : DiscoverAction
+    data object LoadMore : DiscoverAction
 }
 
 interface DiscoverDataSource {
     fun observeDiscover(): Flow<DiscoverUiState>
     suspend fun updateFilters(filters: DiscoverFiltersUiModel)
+    suspend fun loadMore()
 }

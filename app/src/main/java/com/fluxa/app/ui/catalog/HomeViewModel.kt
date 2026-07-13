@@ -1031,6 +1031,37 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun loadMoreDiscoverResults(transportUrl: String, contentType: String, catalogId: String, genre: String?) {
+        if (_headlessDiscoverLoading.value) return
+        viewModelScope.launch {
+            _headlessDiscoverLoading.value = true
+            try {
+                val result = dispatchHeadless(
+                    mapOf(
+                        "type" to "discoverPageRequested",
+                        "transportUrl" to transportUrl,
+                        "contentType" to contentType,
+                        "catalogId" to catalogId,
+                        "skip" to _headlessDiscoverResults.value.size,
+                        "genre" to genre
+                    )
+                )
+                val discover = result.state["discover"] as? Map<*, *>
+                val updatedResults = fromStateList<Meta>(discover?.get("results"), metaListType)
+                val source = HomeCatalogSource(transportUrl, catalogId, contentType, genre)
+                val updatedSources = _headlessDiscoverResultSources.value.toMutableMap()
+                updatedResults.forEach { item ->
+                    updatedSources.putIfAbsent("${item.type}:${item.id}", source)
+                    updatedSources.putIfAbsent(item.id, source)
+                }
+                _headlessDiscoverResults.value = updatedResults
+                _headlessDiscoverResultSources.value = updatedSources
+            } finally {
+                _headlessDiscoverLoading.value = false
+            }
+        }
+    }
+
     fun loadCalendarMonth(activeProfile: UserProfile?, year: Int, month: Int, plannedItems: List<Meta> = emptyList()) {
         viewModelScope.launch {
             _headlessCalendarLoading.value = true

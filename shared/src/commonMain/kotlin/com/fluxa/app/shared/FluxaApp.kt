@@ -148,6 +148,7 @@ fun FluxaApp(
                     language = state.language,
                     onFiltersChanged = { filters -> onDiscoverAction(DiscoverAction.FiltersChanged(filters)) },
                     onItemSelected = { item -> onDiscoverAction(DiscoverAction.ItemSelected(item)) },
+                    onLoadMore = { onDiscoverAction(DiscoverAction.LoadMore) },
                     searchQuery = searchState?.query.orEmpty(),
                     onSearchQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
                     searchResultRows = searchState?.resultRows.orEmpty(),

@@ -138,6 +138,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 "runDiscover" -> runDiscover(effect)
                 "readDiscoverCatalogFilters" -> readDiscoverCatalogFilters(effect)
                 "fetchCatalogPage" -> fetchCatalogPage(effect)
+                "fetchDiscoverPage" -> fetchCatalogPage(effect)
                 "fetchSeasonEpisodes" -> fetchSeasonEpisodes(effect)
                 "fetchSubtitles" -> fetchSubtitles(effect)
                 "runExternalSync" -> runExternalSync(effect)

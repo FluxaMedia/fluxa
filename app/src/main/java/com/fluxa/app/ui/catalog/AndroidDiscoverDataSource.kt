@@ -67,6 +67,18 @@ class AndroidDiscoverDataSource(
             region = null
         )
     }
+
+    override suspend fun loadMore() {
+        val currentFilters = filters.value
+        val catalog = homeViewModel.discoverUiState.value.catalogs
+            .firstOrNull { it.key == currentFilters.catalogKey } ?: return
+        homeViewModel.loadMoreDiscoverResults(
+            transportUrl = catalog.transportUrl,
+            contentType = catalog.type,
+            catalogId = catalog.id,
+            genre = currentFilters.genre
+        )
+    }
 }
 
 private fun discoverContentTypeLabel(type: String, language: String?): String {

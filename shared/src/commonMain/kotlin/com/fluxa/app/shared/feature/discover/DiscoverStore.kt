@@ -16,6 +16,7 @@ class DiscoverStore(
         when (action) {
             is DiscoverAction.FiltersChanged -> dataSource.updateFilters(action.filters)
             is DiscoverAction.ItemSelected -> Unit
+            DiscoverAction.LoadMore -> dataSource.loadMore()
         }
     }
 }
