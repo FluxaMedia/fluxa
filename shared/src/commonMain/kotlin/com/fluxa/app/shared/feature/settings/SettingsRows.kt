@@ -267,6 +267,7 @@ fun SettingsActionRow(
     label: String,
     value: String? = null,
     destructive: Boolean = false,
+    icon: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -274,7 +275,21 @@ fun SettingsActionRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, fontWeight = FontWeight.Medium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(Color.White.copy(alpha = 0.08f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    icon()
+                }
+                Spacer(Modifier.width(14.dp))
+            }
+            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, fontWeight = FontWeight.Medium)
+        }
         if (value != null) {
             Text(value, color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
         }

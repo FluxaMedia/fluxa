@@ -131,6 +131,7 @@ fun FluxaApp(
     onSettingsAction: (SettingsAction) -> Unit = {},
     onSwitchProfilesRequested: () -> Unit = {},
     onSettingsBackRequested: () -> Unit = {},
+    settingsBrandIcons: com.fluxa.app.shared.feature.settings.SettingsBrandIcons = com.fluxa.app.shared.feature.settings.SettingsBrandIcons(),
     addonStoreState: AddonStoreUiState? = null,
     onAddonStoreAction: (AddonStoreAction) -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
@@ -225,6 +226,7 @@ fun FluxaApp(
                     onAction = onSettingsAction,
                     onSwitchProfilesRequested = onSwitchProfilesRequested,
                     onBackRequested = onSettingsBackRequested,
+                    brandIcons = settingsBrandIcons,
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.AddonStore && addonStoreState != null -> AddonStoreScreen(

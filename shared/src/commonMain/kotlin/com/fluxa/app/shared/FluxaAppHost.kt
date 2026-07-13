@@ -71,6 +71,9 @@ fun FluxaAppHost(
     authStartOnNuvio: Boolean = false,
     nuvioIcon: @Composable () -> Unit = {},
     stremioIcon: @Composable () -> Unit = {},
+    traktIcon: @Composable () -> Unit = {},
+    simklIcon: @Composable () -> Unit = {},
+    anilistIcon: @Composable () -> Unit = {},
     biometricAvailable: Boolean = false,
     onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
     onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
@@ -78,7 +81,6 @@ fun FluxaAppHost(
     onConnectStremioRequested: () -> Unit = {},
     onConnectNuvioRequested: () -> Unit = {},
     onConnectTraktRequested: () -> Unit = {},
-    onConnectMalRequested: () -> Unit = {},
     onConnectSimklRequested: () -> Unit = {},
     onConnectAnilistRequested: () -> Unit = {},
     onCheckForUpdateRequested: () -> Unit = {},
@@ -109,6 +111,9 @@ fun FluxaAppHost(
         authStartOnNuvio = authStartOnNuvio,
         nuvioIcon = nuvioIcon,
         stremioIcon = stremioIcon,
+        traktIcon = traktIcon,
+        simklIcon = simklIcon,
+        anilistIcon = anilistIcon,
         biometricAvailable = biometricAvailable,
         onPickAvatarRequested = onPickAvatarRequested,
         onBiometricAuthRequested = onBiometricAuthRequested,
@@ -116,7 +121,6 @@ fun FluxaAppHost(
         onConnectStremioRequested = onConnectStremioRequested,
         onConnectNuvioRequested = onConnectNuvioRequested,
         onConnectTraktRequested = onConnectTraktRequested,
-        onConnectMalRequested = onConnectMalRequested,
         onConnectSimklRequested = onConnectSimklRequested,
         onConnectAnilistRequested = onConnectAnilistRequested,
         onCheckForUpdateRequested = onCheckForUpdateRequested,
@@ -150,6 +154,9 @@ fun FluxaAppHost(
     authStartOnNuvio: Boolean = false,
     nuvioIcon: @Composable () -> Unit = {},
     stremioIcon: @Composable () -> Unit = {},
+    traktIcon: @Composable () -> Unit = {},
+    simklIcon: @Composable () -> Unit = {},
+    anilistIcon: @Composable () -> Unit = {},
     biometricAvailable: Boolean = false,
     onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
     onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
@@ -157,7 +164,6 @@ fun FluxaAppHost(
     onConnectStremioRequested: () -> Unit = {},
     onConnectNuvioRequested: () -> Unit = {},
     onConnectTraktRequested: () -> Unit = {},
-    onConnectMalRequested: () -> Unit = {},
     onConnectSimklRequested: () -> Unit = {},
     onConnectAnilistRequested: () -> Unit = {},
     onCheckForUpdateRequested: () -> Unit = {},
@@ -342,7 +348,6 @@ fun FluxaAppHost(
                 SettingsAction.ConnectStremioRequested -> onConnectStremioRequested()
                 SettingsAction.ConnectNuvioRequested -> onConnectNuvioRequested()
                 SettingsAction.ConnectTraktRequested -> onConnectTraktRequested()
-                SettingsAction.ConnectMalRequested -> onConnectMalRequested()
                 SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
                 SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
                 SettingsAction.CheckForUpdateRequested -> onCheckForUpdateRequested()
@@ -352,6 +357,13 @@ fun FluxaAppHost(
         },
         onSwitchProfilesRequested = { appState.selectDestination(FluxaDestination.ProfileList) },
         onSettingsBackRequested = onSettingsBackRequested,
+        settingsBrandIcons = com.fluxa.app.shared.feature.settings.SettingsBrandIcons(
+            stremio = stremioIcon,
+            nuvio = nuvioIcon,
+            trakt = traktIcon,
+            simkl = simklIcon,
+            anilist = anilistIcon
+        ),
         addonStoreState = addonStoreState,
         onAddonStoreAction = { action ->
             scope.launch {

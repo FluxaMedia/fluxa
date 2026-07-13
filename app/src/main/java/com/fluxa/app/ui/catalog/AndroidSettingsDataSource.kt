@@ -124,11 +124,9 @@ class AndroidSettingsDataSource(
                 avatarUrl = profile.avatarUrl,
                 isGuest = profile.isGuest,
                 hasTrakt = !profile.traktAccessToken.isNullOrBlank(),
-                hasMal = !profile.malAccessToken.isNullOrBlank(),
                 hasSimkl = !profile.simklAccessToken.isNullOrBlank(),
                 hasAnilist = !profile.anilistAccessToken.isNullOrBlank(),
                 hasAnySync = !profile.traktAccessToken.isNullOrBlank() ||
-                    !profile.malAccessToken.isNullOrBlank() ||
                     !profile.simklAccessToken.isNullOrBlank() ||
                     !profile.anilistAccessToken.isNullOrBlank(),
                 tmdbApiKey = profile.tmdbApiKey,
@@ -442,8 +440,6 @@ class AndroidSettingsDataSource(
         it.copy(
             traktAccessToken = null,
             traktRefreshToken = null,
-            malAccessToken = null,
-            malRefreshToken = null,
             simklAccessToken = null,
             anilistAccessToken = null,
             anilistRefreshToken = null,

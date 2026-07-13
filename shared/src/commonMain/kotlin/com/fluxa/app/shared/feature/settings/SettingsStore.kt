@@ -37,7 +37,6 @@ class SettingsStore(
             SettingsAction.ConnectStremioRequested -> Unit
             SettingsAction.ConnectNuvioRequested -> Unit
             SettingsAction.ConnectTraktRequested -> Unit
-            SettingsAction.ConnectMalRequested -> Unit
             SettingsAction.ConnectSimklRequested -> Unit
             SettingsAction.ConnectAnilistRequested -> Unit
             SettingsAction.DisconnectSyncRequested -> dataSource.disconnectSync()

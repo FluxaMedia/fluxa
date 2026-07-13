@@ -12,7 +12,6 @@ data class SettingsAccountUiModel(
     val avatarUrl: String? = null,
     val isGuest: Boolean = true,
     val hasTrakt: Boolean = false,
-    val hasMal: Boolean = false,
     val hasSimkl: Boolean = false,
     val hasAnilist: Boolean = false,
     val hasAnySync: Boolean = false,
@@ -205,7 +204,6 @@ sealed interface SettingsAction {
     data object ConnectStremioRequested : SettingsAction
     data object ConnectNuvioRequested : SettingsAction
     data object ConnectTraktRequested : SettingsAction
-    data object ConnectMalRequested : SettingsAction
     data object ConnectSimklRequested : SettingsAction
     data object ConnectAnilistRequested : SettingsAction
     data object DisconnectSyncRequested : SettingsAction

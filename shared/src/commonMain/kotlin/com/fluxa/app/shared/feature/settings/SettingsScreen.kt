@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Tune
@@ -41,6 +41,14 @@ import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.FluxaColors
 
+data class SettingsBrandIcons(
+    val stremio: @Composable () -> Unit = {},
+    val nuvio: @Composable () -> Unit = {},
+    val trakt: @Composable () -> Unit = {},
+    val simkl: @Composable () -> Unit = {},
+    val anilist: @Composable () -> Unit = {}
+)
+
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
@@ -48,6 +56,7 @@ fun SettingsScreen(
     onAction: (SettingsAction) -> Unit,
     onSwitchProfilesRequested: () -> Unit,
     onBackRequested: () -> Unit,
+    brandIcons: SettingsBrandIcons = SettingsBrandIcons(),
     modifier: Modifier = Modifier
 ) {
     var category by remember { mutableStateOf(SettingsCategory.Hub) }
@@ -68,7 +77,7 @@ fun SettingsScreen(
                         onSwitchProfiles = onSwitchProfilesRequested,
                         onAction = onAction
                     )
-                    SettingsCategory.Account -> SettingsAccountContent(state.account, lang, onAction)
+                    SettingsCategory.Account -> SettingsAccountContent(state.account, lang, brandIcons, onAction)
                     SettingsCategory.General -> SettingsGeneralContent(state.general, lang, onAction)
                     SettingsCategory.Appearance -> SettingsAppearanceContent(state.appearance, lang, onAction, onNavigate = { category = it })
                     SettingsCategory.AppearanceHome -> SettingsAppearanceHomeContent(state.appearanceHome, lang, onAction)
@@ -149,7 +158,7 @@ private fun SettingsHubContent(
     SettingsNavRow(AppStrings.t(lang, "auto.playback"), icon = Icons.Filled.PlayCircle) { onNavigate(SettingsCategory.Playback) }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_content"))
-    SettingsNavRow(AppStrings.t(lang, "auto.catalogs"), icon = Icons.Filled.MenuBook) { onNavigate(SettingsCategory.Content) }
+    SettingsNavRow(AppStrings.t(lang, "auto.catalogs"), icon = Icons.Filled.LibraryBooks) { onNavigate(SettingsCategory.Content) }
     SettingsNavRow(AppStrings.t(lang, "auto.add_ons"), icon = Icons.Filled.Extension) { onNavigate(SettingsCategory.Addons) }
     SettingsNavRow(AppStrings.t(lang, "auto.downloads"), icon = Icons.Filled.Download) { onNavigate(SettingsCategory.Downloads) }
 
@@ -168,24 +177,29 @@ private fun SettingsHubContent(
 }
 
 @Composable
-private fun SettingsAccountContent(model: SettingsAccountUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+private fun SettingsAccountContent(model: SettingsAccountUiModel, lang: String?, brandIcons: SettingsBrandIcons, onAction: (SettingsAction) -> Unit) {
     SettingsSectionHeader(AppStrings.t(lang, "auto.account_sync"))
-    SettingsActionRow(AppStrings.t(lang, "brand.stremio"), value = if (!model.isGuest) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
-        onAction(SettingsAction.ConnectStremioRequested)
-    }
-    SettingsActionRow(AppStrings.t(lang, "brand.nuvio")) { onAction(SettingsAction.ConnectNuvioRequested) }
-    SettingsActionRow(AppStrings.t(lang, "brand.trakt"), value = if (model.hasTrakt) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
-        onAction(SettingsAction.ConnectTraktRequested)
-    }
-    SettingsActionRow(AppStrings.t(lang, "brand.myanimelist"), value = if (model.hasMal) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
-        onAction(SettingsAction.ConnectMalRequested)
-    }
-    SettingsActionRow(AppStrings.t(lang, "brand.simkl"), value = if (model.hasSimkl) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
-        onAction(SettingsAction.ConnectSimklRequested)
-    }
-    SettingsActionRow(AppStrings.t(lang, "brand.anilist"), value = if (model.hasAnilist) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
-        onAction(SettingsAction.ConnectAnilistRequested)
-    }
+    SettingsActionRow(
+        AppStrings.t(lang, "brand.stremio"),
+        value = if (!model.isGuest) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+        icon = brandIcons.stremio
+    ) { onAction(SettingsAction.ConnectStremioRequested) }
+    SettingsActionRow(AppStrings.t(lang, "brand.nuvio"), icon = brandIcons.nuvio) { onAction(SettingsAction.ConnectNuvioRequested) }
+    SettingsActionRow(
+        AppStrings.t(lang, "brand.trakt"),
+        value = if (model.hasTrakt) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+        icon = brandIcons.trakt
+    ) { onAction(SettingsAction.ConnectTraktRequested) }
+    SettingsActionRow(
+        AppStrings.t(lang, "brand.simkl"),
+        value = if (model.hasSimkl) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+        icon = brandIcons.simkl
+    ) { onAction(SettingsAction.ConnectSimklRequested) }
+    SettingsActionRow(
+        AppStrings.t(lang, "brand.anilist"),
+        value = if (model.hasAnilist) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+        icon = brandIcons.anilist
+    ) { onAction(SettingsAction.ConnectAnilistRequested) }
     if (model.hasAnySync) {
         SettingsActionRow(AppStrings.t(lang, "auto.disconnect"), destructive = true) { onAction(SettingsAction.DisconnectSyncRequested) }
     }

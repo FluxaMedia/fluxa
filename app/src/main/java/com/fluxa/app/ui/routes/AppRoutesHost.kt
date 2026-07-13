@@ -201,6 +201,27 @@ internal fun AppRoutesHost(
                     modifier = Modifier.size(22.dp)
                 )
             },
+            traktIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_trakt),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp)
+                )
+            },
+            simklIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_simkl),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp)
+                )
+            },
+            anilistIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_anilist),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp)
+                )
+            },
             onSettingsBackRequested = navigateBackSafely,
             onManageAddonsRequested = { navigator.navigateTo(Screen.AddonStore) },
             onConnectStremioRequested = {
@@ -242,13 +263,6 @@ internal fun AppRoutesHost(
                     onShowTraktSheet()
                 } else {
                     connectTrakt(context, activeProfile, profileManager, homeViewModel, onActiveProfileChanged, onTraktDeviceAuthChanged)
-                }
-            },
-            onConnectMalRequested = {
-                if (!activeProfile?.malAccessToken.isNullOrBlank()) {
-                    onShowMalSheet()
-                } else {
-                    connectMal(context, activeProfile, oauthPrefs, onPendingMalCodeVerifierChanged)
                 }
             },
             onConnectSimklRequested = {
