@@ -15,7 +15,7 @@ targets:
       - path: ../core/src/androidMain/assets/i18n
     preBuildScripts:
       - name: Build FluxaShared
-        script: ../gradlew :shared:embedAndSignAppleFrameworkForXcode
+        script: ../gradlew -p .. :shared:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
   FluxaTvos:
     type: application
@@ -26,5 +26,5 @@ targets:
       - path: ../core/src/androidMain/assets/i18n
     preBuildScripts:
       - name: Build FluxaCore
-        script: ../gradlew :core:embedAndSignAppleFrameworkForXcode
+        script: ../gradlew -p .. :core:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
