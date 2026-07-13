@@ -36,7 +36,14 @@ class AndroidFluxaPlatformServices(
     override val calendarDataSource = AndroidCalendarDataSource(homeViewModel, activeProfile)
     override val searchDataSource = AndroidSearchDataSource(homeViewModel, activeProfile)
     override val discoverDataSource = AndroidDiscoverDataSource(homeViewModel, activeProfile)
-    override val libraryDataSource = AndroidLibraryDataSource(homeViewModel, activeProfile)
+    override val libraryDataSource = AndroidLibraryDataSource(
+        homeViewModel = homeViewModel,
+        profileManager = profileManager,
+        activeProfile = activeProfile,
+        onProfileChanged = onActiveProfileChanged,
+        offlineDownloadManager = offlineDownloadManager,
+        language = { activeProfile()?.language ?: "en" }
+    )
     override val detailDataSource = AndroidDetailDataSource(detailViewModel, activeProfile)
     override val profileDataSource = AndroidProfileDataSource(profileManager)
     override val playbackController = AndroidPlaybackController(player, playerContent)

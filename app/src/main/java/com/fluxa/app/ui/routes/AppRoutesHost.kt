@@ -137,6 +137,7 @@ internal fun AppRoutesHost(
             is Screen.Welcome, is Screen.Login -> com.fluxa.app.shared.FluxaDestination.Auth
             is Screen.Profiles -> com.fluxa.app.shared.FluxaDestination.ProfileList
             is Screen.Settings -> com.fluxa.app.shared.FluxaDestination.Settings
+            is Screen.Watchlist -> com.fluxa.app.shared.FluxaDestination.Library
             else -> null
         }
     } else {

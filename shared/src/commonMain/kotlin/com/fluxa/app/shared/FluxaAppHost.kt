@@ -329,6 +329,13 @@ fun FluxaAppHost(
             appState.selectDetail(item)
             onCatalogAction(CatalogAction.ItemSelected(item))
         },
+        onLibraryAction = { action ->
+            if (action is LibraryAction.DownloadOpened) {
+                onDownloadOpened(action.id)
+            } else {
+                scope.launch { libraryStore?.dispatch(action) }
+            }
+        },
         profileState = profileState,
         settingsState = settingsState,
         onSettingsAction = { action ->

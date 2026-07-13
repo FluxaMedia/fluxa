@@ -57,6 +57,7 @@ import com.fluxa.app.shared.feature.detail.DetailUiState
 import com.fluxa.app.shared.feature.discover.DiscoverAction
 import com.fluxa.app.shared.feature.discover.DiscoverScreen
 import com.fluxa.app.shared.feature.discover.DiscoverUiState
+import com.fluxa.app.shared.feature.library.LibraryAction
 import com.fluxa.app.shared.feature.library.LibraryScreen
 import com.fluxa.app.shared.feature.library.LibraryUiState
 import com.fluxa.app.shared.feature.profile.ProfileAction
@@ -124,6 +125,7 @@ fun FluxaApp(
     onCalendarAction: (CalendarAction) -> Unit = {},
     libraryState: LibraryUiState? = null,
     onLibraryItemSelected: (CatalogItemUiModel) -> Unit = {},
+    onLibraryAction: (LibraryAction) -> Unit = {},
     profileState: ProfileUiState? = null,
     settingsState: SettingsUiState? = null,
     onSettingsAction: (SettingsAction) -> Unit = {},
@@ -213,6 +215,7 @@ fun FluxaApp(
                 state.destination == FluxaDestination.Library && libraryState != null -> LibraryScreen(
                     state = libraryState,
                     language = state.language,
+                    onAction = onLibraryAction,
                     onItemSelected = onLibraryItemSelected,
                     modifier = Modifier.weight(1f)
                 )
