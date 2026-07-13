@@ -1002,6 +1002,10 @@ class HomeViewModel @Inject constructor(
         )
     }
 
+    fun clearDiscoverResults() {
+        _headlessDiscoverResults.value = emptyList()
+    }
+
     fun discover(type: String, catalogKey: String?, genre: String?, year: String?, rating: Float?, provider: String?, region: String?) {
         viewModelScope.launch {
             _headlessDiscoverLoading.value = true

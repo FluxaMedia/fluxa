@@ -55,7 +55,11 @@ class AndroidDiscoverDataSource(
     }
 
     override suspend fun updateFilters(filters: DiscoverFiltersUiModel) {
+        val filtersChanged = filters != this.filters.value
         this.filters.value = filters
+        if (filtersChanged) {
+            homeViewModel.clearDiscoverResults()
+        }
         homeViewModel.loadDiscoverCatalogFilters(filters.contentType, filters.catalogKey)
         homeViewModel.discover(
             type = filters.contentType,
