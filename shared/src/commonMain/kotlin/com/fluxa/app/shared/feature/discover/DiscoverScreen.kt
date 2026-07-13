@@ -2,6 +2,7 @@ package com.fluxa.app.shared.feature.discover
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as columnItems
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -226,7 +229,10 @@ private fun DiscoverFilters(
             DiscoverFilterOptionUiModel("series", AppStrings.t(language, "auto.series"))
         )
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         DiscoverDropdownFilter(
             label = AppStrings.t(language, "auto.type"),
             options = effectiveTypeOptions,
@@ -281,7 +287,8 @@ private fun DiscoverDropdownFilter(
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 140.dp)
         )
         Spacer(modifier = Modifier.width(2.dp))
         Icon(
