@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -95,10 +96,7 @@ fun DiscoverScreen(
                 onFiltersChanged = onFiltersChanged
             )
             when {
-                state.isLoading && state.results.isEmpty() -> Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator(color = Color.White) }
+                state.isLoading && state.results.isEmpty() -> DiscoverSkeletonGrid(modifier = Modifier.weight(1f))
                 state.results.isEmpty() -> Box(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     contentAlignment = Alignment.Center
@@ -115,6 +113,26 @@ fun DiscoverScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DiscoverSkeletonGrid(modifier: Modifier = Modifier) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(18, key = { it }) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2f / 3f)
+                    .background(FluxaColors.surfaceCard, RoundedCornerShape(10.dp))
+            )
         }
     }
 }

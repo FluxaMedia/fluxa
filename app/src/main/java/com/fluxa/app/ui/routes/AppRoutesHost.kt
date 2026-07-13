@@ -15,6 +15,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -125,7 +126,7 @@ internal fun AppRoutesHost(
         null
     }
 
-    if (mobileSharedDestination != null) {
+    if (deviceType == DeviceType.Mobile) {
         com.fluxa.app.shared.FluxaAppHost(
             platformServices = androidFluxaPlatformServices!!,
             language = activeProfile?.language,
@@ -136,6 +137,9 @@ internal fun AppRoutesHost(
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
         )
+    }
+
+    if (mobileSharedDestination != null) {
         return
     }
 
