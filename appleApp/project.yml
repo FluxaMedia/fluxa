@@ -19,6 +19,7 @@ targets:
     platform: iOS
     sources:
       - path: Shared
+      - path: AppleCore
       - path: iOS
       - path: Generated/FluxaRustCore.swift
     resources:
@@ -36,6 +37,7 @@ targets:
     type: application
     platform: tvOS
     sources:
+      - path: AppleCore
       - path: tvOS
       - path: Generated/FluxaRustCore.swift
     resources:
