@@ -59,7 +59,6 @@ fun CalendarScreen(
                 year = state.year,
                 month = state.month,
                 language = language,
-                isLoading = state.isLoading,
                 onMonthSelected = { year, month -> onAction(CalendarAction.MonthSelected(year, month)) }
             )
             LazyColumn(
@@ -101,7 +100,6 @@ private fun CalendarMonthHeader(
     year: Int,
     month: Int,
     language: String?,
-    isLoading: Boolean,
     onMonthSelected: (Int, Int) -> Unit
 ) {
     Row(
@@ -120,16 +118,11 @@ private fun CalendarMonthHeader(
                 }
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                text = localizedMonthTitle(year, month, language),
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-            if (isLoading) {
-                CircularProgressIndicator(color = Color.White, modifier = Modifier.padding(2.dp))
-            }
-        }
+        Text(
+            text = localizedMonthTitle(year, month, language),
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
         Text(
             text = "›",
             color = Color.White,

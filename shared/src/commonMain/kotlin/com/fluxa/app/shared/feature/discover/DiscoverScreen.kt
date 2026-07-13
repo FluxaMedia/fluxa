@@ -7,18 +7,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,9 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
@@ -60,19 +64,13 @@ fun DiscoverScreen(
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchQueryChanged,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text(AppStrings.t(language, "auto.search")) }
+        DiscoverSearchField(
+            query = searchQuery,
+            placeholder = AppStrings.t(language, "auto.search"),
+            onQueryChanged = onSearchQueryChanged
         )
         if (searchQuery.isNotBlank()) {
             when {
-                isSearching -> Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator(color = Color.White) }
                 searchResultRows.isNotEmpty() -> SearchResultRows(
                     rows = searchResultRows,
                     onItemSelected = onItemSelected,
@@ -83,6 +81,7 @@ fun DiscoverScreen(
                     onItemSelected = onItemSelected,
                     modifier = Modifier.weight(1f)
                 )
+                isSearching -> DiscoverSkeletonGrid(modifier = Modifier.weight(1f))
                 else -> Box(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     contentAlignment = Alignment.Center
@@ -113,6 +112,42 @@ fun DiscoverScreen(
                         CatalogCard(model = item.card, onClick = { onItemSelected(item) })
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiscoverSearchField(
+    query: String,
+    placeholder: String,
+    onQueryChanged: (String) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(26.dp)),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "⌕", color = Color.White.copy(alpha = 0.5f), fontSize = 18.sp)
+            Spacer(modifier = Modifier.width(10.dp))
+            Box(modifier = Modifier.fillMaxWidth()) {
+                if (query.isEmpty()) {
+                    Text(text = placeholder, color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp)
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChanged,
+                    textStyle = TextStyle(color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium),
+                    singleLine = true,
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -191,24 +226,39 @@ private fun DiscoverDropdownFilter(
     var expanded by remember { mutableStateOf(false) }
     val selectedLabel = options.firstOrNull { it.id == selectedId }?.label ?: label
     Box {
-        Box(
+        Row(
             modifier = Modifier
-                .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+                .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(999.dp))
                 .clickable { expanded = true }
-                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .padding(horizontal = 14.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = selectedLabel,
                 color = Color.White,
                 fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = "⌄", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(FluxaColors.surfaceRaised, RoundedCornerShape(12.dp))
+        ) {
             options.forEach { option ->
+                val selected = option.id == selectedId
                 DropdownMenuItem(
-                    text = { Text(option.label) },
+                    text = {
+                        Text(
+                            text = option.label,
+                            color = if (selected) FluxaColors.accent else Color.White,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
                     onClick = {
                         onSelected(option.id)
                         expanded = false

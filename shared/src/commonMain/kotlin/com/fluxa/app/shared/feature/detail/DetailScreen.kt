@@ -37,15 +37,15 @@ fun DetailScreen(
 ) {
     val content = state.content
     when {
-        state.isLoading -> DetailLoading(modifier)
-        content == null -> DetailEmpty(
-            text = AppStrings.t(language, state.errorKey ?: "auto.no_results_found"),
-            modifier = modifier
-        )
-        else -> DetailContent(
+        content != null -> DetailContent(
             content = content,
             language = language,
             onAction = onAction,
+            modifier = modifier
+        )
+        state.isLoading -> DetailLoading(modifier)
+        else -> DetailEmpty(
+            text = AppStrings.t(language, state.errorKey ?: "auto.no_results_found"),
             modifier = modifier
         )
     }
