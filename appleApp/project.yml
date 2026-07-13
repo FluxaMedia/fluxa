@@ -16,6 +16,8 @@ targets:
       - path: iOS
     resources:
       - path: ../core/src/androidMain/assets/i18n
+    dependencies:
+      - framework: UIKit.framework
     preBuildScripts:
       - name: Build FluxaShared
         script: ../gradlew -p .. :shared:embedAndSignAppleFrameworkForXcode
