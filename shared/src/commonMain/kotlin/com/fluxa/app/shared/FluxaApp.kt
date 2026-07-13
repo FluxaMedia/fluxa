@@ -59,6 +59,11 @@ import com.fluxa.app.shared.feature.discover.DiscoverScreen
 import com.fluxa.app.shared.feature.discover.DiscoverUiState
 import com.fluxa.app.shared.feature.library.LibraryScreen
 import com.fluxa.app.shared.feature.library.LibraryUiState
+import com.fluxa.app.shared.feature.profile.ProfileAction
+import com.fluxa.app.shared.feature.profile.ProfileEditScreen
+import com.fluxa.app.shared.feature.profile.ProfileEditTarget
+import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
+import com.fluxa.app.shared.feature.profile.ProfileListScreen
 import com.fluxa.app.shared.feature.profile.ProfileSettingsScreen
 import com.fluxa.app.shared.feature.profile.ProfileUiState
 import com.fluxa.app.shared.feature.profile.SettingsUiState
@@ -91,14 +96,16 @@ enum class FluxaDestination(val titleKey: String) {
     Library("nav.library"),
     Settings("nav.settings"),
     AddonStore("auto.addons"),
-    Auth("auth.log_in")
+    Auth("auth.log_in"),
+    ProfileList("auto.profile")
 }
 
 data class FluxaAppUiState(
     val language: String? = null,
     val destination: FluxaDestination = FluxaDestination.Home,
     val catalogHome: CatalogHomeUiState = CatalogHomeUiState(),
-    val selectedDetail: CatalogItemUiModel? = null
+    val selectedDetail: CatalogItemUiModel? = null,
+    val editingProfile: ProfileEditTarget? = null
 )
 
 @Composable
@@ -128,6 +135,15 @@ fun FluxaApp(
     onAuthAction: (AuthAction) -> Unit = {},
     nuvioIcon: @Composable () -> Unit = {},
     stremioIcon: @Composable () -> Unit = {},
+    onProfileListAction: (ProfileAction) -> Unit = {},
+    onProfileBiometricRequested: (com.fluxa.app.shared.feature.profile.ProfileUiModel) -> Unit = {},
+    profileEditAvatarUrl: String? = null,
+    onPickAvatarClick: () -> Unit = {},
+    onRemoveAvatarClick: () -> Unit = {},
+    onProfileSave: (ProfileEditUiModel) -> Unit = {},
+    onProfileDelete: (() -> Unit)? = null,
+    onProfileEditCancel: () -> Unit = {},
+    biometricAvailable: Boolean = false,
     showNavigationBar: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -145,6 +161,20 @@ fun FluxaApp(
                 )
             }
             when {
+                state.editingProfile != null && profileState != null -> ProfileEditScreen(
+                    initialProfile = (state.editingProfile as? ProfileEditTarget.Existing)?.let { target ->
+                        profileState.profiles.firstOrNull { it.id == target.id }
+                    },
+                    avatarUrl = profileEditAvatarUrl,
+                    biometricAvailable = biometricAvailable,
+                    language = state.language,
+                    onPickAvatarClick = onPickAvatarClick,
+                    onRemoveAvatarClick = onRemoveAvatarClick,
+                    onSave = onProfileSave,
+                    onDelete = onProfileDelete,
+                    onCancel = onProfileEditCancel,
+                    modifier = Modifier.weight(1f)
+                )
                 state.selectedDetail != null && detailState != null -> DetailScreen(
                     state = detailState,
                     language = state.language,
@@ -206,6 +236,14 @@ fun FluxaApp(
                     onAction = onAuthAction,
                     nuvioIcon = nuvioIcon,
                     stremioIcon = stremioIcon,
+                    modifier = Modifier.weight(1f)
+                )
+                state.destination == FluxaDestination.ProfileList && profileState != null -> ProfileListScreen(
+                    state = profileState,
+                    language = state.language,
+                    biometricAvailable = biometricAvailable,
+                    onAction = onProfileListAction,
+                    onBiometricRequested = onProfileBiometricRequested,
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(

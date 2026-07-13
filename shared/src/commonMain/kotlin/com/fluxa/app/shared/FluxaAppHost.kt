@@ -4,8 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
@@ -33,9 +35,13 @@ import com.fluxa.app.shared.feature.library.LibraryStore
 import com.fluxa.app.shared.feature.search.SearchAction
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.search.SearchStore
+import com.fluxa.app.shared.feature.profile.ProfileAction
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
+import com.fluxa.app.shared.feature.profile.ProfileEditTarget
+import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.ProfileSettingsStore
 import com.fluxa.app.shared.feature.profile.ProfileStore
+import com.fluxa.app.shared.feature.profile.ProfileUiModel
 import com.fluxa.app.shared.platform.FluxaAddonStoreServices
 import com.fluxa.app.shared.platform.FluxaAuthServices
 import com.fluxa.app.shared.platform.FluxaDetailServices
@@ -62,6 +68,9 @@ fun FluxaAppHost(
     authStartOnNuvio: Boolean = false,
     nuvioIcon: @Composable () -> Unit = {},
     stremioIcon: @Composable () -> Unit = {},
+    biometricAvailable: Boolean = false,
+    onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
+    onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     FluxaAppHost(
@@ -86,6 +95,9 @@ fun FluxaAppHost(
         authStartOnNuvio = authStartOnNuvio,
         nuvioIcon = nuvioIcon,
         stremioIcon = stremioIcon,
+        biometricAvailable = biometricAvailable,
+        onPickAvatarRequested = onPickAvatarRequested,
+        onBiometricAuthRequested = onBiometricAuthRequested,
         modifier = modifier
     )
 }
@@ -113,6 +125,9 @@ fun FluxaAppHost(
     authStartOnNuvio: Boolean = false,
     nuvioIcon: @Composable () -> Unit = {},
     stremioIcon: @Composable () -> Unit = {},
+    biometricAvailable: Boolean = false,
+    onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
+    onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -155,6 +170,13 @@ fun FluxaAppHost(
     }
     val authState = authStore?.state?.collectAsState()?.value
     val appState = rememberFluxaAppState()
+    var profileAvatarUrl by remember(appState.uiState.editingProfile) {
+        val target = appState.uiState.editingProfile
+        val initial = (target as? ProfileEditTarget.Existing)?.let { existing ->
+            profileState?.profiles?.firstOrNull { it.id == existing.id }?.avatarUrl
+        }
+        mutableStateOf(initial)
+    }
     val selectedDetail = appState.uiState.selectedDetail
     val detailStore = selectedDetail?.let { item ->
         detailDataSource?.let { source ->
@@ -296,6 +318,46 @@ fun FluxaAppHost(
         },
         nuvioIcon = nuvioIcon,
         stremioIcon = stremioIcon,
+        onProfileListAction = { action ->
+            when (action) {
+                ProfileAction.AddRequested -> {
+                    profileAvatarUrl = null
+                    appState.beginProfileEdit(ProfileEditTarget.New)
+                }
+                is ProfileAction.EditRequested -> {
+                    profileAvatarUrl = action.profile.avatarUrl
+                    appState.beginProfileEdit(ProfileEditTarget.Existing(action.profile.id))
+                }
+                else -> scope.launch { profileStore?.dispatch(action) }
+            }
+        },
+        onProfileBiometricRequested = { profile ->
+            onBiometricAuthRequested(profile) { success ->
+                if (success) {
+                    scope.launch { profileDataSource?.confirmBiometricUnlock(profile.id) }
+                }
+            }
+        },
+        profileEditAvatarUrl = profileAvatarUrl,
+        onPickAvatarClick = { onPickAvatarRequested { url -> profileAvatarUrl = url } },
+        onRemoveAvatarClick = { profileAvatarUrl = null },
+        onProfileSave = { edit ->
+            scope.launch {
+                profileStore?.saveProfile(edit)
+                appState.beginProfileEdit(null)
+            }
+        },
+        onProfileDelete = (appState.uiState.editingProfile as? ProfileEditTarget.Existing)?.let { existing ->
+            {
+                scope.launch {
+                    profileStore?.deleteProfile(existing.id)
+                    appState.beginProfileEdit(null)
+                }
+                Unit
+            }
+        },
+        onProfileEditCancel = { appState.beginProfileEdit(null) },
+        biometricAvailable = biometricAvailable,
         showNavigationBar = showNavigationBar,
         modifier = modifier
     )

@@ -15,6 +15,20 @@ class ProfileStore(
     suspend fun selectProfile(profile: ProfileUiModel) {
         dataSource.selectProfile(profile.id)
     }
+
+    suspend fun dispatch(action: ProfileAction) {
+        when (action) {
+            is ProfileAction.Selected -> dataSource.selectProfile(action.profile.id)
+            ProfileAction.AddRequested -> Unit
+            is ProfileAction.EditRequested -> Unit
+            is ProfileAction.PinAttempt -> dataSource.attemptPin(action.profileId, action.pin)
+            ProfileAction.PinCancelled -> dataSource.cancelPinUnlock()
+        }
+    }
+
+    suspend fun deleteProfile(id: String) = dataSource.deleteProfile(id)
+
+    suspend fun saveProfile(edit: ProfileEditUiModel): String = dataSource.saveProfile(edit)
 }
 
 class ProfileSettingsStore(

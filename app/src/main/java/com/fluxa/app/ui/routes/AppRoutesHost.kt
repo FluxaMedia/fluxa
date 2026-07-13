@@ -24,8 +24,14 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.media3.exoplayer.ExoPlayer
 import com.fluxa.app.data.local.OfflineDownloadManager
@@ -57,7 +63,12 @@ import com.fluxa.app.ui.catalog.tvNavDestination
 import com.fluxa.app.ui.catalog.WatchlistScreen
 import com.fluxa.app.ui.catalog.WelcomeScreen
 import com.fluxa.app.ui.catalog.FluxaDimensions
+import com.fluxa.app.ui.catalog.BiometricLockHelper
+import com.fluxa.app.ui.catalog.copyProfileImageToLocalUri
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun AppRoutesHost(
@@ -124,10 +135,22 @@ internal fun AppRoutesHost(
             is Screen.Calendar -> com.fluxa.app.shared.FluxaDestination.Calendar
             is Screen.AddonStore -> com.fluxa.app.shared.FluxaDestination.AddonStore
             is Screen.Welcome, is Screen.Login -> com.fluxa.app.shared.FluxaDestination.Auth
+            is Screen.Profiles -> com.fluxa.app.shared.FluxaDestination.ProfileList
             else -> null
         }
     } else {
         null
+    }
+
+    var pendingAvatarPicked by remember { mutableStateOf<((String?) -> Unit)?>(null) }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val callback = pendingAvatarPicked
+        pendingAvatarPicked = null
+        if (uri == null || callback == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            val copied = withContext(Dispatchers.IO) { copyProfileImageToLocalUri(context, uri) ?: uri.toString() }
+            callback(copied)
+        }
     }
 
     if (deviceType == DeviceType.Mobile) {
@@ -144,6 +167,24 @@ internal fun AppRoutesHost(
             onAuthBackRequested = navigateBackSafely,
             onAuthCompleted = { navigator.navigateTo(Screen.Home, true) },
             authStartOnNuvio = (currentScreen as? Screen.Login)?.startOnNuvio == true,
+            biometricAvailable = BiometricLockHelper.isAvailable(context),
+            onPickAvatarRequested = { onPicked ->
+                pendingAvatarPicked = onPicked
+                avatarPicker.launch("image/*")
+            },
+            onBiometricAuthRequested = { profile, onResult ->
+                val activity = context as? androidx.fragment.app.FragmentActivity
+                if (activity != null) {
+                    BiometricLockHelper.authenticate(
+                        activity = activity,
+                        lang = profile.language,
+                        onSuccess = { onResult(true) },
+                        onFailure = { onResult(false) }
+                    )
+                } else {
+                    onResult(false)
+                }
+            },
             nuvioIcon = {
                 androidx.compose.foundation.Image(
                     painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_nuvio),
