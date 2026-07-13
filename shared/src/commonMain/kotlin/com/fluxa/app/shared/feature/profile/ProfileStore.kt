@@ -30,16 +30,3 @@ class ProfileStore(
 
     suspend fun saveProfile(edit: ProfileEditUiModel): String = dataSource.saveProfile(edit)
 }
-
-class ProfileSettingsStore(
-    private val profileId: String,
-    private val dataSource: ProfileDataSource,
-    scope: CoroutineScope
-) {
-    val state: StateFlow<SettingsUiState> = dataSource.observeSettings(profileId)
-        .stateIn(scope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
-
-    suspend fun update(settings: SettingsUiState) {
-        dataSource.updateSettings(profileId, settings)
-    }
-}

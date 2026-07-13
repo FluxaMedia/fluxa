@@ -1,6 +1,7 @@
 package com.fluxa.app.ui
 
 import androidx.media3.exoplayer.ExoPlayer
+import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.player.AndroidPlaybackController
@@ -14,6 +15,7 @@ import com.fluxa.app.ui.catalog.AndroidDetailDataSource
 import com.fluxa.app.ui.catalog.AndroidDiscoverDataSource
 import com.fluxa.app.ui.catalog.AndroidLibraryDataSource
 import com.fluxa.app.ui.catalog.AndroidSearchDataSource
+import com.fluxa.app.ui.catalog.AndroidSettingsDataSource
 import com.fluxa.app.ui.catalog.AppContainer
 import com.fluxa.app.ui.catalog.DetailViewModel
 import com.fluxa.app.ui.catalog.HomeViewModel
@@ -26,7 +28,9 @@ class AndroidFluxaPlatformServices(
     activeProfile: () -> UserProfile?,
     onActiveProfileChanged: (UserProfile) -> Unit,
     player: ExoPlayer,
-    playerContent: () -> PlayerContentUiModel?
+    playerContent: () -> PlayerContentUiModel?,
+    offlineDownloadManager: OfflineDownloadManager,
+    appVersionLabel: String
 ) : FluxaMobilePlatformServices {
     override val catalogHomeDataSource = AndroidCatalogHomeDataSource(homeViewModel, activeProfile)
     override val calendarDataSource = AndroidCalendarDataSource(homeViewModel, activeProfile)
@@ -50,5 +54,14 @@ class AndroidFluxaPlatformServices(
         profileManager = profileManager,
         language = { activeProfile()?.language ?: "en" },
         onAuthenticated = onActiveProfileChanged
+    )
+    override val settingsDataSource = AndroidSettingsDataSource(
+        homeViewModel = homeViewModel,
+        profileManager = profileManager,
+        activeProfile = activeProfile,
+        onProfileChanged = onActiveProfileChanged,
+        offlineDownloadManager = offlineDownloadManager,
+        appVersionLabel = appVersionLabel,
+        language = { activeProfile()?.language ?: "en" }
     )
 }

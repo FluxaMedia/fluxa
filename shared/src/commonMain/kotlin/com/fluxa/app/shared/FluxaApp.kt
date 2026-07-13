@@ -64,9 +64,10 @@ import com.fluxa.app.shared.feature.profile.ProfileEditScreen
 import com.fluxa.app.shared.feature.profile.ProfileEditTarget
 import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.ProfileListScreen
-import com.fluxa.app.shared.feature.profile.ProfileSettingsScreen
 import com.fluxa.app.shared.feature.profile.ProfileUiState
-import com.fluxa.app.shared.feature.profile.SettingsUiState
+import com.fluxa.app.shared.feature.settings.SettingsAction
+import com.fluxa.app.shared.feature.settings.SettingsScreen
+import com.fluxa.app.shared.feature.settings.SettingsUiState
 import com.fluxa.app.shared.feature.search.SearchAction
 import com.fluxa.app.shared.feature.search.SearchScreen
 import com.fluxa.app.shared.feature.search.SearchUiState
@@ -125,8 +126,9 @@ fun FluxaApp(
     onLibraryItemSelected: (CatalogItemUiModel) -> Unit = {},
     profileState: ProfileUiState? = null,
     settingsState: SettingsUiState? = null,
-    onProfileSelected: (String) -> Unit = {},
-    onSettingsChanged: (SettingsUiState) -> Unit = {},
+    onSettingsAction: (SettingsAction) -> Unit = {},
+    onSwitchProfilesRequested: () -> Unit = {},
+    onSettingsBackRequested: () -> Unit = {},
     addonStoreState: AddonStoreUiState? = null,
     onAddonStoreAction: (AddonStoreAction) -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
@@ -214,12 +216,12 @@ fun FluxaApp(
                     onItemSelected = onLibraryItemSelected,
                     modifier = Modifier.weight(1f)
                 )
-                state.destination == FluxaDestination.Settings && profileState != null && settingsState != null -> ProfileSettingsScreen(
-                    profileState = profileState,
-                    settingsState = settingsState,
+                state.destination == FluxaDestination.Settings && settingsState != null -> SettingsScreen(
+                    state = settingsState,
                     language = state.language,
-                    onProfileSelected = { profile -> onProfileSelected(profile.id) },
-                    onSettingsChanged = onSettingsChanged,
+                    onAction = onSettingsAction,
+                    onSwitchProfilesRequested = onSwitchProfilesRequested,
+                    onBackRequested = onSettingsBackRequested,
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.AddonStore && addonStoreState != null -> AddonStoreScreen(

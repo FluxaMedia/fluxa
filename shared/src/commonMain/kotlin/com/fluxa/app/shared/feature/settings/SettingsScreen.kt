@@ -1,0 +1,597 @@
+package com.fluxa.app.shared.feature.settings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.fluxa.app.common.AppStrings
+import com.fluxa.app.ui.catalog.FluxaColors
+
+@Composable
+fun SettingsScreen(
+    state: SettingsUiState,
+    language: String?,
+    onAction: (SettingsAction) -> Unit,
+    onSwitchProfilesRequested: () -> Unit,
+    onBackRequested: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var category by remember { mutableStateOf(SettingsCategory.Hub) }
+    val lang = language
+
+    Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+            SettingsTopBar(
+                title = settingsCategoryTitle(category, lang),
+                onBack = { if (category == SettingsCategory.Hub) onBackRequested() else category = SettingsCategory.Hub }
+            )
+            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                when (category) {
+                    SettingsCategory.Hub -> SettingsHubContent(
+                        state = state,
+                        lang = lang,
+                        onNavigate = { category = it },
+                        onSwitchProfiles = onSwitchProfilesRequested,
+                        onAction = onAction
+                    )
+                    SettingsCategory.Account -> SettingsAccountContent(state.account, lang, onAction)
+                    SettingsCategory.General -> SettingsGeneralContent(state.general, lang, onAction)
+                    SettingsCategory.Appearance -> SettingsAppearanceContent(state.appearance, lang, onAction, onNavigate = { category = it })
+                    SettingsCategory.AppearanceHome -> SettingsAppearanceHomeContent(state.appearanceHome, lang, onAction)
+                    SettingsCategory.AppearanceDetail -> SettingsAppearanceDetailContent(state.appearanceDetail, lang, onAction)
+                    SettingsCategory.Playback -> SettingsPlaybackContent(state.playback, lang, onAction, onNavigate = { category = it })
+                    SettingsCategory.Subtitles -> SettingsSubtitlesContent(state.subtitles, lang, onAction)
+                    SettingsCategory.Advanced -> SettingsAdvancedContent(state.advanced, lang, onAction)
+                    SettingsCategory.Content -> SettingsContentCategoryContent(state.content, lang, onAction)
+                    SettingsCategory.Addons -> SettingsAddonsContent(state.addons, lang, onAction)
+                    SettingsCategory.Downloads -> SettingsDownloadsContent(state.downloads, lang, onAction)
+                    SettingsCategory.Developer -> SettingsDeveloperContent(state.developer, lang)
+                }
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+private fun settingsCategoryTitle(category: SettingsCategory, lang: String?): String = when (category) {
+    SettingsCategory.Hub -> AppStrings.t(lang, "nav.settings")
+    SettingsCategory.Account -> AppStrings.t(lang, "auto.account")
+    SettingsCategory.General -> AppStrings.t(lang, "auto.general")
+    SettingsCategory.Appearance, SettingsCategory.AppearanceHome, SettingsCategory.AppearanceDetail -> AppStrings.t(lang, "auto.appearance")
+    SettingsCategory.Playback, SettingsCategory.Subtitles, SettingsCategory.Advanced -> AppStrings.t(lang, "auto.playback")
+    SettingsCategory.Content -> AppStrings.t(lang, "auto.catalogs")
+    SettingsCategory.Addons -> AppStrings.t(lang, "auto.add_ons")
+    SettingsCategory.Downloads -> AppStrings.t(lang, "auto.downloads")
+    SettingsCategory.Developer -> AppStrings.t(lang, "settings.developer")
+}
+
+@Composable
+private fun SettingsTopBar(title: String, onBack: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f)).clickable(onClick = onBack),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("←", color = Color.White)
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(title, color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
+    }
+}
+
+@Composable
+private fun SettingsHubContent(
+    state: SettingsUiState,
+    lang: String?,
+    onNavigate: (SettingsCategory) -> Unit,
+    onSwitchProfiles: () -> Unit,
+    onAction: (SettingsAction) -> Unit
+) {
+    Text(state.account.displayName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(vertical = 8.dp))
+    SettingsNavRow(AppStrings.t(lang, "auto.account")) { onNavigate(SettingsCategory.Account) }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.section_preferences"))
+    SettingsNavRow(AppStrings.t(lang, "auto.general")) { onNavigate(SettingsCategory.General) }
+    SettingsNavRow(AppStrings.t(lang, "auto.appearance")) { onNavigate(SettingsCategory.Appearance) }
+    SettingsNavRow(AppStrings.t(lang, "auto.playback")) { onNavigate(SettingsCategory.Playback) }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.section_content"))
+    SettingsNavRow(AppStrings.t(lang, "auto.catalogs")) { onNavigate(SettingsCategory.Content) }
+    SettingsNavRow(AppStrings.t(lang, "auto.add_ons")) { onNavigate(SettingsCategory.Addons) }
+    SettingsNavRow(AppStrings.t(lang, "auto.downloads")) { onNavigate(SettingsCategory.Downloads) }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.section_system"))
+    SettingsToggleRow(
+        label = AppStrings.t(lang, "settings.automatic_updates"),
+        description = AppStrings.t(lang, "settings.automatic_updates_desc"),
+        value = state.system.automaticUpdates,
+        onValueChanged = { onAction(SettingsAction.SystemChanged(state.system.copy(automaticUpdates = it))) }
+    )
+    SettingsActionRow(AppStrings.t(lang, "settings.check_for_updates")) { onAction(SettingsAction.CheckForUpdateRequested) }
+    SettingsNavRow(AppStrings.t(lang, "settings.developer")) { onNavigate(SettingsCategory.Developer) }
+    SettingsActionRow(AppStrings.t(lang, "auto.restart"), destructive = true) { onAction(SettingsAction.RestartRequested) }
+
+    Spacer(Modifier.height(12.dp))
+    Text(state.system.appVersionLabel, color = Color.White.copy(alpha = 0.35f), fontSize = 11.sp)
+}
+
+@Composable
+private fun SettingsAccountContent(model: SettingsAccountUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    SettingsSectionHeader(AppStrings.t(lang, "auto.account_sync"))
+    SettingsActionRow(AppStrings.t(lang, "brand.stremio"), value = if (!model.isGuest) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
+        onAction(SettingsAction.ConnectStremioRequested)
+    }
+    SettingsActionRow(AppStrings.t(lang, "brand.nuvio")) { onAction(SettingsAction.ConnectNuvioRequested) }
+    SettingsActionRow(AppStrings.t(lang, "brand.trakt"), value = if (model.hasTrakt) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
+        onAction(SettingsAction.ConnectTraktRequested)
+    }
+    SettingsActionRow(AppStrings.t(lang, "brand.myanimelist"), value = if (model.hasMal) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
+        onAction(SettingsAction.ConnectMalRequested)
+    }
+    SettingsActionRow(AppStrings.t(lang, "brand.simkl"), value = if (model.hasSimkl) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
+        onAction(SettingsAction.ConnectSimklRequested)
+    }
+    SettingsActionRow(AppStrings.t(lang, "brand.anilist"), value = if (model.hasAnilist) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected")) {
+        onAction(SettingsAction.ConnectAnilistRequested)
+    }
+    if (model.hasAnySync) {
+        SettingsActionRow(AppStrings.t(lang, "auto.disconnect"), destructive = true) { onAction(SettingsAction.DisconnectSyncRequested) }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.tmdb_api"))
+    SettingsTextFieldRow(AppStrings.t(lang, "settings.tmdb_api_key"), model.tmdbApiKey.orEmpty()) {
+        onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbApiKey = it)))
+    }
+    if (!model.tmdbApiKey.isNullOrBlank()) {
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_cast_images"), value = model.tmdbCastImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCastImagesEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_similar_results"), value = model.tmdbSimilarResultsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbSimilarResultsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_trailers"), value = model.tmdbTrailersEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbTrailersEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_recommendations"), value = model.tmdbRecommendationsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRecommendationsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_collection_info"), value = model.tmdbCollectionInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCollectionInfoEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_episode_images"), value = model.tmdbEpisodeImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbEpisodeImagesEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_logos_backdrops"), value = model.tmdbLogosBackdropsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbLogosBackdropsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_ratings"), value = model.tmdbRatingsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRatingsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_basic_info"), value = model.tmdbBasicInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbBasicInfoEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_details"), value = model.tmdbDetailsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbDetailsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_productions"), value = model.tmdbProductionsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbProductionsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_networks"), value = model.tmdbNetworksEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbNetworksEnabled = it))) }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.notifications"))
+    SettingsToggleRow(AppStrings.t(lang, "settings.enable_notifications"), description = AppStrings.t(lang, "settings.enable_notifications_desc"), value = model.notificationsEnabled) {
+        onAction(SettingsAction.TmdbAccountChanged(model.copy(notificationsEnabled = it)))
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.alert_new_episodes"), description = AppStrings.t(lang, "settings.alert_new_episodes_desc"), value = model.alertNewEpisodes) {
+        onAction(SettingsAction.TmdbAccountChanged(model.copy(alertNewEpisodes = it)))
+    }
+}
+
+@Composable
+private fun SettingsGeneralContent(model: SettingsGeneralUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val languageOptions = listOf(SettingsChoiceOption("en", "English"), SettingsChoiceOption("tr", "Türkçe"))
+    val startPageOptions = listOf(
+        SettingsChoiceOption("home", AppStrings.t(lang, "nav.home")),
+        SettingsChoiceOption("discover", AppStrings.t(lang, "nav.discover")),
+        SettingsChoiceOption("library", AppStrings.t(lang, "nav.library"))
+    )
+    SettingsChoiceRow(AppStrings.t(lang, "auto.language"), model.language, languageOptions) { onAction(SettingsAction.GeneralChanged(model.copy(language = it))) }
+    SettingsChoiceRow(AppStrings.t(lang, "auto.start_page"), model.startPage, startPageOptions) { onAction(SettingsAction.GeneralChanged(model.copy(startPage = it))) }
+    SettingsToggleRow(AppStrings.t(lang, "auto.background_playback"), description = AppStrings.t(lang, "settings.background_playback_desc"), value = model.backgroundPlayback) {
+        onAction(SettingsAction.GeneralChanged(model.copy(backgroundPlayback = it)))
+    }
+}
+
+@Composable
+private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 10.dp)) {
+        Text(AppStrings.t(lang, "auto.accent_color"), color = Color.White, modifier = Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SETTINGS_COLOR_SWATCHES.forEach { swatch ->
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(Color(swatch.toInt()))
+                        .clickable { onAction(SettingsAction.AppearanceChanged(model.copy(accentColorArgb = swatch))) }
+                )
+            }
+        }
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.amoled"), value = model.amoledMode) { onAction(SettingsAction.AppearanceChanged(model.copy(amoledMode = it))) }
+    SettingsToggleRow(AppStrings.t(lang, "auto.disable_animations"), value = !model.animationsEnabled) {
+        onAction(SettingsAction.AppearanceChanged(model.copy(animationsEnabled = !it)))
+    }
+    SettingsNavRow(AppStrings.t(lang, "settings.appearance_home_screen")) { onNavigate(SettingsCategory.AppearanceHome) }
+    SettingsNavRow(AppStrings.t(lang, "settings.appearance_detail_screen")) { onNavigate(SettingsCategory.AppearanceDetail) }
+}
+
+@Composable
+private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val cornerOptions = listOf(
+        SettingsChoiceOption("sharp", AppStrings.t(lang, "auto.sharp")),
+        SettingsChoiceOption("classic", AppStrings.t(lang, "auto.classic")),
+        SettingsChoiceOption("soft", AppStrings.t(lang, "auto.soft")),
+        SettingsChoiceOption("rounded", AppStrings.t(lang, "auto.rounded")),
+        SettingsChoiceOption("pill", AppStrings.t(lang, "auto.extra_rounded"))
+    )
+    val densityOptions = listOf(
+        SettingsChoiceOption("small", AppStrings.t(lang, "auto.small")),
+        SettingsChoiceOption("medium", AppStrings.t(lang, "auto.medium")),
+        SettingsChoiceOption("large", AppStrings.t(lang, "auto.large"))
+    )
+    val posterWidthOptions = listOf(
+        SettingsChoiceOption("xsmall", AppStrings.t(lang, "auto.very_small")),
+        SettingsChoiceOption("small", AppStrings.t(lang, "auto.small")),
+        SettingsChoiceOption("medium", AppStrings.t(lang, "auto.medium")),
+        SettingsChoiceOption("large", AppStrings.t(lang, "auto.large")),
+        SettingsChoiceOption("xlarge", AppStrings.t(lang, "auto.very_large"))
+    )
+    SettingsChoiceRow(AppStrings.t(lang, "auto.card_corners"), model.cardCornerPreset, cornerOptions) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(cardCornerPreset = it))) }
+    SettingsChoiceRow(AppStrings.t(lang, "auto.interface_density"), model.interfaceDensity, densityOptions) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(interfaceDensity = it))) }
+    SettingsChoiceRow(AppStrings.t(lang, "auto.poster_width"), model.posterWidthPreset, posterWidthOptions) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(posterWidthPreset = it))) }
+    SettingsToggleRow(AppStrings.t(lang, "settings.landscape_mode"), value = model.posterLandscapeMode) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(posterLandscapeMode = it))) }
+    SettingsToggleRow(AppStrings.t(lang, "auto.hide_titles"), value = model.posterHideTitles) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(posterHideTitles = it))) }
+    SettingsToggleRow(
+        AppStrings.t(lang, "settings.season_posters_on_hero"),
+        description = AppStrings.t(lang, "settings.home_season_posters_on_hero_desc"),
+        value = model.homeSeasonPostersOnHero
+    ) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(homeSeasonPostersOnHero = it))) }
+    SettingsToggleRow(
+        AppStrings.t(lang, "settings.trailer_on_home_hero"),
+        description = AppStrings.t(lang, "settings.trailer_on_home_hero_desc"),
+        value = model.trailerOnHomeHeroEnabled
+    ) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(trailerOnHomeHeroEnabled = it))) }
+    if (model.trailerOnHomeHeroEnabled) {
+        SettingsStepperRow(AppStrings.t(lang, "settings.trailer_on_home_hero_delay"), model.trailerOnHomeHeroDelaySeconds, min = 0, max = 15, formatValue = { "${it}s" }) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(trailerOnHomeHeroDelaySeconds = it)))
+        }
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_horizontal"), value = model.continueWatchingHorizontal) {
+        onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHorizontal = it)))
+    }
+    SettingsToggleRow(AppStrings.t(lang, "auto.continue_watching"), value = model.continueWatchingEnabled) {
+        onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingEnabled = it)))
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_hide_titles"), value = model.continueWatchingHideTitles) {
+        onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHideTitles = it)))
+    }
+}
+
+@Composable
+private fun SettingsAppearanceDetailContent(model: SettingsAppearanceDetailUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val seasonSelectorOptions = listOf(
+        SettingsChoiceOption("dropdown", AppStrings.t(lang, "settings.season_selector_dropdown")),
+        SettingsChoiceOption("tabs", AppStrings.t(lang, "settings.season_selector_tabs")),
+        SettingsChoiceOption("posters", AppStrings.t(lang, "settings.season_selector_posters"))
+    )
+    val episodeLayoutOptions = listOf(
+        SettingsChoiceOption("list", AppStrings.t(lang, "settings.episode_layout_list")),
+        SettingsChoiceOption("horizontal", AppStrings.t(lang, "settings.episode_layout_horizontal"))
+    )
+    SettingsToggleRow(AppStrings.t(lang, "settings.trailer_on_hero"), description = AppStrings.t(lang, "settings.trailer_on_hero_desc"), value = model.trailerOnHero) {
+        onAction(SettingsAction.AppearanceDetailChanged(model.copy(trailerOnHero = it)))
+    }
+    SettingsToggleRow(
+        AppStrings.t(lang, "settings.blur_unwatched_episodes"),
+        description = AppStrings.t(lang, "settings.blur_unwatched_episodes_desc"),
+        value = model.blurUnwatchedEpisodes
+    ) { onAction(SettingsAction.AppearanceDetailChanged(model.copy(blurUnwatchedEpisodes = it))) }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.season_selector"), model.detailSeasonSelectorMode, seasonSelectorOptions) {
+        onAction(SettingsAction.AppearanceDetailChanged(model.copy(detailSeasonSelectorMode = it)))
+    }
+    SettingsToggleRow(
+        AppStrings.t(lang, "settings.season_posters_on_hero"),
+        description = AppStrings.t(lang, "settings.detail_season_posters_on_hero_desc"),
+        value = model.detailSeasonPostersOnHero
+    ) { onAction(SettingsAction.AppearanceDetailChanged(model.copy(detailSeasonPostersOnHero = it))) }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.episode_cards_layout"), model.episodeCardsLayout, episodeLayoutOptions) {
+        onAction(SettingsAction.AppearanceDetailChanged(model.copy(episodeCardsLayout = it)))
+    }
+}
+
+@Composable
+private fun SettingsPlaybackContent(model: SettingsPlaybackUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit) {
+    val playerOptions = listOf(SettingsChoiceOption("internal", "ExoPlayer"), SettingsChoiceOption("mpv", "MPV"))
+    val playbackSpeedOptions = listOf("0.75", "1.0", "1.25", "1.5").map { SettingsChoiceOption(it, "${it}x") }
+    val seekOptions = listOf("10", "15", "30").map { SettingsChoiceOption(it, "${it}s") }
+    val holdSpeedOptions = listOf("1.25", "1.5", "1.75", "2.0", "2.5", "3.0").map { SettingsChoiceOption(it, "${it}x") }
+    val streamSourceModeOptions = listOf(
+        SettingsChoiceOption("manual", AppStrings.t(lang, "settings.stream_source_manual")),
+        SettingsChoiceOption("first", AppStrings.t(lang, "settings.stream_source_first")),
+        SettingsChoiceOption("regex", AppStrings.t(lang, "settings.stream_source_regex"))
+    )
+    val autoplayCountdownOptions = listOf("5", "7", "10", "15").map { SettingsChoiceOption(it, "${it}s") }
+
+    SettingsNavRow(AppStrings.t(lang, "auto.subtitles")) { onNavigate(SettingsCategory.Subtitles) }
+    SettingsNavRow(AppStrings.t(lang, "settings.advanced_settings")) { onNavigate(SettingsCategory.Advanced) }
+
+    SettingsSectionHeader(AppStrings.t(lang, "auto.playback"))
+    SettingsChoiceRow(AppStrings.t(lang, "auto.player"), model.preferredPlayer, playerOptions) { onAction(SettingsAction.PlaybackChanged(model.copy(preferredPlayer = it))) }
+    if (model.preferredPlayer == "mpv") {
+        SettingsTextFieldRow(AppStrings.t(lang, "settings.mpv_custom_options"), model.mpvCustomOptions) { onAction(SettingsAction.PlaybackChanged(model.copy(mpvCustomOptions = it))) }
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.anime_use_mpv"), value = model.animeUseMpv) { onAction(SettingsAction.PlaybackChanged(model.copy(animeUseMpv = it))) }
+    SettingsToggleRow(AppStrings.t(lang, "settings.anime_prefer_japanese_audio"), value = model.animePreferJapaneseAudio) {
+        onAction(SettingsAction.PlaybackChanged(model.copy(animePreferJapaneseAudio = it)))
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "auto.playback_speed"), formatFloat(model.playbackSpeed), playbackSpeedOptions) {
+        onAction(SettingsAction.PlaybackChanged(model.copy(playbackSpeed = it.toFloatOrNull() ?: model.playbackSpeed)))
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.forward_rewind"), model.seekForwardSeconds.toString(), seekOptions) {
+        val seconds = it.toIntOrNull() ?: model.seekForwardSeconds
+        onAction(SettingsAction.PlaybackChanged(model.copy(seekForwardSeconds = seconds, seekBackwardSeconds = seconds)))
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.hold_to_speed"), value = model.holdToSpeedEnabled) { onAction(SettingsAction.PlaybackChanged(model.copy(holdToSpeedEnabled = it))) }
+    if (model.holdToSpeedEnabled) {
+        SettingsChoiceRow(AppStrings.t(lang, "settings.hold_speed"), formatFloat(model.holdSpeed), holdSpeedOptions) {
+            onAction(SettingsAction.PlaybackChanged(model.copy(holdSpeed = it.toFloatOrNull() ?: model.holdSpeed)))
+        }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.stream_settings"))
+    SettingsChoiceRow(AppStrings.t(lang, "settings.stream_source_selection"), model.streamSourceSelectionMode, streamSourceModeOptions) {
+        onAction(SettingsAction.PlaybackChanged(model.copy(streamSourceSelectionMode = it)))
+    }
+    if (model.streamSourceSelectionMode == "regex") {
+        SettingsTextFieldRow(AppStrings.t(lang, "settings.regex_pattern"), model.streamSourceRegexPattern) {
+            onAction(SettingsAction.PlaybackChanged(model.copy(streamSourceRegexPattern = it)))
+        }
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.auto_play_next_episode"), value = model.autoplayMode == "next_episode") {
+        onAction(SettingsAction.PlaybackChanged(model.copy(autoplayMode = if (it) "next_episode" else "off", autoPlayNextEpisode = it)))
+    }
+    if (model.autoplayMode == "next_episode") {
+        SettingsChoiceRow(AppStrings.t(lang, "settings.autoplay_countdown"), model.autoPlayCountdownSecs.toString(), autoplayCountdownOptions) {
+            onAction(SettingsAction.PlaybackChanged(model.copy(autoPlayCountdownSecs = it.toIntOrNull() ?: model.autoPlayCountdownSecs)))
+        }
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.auto_retry_next_source"), value = model.autoRetryNextSource) { onAction(SettingsAction.PlaybackChanged(model.copy(autoRetryNextSource = it))) }
+    SettingsToggleRow(AppStrings.t(lang, "settings.try_binge_group"), value = model.tryBingeGroup) { onAction(SettingsAction.PlaybackChanged(model.copy(tryBingeGroup = it))) }
+    SettingsPercentSliderRow(AppStrings.t(lang, "settings.next_episode_threshold"), model.nextEpisodeThresholdPercent) {
+        onAction(SettingsAction.PlaybackChanged(model.copy(nextEpisodeThresholdPercent = it)))
+    }
+    SettingsPercentSliderRow(AppStrings.t(lang, "settings.watched_threshold"), model.watchedThresholdPercent) {
+        onAction(SettingsAction.PlaybackChanged(model.copy(watchedThresholdPercent = it)))
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.skip_segments"))
+    SettingsToggleRow(AppStrings.t(lang, "settings.use_introdb"), value = model.useIntroDb) { onAction(SettingsAction.PlaybackChanged(model.copy(useIntroDb = it))) }
+    if (model.useIntroDb) {
+        SettingsTextFieldRow(AppStrings.t(lang, "settings.introdb_api_key"), model.introDbApiKey) { onAction(SettingsAction.PlaybackChanged(model.copy(introDbApiKey = it))) }
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.use_aniskip"), value = model.useAniSkip) { onAction(SettingsAction.PlaybackChanged(model.copy(useAniSkip = it))) }
+    SettingsToggleRow(AppStrings.t(lang, "settings.use_chapter_skip"), value = model.useChapterSkip) { onAction(SettingsAction.PlaybackChanged(model.copy(useChapterSkip = it))) }
+    if (model.useIntroDb || model.useAniSkip) {
+        SettingsToggleRow(AppStrings.t(lang, "settings.auto_skip"), value = model.autoSkipIntro) { onAction(SettingsAction.PlaybackChanged(model.copy(autoSkipIntro = it))) }
+    }
+}
+
+private fun formatFloat(value: Float): String {
+    val rounded = (value * 100).toInt() / 100f
+    return if (rounded == rounded.toInt().toFloat()) rounded.toInt().toString() + ".0" else rounded.toString()
+}
+
+@Composable
+private fun SettingsSubtitlesContent(model: SettingsSubtitlesUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val languageOptions = listOf("none", "original", "device_language", "en", "tr", "ja", "ko", "es", "fr", "de").map {
+        SettingsChoiceOption(it, languageOptionLabel(it, lang))
+    }
+    SettingsSectionHeader(AppStrings.t(lang, "settings.preferences"))
+    SettingsChoiceRow(AppStrings.t(lang, "settings.preferred_audio_language"), model.preferredAudioLanguage, languageOptions) {
+        onAction(SettingsAction.SubtitlesChanged(model.copy(preferredAudioLanguage = it)))
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.secondary_audio_language"), model.secondaryAudioLanguage, languageOptions) {
+        onAction(SettingsAction.SubtitlesChanged(model.copy(secondaryAudioLanguage = it)))
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.preferred_subtitle_language"), model.preferredSubtitleLanguage, languageOptions) {
+        onAction(SettingsAction.SubtitlesChanged(model.copy(preferredSubtitleLanguage = it)))
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.secondary_subtitle_language"), model.secondarySubtitleLanguage, languageOptions) {
+        onAction(SettingsAction.SubtitlesChanged(model.copy(secondarySubtitleLanguage = it)))
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.subtitle.customize"))
+    SettingsToggleRow(AppStrings.t(lang, "auto.auto_enable_subtitles_db2311e6"), value = model.autoEnableSubtitles) {
+        onAction(SettingsAction.SubtitlesChanged(model.copy(autoEnableSubtitles = it)))
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.subtitle_shadow"), value = model.subtitleShadow) { onAction(SettingsAction.SubtitlesChanged(model.copy(subtitleShadow = it))) }
+    SettingsStepperRow(AppStrings.t(lang, "auto.subtitle_size_7fc78c82"), model.subtitleSize.toInt(), step = 10, min = 50, max = 200, formatValue = { "$it%" }) {
+        onAction(SettingsAction.SubtitlesChanged(model.copy(subtitleSize = it.toFloat())))
+    }
+    SettingsColorOpacityRow(
+        AppStrings.t(lang, "settings.subtitle_text"), model.subtitleColorArgb, model.subtitleTextOpacity,
+        onColorChanged = { onAction(SettingsAction.SubtitlesChanged(model.copy(subtitleColorArgb = it))) },
+        onOpacityChanged = { onAction(SettingsAction.SubtitlesChanged(model.copy(subtitleTextOpacity = it))) }
+    )
+    SettingsColorOpacityRow(
+        AppStrings.t(lang, "settings.subtitle_background"), model.subtitleBackgroundColorArgb, model.subtitleBackgroundOpacity,
+        onColorChanged = { onAction(SettingsAction.SubtitlesChanged(model.copy(subtitleBackgroundColorArgb = it))) },
+        onOpacityChanged = { onAction(SettingsAction.SubtitlesChanged(model.copy(subtitleBackgroundOpacity = it))) }
+    )
+    SettingsColorOpacityRow(
+        AppStrings.t(lang, "settings.subtitle_outline"), model.subtitleOutlineColorArgb, model.subtitleOutlineOpacity,
+        onColorChanged = { onAction(SettingsAction.SubtitlesChanged(model.copy(subtitleOutlineColorArgb = it))) },
+        onOpacityChanged = { onAction(SettingsAction.SubtitlesChanged(model.copy(subtitleOutlineOpacity = it))) }
+    )
+}
+
+private fun languageOptionLabel(value: String, lang: String?): String = when (value) {
+    "none" -> AppStrings.t(lang, "settings.none")
+    "original" -> AppStrings.t(lang, "settings.original")
+    "device_language" -> AppStrings.t(lang, "settings.device_language")
+    "en" -> "English"
+    "tr" -> "Türkçe"
+    else -> value.uppercase()
+}
+
+@Composable
+private fun SettingsAdvancedContent(model: SettingsAdvancedUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val bufferCacheOptions = listOf("100", "500", "1000", "2000").map { SettingsChoiceOption(it, "$it MB") }
+    val bufferSecondOptions = listOf("0", "15", "30", "60", "120").map { SettingsChoiceOption(it, "${it}s") }
+    val audioDecoderOptions = listOf(
+        SettingsChoiceOption("hw_prefer", AppStrings.t(lang, "settings.audio_decoder_hw_prefer")),
+        SettingsChoiceOption("hw_only", AppStrings.t(lang, "settings.audio_decoder_hw_only")),
+        SettingsChoiceOption("sw_only", AppStrings.t(lang, "settings.audio_decoder_sw_only"))
+    )
+    SettingsSectionHeader(AppStrings.t(lang, "settings.advanced"))
+    SettingsChoiceRow(AppStrings.t(lang, "settings.buffer_cache"), model.playerBufferCacheMb.toString(), bufferCacheOptions) {
+        onAction(SettingsAction.AdvancedChanged(model.copy(playerBufferCacheMb = it.toIntOrNull() ?: model.playerBufferCacheMb)))
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.forward_buffer"), model.playerForwardBufferSeconds.toString(), bufferSecondOptions) {
+        onAction(SettingsAction.AdvancedChanged(model.copy(playerForwardBufferSeconds = it.toIntOrNull() ?: model.playerForwardBufferSeconds)))
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.back_buffer"), model.playerBackBufferSeconds.toString(), bufferSecondOptions) {
+        onAction(SettingsAction.AdvancedChanged(model.copy(playerBackBufferSeconds = it.toIntOrNull() ?: model.playerBackBufferSeconds)))
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.decoder"))
+    SettingsChoiceRow(AppStrings.t(lang, "settings.audio_decoder_mode"), model.audioDecoderMode, audioDecoderOptions) {
+        onAction(SettingsAction.AdvancedChanged(model.copy(audioDecoderMode = it)))
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.tunneled_playback"), value = model.tunneledPlayback) { onAction(SettingsAction.AdvancedChanged(model.copy(tunneledPlayback = it))) }
+}
+
+@Composable
+private fun SettingsContentCategoryContent(model: SettingsContentUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    SettingsToggleRow(AppStrings.t(lang, "settings.show_hero_section"), description = AppStrings.t(lang, "settings.show_hero_section_desc"), value = model.showHeroSection) {
+        onAction(SettingsAction.ShowHeroSectionChanged(it))
+    }
+    SettingsSectionHeader(AppStrings.t(lang, "settings.hero_catalogs"))
+    model.heroFeeds.forEach { feed ->
+        SettingsOrderedToggleRow(
+            label = feed.label,
+            subtitle = feed.providerLabel,
+            selected = feed.selected,
+            canMoveUp = feed.canMoveUp,
+            canMoveDown = feed.canMoveDown,
+            onToggle = { onAction(SettingsAction.HeroFeedToggled(feed.key)) },
+            onMoveUp = { onAction(SettingsAction.HeroFeedMoved(feed.key, -1)) },
+            onMoveDown = { onAction(SettingsAction.HeroFeedMoved(feed.key, 1)) }
+        )
+    }
+    SettingsSectionHeader(AppStrings.t(lang, "settings.home_catalogs"))
+    model.homeFeeds.forEach { feed ->
+        SettingsOrderedToggleRow(
+            label = feed.label,
+            subtitle = feed.providerLabel,
+            selected = feed.selected,
+            canMoveUp = feed.canMoveUp,
+            canMoveDown = feed.canMoveDown,
+            onToggle = { onAction(SettingsAction.HomeFeedToggled(feed.key)) },
+            onMoveUp = { onAction(SettingsAction.HomeFeedMoved(feed.key, -1)) },
+            onMoveDown = { onAction(SettingsAction.HomeFeedMoved(feed.key, 1)) }
+        )
+    }
+    SettingsSectionHeader(AppStrings.t(lang, "settings.top_10_catalogs"))
+    model.topTenFeeds.forEach { feed ->
+        SettingsToggleRow(feed.label, value = feed.selected) { onAction(SettingsAction.TopTenFeedToggled(feed.key)) }
+    }
+}
+
+@Composable
+private fun SettingsAddonsContent(model: SettingsAddonsUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val torrentSpeedOptions = listOf(
+        SettingsChoiceOption("default", AppStrings.t(lang, "settings.torrent_speed_default")),
+        SettingsChoiceOption("fast", AppStrings.t(lang, "settings.torrent_speed_fast")),
+        SettingsChoiceOption("ultra_fast", AppStrings.t(lang, "settings.torrent_speed_ultra_fast"))
+    )
+    SettingsActionRow(AppStrings.t(lang, "auto.manage_add_ons")) { onAction(SettingsAction.ManageAddonsRequested) }
+    SettingsSectionHeader(AppStrings.t(lang, "auto.torrent_speed"))
+    SettingsChoiceRow(AppStrings.t(lang, "auto.torrent_speed"), model.torrentSpeedPreset, torrentSpeedOptions) {
+        onAction(SettingsAction.AddonsChanged(model.copy(torrentSpeedPreset = it)))
+    }
+    SettingsToggleRow(AppStrings.t(lang, "settings.torrent_wifi_only"), description = AppStrings.t(lang, "settings.torrent_wifi_only_desc"), value = model.torrentWifiOnly) {
+        onAction(SettingsAction.AddonsChanged(model.copy(torrentWifiOnly = it)))
+    }
+}
+
+@Composable
+private fun SettingsDownloadsContent(model: SettingsDownloadsUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val streamSourceModeOptions = listOf(
+        SettingsChoiceOption("manual", AppStrings.t(lang, "settings.stream_source_manual")),
+        SettingsChoiceOption("first", AppStrings.t(lang, "settings.stream_source_first")),
+        SettingsChoiceOption("regex", AppStrings.t(lang, "settings.stream_source_regex"))
+    )
+    val downloadSubtitleOptions = listOf(
+        SettingsChoiceOption("preferred", AppStrings.t(lang, "settings.download_subtitle_preferred")),
+        SettingsChoiceOption("off", AppStrings.t(lang, "settings.download_subtitle_off")),
+        SettingsChoiceOption("tr", "Türkçe"),
+        SettingsChoiceOption("en", "English")
+    )
+    SettingsChoiceRow(AppStrings.t(lang, "settings.download_source_selection"), model.downloadSourceSelectionMode, streamSourceModeOptions) {
+        onAction(SettingsAction.DownloadsChanged(model.copy(downloadSourceSelectionMode = it)))
+    }
+    if (model.downloadSourceSelectionMode == "regex") {
+        SettingsTextFieldRow(AppStrings.t(lang, "settings.regex_pattern"), model.downloadSourceRegexPattern) {
+            onAction(SettingsAction.DownloadsChanged(model.copy(downloadSourceRegexPattern = it)))
+        }
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.download_subtitle"), model.downloadSubtitleLanguage, downloadSubtitleOptions) {
+        onAction(SettingsAction.DownloadsChanged(model.copy(downloadSubtitleLanguage = it)))
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "auto.downloads"))
+    if (model.items.isEmpty()) {
+        Text(AppStrings.t(lang, "downloads.empty"), color = Color.White.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 12.dp))
+    }
+    model.items.forEach { item ->
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(enabled = item.isPlayable) { onAction(SettingsAction.DownloadOpened(item.id)) }.padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.title, color = Color.White)
+                Text(
+                    if (item.isCompleted) AppStrings.t(lang, "downloads.status_downloaded") else "${item.progressPercent}%",
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 12.sp
+                )
+            }
+            Text(
+                "✕",
+                color = FluxaColors.errorRed,
+                modifier = Modifier.clickable { onAction(SettingsAction.DownloadCancelled(item.id)) }.padding(8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsDeveloperContent(model: SettingsDeveloperUiModel, lang: String?) {
+    SettingsSectionHeader(AppStrings.t(lang, "settings.last_media_probe"))
+    if (model.lastProbeUpdatedAt == null) {
+        Text(AppStrings.t(lang, "settings.no_media_probe"), color = Color.White.copy(alpha = 0.5f))
+    } else {
+        SettingsInfoRow(AppStrings.t(lang, "settings.last_media_probe_updated"), model.lastProbeUpdatedAt)
+        SettingsInfoRow(AppStrings.t(lang, "settings.last_media_probe_title"), model.lastProbeTitle.orEmpty())
+        SettingsInfoRow(AppStrings.t(lang, "settings.last_media_probe_url"), model.lastProbeUrl.orEmpty())
+    }
+    SettingsSectionHeader(AppStrings.t(lang, "settings.media_file_data"))
+    Text(model.technicalInfo, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+}

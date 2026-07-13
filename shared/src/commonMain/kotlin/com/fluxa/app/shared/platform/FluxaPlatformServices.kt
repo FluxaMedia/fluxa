@@ -10,6 +10,7 @@ import com.fluxa.app.shared.feature.library.LibraryDataSource
 import com.fluxa.app.shared.feature.player.PlaybackController
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.search.SearchDataSource
+import com.fluxa.app.shared.feature.settings.SettingsDataSource
 
 interface FluxaPlatformServices {
     val catalogHomeDataSource: CatalogHomeDataSource
@@ -51,6 +52,10 @@ interface FluxaAuthServices {
     val authDataSource: AuthDataSource
 }
 
+interface FluxaSettingsServices {
+    val settingsDataSource: SettingsDataSource
+}
+
 interface FluxaMobilePlatformServices :
     FluxaPlatformServices,
     FluxaSearchServices,
@@ -61,4 +66,5 @@ interface FluxaMobilePlatformServices :
     FluxaProfileServices,
     FluxaPlaybackServices,
     FluxaAddonStoreServices,
-    FluxaAuthServices
+    FluxaAuthServices,
+    FluxaSettingsServices

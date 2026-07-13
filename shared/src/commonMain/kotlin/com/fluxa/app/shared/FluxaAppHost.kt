@@ -39,9 +39,11 @@ import com.fluxa.app.shared.feature.profile.ProfileAction
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.profile.ProfileEditTarget
 import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
-import com.fluxa.app.shared.feature.profile.ProfileSettingsStore
 import com.fluxa.app.shared.feature.profile.ProfileStore
 import com.fluxa.app.shared.feature.profile.ProfileUiModel
+import com.fluxa.app.shared.feature.settings.SettingsAction
+import com.fluxa.app.shared.feature.settings.SettingsDataSource
+import com.fluxa.app.shared.feature.settings.SettingsStore
 import com.fluxa.app.shared.platform.FluxaAddonStoreServices
 import com.fluxa.app.shared.platform.FluxaAuthServices
 import com.fluxa.app.shared.platform.FluxaDetailServices
@@ -51,6 +53,7 @@ import com.fluxa.app.shared.platform.FluxaLibraryServices
 import com.fluxa.app.shared.platform.FluxaPlatformServices
 import com.fluxa.app.shared.platform.FluxaProfileServices
 import com.fluxa.app.shared.platform.FluxaSearchServices
+import com.fluxa.app.shared.platform.FluxaSettingsServices
 import kotlinx.coroutines.launch
 
 @Composable
@@ -71,6 +74,17 @@ fun FluxaAppHost(
     biometricAvailable: Boolean = false,
     onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
     onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
+    onManageAddonsRequested: () -> Unit = {},
+    onConnectStremioRequested: () -> Unit = {},
+    onConnectNuvioRequested: () -> Unit = {},
+    onConnectTraktRequested: () -> Unit = {},
+    onConnectMalRequested: () -> Unit = {},
+    onConnectSimklRequested: () -> Unit = {},
+    onConnectAnilistRequested: () -> Unit = {},
+    onCheckForUpdateRequested: () -> Unit = {},
+    onRestartRequested: () -> Unit = {},
+    onDownloadOpened: (String) -> Unit = {},
+    onSettingsBackRequested: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     FluxaAppHost(
@@ -83,6 +97,7 @@ fun FluxaAppHost(
         profileDataSource = (platformServices as? FluxaProfileServices)?.profileDataSource,
         addonStoreDataSource = (platformServices as? FluxaAddonStoreServices)?.addonStoreDataSource,
         authDataSource = (platformServices as? FluxaAuthServices)?.authDataSource,
+        settingsDataSource = (platformServices as? FluxaSettingsServices)?.settingsDataSource,
         language = language,
         onCatalogAction = onCatalogAction,
         destination = destination,
@@ -98,6 +113,17 @@ fun FluxaAppHost(
         biometricAvailable = biometricAvailable,
         onPickAvatarRequested = onPickAvatarRequested,
         onBiometricAuthRequested = onBiometricAuthRequested,
+        onManageAddonsRequested = onManageAddonsRequested,
+        onConnectStremioRequested = onConnectStremioRequested,
+        onConnectNuvioRequested = onConnectNuvioRequested,
+        onConnectTraktRequested = onConnectTraktRequested,
+        onConnectMalRequested = onConnectMalRequested,
+        onConnectSimklRequested = onConnectSimklRequested,
+        onConnectAnilistRequested = onConnectAnilistRequested,
+        onCheckForUpdateRequested = onCheckForUpdateRequested,
+        onRestartRequested = onRestartRequested,
+        onDownloadOpened = onDownloadOpened,
+        onSettingsBackRequested = onSettingsBackRequested,
         modifier = modifier
     )
 }
@@ -113,6 +139,7 @@ fun FluxaAppHost(
     profileDataSource: ProfileDataSource? = null,
     addonStoreDataSource: AddonStoreDataSource? = null,
     authDataSource: AuthDataSource? = null,
+    settingsDataSource: SettingsDataSource? = null,
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     destination: FluxaDestination? = null,
@@ -128,6 +155,17 @@ fun FluxaAppHost(
     biometricAvailable: Boolean = false,
     onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
     onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
+    onManageAddonsRequested: () -> Unit = {},
+    onConnectStremioRequested: () -> Unit = {},
+    onConnectNuvioRequested: () -> Unit = {},
+    onConnectTraktRequested: () -> Unit = {},
+    onConnectMalRequested: () -> Unit = {},
+    onConnectSimklRequested: () -> Unit = {},
+    onConnectAnilistRequested: () -> Unit = {},
+    onCheckForUpdateRequested: () -> Unit = {},
+    onRestartRequested: () -> Unit = {},
+    onDownloadOpened: (String) -> Unit = {},
+    onSettingsBackRequested: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -155,10 +193,8 @@ fun FluxaAppHost(
         remember(source) { ProfileStore(source, scope) }
     }
     val profileState = profileStore?.state?.collectAsState()?.value
-    val settingsStore = profileDataSource?.let { source ->
-        profileState?.activeProfile?.let { profile ->
-            remember(profile.id, source) { ProfileSettingsStore(profile.id, source, scope) }
-        }
+    val settingsStore = settingsDataSource?.let { source ->
+        remember(source) { SettingsStore(source, scope) }
     }
     val settingsState = settingsStore?.state?.collectAsState()?.value
     val addonStoreStore = addonStoreDataSource?.let { source ->
@@ -227,6 +263,11 @@ fun FluxaAppHost(
             authStore?.dispatch(AuthAction.ContinueWithNuvio)
         }
     }
+    LaunchedEffect(appState.uiState.destination, settingsStore) {
+        if (appState.uiState.destination == FluxaDestination.Settings) {
+            settingsStore?.refreshContentFeeds()
+        }
+    }
 
     FluxaApp(
         state = appState.uiState,
@@ -290,16 +331,24 @@ fun FluxaAppHost(
         },
         profileState = profileState,
         settingsState = settingsState,
-        onProfileSelected = { profileId ->
-            scope.launch {
-                profileStore?.selectProfile(profileState?.profiles?.firstOrNull { it.id == profileId } ?: return@launch)
+        onSettingsAction = { action ->
+            when (action) {
+                SettingsAction.SwitchProfilesRequested -> appState.selectDestination(FluxaDestination.ProfileList)
+                SettingsAction.ManageAddonsRequested -> onManageAddonsRequested()
+                SettingsAction.ConnectStremioRequested -> onConnectStremioRequested()
+                SettingsAction.ConnectNuvioRequested -> onConnectNuvioRequested()
+                SettingsAction.ConnectTraktRequested -> onConnectTraktRequested()
+                SettingsAction.ConnectMalRequested -> onConnectMalRequested()
+                SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
+                SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
+                SettingsAction.CheckForUpdateRequested -> onCheckForUpdateRequested()
+                SettingsAction.RestartRequested -> onRestartRequested()
+                is SettingsAction.DownloadOpened -> onDownloadOpened(action.id)
+                else -> scope.launch { settingsStore?.dispatch(action) }
             }
         },
-        onSettingsChanged = { settings ->
-            scope.launch {
-                settingsStore?.update(settings)
-            }
-        },
+        onSwitchProfilesRequested = { appState.selectDestination(FluxaDestination.ProfileList) },
+        onSettingsBackRequested = onSettingsBackRequested,
         addonStoreState = addonStoreState,
         onAddonStoreAction = { action ->
             scope.launch {

@@ -155,7 +155,7 @@ internal fun SettingsRoute(
     )
 }
 
-private fun connectTrakt(
+internal fun connectTrakt(
     context: Context,
     activeProfile: UserProfile?,
     profileManager: ProfileManager,
@@ -200,7 +200,7 @@ private fun connectTrakt(
     }
 }
 
-private fun connectMal(
+internal fun connectMal(
     context: Context,
     activeProfile: UserProfile?,
     oauthPrefs: SharedPreferences,
@@ -220,7 +220,7 @@ private fun connectMal(
     }
 }
 
-private fun connectSimkl(context: Context, activeProfile: UserProfile?) {
+internal fun connectSimkl(context: Context, activeProfile: UserProfile?) {
     val clientId = BuildConfig.SIMKL_CLIENT_ID
     if (clientId.isBlank()) {
         Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.simkl_client_missing"), Toast.LENGTH_SHORT).show()
@@ -231,7 +231,7 @@ private fun connectSimkl(context: Context, activeProfile: UserProfile?) {
     }
 }
 
-private fun connectAnilist(context: Context, activeProfile: UserProfile?) {
+internal fun connectAnilist(context: Context, activeProfile: UserProfile?) {
     val clientId = BuildConfig.ANILIST_CLIENT_ID
     if (clientId.isBlank()) {
         Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.anilist_client_missing"), Toast.LENGTH_SHORT).show()

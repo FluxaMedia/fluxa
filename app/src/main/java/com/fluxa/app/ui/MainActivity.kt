@@ -358,7 +358,9 @@ class MainActivity : FragmentActivity() {
                                 activeProfile = { activeProfile },
                                 onActiveProfileChanged = { updated -> activeProfile = updated },
                                 player = mainPlayer,
-                                playerContent = { null }
+                                playerContent = { null },
+                                offlineDownloadManager = offlineDownloadManager,
+                                appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}"
                             )
                         } else {
                             null

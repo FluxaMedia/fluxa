@@ -136,6 +136,7 @@ internal fun AppRoutesHost(
             is Screen.AddonStore -> com.fluxa.app.shared.FluxaDestination.AddonStore
             is Screen.Welcome, is Screen.Login -> com.fluxa.app.shared.FluxaDestination.Auth
             is Screen.Profiles -> com.fluxa.app.shared.FluxaDestination.ProfileList
+            is Screen.Settings -> com.fluxa.app.shared.FluxaDestination.Settings
             else -> null
         }
     } else {
@@ -198,6 +199,85 @@ internal fun AppRoutesHost(
                     contentDescription = null,
                     modifier = Modifier.size(22.dp)
                 )
+            },
+            onSettingsBackRequested = navigateBackSafely,
+            onManageAddonsRequested = { navigator.navigateTo(Screen.AddonStore) },
+            onConnectStremioRequested = {
+                val profile = activeProfile
+                if (profile?.authKey.isNullOrBlank()) {
+                    navigator.navigateTo(Screen.Login())
+                } else {
+                    homeViewModel.syncStremioIntegration(
+                        profile = profile!!,
+                        onProfileUpdated = { updated ->
+                            onActiveProfileChanged(updated)
+                            profileManager.saveProfile(updated)
+                            profileManager.setLastActiveProfile(updated)
+                            homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                        },
+                        onComplete = { }
+                    )
+                }
+            },
+            onConnectNuvioRequested = {
+                val profile = activeProfile
+                if (profile?.nuvioAccessToken.isNullOrBlank()) {
+                    navigator.navigateTo(Screen.Login(startOnNuvio = true))
+                } else {
+                    homeViewModel.syncNuvioIntegration(
+                        profile = profile!!,
+                        onProfileUpdated = { updated ->
+                            onActiveProfileChanged(updated)
+                            profileManager.saveProfile(updated)
+                            profileManager.setLastActiveProfile(updated)
+                            homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                        },
+                        onComplete = { }
+                    )
+                }
+            },
+            onConnectTraktRequested = {
+                if (!activeProfile?.traktAccessToken.isNullOrBlank()) {
+                    onShowTraktSheet()
+                } else {
+                    connectTrakt(context, activeProfile, profileManager, homeViewModel, onActiveProfileChanged, onTraktDeviceAuthChanged)
+                }
+            },
+            onConnectMalRequested = {
+                if (!activeProfile?.malAccessToken.isNullOrBlank()) {
+                    onShowMalSheet()
+                } else {
+                    connectMal(context, activeProfile, oauthPrefs, onPendingMalCodeVerifierChanged)
+                }
+            },
+            onConnectSimklRequested = {
+                if (!activeProfile?.simklAccessToken.isNullOrBlank()) {
+                    onShowSimklSheet()
+                } else {
+                    connectSimkl(context, activeProfile)
+                }
+            },
+            onConnectAnilistRequested = { connectAnilist(context, activeProfile) },
+            onCheckForUpdateRequested = {
+                coroutineScope.launch {
+                    val update = com.fluxa.app.ui.catalog.UpdateManager.checkUpdate()
+                    onUpdateInfoChanged(update)
+                }
+            },
+            onDownloadOpened = { id ->
+                offlineDownloadManager.items.value.firstOrNull { it.id == id }?.let { item ->
+                    if (item.isPlayable) {
+                        navigator.navigateTo(
+                            Screen.Player(
+                                meta = offlineDownloadManager.asPlayableMeta(item),
+                                videoId = item.videoId,
+                                initialProgress = 0L,
+                                streamIndex = 0,
+                                initialStreams = listOf(offlineDownloadManager.asPlayableStream(item))
+                            )
+                        )
+                    }
+                }
             },
             modifier = Modifier
                 .fillMaxSize()

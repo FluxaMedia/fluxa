@@ -8,7 +8,6 @@ import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.ProfileUiModel
 import com.fluxa.app.shared.feature.profile.ProfileUiState
-import com.fluxa.app.shared.feature.profile.SettingsUiState
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,15 +26,6 @@ class AndroidProfileDataSource(
             pendingPinProfile = state.profiles.firstOrNull { it.id == pendingId },
             pinError = error
         )
-    }
-
-    override fun observeSettings(profileId: String): Flow<SettingsUiState> = callbackFlow {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-            profileManager.getProfiles().firstOrNull { it.id == profileId }?.let { trySend(it.toSettingsUiState()) }
-        }
-        profileManager.registerOnChangeListener(listener)
-        profileManager.getProfiles().firstOrNull { it.id == profileId }?.let { trySend(it.toSettingsUiState()) }
-        awaitClose { profileManager.unregisterOnChangeListener(listener) }
     }
 
     override suspend fun selectProfile(id: String) {
@@ -104,18 +94,6 @@ class AndroidProfileDataSource(
         return profile.id
     }
 
-    override suspend fun updateSettings(profileId: String, settings: SettingsUiState) {
-        val profile = profileManager.getProfiles().firstOrNull { it.id == profileId } ?: return
-        profileManager.saveProfile(profile.copy(
-            language = settings.language,
-            cardLayout = settings.cardLayout,
-            autoPlayNextEpisode = settings.autoPlayNextEpisode,
-            autoEnableSubtitles = settings.subtitlesEnabled,
-            preferredAudioLanguage = settings.preferredAudioLanguage,
-            preferredSubtitleLanguage = settings.preferredSubtitleLanguage
-        ))
-    }
-
     private fun profilesFlow(): Flow<ProfileUiState> = callbackFlow {
         fun emit() {
             val profiles = profileManager.getProfiles()
@@ -140,13 +118,4 @@ private fun UserProfile.toProfileUiModel(): ProfileUiModel = ProfileUiModel(
     accentColorArgb = safeAccentColorArgb.toLong() and 0xffffffffL,
     hasPin = !pinHash.isNullOrBlank(),
     biometricEnabled = biometricEnabled == true
-)
-
-private fun UserProfile.toSettingsUiState(): SettingsUiState = SettingsUiState(
-    language = safeLanguage,
-    cardLayout = safeCardLayout,
-    autoPlayNextEpisode = safeAutoPlayNextEpisode,
-    subtitlesEnabled = safeAutoEnableSubtitles,
-    preferredAudioLanguage = safePreferredAudioLanguage,
-    preferredSubtitleLanguage = safePreferredSubtitleLanguage
 )

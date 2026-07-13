@@ -20,15 +20,6 @@ data class ProfileUiState(
     val pinError: Boolean = false
 )
 
-data class SettingsUiState(
-    val language: String = "en",
-    val cardLayout: String = "vertical",
-    val autoPlayNextEpisode: Boolean = true,
-    val subtitlesEnabled: Boolean = false,
-    val preferredAudioLanguage: String = "none",
-    val preferredSubtitleLanguage: String = "none"
-)
-
 data class ProfileEditUiModel(
     val id: String? = null,
     val name: String,
@@ -53,9 +44,7 @@ sealed interface ProfileEditTarget {
 
 interface ProfileDataSource {
     fun observeProfiles(): Flow<ProfileUiState>
-    fun observeSettings(profileId: String): Flow<SettingsUiState>
     suspend fun selectProfile(id: String)
-    suspend fun updateSettings(profileId: String, settings: SettingsUiState)
     suspend fun attemptPin(profileId: String, pin: String)
     suspend fun confirmBiometricUnlock(profileId: String)
     suspend fun cancelPinUnlock()
