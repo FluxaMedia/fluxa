@@ -25,6 +25,12 @@ on:
       - "settings.gradle.kts"
       - "build.gradle.kts"
   workflow_dispatch:
+    inputs:
+      fluxa_core_ref:
+        description: Fluxa Rust core ref to build
+        required: false
+        default: master
+        type: string
 
 permissions:
   contents: read
@@ -37,10 +43,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: FluxaMedia/fluxa-core
+          path: fluxa-core
+          ref: ${{ inputs.fluxa_core_ref || 'master' }}
+
+      - name: Link sibling Rust core
+        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim,x86_64-apple-tvos
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fluxa-core
 
       - name: Set up XcodeGen
         run: |
@@ -73,10 +99,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: FluxaMedia/fluxa-core
+          path: fluxa-core
+          ref: ${{ inputs.fluxa_core_ref || 'master' }}
+
+      - name: Link sibling Rust core
+        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim,x86_64-apple-tvos
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fluxa-core
 
       - name: Set up XcodeGen
         run: |

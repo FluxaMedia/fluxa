@@ -14,11 +14,16 @@ targets:
     sources:
       - path: Shared
       - path: iOS
+      - path: Generated/FluxaRustCore.swift
     resources:
       - path: ../core/src/androidMain/assets/i18n
     dependencies:
       - framework: UIKit.framework
+      - framework: Generated/FluxaRustCore.xcframework
     preBuildScripts:
+      - name: Build Fluxa Rust Core
+        script: scripts/build-rust-core-xcframework.sh
+        basedOnDependencyAnalysis: false
       - name: Build FluxaShared
         script: ../gradlew -p .. :shared:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
@@ -27,9 +32,15 @@ targets:
     platform: tvOS
     sources:
       - path: tvOS
+      - path: Generated/FluxaRustCore.swift
     resources:
       - path: ../core/src/androidMain/assets/i18n
+    dependencies:
+      - framework: Generated/FluxaRustCore.xcframework
     preBuildScripts:
+      - name: Build Fluxa Rust Core
+        script: scripts/build-rust-core-xcframework.sh
+        basedOnDependencyAnalysis: false
       - name: Build FluxaCore
         script: ../gradlew -p .. :core:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
