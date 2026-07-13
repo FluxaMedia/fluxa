@@ -22,7 +22,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":core"))
+            api(project(":core"))
             implementation(libs.coil3)
             implementation(libs.coil3.compose)
             implementation(libs.koin.core)
