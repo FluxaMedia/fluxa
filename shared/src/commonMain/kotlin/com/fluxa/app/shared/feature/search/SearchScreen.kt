@@ -148,7 +148,7 @@ private fun SearchHistory(
 }
 
 @Composable
-private fun SearchResultRows(
+internal fun SearchResultRows(
     rows: List<CatalogRowUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
     modifier: Modifier
@@ -178,7 +178,7 @@ private fun SearchResultRows(
 }
 
 @Composable
-private fun SearchResults(
+internal fun SearchResults(
     items: List<CatalogItemUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
     modifier: Modifier

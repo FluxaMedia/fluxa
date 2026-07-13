@@ -6,18 +6,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items as rowItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +32,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
+import com.fluxa.app.shared.feature.search.SearchResultRows
+import com.fluxa.app.shared.feature.search.SearchResults
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
 
@@ -35,6 +44,11 @@ fun DiscoverScreen(
     language: String?,
     onFiltersChanged: (DiscoverFiltersUiModel) -> Unit,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    searchQuery: String = "",
+    onSearchQueryChanged: (String) -> Unit = {},
+    searchResultRows: List<CatalogRowUiModel> = emptyList(),
+    searchResults: List<CatalogItemUiModel> = emptyList(),
+    isSearching: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -44,36 +58,61 @@ fun DiscoverScreen(
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = AppStrings.t(language, "nav.discover"),
-            color = Color.White,
-            fontWeight = FontWeight.Bold
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChanged,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(AppStrings.t(language, "auto.search")) }
         )
-        DiscoverFilters(
-            filters = state.filters,
-            catalogOptions = state.catalogOptions,
-            genreOptions = state.genreOptions,
-            language = language,
-            onFiltersChanged = onFiltersChanged
-        )
-        when {
-            state.isLoading && state.results.isEmpty() -> Box(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator(color = Color.White) }
-            state.results.isEmpty() -> Box(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) { Text(AppStrings.t(language, "auto.no_results_yet"), color = Color.White) }
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 128.dp),
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(state.results, key = { "${it.type}:${it.id}" }) { item ->
-                    CatalogCard(model = item.card, onClick = { onItemSelected(item) })
+        if (searchQuery.isNotBlank()) {
+            when {
+                isSearching -> Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator(color = Color.White) }
+                searchResultRows.isNotEmpty() -> SearchResultRows(
+                    rows = searchResultRows,
+                    onItemSelected = onItemSelected,
+                    modifier = Modifier.weight(1f)
+                )
+                searchResults.isNotEmpty() -> SearchResults(
+                    items = searchResults,
+                    onItemSelected = onItemSelected,
+                    modifier = Modifier.weight(1f)
+                )
+                else -> Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) { Text(AppStrings.t(language, "auto.no_results_found"), color = Color.White) }
+            }
+        } else {
+            DiscoverFilters(
+                filters = state.filters,
+                catalogOptions = state.catalogOptions,
+                genreOptions = state.genreOptions,
+                language = language,
+                onFiltersChanged = onFiltersChanged
+            )
+            when {
+                state.isLoading && state.results.isEmpty() -> Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator(color = Color.White) }
+                state.results.isEmpty() -> Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) { Text(AppStrings.t(language, "auto.no_results_yet"), color = Color.White) }
+                else -> LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(bottom = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(state.results, key = { "${it.type}:${it.id}" }) { item ->
+                        CatalogCard(model = item.card, onClick = { onItemSelected(item) })
+                    }
                 }
             }
         }
@@ -88,8 +127,9 @@ private fun DiscoverFilters(
     language: String?,
     onFiltersChanged: (DiscoverFiltersUiModel) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        DiscoverFilterRow(
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        DiscoverDropdownFilter(
+            label = AppStrings.t(language, "auto.type"),
             options = listOf(
                 DiscoverFilterOptionUiModel("movie", AppStrings.t(language, "auto.movie")),
                 DiscoverFilterOptionUiModel("series", AppStrings.t(language, "auto.series"))
@@ -100,7 +140,8 @@ private fun DiscoverFilters(
             }
         )
         if (catalogOptions.isNotEmpty()) {
-            DiscoverFilterRow(
+            DiscoverDropdownFilter(
+                label = AppStrings.t(language, "auto.catalog"),
                 options = catalogOptions,
                 selectedId = filters.catalogKey,
                 onSelected = { value ->
@@ -109,7 +150,8 @@ private fun DiscoverFilters(
             )
         }
         if (genreOptions.isNotEmpty()) {
-            DiscoverFilterRow(
+            DiscoverDropdownFilter(
+                label = AppStrings.t(language, "auto.genre"),
                 options = genreOptions,
                 selectedId = filters.genre,
                 onSelected = { value ->
@@ -121,29 +163,37 @@ private fun DiscoverFilters(
 }
 
 @Composable
-private fun DiscoverFilterRow(
+private fun DiscoverDropdownFilter(
+    label: String,
     options: List<DiscoverFilterOptionUiModel>,
     selectedId: String?,
     onSelected: (String?) -> Unit
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        rowItems(options, key = { it.id ?: it.label }) { option ->
-            val selected = option.id == selectedId
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = if (selected) Color.White else Color.White.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(999.dp)
-                    )
-                    .clickable { onSelected(option.id) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = option.label,
-                    color = if (selected) Color.Black else Color.White,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.id == selectedId }?.label ?: label
+    Box {
+        Box(
+            modifier = Modifier
+                .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = selectedLabel,
+                color = Color.White,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        onSelected(option.id)
+                        expanded = false
+                    }
                 )
             }
         }

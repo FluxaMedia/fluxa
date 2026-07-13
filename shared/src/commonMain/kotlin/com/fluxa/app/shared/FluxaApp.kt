@@ -131,6 +131,11 @@ fun FluxaApp(
                     language = state.language,
                     onFiltersChanged = { filters -> onDiscoverAction(DiscoverAction.FiltersChanged(filters)) },
                     onItemSelected = { item -> onDiscoverAction(DiscoverAction.ItemSelected(item)) },
+                    searchQuery = searchState?.query.orEmpty(),
+                    onSearchQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
+                    searchResultRows = searchState?.resultRows.orEmpty(),
+                    searchResults = searchState?.results.orEmpty(),
+                    isSearching = searchState?.isLoading == true,
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.Calendar && calendarState != null -> CalendarScreen(

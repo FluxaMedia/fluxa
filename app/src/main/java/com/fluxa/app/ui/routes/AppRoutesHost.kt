@@ -17,6 +17,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -111,6 +112,33 @@ internal fun AppRoutesHost(
         onExplore = { if (currentScreen.tvNavDestination() != com.fluxa.app.ui.catalog.TvNavDestination.Discover) navigator.navigateTo(Screen.Explore(), clearStack = true) },
         onSettings = { if (currentScreen.tvNavDestination() != com.fluxa.app.ui.catalog.TvNavDestination.Settings) navigator.navigateTo(Screen.Settings(), clearStack = true) }
     )
+
+    val mobileSharedDestination = if (deviceType == DeviceType.Mobile) {
+        when (currentScreen) {
+            is Screen.Home -> com.fluxa.app.shared.FluxaDestination.Home
+            is Screen.Search -> com.fluxa.app.shared.FluxaDestination.Search
+            is Screen.Explore -> com.fluxa.app.shared.FluxaDestination.Discover
+            is Screen.Calendar -> com.fluxa.app.shared.FluxaDestination.Calendar
+            else -> null
+        }
+    } else {
+        null
+    }
+
+    if (mobileSharedDestination != null) {
+        com.fluxa.app.shared.FluxaAppHost(
+            platformServices = androidFluxaPlatformServices!!,
+            language = activeProfile?.language,
+            destination = mobileSharedDestination,
+            showNavigationBar = false,
+            onPlayRequested = onSharedPlayRequested,
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+        )
+        return
+    }
+
     AnimatedContent(
         targetState = currentScreen,
         modifier = Modifier.then(
@@ -210,17 +238,7 @@ internal fun AppRoutesHost(
                 onCancel = navigateBackSafely,
                 startOnNuvio = screen.startOnNuvio
             )
-            is Screen.Home -> if (deviceType == DeviceType.Mobile) {
-                com.fluxa.app.shared.FluxaAppHost(
-                    platformServices = androidFluxaPlatformServices!!,
-                    language = activeProfile?.language,
-                    destination = com.fluxa.app.shared.FluxaDestination.Home,
-                    showNavigationBar = false,
-                    onPlayRequested = onSharedPlayRequested
-                )
-            } else {
-                HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope)
-            }
+            is Screen.Home -> HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope)
             is Screen.CategoryResults -> CategoryResultsScreen(
                 activeProfile = activeProfile,
                 categoryId = screen.categoryId,
@@ -229,63 +247,33 @@ internal fun AppRoutesHost(
                 onBack = navigateBackSafely,
                 viewModel = homeViewModel
             )
-            is Screen.Explore -> if (deviceType == DeviceType.Mobile) {
-                com.fluxa.app.shared.FluxaAppHost(
-                    platformServices = androidFluxaPlatformServices!!,
-                    language = activeProfile?.language,
-                    destination = com.fluxa.app.shared.FluxaDestination.Discover,
-                    showNavigationBar = false,
-                    onPlayRequested = onSharedPlayRequested
-                )
-            } else {
-                ExploreScreen(
-                    activeProfile,
-                    { meta, sourceAddonTransportUrl, sourceAddonCatalogType ->
-                        navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
-                    },
-                    navigateBackSafely,
-                    homeViewModel,
-                    initialType = screen.initialType,
-                    initialGenre = screen.initialGenre,
-                    tvNavActions = tvNavActions
-                )
-            }
-            is Screen.Search -> if (deviceType == DeviceType.Mobile) {
-                com.fluxa.app.shared.FluxaAppHost(
-                    platformServices = androidFluxaPlatformServices!!,
-                    language = activeProfile?.language,
-                    destination = com.fluxa.app.shared.FluxaDestination.Search,
-                    showNavigationBar = false,
-                    onPlayRequested = onSharedPlayRequested
-                )
-            } else {
-                SearchScreen(
-                    activeProfile,
-                    homeViewModel.searchResults.collectAsState().value,
-                    { homeViewModel.search(it) },
-                    { meta, sourceAddonTransportUrl, sourceAddonCatalogType ->
-                        navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
-                    },
-                    navigateBackSafely,
-                    homeViewModel,
-                    tvNavActions
-                )
-            }
-            is Screen.Calendar -> if (deviceType == DeviceType.Mobile) {
-                com.fluxa.app.shared.FluxaAppHost(
-                    platformServices = androidFluxaPlatformServices!!,
-                    language = activeProfile?.language,
-                    destination = com.fluxa.app.shared.FluxaDestination.Calendar,
-                    showNavigationBar = false,
-                    onPlayRequested = onSharedPlayRequested
-                )
-            } else {
-                CalendarScreen(
-                    activeProfile = activeProfile,
-                    viewModel = homeViewModel,
-                    onMovieClick = { navigator.navigateTo(it.detailScreen()) }
-                )
-            }
+            is Screen.Explore -> ExploreScreen(
+                activeProfile,
+                { meta, sourceAddonTransportUrl, sourceAddonCatalogType ->
+                    navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
+                },
+                navigateBackSafely,
+                homeViewModel,
+                initialType = screen.initialType,
+                initialGenre = screen.initialGenre,
+                tvNavActions = tvNavActions
+            )
+            is Screen.Search -> SearchScreen(
+                activeProfile,
+                homeViewModel.searchResults.collectAsState().value,
+                { homeViewModel.search(it) },
+                { meta, sourceAddonTransportUrl, sourceAddonCatalogType ->
+                    navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
+                },
+                navigateBackSafely,
+                homeViewModel,
+                tvNavActions
+            )
+            is Screen.Calendar -> CalendarScreen(
+                activeProfile = activeProfile,
+                viewModel = homeViewModel,
+                onMovieClick = { navigator.navigateTo(it.detailScreen()) }
+            )
             is Screen.Watchlist -> WatchlistScreen(
                 activeProfile,
                 {
