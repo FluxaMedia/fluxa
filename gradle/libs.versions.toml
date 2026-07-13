@@ -39,6 +39,7 @@ kotlinMetadataJvm     = "2.4.0"
 kotlinxSerialization  = "1.11.0"
 kotlinxDatetime       = "0.8.0"
 composeMultiplatform  = "1.11.1"
+koin                  = "4.2.2"
 
 [libraries]
 # Build-logic plugin artifacts (compileOnly in build-logic)
@@ -54,6 +55,7 @@ androidx-activity-compose           = { group = "androidx.activity",           n
 androidx-lifecycle-runtime          = { group = "androidx.lifecycle",          name = "lifecycle-runtime-ktx",       version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose  = { group = "androidx.lifecycle",          name = "lifecycle-runtime-compose",   version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose= { group = "androidx.lifecycle",          name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel        = { group = "androidx.lifecycle",          name = "lifecycle-viewmodel",         version.ref = "lifecycle" }
 androidx-work-runtime               = { group = "androidx.work",               name = "work-runtime-ktx",            version.ref = "workManager" }
 androidx-hilt-work                  = { group = "androidx.hilt",               name = "hilt-work",                   version.ref = "hiltAndroidx" }
 androidx-hilt-compiler              = { group = "androidx.hilt",               name = "hilt-compiler",               version.ref = "hiltAndroidx" }
@@ -123,6 +125,11 @@ kotlin-metadata-jvm   = { group = "org.jetbrains.kotlin", name = "kotlin-metadat
 # Kotlinx serialization (KMP-portable JSON, replaces org.json in shared code)
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-datetime           = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",           version.ref = "kotlinxDatetime" }
+
+# Koin (multiplatform DI, replaces Hilt in :shared)
+koin-core                  = { group = "io.insert-koin", name = "koin-core",                  version.ref = "koin" }
+koin-compose                = { group = "io.insert-koin", name = "koin-compose",               version.ref = "koin" }
+koin-compose-viewmodel      = { group = "io.insert-koin", name = "koin-compose-viewmodel",      version.ref = "koin" }
 
 # Jackson
 jackson-databind      = { group = "com.fasterxml.jackson.core",   name = "jackson-databind",      version.ref = "jackson" }
