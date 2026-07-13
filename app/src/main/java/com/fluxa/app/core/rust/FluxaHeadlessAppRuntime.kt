@@ -1,6 +1,9 @@
 package com.fluxa.app.core.rust
 
 import java.io.Closeable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,17 +38,20 @@ class FluxaHeadlessAppRuntime(
         }
     }
 
-    private suspend fun drain(initial: NativeHeadlessEngineResult): NativeHeadlessEngineResult {
+    private suspend fun drain(initial: NativeHeadlessEngineResult): NativeHeadlessEngineResult = coroutineScope {
         var current = initial
         val patches = mutableListOf(current)
         var remaining = maxEffectsPerDispatch
         while (current.effects.isNotEmpty() && remaining > 0) {
-            val completion = environment.execute(current.effects.first())
-            current = engine.completeEffect(completion)
-            patches += current
-            remaining--
+            val batch = current.effects.take(remaining)
+            val completions = batch.map { effect -> async { environment.execute(effect) } }.awaitAll()
+            remaining -= batch.size
+            for (completion in completions) {
+                current = engine.completeEffect(completion)
+                patches += current
+            }
         }
-        return NativeHeadlessEngineResult(
+        NativeHeadlessEngineResult(
             effects = current.effects,
             stateProvider = { patches.fold(emptyMap<String, Any?>()) { acc, patch -> acc + patch.state } }
         )
