@@ -230,6 +230,8 @@ class StremioAddonResourceClient @Inject constructor(
             "genre" to genre?.takeIf { it.isNotBlank() },
             "skip" to skip.takeIf { it > 0 }?.toString()
         )
+        val cacheKey = "catalog_v1_${transportUrl}_${type}_${id}_${skip}_${genre.orEmpty()}_${search.orEmpty()}"
+        cache.get<List<Meta>>(cacheKey)?.let { return@withContext AddonResourceResult.Success(it, cacheKey) }
         val parsed = fetchAddonResourcePayload(
             transportUrl = transportUrl,
             resource = "catalog",
@@ -239,7 +241,11 @@ class StremioAddonResourceClient @Inject constructor(
             fallbackUrl = addonManifestClient.buildAddonResourceUrl(transportUrl, "catalog", type, id, extraArgs)
         )
         val success = parsed as? AddonResourceResult.Success ?: return@withContext parsed.toTypedEmpty()
-        decodeResourceList(result = success, type = metaListType)
+        val result = decodeResourceList<Meta>(result = success, type = metaListType)
+        if (result is AddonResourceResult.Success) {
+            cache.put(cacheKey, result.value)
+        }
+        result
     }
 
     private fun <T> decodeResourceList(
