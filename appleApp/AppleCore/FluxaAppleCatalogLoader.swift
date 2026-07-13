@@ -19,6 +19,11 @@ final class FluxaAppleCatalogLoader {
     }
 
     func loadSnapshot(requests: [FluxaAppleCatalogRequest]) async throws -> String {
+        let rows = try await loadRows(requests: requests)
+        return String(decoding: try encoder.encode(FluxaAppleCatalogSnapshot(rows: rows)), as: UTF8.self)
+    }
+
+    func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [FluxaAppleCatalogRow] {
         var rows = [FluxaAppleCatalogRow]()
         var lastError: Error?
         for request in requests {
@@ -55,7 +60,7 @@ final class FluxaAppleCatalogLoader {
         if rows.isEmpty, let lastError {
             throw lastError
         }
-        return String(decoding: try encoder.encode(FluxaAppleCatalogSnapshot(rows: rows)), as: UTF8.self)
+        return rows
     }
 }
 
@@ -72,19 +77,19 @@ private struct FluxaAppleStremioMeta: Decodable {
     let releaseInfo: String?
 }
 
-private struct FluxaAppleCatalogSnapshot: Encodable {
+struct FluxaAppleCatalogSnapshot: Encodable {
     let rows: [FluxaAppleCatalogRow]
     let isLoading = false
 }
 
-private struct FluxaAppleCatalogRow: Encodable {
+struct FluxaAppleCatalogRow: Encodable {
     let id: String
     let title: String
     let canLoadMore: Bool
     let items: [FluxaAppleCatalogItem]
 }
 
-private struct FluxaAppleCatalogItem: Encodable {
+struct FluxaAppleCatalogItem: Encodable {
     let id: String
     let type: String
     let title: String

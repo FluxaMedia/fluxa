@@ -26,22 +26,90 @@ final class FluxaAppleAddonConfigurationStore {
 
 @MainActor
 final class FluxaAppleCatalogStartup {
-    private let configurationStore: FluxaAppleAddonConfigurationStore
-    private let bootstrap: FluxaAppleCatalogBootstrap
+    private let coordinator: FluxaAppleHeadlessCoordinator
+    private let encoder = JSONEncoder()
 
     init(
+        runtime: FluxaAppleHeadlessRuntime,
         configurationStore: FluxaAppleAddonConfigurationStore = FluxaAppleAddonConfigurationStore(),
         bootstrap: FluxaAppleCatalogBootstrap = FluxaAppleCatalogBootstrap()
     ) {
-        self.configurationStore = configurationStore
-        self.bootstrap = bootstrap
+        let handler = FluxaAppleHomeEffectHandler(
+            configurationStore: configurationStore,
+            catalogBootstrap: bootstrap
+        )
+        coordinator = FluxaAppleHeadlessCoordinator(
+            runtime: runtime,
+            executor: FluxaApplePlatformEffectExecutor(handler: handler)
+        )
     }
 
     func refresh() async {
         do {
-            try await bootstrap.refresh(localAddonUrls: configurationStore.localAddonUrls())
+            let result = try await coordinator.dispatch(
+                actionJson: "{\"type\":\"homeLoadRequested\",\"profile\":{\"id\":\"apple-default\"},\"language\":\"en\",\"force\":true}"
+            )
+            updateSharedHome(result: result)
         } catch {
             FluxaApple.shared.updateCatalogHomeJson(homeJson: "{\"rows\":[],\"isLoading\":false}")
         }
+    }
+
+    private func updateSharedHome(result: FluxaAppleHeadlessResult) {
+        guard case .object(let home)? = result.state["home"],
+              case .array(let categories)? = home["categories"] else {
+            FluxaApple.shared.updateCatalogHomeJson(homeJson: "{\"rows\":[],\"isLoading\":false}")
+            return
+        }
+        let rows = categories.compactMap(sharedRow)
+        let snapshot = FluxaAppleJsonValue.object([
+            "rows": .array(rows),
+            "isLoading": .boolean(false)
+        ])
+        guard let data = try? encoder.encode(snapshot) else {
+            return
+        }
+        FluxaApple.shared.updateCatalogHomeJson(homeJson: String(decoding: data, as: UTF8.self))
+    }
+
+    private func sharedRow(_ category: FluxaAppleJsonValue) -> FluxaAppleJsonValue? {
+        guard case .object(let value) = category,
+              let id = string(value["id"]),
+              let title = string(value["name"]),
+              case .array(let items)? = value["items"] else {
+            return nil
+        }
+        return .object([
+            "id": .string(id),
+            "title": .string(title),
+            "canLoadMore": .boolean(false),
+            "items": .array(items.compactMap(sharedItem))
+        ])
+    }
+
+    private func sharedItem(_ item: FluxaAppleJsonValue) -> FluxaAppleJsonValue? {
+        guard case .object(let value) = item,
+              let id = string(value["id"]),
+              let type = string(value["type"]),
+              let title = string(value["name"]) else {
+            return nil
+        }
+        return .object([
+            "id": .string(id),
+            "type": .string(type),
+            "title": .string(title),
+            "subtitle": value["releaseInfo"] ?? .string(""),
+            "artworkUrl": value["poster"] ?? .null,
+            "logoUrl": value["logo"] ?? .null,
+            "addonTransportUrl": value["addonTransportUrl"] ?? .null,
+            "catalogType": value["catalogType"] ?? .null
+        ])
+    }
+
+    private func string(_ value: FluxaAppleJsonValue?) -> String? {
+        guard case .string(let text)? = value else {
+            return nil
+        }
+        return text
     }
 }

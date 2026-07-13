@@ -1,4 +1,3 @@
-import FluxaShared
 import Foundation
 
 @MainActor
@@ -14,13 +13,12 @@ final class FluxaAppleCatalogBootstrap {
         self.resolver = resolver
     }
 
-    func refresh(requests: [FluxaAppleCatalogRequest]) async throws {
-        let snapshot = try await loader.loadSnapshot(requests: requests)
-        FluxaApple.shared.updateCatalogHomeJson(homeJson: snapshot)
+    func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [FluxaAppleCatalogRow] {
+        try await loader.loadRows(requests: requests)
     }
 
-    func refresh(localAddonUrls: [String]) async throws {
+    func loadRows(localAddonUrls: [String]) async throws -> [FluxaAppleCatalogRow] {
         let requests = try await resolver.resolveRequests(localAddonUrls: localAddonUrls)
-        try await refresh(requests: requests)
+        return try await loadRows(requests: requests)
     }
 }

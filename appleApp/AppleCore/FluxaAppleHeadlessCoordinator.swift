@@ -82,7 +82,7 @@ protocol FluxaAppleHeadlessEffectExecutor: AnyObject {
 
 final class FluxaAppleHeadlessCoordinator {
     private let runtime: FluxaAppleHeadlessRuntime
-    private weak var executor: (any FluxaAppleHeadlessEffectExecutor)?
+    private let executor: any FluxaAppleHeadlessEffectExecutor
     private let maxEffectsPerDispatch: Int
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
@@ -107,13 +107,13 @@ final class FluxaAppleHeadlessCoordinator {
 
     private func drain(_ initialJson: String) async throws -> FluxaAppleHeadlessResult {
         var current = try decode(initialJson)
+        var pending = current.effects
         var remaining = maxEffectsPerDispatch
-        while let effect = current.effects.first, remaining > 0 {
-            guard let executor else {
-                return current
-            }
+        while !pending.isEmpty, remaining > 0 {
+            let effect = pending.removeFirst()
             let completion = await executor.execute(effect: effect)
             current = try decode(runtime.completeEffect(resultJson: try encode(completion)))
+            pending.append(contentsOf: current.effects)
             remaining -= 1
         }
         return current
