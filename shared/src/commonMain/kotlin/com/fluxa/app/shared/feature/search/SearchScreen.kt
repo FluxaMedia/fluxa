@@ -3,6 +3,7 @@ package com.fluxa.app.shared.feature.search
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items as gridItems
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,7 +57,6 @@ fun SearchScreen(
             label = { Text(AppStrings.t(language, "auto.search")) }
         )
         when {
-            state.isLoading -> SearchLoading(modifier = Modifier.weight(1f))
             state.resultRows.isNotEmpty() -> SearchResultRows(
                 rows = state.resultRows,
                 onItemSelected = onItemSelected,
@@ -68,6 +67,7 @@ fun SearchScreen(
                 onItemSelected = onItemSelected,
                 modifier = Modifier.weight(1f)
             )
+            state.isLoading -> SearchSkeletonGrid(modifier = Modifier.weight(1f))
             state.query.isNotBlank() -> SearchNoResultsForQuery(
                 query = state.query,
                 language = language,
@@ -197,12 +197,22 @@ internal fun SearchResults(
 }
 
 @Composable
-private fun SearchLoading(modifier: Modifier) {
-    androidx.compose.foundation.layout.Box(
+private fun SearchSkeletonGrid(modifier: Modifier) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 128.dp),
         modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center
+        contentPadding = PaddingValues(bottom = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        CircularProgressIndicator(color = Color.White)
+        gridItems(List(12) { it }, key = { it }) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2f / 3f)
+                    .background(FluxaColors.surfaceCard, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+            )
+        }
     }
 }
 

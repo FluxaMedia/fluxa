@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -220,9 +221,7 @@ private fun FluxaHomeContent(
     modifier: Modifier
 ) {
     if (state.catalogHome.isLoading && state.catalogHome.rows.isEmpty()) {
-        Box(modifier = modifier, contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Color.White)
-        }
+        FluxaHomeSkeleton(modifier = modifier)
         return
     }
 
@@ -289,6 +288,47 @@ private fun FluxaHomeContent(
                         CatalogCard(
                             model = item.card,
                             onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FluxaHomeSkeleton(modifier: Modifier = Modifier) {
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        item(key = "hero-skeleton") {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(3f / 4f)
+                    .background(FluxaColors.surfaceCard)
+            )
+        }
+        items(3, key = { "row-skeleton-$it" }) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp)
+                        .width(120.dp)
+                        .height(16.dp)
+                        .background(FluxaColors.surfaceCard)
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(6, key = { skeletonIndex -> skeletonIndex }) {
+                        Box(
+                            modifier = Modifier
+                                .width(110.dp)
+                                .aspectRatio(2f / 3f)
+                                .background(FluxaColors.surfaceCard)
                         )
                     }
                 }

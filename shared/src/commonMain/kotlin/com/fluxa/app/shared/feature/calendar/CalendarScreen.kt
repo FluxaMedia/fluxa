@@ -62,12 +62,6 @@ fun CalendarScreen(
                 isLoading = state.isLoading,
                 onMonthSelected = { year, month -> onAction(CalendarAction.MonthSelected(year, month)) }
             )
-        }
-        if (state.isLoading && state.items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color.White)
-            }
-        } else if (state.year > 0 && state.month > 0) {
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -93,6 +87,10 @@ fun CalendarScreen(
                         onItemSelected = { onAction(CalendarAction.ItemSelected(it)) }
                     )
                 }
+            }
+        } else {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color.White)
             }
         }
     }
