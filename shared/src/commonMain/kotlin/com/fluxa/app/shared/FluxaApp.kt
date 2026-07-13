@@ -23,6 +23,10 @@ import androidx.compose.ui.unit.dp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
+import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.detail.DetailAction
+import com.fluxa.app.shared.feature.detail.DetailScreen
+import com.fluxa.app.shared.feature.detail.DetailUiState
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
 
@@ -37,7 +41,8 @@ enum class FluxaDestination(val titleKey: String) {
 data class FluxaAppUiState(
     val language: String? = null,
     val destination: FluxaDestination = FluxaDestination.Home,
-    val catalogHome: CatalogHomeUiState = CatalogHomeUiState()
+    val catalogHome: CatalogHomeUiState = CatalogHomeUiState(),
+    val selectedDetail: CatalogItemUiModel? = null
 )
 
 @Composable
@@ -45,6 +50,8 @@ fun FluxaApp(
     state: FluxaAppUiState,
     onDestinationSelected: (FluxaDestination) -> Unit,
     onCatalogAction: (CatalogAction) -> Unit,
+    detailState: DetailUiState? = null,
+    onDetailAction: (DetailAction) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     MaterialTheme {
@@ -58,8 +65,14 @@ fun FluxaApp(
                 destination = state.destination,
                 onDestinationSelected = onDestinationSelected
             )
-            when (state.destination) {
-                FluxaDestination.Home -> FluxaHomeContent(
+            when {
+                state.selectedDetail != null && detailState != null -> DetailScreen(
+                    state = detailState,
+                    language = state.language,
+                    onAction = onDetailAction,
+                    modifier = Modifier.weight(1f)
+                )
+                state.destination == FluxaDestination.Home -> FluxaHomeContent(
                     state = state,
                     onCatalogAction = onCatalogAction,
                     modifier = Modifier.weight(1f)

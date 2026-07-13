@@ -10,6 +10,10 @@ import androidx.compose.ui.Modifier
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeStore
+import com.fluxa.app.shared.feature.detail.DetailAction
+import com.fluxa.app.shared.feature.detail.DetailDataSource
+import com.fluxa.app.shared.feature.detail.DetailStore
+import com.fluxa.app.shared.platform.FluxaDetailServices
 import com.fluxa.app.shared.platform.FluxaPlatformServices
 import kotlinx.coroutines.launch
 
@@ -22,6 +26,7 @@ fun FluxaAppHost(
 ) {
     FluxaAppHost(
         catalogHomeDataSource = platformServices.catalogHomeDataSource,
+        detailDataSource = (platformServices as? FluxaDetailServices)?.detailDataSource,
         language = language,
         onCatalogAction = onCatalogAction,
         modifier = modifier
@@ -31,6 +36,7 @@ fun FluxaAppHost(
 @Composable
 fun FluxaAppHost(
     catalogHomeDataSource: CatalogHomeDataSource,
+    detailDataSource: DetailDataSource? = null,
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     modifier: Modifier = Modifier
@@ -41,6 +47,15 @@ fun FluxaAppHost(
     }
     val catalogHome by catalogHomeStore.state.collectAsState()
     val appState = rememberFluxaAppState()
+    val selectedDetail = appState.uiState.selectedDetail
+    val detailStore = selectedDetail?.let { item ->
+        detailDataSource?.let { source ->
+            remember(item.id, item.type, source) {
+                DetailStore(item.id, item.type, source, scope)
+            }
+        }
+    }
+    val detailState = detailStore?.state?.collectAsState()?.value
 
     LaunchedEffect(catalogHome) {
         appState.updateCatalogHome(catalogHome)
@@ -51,15 +66,31 @@ fun FluxaAppHost(
     LaunchedEffect(catalogHomeStore) {
         catalogHomeStore.dispatch(CatalogAction.Refresh)
     }
+    LaunchedEffect(detailStore) {
+        detailStore?.load()
+    }
 
     FluxaApp(
         state = appState.uiState,
         onDestinationSelected = appState::selectDestination,
         onCatalogAction = { action ->
+            if (action is CatalogAction.ItemSelected) {
+                appState.selectDetail(action.item)
+            }
             scope.launch {
                 catalogHomeStore.dispatch(action)
             }
             onCatalogAction(action)
+        },
+        detailState = detailState,
+        onDetailAction = { action ->
+            if (action is DetailAction.RelatedItemSelected) {
+                appState.selectDetail(action.item)
+                onCatalogAction(CatalogAction.ItemSelected(action.item))
+            }
+            scope.launch {
+                detailStore?.dispatch(action)
+            }
         },
         modifier = modifier
     )

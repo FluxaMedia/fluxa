@@ -5,6 +5,7 @@ struct FluxaIosApp: App {
     private let coreVersion: String
     private let headlessRuntime: FluxaAppleHeadlessRuntime
     private let catalogStartup: FluxaAppleCatalogStartup
+    private let detailObserver: FluxaAppleDetailNotificationObserver
     @State private var hasStartedCatalog = false
 
     init() {
@@ -12,6 +13,9 @@ struct FluxaIosApp: App {
         coreVersion = FluxaRustCoreRuntime.version()
         headlessRuntime = runtime
         catalogStartup = FluxaAppleCatalogStartup(runtime: runtime)
+        detailObserver = FluxaAppleDetailNotificationObserver(
+            startup: FluxaAppleDetailStartup(runtime: runtime)
+        )
     }
 
     var body: some Scene {

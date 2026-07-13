@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
+import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 
 @Stable
 class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
@@ -14,7 +15,11 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
         private set
 
     fun selectDestination(destination: FluxaDestination) {
-        uiState = uiState.copy(destination = destination)
+        uiState = uiState.copy(destination = destination, selectedDetail = null)
+    }
+
+    fun selectDetail(item: CatalogItemUiModel) {
+        uiState = uiState.copy(selectedDetail = item)
     }
 
     fun updateCatalogHome(catalogHome: CatalogHomeUiState) {
