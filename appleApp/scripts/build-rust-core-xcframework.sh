@@ -9,11 +9,17 @@ profile="${CONFIGURATION:-Debug}"
 
 if [[ "$profile" == "Release" ]]; then
     cargo_profile="release"
-    cargo_args=(--release)
 else
     cargo_profile="debug"
-    cargo_args=()
 fi
+
+build_rust_core() {
+    if [[ "$profile" == "Release" ]]; then
+        cargo build --no-default-features --features ios "$@" --release
+    else
+        cargo build --no-default-features --features ios "$@"
+    fi
+}
 
 targets=(
     aarch64-apple-ios
@@ -36,7 +42,7 @@ mkdir -p "$output_dir" "$headers_dir"
 rm -rf "$output_dir/FluxaRustCore.xcframework"
 
 pushd "$rust_dir" >/dev/null
-cargo build --no-default-features --features ios "${cargo_args[@]}"
+build_rust_core
 cargo run --no-default-features --features uniffi-cli --bin uniffi-bindgen generate \
     --library "target/$cargo_profile/libfluxa_core.dylib" \
     --language swift \
@@ -44,7 +50,7 @@ cargo run --no-default-features --features uniffi-cli --bin uniffi-bindgen gener
     --out-dir "$output_dir"
 
 for target in "${targets[@]}"; do
-    cargo build --no-default-features --features ios --target "$target" "${cargo_args[@]}"
+    build_rust_core --target "$target"
 done
 
 lipo -create \
