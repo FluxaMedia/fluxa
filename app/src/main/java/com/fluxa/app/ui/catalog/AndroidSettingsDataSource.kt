@@ -121,6 +121,7 @@ class AndroidSettingsDataSource(
         return SettingsUiState(
             account = SettingsAccountUiModel(
                 displayName = profile.profileName?.takeIf { it.isNotBlank() } ?: profile.email,
+                avatarUrl = profile.avatarUrl,
                 isGuest = profile.isGuest,
                 hasTrakt = !profile.traktAccessToken.isNullOrBlank(),
                 hasMal = !profile.malAccessToken.isNullOrBlank(),

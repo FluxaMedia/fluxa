@@ -16,6 +16,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -112,18 +121,37 @@ private fun SettingsHubContent(
     onSwitchProfiles: () -> Unit,
     onAction: (SettingsAction) -> Unit
 ) {
-    Text(state.account.displayName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(vertical = 8.dp))
-    SettingsNavRow(AppStrings.t(lang, "auto.account")) { onNavigate(SettingsCategory.Account) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+        Box(
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!state.account.avatarUrl.isNullOrBlank()) {
+                com.fluxa.app.shared.image.FluxaRemoteImage(
+                    imageUrl = state.account.avatarUrl,
+                    cacheKey = "settings-avatar:${state.account.avatarUrl}",
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+            } else {
+                com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar(modifier = Modifier.size(26.dp))
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(state.account.displayName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+    }
+    SettingsNavRow(AppStrings.t(lang, "auto.account"), icon = Icons.Filled.AccountCircle) { onNavigate(SettingsCategory.Account) }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_preferences"))
-    SettingsNavRow(AppStrings.t(lang, "auto.general")) { onNavigate(SettingsCategory.General) }
-    SettingsNavRow(AppStrings.t(lang, "auto.appearance")) { onNavigate(SettingsCategory.Appearance) }
-    SettingsNavRow(AppStrings.t(lang, "auto.playback")) { onNavigate(SettingsCategory.Playback) }
+    SettingsNavRow(AppStrings.t(lang, "auto.general"), icon = Icons.Filled.Tune) { onNavigate(SettingsCategory.General) }
+    SettingsNavRow(AppStrings.t(lang, "auto.appearance"), icon = Icons.Filled.Palette) { onNavigate(SettingsCategory.Appearance) }
+    SettingsNavRow(AppStrings.t(lang, "auto.playback"), icon = Icons.Filled.PlayCircle) { onNavigate(SettingsCategory.Playback) }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_content"))
-    SettingsNavRow(AppStrings.t(lang, "auto.catalogs")) { onNavigate(SettingsCategory.Content) }
-    SettingsNavRow(AppStrings.t(lang, "auto.add_ons")) { onNavigate(SettingsCategory.Addons) }
-    SettingsNavRow(AppStrings.t(lang, "auto.downloads")) { onNavigate(SettingsCategory.Downloads) }
+    SettingsNavRow(AppStrings.t(lang, "auto.catalogs"), icon = Icons.Filled.MenuBook) { onNavigate(SettingsCategory.Content) }
+    SettingsNavRow(AppStrings.t(lang, "auto.add_ons"), icon = Icons.Filled.Extension) { onNavigate(SettingsCategory.Addons) }
+    SettingsNavRow(AppStrings.t(lang, "auto.downloads"), icon = Icons.Filled.Download) { onNavigate(SettingsCategory.Downloads) }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_system"))
     SettingsToggleRow(
@@ -133,8 +161,7 @@ private fun SettingsHubContent(
         onValueChanged = { onAction(SettingsAction.SystemChanged(state.system.copy(automaticUpdates = it))) }
     )
     SettingsActionRow(AppStrings.t(lang, "settings.check_for_updates")) { onAction(SettingsAction.CheckForUpdateRequested) }
-    SettingsNavRow(AppStrings.t(lang, "settings.developer")) { onNavigate(SettingsCategory.Developer) }
-    SettingsActionRow(AppStrings.t(lang, "auto.restart"), destructive = true) { onAction(SettingsAction.RestartRequested) }
+    SettingsNavRow(AppStrings.t(lang, "settings.developer"), icon = Icons.Filled.Code) { onNavigate(SettingsCategory.Developer) }
 
     Spacer(Modifier.height(12.dp))
     Text(state.system.appVersionLabel, color = Color.White.copy(alpha = 0.35f), fontSize = 11.sp)

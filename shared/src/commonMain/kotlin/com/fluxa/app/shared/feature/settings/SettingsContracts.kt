@@ -9,6 +9,7 @@ enum class SettingsCategory {
 
 data class SettingsAccountUiModel(
     val displayName: String = "",
+    val avatarUrl: String? = null,
     val isGuest: Boolean = true,
     val hasTrakt: Boolean = false,
     val hasMal: Boolean = false,
@@ -210,7 +211,6 @@ sealed interface SettingsAction {
     data object DisconnectSyncRequested : SettingsAction
     data object SwitchProfilesRequested : SettingsAction
     data object CheckForUpdateRequested : SettingsAction
-    data object RestartRequested : SettingsAction
     data class DownloadOpened(val id: String) : SettingsAction
     data class DownloadCancelled(val id: String) : SettingsAction
 }

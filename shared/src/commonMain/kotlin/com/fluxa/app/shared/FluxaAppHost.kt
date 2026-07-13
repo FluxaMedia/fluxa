@@ -82,7 +82,6 @@ fun FluxaAppHost(
     onConnectSimklRequested: () -> Unit = {},
     onConnectAnilistRequested: () -> Unit = {},
     onCheckForUpdateRequested: () -> Unit = {},
-    onRestartRequested: () -> Unit = {},
     onDownloadOpened: (String) -> Unit = {},
     onSettingsBackRequested: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -121,7 +120,6 @@ fun FluxaAppHost(
         onConnectSimklRequested = onConnectSimklRequested,
         onConnectAnilistRequested = onConnectAnilistRequested,
         onCheckForUpdateRequested = onCheckForUpdateRequested,
-        onRestartRequested = onRestartRequested,
         onDownloadOpened = onDownloadOpened,
         onSettingsBackRequested = onSettingsBackRequested,
         modifier = modifier
@@ -163,7 +161,6 @@ fun FluxaAppHost(
     onConnectSimklRequested: () -> Unit = {},
     onConnectAnilistRequested: () -> Unit = {},
     onCheckForUpdateRequested: () -> Unit = {},
-    onRestartRequested: () -> Unit = {},
     onDownloadOpened: (String) -> Unit = {},
     onSettingsBackRequested: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -349,7 +346,6 @@ fun FluxaAppHost(
                 SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
                 SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
                 SettingsAction.CheckForUpdateRequested -> onCheckForUpdateRequested()
-                SettingsAction.RestartRequested -> onRestartRequested()
                 is SettingsAction.DownloadOpened -> onDownloadOpened(action.id)
                 else -> scope.launch { settingsStore?.dispatch(action) }
             }
