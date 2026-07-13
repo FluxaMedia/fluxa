@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
@@ -22,8 +23,12 @@ class AndroidDiscoverDataSource(
         homeViewModel.discoverUiState
     ) { selectedFilters, state ->
         val profile = activeProfile()
+        val language = profile?.language
         DiscoverUiState(
             filters = selectedFilters,
+            typeOptions = state.contentTypes.map { type ->
+                DiscoverFilterOptionUiModel(type, discoverContentTypeLabel(type, language))
+            },
             catalogOptions = state.catalogs.map { DiscoverFilterOptionUiModel(it.key, it.label) },
             genreOptions = state.genres.map { DiscoverFilterOptionUiModel(it.id, it.label) },
             results = state.results.map { meta ->
@@ -62,4 +67,14 @@ class AndroidDiscoverDataSource(
             region = null
         )
     }
+}
+
+private fun discoverContentTypeLabel(type: String, language: String?): String {
+    val key = when (type) {
+        "movie" -> "auto.movie"
+        "series" -> "auto.series"
+        "anime" -> "auto.anime"
+        else -> null
+    }
+    return key?.let { AppStrings.t(language, it) } ?: type.replaceFirstChar { it.uppercase() }
 }

@@ -16,6 +16,7 @@ data class DiscoverFiltersUiModel(
 
 data class DiscoverUiState(
     val filters: DiscoverFiltersUiModel = DiscoverFiltersUiModel(),
+    val typeOptions: List<DiscoverFilterOptionUiModel> = emptyList(),
     val catalogOptions: List<DiscoverFilterOptionUiModel> = emptyList(),
     val genreOptions: List<DiscoverFilterOptionUiModel> = emptyList(),
     val results: List<CatalogItemUiModel> = emptyList(),

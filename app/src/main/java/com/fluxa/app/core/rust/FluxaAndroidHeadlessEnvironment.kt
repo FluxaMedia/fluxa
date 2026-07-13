@@ -46,6 +46,7 @@ import com.fluxa.app.ui.catalog.EpisodeNotificationHelper
 import com.fluxa.app.ui.catalog.HomeCategory
 import com.fluxa.app.ui.catalog.HomeCatalogSource
 import com.fluxa.app.domain.discovery.buildDiscoverCatalogOptions
+import com.fluxa.app.domain.discovery.buildDiscoverContentTypes
 import com.fluxa.app.domain.discovery.buildMetadataFeedOptions
 import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
 import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
@@ -853,6 +854,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val profile = payload.profile()
         val addons = addonRepository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
         val catalogOptions = buildDiscoverCatalogOptions(addons, payload.string("contentType"))
+        val contentTypes = buildDiscoverContentTypes(addons)
         val selectedCatalog = catalogOptions.firstOrNull { it.key == payload.stringOrNull("selectedCatalogKey") }
         val selectedGenres = selectedCatalog?.genres.orEmpty()
             .distinct()
@@ -865,7 +867,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         } else {
             selectedGenres
         }
-        return ok(effect, mapOf("catalogs" to catalogOptions, "genres" to genres))
+        return ok(effect, mapOf("catalogs" to catalogOptions, "genres" to genres, "contentTypes" to contentTypes))
     }
 
     private suspend fun fetchCatalogPage(effect: NativeHeadlessEffect): HeadlessEffectCompletion {

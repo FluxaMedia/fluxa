@@ -52,6 +52,7 @@ data class DiscoverUiState(
     val isLoading: Boolean = false,
     val genres: List<DiscoverGenreOption> = emptyList(),
     val catalogs: List<DiscoverCatalogOption> = emptyList(),
+    val contentTypes: List<String> = emptyList(),
     val resultSources: Map<String, HomeCatalogSource> = emptyMap()
 )
 

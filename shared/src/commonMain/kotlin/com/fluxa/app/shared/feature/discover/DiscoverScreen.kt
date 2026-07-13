@@ -103,6 +103,7 @@ fun DiscoverScreen(
         } else {
             DiscoverFilters(
                 filters = state.filters,
+                typeOptions = state.typeOptions,
                 catalogOptions = state.catalogOptions,
                 genreOptions = state.genreOptions,
                 language = language,
@@ -194,18 +195,22 @@ private fun DiscoverSkeletonGrid(modifier: Modifier = Modifier) {
 @Composable
 private fun DiscoverFilters(
     filters: DiscoverFiltersUiModel,
+    typeOptions: List<DiscoverFilterOptionUiModel>,
     catalogOptions: List<DiscoverFilterOptionUiModel>,
     genreOptions: List<DiscoverFilterOptionUiModel>,
     language: String?,
     onFiltersChanged: (DiscoverFiltersUiModel) -> Unit
 ) {
+    val effectiveTypeOptions = typeOptions.ifEmpty {
+        listOf(
+            DiscoverFilterOptionUiModel("movie", AppStrings.t(language, "auto.movie")),
+            DiscoverFilterOptionUiModel("series", AppStrings.t(language, "auto.series"))
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         DiscoverDropdownFilter(
             label = AppStrings.t(language, "auto.type"),
-            options = listOf(
-                DiscoverFilterOptionUiModel("movie", AppStrings.t(language, "auto.movie")),
-                DiscoverFilterOptionUiModel("series", AppStrings.t(language, "auto.series"))
-            ),
+            options = effectiveTypeOptions,
             selectedId = filters.contentType,
             onSelected = { value ->
                 onFiltersChanged(DiscoverFiltersUiModel(contentType = value.orEmpty()))

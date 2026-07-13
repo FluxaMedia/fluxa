@@ -76,6 +76,7 @@ class HomeViewModel @Inject constructor(
     private val introTimestampsListType = object : TypeToken<List<IntroTimestamps>>() {}.type
     private val discoverCatalogListType = object : TypeToken<List<DiscoverCatalogOption>>() {}.type
     private val discoverGenreListType = object : TypeToken<List<DiscoverGenreOption>>() {}.type
+    private val discoverContentTypeListType = object : TypeToken<List<String>>() {}.type
     private val addonListType = object : TypeToken<List<AddonDescriptor>>() {}.type
     private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
     private val initialSearchHistory = searchHistoryStore.load(null)
@@ -140,16 +141,20 @@ class HomeViewModel @Inject constructor(
     private val _headlessDiscoverLoading = MutableStateFlow(false)
     private val _headlessDiscoverGenres = MutableStateFlow<List<DiscoverGenreOption>>(emptyList())
     private val _headlessDiscoverCatalogs = MutableStateFlow<List<DiscoverCatalogOption>>(emptyList())
+    private val _headlessDiscoverContentTypes = MutableStateFlow<List<String>>(emptyList())
     private val discoverResultSourceMapType = object : TypeToken<Map<String, HomeCatalogSource>>() {}.type
 
     val discoverUiState: StateFlow<DiscoverUiState> = combine(
-        _headlessDiscoverResults,
-        _headlessDiscoverResultSources,
-        _headlessDiscoverLoading,
+        combine(
+            _headlessDiscoverResults,
+            _headlessDiscoverResultSources,
+            _headlessDiscoverLoading
+        ) { results, resultSources, loading -> Triple(results, resultSources, loading) },
         _headlessDiscoverGenres,
-        _headlessDiscoverCatalogs
-    ) { results, resultSources, loading, genres, catalogs ->
-        DiscoverUiState(results, loading, genres, catalogs, resultSources)
+        _headlessDiscoverCatalogs,
+        _headlessDiscoverContentTypes
+    ) { (results, resultSources, loading), genres, catalogs, contentTypes ->
+        DiscoverUiState(results, loading, genres, catalogs, contentTypes, resultSources)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DiscoverUiState())
 
     val discoverGenres: StateFlow<List<DiscoverGenreOption>> get() = _headlessDiscoverGenres.asStateFlow()
@@ -1065,6 +1070,7 @@ class HomeViewModel @Inject constructor(
             val discover = result.state["discover"] as? Map<*, *> ?: return@launch
             _headlessDiscoverCatalogs.value = fromStateList(discover["catalogs"], discoverCatalogListType)
             _headlessDiscoverGenres.value = fromStateList(discover["genres"], discoverGenreListType)
+            _headlessDiscoverContentTypes.value = fromStateList(discover["contentTypes"], discoverContentTypeListType)
         }
     }
 

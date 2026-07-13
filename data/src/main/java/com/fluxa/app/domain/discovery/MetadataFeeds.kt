@@ -38,6 +38,16 @@ fun buildMetadataFeedOptions(addons: List<AddonDescriptor>, language: String? = 
     return addonFeeds
 }
 
+fun buildDiscoverContentTypes(addons: List<AddonDescriptor>): List<String> {
+    return addons.filter { it.manifest.hasStremioResource("catalog") }.flatMap { addon ->
+        addon.manifest.catalogs.orEmpty().mapNotNull { catalog ->
+            val type = catalog.type?.normalizeContentType() ?: return@mapNotNull null
+            if (catalog.hasRequiredCatalogExtraExcept(setOf("genre", "skip"))) return@mapNotNull null
+            type
+        }
+    }.distinct()
+}
+
 fun buildDiscoverCatalogOptions(addons: List<AddonDescriptor>, selectedType: String): List<DiscoverCatalogOption> {
     val normalizedType = selectedType.lowercase()
     val rawOptions = addons.filter { it.manifest.hasStremioResource("catalog") }.flatMap { addon ->
@@ -45,7 +55,7 @@ fun buildDiscoverCatalogOptions(addons: List<AddonDescriptor>, selectedType: Str
             val type = catalog.type?.normalizeContentType()?.takeIf { normalizedType == "all" || it == normalizedType }
                 ?: return@mapNotNull null
             val id = catalog.id?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            if (catalog.hasRequiredCatalogExtraExcept(setOf("genre"))) return@mapNotNull null
+            if (catalog.hasRequiredCatalogExtraExcept(setOf("genre", "skip"))) return@mapNotNull null
             val name = discoverCatalogLabel(catalog.name, id)
             val genres = (
                 catalog.genres.orEmpty() +
