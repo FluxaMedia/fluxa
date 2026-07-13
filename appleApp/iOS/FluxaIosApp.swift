@@ -6,6 +6,7 @@ struct FluxaIosApp: App {
     private let headlessRuntime: FluxaAppleHeadlessRuntime
     private let catalogStartup: FluxaAppleCatalogStartup
     private let detailObserver: FluxaAppleDetailNotificationObserver
+    private let searchObserver: FluxaAppleSearchNotificationObserver
     @State private var hasStartedCatalog = false
 
     init() {
@@ -15,6 +16,9 @@ struct FluxaIosApp: App {
         catalogStartup = FluxaAppleCatalogStartup(runtime: runtime)
         detailObserver = FluxaAppleDetailNotificationObserver(
             startup: FluxaAppleDetailStartup(runtime: runtime)
+        )
+        searchObserver = FluxaAppleSearchNotificationObserver(
+            startup: FluxaAppleSearchStartup(runtime: runtime)
         )
     }
 

@@ -21,4 +21,15 @@ final class FluxaAppleCatalogBootstrap {
         let requests = try await resolver.resolveRequests(localAddonUrls: localAddonUrls)
         return try await loadRows(requests: requests)
     }
+
+    func loadSearchItems(
+        localAddonUrls: [String],
+        query: String
+    ) async throws -> [FluxaAppleCatalogItem] {
+        let requests = try await resolver.resolveSearchRequests(
+            localAddonUrls: localAddonUrls,
+            query: query
+        )
+        return try await loader.loadSearchItems(requests: requests)
+    }
 }

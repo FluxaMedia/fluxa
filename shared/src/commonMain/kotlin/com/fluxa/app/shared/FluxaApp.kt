@@ -27,11 +27,15 @@ import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.detail.DetailAction
 import com.fluxa.app.shared.feature.detail.DetailScreen
 import com.fluxa.app.shared.feature.detail.DetailUiState
+import com.fluxa.app.shared.feature.search.SearchAction
+import com.fluxa.app.shared.feature.search.SearchScreen
+import com.fluxa.app.shared.feature.search.SearchUiState
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
 
 enum class FluxaDestination(val titleKey: String) {
     Home("nav.home"),
+    Search("auto.search"),
     Discover("nav.discover"),
     Calendar("nav.calendar"),
     Library("nav.library"),
@@ -52,6 +56,8 @@ fun FluxaApp(
     onCatalogAction: (CatalogAction) -> Unit,
     detailState: DetailUiState? = null,
     onDetailAction: (DetailAction) -> Unit = {},
+    searchState: SearchUiState? = null,
+    onSearchAction: (SearchAction) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     MaterialTheme {
@@ -70,6 +76,13 @@ fun FluxaApp(
                     state = detailState,
                     language = state.language,
                     onAction = onDetailAction,
+                    modifier = Modifier.weight(1f)
+                )
+                state.destination == FluxaDestination.Search && searchState != null -> SearchScreen(
+                    state = searchState,
+                    language = state.language,
+                    onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
+                    onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(

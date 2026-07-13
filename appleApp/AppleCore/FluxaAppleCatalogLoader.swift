@@ -62,6 +62,39 @@ final class FluxaAppleCatalogLoader {
         }
         return rows
     }
+
+    func loadSearchItems(requests: [FluxaAppleSearchRequest]) async throws -> [FluxaAppleCatalogItem] {
+        var items = [FluxaAppleCatalogItem]()
+        var lastError: Error?
+        for request in requests {
+            do {
+                let (data, response) = try await session.data(from: request.url)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200..<300).contains(httpResponse.statusCode) else {
+                    throw URLError(.badServerResponse)
+                }
+                let catalog = try decoder.decode(FluxaAppleStremioCatalogResponse.self, from: data)
+                items.append(contentsOf: catalog.metas.map {
+                    FluxaAppleCatalogItem(
+                        id: $0.id,
+                        type: $0.type ?? request.contentType,
+                        title: $0.name,
+                        subtitle: $0.releaseInfo ?? "",
+                        artworkUrl: $0.poster,
+                        logoUrl: $0.logo,
+                        addonTransportUrl: request.addonTransportUrl,
+                        catalogType: request.catalogType
+                    )
+                })
+            } catch {
+                lastError = error
+            }
+        }
+        if items.isEmpty, let lastError {
+            throw lastError
+        }
+        return items
+    }
 }
 
 private struct FluxaAppleStremioCatalogResponse: Decodable {

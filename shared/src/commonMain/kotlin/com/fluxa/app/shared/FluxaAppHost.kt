@@ -13,8 +13,12 @@ import com.fluxa.app.shared.feature.catalog.CatalogHomeStore
 import com.fluxa.app.shared.feature.detail.DetailAction
 import com.fluxa.app.shared.feature.detail.DetailDataSource
 import com.fluxa.app.shared.feature.detail.DetailStore
+import com.fluxa.app.shared.feature.search.SearchAction
+import com.fluxa.app.shared.feature.search.SearchDataSource
+import com.fluxa.app.shared.feature.search.SearchStore
 import com.fluxa.app.shared.platform.FluxaDetailServices
 import com.fluxa.app.shared.platform.FluxaPlatformServices
+import com.fluxa.app.shared.platform.FluxaSearchServices
 import kotlinx.coroutines.launch
 
 @Composable
@@ -27,6 +31,7 @@ fun FluxaAppHost(
     FluxaAppHost(
         catalogHomeDataSource = platformServices.catalogHomeDataSource,
         detailDataSource = (platformServices as? FluxaDetailServices)?.detailDataSource,
+        searchDataSource = (platformServices as? FluxaSearchServices)?.searchDataSource,
         language = language,
         onCatalogAction = onCatalogAction,
         modifier = modifier
@@ -37,6 +42,7 @@ fun FluxaAppHost(
 fun FluxaAppHost(
     catalogHomeDataSource: CatalogHomeDataSource,
     detailDataSource: DetailDataSource? = null,
+    searchDataSource: SearchDataSource? = null,
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     modifier: Modifier = Modifier
@@ -46,6 +52,10 @@ fun FluxaAppHost(
         CatalogHomeStore(catalogHomeDataSource, scope)
     }
     val catalogHome by catalogHomeStore.state.collectAsState()
+    val searchStore = searchDataSource?.let { source ->
+        remember(source) { SearchStore(source, scope) }
+    }
+    val searchState = searchStore?.state?.collectAsState()?.value
     val appState = rememberFluxaAppState()
     val selectedDetail = appState.uiState.selectedDetail
     val detailStore = selectedDetail?.let { item ->
@@ -90,6 +100,16 @@ fun FluxaAppHost(
             }
             scope.launch {
                 detailStore?.dispatch(action)
+            }
+        },
+        searchState = searchState,
+        onSearchAction = { action ->
+            if (action is SearchAction.ItemSelected) {
+                appState.selectDetail(action.item)
+                onCatalogAction(CatalogAction.ItemSelected(action.item))
+            }
+            scope.launch {
+                searchStore?.dispatch(action)
             }
         },
         modifier = modifier

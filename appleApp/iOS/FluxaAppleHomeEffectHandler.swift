@@ -33,6 +33,8 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             return .object(["continueWatching": .array([])])
         case "fetchMetaDetail":
             return try await loadMeta(effect: effect)
+        case "runSearch":
+            return try await runSearch(effect: effect)
         case "readPlaybackProgress":
             return .null
         default:
@@ -91,5 +93,17 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             contentType: contentType,
             id: id
         )
+    }
+
+    private func runSearch(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
+        guard case .object(let payload) = effect.payload,
+              let query = string(payload["query"]) else {
+            throw URLError(.cannotParseResponse)
+        }
+        let items = try await catalogBootstrap.loadSearchItems(
+            localAddonUrls: configurationStore.localAddonUrls(),
+            query: query
+        )
+        return .object(["results": .array(items.map(homeMeta))])
     }
 }

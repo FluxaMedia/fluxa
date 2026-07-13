@@ -8,6 +8,7 @@ import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.platform.AppleCatalogHomeDataSource
 import com.fluxa.app.shared.platform.AppleDetailDataSource
 import com.fluxa.app.shared.platform.AppleFluxaPlatformServices
+import com.fluxa.app.shared.platform.AppleSearchDataSource
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import platform.Foundation.NSNotificationCenter
@@ -16,7 +17,12 @@ import platform.UIKit.UIViewController
 object FluxaApple {
     internal val catalogHomeDataSource = AppleCatalogHomeDataSource()
     internal val detailDataSource = AppleDetailDataSource()
-    internal val platformServices = AppleFluxaPlatformServices(catalogHomeDataSource, detailDataSource)
+    internal val searchDataSource = AppleSearchDataSource()
+    internal val platformServices = AppleFluxaPlatformServices(
+        catalogHomeDataSource,
+        detailDataSource,
+        searchDataSource
+    )
 
     fun rootViewController(): UIViewController = ComposeUIViewController {
         FluxaAppleApp()
@@ -32,6 +38,10 @@ object FluxaApple {
 
     fun updateDetailJson(detailJson: String) {
         detailDataSource.updateJson(detailJson)
+    }
+
+    fun updateSearchJson(searchJson: String) {
+        searchDataSource.updateJson(searchJson)
     }
 
     internal fun requestDetail(item: CatalogItemUiModel) {
