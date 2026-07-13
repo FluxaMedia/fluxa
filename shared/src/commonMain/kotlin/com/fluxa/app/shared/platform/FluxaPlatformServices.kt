@@ -8,8 +8,27 @@ import com.fluxa.app.shared.feature.search.SearchDataSource
 
 interface FluxaPlatformServices {
     val catalogHomeDataSource: CatalogHomeDataSource
+}
+
+interface FluxaSearchServices {
     val searchDataSource: SearchDataSource
+}
+
+interface FluxaDetailServices {
     val detailDataSource: DetailDataSource
+}
+
+interface FluxaProfileServices {
     val profileDataSource: ProfileDataSource
+}
+
+interface FluxaPlaybackServices {
     val playbackController: PlaybackController
 }
+
+interface FluxaMobilePlatformServices :
+    FluxaPlatformServices,
+    FluxaSearchServices,
+    FluxaDetailServices,
+    FluxaProfileServices,
+    FluxaPlaybackServices
