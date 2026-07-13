@@ -32,11 +32,11 @@ final class FluxaAppleCatalogStartup {
     init(
         runtime: FluxaAppleHeadlessRuntime,
         configurationStore: FluxaAppleAddonConfigurationStore = FluxaAppleAddonConfigurationStore(),
-        bootstrap: FluxaAppleCatalogBootstrap = FluxaAppleCatalogBootstrap()
+        bootstrap: FluxaAppleCatalogBootstrap? = nil
     ) {
         let handler = FluxaAppleHomeEffectHandler(
             configurationStore: configurationStore,
-            catalogBootstrap: bootstrap
+            catalogBootstrap: bootstrap ?? FluxaAppleCatalogBootstrap()
         )
         coordinator = FluxaAppleHeadlessCoordinator(
             runtime: runtime,
