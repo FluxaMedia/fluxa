@@ -13,7 +13,7 @@ final class FluxaAppleHeadlessRuntime {
     }
 
     deinit {
-        destroyHeadlessEngineJson(handle: handle)
+        _ = destroyHeadlessEngineJson(handle: handle)
     }
 
     func snapshot() -> String {
