@@ -279,8 +279,8 @@ fun SettingsActionRow(
             if (icon != null) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(9.dp))
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color.White.copy(alpha = 0.08f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -318,8 +318,8 @@ fun SettingsNavRow(label: String, icon: androidx.compose.ui.graphics.vector.Imag
             if (icon != null) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(9.dp))
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color.White.copy(alpha = 0.08f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -327,7 +327,7 @@ fun SettingsNavRow(label: String, icon: androidx.compose.ui.graphics.vector.Imag
                         imageVector = icon,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
                 Spacer(Modifier.width(14.dp))

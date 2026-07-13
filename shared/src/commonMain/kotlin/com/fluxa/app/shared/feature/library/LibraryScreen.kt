@@ -258,7 +258,7 @@ private fun LibraryItemGrid(
     }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 128.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize()
@@ -292,7 +292,7 @@ private fun LibraryCollectionsSection(
                 }
             }
         }
-        LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(collections, key = { it.id ?: it.title }) { collection ->
                 Row(
                     modifier = Modifier
@@ -408,7 +408,7 @@ private fun LibraryDownloadFoldersSection(
         }
         return
     }
-    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items(groups, key = { it.key }) { group ->
             Row(
                 modifier = Modifier
@@ -451,7 +451,7 @@ private fun LibraryDownloadGroupPage(
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryDetailHeader(title = group.title, onBack = onBack)
-        LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(group.episodes, key = { it.id }) { episode ->
                 Column(
                     modifier = Modifier

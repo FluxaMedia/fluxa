@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -90,7 +90,7 @@ fun SettingsScreen(
                     SettingsCategory.Downloads -> SettingsDownloadsContent(state.downloads, lang, onAction)
                     SettingsCategory.Developer -> SettingsDeveloperContent(state.developer, lang)
                 }
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(120.dp))
             }
         }
     }
@@ -155,7 +155,7 @@ private fun SettingsHubContent(
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_preferences"))
     SettingsNavRow(AppStrings.t(lang, "auto.general"), icon = Icons.Filled.Tune) { onNavigate(SettingsCategory.General) }
     SettingsNavRow(AppStrings.t(lang, "auto.appearance"), icon = Icons.Filled.Palette) { onNavigate(SettingsCategory.Appearance) }
-    SettingsNavRow(AppStrings.t(lang, "auto.playback"), icon = Icons.Filled.PlayCircle) { onNavigate(SettingsCategory.Playback) }
+    SettingsNavRow(AppStrings.t(lang, "auto.playback"), icon = Icons.Filled.OndemandVideo) { onNavigate(SettingsCategory.Playback) }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_content"))
     SettingsNavRow(AppStrings.t(lang, "auto.catalogs"), icon = Icons.Filled.LibraryBooks) { onNavigate(SettingsCategory.Content) }
