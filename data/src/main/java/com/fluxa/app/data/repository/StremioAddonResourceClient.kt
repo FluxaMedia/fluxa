@@ -26,9 +26,12 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
 import java.io.IOException
 import java.lang.reflect.Type
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 import javax.inject.Inject
@@ -47,6 +50,7 @@ class StremioAddonResourceClient @Inject constructor(
     private val streamListType = object : TypeToken<List<Stream>>() {}.type
     private val metaListType = object : TypeToken<List<Meta>>() {}.type
     private val subtitleListType = object : TypeToken<List<SubtitleData>>() {}.type
+    private val userAddonsLocks = ConcurrentHashMap<String, Mutex>()
 
     suspend fun getUserAddons(
         authKey: String,
@@ -65,44 +69,49 @@ class StremioAddonResourceClient @Inject constructor(
                 return@withContext it
             }
         }
-        val allAddons = CopyOnWriteArrayList<AddonDescriptor>()
-        fun addAddon(addon: AddonDescriptor) {
-            val normalized = addonManifestClient.normalizeAddonTransportUrl(addon.transportUrl)
-            if (allAddons.none { StremioAddonUrls.identity(it.transportUrl) == StremioAddonUrls.identity(normalized) }) {
-                allAddons.add(addon.copy(transportUrl = normalized))
+        userAddonsLocks.getOrPut(cacheKey) { Mutex() }.withLock {
+            if (!forceRefresh) {
+                cache.get<List<AddonDescriptor>>(cacheKey)?.let { return@withLock it }
             }
-        }
-        if (authKey.isNotEmpty()) {
-            try {
-                val response = authService.getAddons(AuthRequest(authKey))
-                response.body()?.result?.addons.orEmpty().map { addon ->
-                    async {
-                        val liveManifest = withTimeoutOrNull(3000) {
-                            addonManifestClient.getAddonManifest(addon.transportUrl, forceRefresh)
-                        }
-                        addAddon(with(addonManifestClient) { addon.mergeLiveManifest(liveManifest) })
-                    }
-                }.awaitAll()
-            } catch (e: Exception) {
-                Log.w("StremioRepository", "Failed to load user addons", e)
-            }
-        }
-        normalizedLocalAddons.map { url ->
-            async {
-                try {
-                    withTimeoutOrNull(3000) {
-                        addonManifestClient.getAddonManifest(url, forceRefresh)
-                    }?.let(::addAddon)
-                } catch (e: Exception) {
-                    Log.w("StremioRepository", "Failed to load local addon manifest: $url", e)
+            val allAddons = CopyOnWriteArrayList<AddonDescriptor>()
+            fun addAddon(addon: AddonDescriptor) {
+                val normalized = addonManifestClient.normalizeAddonTransportUrl(addon.transportUrl)
+                if (allAddons.none { StremioAddonUrls.identity(it.transportUrl) == StremioAddonUrls.identity(normalized) }) {
+                    allAddons.add(addon.copy(transportUrl = normalized))
                 }
             }
-        }.awaitAll()
-        allAddons.toList().ifEmpty {
-            persistentCache.getUserAddons(cacheKey)
-        }.also {
-            cache.put(cacheKey, it)
-            persistentCache.putUserAddons(cacheKey, it)
+            if (authKey.isNotEmpty()) {
+                try {
+                    val response = authService.getAddons(AuthRequest(authKey))
+                    response.body()?.result?.addons.orEmpty().map { addon ->
+                        async {
+                            val liveManifest = withTimeoutOrNull(3000) {
+                                addonManifestClient.getAddonManifest(addon.transportUrl, forceRefresh)
+                            }
+                            addAddon(with(addonManifestClient) { addon.mergeLiveManifest(liveManifest) })
+                        }
+                    }.awaitAll()
+                } catch (e: Exception) {
+                    Log.w("StremioRepository", "Failed to load user addons", e)
+                }
+            }
+            normalizedLocalAddons.map { url ->
+                async {
+                    try {
+                        withTimeoutOrNull(3000) {
+                            addonManifestClient.getAddonManifest(url, forceRefresh)
+                        }?.let(::addAddon)
+                    } catch (e: Exception) {
+                        Log.w("StremioRepository", "Failed to load local addon manifest: $url", e)
+                    }
+                }
+            }.awaitAll()
+            allAddons.toList().ifEmpty {
+                persistentCache.getUserAddons(cacheKey)
+            }.also {
+                cache.put(cacheKey, it)
+                persistentCache.putUserAddons(cacheKey, it)
+            }
         }
     }
 
