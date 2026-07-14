@@ -17,12 +17,15 @@ kotlin {
                 baseName = "FluxaShared"
                 isStatic = true
                 export(project(":core"))
+                export(project(":data"))
             }
         }
 
     sourceSets {
         commonMain.dependencies {
             api(project(":core"))
+            api(project(":data"))
+            api(project(":player"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
         }

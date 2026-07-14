@@ -22,7 +22,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.LibraryBooks
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Tune
@@ -160,7 +160,7 @@ private fun SettingsHubContent(
     SettingsNavRow(AppStrings.t(lang, "auto.playback"), icon = Icons.Filled.OndemandVideo) { onNavigate(SettingsCategory.Playback) }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_content"))
-    SettingsNavRow(AppStrings.t(lang, "auto.catalogs"), icon = Icons.Filled.LibraryBooks) { onNavigate(SettingsCategory.Content) }
+    SettingsNavRow(AppStrings.t(lang, "auto.catalogs"), icon = Icons.AutoMirrored.Filled.LibraryBooks) { onNavigate(SettingsCategory.Content) }
     SettingsNavRow(AppStrings.t(lang, "auto.add_ons"), icon = Icons.Filled.Extension) { onNavigate(SettingsCategory.Addons) }
     SettingsNavRow(AppStrings.t(lang, "auto.downloads"), icon = Icons.Filled.Download) { onNavigate(SettingsCategory.Downloads) }
 

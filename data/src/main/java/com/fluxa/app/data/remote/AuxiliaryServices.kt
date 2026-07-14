@@ -79,13 +79,6 @@ interface OpenSubtitlesService {
 }
 
 data class OpenSubtitlesResponse(val data: List<SubtitleData>)
-data class SubtitleData(
-    val attributes: SubtitleAttributes = SubtitleAttributes(),
-    val id: String? = null,
-    val url: String? = null,
-    val lang: String? = null
-)
-data class SubtitleAttributes(val url: String = "", val languages: List<String> = emptyList(), val fps: Double? = null)
 
 data class TmdbFindResponse(
     @SerializedName("movie_results") val movieResults: List<TmdbMeta>,
@@ -358,10 +351,4 @@ data class AniSkipResult(
 data class AniSkipInterval(
     @SerializedName("start_time") val startTime: Double,
     @SerializedName("end_time") val endTime: Double
-)
-
-data class IntroTimestamps(
-    val startTime: Long,
-    val endTime: Long,
-    val type: String = "intro" // "intro", "outro", "recap"
 )

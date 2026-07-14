@@ -214,9 +214,17 @@ tasks.register("checkSharedUiBoundary") {
     doLast {
         val forbiddenImports = listOf(
             "import android.",
+            "import androidx.lifecycle.",
             "import androidx.media3.",
+            "import androidx.room.",
+            "import androidx.work.",
             "import com.fluxa.app.data.",
-            "import com.fluxa.app.player."
+            "import com.fluxa.app.player.",
+            "import com.google.gson.",
+            "import dagger.",
+            "import javax.inject.",
+            "import okhttp3.",
+            "import retrofit2."
         )
         val violations = fileTree("shared/src/commonMain") {
             include("**/*.kt")
@@ -225,6 +233,41 @@ tasks.register("checkSharedUiBoundary") {
             forbiddenImports
                 .filter { forbidden -> text.contains(forbidden) }
                 .map { forbidden -> "${file.relativeTo(rootDir)} must not depend on $forbidden" }
+        }
+        if (violations.isNotEmpty()) {
+            throw GradleException(violations.joinToString("\n"))
+        }
+    }
+}
+
+tasks.register("checkKmpCommonBoundary") {
+    group = "verification"
+    description = "Fails when KMP common source sets depend on platform-only implementation APIs."
+
+    doLast {
+        val forbiddenImports = listOf(
+            "import android.",
+            "import androidx.lifecycle.",
+            "import androidx.media3.",
+            "import androidx.room.",
+            "import androidx.work.",
+            "import com.google.gson.",
+            "import dagger.",
+            "import javax.inject.",
+            "import okhttp3.",
+            "import retrofit2.",
+            "import java."
+        )
+        val sourceRoots = listOf("core", "data", "player", "shared")
+        val violations = sourceRoots.flatMap { module ->
+            fileTree("$module/src/commonMain") {
+                include("**/*.kt")
+            }.files.flatMap { file ->
+                val text = file.readText()
+                forbiddenImports
+                    .filter(text::contains)
+                    .map { forbidden -> "${file.relativeTo(rootDir)} must not depend on $forbidden" }
+            }
         }
         if (violations.isNotEmpty()) {
             throw GradleException(violations.joinToString("\n"))

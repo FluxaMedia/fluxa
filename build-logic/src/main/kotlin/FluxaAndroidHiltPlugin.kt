@@ -10,10 +10,15 @@ class FluxaAndroidHiltPlugin : Plugin<Project> {
         pluginManager.apply("com.google.devtools.ksp")
 
         val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
+        val kspConfiguration = if (pluginManager.hasPlugin("org.jetbrains.kotlin.multiplatform")) {
+            "kspAndroid"
+        } else {
+            "ksp"
+        }
         dependencies {
             "implementation"(libs.findLibrary("hilt-android").get())
-            "ksp"(libs.findLibrary("hilt-compiler").get())
-            "ksp"(libs.findLibrary("kotlin-metadata-jvm").get())
+            add(kspConfiguration, libs.findLibrary("hilt-compiler").get())
+            add(kspConfiguration, libs.findLibrary("kotlin-metadata-jvm").get())
         }
     }
 }

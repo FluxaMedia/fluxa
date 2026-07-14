@@ -61,6 +61,11 @@ struct FluxaIosApp: App {
                 }
             }
         )
+        FluxaApple.shared.setPlaybackHandler { request in
+            Task { @MainActor in
+                FluxaApplePlaybackPresenter.shared.present(request: request)
+            }
+        }
     }
 
     var body: some Scene {

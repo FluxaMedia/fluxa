@@ -7,6 +7,8 @@ on:
       - "appleApp/**"
       - "build-logic/**"
       - "core/**"
+      - "data/**"
+      - "player/**"
       - "shared/**"
       - "gradle/**"
       - "gradle.properties"
@@ -19,6 +21,8 @@ on:
       - "appleApp/**"
       - "build-logic/**"
       - "core/**"
+      - "data/**"
+      - "player/**"
       - "shared/**"
       - "gradle/**"
       - "gradle.properties"
@@ -75,7 +79,11 @@ jobs:
           fi
 
       - name: Verify iOS shared code
-        run: ./gradlew --no-daemon :checkAppleTypedCatalogBridge :core:linkDebugFrameworkIosSimulatorArm64 :shared:iosSimulatorArm64Test
+        run: ./gradlew --no-daemon :checkAppleTypedCatalogBridge :core:linkDebugFrameworkIosSimulatorArm64 :data:compileIosMainKotlinMetadata :player:compileIosMainKotlinMetadata :shared:iosSimulatorArm64Test
+
+      - name: Verify Apple streaming bridge
+        working-directory: fluxa-core
+        run: cargo test -p fluxa_streaming_engine --no-default-features --features apple --lib
 
       - name: Generate Apple host project
         working-directory: appleApp
@@ -134,7 +142,7 @@ jobs:
           fi
 
       - name: Verify tvOS shared core
-        run: ./gradlew --no-daemon :core:linkDebugFrameworkTvosSimulatorArm64 :core:tvosSimulatorArm64Test
+        run: ./gradlew --no-daemon :core:linkDebugFrameworkTvosSimulatorArm64 :core:tvosSimulatorArm64Test :data:compileTvosMainKotlinMetadata
 
       - name: Generate Apple host project
         working-directory: appleApp

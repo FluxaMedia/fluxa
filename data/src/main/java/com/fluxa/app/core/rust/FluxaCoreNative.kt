@@ -9,7 +9,6 @@ import com.fluxa.app.core.rust.models.NativeCalendarNotificationContent
 import com.fluxa.app.core.rust.models.NativeCacheEntryPolicy
 import com.fluxa.app.core.rust.models.NativeCacheTrimPolicy
 import com.fluxa.app.core.rust.models.NativeCloudstreamRequest
-import com.fluxa.app.core.rust.models.NativeCoreCapabilitySet
 import com.fluxa.app.core.rust.models.NativeDataFailurePolicy
 import com.fluxa.app.core.rust.models.NativeDetailSeasonLoadPlan
 import com.fluxa.app.core.rust.models.NativeDetailStreamResultPlan
@@ -19,7 +18,6 @@ import com.fluxa.app.core.rust.models.NativeDolbyVisionRpuConvertResult
 import com.fluxa.app.core.rust.models.NativeDolbyVisionRpuInfo
 import com.fluxa.app.core.rust.models.NativeDvProxyPlan
 import com.fluxa.app.core.rust.models.NativeEpisodeLocator
-import com.fluxa.app.core.rust.models.NativeHeadlessEffect
 import com.fluxa.app.core.rust.models.NativeLibraryCollectionImportValidation
 import com.fluxa.app.core.rust.models.NativeLibraryOfflineGrouping
 import com.fluxa.app.core.rust.models.NativeManifestFetchDecision
@@ -65,10 +63,39 @@ import com.fluxa.app.player.NativeTorrentStatusInfo
 import com.fluxa.app.player.TorrentFileStat
 import com.fluxa.app.player.TorrentStatus
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
 import java.io.Closeable
 import java.io.StringReader
+
+private fun JsonObject.stringOrNull(key: String): String? =
+    get(key)?.takeUnless { it.isJsonNull }?.asString
+
+private fun JsonObject.intOrNull(key: String): Int? =
+    get(key)?.takeUnless { it.isJsonNull }?.asInt
+
+private fun JsonObject.booleanOrDefault(key: String): Boolean =
+    get(key)?.takeUnless { it.isJsonNull }?.asBoolean ?: false
+
+private fun JsonObject.toDolbyVisionRpuInfo(): NativeDolbyVisionRpuInfo = NativeDolbyVisionRpuInfo(
+    ok = booleanOrDefault("ok"),
+    profile = intOrNull("profile"),
+    elType = stringOrNull("el_type"),
+    error = stringOrNull("error")
+)
+
+private fun JsonObject.toDolbyVisionRpuConvertResult(): NativeDolbyVisionRpuConvertResult =
+    NativeDolbyVisionRpuConvertResult(
+        ok = booleanOrDefault("ok"),
+        profileBefore = intOrNull("profile_before"),
+        profileAfter = intOrNull("profile_after"),
+        elTypeBefore = stringOrNull("el_type_before"),
+        elTypeAfter = stringOrNull("el_type_after"),
+        rpuHex = stringOrNull("rpu_hex"),
+        rpuBase64 = stringOrNull("rpu_base64"),
+        error = stringOrNull("error")
+    )
 
 class NativeHeadlessEngineResult(
     val effects: List<NativeHeadlessEffect> = emptyList(),
@@ -79,24 +106,6 @@ class NativeHeadlessEngineResult(
     // is never parsed or allocated — only the final result's state is.
     val state: Map<String, Any?> by lazy { stateProvider() }
 }
-
-data class NativeHeadlessEffect(
-    val id: String = "",
-    val type: String = "",
-    val generation: Long = 0L,
-    val payload: Map<String, Any?> = emptyMap()
-)
-
-data class NativeCoreCapabilitySet(
-    val http: Boolean = false,
-    val storage: Boolean = false,
-    val auth: Boolean = false,
-    val player: Boolean = false,
-    val plugins: Boolean = false,
-    val torrent: Boolean = false,
-    val localStream: Boolean = false,
-    val notifications: Boolean = false
-)
 
 data class NativeCacheEntryPolicy(
     val key: String = "",
@@ -1024,12 +1033,13 @@ object FluxaCoreNative {
 
     fun dolbyVisionRpuInfo(rpuBase64: String): NativeDolbyVisionRpuInfo = call {
         val json = dolbyVisionRpuInfoJsonNative(gson.toJson(mapOf("rpu_base64" to rpuBase64)))
-        gson.fromJson(json, NativeDolbyVisionRpuInfo::class.java) ?: NativeDolbyVisionRpuInfo()
+        gson.fromJson(json, JsonObject::class.java)?.toDolbyVisionRpuInfo() ?: NativeDolbyVisionRpuInfo()
     }
 
     fun dolbyVisionConvertRpu(rpuBase64: String, mode: Int = 2): NativeDolbyVisionRpuConvertResult = call {
         val json = dolbyVisionConvertRpuJsonNative(gson.toJson(mapOf("rpu_base64" to rpuBase64, "mode" to mode)))
-        gson.fromJson(json, NativeDolbyVisionRpuConvertResult::class.java) ?: NativeDolbyVisionRpuConvertResult()
+        gson.fromJson(json, JsonObject::class.java)?.toDolbyVisionRpuConvertResult()
+            ?: NativeDolbyVisionRpuConvertResult()
     }
 
     fun streamRequestHeaders(streamHeaders: Map<String, String>): Map<String, String> = call {

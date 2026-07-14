@@ -1,7 +1,7 @@
 import java.util.Properties
 
 plugins {
-    alias(libs.plugins.fluxa.android.library)
+    alias(libs.plugins.fluxa.kmp.library)
     alias(libs.plugins.fluxa.android.hilt)
     alias(libs.plugins.ksp)
 }
@@ -38,22 +38,30 @@ android {
     }
 }
 
+kotlin {
+    tvosArm64()
+    tvosSimulatorArm64()
+
+    sourceSets {
+        androidMain {
+            kotlin.srcDir("src/main/java")
+            dependencies {
+                implementation(project(":core"))
+                implementation(libs.androidx.core.ktx)
+                implementation(libs.bundles.coroutines)
+                implementation(libs.androidx.work.runtime)
+                implementation(libs.androidx.hilt.work)
+                implementation(libs.androidx.room.runtime)
+                implementation(libs.androidx.room.ktx)
+                implementation(libs.bundles.retrofit)
+                implementation(libs.okhttp.logging)
+                implementation(libs.okhttp.doh)
+            }
+        }
+    }
+}
+
 dependencies {
-    implementation(project(":core"))
-
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.bundles.coroutines)
-    implementation(libs.androidx.work.runtime)
-    implementation(libs.androidx.hilt.work)
-    ksp(libs.androidx.hilt.compiler)
-
-    // Room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-
-    // Network
-    implementation(libs.bundles.retrofit)
-    implementation(libs.okhttp.logging)
-    implementation(libs.okhttp.doh)
+    add("kspAndroid", libs.androidx.hilt.compiler)
+    add("kspAndroid", libs.androidx.room.compiler)
 }

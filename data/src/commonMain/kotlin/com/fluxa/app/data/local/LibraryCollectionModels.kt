@@ -1,6 +1,5 @@
 package com.fluxa.app.data.local
 
-
 data class LibraryUserCollection(
     val id: String,
     val title: String,

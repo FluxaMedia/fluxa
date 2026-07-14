@@ -57,7 +57,6 @@ import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.ui.catalog.DirectPlaybackTarget
 import com.fluxa.app.ui.catalog.TraktScrobbleWorker
 import com.fluxa.app.ui.catalog.SimklScrobbleWorker
-import com.fluxa.app.core.rust.models.NativeHeadlessEffect
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject

@@ -1,18 +1,5 @@
 package com.fluxa.app.core.rust
 
-import com.fluxa.app.core.rust.models.NativeHeadlessEffect
-
-data class HeadlessEffectCompletion(
-    val effectId: String,
-    val status: String,
-    val value: Any? = null,
-    val error: Any? = null
-)
-
-interface HeadlessPlatformEnvironment {
-    suspend fun execute(effect: NativeHeadlessEffect): HeadlessEffectCompletion
-}
-
 interface FluxaHeadlessEngine {
     fun dispatch(action: Any): NativeHeadlessEngineResult
     fun completeEffect(result: Any): NativeHeadlessEngineResult

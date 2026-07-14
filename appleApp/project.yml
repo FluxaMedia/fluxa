@@ -9,14 +9,18 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     HEADER_SEARCH_PATHS: "$(SRCROOT)/Generated/FluxaRustCoreFFI"
     LIBRARY_SEARCH_PATHS: "$(SRCROOT)/Generated"
-    OTHER_LDFLAGS[sdk=iphoneos*]: "-lfluxa_core-ios"
-    OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_core-ios-simulator"
+    OTHER_LDFLAGS[sdk=iphoneos*]: "-lfluxa_core-ios -lfluxa_streaming_engine-ios"
+    OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_core-ios-simulator -lfluxa_streaming_engine-ios-simulator"
     OTHER_LDFLAGS[sdk=appletvos*]: "-lfluxa_core-tvos"
     OTHER_LDFLAGS[sdk=appletvsimulator*]: "-lfluxa_core-tvos-simulator"
 targets:
   FluxaIos:
     type: application
     platform: iOS
+    info:
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     sources:
       - path: Shared
       - path: AppleCore
@@ -26,6 +30,8 @@ targets:
       - path: ../core/src/commonMain/resources/i18n
     dependencies:
       - sdk: UIKit.framework
+      - sdk: AVFoundation.framework
+      - sdk: AVKit.framework
     preBuildScripts:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh

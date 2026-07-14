@@ -4,10 +4,18 @@ import Foundation
 @MainActor
 final class FluxaAppleDetailStartup {
     private let coordinator: FluxaAppleHeadlessCoordinator
+    private let configurationStore: FluxaAppleAddonConfigurationStore
+    private let addonResourceLoader: FluxaAppleAddonResourceLoader
     private let encoder = JSONEncoder()
 
-    init(coordinator: FluxaAppleHeadlessCoordinator) {
+    init(
+        coordinator: FluxaAppleHeadlessCoordinator,
+        configurationStore: FluxaAppleAddonConfigurationStore = FluxaAppleAddonConfigurationStore(),
+        addonResourceLoader: FluxaAppleAddonResourceLoader = FluxaAppleAddonResourceLoader()
+    ) {
         self.coordinator = coordinator
+        self.configurationStore = configurationStore
+        self.addonResourceLoader = addonResourceLoader
     }
 
     func load(request: AppleDetailRequestSnapshot) async {
@@ -49,14 +57,43 @@ final class FluxaAppleDetailStartup {
 
     private func updateSharedDetail(
         result: FluxaAppleHeadlessResult,
-        request: FluxaAppleDetailRequest
+        request: AppleDetailRequestSnapshot
     ) {
         guard case .object(let detail)? = result.state["detail"],
               case .object(let meta)? = detail["meta"] else {
             updateEmptyDetail(request: request)
             return
         }
-        FluxaApple.shared.updateDetail(snapshot: AppleDetailSnapshot(id: text(meta["id"]) ?? request.id, type: text(meta["type"]) ?? request.type, title: text(meta["name"]) ?? request.id, description: text(meta["description"]) ?? "", posterUrl: text(meta["poster"]), backgroundUrl: text(meta["background"]), logoUrl: text(meta["logo"]), releaseLabel: text(meta["releaseInfo"]) ?? "", ratingLabel: text(meta["imdbRating"]) ?? "", isInWatchlist: bool(detail["isInWatchlist"]), isLoading: false, errorKey: nil))
+        let id = text(meta["id"]) ?? request.id
+        let type = text(meta["type"]) ?? request.type
+        let streams = await loadDirectStreams(request: request, contentType: type, id: id)
+        FluxaApple.shared.updateDetail(snapshot: AppleDetailSnapshot(id: id, type: type, title: text(meta["name"]) ?? request.id, description: text(meta["description"]) ?? "", posterUrl: text(meta["poster"]), backgroundUrl: text(meta["background"]), logoUrl: text(meta["logo"]), releaseLabel: text(meta["releaseInfo"]) ?? "", ratingLabel: text(meta["imdbRating"]) ?? "", isInWatchlist: bool(detail["isInWatchlist"]), isLoading: false, errorKey: nil, streams: streams, hasStreamProviders: !streams.isEmpty))
+    }
+
+    private func loadDirectStreams(
+        request: AppleDetailRequestSnapshot,
+        contentType: String,
+        id: String
+    ) async -> [AppleDetailStreamSnapshot] {
+        let addons = ([request.addonTransportUrl].compactMap { $0 } + configurationStore.localAddonUrls())
+            .reduce(into: [String]()) { result, addon in
+                if !result.contains(addon) {
+                    result.append(addon)
+                }
+            }
+        var results = [FluxaAppleDirectStream]()
+        for addon in addons {
+            if let streams = try? await addonResourceLoader.loadDirectStreams(
+                transportUrl: addon,
+                contentType: contentType,
+                id: id
+            ) {
+                results.append(contentsOf: streams)
+            }
+        }
+        return results.map {
+            AppleDetailStreamSnapshot(addonName: $0.addonName, title: $0.title, playableUrl: $0.url, requestHeadersJson: $0.requestHeadersJson)
+        }
     }
 
     private func updateEmptyDetail(request: AppleDetailRequestSnapshot) {

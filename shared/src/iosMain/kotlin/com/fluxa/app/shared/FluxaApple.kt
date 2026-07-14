@@ -12,6 +12,7 @@ import com.fluxa.app.shared.platform.AppleAuthSnapshot
 import com.fluxa.app.shared.platform.AppleLibrarySnapshot
 import com.fluxa.app.shared.platform.AppleDetailRequestSnapshot
 import com.fluxa.app.shared.platform.AppleDetailSnapshot
+import com.fluxa.app.shared.platform.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
 import com.fluxa.app.shared.platform.AppleAuthDataSource
 import com.fluxa.app.shared.platform.AppleCatalogHomeDataSource
@@ -48,6 +49,7 @@ object FluxaApple {
         addonStoreDataSource,
         authDataSource
     )
+    private var onPlaybackRequested: (ApplePlaybackRequestSnapshot) -> Unit = {}
 
     fun rootViewController(): UIViewController = ComposeUIViewController {
         FluxaAppleApp()
@@ -112,6 +114,18 @@ object FluxaApple {
         detailDataSource.update(snapshot)
     }
 
+    fun setPlaybackHandler(handler: (ApplePlaybackRequestSnapshot) -> Unit) {
+        onPlaybackRequested = handler
+    }
+
+    internal fun requestPlayback(snapshot: ApplePlaybackRequestSnapshot) {
+        onPlaybackRequested(snapshot)
+    }
+
+    internal fun requestFirstAvailablePlayback(resumePositionMs: Long) {
+        detailDataSource.firstPlaybackRequest(resumePositionMs)?.let(onPlaybackRequested)
+    }
+
 
 
 
@@ -121,5 +135,21 @@ object FluxaApple {
 
 @Composable
 private fun FluxaAppleApp() {
-    FluxaAppHost(platformServices = FluxaApple.platformServices)
+    FluxaAppHost(
+        platformServices = FluxaApple.platformServices,
+        onDetailNavigationEvent = { event ->
+            if (event is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.PlayStream) {
+                FluxaApple.requestPlayback(
+                    ApplePlaybackRequestSnapshot(
+                        playableUrl = event.stream.playableUrl,
+                        title = event.stream.title,
+                        resumePositionMs = event.resumeProgress,
+                        requestHeadersJson = event.stream.requestHeadersJson
+                    )
+                )
+            } else if (event is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources) {
+                FluxaApple.requestFirstAvailablePlayback(event.resumeProgress)
+            }
+        }
+    )
 }

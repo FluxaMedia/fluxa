@@ -18,19 +18,3 @@ data class NativePlayerFlowState(
     val playerError: String? = null,
     val preferredBingeGroup: String? = null
 )
-
-data class NativePlayerFlowEffect(
-    val type: String = "",
-    val contentType: String = "",
-    val id: String = "",
-    val useInitialStreams: Boolean = false
-)
-
-data class NativePlayerTrackState(
-    val preferredAudioLanguage: String = "",
-    val preferredSubtitleIndex: Int = -1,
-    val preferredSubtitleId: String? = null,
-    val subtitlesDisabled: Boolean = true
-)
-
-data class SubtitleTrackRef(val id: String?, val label: String, val language: String?)

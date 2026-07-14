@@ -127,8 +127,8 @@ internal fun AppRoutesHost(
         onSettings = { if (currentScreen.tvNavDestination() != com.fluxa.app.ui.catalog.TvNavDestination.Settings) navigator.navigateTo(Screen.Settings(), clearStack = true) }
     )
 
-    val mobileSharedDestination = if (deviceType == DeviceType.Mobile) {
-        when (currentScreen) {
+    val mobileSharedDestination = when {
+        deviceType == DeviceType.Mobile -> when (currentScreen) {
             is Screen.Home -> com.fluxa.app.shared.FluxaDestination.Home
             is Screen.Search -> com.fluxa.app.shared.FluxaDestination.Search
             is Screen.Explore -> com.fluxa.app.shared.FluxaDestination.Discover
@@ -140,11 +140,19 @@ internal fun AppRoutesHost(
             is Screen.Watchlist -> com.fluxa.app.shared.FluxaDestination.Library
             else -> null
         }
-    } else {
-        null
+        deviceType == DeviceType.TV -> when (currentScreen) {
+            is Screen.Settings -> com.fluxa.app.shared.FluxaDestination.Settings
+            is Screen.AddonStore -> com.fluxa.app.shared.FluxaDestination.AddonStore
+            is Screen.Profiles -> com.fluxa.app.shared.FluxaDestination.ProfileList
+            is Screen.Welcome, is Screen.Login -> com.fluxa.app.shared.FluxaDestination.Auth
+            else -> null
+        }
+        else -> null
     }
 
-    val mobileDetailScreen = (currentScreen as? Screen.Detail).takeIf { deviceType == DeviceType.Mobile }
+    val mobileDetailScreen = (currentScreen as? Screen.Detail).takeIf {
+        deviceType == DeviceType.Mobile || deviceType == DeviceType.TV
+    }
     val mobileDetailRequest = mobileDetailScreen?.let { screen ->
         com.fluxa.app.shared.feature.detail.DetailRequestUiModel(
             id = screen.id,
@@ -175,7 +183,7 @@ internal fun AppRoutesHost(
         }
     }
 
-    if (deviceType == DeviceType.Mobile) {
+    if (mobileSharedDestination != null || mobileDetailRequest != null) {
         com.fluxa.app.shared.FluxaAppHost(
             platformServices = androidFluxaPlatformServices!!,
             language = activeProfile?.language,
@@ -471,85 +479,138 @@ internal fun AppRoutesHost(
                 onCancel = navigateBackSafely,
                 startOnNuvio = screen.startOnNuvio
             )
-            is Screen.Home -> HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope)
-            is Screen.CategoryResults -> CategoryResultsScreen(
-                activeProfile = activeProfile,
-                categoryId = screen.categoryId,
-                title = screen.title,
-                onMovieClick = { meta, sourceAddonTransportUrl, sourceAddonCatalogType -> navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType)) },
-                onBack = navigateBackSafely,
-                viewModel = homeViewModel
-            )
-            is Screen.Explore -> ExploreScreen(
-                activeProfile,
-                { meta, sourceAddonTransportUrl, sourceAddonCatalogType ->
-                    navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
-                },
-                navigateBackSafely,
-                homeViewModel,
-                initialType = screen.initialType,
-                initialGenre = screen.initialGenre,
-                tvNavActions = tvNavActions
-            )
-            is Screen.Search -> SearchScreen(
-                activeProfile,
-                homeViewModel.searchResults.collectAsState().value,
-                { homeViewModel.search(it) },
-                { meta, sourceAddonTransportUrl, sourceAddonCatalogType ->
-                    navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
-                },
-                navigateBackSafely,
-                homeViewModel,
-                tvNavActions
-            )
-            is Screen.Calendar -> CalendarScreen(
-                activeProfile = activeProfile,
-                viewModel = homeViewModel,
-                onMovieClick = { navigator.navigateTo(it.detailScreen()) }
-            )
-            is Screen.Watchlist -> WatchlistScreen(
-                activeProfile,
-                {
-                    if (it.type == "catalog_folder") {
-                        navigator.navigateTo(Screen.CategoryResults(it.id, it.name))
-                    } else {
-                        navigator.navigateTo(it.detailScreen())
-                    }
-                },
-                {
-                    val canResumeDirect = it.lastVideoId != null || (it.timeOffset ?: 0L) > 0L
-                    if (canResumeDirect) {
-                        navigator.navigateTo(it.sourcesScreen())
-                    } else if (it.type == "movie") {
-                        navigator.navigateTo(Screen.Sources(it))
-                    } else {
-                        navigator.navigateTo(Screen.Detail(it.type, it.id))
-                    }
-                },
-                navigateBackSafely,
-                homeViewModel,
-                offlineDownloadManager = offlineDownloadManager,
-                onOpenDownload = { item ->
-                    offlineDownloadManager.refresh()
-                    if (item.isPlayable) {
-                        navigator.navigateTo(
-                            Screen.Player(
-                                meta = offlineDownloadManager.asPlayableMeta(item),
-                                videoId = item.videoId,
-                                initialProgress = 0L,
-                                streamIndex = 0,
-                                initialStreams = listOf(offlineDownloadManager.asPlayableStream(item))
-                            )
-                        )
-                    }
-                },
-                onUpdateProfile = {
-                    onActiveProfileChanged(it)
-                    profileManager.saveProfile(it)
-                    homeViewModel.applyUpdatedProfile(it)
-                },
-                tvNavActions = tvNavActions
-            )
+            is Screen.Home -> {
+                if (deviceType == DeviceType.TV) {
+                    SharedTvHomeRoute(androidFluxaPlatformServices!!, navigator, activeProfile?.language)
+                } else {
+                    HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope)
+                }
+            }
+            is Screen.CategoryResults -> {
+                if (deviceType == DeviceType.TV) {
+                    SharedTvCategoryResultsRoute(
+                        categoryId = screen.categoryId,
+                        title = screen.title,
+                        homeViewModel = homeViewModel,
+                        activeProfile = activeProfile,
+                        navigator = navigator
+                    )
+                } else {
+                    CategoryResultsScreen(
+                        activeProfile = activeProfile,
+                        categoryId = screen.categoryId,
+                        title = screen.title,
+                        onMovieClick = { meta, sourceAddonTransportUrl, sourceAddonCatalogType -> navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType)) },
+                        onBack = navigateBackSafely,
+                        viewModel = homeViewModel
+                    )
+                }
+            }
+            is Screen.Explore -> {
+                if (deviceType == DeviceType.TV) {
+                    SharedTvDiscoverRoute(
+                        platformServices = androidFluxaPlatformServices!!,
+                        navigator = navigator,
+                        language = activeProfile?.language,
+                        initialType = screen.initialType,
+                        initialGenre = screen.initialGenre
+                    )
+                } else {
+                    ExploreScreen(
+                        activeProfile,
+                        { meta, sourceAddonTransportUrl, sourceAddonCatalogType ->
+                            navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
+                        },
+                        navigateBackSafely,
+                        homeViewModel,
+                        initialType = screen.initialType,
+                        initialGenre = screen.initialGenre,
+                        tvNavActions = tvNavActions
+                    )
+                }
+            }
+            is Screen.Search -> {
+                if (deviceType == DeviceType.TV) {
+                    SharedTvSearchRoute(androidFluxaPlatformServices!!, navigator, activeProfile?.language)
+                } else {
+                    SearchScreen(
+                        activeProfile,
+                        homeViewModel.searchResults.collectAsState().value,
+                        { homeViewModel.search(it) },
+                        { meta, sourceAddonTransportUrl, sourceAddonCatalogType ->
+                            navigator.navigateTo(meta.detailScreen(sourceAddonTransportUrl, sourceAddonCatalogType))
+                        },
+                        navigateBackSafely,
+                        homeViewModel,
+                        tvNavActions
+                    )
+                }
+            }
+            is Screen.Calendar -> {
+                if (deviceType == DeviceType.TV) {
+                    SharedTvCalendarRoute(androidFluxaPlatformServices!!, navigator, activeProfile?.language)
+                } else {
+                    CalendarScreen(
+                        activeProfile = activeProfile,
+                        viewModel = homeViewModel,
+                        onMovieClick = { navigator.navigateTo(it.detailScreen()) }
+                    )
+                }
+            }
+            is Screen.Watchlist -> {
+                if (deviceType == DeviceType.TV) {
+                    SharedTvLibraryRoute(
+                        platformServices = androidFluxaPlatformServices!!,
+                        navigator = navigator,
+                        offlineDownloadManager = offlineDownloadManager,
+                        language = activeProfile?.language
+                    )
+                } else {
+                    WatchlistScreen(
+                        activeProfile,
+                        {
+                            if (it.type == "catalog_folder") {
+                                navigator.navigateTo(Screen.CategoryResults(it.id, it.name))
+                            } else {
+                                navigator.navigateTo(it.detailScreen())
+                            }
+                        },
+                        {
+                            val canResumeDirect = it.lastVideoId != null || (it.timeOffset ?: 0L) > 0L
+                            if (canResumeDirect) {
+                                navigator.navigateTo(it.sourcesScreen())
+                            } else if (it.type == "movie") {
+                                navigator.navigateTo(Screen.Sources(it))
+                            } else {
+                                navigator.navigateTo(Screen.Detail(it.type, it.id))
+                            }
+                        },
+                        navigateBackSafely,
+                        homeViewModel,
+                        offlineDownloadManager = offlineDownloadManager,
+                        onOpenDownload = { item ->
+                            offlineDownloadManager.refresh()
+                            if (item.isPlayable) {
+                                navigator.navigateTo(
+                                    Screen.Player(
+                                        meta = offlineDownloadManager.asPlayableMeta(item),
+                                        videoId = item.videoId,
+                                        initialProgress = 0L,
+                                        streamIndex = 0,
+                                        initialStreams = listOf(offlineDownloadManager.asPlayableStream(item))
+                                    )
+                                )
+                            }
+                        },
+                        onUpdateProfile = {
+                            onActiveProfileChanged(it)
+                            profileManager.saveProfile(it)
+                            homeViewModel.applyUpdatedProfile(it)
+                        },
+                        tvNavActions = tvNavActions
+                    )
+                }
+            }
             is Screen.Detail -> DetailRoute(screen, activeProfile, navigator, navigateBackSafely)
             is Screen.Sources -> SourcesRoute(screen, activeProfile, navigator, navigateBackSafely)
             is Screen.Player -> PlayerRoute(

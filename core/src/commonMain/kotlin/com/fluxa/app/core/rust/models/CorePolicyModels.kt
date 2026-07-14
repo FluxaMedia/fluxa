@@ -1,5 +1,94 @@
 package com.fluxa.app.core.rust.models
 
+data class NativeCacheEntryPolicy(
+    val key: String = "",
+    val storedAtMillis: Long = 0L,
+    val expiresAtMillis: Long = 0L,
+    val isExpired: Boolean = false
+)
+
+data class NativeCacheTrimPolicy(
+    val expiredKeys: List<String> = emptyList(),
+    val evictedKeys: List<String> = emptyList()
+)
+
+data class NativeAddonStoreSearchPolicy(
+    val normalizedQuery: String = "",
+    val url: String = "",
+    val useCache: Boolean = false,
+    val shouldFetch: Boolean = false
+)
+
+data class NativeDataFailurePolicy(
+    val operation: String = "",
+    val kind: String = "",
+    val message: String = "",
+    val retryable: Boolean = false,
+    val staleFallbackAllowed: Boolean = false
+)
+
+data class NativeCalendarNotificationContent(
+    val items: List<Map<String, Any?>> = emptyList(),
+    val keys: List<String> = emptyList()
+)
+
+data class NativeWatchlistTogglePlan(
+    val command: String = "add",
+    val itemId: String = "",
+    val optimisticIsInWatchlist: Boolean = false,
+    val profileId: String? = null
+)
+
+data class NativeLibraryCollectionImportValidation(
+    val isValid: Boolean = false,
+    val validCollections: List<Map<String, Any?>> = emptyList(),
+    val issues: List<String> = emptyList()
+)
+
+data class NativeLibraryOfflineGrouping(
+    val ready: List<Map<String, Any?>> = emptyList(),
+    val downloading: List<Map<String, Any?>> = emptyList(),
+    val queued: List<Map<String, Any?>> = emptyList(),
+    val failed: List<Map<String, Any?>> = emptyList()
+)
+
+data class NativeOfflineDownloadPlan(
+    val supported: Boolean = false,
+    val reason: String? = null,
+    val playbackUrl: String = "",
+    val baseName: String = "",
+    val videoFileName: String = "",
+    val subtitleFileName: String? = null,
+    val posterFileName: String = "",
+    val backgroundFileName: String = "",
+    val logoFileName: String = "",
+    val videoId: String? = null,
+    val streamTitle: String? = null
+)
+
+data class NativePlayerBackendSelection(
+    val backend: String = "exoplayer",
+    val reason: String = "default"
+)
+
+data class NativeTorrentFallbackFilePolicy(
+    val fallbackFileIndexes: List<Int> = emptyList(),
+    val rejectedIndex: Int? = null
+)
+
+data class NativePlayerBufferTargets(
+    val forwardBufferMs: Long = 120_000L,
+    val backBufferMs: Long = 30_000L,
+    val cacheSizeBytes: Long = 100_000_000L
+)
+
+data class NativePlayerRetryPolicy(
+    val shouldRetry: Boolean = false,
+    val fallbackAction: String = "show_error",
+    val delayMs: Long = 0L,
+    val retryCount: Int = 0
+)
+
 data class NativeActiveProfilePlan(
     val activeId: String = "guest",
     val shouldCreateDefault: Boolean = false,
@@ -92,4 +181,10 @@ data class NativeProfileSafePrefs(
     val traktLastSyncedItems: Long = 0L,
     val traktLastContinueWatchingCount: Long = 0L,
     val traktLastWatchlistCount: Long = 0L
+)
+
+data class NativeSearchResultGrouping(
+    val groups: List<Map<String, Any?>> = emptyList(),
+    val totalCount: Int = 0,
+    val query: String = ""
 )

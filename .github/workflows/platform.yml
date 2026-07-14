@@ -6,6 +6,8 @@ on:
       - ".github/workflows/platform.yml"
       - "build-logic/**"
       - "core/**"
+      - "data/**"
+      - "player/**"
       - "shared/**"
       - "gradle/**"
       - "gradle.properties"
@@ -17,6 +19,8 @@ on:
       - ".github/workflows/platform.yml"
       - "build-logic/**"
       - "core/**"
+      - "data/**"
+      - "player/**"
       - "shared/**"
       - "gradle/**"
       - "gradle.properties"
@@ -43,4 +47,4 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Compile Android shared modules
-        run: ./gradlew --no-daemon :checkSharedUiBoundary :core:compileDebugKotlinAndroid :shared:compileDebugKotlinAndroid
+        run: ./gradlew --no-daemon :checkSharedUiBoundary :checkKmpCommonBoundary :core:compileDebugKotlinAndroid :data:compileDebugKotlinAndroid :player:compileDebugKotlinAndroid :shared:compileDebugKotlinAndroid

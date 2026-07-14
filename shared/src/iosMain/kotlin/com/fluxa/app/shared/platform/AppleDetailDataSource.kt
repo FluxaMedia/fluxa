@@ -4,6 +4,7 @@ import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.detail.DetailDataSource
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
+import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
@@ -32,7 +33,23 @@ data class AppleDetailSnapshot(
     val ratingLabel: String = "",
     val isInWatchlist: Boolean = false,
     val isLoading: Boolean = false,
-    val errorKey: String? = null
+    val errorKey: String? = null,
+    val streams: List<AppleDetailStreamSnapshot> = emptyList(),
+    val hasStreamProviders: Boolean = true
+)
+
+data class ApplePlaybackRequestSnapshot(
+    val playableUrl: String,
+    val title: String,
+    val resumePositionMs: Long = 0L,
+    val requestHeadersJson: String = "{}"
+)
+
+data class AppleDetailStreamSnapshot(
+    val addonName: String,
+    val title: String,
+    val playableUrl: String,
+    val requestHeadersJson: String = "{}"
 )
 
 class AppleDetailDataSource : DetailDataSource {
@@ -80,10 +97,34 @@ class AppleDetailDataSource : DetailDataSource {
 
     fun update(snapshot: AppleDetailSnapshot) {
         state.value = DetailUiState(
-            content = DetailUiModel(snapshot.id, snapshot.type, snapshot.title, snapshot.description, snapshot.posterUrl, snapshot.backgroundUrl, snapshot.logoUrl, snapshot.releaseLabel, snapshot.ratingLabel, null, isInWatchlist = snapshot.isInWatchlist, relatedItems = emptyList()),
+            content = DetailUiModel(
+                id = snapshot.id,
+                type = snapshot.type,
+                title = snapshot.title,
+                description = snapshot.description,
+                posterUrl = snapshot.posterUrl,
+                backgroundUrl = snapshot.backgroundUrl,
+                logoUrl = snapshot.logoUrl,
+                releaseLabel = snapshot.releaseLabel,
+                ratingLabel = snapshot.ratingLabel,
+                runtimeLabel = null,
+                isInWatchlist = snapshot.isInWatchlist,
+                relatedItems = emptyList(),
+                streams = snapshot.streams.map { stream ->
+                    DetailStreamUiModel(stream.addonName, stream.title, stream.playableUrl, stream.requestHeadersJson)
+                },
+                availableAddons = snapshot.streams.map { it.addonName }.distinct(),
+                hasStreamProviders = snapshot.hasStreamProviders
+            ),
             isLoading = snapshot.isLoading,
             errorKey = snapshot.errorKey
         )
+    }
+
+    fun firstPlaybackRequest(resumePositionMs: Long): ApplePlaybackRequestSnapshot? {
+        val content = state.value.content ?: return null
+        val stream = content.streams.firstOrNull() ?: return null
+        return ApplePlaybackRequestSnapshot(stream.playableUrl, content.title, resumePositionMs, stream.requestHeadersJson)
     }
 }
 
