@@ -17,10 +17,6 @@ targets:
   FluxaIos:
     type: application
     platform: iOS
-    info:
-      properties:
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
     sources:
       - path: Shared
       - path: AppleCore

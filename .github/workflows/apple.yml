@@ -79,7 +79,7 @@ jobs:
           fi
 
       - name: Verify iOS shared code
-        run: ./gradlew --no-daemon :checkAppleTypedCatalogBridge :core:linkDebugFrameworkIosSimulatorArm64 :data:compileIosMainKotlinMetadata :player:compileIosMainKotlinMetadata :shared:iosSimulatorArm64Test
+        run: ./gradlew --no-daemon :checkAppleTypedCatalogBridge :core:linkIosSimulatorArm64 :data:compileIosMainKotlinMetadata :player:compileIosMainKotlinMetadata :shared:iosSimulatorArm64Test
 
       - name: Verify Apple streaming bridge
         working-directory: fluxa-core
