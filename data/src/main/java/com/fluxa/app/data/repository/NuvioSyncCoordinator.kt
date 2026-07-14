@@ -14,6 +14,10 @@ class NuvioSyncCoordinator @Inject constructor(
     private val nuvioService: NuvioService,
     private val profileManager: ProfileManager
 ) {
+    suspend fun isHealthy(): Boolean {
+        return runCatching { nuvioService.healthCheck().bodyOrNull()?.status?.lowercase() in setOf("healthy", "ok") }.getOrDefault(false)
+    }
+
     suspend fun pushCollections(profile: UserProfile) {
         val current = freshProfile(profile) ?: return
         val token = current.nuvioAccessToken ?: return

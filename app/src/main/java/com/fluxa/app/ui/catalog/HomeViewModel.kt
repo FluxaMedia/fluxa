@@ -58,6 +58,7 @@ class HomeViewModel @Inject constructor(
     private val forgottenContinueWatchingStore: ForgottenContinueWatchingStore,
     private val coordinatorFactory: HomeViewModelCoordinatorFactory,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
+    private val nuvioSyncCoordinator: NuvioSyncCoordinator,
     private val pluginManager: PluginManager,
     private val cloudStreamCatalogClient: CloudStreamCatalogClient,
     private val imdbApiService: ImdbApiService,
@@ -1320,6 +1321,8 @@ class HomeViewModel @Inject constructor(
             onComplete(sync?.get("error") == null)
         }
     }
+
+    suspend fun isNuvioHealthy(): Boolean = nuvioSyncCoordinator.isHealthy()
 
     fun syncStremioIntegration(
         profile: UserProfile,

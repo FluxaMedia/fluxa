@@ -8,6 +8,9 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface NuvioService {
+    @GET("functions/v1/health-check")
+    suspend fun healthCheck(): Response<NuvioHealth>
+
     @POST("auth/v1/signup")
     suspend fun signUp(@Body credentials: NuvioCredentials): Response<NuvioSession>
 

@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 data class NuvioCredentials(val email: String, val password: String)
 data class NuvioRefreshRequest(@SerializedName("refresh_token") val refreshToken: String)
+data class NuvioHealth(val status: String? = null)
 
 data class NuvioUser(val id: String, val email: String)
 

@@ -10,6 +10,9 @@ import com.fluxa.app.ui.Screen
 import com.fluxa.app.ui.catalog.HomeScreen
 import com.fluxa.app.ui.catalog.HomeViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @Composable
@@ -23,15 +26,22 @@ internal fun HomeRoute(
 ) {
     LaunchedEffect(activeProfile?.id, activeProfile?.nuvioAccessToken) {
         val profile = activeProfile ?: return@LaunchedEffect
-        if (!profile.nuvioAccessToken.isNullOrBlank()) {
-            homeViewModel.syncNuvioIntegration(
-                profile = profile,
-                onProfileUpdated = {
-                    onProfileUpdated(it)
-                    homeViewModel.loadInitialData(it, force = true)
-                },
-                onComplete = {}
-            )
+        if (profile.nuvioAccessToken.isNullOrBlank()) return@LaunchedEffect
+        var wasHealthy: Boolean? = null
+        while (currentCoroutineContext().isActive) {
+            val isHealthy = homeViewModel.isNuvioHealthy()
+            if (isHealthy && wasHealthy != true) {
+                homeViewModel.syncNuvioIntegration(
+                    profile = profile,
+                    onProfileUpdated = {
+                        onProfileUpdated(it)
+                        homeViewModel.loadInitialData(it, force = true)
+                    },
+                    onComplete = {}
+                )
+            }
+            wasHealthy = isHealthy
+            delay(if (isHealthy) 60_000L else 30_000L)
         }
     }
     HomeScreen(
