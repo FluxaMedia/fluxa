@@ -1,5 +1,6 @@
 package com.fluxa.app.data.repository
 
+import android.util.Log
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.LibraryCatalogSource
@@ -91,22 +92,29 @@ class NuvioAccountImportCoordinator(
             nuvioEmail = session.user?.email ?: baseProfile.email
         )
         val token = "Bearer ${session.accessToken}"
+        profileManager.saveProfile(connectedProfile)
+        profileManager.setLastActiveProfile(connectedProfile)
         watchlistManager.setActiveProfile(baseProfile.id)
 
         var profile = connectedProfile
-        val profiles = nuvioService.pullProfiles(token).requireBody()
+        val profiles = importOrDefault(NuvioImportStep.PROFILE, emptyList()) {
+            nuvioService.pullProfiles(token).requireBody()
+        }
         val primary = profiles.firstOrNull { it.profileIndex == connectedProfile.nuvioProfileIndex }
             ?: profiles.minByOrNull { it.profileIndex }
         val profileIndex = primary?.profileIndex ?: connectedProfile.nuvioProfileIndex ?: 1
 
         if (primary != null) {
             val avatarUrl = primary.avatarUrl ?: primary.avatarId?.let { avatarId ->
-                nuvioService.listAvatars().requireBody()
+                importOrDefault(NuvioImportStep.PROFILE, emptyList()) {
+                    nuvioService.listAvatars().requireBody()
+                }
                     ?.firstOrNull { it.id == avatarId }
                     ?.storagePath
                     ?.let { "${supabaseUrl}storage/v1/object/public/avatars/$it" }
             }
             profile = profile.copy(
+                profileName = primary.name?.takeIf { it.isNotBlank() } ?: profile.profileName,
                 avatarUrl = avatarUrl ?: profile.avatarUrl,
                 nuvioProfileIndex = profileIndex
             )
@@ -115,14 +123,18 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.PROFILE)
 
-        val addons = nuvioService.pullAddons(token, profileId = "eq.$profileIndex").requireBody()
+        val addons = importOrDefault(NuvioImportStep.ADDONS, emptyList()) {
+            nuvioService.pullAddons(token, profileId = "eq.$profileIndex").requireBody()
+        }
         if (addons.isNotEmpty()) {
             val enabledUrls = addons.filter { it.enabled }.sortedBy { it.sortOrder }.map { it.url }
             profile = profile.copy(localAddons = (profile.localAddons.orEmpty() + enabledUrls).distinct())
         }
         onStep(NuvioImportStep.ADDONS)
 
-        val libraryItems = nuvioService.pullLibrary(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 500, "p_offset" to 0)).requireBody()
+        val libraryItems = importOrDefault(NuvioImportStep.LIBRARY, emptyList()) {
+            nuvioService.pullLibrary(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 500, "p_offset" to 0)).requireBody()
+        }
         val metaById = libraryItems.associate { item ->
             item.contentId to Meta(
                 id = item.contentId,
@@ -143,7 +155,9 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.LIBRARY)
 
-        val watchProgress = nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 200)).requireBody()
+        val watchProgress = importOrDefault(NuvioImportStep.PROGRESS, emptyList()) {
+            nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 200)).requireBody()
+        }
         for (entry in watchProgress) {
             val meta = metaById[entry.contentId] ?: run {
                 val detail = runCatching {
@@ -176,7 +190,9 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.PROGRESS)
 
-        val watchedItems = nuvioService.pullWatchedItems(token, mapOf("p_profile_id" to profileIndex, "p_page" to 1, "p_page_size" to 500)).requireBody()
+        val watchedItems = importOrDefault(NuvioImportStep.HISTORY, emptyList()) {
+            nuvioService.pullWatchedItems(token, mapOf("p_profile_id" to profileIndex, "p_page" to 1, "p_page_size" to 500)).requireBody()
+        }
         val watchedBySeries = mutableMapOf<String, MutableSet<String>>()
         for (item in watchedItems) {
             val videoId = if (item.season != null && item.episode != null) {
@@ -191,7 +207,9 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.HISTORY)
 
-        val collectionRows = nuvioService.pullCollections(token, mapOf("p_profile_id" to profileIndex)).requireBody()
+        val collectionRows = importOrDefault(NuvioImportStep.COLLECTIONS, emptyList()) {
+            nuvioService.pullCollections(token, mapOf("p_profile_id" to profileIndex)).requireBody()
+        }
         val collections = collectionRows.firstOrNull()?.collectionsJson.orEmpty().map { collection ->
             LibraryUserCollection(
                 id = collection.id ?: java.util.UUID.randomUUID().toString(),
@@ -231,6 +249,17 @@ class NuvioAccountImportCoordinator(
         profileManager.saveProfile(profile)
         profileManager.setLastActiveProfile(profile)
         return profile
+    }
+
+    private suspend fun <T> importOrDefault(
+        step: NuvioImportStep,
+        fallback: T,
+        call: suspend () -> T
+    ): T = try {
+        call()
+    } catch (error: Exception) {
+        Log.w("NuvioImport", "Import step $step failed; continuing without it", error)
+        fallback
     }
 }
 

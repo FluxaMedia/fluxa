@@ -123,6 +123,7 @@ class AndroidSettingsDataSource(
                 displayName = profile.profileName?.takeIf { it.isNotBlank() } ?: profile.email,
                 avatarUrl = profile.avatarUrl,
                 isGuest = profile.isGuest,
+                hasNuvio = !profile.nuvioAccessToken.isNullOrBlank(),
                 hasTrakt = !profile.traktAccessToken.isNullOrBlank(),
                 hasSimkl = !profile.simklAccessToken.isNullOrBlank(),
                 hasAnilist = !profile.anilistAccessToken.isNullOrBlank(),

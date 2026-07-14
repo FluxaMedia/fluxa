@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import android.util.Log
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.NuvioSession
@@ -192,7 +193,8 @@ internal fun MobileNuvioLoginView(
                             }
                             importedProfile = result
                             done = true
-                        } catch (_: Exception) {
+                        } catch (importError: Exception) {
+                            Log.e("NuvioImport", "Nuvio account import failed", importError)
                             error = AppStrings.t(lang, "auth.error.network")
                             submitting = false
                             view = MobileNuvioView.Credentials

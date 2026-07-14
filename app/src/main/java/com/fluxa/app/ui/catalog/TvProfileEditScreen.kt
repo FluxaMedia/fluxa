@@ -177,12 +177,13 @@ internal fun TvProfileEditScreen(
                     androidx.tv.material3.Button(
                         onClick = {
                             val profile = initialProfile?.copy(
-                                email = name,
+                                profileName = name,
                                 avatarUrl = selectedAvatarUrl,
                                 pinHash = resolvePinHash()
                             ) ?: UserProfile(
                                 id = java.util.UUID.randomUUID().toString(),
                                 email = name,
+                                profileName = name,
                                 authKey = "",
                                 isGuest = false,
                                 language = "en",

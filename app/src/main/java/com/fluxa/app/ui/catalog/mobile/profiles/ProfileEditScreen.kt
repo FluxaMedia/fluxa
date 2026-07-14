@@ -87,13 +87,14 @@ fun MobileProfileEditScreen(
                     TextButton(
                         onClick = {
                             val profile = initialProfile?.copy(
-                                email = name,
+                                profileName = name,
                                 avatarUrl = selectedAvatarUrl,
                                 pinHash = resolvePinHash(),
                                 biometricEnabled = resolveBiometricEnabled()
                             ) ?: UserProfile(
                                 id = java.util.UUID.randomUUID().toString(),
                                 email = name,
+                                profileName = name,
                                 authKey = "",
                                 isGuest = false,
                                 language = "en",

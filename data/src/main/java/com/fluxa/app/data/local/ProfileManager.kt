@@ -18,6 +18,7 @@ data class UserProfile(
     val id: String,
     val email: String,
     val authKey: String,
+    val profileName: String? = null,
     val colorArgb: Int = 0xFFFFFFFF.toInt(),
     val isGuest: Boolean = false,
     val avatarUrl: String? = null,
@@ -304,6 +305,7 @@ data class UserProfile(
     val safeLibraryCollections: List<LibraryUserCollection> get() = libraryCollections ?: homeFeedSettings?.libraryCollections.orEmpty()
 
     val displayName: String get() = when {
+        !profileName.isNullOrBlank() -> profileName
         isGuest -> if (email.isBlank() || email == "guest") "Guest" else email
         email.contains("@") -> email.substringBefore("@")
         else -> email
