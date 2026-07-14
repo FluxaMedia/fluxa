@@ -31,7 +31,7 @@ final class FluxaAppleDetailStartup {
             )
             let actionJson = String(decoding: try encoder.encode(action), as: UTF8.self)
             let result = try await coordinator.dispatch(actionJson: actionJson)
-            updateSharedDetail(result: result, request: request)
+            await updateSharedDetail(result: result, request: request)
         } catch {
             updateEmptyDetail(request: request)
         }
@@ -49,7 +49,7 @@ final class FluxaAppleDetailStartup {
             )
             let actionJson = String(decoding: try encoder.encode(action), as: UTF8.self)
             let result = try await coordinator.dispatch(actionJson: actionJson)
-            updateSharedDetail(result: result, request: request)
+            await updateSharedDetail(result: result, request: request)
         } catch {
             return
         }
@@ -58,7 +58,7 @@ final class FluxaAppleDetailStartup {
     private func updateSharedDetail(
         result: FluxaAppleHeadlessResult,
         request: AppleDetailRequestSnapshot
-    ) {
+    ) async {
         guard case .object(let detail)? = result.state["detail"],
               case .object(let meta)? = detail["meta"] else {
             updateEmptyDetail(request: request)
@@ -97,7 +97,7 @@ final class FluxaAppleDetailStartup {
     }
 
     private func updateEmptyDetail(request: AppleDetailRequestSnapshot) {
-        FluxaApple.shared.updateDetail(snapshot: AppleDetailSnapshot(id: request.id, type: request.type, title: request.title ?? request.id, description: "", posterUrl: nil, backgroundUrl: nil, logoUrl: nil, releaseLabel: "", ratingLabel: "", isInWatchlist: false, isLoading: false, errorKey: "auto.no_results_found"))
+        FluxaApple.shared.updateDetail(snapshot: AppleDetailSnapshot(id: request.id, type: request.type, title: request.title ?? request.id, description: "", posterUrl: nil, backgroundUrl: nil, logoUrl: nil, releaseLabel: "", ratingLabel: "", isInWatchlist: false, isLoading: false, errorKey: "auto.no_results_found", streams: [], hasStreamProviders: false))
     }
 
     private func text(_ value: FluxaAppleJsonValue?) -> String? {
