@@ -5,6 +5,7 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 internal class HomeDynamicRowsCoordinator(
@@ -16,9 +17,12 @@ internal class HomeDynamicRowsCoordinator(
     private val buildContinueWatchingItems: (String) -> List<Meta>,
     private val optimizeHomeCategories: (List<HomeCategory>, String) -> List<HomeCategory>
 ) {
+    private var refreshJob: Job? = null
+
     fun refresh() {
         val currentCategories = categories()
-        scope.launch(Dispatchers.IO) {
+        refreshJob?.cancel()
+        refreshJob = scope.launch(Dispatchers.IO) {
             val profile = activeProfile()
             val lang = profile?.safeLanguage ?: "en"
 

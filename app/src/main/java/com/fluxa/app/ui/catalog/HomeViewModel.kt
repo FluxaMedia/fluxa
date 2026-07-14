@@ -1429,7 +1429,6 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun setUserAddonsState(addons: List<AddonDescriptor>) {
-        if (addons.isEmpty() && _userAddons.value.isNotEmpty()) return
         _userAddons.value = addons
     }
 
