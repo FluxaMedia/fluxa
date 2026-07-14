@@ -22,7 +22,7 @@ struct FluxaIosApp: App {
         let authStartup = FluxaAppleAuthStartup()
         FluxaApple.shared.setCatalogHomeRefreshHandler {
             Task { @MainActor in
-                await self.catalogStartup.refresh()
+                await catalogStartup.refresh()
             }
         }
         FluxaApple.shared.setSearchHandler { query in
