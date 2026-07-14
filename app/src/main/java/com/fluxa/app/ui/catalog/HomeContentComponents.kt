@@ -89,8 +89,6 @@ fun CategoryResultsScreen(
     val collectionFolderCategories by viewModel.collectionFolderCategories.collectAsStateWithLifecycle()
     val category = categories.firstOrNull { it.id == categoryId } ?: collectionFolderCategories[categoryId]
     val items = category?.items.orEmpty()
-    val sourceAddonTransportUrl = category?.addonTransportUrl ?: category?.catalogSources?.firstOrNull()?.transportUrl
-    val sourceAddonCatalogType = category?.catalogSources?.firstOrNull()?.type ?: category?.type
     val layout = category?.let { resolveHomeCardLayout(it, activeProfile) }
         ?: if (activeProfile?.safePosterLandscapeMode == true) "horizontal" else activeProfile?.safeCardLayout ?: "vertical"
 
@@ -107,7 +105,11 @@ fun CategoryResultsScreen(
             category = category,
             items = items,
             layout = layout,
-            onMovieClick = { meta -> onMovieClick(meta, sourceAddonTransportUrl, sourceAddonCatalogType) },
+            onMovieClick = { meta ->
+                val source = category?.resultSources?.get("${meta.type}:${meta.id}") ?: category?.resultSources?.get(meta.id)
+                val fallback = if (category?.remoteSources.isNullOrEmpty()) category?.catalogSources?.firstOrNull() else null
+                onMovieClick(meta, source?.transportUrl ?: fallback?.transportUrl, source?.type ?: fallback?.type)
+            },
             onBack = onBack,
             viewModel = viewModel
         )
@@ -118,7 +120,11 @@ fun CategoryResultsScreen(
             category = category,
             items = items,
             layout = layout,
-            onMovieClick = { meta -> onMovieClick(meta, sourceAddonTransportUrl, sourceAddonCatalogType) },
+            onMovieClick = { meta ->
+                val source = category?.resultSources?.get("${meta.type}:${meta.id}") ?: category?.resultSources?.get(meta.id)
+                val fallback = if (category?.remoteSources.isNullOrEmpty()) category?.catalogSources?.firstOrNull() else null
+                onMovieClick(meta, source?.transportUrl ?: fallback?.transportUrl, source?.type ?: fallback?.type)
+            },
             onBack = onBack,
             viewModel = viewModel
         )

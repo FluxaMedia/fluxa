@@ -30,6 +30,7 @@ data class HomeCategory(
     val addonGenre: String? = null,
     val catalogSources: List<HomeCatalogSource>? = emptyList(),
     val remoteSources: List<LibraryRemoteSource>? = emptyList(),
+    val resultSources: Map<String, HomeCatalogSource> = emptyMap(),
     val addonIconUrl: String? = null
 )
 

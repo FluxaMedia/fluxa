@@ -930,11 +930,11 @@ class HomeViewModel @Inject constructor(
                     val nextSkip = if (category.items.isEmpty()) 0 else category.skip + 20
                     val lang = currentActiveProfile?.safeLanguage ?: "en"
                     val semaphore = Semaphore(permits = 4)
-                    val addonItems = coroutineScope {
+                    val addonResults = coroutineScope {
                         catalogSources.map { source ->
                             async(Dispatchers.IO) {
                                 semaphore.withPermit {
-                                    normalizeCatalogItems(
+                                    source to normalizeCatalogItems(
                                         addonRepository.getAddonCatalog(
                                             source.transportUrl,
                                             source.type,
@@ -948,8 +948,12 @@ class HomeViewModel @Inject constructor(
                                     )
                                 }
                             }
-                        }.awaitAll().flatten()
+                        }.awaitAll()
                     }
+                    val addonItems = addonResults.flatMap { it.second }
+                    val addonResultSources = addonResults.flatMap { (source, items) ->
+                        items.flatMap { item -> listOf("${item.type}:${item.id}" to source, item.id to source) }
+                    }.toMap()
                     val remoteItems = if (remoteSources.isEmpty()) {
                         emptyList()
                     } else {
@@ -976,7 +980,8 @@ class HomeViewModel @Inject constructor(
                         existing.copy(
                             items = if (newItems.isEmpty()) existing.items else (existing.items + newItems).distinctBy { "${it.type}:${it.id}" },
                             skip = nextSkip,
-                            canLoadMore = newItems.isNotEmpty()
+                            canLoadMore = newItems.isNotEmpty(),
+                            resultSources = existing.resultSources + addonResultSources
                         )
                     }
                     return@launch
