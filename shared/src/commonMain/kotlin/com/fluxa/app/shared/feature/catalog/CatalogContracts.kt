@@ -29,12 +29,25 @@ data class CatalogRowUiModel(
     val id: String,
     val title: String,
     val items: List<CatalogItemUiModel>,
-    val canLoadMore: Boolean = false
+    val canLoadMore: Boolean = false,
+    val categoryType: String = "movie",
+    val cardLayout: String = "poster",
+    val artworkPreference: String? = null,
+    val isActionRow: Boolean = false,
+    val topTenEnabled: Boolean = false
+)
+
+data class CatalogBillboardUiModel(
+    val item: CatalogItemUiModel,
+    val logoUrl: String? = null,
+    val trailerUrl: String? = null
 )
 
 data class CatalogHomeUiState(
     val rows: List<CatalogRowUiModel> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val billboard: CatalogBillboardUiModel? = null,
+    val showHeroSection: Boolean = true
 )
 
 sealed interface CatalogAction {
@@ -43,6 +56,7 @@ sealed interface CatalogAction {
     data class ItemSelected(val item: CatalogItemUiModel) : CatalogAction
     data class PlayRequested(val item: CatalogItemUiModel) : CatalogAction
     data class ResumeRequested(val item: CatalogItemUiModel) : CatalogAction
+    data class ItemFocused(val item: CatalogItemUiModel, val rowId: String) : CatalogAction
 }
 
 interface CatalogHomeDataSource {

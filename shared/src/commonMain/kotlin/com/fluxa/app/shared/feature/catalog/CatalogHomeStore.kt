@@ -18,7 +18,8 @@ class CatalogHomeStore(
             is CatalogAction.LoadMore -> dataSource.loadMore(action.rowId)
             is CatalogAction.ItemSelected,
             is CatalogAction.PlayRequested,
-            is CatalogAction.ResumeRequested -> Unit
+            is CatalogAction.ResumeRequested,
+            is CatalogAction.ItemFocused -> Unit
         }
     }
 }

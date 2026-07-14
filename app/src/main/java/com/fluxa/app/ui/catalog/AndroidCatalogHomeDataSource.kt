@@ -1,6 +1,8 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.shared.feature.catalog.CatalogBillboardUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
@@ -16,41 +18,23 @@ class AndroidCatalogHomeDataSource(
 ) : CatalogHomeDataSource {
     override fun observeHome(): Flow<CatalogHomeUiState> = combine(
         homeViewModel.categories,
-        homeViewModel.isLoading
-    ) { categories, isLoading ->
+        homeViewModel.isLoading,
+        homeViewModel.billboardMovie,
+        homeViewModel.billboardLogo,
+        homeViewModel.billboardTrailerUrl
+    ) { categories, isLoading, billboardMovie, billboardLogo, billboardTrailerUrl ->
         val profile = activeProfile()
         CatalogHomeUiState(
-            rows = orderHomeCategories(categories).map { category ->
-                CatalogRowUiModel(
-                    id = category.id,
-                    title = displayHomeCategoryTitle(category, profile?.language),
-                    canLoadMore = category.canLoadMore,
-                    items = category.items.map { meta ->
-                        CatalogItemUiModel(
-                            id = meta.id,
-                            type = meta.type,
-                            card = meta.toCatalogCardUiModel(
-                                cardLayout = resolveHomeCardLayout(category, profile),
-                                artworkPreference = resolveContinueWatchingArtworkPreference(category, profile),
-                                profile = profile,
-                                cardScale = 1f,
-                                showHorizontalLogo = true,
-                                topTenRank = null,
-                                isContinueWatchingCard = category.isContinueWatchingCategory(),
-                                loadArtwork = true
-                            ),
-                            source = CatalogSourceUiModel(
-                                addonTransportUrl = category.addonTransportUrl
-                                    ?: category.catalogSources?.firstOrNull()?.transportUrl,
-                                catalogType = category.catalogSources?.firstOrNull()?.type ?: category.type
-                            ),
-                            resume = meta.toCatalogResumeUiModel(),
-                            backdropUrl = meta.homeHeroBackdrop()
-                        )
-                    }
+            rows = orderHomeCategories(categories).map { category -> category.toRowUiModel(profile) },
+            isLoading = isLoading,
+            billboard = billboardMovie?.let { movie ->
+                CatalogBillboardUiModel(
+                    item = movie.toCatalogItemUiModel(category = null, profile = profile),
+                    logoUrl = billboardLogo,
+                    trailerUrl = billboardTrailerUrl
                 )
             },
-            isLoading = isLoading
+            showHeroSection = profile?.safeShowHeroSection != false
         )
     }
 
@@ -62,6 +46,46 @@ class AndroidCatalogHomeDataSource(
     override suspend fun loadMore(rowId: String) {
         homeViewModel.loadMore(rowId)
     }
+
+    fun resolveMeta(id: String, type: String): Meta? =
+        homeViewModel.categories.value.firstNotNullOfOrNull { category ->
+            category.items.firstOrNull { it.id == id && it.type == type }
+        } ?: homeViewModel.billboardMovie.value?.takeIf { it.id == id && it.type == type }
+
+    private fun HomeCategory.toRowUiModel(profile: UserProfile?): CatalogRowUiModel = CatalogRowUiModel(
+        id = id,
+        title = displayHomeCategoryTitle(this, profile?.language),
+        canLoadMore = canLoadMore,
+        categoryType = type,
+        cardLayout = resolveHomeCardLayout(this, profile),
+        artworkPreference = resolveContinueWatchingArtworkPreference(this, profile),
+        isActionRow = isContinueWatchingCategory() || id == "library",
+        topTenEnabled = id in profile?.safeTopTenFeedToggles.orEmpty(),
+        items = items.map { meta -> meta.toCatalogItemUiModel(category = this, profile = profile) }
+    )
+
+    private fun Meta.toCatalogItemUiModel(category: HomeCategory?, profile: UserProfile?): CatalogItemUiModel =
+        CatalogItemUiModel(
+            id = id,
+            type = type,
+            card = toCatalogCardUiModel(
+                cardLayout = category?.let { resolveHomeCardLayout(it, profile) } ?: "poster",
+                artworkPreference = category?.let { resolveContinueWatchingArtworkPreference(it, profile) },
+                profile = profile,
+                cardScale = 1f,
+                showHorizontalLogo = true,
+                topTenRank = null,
+                isContinueWatchingCard = category?.isContinueWatchingCategory() == true,
+                loadArtwork = true
+            ),
+            source = CatalogSourceUiModel(
+                addonTransportUrl = category?.addonTransportUrl
+                    ?: category?.catalogSources?.firstOrNull()?.transportUrl,
+                catalogType = category?.catalogSources?.firstOrNull()?.type ?: category?.type
+            ),
+            resume = toCatalogResumeUiModel(),
+            backdropUrl = homeHeroBackdrop()
+        )
 }
 
 private fun com.fluxa.app.data.remote.Meta.toCatalogResumeUiModel(): CatalogResumeUiModel? {
