@@ -135,10 +135,13 @@ class NuvioAccountImportCoordinator(
         watchlistManager.setActiveProfile(profile.id)
         onStep(NuvioImportStep.PROFILE)
 
-        val addons = importOrDefault(NuvioImportStep.ADDONS, emptyList()) {
+        val addons = try {
             nuvioService.pullAddons(token, profileId = "eq.$profileIndex").requireBody()
+        } catch (error: Exception) {
+            Log.w("NuvioImport", "Import step ${NuvioImportStep.ADDONS} failed; continuing without it", error)
+            null
         }
-        if (addons.isNotEmpty()) {
+        if (addons != null) {
             val orderedAddons = addons.sortedBy { it.sortOrder }
             profile = profile.copy(
                 localAddons = orderedAddons.map { it.url }.distinct(),
