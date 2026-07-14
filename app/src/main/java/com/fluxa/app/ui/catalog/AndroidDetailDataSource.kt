@@ -1,7 +1,11 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.remote.Video
 import com.fluxa.app.shared.feature.detail.DetailDataSource
+import com.fluxa.app.shared.feature.detail.DetailEpisodeUiModel
+import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
+import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState as SharedDetailUiState
 import kotlinx.coroutines.flow.Flow
@@ -11,10 +15,24 @@ class AndroidDetailDataSource(
     private val detailViewModel: DetailViewModel,
     private val activeProfile: () -> UserProfile?
 ) : DetailDataSource {
+
+    private var selectedSeason: Int = 1
+    private var selectedEpisodeId: String? = null
+
     override fun observeDetail(id: String, type: String): Flow<SharedDetailUiState> {
         return detailViewModel.uiState.map { state ->
             SharedDetailUiState(
                 content = state.detail?.let { detail ->
+                    val effectiveWatched = state.watchedVideoIds.toSet() + state.localWatchedVideoIds
+                    val availableSeasons = buildList {
+                        val seasonsCount = detail.seasonsCount ?: 0
+                        if (seasonsCount > 0) addAll(1..seasonsCount)
+                        addAll(detail.videos?.mapNotNull { it.season }.orEmpty().filter { it > 0 })
+                        if (detail.videos?.any { it.season == 0 } == true) add(0)
+                    }.distinct().sortedWith(compareBy<Int> { if (it == 0) 1 else 0 }.thenBy { it }).ifEmpty { listOf(1) }
+                    val currentEpisodeId = selectedEpisodeId
+                        ?: state.seasonEpisodes.firstOrNull { !detailIsUpcoming(it.released) }?.id
+                        ?: state.seasonEpisodes.firstOrNull()?.id
                     DetailUiModel(
                         id = detail.id,
                         type = detail.type,
@@ -25,8 +43,20 @@ class AndroidDetailDataSource(
                         logoUrl = detail.logo,
                         releaseLabel = detail.releaseInfo.orEmpty(),
                         ratingLabel = detail.imdbRating.orEmpty(),
+                        runtimeLabel = detail.runtime,
                         isInWatchlist = state.isInWatchlist,
-                        relatedItems = state.similarItems.toCatalogItems(activeProfile())
+                        relatedItems = state.similarItems.toCatalogItems(activeProfile()),
+                        availableSeasons = availableSeasons,
+                        selectedSeason = selectedSeason,
+                        seasonEpisodes = state.seasonEpisodes.map { it.toUiModel(effectiveWatched) },
+                        selectedEpisodeId = currentEpisodeId,
+                        resumeVideoId = state.savedPlayback?.lastVideoId,
+                        resumeProgress = state.savedPlayback?.timeOffset ?: 0L,
+                        streams = state.filteredStreams.toUiModels(),
+                        isLoadingStreams = state.isLoadingStreams,
+                        availableAddons = state.availableAddons,
+                        selectedAddon = state.selectedAddon,
+                        hasStreamProviders = state.hasStreamProviders
                     )
                 },
                 isLoading = state.isLoading
@@ -34,11 +64,68 @@ class AndroidDetailDataSource(
         }
     }
 
-    override suspend fun loadDetail(id: String, type: String) {
-        detailViewModel.loadDetail(type = type, id = id, profile = activeProfile())
+    override suspend fun loadDetail(request: DetailRequestUiModel) {
+        selectedSeason = request.targetSeason ?: 1
+        selectedEpisodeId = request.lastVideoId
+        detailViewModel.loadDetail(
+            type = request.type,
+            id = request.id,
+            profile = activeProfile(),
+            sourceAddonTransportUrl = request.source.addonTransportUrl,
+            sourceAddonCatalogType = request.source.catalogType
+        )
     }
 
     override suspend fun toggleWatchlist(id: String, type: String) {
         detailViewModel.toggleWatchlist()
     }
+
+    override suspend fun selectSeason(season: Int) {
+        selectedSeason = season
+        selectedEpisodeId = null
+        val id = detailViewModel.uiState.value.detail?.id ?: return
+        detailViewModel.loadSeason(id, season)
+    }
+
+    override suspend fun selectEpisode(episodeId: String) {
+        selectedEpisodeId = episodeId
+        val type = detailViewModel.uiState.value.detail?.type ?: return
+        detailViewModel.fetchStreamsForSelection(type, episodeId)
+    }
+
+    override suspend fun selectAddonFilter(addonName: String?) {
+        detailViewModel.setSelectedAddon(addonName)
+    }
+
+    override suspend fun downloadEpisode(episodeId: String) {
+        val episode = detailViewModel.uiState.value.seasonEpisodes.firstOrNull { it.id == episodeId } ?: return
+        detailViewModel.downloadEpisodes(listOf(episode))
+    }
+
+    override suspend fun downloadSeason(season: Int) {
+        val episodes = detailViewModel.uiState.value.seasonEpisodes.filter { (it.season ?: season) == season }
+        detailViewModel.downloadEpisodes(episodes)
+    }
 }
+
+private fun Video.toUiModel(watchedIds: Set<String>): DetailEpisodeUiModel = DetailEpisodeUiModel(
+    id = id,
+    season = season,
+    number = number,
+    title = name.orEmpty(),
+    description = overview,
+    thumbnailUrl = thumbnail,
+    releaseLabel = released,
+    isUpcoming = detailIsUpcoming(released),
+    isWatched = id in watchedIds
+)
+
+private fun List<com.fluxa.app.data.remote.Stream>.toUiModels(): List<DetailStreamUiModel> =
+    mapNotNull { stream ->
+        val url = stream.playableUrl ?: return@mapNotNull null
+        DetailStreamUiModel(
+            addonName = stream.addonName.orEmpty(),
+            title = stream.title ?: stream.name.orEmpty(),
+            playableUrl = url
+        )
+    }
