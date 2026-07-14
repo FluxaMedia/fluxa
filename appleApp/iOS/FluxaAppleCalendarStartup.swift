@@ -28,7 +28,7 @@ final class FluxaAppleCalendarStartup {
     }
 
     private func updateSharedCalendar(year: Int, month: Int, items: [AppleCalendarReleaseSnapshot]) {
-        FluxaApple.shared.updateCalendar(snapshot: AppleCalendarSnapshot(year: year, month: month, items: items, isLoading: false))
+        FluxaApple.shared.updateCalendar(snapshot: AppleCalendarSnapshot(year: Int32(year), month: Int32(month), items: items, isLoading: false))
     }
 
     private func sharedItem(_ value: FluxaAppleJsonValue) -> AppleCalendarReleaseSnapshot? {

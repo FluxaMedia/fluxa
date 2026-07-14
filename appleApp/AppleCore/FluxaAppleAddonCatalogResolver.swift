@@ -218,8 +218,13 @@ struct FluxaAppleAddonCatalogResolver {
               !catalog.hasRequiredExtraExceptGenre else {
             return nil
         }
-        let label = catalog.name?.trimmingCharacters(in: .whitespacesAndNewlines)
-            .flatMap { $0.isEmpty ? nil : $0 } ?? catalogId
+        let trimmedName = catalog.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let label: String
+        if let trimmedName, !trimmedName.isEmpty {
+            label = trimmedName
+        } else {
+            label = catalogId
+        }
         let genres = (catalog.genres ?? []) + (catalog.extra ?? [])
             .filter { $0.name?.lowercased() == "genre" }
             .flatMap { $0.options ?? [] }
