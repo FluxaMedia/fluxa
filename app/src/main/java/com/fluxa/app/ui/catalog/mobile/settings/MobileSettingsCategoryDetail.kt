@@ -82,7 +82,6 @@ internal fun MobileCategoryDetail(
     onConnectMal: () -> Unit,
     onConnectSimkl: () -> Unit,
     onConnectAnilist: () -> Unit,
-    onManageAddons: () -> Unit,
     onWatchlistClick: () -> Unit,
     onOpenDownload: (OfflineDownloadItem) -> Unit = {},
     onReboot: () -> Unit,
@@ -901,39 +900,6 @@ internal fun MobileCategoryDetail(
                 "developer" -> {
                     item {
                         MobileDeveloperSettings(lang)
-                    }
-                }
-                "addons" -> {
-                    item {
-                        MobileSettingsGroup(AppStrings.t(lang, "auto.add_ons")) {
-                            MobileActionRow(
-                                title = AppStrings.t(lang, "auto.manage_add_ons"),
-                                onClick = onManageAddons
-                            )
-                        }
-                    }
-                    item {
-                        MobileSettingsGroup(AppStrings.t(lang, "auto.torrent_speed")) {
-                            MobileChoiceRow(
-                                title = AppStrings.t(lang, "auto.torrent_speed"),
-                                value = torrentSpeedPresetLabel(profile.safeTorrentSpeedPreset, lang),
-                                subtitle = AppStrings.t(lang, "settings.torrent_speed_desc"),
-                                onClick = {
-                                    choiceDialog = MobileChoiceDialogState(
-                                        title = AppStrings.t(lang, "auto.torrent_speed"),
-                                        options = torrentSpeedPresetOptions(lang),
-                                        selected = profile.safeTorrentSpeedPreset,
-                                        onSelect = { onUpdateProfile(profile.sanitizedUpdate(torrentSpeedPreset = it)) }
-                                    )
-                                }
-                            )
-                            MobileToggleRow(
-                                title = AppStrings.t(lang, "settings.torrent_wifi_only"),
-                                subtitle = AppStrings.t(lang, "settings.torrent_wifi_only_desc"),
-                                checked = profile.safeTorrentWifiOnly,
-                                onToggle = { onUpdateProfile(profile.copy(torrentWifiOnly = !profile.safeTorrentWifiOnly)) }
-                            )
-                        }
                     }
                 }
                 "downloads" -> {

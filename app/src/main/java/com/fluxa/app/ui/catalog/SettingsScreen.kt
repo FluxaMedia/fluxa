@@ -233,7 +233,6 @@ fun SettingsScreen(
                         onConnectMal = onConnectMal,
                         onConnectSimkl = onConnectSimkl,
                         onConnectAnilist = onConnectAnilist,
-                        onManageAddons = onManageAddons,
                         onWatchlistClick = onWatchlistClick,
                         onOpenDownload = onOpenDownload,
                         onReboot = onReboot,
