@@ -3,6 +3,7 @@ package com.fluxa.app.shared.platform
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.detail.DetailDataSource
+import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
@@ -16,15 +17,76 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import platform.Foundation.NSNotificationCenter
 
 class AppleDetailDataSource : DetailDataSource {
     private val state = MutableStateFlow(DetailUiState())
 
     override fun observeDetail(id: String, type: String): Flow<DetailUiState> = state.asStateFlow()
 
-    override suspend fun loadDetail(id: String, type: String) = Unit
+    override suspend fun loadDetail(request: DetailRequestUiModel) {
+        val payload = buildJsonObject {
+            put("id", request.id)
+            put("type", request.type)
+            request.source.addonTransportUrl?.let { put("addonTransportUrl", it) }
+            request.source.catalogType?.let { put("catalogType", it) }
+        }
+        NSNotificationCenter.defaultCenter.postNotificationName(
+            aName = "FluxaAppleDetailRequested",
+            `object` = payload.toString(),
+            userInfo = null
+        )
+    }
 
-    override suspend fun toggleWatchlist(id: String, type: String) = Unit
+    override suspend fun toggleWatchlist(id: String, type: String) {
+        val title = state.value.content?.title.orEmpty()
+        val payload = buildJsonObject {
+            put("id", id)
+            put("type", type)
+            put("title", title)
+        }
+        NSNotificationCenter.defaultCenter.postNotificationName(
+            aName = "FluxaAppleToggleWatchlistRequested",
+            `object` = payload.toString(),
+            userInfo = null
+        )
+    }
+
+    override suspend fun selectSeason(season: Int) {
+        postDetailAction("FluxaAppleDetailSeasonSelected") { put("season", season) }
+    }
+
+    override suspend fun selectEpisode(episodeId: String) {
+        postDetailAction("FluxaAppleDetailEpisodeSelected") { put("episodeId", episodeId) }
+    }
+
+    override suspend fun selectAddonFilter(addonName: String?) {
+        postDetailAction("FluxaAppleDetailAddonFilterSelected") { addonName?.let { put("addonName", it) } }
+    }
+
+    override suspend fun downloadEpisode(episodeId: String) {
+        postDetailAction("FluxaAppleDetailDownloadEpisodeRequested") { put("episodeId", episodeId) }
+    }
+
+    override suspend fun downloadSeason(season: Int) {
+        postDetailAction("FluxaAppleDetailDownloadSeasonRequested") { put("season", season) }
+    }
+
+    private fun postDetailAction(name: String, extra: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit) {
+        val content = state.value.content
+        val payload = buildJsonObject {
+            put("id", content?.id.orEmpty())
+            put("type", content?.type.orEmpty())
+            extra()
+        }
+        NSNotificationCenter.defaultCenter.postNotificationName(
+            aName = name,
+            `object` = payload.toString(),
+            userInfo = null
+        )
+    }
 
     fun updateJson(detailJson: String) {
         state.value = runCatching {
@@ -52,6 +114,7 @@ private fun Map<String, JsonElement>.toDetailUiModel(): DetailUiModel? {
         logoUrl = string("logoUrl"),
         releaseLabel = string("releaseLabel").orEmpty(),
         ratingLabel = string("ratingLabel").orEmpty(),
+        runtimeLabel = string("runtimeLabel"),
         isInWatchlist = boolean("isInWatchlist"),
         relatedItems = get("relatedItems")?.jsonArray.orEmpty().mapNotNull { it.jsonObject.toCatalogItem() }
     )
