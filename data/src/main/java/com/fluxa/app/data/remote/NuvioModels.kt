@@ -65,9 +65,11 @@ data class NuvioWatchedItem(
 )
 
 data class NuvioCollectionFolderSource(
+    val provider: String? = null,
     @SerializedName("addonId") val addonId: String?,
     @SerializedName("catalogId") val catalogId: String?,
-    val type: String?
+    val type: String?,
+    val genre: String? = null
 )
 
 data class NuvioCollectionFolder(
@@ -76,10 +78,12 @@ data class NuvioCollectionFolder(
     @SerializedName("coverImageUrl") val coverImageUrl: String?,
     @SerializedName("coverEmoji") val coverEmoji: String?,
     @SerializedName("focusGifUrl") val focusGifUrl: String?,
+    @SerializedName("focusGifEnabled") val focusGifEnabled: Boolean? = null,
     @SerializedName("titleLogoUrl") val titleLogoUrl: String?,
+    @SerializedName("heroBackdropUrl") val heroBackdropUrl: String? = null,
     @SerializedName("tileShape") val tileShape: String?,
     @SerializedName("hideTitle") val hideTitle: Boolean?,
-    @SerializedName("catalogSources") val catalogSources: List<NuvioCollectionFolderSource>?
+    @SerializedName(value = "catalogSources", alternate = ["sources"]) val catalogSources: List<NuvioCollectionFolderSource>?
 )
 
 data class NuvioCollection(
@@ -87,8 +91,10 @@ data class NuvioCollection(
     val title: String?,
     @SerializedName("backdropImageUrl") val backdropImageUrl: String?,
     @SerializedName("pinToTop") val pinToTop: Boolean?,
+    @SerializedName("showOnHome") val showOnHome: Boolean? = null,
     @SerializedName("viewMode") val viewMode: String?,
     @SerializedName("showAllTab") val showAllTab: Boolean?,
+    @SerializedName("focusGlowEnabled") val focusGlowEnabled: Boolean? = null,
     val folders: List<NuvioCollectionFolder>?
 )
 

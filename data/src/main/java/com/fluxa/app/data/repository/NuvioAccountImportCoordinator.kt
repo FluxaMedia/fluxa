@@ -92,7 +92,7 @@ class NuvioAccountImportCoordinator(
             nuvioEmail = session.user?.email ?: baseProfile.email
         )
         val token = "Bearer ${session.accessToken}"
-        profileManager.saveProfile(connectedProfile)
+        profileManager.saveProfileReplacingLocalAddons(connectedProfile)
         profileManager.setLastActiveProfile(connectedProfile)
         watchlistManager.setActiveProfile(baseProfile.id)
 
@@ -100,35 +100,49 @@ class NuvioAccountImportCoordinator(
         val profiles = importOrDefault(NuvioImportStep.PROFILE, emptyList()) {
             nuvioService.pullProfiles(token).requireBody()
         }
+        val avatars = importOrDefault(NuvioImportStep.PROFILE, emptyList()) {
+            nuvioService.listAvatars().requireBody()
+        }
         val primary = profiles.firstOrNull { it.profileIndex == connectedProfile.nuvioProfileIndex }
             ?: profiles.minByOrNull { it.profileIndex }
         val profileIndex = primary?.profileIndex ?: connectedProfile.nuvioProfileIndex ?: 1
 
-        if (primary != null) {
-            val avatarUrl = primary.avatarUrl ?: primary.avatarId?.let { avatarId ->
-                importOrDefault(NuvioImportStep.PROFILE, emptyList()) {
-                    nuvioService.listAvatars().requireBody()
-                }
-                    ?.firstOrNull { it.id == avatarId }
-                    ?.storagePath
-                    ?.let { "${supabaseUrl}storage/v1/object/public/avatars/$it" }
+        val existingProfiles = profileManager.getProfiles()
+        val importedProfiles = profiles.map { remote ->
+            val existing = existingProfiles.firstOrNull {
+                it.nuvioUserId == connectedProfile.nuvioUserId && it.nuvioProfileIndex == remote.profileIndex
             }
-            profile = profile.copy(
-                profileName = primary.name?.takeIf { it.isNotBlank() } ?: profile.profileName,
-                avatarUrl = avatarUrl ?: profile.avatarUrl,
-                nuvioProfileIndex = profileIndex
+            val avatarUrl = remote.avatarUrl ?: remote.avatarId
+                ?.let { avatarId -> avatars.firstOrNull { it.id == avatarId }?.storagePath }
+                ?.let { "$supabaseUrl/storage/v1/object/public/avatars/$it" }
+            (existing ?: connectedProfile.copy(id = stableNuvioProfileId(connectedProfile, remote.profileIndex))).copy(
+                email = connectedProfile.email,
+                profileName = remote.name?.takeIf { it.isNotBlank() } ?: existing?.profileName,
+                avatarUrl = avatarUrl ?: existing?.avatarUrl,
+                nuvioAccessToken = connectedProfile.nuvioAccessToken,
+                nuvioRefreshToken = connectedProfile.nuvioRefreshToken,
+                nuvioTokenExpiresAt = connectedProfile.nuvioTokenExpiresAt,
+                nuvioUserId = connectedProfile.nuvioUserId,
+                nuvioEmail = connectedProfile.nuvioEmail,
+                nuvioProfileIndex = remote.profileIndex
             )
-        } else {
-            profile = profile.copy(nuvioProfileIndex = profileIndex)
         }
+        importedProfiles.forEach(profileManager::saveProfileReplacingLocalAddons)
+        profile = importedProfiles.firstOrNull { it.nuvioProfileIndex == profileIndex }
+            ?: connectedProfile.copy(nuvioProfileIndex = profileIndex)
+        profileManager.setLastActiveProfile(profile)
+        watchlistManager.setActiveProfile(profile.id)
         onStep(NuvioImportStep.PROFILE)
 
         val addons = importOrDefault(NuvioImportStep.ADDONS, emptyList()) {
             nuvioService.pullAddons(token, profileId = "eq.$profileIndex").requireBody()
         }
         if (addons.isNotEmpty()) {
-            val enabledUrls = addons.filter { it.enabled }.sortedBy { it.sortOrder }.map { it.url }
-            profile = profile.copy(localAddons = (profile.localAddons.orEmpty() + enabledUrls).distinct())
+            val orderedAddons = addons.sortedBy { it.sortOrder }
+            profile = profile.copy(
+                localAddons = orderedAddons.map { it.url }.distinct(),
+                disabledLocalAddons = orderedAddons.filterNot { it.enabled }.map { it.url }.distinct()
+            )
         }
         onStep(NuvioImportStep.ADDONS)
 
@@ -158,6 +172,7 @@ class NuvioAccountImportCoordinator(
         val watchProgress = importOrDefault(NuvioImportStep.PROGRESS, emptyList()) {
             nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 200)).requireBody()
         }
+        val importedProgressVideoIds = mutableMapOf<String, String>()
         for (entry in watchProgress) {
             val meta = metaById[entry.contentId] ?: run {
                 val detail = runCatching {
@@ -187,6 +202,7 @@ class NuvioAccountImportCoordinator(
                 duration = entry.duration,
                 lastVideoId = videoId
             )
+            importedProgressVideoIds[entry.contentId] = videoId
         }
         onStep(NuvioImportStep.PROGRESS)
 
@@ -204,6 +220,9 @@ class NuvioAccountImportCoordinator(
         }
         for ((seriesId, videoIds) in watchedBySeries) {
             watchlistManager.markEpisodesWatched(seriesId, videoIds)
+            if (importedProgressVideoIds[seriesId]?.let(videoIds::contains) == true) {
+                watchlistManager.clearPlaybackProgress(seriesId)
+            }
         }
         onStep(NuvioImportStep.HISTORY)
 
@@ -215,10 +234,11 @@ class NuvioAccountImportCoordinator(
                 id = collection.id ?: java.util.UUID.randomUUID().toString(),
                 title = collection.title ?: "",
                 imageUrl = collection.backdropImageUrl,
-                showOnHome = collection.pinToTop,
+                showOnHome = collection.showOnHome ?: collection.pinToTop,
                 pinToTop = collection.pinToTop,
                 viewMode = collection.viewMode,
                 showAllTab = collection.showAllTab,
+                focusGlowEnabled = collection.focusGlowEnabled ?: true,
                 folders = collection.folders?.map { folder ->
                     LibraryUserCollectionFolder(
                         id = folder.id ?: java.util.UUID.randomUUID().toString(),
@@ -226,8 +246,10 @@ class NuvioAccountImportCoordinator(
                         coverImageUrl = folder.coverImageUrl,
                         coverEmoji = folder.coverEmoji,
                         focusGifUrl = folder.focusGifUrl,
+                        focusGifEnabled = folder.focusGifEnabled ?: true,
                         titleLogoUrl = folder.titleLogoUrl,
-                        shape = folder.tileShape,
+                        heroBackdropUrl = folder.heroBackdropUrl,
+                        shape = folder.tileShape.toNuvioFolderShape(),
                         hideTitle = folder.hideTitle,
                         catalogSources = folder.catalogSources?.map { source ->
                             LibraryCatalogSource(
@@ -235,7 +257,7 @@ class NuvioAccountImportCoordinator(
                                 catalogId = source.catalogId ?: "",
                                 type = source.type ?: "movie"
                             )
-                        }
+                        }?.filter { it.catalogId.isNotBlank() }
                     )
                 }
             )
@@ -246,7 +268,7 @@ class NuvioAccountImportCoordinator(
         onStep(NuvioImportStep.COLLECTIONS)
 
         profile = profile.copy(nuvioLastSyncAt = System.currentTimeMillis())
-        profileManager.saveProfile(profile)
+        profileManager.saveProfileReplacingLocalAddons(profile)
         profileManager.setLastActiveProfile(profile)
         return profile
     }
@@ -261,6 +283,17 @@ class NuvioAccountImportCoordinator(
         Log.w("NuvioImport", "Import step $step failed; continuing without it", error)
         fallback
     }
+}
+
+private fun String?.toNuvioFolderShape(): String = when (this?.trim()?.lowercase()) {
+    "landscape", "wide" -> "wide"
+    "square" -> "square"
+    else -> "poster"
+}
+
+private fun stableNuvioProfileId(profile: UserProfile, profileIndex: Int): String {
+    val identity = profile.nuvioUserId ?: profile.nuvioEmail ?: profile.email
+    return java.util.UUID.nameUUIDFromBytes("nuvio:$identity:$profileIndex".toByteArray()).toString()
 }
 
 private fun <T> Response<T>.requireBody(): T {
