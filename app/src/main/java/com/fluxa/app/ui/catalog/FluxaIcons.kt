@@ -77,6 +77,7 @@ object FluxaIcons {
     val Memory: ImageVector = Icons.Filled.Memory
     val MenuBook: ImageVector = Icons.AutoMirrored.Filled.MenuBook
     val Movie: ImageVector = Icons.Filled.Movie
+    val Notifications: ImageVector = Icons.Filled.Notifications
     @Suppress("DEPRECATION")
     val OpenInNew: ImageVector = Icons.Filled.OpenInNew
     val Palette: ImageVector = Icons.Filled.Palette

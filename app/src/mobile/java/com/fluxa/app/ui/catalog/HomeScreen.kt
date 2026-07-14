@@ -7,26 +7,44 @@
 package com.fluxa.app.ui.catalog
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -35,6 +53,7 @@ fun HomeScreen(
     onPlayDirect: (Meta) -> Unit,
     onWatchlistClick: () -> Unit,
     onProfileClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
     onSearchClick: () -> Unit,
     onExploreClick: (String, String?) -> Unit,
     onCategoryClick: (HomeCategory) -> Unit,
@@ -78,6 +97,12 @@ fun HomeScreen(
         initialFirstVisibleItemScrollOffset = viewModel.savedHomeScrollOffset,
         prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 4) }
     )
+    val scope = rememberCoroutineScope()
+    val hasScrolledPastHero by remember(homeListState) {
+        derivedStateOf {
+            homeListState.firstVisibleItemIndex > 0 || homeListState.firstVisibleItemScrollOffset > 24
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -171,6 +196,16 @@ fun HomeScreen(
             }
         }
 
+        MobileHomeTopBar(
+            lang = profileLanguage,
+            elevated = hasScrolledPastHero,
+            onHomeClick = { scope.launch { homeListState.animateScrollToItem(0) } },
+            onSeriesClick = { onExploreClick("series", null) },
+            onMoviesClick = { onExploreClick("movie", null) },
+            onNotificationsClick = onNotificationsClick,
+            onProfileClick = onProfileClick
+        )
+
         progressActionMeta?.let { meta ->
             ContinueWatchingActionsSheet(
                 meta = meta,
@@ -187,6 +222,60 @@ fun HomeScreen(
             )
         }
     }
+}
+
+@Composable
+private fun MobileHomeTopBar(
+    lang: String,
+    elevated: Boolean,
+    onHomeClick: () -> Unit,
+    onSeriesClick: () -> Unit,
+    onMoviesClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    onProfileClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .zIndex(1f)
+            .background(if (elevated) Color.Black else Color.Black.copy(alpha = 0.18f))
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        MobileHomeTopBarLabel(AppStrings.t(lang, "nav.home"), onHomeClick)
+        MobileHomeTopBarLabel(AppStrings.t(lang, "auto.series"), onSeriesClick)
+        MobileHomeTopBarLabel(AppStrings.t(lang, "auto.movies"), onMoviesClick)
+        androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+        IconButton(onClick = onNotificationsClick) {
+            Icon(
+                imageVector = FluxaIcons.Notifications,
+                contentDescription = AppStrings.t(lang, "auto.notifications"),
+                tint = Color.White
+            )
+        }
+        IconButton(onClick = onProfileClick) {
+            Icon(
+                imageVector = FluxaIcons.AccountCircle,
+                contentDescription = AppStrings.t(lang, "nav.settings"),
+                tint = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun MobileHomeTopBarLabel(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        color = Color.White,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 12.dp)
+    )
 }
 
 @Immutable

@@ -72,6 +72,7 @@ internal fun HomeRoute(
         },
         onWatchlistClick = { navigator.navigateTo(Screen.Watchlist) },
         onProfileClick = { navigator.navigateTo(Screen.Settings()) },
+        onNotificationsClick = { navigator.navigateTo(Screen.Settings()) },
         onSearchClick = { navigator.navigateTo(Screen.Search) },
         onExploreClick = { type, genre -> navigator.navigateTo(Screen.Explore(initialType = type, initialGenre = genre)) },
         onCategoryClick = { category -> navigator.navigateTo(Screen.CategoryResults(category.id, category.name)) },
