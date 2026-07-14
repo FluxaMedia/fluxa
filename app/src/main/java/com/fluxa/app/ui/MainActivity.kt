@@ -87,6 +87,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var stremioRepository: StremioRepository
     @Inject lateinit var authService: StremioService
     @Inject lateinit var nuvioImportCoordinator: com.fluxa.app.data.repository.NuvioAccountImportCoordinator
+    @Inject lateinit var nuvioSyncCoordinator: com.fluxa.app.data.repository.NuvioSyncCoordinator
 
     private val searchIntentFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val traktAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
@@ -479,6 +480,7 @@ class MainActivity : FragmentActivity() {
                             onActiveProfileChanged = { activeProfile = it },
                             navigator = navigator,
                             profileManager = profileManager,
+                            nuvioSyncCoordinator = nuvioSyncCoordinator,
                             homeViewModel = homeViewModel,
                             previewPlayer = previewPlayer,
                             mainPlayer = mainPlayer,

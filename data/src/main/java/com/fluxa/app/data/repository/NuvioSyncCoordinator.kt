@@ -2,6 +2,7 @@ package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.NuvioRefreshRequest
 import com.fluxa.app.data.remote.NuvioService
@@ -13,6 +14,19 @@ class NuvioSyncCoordinator @Inject constructor(
     private val nuvioService: NuvioService,
     private val profileManager: ProfileManager
 ) {
+    suspend fun pushCollections(profile: UserProfile) {
+        val current = freshProfile(profile) ?: return
+        val token = current.nuvioAccessToken ?: return
+        val index = current.nuvioProfileIndex ?: return
+        nuvioService.pushCollections(
+            "Bearer $token",
+            mapOf(
+                "p_profile_id" to index,
+                "p_collections_json" to current.safeLibraryCollections.map(LibraryUserCollection::toNuvioCollection)
+            )
+        ).requireSuccess()
+        profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
+    }
     suspend fun pushWatchlist(profile: UserProfile, meta: Meta, isInWatchlist: Boolean) {
         val current = freshProfile(profile) ?: return
         val token = current.nuvioAccessToken ?: return
@@ -106,6 +120,34 @@ class NuvioSyncCoordinator @Inject constructor(
         ).also(profileManager::saveProfile)
     }
 }
+
+private fun LibraryUserCollection.toNuvioCollection(): Map<String, Any?> = mapOf(
+    "id" to id,
+    "title" to title,
+    "backdropImageUrl" to imageUrl,
+    "showOnHome" to showOnHome,
+    "pinToTop" to pinToTop,
+    "viewMode" to viewMode,
+    "showAllTab" to showAllTab,
+    "focusGlowEnabled" to focusGlowEnabled,
+    "folders" to folders.orEmpty().map { folder ->
+        mapOf(
+            "id" to folder.id,
+            "title" to folder.title,
+            "coverImageUrl" to (folder.coverImageUrl ?: folder.imageUrl),
+            "coverEmoji" to folder.coverEmoji,
+            "focusGifUrl" to folder.focusGifUrl,
+            "focusGifEnabled" to folder.focusGifEnabled,
+            "titleLogoUrl" to folder.titleLogoUrl,
+            "heroBackdropUrl" to folder.heroBackdropUrl,
+            "tileShape" to folder.shape,
+            "hideTitle" to folder.hideTitle,
+            "catalogSources" to folder.catalogSources.orEmpty().map { source ->
+                mapOf("provider" to "addon", "addonId" to source.addonId, "catalogId" to source.catalogId, "type" to source.type)
+            }
+        )
+    }
+)
 
 private fun Meta.toNuvioLibraryItem(): Map<String, Any?> = mapOf(
     "content_id" to id,

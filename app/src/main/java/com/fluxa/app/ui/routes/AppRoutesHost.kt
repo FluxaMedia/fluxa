@@ -81,6 +81,7 @@ internal fun AppRoutesHost(
     onActiveProfileChanged: (UserProfile?) -> Unit,
     navigator: AppNavigator,
     profileManager: ProfileManager,
+    nuvioSyncCoordinator: com.fluxa.app.data.repository.NuvioSyncCoordinator,
     homeViewModel: HomeViewModel,
     previewPlayer: ExoPlayer,
     mainPlayer: ExoPlayer,
@@ -603,9 +604,15 @@ internal fun AppRoutesHost(
                             }
                         },
                         onUpdateProfile = {
+                            val collectionsChanged = activeProfile?.safeLibraryCollections != it.safeLibraryCollections
                             onActiveProfileChanged(it)
                             profileManager.saveProfile(it)
                             homeViewModel.applyUpdatedProfile(it)
+                            if (collectionsChanged && !it.nuvioAccessToken.isNullOrBlank()) {
+                                coroutineScope.launch {
+                                    runCatching { nuvioSyncCoordinator.pushCollections(it) }
+                                }
+                            }
                         },
                         tvNavActions = tvNavActions
                     )
