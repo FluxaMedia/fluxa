@@ -170,20 +170,11 @@ internal fun MobileBottomNav(
     val selectedColor = Color(activeProfile?.safeAccentColorArgb ?: Color.White.toArgb())
     val navBackground = if (activeProfile?.safeAmoledMode == true) Color.Black else Color(0xFF0B0C10)
     val inactiveColor = Color(0xFFA0A5AD)
-    val quickProfiles = remember(profiles, activeProfile?.id) {
-        val activeId = activeProfile?.id
-        profiles.sortedWith(
-            compareByDescending<UserProfile> { it.id == activeId }
-                .thenBy { it.displayName.lowercase() }
-        )
-    }
-    var showQuickProfiles by remember { mutableStateOf(false) }
     val items = listOf(
         MobileBottomNavItem(MobileNavDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHomeOutline, AppStrings.t(lang, "nav.home")),
         MobileBottomNavItem(MobileNavDestination.Discover, FluxaIcons.BottomDiscover, FluxaIcons.BottomDiscoverOutline, AppStrings.t(lang, "nav.discover")),
         MobileBottomNavItem(MobileNavDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendarOutline, AppStrings.t(lang, "nav.calendar")),
-        MobileBottomNavItem(MobileNavDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline, AppStrings.t(lang, "nav.library")),
-        MobileBottomNavItem(MobileNavDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline, AppStrings.t(lang, "nav.settings"))
+        MobileBottomNavItem(MobileNavDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline, AppStrings.t(lang, "nav.library"))
     )
     Row(
         modifier = Modifier
@@ -208,104 +199,16 @@ internal fun MobileBottomNav(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
-                    .combinedClickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { onNavigate(item.destination) },
-                        onLongClick = {
-                            if (item.destination == MobileNavDestination.Settings && quickProfiles.isNotEmpty()) {
-                                showQuickProfiles = true
-                            }
-                        }
-                    )
+                    .clickable { onNavigate(item.destination) }
                     .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                if (item.destination == MobileNavDestination.Settings) {
-                    Box(
-                        modifier = Modifier.combinedClickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { onNavigate(item.destination) },
-                            onLongClick = {
-                                if (quickProfiles.isNotEmpty()) showQuickProfiles = true
-                            }
-                        ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        MobileBottomProfileAvatar(
-                            profile = activeProfile,
-                            selected = isSelected,
-                            selectedColor = selectedColor
-                        )
-                        val menuProfileCount = quickProfiles.size
-                        val menuWidth = (16 + menuProfileCount * 40 + (menuProfileCount - 1).coerceAtLeast(0) * 8)
-                            .coerceAtLeast(112)
-                        DropdownMenu(
-                            expanded = showQuickProfiles,
-                            onDismissRequest = { showQuickProfiles = false },
-                            offset = DpOffset(x = (-((menuWidth - 32) / 2)).dp, y = (-8).dp),
-                            containerColor = Color(0xFF171A21)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .width(menuWidth.dp)
-                                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                quickProfiles.forEach { profile ->
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .clickable {
-                                                showQuickProfiles = false
-                                                if (profile.id != activeProfile?.id) {
-                                                    onQuickProfileSelected(profile)
-                                                }
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        MobileBottomProfileAvatar(
-                                            profile = profile,
-                                            selected = profile.id == activeProfile?.id,
-                                            selectedColor = selectedColor
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(width = 52.dp, height = 32.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) selectedColor.copy(alpha = 0.16f) else Color.Transparent),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            if (isSelected) item.selectedIcon else item.icon,
-                            null,
-                            tint = if (isSelected) selectedColor else inactiveColor,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-                }
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    text = if (item.destination == MobileNavDestination.Settings) {
-                        activeProfile?.displayName?.takeIf { it.isNotBlank() } ?: item.label
-                    } else {
-                        item.label
-                    },
-                    color = if (isSelected) selectedColor else inactiveColor,
-                    fontSize = 10.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                Icon(
+                    if (isSelected) item.selectedIcon else item.icon,
+                    item.label,
+                    tint = if (isSelected) selectedColor else inactiveColor,
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }

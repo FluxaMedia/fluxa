@@ -30,8 +30,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
@@ -362,7 +360,7 @@ private fun FluxaHomeOverlayBar(
     onNotificationsRequested: () -> Unit,
     onAvatarClick: () -> Unit
 ) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(
@@ -370,14 +368,31 @@ private fun FluxaHomeOverlayBar(
                     colorStops = arrayOf(0f to Color.Black.copy(alpha = 0.55f), 1f to Color.Transparent)
                 )
             )
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            FluxaHomeFilter.entries.forEach { filter ->
+                val selected = filter.value == activeFilter || (filter == FluxaHomeFilter.All && activeFilter.isBlank())
+                Column(modifier = Modifier.clickable { onFilterSelected(filter.value) }) {
+                    Text(
+                        text = AppStrings.t(language, filter.titleKey),
+                        color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 15.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .height(2.dp)
+                            .width(if (selected) 20.dp else 0.dp)
+                            .background(if (selected) Color.White else Color.Transparent)
+                    )
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = Icons.Filled.Notifications,
                 contentDescription = AppStrings.t(language, "auto.notifications"),
@@ -399,29 +414,6 @@ private fun FluxaHomeOverlayBar(
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
-                    )
-                }
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            FluxaHomeFilter.entries.forEach { filter ->
-                val selected = filter.value == activeFilter || (filter == FluxaHomeFilter.All && activeFilter.isBlank())
-                Column(modifier = Modifier.clickable { onFilterSelected(filter.value) }) {
-                    Text(
-                        text = AppStrings.t(language, filter.titleKey),
-                        color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 15.sp
-                    )
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 8.dp, bottom = 12.dp)
-                            .height(2.dp)
-                            .width(if (selected) 20.dp else 0.dp)
-                            .background(if (selected) Color.White else Color.Transparent)
                     )
                 }
             }
@@ -686,20 +678,8 @@ private fun FluxaHomeHeroSlide(
             }
             if (badgeParts.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    badgeParts.forEachIndexed { index, part ->
-                        if (index == 0) {
-                            Text(
-                                text = part,
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier
-                                    .background(FluxaColors.accent, RoundedCornerShape(3.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        } else {
-                            Text(text = part, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
-                        }
+                    badgeParts.forEach { part ->
+                        Text(text = part, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
                     }
                 }
             }
@@ -713,13 +693,6 @@ private fun FluxaHomeHeroSlide(
                     overflow = TextOverflow.Ellipsis,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-            }
-            Button(
-                onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                modifier = Modifier.padding(top = 4.dp)
-            ) {
-                Text(text = AppStrings.t(language, "common.play"), color = Color.Black)
             }
         }
     }
