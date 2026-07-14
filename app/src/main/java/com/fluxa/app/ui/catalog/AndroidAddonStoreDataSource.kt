@@ -45,7 +45,8 @@ class AndroidAddonStoreDataSource(
         val openRepoPlugins: List<PluginInfo> = emptyList(),
         val isLoadingRepoPlugins: Boolean = false,
         val installingPluginKeys: Set<String> = emptySet(),
-        val repoDialogError: String? = null
+        val repoDialogError: String? = null,
+        val profileRevision: Long = 0L
     )
 
     private val extras = MutableStateFlow(Extras())
@@ -186,6 +187,7 @@ class AndroidAddonStoreDataSource(
         when (detectInputType(trimmed)) {
             AddonStoreInputType.STREMIO_MANIFEST -> {
                 installLocalAddonForProfile(activeProfile(), trimmed, profileManager, homeViewModel, onProfileChanged)
+                refreshProfileState()
                 extras.update { it.copy(inputText = "", detectedType = AddonStoreInputType.UNKNOWN, inputError = null) }
             }
             AddonStoreInputType.CLOUDSTREAM_REPO -> {
@@ -210,14 +212,21 @@ class AndroidAddonStoreDataSource(
 
     override suspend fun toggleAddon(url: String, enabled: Boolean) {
         setLocalAddonEnabledForProfile(activeProfile(), url, enabled, profileManager, homeViewModel, onProfileChanged)
+        refreshProfileState()
     }
 
     override suspend fun removeAddon(url: String) {
         removeLocalAddonForProfile(activeProfile(), url, profileManager, homeViewModel, onProfileChanged)
+        refreshProfileState()
     }
 
     override suspend fun moveAddon(url: String, direction: Int) {
         moveLocalAddonForProfile(activeProfile(), url, direction, profileManager, homeViewModel, onProfileChanged)
+        refreshProfileState()
+    }
+
+    private fun refreshProfileState() {
+        extras.update { it.copy(profileRevision = it.profileRevision + 1) }
     }
 
     override suspend fun refreshAddon(url: String) {
