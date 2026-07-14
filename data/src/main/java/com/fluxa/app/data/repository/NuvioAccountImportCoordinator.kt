@@ -235,7 +235,7 @@ class NuvioAccountImportCoordinator(
                 id = collection.id ?: java.util.UUID.randomUUID().toString(),
                 title = collection.title ?: "",
                 imageUrl = collection.backdropImageUrl,
-                showOnHome = collection.showOnHome ?: collection.pinToTop,
+                showOnHome = collection.showOnHome ?: true,
                 pinToTop = collection.pinToTop,
                 viewMode = collection.viewMode,
                 showAllTab = collection.showAllTab,

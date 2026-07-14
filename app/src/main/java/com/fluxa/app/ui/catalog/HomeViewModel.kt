@@ -926,11 +926,11 @@ class HomeViewModel @Inject constructor(
             try {
                 val catalogSources = category.catalogSources.orEmpty()
                 val remoteSources = category.remoteSources.orEmpty()
-                if (catalogSources.isNotEmpty()) {
+                if (catalogSources.isNotEmpty() || remoteSources.isNotEmpty()) {
                     val nextSkip = if (category.items.isEmpty()) 0 else category.skip + 20
                     val lang = currentActiveProfile?.safeLanguage ?: "en"
                     val semaphore = Semaphore(permits = 4)
-                    val newItems = coroutineScope {
+                    val addonItems = coroutineScope {
                         catalogSources.map { source ->
                             async(Dispatchers.IO) {
                                 semaphore.withPermit {
@@ -950,6 +950,28 @@ class HomeViewModel @Inject constructor(
                             }
                         }.awaitAll().flatten()
                     }
+                    val remoteItems = if (remoteSources.isEmpty()) {
+                        emptyList()
+                    } else {
+                        val result = dispatchHeadless(
+                            mapOf(
+                                "type" to "catalogPageRequested",
+                                "categoryId" to categoryId,
+                                "transportUrl" to null,
+                                "contentType" to category.type,
+                                "catalogId" to category.catalogId,
+                                "skip" to nextSkip,
+                                "genre" to null,
+                                "search" to null,
+                                "remoteSource" to remoteSources,
+                                "profile" to currentActiveProfile
+                            )
+                        )
+                        val home = result.state["home"] as? Map<*, *> ?: emptyMap<Any, Any>()
+                        val paging = home["paging"] as? Map<*, *> ?: emptyMap<Any, Any>()
+                        fromStateList<Meta>(paging["items"], metaListType)
+                    }
+                    val newItems = addonItems + remoteItems
                     updateHomeCategory(categoryId) { existing ->
                         existing.copy(
                             items = if (newItems.isEmpty()) existing.items else (existing.items + newItems).distinctBy { "${it.type}:${it.id}" },
