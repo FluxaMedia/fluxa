@@ -12,13 +12,15 @@ struct FluxaIosApp: App {
         let runtime = requireFluxaAppleHeadlessRuntime()
         coreVersion = FluxaRustCoreRuntime.version()
         headlessRuntime = runtime
-        appRuntime = FluxaAppleAppRuntime(runtime: runtime)
-        catalogStartup = FluxaAppleCatalogStartup(coordinator: appRuntime.coordinator)
-        let detailStartup = FluxaAppleDetailStartup(coordinator: appRuntime.coordinator)
-        let searchStartup = FluxaAppleSearchStartup(coordinator: appRuntime.coordinator)
-        let discoverStartup = FluxaAppleDiscoverStartup(coordinator: appRuntime.coordinator)
-        let calendarStartup = FluxaAppleCalendarStartup(coordinator: appRuntime.coordinator)
-        let libraryStartup = FluxaAppleLibraryStartup(coordinator: appRuntime.coordinator)
+        let runtimeApp = FluxaAppleAppRuntime(runtime: runtime)
+        appRuntime = runtimeApp
+        let catalogStartup = FluxaAppleCatalogStartup(coordinator: runtimeApp.coordinator)
+        self.catalogStartup = catalogStartup
+        let detailStartup = FluxaAppleDetailStartup(coordinator: runtimeApp.coordinator)
+        let searchStartup = FluxaAppleSearchStartup(coordinator: runtimeApp.coordinator)
+        let discoverStartup = FluxaAppleDiscoverStartup(coordinator: runtimeApp.coordinator)
+        let calendarStartup = FluxaAppleCalendarStartup(coordinator: runtimeApp.coordinator)
+        let libraryStartup = FluxaAppleLibraryStartup(coordinator: runtimeApp.coordinator)
         let authStartup = FluxaAppleAuthStartup()
         FluxaApple.shared.setCatalogHomeRefreshHandler {
             Task { @MainActor in
