@@ -579,7 +579,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         return ok(effect, value)
     }
 
-    private suspend fun readHomeBootstrap(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
+    private suspend fun readHomeBootstrap(effect: NativeHeadlessEffect): HeadlessEffectCompletion = coroutineScope {
         val profile = effect.payload.profile()
         profile?.id?.let(watchlistManager::setActiveProfile)
         val addons = addonRepository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
@@ -590,29 +590,34 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             val selectedKeys = effectiveHomeMetadataFeedSelection(profile?.homeFeedToggles, availableKeys)
             feeds.filter { isMetadataFeedEnabled(selectedKeys, it.key) }
         }
-        val categories = metadataFeeds.mapNotNull { feed ->
-            val items = runCatching {
-                addonRepository.getAddonCatalog(
-                    transportUrl = feed.transportUrl,
-                    type = feed.type,
-                    id = feed.id,
-                    genre = feed.genre
-                )
-            }.getOrDefault(emptyList())
-            if (items.isEmpty()) null else {
-                HomeCategory(
-                    name = feed.label,
-                    semanticName = feed.label,
-                    items = items,
-                    id = feed.key,
-                    type = feed.type,
-                    catalogId = feed.id,
-                    addonTransportUrl = feed.transportUrl,
-                    addonGenre = feed.genre
-                )
+        val semaphore = Semaphore(8)
+        val categories = metadataFeeds.map { feed ->
+            async {
+                val items = semaphore.withPermit {
+                    runCatching {
+                        addonRepository.getAddonCatalog(
+                            transportUrl = feed.transportUrl,
+                            type = feed.type,
+                            id = feed.id,
+                            genre = feed.genre
+                        )
+                    }.getOrDefault(emptyList())
+                }
+                if (items.isEmpty()) null else {
+                    HomeCategory(
+                        name = feed.label,
+                        semanticName = feed.label,
+                        items = items,
+                        id = feed.key,
+                        type = feed.type,
+                        catalogId = feed.id,
+                        addonTransportUrl = feed.transportUrl,
+                        addonGenre = feed.genre
+                    )
+                }
             }
-        }
-        return ok(
+        }.awaitAll().filterNotNull()
+        ok(
             effect,
             mapOf(
                 "categories" to categories,
