@@ -76,6 +76,7 @@
   "auth.error.fill_required": "Enter your email and password.",
   "auth.error.invalid_credentials": "Invalid Nuvio email or password.",
   "auth.error.network": "Network error. Try again.",
+  "auth.error.not_available_on_platform": "This sign-in method isn't available yet on this platform.",
   "auth.nuvio.import.title": "Importing your Nuvio account...",
   "auth.nuvio.import.done": "Import complete",
   "auth.nuvio.import.profile": "Profile",

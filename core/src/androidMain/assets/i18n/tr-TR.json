@@ -76,6 +76,7 @@
   "auth.error.fill_required": "E-posta ve şifrenizi girin.",
   "auth.error.invalid_credentials": "Geçersiz Nuvio e-posta veya şifresi.",
   "auth.error.network": "Ağ hatası. Tekrar deneyin.",
+  "auth.error.not_available_on_platform": "Bu oturum açma yöntemi bu platformda henüz kullanılamıyor.",
   "auth.nuvio.import.title": "Nuvio hesabınız aktarılıyor...",
   "auth.nuvio.import.done": "Aktarım tamamlandı",
   "auth.nuvio.import.profile": "Profil",

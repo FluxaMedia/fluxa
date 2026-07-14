@@ -21,15 +21,15 @@ class AppleAuthDataSource : AuthDataSource {
     override fun observeAuth(): Flow<AuthUiState> = state.asStateFlow()
 
     override suspend fun continueWithNuvio() {
-        postAction("FluxaAppleAuthContinueWithNuvioRequested") { }
+        state.value = AuthUiState(stage = AuthStage.Nuvio)
     }
 
     override suspend fun continueWithStremio() {
-        postAction("FluxaAppleAuthContinueWithStremioRequested") { }
+        state.value = AuthUiState(stage = AuthStage.Credentials, showProviderActions = false, allowSignup = false)
     }
 
     override suspend fun continueWithoutAccount() {
-        postAction("FluxaAppleAuthContinueWithoutAccountRequested") { }
+        state.value = state.value.copy(isAuthenticated = true)
     }
 
     override suspend fun backToRoot() {
