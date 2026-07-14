@@ -41,7 +41,7 @@ class DetailStore(
                     )
                 )
             }
-            DetailAction.Play -> {
+            is DetailAction.Play -> {
                 val content = state.value.content
                 val episodeId = content?.selectedEpisodeId
                 _navigation.emit(
@@ -50,7 +50,8 @@ class DetailStore(
                         contentResumeVideoId = content?.resumeVideoId,
                         contentResumeProgress = content?.resumeProgress ?: 0L,
                         episodeId = episodeId,
-                        firstStreamIfCs3 = content?.streams?.firstOrNull()
+                        firstStreamIfCs3 = content?.streams?.firstOrNull(),
+                        fromStart = action.fromStart
                     )
                 )
             }

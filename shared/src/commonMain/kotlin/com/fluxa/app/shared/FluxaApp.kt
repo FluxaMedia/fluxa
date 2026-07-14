@@ -118,6 +118,7 @@ fun FluxaApp(
     onCatalogAction: (CatalogAction) -> Unit,
     detailState: DetailUiState? = null,
     onDetailAction: (DetailAction) -> Unit = {},
+    onDetailBackRequested: () -> Unit = {},
     searchState: SearchUiState? = null,
     onSearchAction: (SearchAction) -> Unit = {},
     discoverState: DiscoverUiState? = null,
@@ -185,6 +186,7 @@ fun FluxaApp(
                     state = detailState,
                     language = state.language,
                     onAction = onDetailAction,
+                    onBack = onDetailBackRequested,
                     modifier = Modifier.weight(1f)
                 )
                 state.destination == FluxaDestination.Search && searchState != null -> SearchScreen(

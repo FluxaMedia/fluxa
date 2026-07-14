@@ -26,6 +26,7 @@ data class DetailEpisodeUiModel(
     val description: String?,
     val thumbnailUrl: String?,
     val releaseLabel: String?,
+    val runtimeLabel: String?,
     val isUpcoming: Boolean,
     val isWatched: Boolean
 )
@@ -47,6 +48,8 @@ data class DetailUiModel(
     val releaseLabel: String,
     val ratingLabel: String,
     val runtimeLabel: String?,
+    val ageRating: String? = null,
+    val castNames: List<String> = emptyList(),
     val isInWatchlist: Boolean,
     val relatedItems: List<CatalogItemUiModel>,
     val availableSeasons: List<Int> = emptyList(),
@@ -69,7 +72,7 @@ data class DetailUiState(
 )
 
 sealed interface DetailAction {
-    data object Play : DetailAction
+    data class Play(val fromStart: Boolean = false) : DetailAction
     data object ToggleWatchlist : DetailAction
     data class RelatedItemSelected(val item: CatalogItemUiModel) : DetailAction
     data class SeasonSelected(val season: Int) : DetailAction
@@ -108,10 +111,11 @@ object DetailNavigationLogic {
         contentResumeVideoId: String?,
         contentResumeProgress: Long,
         episodeId: String?,
-        firstStreamIfCs3: DetailStreamUiModel?
+        firstStreamIfCs3: DetailStreamUiModel?,
+        fromStart: Boolean = false
     ): DetailNavigationEvent {
         val targetVideoId = episodeId ?: contentResumeVideoId
-        val progress = resumeProgressFor(contentResumeVideoId, contentResumeProgress, targetVideoId)
+        val progress = if (fromStart) 0L else resumeProgressFor(contentResumeVideoId, contentResumeProgress, targetVideoId)
         val isCs3 = contentId?.startsWith("cs3:") == true || targetVideoId?.startsWith("cs3:") == true
         return if (isCs3 && firstStreamIfCs3 != null) {
             DetailNavigationEvent.PlayStream(firstStreamIfCs3, episodeId, progress)

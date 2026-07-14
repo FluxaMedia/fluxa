@@ -28,6 +28,10 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
         uiState = uiState.copy(selectedDetail = request)
     }
 
+    fun clearDetail() {
+        uiState = uiState.copy(selectedDetail = null)
+    }
+
     fun beginProfileEdit(target: ProfileEditTarget?) {
         uiState = uiState.copy(editingProfile = target)
     }

@@ -48,6 +48,8 @@ class AndroidDetailDataSource(
                         releaseLabel = detail.releaseInfo.orEmpty(),
                         ratingLabel = detail.imdbRating.orEmpty(),
                         runtimeLabel = detail.runtime,
+                        ageRating = detail.ageRating,
+                        castNames = detail.cast.orEmpty().mapNotNull { it.name.takeIf { name -> name.isNotBlank() } },
                         isInWatchlist = state.isInWatchlist,
                         relatedItems = state.similarItems.toCatalogItems(activeProfile()),
                         availableSeasons = availableSeasons,
@@ -125,6 +127,7 @@ private fun Video.toUiModel(watchedIds: Set<String>): DetailEpisodeUiModel = Det
     description = overview,
     thumbnailUrl = thumbnail,
     releaseLabel = released,
+    runtimeLabel = episodeRuntime?.takeIf { it > 0 }?.let { "${it}m" },
     isUpcoming = detailIsUpcoming(released),
     isWatched = id in watchedIds
 )

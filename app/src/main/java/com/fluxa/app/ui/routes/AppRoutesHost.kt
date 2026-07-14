@@ -227,6 +227,7 @@ internal fun AppRoutesHost(
                     }
                 }
             },
+            onDetailBackRequested = { if (mobileDetailScreen != null) navigateBackSafely() },
             showNavigationBar = false,
             onPlayRequested = onSharedPlayRequested,
             onOpenUrlRequested = { url ->

@@ -64,6 +64,7 @@ fun FluxaAppHost(
     destination: FluxaDestination? = null,
     detailRequest: DetailRequestUiModel? = null,
     onDetailNavigationEvent: (com.fluxa.app.shared.feature.detail.DetailNavigationEvent) -> Unit = {},
+    onDetailBackRequested: () -> Unit = {},
     showNavigationBar: Boolean = true,
     onPlayRequested: () -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
@@ -106,6 +107,7 @@ fun FluxaAppHost(
         destination = destination,
         detailRequest = detailRequest,
         onDetailNavigationEvent = onDetailNavigationEvent,
+        onDetailBackRequested = onDetailBackRequested,
         showNavigationBar = showNavigationBar,
         onPlayRequested = onPlayRequested,
         onOpenUrlRequested = onOpenUrlRequested,
@@ -151,6 +153,7 @@ fun FluxaAppHost(
     destination: FluxaDestination? = null,
     detailRequest: DetailRequestUiModel? = null,
     onDetailNavigationEvent: (com.fluxa.app.shared.feature.detail.DetailNavigationEvent) -> Unit = {},
+    onDetailBackRequested: () -> Unit = {},
     showNavigationBar: Boolean = true,
     onPlayRequested: () -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
@@ -308,6 +311,10 @@ fun FluxaAppHost(
             scope.launch {
                 detailStore?.dispatch(action)
             }
+        },
+        onDetailBackRequested = {
+            appState.clearDetail()
+            onDetailBackRequested()
         },
         searchState = searchState,
         onSearchAction = { action ->
