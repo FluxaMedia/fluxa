@@ -484,7 +484,7 @@ internal fun AppRoutesHost(
                 if (deviceType == DeviceType.TV) {
                     SharedTvHomeRoute(androidFluxaPlatformServices!!, navigator, activeProfile?.language)
                 } else {
-                    HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope)
+                    HomeRoute(activeProfile, navigator, homeViewModel, previewPlayer, coroutineScope, onActiveProfileChanged)
                 }
             }
             is Screen.CategoryResults -> {

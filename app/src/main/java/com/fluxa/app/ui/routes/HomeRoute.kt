@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.routes
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.media3.exoplayer.ExoPlayer
 import com.fluxa.app.data.local.UserProfile
@@ -17,8 +18,22 @@ internal fun HomeRoute(
     navigator: AppNavigator,
     homeViewModel: HomeViewModel,
     previewPlayer: ExoPlayer,
-    coroutineScope: CoroutineScope
+    coroutineScope: CoroutineScope,
+    onProfileUpdated: (UserProfile) -> Unit
 ) {
+    LaunchedEffect(activeProfile?.id, activeProfile?.nuvioAccessToken) {
+        val profile = activeProfile ?: return@LaunchedEffect
+        if (!profile.nuvioAccessToken.isNullOrBlank()) {
+            homeViewModel.syncNuvioIntegration(
+                profile = profile,
+                onProfileUpdated = {
+                    onProfileUpdated(it)
+                    homeViewModel.loadInitialData(it, force = true)
+                },
+                onComplete = {}
+            )
+        }
+    }
     HomeScreen(
         activeProfile,
         onMovieClick = { meta, addonUrl, catalogType ->
