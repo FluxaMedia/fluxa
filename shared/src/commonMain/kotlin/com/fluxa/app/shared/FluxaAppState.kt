@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.profile.ProfileEditTarget
 
 @Stable
@@ -20,7 +21,11 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
     }
 
     fun selectDetail(item: CatalogItemUiModel) {
-        uiState = uiState.copy(selectedDetail = item)
+        uiState = uiState.copy(selectedDetail = DetailRequestUiModel(item.id, item.type, item.source))
+    }
+
+    fun selectDetail(request: DetailRequestUiModel) {
+        uiState = uiState.copy(selectedDetail = request)
     }
 
     fun beginProfileEdit(target: ProfileEditTarget?) {

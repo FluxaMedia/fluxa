@@ -52,6 +52,7 @@ import com.fluxa.app.shared.feature.calendar.CalendarAction
 import com.fluxa.app.shared.feature.calendar.CalendarScreen
 import com.fluxa.app.shared.feature.calendar.CalendarUiState
 import com.fluxa.app.shared.feature.detail.DetailAction
+import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailScreen
 import com.fluxa.app.shared.feature.detail.DetailUiState
 import com.fluxa.app.shared.feature.discover.DiscoverAction
@@ -106,7 +107,7 @@ data class FluxaAppUiState(
     val language: String? = null,
     val destination: FluxaDestination = FluxaDestination.Home,
     val catalogHome: CatalogHomeUiState = CatalogHomeUiState(),
-    val selectedDetail: CatalogItemUiModel? = null,
+    val selectedDetail: DetailRequestUiModel? = null,
     val editingProfile: ProfileEditTarget? = null
 )
 

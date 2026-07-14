@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class AndroidDetailDataSource(
-    private val detailViewModel: DetailViewModel,
+    val detailViewModel: DetailViewModel,
     private val activeProfile: () -> UserProfile?
 ) : DetailDataSource {
 
@@ -106,6 +106,9 @@ class AndroidDetailDataSource(
         val episodes = detailViewModel.uiState.value.seasonEpisodes.filter { (it.season ?: season) == season }
         detailViewModel.downloadEpisodes(episodes)
     }
+
+    fun resolveStream(playableUrl: String): com.fluxa.app.data.remote.Stream? =
+        detailViewModel.uiState.value.streams.firstOrNull { it.playableUrl == playableUrl }
 }
 
 private fun Video.toUiModel(watchedIds: Set<String>): DetailEpisodeUiModel = DetailEpisodeUiModel(

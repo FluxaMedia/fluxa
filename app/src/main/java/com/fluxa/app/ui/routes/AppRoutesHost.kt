@@ -144,6 +144,26 @@ internal fun AppRoutesHost(
         null
     }
 
+    val mobileDetailScreen = (currentScreen as? Screen.Detail).takeIf { deviceType == DeviceType.Mobile }
+    val mobileDetailRequest = mobileDetailScreen?.let { screen ->
+        com.fluxa.app.shared.feature.detail.DetailRequestUiModel(
+            id = screen.id,
+            type = screen.type,
+            source = com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel(
+                addonTransportUrl = screen.sourceAddonTransportUrl,
+                catalogType = screen.sourceAddonCatalogType
+            ),
+            initialProgress = screen.initialProgress,
+            lastVideoId = screen.lastVideoId,
+            lastStreamIndex = screen.lastStreamIndex,
+            autoPlay = screen.autoPlay,
+            targetSeason = screen.targetSeason,
+            targetEpisode = screen.targetEpisode,
+            lastStreamUrl = screen.lastStreamUrl,
+            lastStreamTitle = screen.lastStreamTitle
+        )
+    }
+
     var pendingAvatarPicked by remember { mutableStateOf<((String?) -> Unit)?>(null) }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         val callback = pendingAvatarPicked
@@ -160,6 +180,54 @@ internal fun AppRoutesHost(
             platformServices = androidFluxaPlatformServices!!,
             language = activeProfile?.language,
             destination = mobileSharedDestination,
+            detailRequest = mobileDetailRequest,
+            onDetailNavigationEvent = { event ->
+                val androidDetailSource = androidFluxaPlatformServices.detailDataSource
+                val detail = androidDetailSource.detailViewModel.uiState.value.detail
+                val meta = detail?.let {
+                    com.fluxa.app.data.remote.Meta(
+                        id = it.id, name = it.name, type = it.type, poster = it.poster, background = it.background,
+                        logo = it.logo, description = it.description, imdbRating = it.imdbRating, releaseInfo = it.releaseInfo,
+                        released = it.released, originalLanguage = it.originalLanguage, originalName = it.originalName,
+                        videos = it.videos, trailers = it.trailers
+                    )
+                } ?: mobileDetailScreen?.let { com.fluxa.app.data.remote.Meta(it.id, "", it.type, "", "") }
+                if (meta != null) {
+                    when (event) {
+                        is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.PlayStream -> {
+                            val resolvedStream = androidDetailSource.resolveStream(event.stream.playableUrl)
+                            val streams = androidDetailSource.detailViewModel.uiState.value.filteredStreams
+                            val index = resolvedStream?.let { streams.indexOf(it) }?.coerceAtLeast(0) ?: 0
+                            navigator.navigateTo(
+                                Screen.Player(
+                                    meta = meta,
+                                    videoId = event.episodeId,
+                                    initialProgress = mobileDetailScreen?.initialProgress ?: 0L,
+                                    streamIndex = index,
+                                    initialStreams = streams,
+                                    lastStreamUrl = event.stream.playableUrl,
+                                    lastStreamTitle = event.stream.title
+                                )
+                            )
+                        }
+                        is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources -> {
+                            val episode = androidDetailSource.detailViewModel.uiState.value.seasonEpisodes
+                                .firstOrNull { it.id == event.episodeId }
+                            navigator.navigateTo(
+                                Screen.Sources(
+                                    meta = meta,
+                                    video = episode,
+                                    videoId = event.episodeId,
+                                    initialProgress = mobileDetailScreen?.initialProgress ?: 0L,
+                                    lastStreamIndex = mobileDetailScreen?.lastStreamIndex,
+                                    lastStreamUrl = mobileDetailScreen?.lastStreamUrl,
+                                    lastStreamTitle = mobileDetailScreen?.lastStreamTitle
+                                )
+                            )
+                        }
+                    }
+                }
+            },
             showNavigationBar = false,
             onPlayRequested = onSharedPlayRequested,
             onOpenUrlRequested = { url ->
@@ -300,7 +368,7 @@ internal fun AppRoutesHost(
         )
     }
 
-    if (mobileSharedDestination != null) {
+    if (mobileSharedDestination != null || mobileDetailRequest != null) {
         return
     }
 

@@ -62,6 +62,8 @@ fun FluxaAppHost(
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     destination: FluxaDestination? = null,
+    detailRequest: DetailRequestUiModel? = null,
+    onDetailNavigationEvent: (com.fluxa.app.shared.feature.detail.DetailNavigationEvent) -> Unit = {},
     showNavigationBar: Boolean = true,
     onPlayRequested: () -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
@@ -102,6 +104,8 @@ fun FluxaAppHost(
         language = language,
         onCatalogAction = onCatalogAction,
         destination = destination,
+        detailRequest = detailRequest,
+        onDetailNavigationEvent = onDetailNavigationEvent,
         showNavigationBar = showNavigationBar,
         onPlayRequested = onPlayRequested,
         onOpenUrlRequested = onOpenUrlRequested,
@@ -145,6 +149,8 @@ fun FluxaAppHost(
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     destination: FluxaDestination? = null,
+    detailRequest: DetailRequestUiModel? = null,
+    onDetailNavigationEvent: (com.fluxa.app.shared.feature.detail.DetailNavigationEvent) -> Unit = {},
     showNavigationBar: Boolean = true,
     onPlayRequested: () -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
@@ -217,10 +223,10 @@ fun FluxaAppHost(
         mutableStateOf(initial)
     }
     val selectedDetail = appState.uiState.selectedDetail
-    val detailStore = selectedDetail?.let { item ->
+    val detailStore = selectedDetail?.let { request ->
         detailDataSource?.let { source ->
-            remember(item.id, item.type, source) {
-                DetailStore(DetailRequestUiModel(item.id, item.type, item.source), source, scope)
+            remember(request.id, request.type, source) {
+                DetailStore(request, source, scope)
             }
         }
     }
@@ -235,11 +241,17 @@ fun FluxaAppHost(
     LaunchedEffect(destination) {
         destination?.let(appState::selectDestination)
     }
+    LaunchedEffect(detailRequest) {
+        detailRequest?.let(appState::selectDetail)
+    }
     LaunchedEffect(catalogHomeStore) {
         catalogHomeStore.dispatch(CatalogAction.Refresh)
     }
     LaunchedEffect(detailStore) {
         detailStore?.load()
+    }
+    LaunchedEffect(detailStore) {
+        detailStore?.navigation?.collect { event -> onDetailNavigationEvent(event) }
     }
     LaunchedEffect(appState.uiState.destination, discoverStore) {
         if (appState.uiState.destination == FluxaDestination.Discover) {
