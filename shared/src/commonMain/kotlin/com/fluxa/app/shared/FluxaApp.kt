@@ -29,6 +29,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -488,12 +489,13 @@ private fun FluxaHomeContent(
                         modifier = Modifier.weight(1f)
                     )
                     if (row.canLoadMore) {
-                        Text(
-                            text = AppStrings.t(state.language, "common.view_all"),
-                            color = Color.White.copy(alpha = 0.7f),
-                            maxLines = 1,
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = AppStrings.t(state.language, "common.view_all"),
+                            tint = Color.White.copy(alpha = 0.7f),
                             modifier = Modifier
                                 .padding(start = 12.dp)
+                                .size(20.dp)
                                 .clickable {
                                     onCatalogAction(CatalogAction.LoadMore(row.id))
                                 }
@@ -646,7 +648,7 @@ private fun FluxaHomeHeroSlide(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 20.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 44.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (item.card.logoUrl != null) {

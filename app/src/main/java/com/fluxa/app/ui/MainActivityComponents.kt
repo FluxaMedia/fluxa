@@ -168,7 +168,7 @@ internal fun MobileBottomNav(
     val selected = currentScreen.mobileNavDestination() ?: return
     val lang = activeProfile?.safeLanguage ?: "en"
     val selectedColor = Color(activeProfile?.safeAccentColorArgb ?: Color.White.toArgb())
-    val navBackground = if (activeProfile?.safeAmoledMode == true) Color.Black else Color(0xFF0B0C10)
+    val navBackground = Color.Black
     val inactiveColor = Color(0xFFA0A5AD)
     val items = listOf(
         MobileBottomNavItem(MobileNavDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHomeOutline, AppStrings.t(lang, "nav.home")),
@@ -180,16 +180,8 @@ internal fun MobileBottomNav(
         modifier = Modifier
             .fillMaxWidth()
             .background(navBackground)
-            .drawBehind {
-                drawLine(
-                    color = Color.White.copy(alpha = 0.06f),
-                    start = Offset(0f, 0f),
-                    end = Offset(size.width, 0f),
-                    strokeWidth = 1.dp.toPx()
-                )
-            }
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-            .padding(horizontal = 6.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -208,7 +200,7 @@ internal fun MobileBottomNav(
                     if (isSelected) item.selectedIcon else item.icon,
                     item.label,
                     tint = if (isSelected) selectedColor else inactiveColor,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
