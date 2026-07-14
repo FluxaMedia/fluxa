@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,7 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
@@ -211,13 +214,26 @@ private fun Hero(content: DetailUiModel, language: String?) {
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp
             )
-            Text(
-                text = content.title,
-                color = Color.White,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            if (content.logoUrl != null) {
+                FluxaRemoteImage(
+                    imageUrl = content.logoUrl,
+                    cacheKey = "detail-logo:${content.id}",
+                    contentDescription = content.title,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .heightIn(max = 90.dp)
+                        .fillMaxWidth(0.7f),
+                    contentScale = ContentScale.Fit
+                )
+            } else {
+                Text(
+                    text = content.title,
+                    color = Color.White,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
             val metaParts = buildList {
                 content.ageRating?.takeIf { it.isNotBlank() }?.let { add(it to true) }
                 if (content.releaseLabel.isNotBlank()) add(content.releaseLabel to false)
@@ -265,6 +281,7 @@ private fun ResumeButton(content: DetailUiModel, language: String?, onAction: (D
         AppStrings.t(language, "common.play")
     }
     Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
@@ -324,11 +341,13 @@ private fun DownloadButton(content: DetailUiModel, language: String?, onAction: 
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Icon(Icons.Filled.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
         Text(
             text = AppStrings.t(language, "auto.download"),
             color = Color.White,
             fontWeight = FontWeight.Bold,
-            fontSize = 15.sp
+            fontSize = 15.sp,
+            modifier = Modifier.padding(start = 8.dp)
         )
     }
 }
@@ -432,39 +451,52 @@ private fun DetailTabLabel(text: String, selected: Boolean, onClick: () -> Unit)
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun SeasonSelector(content: DetailUiModel, language: String?, onAction: (DetailAction) -> Unit) {
-    var expanded by remember(content.id) { mutableStateOf(false) }
-    Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
-        Row(
-            modifier = Modifier.clickable { expanded = !expanded },
-            verticalAlignment = Alignment.CenterVertically
+    var sheetOpen by remember(content.id) { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(FluxaColors.surfaceRaised)
+            .clickable { sheetOpen = true }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = "${AppStrings.t(language, "auto.season")} ${content.selectedSeason}",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp
+        )
+        Icon(
+            imageVector = Icons.Filled.ArrowDropDown,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.padding(start = 4.dp).size(20.dp)
+        )
+    }
+    if (sheetOpen) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { sheetOpen = false },
+            containerColor = FluxaColors.surfaceRaised
         ) {
-            Text(
-                text = "${AppStrings.t(language, "auto.season")} ${content.selectedSeason}",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        }
-        if (expanded) {
-            Column(
-                modifier = Modifier
-                    .padding(top = 32.dp)
-                    .background(FluxaColors.surfaceRaised, RoundedCornerShape(8.dp))
-            ) {
+            Column(modifier = Modifier.padding(bottom = 24.dp)) {
                 content.availableSeasons.forEach { season ->
+                    val selected = season == content.selectedSeason
                     Text(
                         text = "${AppStrings.t(language, "auto.season")} $season",
-                        color = Color.White,
-                        fontSize = 14.sp,
+                        color = if (selected) FluxaColors.accent else Color.White,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 16.sp,
                         modifier = Modifier
                             .clickable {
-                                expanded = false
+                                sheetOpen = false
                                 onAction(DetailAction.SeasonSelected(season))
                             }
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .padding(horizontal = 20.dp, vertical = 14.dp)
                     )
                 }
             }
@@ -475,68 +507,69 @@ private fun SeasonSelector(content: DetailUiModel, language: String?, onAction: 
 @Composable
 private fun EpisodeRow(episode: DetailEpisodeUiModel, content: DetailUiModel, onAction: (DetailAction) -> Unit) {
     val selected = episode.id == content.selectedEpisodeId
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = !episode.isUpcoming) { onAction(DetailAction.EpisodeSelected(episode.id)) }
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.Top
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(120.dp)
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(4.dp))
-                .background(FluxaColors.surfaceCard)
-        ) {
-            FluxaRemoteImage(
-                imageUrl = episode.thumbnailUrl,
-                cacheKey = "detail-episode:${episode.id}",
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            if (selected) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+        Row(verticalAlignment = Alignment.Top) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(FluxaColors.surfaceCard)
+            ) {
+                FluxaRemoteImage(
+                    imageUrl = episode.thumbnailUrl,
+                    cacheKey = "detail-episode:${episode.id}",
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                if (selected) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+                    }
                 }
             }
-        }
-        Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-            Text(
-                text = listOfNotNull(episode.number?.let { "$it." }, episode.title).joinToString(" "),
-                color = Color.White,
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            episode.runtimeLabel?.let {
-                Text(text = it, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
-            }
-            episode.description?.takeIf { it.isNotBlank() }?.let {
+            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
                 Text(
-                    text = it,
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontSize = 12.sp,
+                    text = listOfNotNull(episode.number?.let { "$it." }, episode.title).joinToString(" "),
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp)
+                    overflow = TextOverflow.Ellipsis
+                )
+                episode.runtimeLabel?.let {
+                    Text(text = it, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+            if (!episode.isUpcoming) {
+                Icon(
+                    imageVector = Icons.Filled.Download,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .padding(start = 8.dp, top = 4.dp)
+                        .size(20.dp)
+                        .clickable { onAction(DetailAction.DownloadEpisode(episode.id)) }
                 )
             }
         }
-        if (!episode.isUpcoming) {
-            Icon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .padding(start = 8.dp, top = 4.dp)
-                    .size(20.dp)
-                    .clickable { onAction(DetailAction.DownloadEpisode(episode.id)) }
+        episode.description?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 13.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 8.dp)
             )
         }
     }

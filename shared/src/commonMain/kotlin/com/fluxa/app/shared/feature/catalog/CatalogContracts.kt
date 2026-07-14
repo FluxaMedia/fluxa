@@ -9,7 +9,10 @@ data class CatalogItemUiModel(
     val card: CatalogCardUiModel,
     val source: CatalogSourceUiModel = CatalogSourceUiModel(),
     val resume: CatalogResumeUiModel? = null,
-    val backdropUrl: String? = null
+    val backdropUrl: String? = null,
+    val description: String? = null,
+    val ageRating: String? = null,
+    val seasonsCount: Int? = null
 )
 
 data class CatalogSourceUiModel(

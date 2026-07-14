@@ -19,23 +19,43 @@ class AndroidCatalogHomeDataSource(
     override fun observeHome(): Flow<CatalogHomeUiState> = combine(
         homeViewModel.categories,
         homeViewModel.isLoading,
-        homeViewModel.billboardMovie,
-        homeViewModel.billboardLogo,
-        homeViewModel.billboardTrailerUrl
-    ) { categories, isLoading, billboardMovie, billboardLogo, billboardTrailerUrl ->
+        billboardResolution(),
+    ) { categories, isLoading, billboardResolution ->
         val profile = activeProfile()
+        val orderedCategories = orderHomeCategories(categories)
+        val effectiveBillboardMeta = billboardResolution.movie ?: orderedCategories.firstOrNull()?.items?.firstOrNull()
         CatalogHomeUiState(
-            rows = orderHomeCategories(categories).map { category -> category.toRowUiModel(profile) },
+            rows = orderedCategories.map { category -> category.toRowUiModel(profile) },
             isLoading = isLoading,
-            billboard = billboardMovie?.let { movie ->
+            billboard = effectiveBillboardMeta?.let { movie ->
                 CatalogBillboardUiModel(
                     item = movie.toCatalogItemUiModel(category = null, profile = profile),
-                    logoUrl = billboardLogo,
-                    trailerUrl = billboardTrailerUrl
+                    logoUrl = billboardResolution.logoUrl,
+                    trailerUrl = billboardResolution.trailerUrl
                 )
             },
             showHeroSection = profile?.safeShowHeroSection != false
         )
+    }
+
+    private data class BillboardResolution(
+        val movie: com.fluxa.app.data.remote.Meta?,
+        val logoUrl: String?,
+        val trailerUrl: String?
+    )
+
+    private fun billboardResolution(): Flow<BillboardResolution> = combine(
+        homeViewModel.billboardMovie,
+        homeViewModel.billboardPool,
+        homeViewModel.billboardLogo,
+        homeViewModel.billboardTrailerUrl,
+        homeViewModel.currentFilter
+    ) { billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, filter ->
+        val filteredPool = billboardPool.filter { it.matchesFilter(filter) }
+        val effectiveMovie = billboardMovie?.takeIf { it.matchesFilter(filter) }
+            ?: filteredPool.firstOrNull()
+            ?: billboardMovie
+        BillboardResolution(effectiveMovie, billboardLogo, billboardTrailerUrl)
     }
 
     override suspend fun refresh() {
@@ -84,7 +104,10 @@ class AndroidCatalogHomeDataSource(
                 catalogType = category?.catalogSources?.firstOrNull()?.type ?: category?.type
             ),
             resume = toCatalogResumeUiModel(),
-            backdropUrl = homeHeroBackdrop()
+            backdropUrl = homeHeroBackdrop(),
+            description = description,
+            ageRating = ageRating,
+            seasonsCount = seasonsCount
         )
 }
 

@@ -1,5 +1,11 @@
 package com.fluxa.app.shared
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
@@ -167,6 +176,20 @@ fun FluxaApp(
                     onDestinationSelected = onDestinationSelected
                 )
             }
+            val screenKey = when {
+                state.editingProfile != null -> "profileEdit"
+                state.selectedDetail != null -> "detail:${state.selectedDetail.id}"
+                else -> "dest:${state.destination}"
+            }
+            AnimatedContent(
+                targetState = screenKey,
+                transitionSpec = {
+                    (fadeIn(tween(220)) + scaleIn(initialScale = 0.98f, animationSpec = tween(220)))
+                        .togetherWith(fadeOut(tween(120)))
+                },
+                label = "fluxa-screen-transition",
+                modifier = Modifier.weight(1f)
+            ) { _ ->
             when {
                 state.editingProfile != null && profileState != null -> ProfileEditScreen(
                     initialProfile = (state.editingProfile as? ProfileEditTarget.Existing)?.let { target ->
@@ -180,14 +203,14 @@ fun FluxaApp(
                     onSave = onProfileSave,
                     onDelete = onProfileDelete,
                     onCancel = onProfileEditCancel,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.selectedDetail != null && detailState != null -> DetailScreen(
                     state = detailState,
                     language = state.language,
                     onAction = onDetailAction,
                     onBack = onDetailBackRequested,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Search && searchState != null -> SearchScreen(
                     state = searchState,
@@ -195,7 +218,7 @@ fun FluxaApp(
                     onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
                     onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
                     onClearHistory = { onSearchAction(SearchAction.ClearHistory) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Discover && discoverState != null -> DiscoverScreen(
                     state = discoverState,
@@ -208,20 +231,20 @@ fun FluxaApp(
                     searchResultRows = searchState?.resultRows.orEmpty(),
                     searchResults = searchState?.results.orEmpty(),
                     isSearching = searchState?.isLoading == true,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Calendar && calendarState != null -> CalendarScreen(
                     state = calendarState,
                     language = state.language,
                     onAction = onCalendarAction,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Library && libraryState != null -> LibraryScreen(
                     state = libraryState,
                     language = state.language,
                     onAction = onLibraryAction,
                     onItemSelected = onLibraryItemSelected,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Settings && settingsState != null -> SettingsScreen(
                     state = settingsState,
@@ -230,7 +253,7 @@ fun FluxaApp(
                     onSwitchProfilesRequested = onSwitchProfilesRequested,
                     onBackRequested = onSettingsBackRequested,
                     brandIcons = settingsBrandIcons,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.AddonStore && addonStoreState != null -> AddonStoreScreen(
                     state = addonStoreState,
@@ -238,7 +261,7 @@ fun FluxaApp(
                     onAction = onAddonStoreAction,
                     onConfigureRequested = onOpenUrlRequested,
                     onBackRequested = onAddonStoreBackRequested,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Auth && authState != null -> AuthScreen(
                     state = authState,
@@ -246,7 +269,7 @@ fun FluxaApp(
                     onAction = onAuthAction,
                     nuvioIcon = nuvioIcon,
                     stremioIcon = stremioIcon,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.ProfileList && profileState != null -> ProfileListScreen(
                     state = profileState,
@@ -254,18 +277,19 @@ fun FluxaApp(
                     biometricAvailable = biometricAvailable,
                     onAction = onProfileListAction,
                     onBiometricRequested = onProfileBiometricRequested,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
                     state = state,
                     onCatalogAction = onCatalogAction,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
                 else -> FluxaDestinationPlaceholder(
                     language = state.language,
                     destination = state.destination,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
+            }
             }
         }
     }
@@ -507,19 +531,64 @@ private fun FluxaHomeHeroSlide(
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = item.card.title,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.headlineSmall
-            )
+            if (item.card.logoUrl != null) {
+                FluxaRemoteImage(
+                    imageUrl = item.card.logoUrl,
+                    cacheKey = "home-hero-logo:${item.card.logoUrl}",
+                    contentDescription = item.card.title,
+                    modifier = Modifier.heightIn(max = 64.dp).fillMaxWidth(0.65f),
+                    contentScale = ContentScale.Fit
+                )
+            } else {
+                Text(
+                    text = item.card.title,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+            val badgeParts = buildList {
+                item.ageRating?.takeIf { it.isNotBlank() }?.let { add(it) }
+                if (item.type == "series" && (item.seasonsCount ?: 0) > 0) {
+                    add("${item.seasonsCount} ${AppStrings.t(language, "auto.seasons")}")
+                }
+            }
+            if (badgeParts.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    badgeParts.forEachIndexed { index, part ->
+                        if (index == 0) {
+                            Text(
+                                text = part,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .background(FluxaColors.accent, RoundedCornerShape(3.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        } else {
+                            Text(text = part, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+            item.description?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 13.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Button(
                 onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                modifier = Modifier.padding(top = 4.dp)
             ) {
                 Text(text = AppStrings.t(language, "common.play"), color = Color.Black)
             }
