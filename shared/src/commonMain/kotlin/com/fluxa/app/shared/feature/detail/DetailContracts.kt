@@ -81,8 +81,8 @@ sealed interface DetailAction {
 }
 
 sealed interface DetailNavigationEvent {
-    data class PlayStream(val stream: DetailStreamUiModel, val episodeId: String?) : DetailNavigationEvent
-    data class SelectSources(val episodeId: String?) : DetailNavigationEvent
+    data class PlayStream(val stream: DetailStreamUiModel, val episodeId: String?, val resumeProgress: Long = 0L) : DetailNavigationEvent
+    data class SelectSources(val episodeId: String?, val resumeProgress: Long = 0L) : DetailNavigationEvent
 }
 
 interface DetailDataSource {

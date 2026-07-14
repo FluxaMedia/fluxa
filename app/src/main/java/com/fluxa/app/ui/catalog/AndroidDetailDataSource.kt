@@ -18,6 +18,8 @@ class AndroidDetailDataSource(
 
     private var selectedSeason: Int = 1
     private var selectedEpisodeId: String? = null
+    private var requestedVideoId: String? = null
+    private var requestedProgress: Long? = null
 
     override fun observeDetail(id: String, type: String): Flow<SharedDetailUiState> {
         return detailViewModel.uiState.map { state ->
@@ -33,6 +35,8 @@ class AndroidDetailDataSource(
                     val currentEpisodeId = selectedEpisodeId
                         ?: state.seasonEpisodes.firstOrNull { !detailIsUpcoming(it.released) }?.id
                         ?: state.seasonEpisodes.firstOrNull()?.id
+                    val effectiveResumeVideoId = requestedVideoId ?: state.savedPlayback?.lastVideoId
+                    val effectiveResumeProgress = requestedProgress ?: state.savedPlayback?.timeOffset ?: 0L
                     DetailUiModel(
                         id = detail.id,
                         type = detail.type,
@@ -50,8 +54,8 @@ class AndroidDetailDataSource(
                         selectedSeason = selectedSeason,
                         seasonEpisodes = state.seasonEpisodes.map { it.toUiModel(effectiveWatched) },
                         selectedEpisodeId = currentEpisodeId,
-                        resumeVideoId = state.savedPlayback?.lastVideoId,
-                        resumeProgress = state.savedPlayback?.timeOffset ?: 0L,
+                        resumeVideoId = effectiveResumeVideoId,
+                        resumeProgress = effectiveResumeProgress,
                         streams = state.filteredStreams.toUiModels(),
                         isLoadingStreams = state.isLoadingStreams,
                         availableAddons = state.availableAddons,
@@ -67,6 +71,8 @@ class AndroidDetailDataSource(
     override suspend fun loadDetail(request: DetailRequestUiModel) {
         selectedSeason = request.targetSeason ?: 1
         selectedEpisodeId = request.lastVideoId
+        requestedVideoId = request.lastVideoId
+        requestedProgress = request.initialProgress
         detailViewModel.loadDetail(
             type = request.type,
             id = request.id,

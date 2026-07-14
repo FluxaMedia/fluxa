@@ -181,7 +181,8 @@ internal fun AppRoutesHost(
             language = activeProfile?.language,
             destination = mobileSharedDestination,
             detailRequest = mobileDetailRequest,
-            onDetailNavigationEvent = { event ->
+            onDetailNavigationEvent = onDetailNavigationEvent@{ event ->
+                val screen = mobileDetailScreen ?: return@onDetailNavigationEvent
                 val androidDetailSource = androidFluxaPlatformServices.detailDataSource
                 val detail = androidDetailSource.detailViewModel.uiState.value.detail
                 val meta = detail?.let {
@@ -191,40 +192,38 @@ internal fun AppRoutesHost(
                         released = it.released, originalLanguage = it.originalLanguage, originalName = it.originalName,
                         videos = it.videos, trailers = it.trailers
                     )
-                } ?: mobileDetailScreen?.let { com.fluxa.app.data.remote.Meta(it.id, "", it.type, "", "") }
-                if (meta != null) {
-                    when (event) {
-                        is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.PlayStream -> {
-                            val resolvedStream = androidDetailSource.resolveStream(event.stream.playableUrl)
-                            val streams = androidDetailSource.detailViewModel.uiState.value.filteredStreams
-                            val index = resolvedStream?.let { streams.indexOf(it) }?.coerceAtLeast(0) ?: 0
-                            navigator.navigateTo(
-                                Screen.Player(
-                                    meta = meta,
-                                    videoId = event.episodeId,
-                                    initialProgress = mobileDetailScreen?.initialProgress ?: 0L,
-                                    streamIndex = index,
-                                    initialStreams = streams,
-                                    lastStreamUrl = event.stream.playableUrl,
-                                    lastStreamTitle = event.stream.title
-                                )
+                } ?: com.fluxa.app.data.remote.Meta(screen.id, "", screen.type, "", "")
+                when (event) {
+                    is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.PlayStream -> {
+                        val resolvedStream = androidDetailSource.resolveStream(event.stream.playableUrl)
+                        val streams = androidDetailSource.detailViewModel.uiState.value.filteredStreams
+                        val index = resolvedStream?.let { streams.indexOf(it) }?.coerceAtLeast(0) ?: 0
+                        navigator.navigateTo(
+                            Screen.Player(
+                                meta = meta,
+                                videoId = event.episodeId,
+                                initialProgress = event.resumeProgress,
+                                streamIndex = index,
+                                initialStreams = streams,
+                                lastStreamUrl = event.stream.playableUrl,
+                                lastStreamTitle = event.stream.title
                             )
-                        }
-                        is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources -> {
-                            val episode = androidDetailSource.detailViewModel.uiState.value.seasonEpisodes
-                                .firstOrNull { it.id == event.episodeId }
-                            navigator.navigateTo(
-                                Screen.Sources(
-                                    meta = meta,
-                                    video = episode,
-                                    videoId = event.episodeId,
-                                    initialProgress = mobileDetailScreen?.initialProgress ?: 0L,
-                                    lastStreamIndex = mobileDetailScreen?.lastStreamIndex,
-                                    lastStreamUrl = mobileDetailScreen?.lastStreamUrl,
-                                    lastStreamTitle = mobileDetailScreen?.lastStreamTitle
-                                )
+                        )
+                    }
+                    is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources -> {
+                        val episode = androidDetailSource.detailViewModel.uiState.value.seasonEpisodes
+                            .firstOrNull { it.id == event.episodeId }
+                        navigator.navigateTo(
+                            Screen.Sources(
+                                meta = meta,
+                                video = episode,
+                                videoId = event.episodeId,
+                                initialProgress = event.resumeProgress,
+                                lastStreamIndex = screen.lastStreamIndex,
+                                lastStreamUrl = screen.lastStreamUrl,
+                                lastStreamTitle = screen.lastStreamTitle
                             )
-                        }
+                        )
                     }
                 }
             },
