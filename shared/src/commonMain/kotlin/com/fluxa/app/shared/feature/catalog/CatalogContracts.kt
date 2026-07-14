@@ -12,7 +12,8 @@ data class CatalogItemUiModel(
     val backdropUrl: String? = null,
     val description: String? = null,
     val ageRating: String? = null,
-    val seasonsCount: Int? = null
+    val seasonsCount: Int? = null,
+    val runtimeLabel: String? = null
 )
 
 data class CatalogSourceUiModel(

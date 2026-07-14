@@ -105,6 +105,15 @@ private val FluxaColorScheme = darkColorScheme(
     error = FluxaColors.errorRed
 )
 
+private val FluxaBottomNavDestinations = listOf(
+    FluxaDestination.Home,
+    FluxaDestination.Search,
+    FluxaDestination.Discover,
+    FluxaDestination.Calendar,
+    FluxaDestination.Library,
+    FluxaDestination.Settings
+)
+
 enum class FluxaDestination(val titleKey: String) {
     Home("nav.home"),
     Search("auto.search"),
@@ -326,7 +335,7 @@ private fun FluxaNavigationBar(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        FluxaDestination.entries.forEach { item ->
+        FluxaBottomNavDestinations.forEach { item ->
             val selected = item == destination
             Text(
                 text = AppStrings.t(language, item.titleKey),
@@ -345,7 +354,7 @@ private enum class FluxaHomeFilter(val value: String, val titleKey: String) {
 }
 
 @Composable
-private fun FluxaHomeTopBar(
+private fun FluxaHomeOverlayBar(
     activeFilter: String,
     language: String?,
     profileAvatarUrl: String?,
@@ -353,7 +362,15 @@ private fun FluxaHomeTopBar(
     onNotificationsRequested: () -> Unit,
     onAvatarClick: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().background(FluxaColors.background)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(0f to Color.Black.copy(alpha = 0.55f), 1f to Color.Transparent)
+                )
+            )
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -421,25 +438,6 @@ private fun FluxaHomeContent(
     profileAvatarUrl: String?,
     modifier: Modifier
 ) {
-    Column(modifier = modifier) {
-        FluxaHomeTopBar(
-            activeFilter = state.catalogHome.activeFilter,
-            language = state.language,
-            profileAvatarUrl = profileAvatarUrl,
-            onFilterSelected = { filter -> onCatalogAction(CatalogAction.FilterChanged(filter)) },
-            onNotificationsRequested = onNotificationsRequested,
-            onAvatarClick = onAvatarClick
-        )
-        FluxaHomeList(state = state, onCatalogAction = onCatalogAction, modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun FluxaHomeList(
-    state: FluxaAppUiState,
-    onCatalogAction: (CatalogAction) -> Unit,
-    modifier: Modifier
-) {
     if (state.catalogHome.isLoading && state.catalogHome.rows.isEmpty()) {
         FluxaHomeSkeleton(modifier = modifier)
         return
@@ -463,11 +461,21 @@ private fun FluxaHomeList(
     ) {
         if (heroItems.isNotEmpty()) {
             item(key = "hero") {
-                FluxaHomeHero(
-                    items = heroItems,
-                    language = state.language,
-                    onCatalogAction = onCatalogAction
-                )
+                Box {
+                    FluxaHomeHero(
+                        items = heroItems,
+                        language = state.language,
+                        onCatalogAction = onCatalogAction
+                    )
+                    FluxaHomeOverlayBar(
+                        activeFilter = state.catalogHome.activeFilter,
+                        language = state.language,
+                        profileAvatarUrl = profileAvatarUrl,
+                        onFilterSelected = { filter -> onCatalogAction(CatalogAction.FilterChanged(filter)) },
+                        onNotificationsRequested = onNotificationsRequested,
+                        onAvatarClick = onAvatarClick
+                    )
+                }
             }
         }
         items(state.catalogHome.rows, key = { it.id }) { row ->
@@ -642,11 +650,12 @@ private fun FluxaHomeHeroSlide(
                 )
         )
         Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .align(Alignment.BottomStart)
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (item.card.logoUrl != null) {
                 FluxaRemoteImage(
@@ -663,6 +672,7 @@ private fun FluxaHomeHeroSlide(
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     style = MaterialTheme.typography.headlineSmall
                 )
             }
@@ -670,6 +680,8 @@ private fun FluxaHomeHeroSlide(
                 item.ageRating?.takeIf { it.isNotBlank() }?.let { add(it) }
                 if (item.type == "series" && (item.seasonsCount ?: 0) > 0) {
                     add("${item.seasonsCount} ${AppStrings.t(language, "auto.seasons")}")
+                } else {
+                    item.runtimeLabel?.takeIf { it.isNotBlank() }?.let { add(it) }
                 }
             }
             if (badgeParts.isNotEmpty()) {
@@ -696,8 +708,10 @@ private fun FluxaHomeHeroSlide(
                     text = it,
                     color = Color.White.copy(alpha = 0.85f),
                     fontSize = 13.sp,
+                    lineHeight = 15.sp,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
             Button(

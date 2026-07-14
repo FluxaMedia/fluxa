@@ -113,7 +113,8 @@ class AndroidCatalogHomeDataSource(
             backdropUrl = homeHeroBackdrop(),
             description = description,
             ageRating = ageRating,
-            seasonsCount = seasonsCount
+            seasonsCount = seasonsCount,
+            runtimeLabel = runtime
         )
 }
 
