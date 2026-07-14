@@ -147,10 +147,13 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.ADDONS)
 
-        val libraryItems = importOrDefault(NuvioImportStep.LIBRARY, emptyList()) {
+        val libraryItems = try {
             nuvioService.pullLibrary(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 500, "p_offset" to 0)).requireBody()
+        } catch (error: Exception) {
+            Log.w("NuvioImport", "Import step ${NuvioImportStep.LIBRARY} failed; continuing without it", error)
+            null
         }
-        val metaById = libraryItems.associate { item ->
+        val metaById = libraryItems.orEmpty().associate { item ->
             item.contentId to Meta(
                 id = item.contentId,
                 name = item.name,
@@ -163,10 +166,8 @@ class NuvioAccountImportCoordinator(
                 genres = item.genres
             )
         }
-        for (meta in metaById.values) {
-            if (!watchlistManager.isInWatchlist(meta.id)) {
-                watchlistManager.toggleWatchlist(meta)
-            }
+        if (libraryItems != null) {
+            watchlistManager.replaceWatchlist(metaById.values.toList())
         }
         onStep(NuvioImportStep.LIBRARY)
 

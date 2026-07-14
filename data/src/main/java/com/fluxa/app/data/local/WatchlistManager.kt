@@ -69,6 +69,18 @@ class WatchlistManager @Inject constructor(
         return dao.getWatchlistSnapshot(pid()).map { it.toMeta() }
     }
 
+    suspend fun replaceWatchlist(items: List<Meta>) {
+        val profileId = pid()
+        val itemIds = items.map { it.id }.toSet()
+        dao.getWatchlistSnapshot(profileId)
+            .filter { it.id !in itemIds }
+            .forEach { dao.deleteWatchlistEntry(profileId, it.id) }
+        items.forEach { item ->
+            dao.upsertContent(item.toContentItemEntity(profileId))
+            dao.upsertWatchlistEntry(WatchlistEntryEntity(profileId, item.id))
+        }
+    }
+
     suspend fun getContinueWatchingSnapshot(): List<Meta> {
         return dao.getContinueWatchingSnapshot(pid()).map { it.toMeta() }
     }
