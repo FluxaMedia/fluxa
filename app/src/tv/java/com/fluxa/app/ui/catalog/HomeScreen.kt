@@ -45,6 +45,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.shared.feature.catalog.CatalogAction
+import com.fluxa.app.shared.feature.catalog.CatalogHomeStore
+import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -74,28 +77,34 @@ fun HomeScreen(
     sharedPlayer: androidx.media3.exoplayer.ExoPlayer,
     activePreviewUrl: String?
 ) {
-    val catalogState = rememberHomeCatalogState(activeProfile, viewModel)
-    val billboardState = rememberHomeBillboardState(activeProfile, viewModel)
+    val scope = rememberCoroutineScope()
+    val catalogHomeDataSource = remember(viewModel) {
+        AndroidCatalogHomeDataSource(viewModel) { activeProfile }
+    }
+    val catalogHomeStore = remember(catalogHomeDataSource) {
+        CatalogHomeStore(catalogHomeDataSource, scope)
+    }
+    val catalogHome by catalogHomeStore.state.collectAsStateWithLifecycle()
+    LaunchedEffect(catalogHomeStore) {
+        catalogHomeStore.dispatch(CatalogAction.Refresh)
+    }
     val focusedMovie by viewModel.focusedMovie.collectAsStateWithLifecycle()
     val lang = activeProfile?.safeLanguage ?: "en"
-    val rotatingHeroMovie = billboardState.displayBillboardMovie
-        ?: billboardState.filteredBillboardPool.firstOrNull()
-        ?: billboardState.billboardPool.firstOrNull()
-        ?: catalogState.orderedCategories.firstOrNull()?.items?.firstOrNull()
+    val rotatingHeroMovie = remember(catalogHome.billboard) {
+        catalogHome.billboard?.item?.let { catalogHomeDataSource.resolveMeta(it.id, it.type) }
+    }
     val heroMovie = if (activeProfile?.safeHeroFollowsFocusedItem == true) {
         focusedMovie ?: rotatingHeroMovie
     } else {
         rotatingHeroMovie
     }
     val heroLogoUrl = if (activeProfile?.safeHeroFollowsFocusedItem == true && focusedMovie != null) {
-        focusedMovie?.logo ?: billboardState.billboardLogo
+        focusedMovie?.logo ?: catalogHome.billboard?.logoUrl
     } else {
-        billboardState.billboardLogo
+        catalogHome.billboard?.logoUrl
     }
-    val rowSpecs = remember(catalogState.orderedCategories, activeProfile, catalogState.topTenFeedKeys, lang) {
-        catalogState.orderedCategories.map { category ->
-            category.toTvHomeRowSpec(activeProfile, catalogState.topTenFeedKeys, lang)
-        }
+    val rowSpecs = remember(catalogHome.rows, lang) {
+        catalogHome.rows.mapNotNull { row -> row.toTvHomeRowSpec(catalogHomeDataSource) }
     }
     val shelfFocusRequesters = remember(rowSpecs.size) { List(rowSpecs.size) { FocusRequester() } }
     val heroPlayFocusRequester = remember { FocusRequester() }
@@ -108,14 +117,15 @@ fun HomeScreen(
         prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 4) }
     )
     var focusedRowIndex by remember { mutableIntStateOf(viewModel.savedTvFocusedRowIndex) }
-    val scope = rememberCoroutineScope()
     val stableOnMovieClickState = rememberUpdatedState(onMovieClick)
     val stableOnPlayDirectState = rememberUpdatedState(onPlayDirect)
-    val stableLoadMoreCategory = remember<(String) -> Unit> { { categoryId -> viewModel.loadMore(categoryId) } }
+    val stableLoadMoreCategory = remember<(String) -> Unit> {
+        { categoryId -> scope.launch { catalogHomeStore.dispatch(CatalogAction.LoadMore(categoryId)) } }
+    }
     val useTopBar = activeProfile?.safeTvNavLayout == "top"
     val railGutter = if (useTopBar) 42.dp else 126.dp
     val contentTopPadding = if (useTopBar) 108.dp else 84.dp
-    val hasHeroItem = heroMovie != null && catalogState.showHeroSection
+    val hasHeroItem = heroMovie != null && catalogHome.showHeroSection
 
     val heroActiveState = remember { mutableStateOf(false) }
     var heroActive by heroActiveState
@@ -184,7 +194,7 @@ fun HomeScreen(
             .background(Color.Black)
     ) {
 
-        if (!catalogState.isLoading && rowSpecs.isEmpty() && heroMovie == null) {
+        if (!catalogHome.isLoading && rowSpecs.isEmpty() && heroMovie == null) {
             HomeEmptyProviderState(
                 lang,
                 onOpenSettings = onProfileClick,
@@ -193,7 +203,7 @@ fun HomeScreen(
         } else {
             HomeHeroBackdrop(
                 selectedContent = heroMovie,
-                activePreviewUrl = activePreviewUrl ?: billboardState.billboardTrailerUrl,
+                activePreviewUrl = activePreviewUrl ?: catalogHome.billboard?.trailerUrl,
                 sharedPlayer = sharedPlayer,
                 seasonPostersOnHero = activeProfile?.safeHomeSeasonPostersOnHero ?: true
             )
@@ -206,7 +216,7 @@ fun HomeScreen(
                     .focusRestorer(fallback = heroPlayFocusRequester),
                 contentPadding = PaddingValues(top = contentTopPadding, bottom = 80.dp)
             ) {
-                if (heroMovie != null && catalogState.showHeroSection) {
+                if (heroMovie != null && catalogHome.showHeroSection) {
                     item(key = "tv-home-hero", contentType = "hero") {
                         Box(
                             modifier = Modifier.heightIn(min = heroMinHeight),
@@ -229,7 +239,7 @@ fun HomeScreen(
                     }
                 }
 
-                if (catalogState.isLoading && rowSpecs.isEmpty()) {
+                if (catalogHome.isLoading && rowSpecs.isEmpty()) {
                     items(4, key = { "skeleton-$it" }, contentType = { "skeleton" }) {
                         TvHomeShelfSkeleton(titleStartPadding = railGutter)
                     }
@@ -239,7 +249,7 @@ fun HomeScreen(
                     key = { _, row -> row.categoryId },
                     contentType = { _, row -> "tv-shelf:${row.categoryType}:${row.cardLayout}:${row.isActionRow}:${row.topTenEnabled}" }
                 ) { index, row ->
-                    val isFirstRow = index == 0 && catalogState.showHeroSection && heroMovie != null
+                    val isFirstRow = index == 0 && catalogHome.showHeroSection && heroMovie != null
                     val onFocusForRow = remember(index) { { meta: Meta -> onMovieFocus(meta, index) } }
                     HomeShelfRow(
                         title = row.title,
@@ -325,23 +335,23 @@ private data class TvHomeRowSpec(
     val addonCatalogType: String?
 )
 
-private fun HomeCategory.toTvHomeRowSpec(
-    activeProfile: UserProfile?,
-    topTenFeedKeys: Set<String>,
-    lang: String
-): TvHomeRowSpec {
-    val isActionRow = isContinueWatchingCategory() || id == "library"
+private fun CatalogRowUiModel.toTvHomeRowSpec(
+    dataSource: AndroidCatalogHomeDataSource
+): TvHomeRowSpec? {
+    val resolvedItems = items.mapNotNull { item -> dataSource.resolveMeta(item.id, item.type) }
+    if (resolvedItems.isEmpty()) return null
+    val firstSource = items.firstOrNull()?.source
     return TvHomeRowSpec(
         categoryId = id,
-        categoryType = type,
-        title = displayHomeCategoryTitle(this, lang),
-        items = items,
+        categoryType = categoryType,
+        title = title,
+        items = resolvedItems,
         canLoadMore = canLoadMore,
         isActionRow = isActionRow,
-        topTenEnabled = id in topTenFeedKeys,
-        cardLayout = resolveHomeCardLayout(this, activeProfile),
-        artworkPreference = resolveContinueWatchingArtworkPreference(this, activeProfile),
-        addonTransportUrl = addonTransportUrl ?: catalogSources?.firstOrNull()?.transportUrl,
-        addonCatalogType = catalogSources?.firstOrNull()?.type ?: type
+        topTenEnabled = topTenEnabled,
+        cardLayout = cardLayout,
+        artworkPreference = artworkPreference,
+        addonTransportUrl = firstSource?.addonTransportUrl,
+        addonCatalogType = firstSource?.catalogType
     )
 }
