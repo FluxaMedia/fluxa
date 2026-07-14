@@ -12,12 +12,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.video.VideoFrameMetadataListener
 import com.fluxa.app.player.ExternalSubtitleTrack
 import com.fluxa.app.player.LibassDebugLog
 import com.fluxa.app.player.LibassRenderThread
+import com.fluxa.app.player.LibassVideoFrame
 import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.player.MediaTrack
 import com.fluxa.app.player.MkvNativeAssExtractor
@@ -60,7 +60,7 @@ internal fun NativeLibassSubtitleOverlay(
     externalSubtitle: ExternalSubtitleTrack?,
     embeddedSubtitle: NativeAssTrack?,
     subtitleDelayMs: Long,
-    modifier: Modifier = Modifier
+    surfaceView: NativeLibassSubtitleSurfaceView?
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val renderThread = remember(exoPlayer) { MediaPlayerController.getLibassRelay(exoPlayer)?.renderThread }
@@ -110,29 +110,32 @@ internal fun NativeLibassSubtitleOverlay(
         onDispose { renderThread?.setLocalRenderer(null) }
     }
 
-    AndroidView(
-        factory = { NativeLibassSubtitleSurfaceView(it) },
-        update = { view ->
-            view.exoPlayer = exoPlayer
-            view.renderThread = renderThread
-            view.subtitleDelayMs = subtitleDelayMs
-        },
-        modifier = modifier
-    )
+    surfaceView?.configure(exoPlayer, renderThread, subtitleDelayMs)
 }
 
-private class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
+internal class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
     var exoPlayer: ExoPlayer? = null
         set(value) {
-            field?.clearVideoFrameMetadataListener(ptsListener)
+            field?.let {
+                it.clearVideoFrameMetadataListener(ptsListener)
+                it.removeListener(playerListener)
+            }
             field = value
-            if (isAttachedToWindow) value?.setVideoFrameMetadataListener(ptsListener)
+            if (isAttachedToWindow) {
+                value?.setVideoFrameMetadataListener(ptsListener)
+                value?.addListener(playerListener)
+            }
+            value?.videoSize?.let(playerListener::onVideoSizeChanged)
         }
 
     var renderThread: LibassRenderThread? = null
         set(value) {
             field = value
             value?.setDelay(subtitleDelayMs)
+            attachedSurface?.let { surface ->
+                value?.setSurface(surface, surfaceWidth, surfaceHeight)
+                value?.setVideoFrame(LibassVideoFrame(surfaceWidth, surfaceHeight, 0, 0))
+            }
         }
 
     var subtitleDelayMs: Long = 0L
@@ -142,6 +145,9 @@ private class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(co
         }
 
     private var lastSurfaceLogMs = 0L
+    private var attachedSurface: android.view.Surface? = null
+    private var surfaceWidth = 0
+    private var surfaceHeight = 0
 
     private val ptsListener = VideoFrameMetadataListener { presentationTimeUs, _, _, _ ->
         renderThread?.onVideoFrame(presentationTimeUs / 1000L)
@@ -157,12 +163,14 @@ private class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(co
         super.onAttachedToWindow()
         LibassDebugLog.d("overlay view attached size=${width}x$height")
         exoPlayer?.setVideoFrameMetadataListener(ptsListener)
+        exoPlayer?.addListener(playerListener)
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         LibassDebugLog.d("overlay view detached")
         exoPlayer?.clearVideoFrameMetadataListener(ptsListener)
+        exoPlayer?.removeListener(playerListener)
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {}
@@ -173,12 +181,27 @@ private class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(co
             LibassDebugLog.d("overlay surface changed ${width}x$height")
             lastSurfaceLogMs = now
         }
+        attachedSurface = holder.surface
+        surfaceWidth = width
+        surfaceHeight = height
         renderThread?.setSurface(holder.surface, width, height)
+        renderThread?.setVideoFrame(LibassVideoFrame(width, height, 0, 0))
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         LibassDebugLog.d("overlay surface destroyed")
+        attachedSurface = null
+        surfaceWidth = 0
+        surfaceHeight = 0
         renderThread?.setSurface(null, 0, 0)
+    }
+
+    private val playerListener = object : androidx.media3.common.Player.Listener {}
+
+    fun configure(player: ExoPlayer, renderThread: LibassRenderThread?, subtitleDelayMs: Long) {
+        exoPlayer = player
+        this.renderThread = renderThread
+        this.subtitleDelayMs = subtitleDelayMs
     }
 }
 

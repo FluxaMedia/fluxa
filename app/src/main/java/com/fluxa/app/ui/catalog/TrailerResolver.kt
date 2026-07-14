@@ -1,6 +1,11 @@
 package com.fluxa.app.ui.catalog
 
 import android.util.Log
+import androidx.media3.common.MimeTypes
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.TransferListener
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -8,7 +13,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Dns
 import org.json.JSONObject
+import java.net.Inet4Address
 import java.util.concurrent.ConcurrentHashMap
 
 internal data class SubtitleInfo(
@@ -21,7 +28,9 @@ internal data class SubtitleInfo(
 
 internal data class TrailerResult(
     val streamUrl: String,
-    val subtitles: List<SubtitleInfo>
+    val audioUrl: String?,
+    val subtitles: List<SubtitleInfo>,
+    val streamMimeType: String?
 )
 
 internal sealed interface TrailerResolveResult {
@@ -33,7 +42,13 @@ internal sealed interface TrailerResolveResult {
 internal object TrailerResolver {
 
     private val memCache = ConcurrentHashMap<String, TrailerResolveResult>(16)
-    private val httpClient = OkHttpClient()
+    private val streamMimeTypes = ConcurrentHashMap<String, String>(16)
+    private val httpClient = OkHttpClient.Builder()
+        .dns { hostname ->
+            val addresses = Dns.SYSTEM.lookup(hostname)
+            addresses.filterIsInstance<Inet4Address>().ifEmpty { addresses }
+        }
+        .build()
 
     fun init(cacheDir: java.io.File) = Unit
 
@@ -50,8 +65,20 @@ internal object TrailerResolver {
             Log.e("TrailerResolver", "resolve($id) → ${e.javaClass.simpleName}: ${e.message}")
             TrailerResolveResult.Failed
         }
-        if (result is TrailerResolveResult.Ok) memCache[id] = result
+        if (result is TrailerResolveResult.Ok) {
+            memCache[id] = result
+            result.data.streamMimeType?.let { streamMimeTypes[result.data.streamUrl] = it }
+        }
         result
+    }
+
+    fun streamMimeType(url: String): String? =
+        streamMimeTypes[url] ?: if (url.contains(".m3u8", ignoreCase = true)) MimeTypes.APPLICATION_M3U8 else null
+
+    fun mediaDataSourceFactory(): DataSource.Factory {
+        val upstream = OkHttpDataSource.Factory(httpClient)
+            .setUserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+        return DataSource.Factory { TrailerRangeDataSource(upstream.createDataSource()) }
     }
 
     private fun resolveInnertubeTrailer(videoId: String): TrailerResolveResult {
@@ -80,15 +107,12 @@ internal object TrailerResolver {
             }
             if (playability?.optString("status") != "OK") return TrailerResolveResult.Failed
             val streaming = payload.optJSONObject("streamingData") ?: return TrailerResolveResult.Failed
-            val streamUrl = streaming.optString("hlsManifestUrl").takeIf { it.isNotBlank() }
+            val hlsUrl = streaming.optString("hlsManifestUrl").takeIf { it.isNotBlank() }
                 ?.let(::bestHlsVariant)
+            val adaptivePair = streaming.optJSONArray("adaptiveFormats")?.let(::bestAdaptivePair)
+            val streamUrl = hlsUrl
+                ?: adaptivePair?.first
                 ?: streaming.optJSONArray("formats")?.let { formats ->
-                    (0 until formats.length())
-                        .asSequence()
-                        .map { formats.optJSONObject(it)?.optString("url").orEmpty() }
-                        .firstOrNull { it.isNotBlank() }
-                }
-                ?: streaming.optJSONArray("adaptiveFormats")?.let { formats ->
                     (0 until formats.length())
                         .asSequence()
                         .map { formats.optJSONObject(it)?.optString("url").orEmpty() }
@@ -112,8 +136,32 @@ internal object TrailerResolver {
                         }
                     }
                 }.orEmpty()
-            return TrailerResolveResult.Ok(TrailerResult(streamUrl, subtitles))
+            return TrailerResolveResult.Ok(
+                TrailerResult(
+                    streamUrl = streamUrl,
+                    audioUrl = if (hlsUrl == null) adaptivePair?.second else null,
+                    subtitles = subtitles,
+                    streamMimeType = if (hlsUrl != null) MimeTypes.APPLICATION_M3U8 else MimeTypes.VIDEO_MP4
+                )
+            )
         }
+    }
+
+    private fun bestAdaptivePair(formats: org.json.JSONArray): Pair<String, String>? {
+        val entries = (0 until formats.length()).mapNotNull(formats::optJSONObject)
+        val video = entries
+            .asSequence()
+            .filter { it.optString("url").isNotBlank() }
+            .filter { it.optString("mimeType").startsWith("video/mp4; codecs=\"avc1") }
+            .maxWithOrNull(compareBy<JSONObject> { it.optInt("height") }.thenBy { it.optInt("bitrate") })
+            ?: return null
+        val audio = entries
+            .asSequence()
+            .filter { it.optString("url").isNotBlank() }
+            .filter { it.optString("mimeType").startsWith("audio/mp4") }
+            .maxByOrNull { it.optInt("bitrate") }
+            ?: return null
+        return video.optString("url") to audio.optString("url")
     }
 
     private fun bestHlsVariant(masterUrl: String): String {
@@ -151,6 +199,7 @@ internal object TrailerResolver {
         "ok" -> TrailerResolveResult.Ok(
             TrailerResult(
                 streamUrl = response.getString("streamUrl"),
+                audioUrl = response.optString("audioUrl").takeIf { it.isNotBlank() },
                 subtitles = response.optJSONArray("subtitles")?.let { tracks ->
                     (0 until tracks.length()).map { i ->
                         val track = tracks.getJSONObject(i)
@@ -162,10 +211,37 @@ internal object TrailerResolver {
                             isAuto = track.getBoolean("isAuto")
                         )
                     }
-                } ?: emptyList()
+                } ?: emptyList(),
+                streamMimeType = response.optString("streamMimeType").takeIf { it.isNotBlank() }
             )
         )
         "geo_blocked" -> TrailerResolveResult.GeoBlocked
         else -> TrailerResolveResult.Failed
     }
+}
+
+private class TrailerRangeDataSource(
+    private val delegate: DataSource
+) : DataSource {
+    override fun addTransferListener(transferListener: TransferListener) {
+        delegate.addTransferListener(transferListener)
+    }
+
+    override fun open(dataSpec: DataSpec): Long {
+        val headers = dataSpec.httpRequestHeaders
+        val request = if (headers.keys.any { it.equals("Range", ignoreCase = true) }) {
+            dataSpec
+        } else {
+            dataSpec.withRequestHeaders(headers + ("Range" to "bytes=0-"))
+        }
+        return delegate.open(request)
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int = delegate.read(buffer, offset, length)
+
+    override fun getUri() = delegate.uri
+
+    override fun getResponseHeaders() = delegate.responseHeaders
+
+    override fun close() = delegate.close()
 }

@@ -182,7 +182,7 @@ internal fun PlayerScreenContent(
                         }
                     } else if (zoomDelta < 1.0f && state.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
                         val nextScale = state.videoZoomScale * zoomDelta
-                        if (nextScale < fillScale) {
+                        if (nextScale <= fillScale * 1.05f) {
                             state.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                             state.videoZoomScale = 1.0f
                         } else {

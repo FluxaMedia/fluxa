@@ -2,13 +2,9 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.ValueAnimator
 import com.fluxa.app.common.AppStrings
 import android.view.LayoutInflater
 import android.view.SurfaceView
-import android.view.animation.DecelerateInterpolator
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -50,11 +46,11 @@ import com.fluxa.app.player.MpvAndroidSurfaceView
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.TorrentStreamStatus
-import kotlin.math.roundToInt
 
 private data class ExoSurfaceConfig(
     val resizeMode: Int,
     val zoomScale: Float,
+    val fillScale: Float,
     val subtitleSize: Float,
     val subtitleTextOpacity: Float,
     val subtitleBackgroundOpacity: Float,
@@ -65,11 +61,6 @@ private data class ExoSurfaceConfig(
 private data class MpvSurfaceConfig(
     val player: MpvEmbeddedPlayer?,
     val zoomScale: Float
-)
-
-private data class SurfaceCropTarget(
-    val width: Int,
-    val height: Int
 )
 
 @Composable
@@ -148,6 +139,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
     onParentsGuideAnimationComplete: () -> Unit = {}
 ) {
     val seekSurfaceViewRef = remember { mutableStateOf<SurfaceView?>(null) }
+    val nativeLibassSurfaceView = remember { mutableStateOf<NativeLibassSubtitleSurfaceView?>(null) }
 
     if (!resolvedUrl.isNullOrEmpty()) {
         if (useMpvBackend) {
@@ -191,7 +183,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
             }
 
             val exoSurfaceConfig = remember(
-                resizeMode, videoZoomScale,
+                resizeMode, videoZoomScale, fillScale,
                 activeProfile?.safeSubtitleSize,
                 activeProfile?.safeSubtitleTextOpacity,
                 activeProfile?.safeSubtitleBackgroundOpacity,
@@ -201,6 +193,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
                 ExoSurfaceConfig(
                     resizeMode = resizeMode,
                     zoomScale = videoZoomScale,
+                    fillScale = fillScale,
                     subtitleSize = activeProfile?.safeSubtitleSize ?: 20f,
                     subtitleTextOpacity = activeProfile?.safeSubtitleTextOpacity ?: 1f,
                     subtitleBackgroundOpacity = activeProfile?.safeSubtitleBackgroundOpacity ?: 0.75f,
@@ -220,6 +213,16 @@ internal fun BoxScope.PlayerPlaybackSurface(
                             android.view.Gravity.CENTER
                         )
                         applyExoSurfaceConfig(exoSurfaceConfig, activeProfile)
+                        val contentFrame = findViewById<android.widget.FrameLayout>(androidx.media3.ui.R.id.exo_content_frame)
+                        nativeLibassSurfaceView.value = NativeLibassSubtitleSurfaceView(ctx).also { overlay ->
+                            contentFrame.addView(
+                                overlay,
+                                android.widget.FrameLayout.LayoutParams(
+                                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                                )
+                            )
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
@@ -235,7 +238,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
                 externalSubtitle = selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles),
                 embeddedSubtitle = selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks),
                 subtitleDelayMs = subtitleDelayMs,
-                modifier = Modifier.fillMaxSize()
+                surfaceView = nativeLibassSurfaceView.value
             )
         }
     }
@@ -383,10 +386,12 @@ private fun PlayerView.applyExoSurfaceConfig(config: ExoSurfaceConfig, profile: 
     resizeMode = config.resizeMode
     scaleX = 1.0f
     scaleY = 1.0f
-    videoSurfaceView?.let { surface ->
-        surface.scaleX = 1.0f
-        surface.scaleY = 1.0f
-        applySurfaceCropLayout(surface, config)
+    val contentScale = if (config.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+        (config.zoomScale / config.fillScale.coerceAtLeast(1.0f)).coerceAtLeast(1.0f)
+    } else 1.0f
+    findViewById<android.view.View>(androidx.media3.ui.R.id.exo_content_frame)?.apply {
+        scaleX = contentScale
+        scaleY = contentScale
     }
     subtitleView?.let { sv ->
         sv.setApplyEmbeddedStyles(true)
@@ -396,63 +401,6 @@ private fun PlayerView.applyExoSurfaceConfig(config: ExoSurfaceConfig, profile: 
         sv.visibility = if (config.nativeAssOverlayActive) android.view.View.GONE else android.view.View.VISIBLE
     }
     setTag(R.id.player_surface_config_tag, config)
-}
-
-private fun applySurfaceCropLayout(surface: android.view.View, config: ExoSurfaceConfig) {
-    val parent = surface.parent as? android.view.View ?: return
-    val scale = if (config.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-        config.zoomScale.coerceAtLeast(1.0f)
-    } else {
-        1.0f
-    }
-    val baseWidth = parent.width.takeIf { it > 0 } ?: surface.width
-    val baseHeight = parent.height.takeIf { it > 0 } ?: surface.height
-    if (baseWidth <= 0 || baseHeight <= 0) return
-    val targetWidth = (baseWidth * scale).roundToInt().coerceAtLeast(baseWidth)
-    val targetHeight = (baseHeight * scale).roundToInt().coerceAtLeast(baseHeight)
-    val target = SurfaceCropTarget(targetWidth, targetHeight)
-    if (surface.getTag(R.id.player_surface_crop_target_tag) == target) return
-    surface.setTag(R.id.player_surface_crop_target_tag, target)
-    (surface.getTag(R.id.player_surface_crop_animator_tag) as? ValueAnimator)?.cancel()
-    val current = surface.layoutParams as? android.widget.FrameLayout.LayoutParams
-    val startWidth = current?.width?.takeIf { it > 0 } ?: surface.width.takeIf { it > 0 } ?: baseWidth
-    val startHeight = current?.height?.takeIf { it > 0 } ?: surface.height.takeIf { it > 0 } ?: baseHeight
-    if (startWidth == targetWidth && startHeight == targetHeight) {
-        surface.layoutParams = android.widget.FrameLayout.LayoutParams(
-            targetWidth,
-            targetHeight,
-            android.view.Gravity.CENTER
-        )
-        return
-    }
-    ValueAnimator.ofFloat(0f, 1f).apply {
-        duration = 140L
-        interpolator = DecelerateInterpolator()
-        addUpdateListener { animator ->
-            val fraction = animator.animatedFraction
-            val animatedWidth = (startWidth + ((targetWidth - startWidth) * fraction)).roundToInt()
-            val animatedHeight = (startHeight + ((targetHeight - startHeight) * fraction)).roundToInt()
-            surface.layoutParams = android.widget.FrameLayout.LayoutParams(
-                animatedWidth,
-                animatedHeight,
-                android.view.Gravity.CENTER
-            )
-        }
-        addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                surface.layoutParams = android.widget.FrameLayout.LayoutParams(
-                    targetWidth,
-                    targetHeight,
-                    android.view.Gravity.CENTER
-                )
-                if (surface.getTag(R.id.player_surface_crop_animator_tag) == this@apply) {
-                    surface.setTag(R.id.player_surface_crop_animator_tag, null)
-                }
-            }
-        })
-        surface.setTag(R.id.player_surface_crop_animator_tag, this)
-        start()
-    }
 }
 
 private fun MpvAndroidSurfaceView.applyMpvSurfaceConfig(config: MpvSurfaceConfig) {

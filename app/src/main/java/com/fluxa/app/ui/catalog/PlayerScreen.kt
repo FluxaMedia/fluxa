@@ -38,7 +38,7 @@ private fun castReachableUrl(rawUrl: String): String {
         return rawUrl
     }
     val lanIp = deviceLanIpv4() ?: return rawUrl
-    val token = TorrServerEngine.castAccessToken
+    val token = TorrentServerEngine.castAccessToken
     val builder = uri.buildUpon()
         .authority(if (uri.port > 0) "$lanIp:${uri.port}" else lanIp)
     if (token.isNotBlank() && uri.getQueryParameter("access_token").isNullOrBlank()) {

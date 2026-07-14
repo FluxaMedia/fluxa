@@ -285,7 +285,9 @@ internal class HomeBillboardRuntime(
 }
 
 internal suspend fun resolvePlayableTrailerUrl(trailers: List<DetailTrailer>): String? {
-    val trailerUrl = trailers.firstOrNull { it.url.isNotBlank() }?.url ?: return null
-    if (trailerUrl.isDirectVideoPreviewUrl()) return trailerUrl
-    return (TrailerResolver.resolve(trailerUrl) as? TrailerResolveResult.Ok)?.data?.streamUrl
+    val youtubeUrl = trailers.firstOrNull { it.url.extractYoutubeVideoId() != null }?.url
+    if (youtubeUrl != null) {
+        return (TrailerResolver.resolve(youtubeUrl) as? TrailerResolveResult.Ok)?.data?.streamUrl
+    }
+    return trailers.firstOrNull { it.url.isDirectVideoPreviewUrl() }?.url
 }

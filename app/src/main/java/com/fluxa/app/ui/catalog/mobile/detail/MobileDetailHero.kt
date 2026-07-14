@@ -41,7 +41,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
@@ -127,10 +130,17 @@ internal fun MobileDetailHero(
                     .setMaxVideoSize(1920, 1080)
                     .setForceHighestSupportedBitrate(true)
                     .build()
-                player.setMediaItem(
-                    MediaItem.Builder().setUri(r.data.streamUrl)
-                        .setSubtitleConfigurations(subs).build()
-                )
+                val videoItem = MediaItem.Builder().setUri(r.data.streamUrl)
+                    .setSubtitleConfigurations(subs).build()
+                val audioUrl = r.data.audioUrl
+                if (audioUrl == null) {
+                    player.setMediaItem(videoItem)
+                } else {
+                    val mediaSourceFactory = ProgressiveMediaSource.Factory(DefaultDataSource.Factory(context))
+                    val videoSource = mediaSourceFactory.createMediaSource(videoItem)
+                    val audioSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(audioUrl))
+                    player.setMediaSource(MergingMediaSource(videoSource, audioSource))
+                }
                 player.prepare()
                 player.playWhenReady = true
                 isPlaying = true

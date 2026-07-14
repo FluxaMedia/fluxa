@@ -47,7 +47,7 @@ internal fun MobileMovieCard(
     )
 }
 
-private fun Meta.toCatalogCardUiModel(
+internal fun Meta.toCatalogCardUiModel(
     cardLayout: String,
     artworkPreference: String?,
     profile: UserProfile?,
