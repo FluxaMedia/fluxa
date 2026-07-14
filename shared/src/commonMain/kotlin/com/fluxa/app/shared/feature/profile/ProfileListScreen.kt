@@ -22,6 +22,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -166,7 +169,7 @@ private fun ProfileGridItem(
                     .clickable(onClick = onEditClick),
                 contentAlignment = Alignment.Center
             ) {
-                Text("✎", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
+                Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White.copy(alpha = 0.82f), modifier = Modifier.size(15.dp))
             }
         }
     }

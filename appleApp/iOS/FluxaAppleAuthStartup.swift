@@ -5,18 +5,13 @@ import Foundation
 final class FluxaAppleAuthStartup {
     private let authClient: FluxaAppleStremioAuthClient
     private let authStore: FluxaAppleAuthStore
-    private let decoder = JSONDecoder()
-    private let encoder = JSONEncoder()
 
     init(authClient: FluxaAppleStremioAuthClient = FluxaAppleStremioAuthClient(), authStore: FluxaAppleAuthStore = FluxaAppleAuthStore()) {
         self.authClient = authClient
         self.authStore = authStore
     }
 
-    func submit(requestJson: String) async {
-        guard let request = try? decoder.decode(FluxaAppleAuthSubmitRequest.self, from: Data(requestJson.utf8)) else {
-            return
-        }
+    func submit(request: AppleAuthSubmitSnapshot) async {
         do {
             let session = request.isSignup
                 ? try await authClient.register(email: request.email, password: request.password)
@@ -29,47 +24,6 @@ final class FluxaAppleAuthStartup {
     }
 
     private func updateState(isSubmitting: Bool, isAuthenticated: Bool, globalError: String? = nil) {
-        let snapshot = FluxaAppleJsonValue.object([
-            "isSubmitting": .boolean(isSubmitting),
-            "isAuthenticated": .boolean(isAuthenticated),
-            "globalError": globalError.map { FluxaAppleJsonValue.string($0) } ?? .null
-        ])
-        guard let data = try? encoder.encode(snapshot) else {
-            return
-        }
-        FluxaApple.shared.updateAuthJson(authJson: String(decoding: data, as: UTF8.self))
+        FluxaApple.shared.updateAuth(snapshot: AppleAuthSnapshot(isSubmitting: isSubmitting, isAuthenticated: isAuthenticated, globalError: globalError))
     }
-}
-
-final class FluxaAppleAuthNotificationObserver {
-    private let startup: FluxaAppleAuthStartup
-    private let tokens: [NSObjectProtocol]
-
-    init(startup: FluxaAppleAuthStartup) {
-        self.startup = startup
-        tokens = [
-            NotificationCenter.default.addObserver(
-                forName: Notification.Name("FluxaAppleAuthSubmitRequested"),
-                object: nil,
-                queue: .main
-            ) { [weak startup] notification in
-                guard let requestJson = notification.object as? String else {
-                    return
-                }
-                Task { @MainActor in
-                    await startup?.submit(requestJson: requestJson)
-                }
-            }
-        ]
-    }
-
-    deinit {
-        tokens.forEach { NotificationCenter.default.removeObserver($0) }
-    }
-}
-
-private struct FluxaAppleAuthSubmitRequest: Decodable {
-    let email: String
-    let password: String
-    let isSignup: Bool
 }

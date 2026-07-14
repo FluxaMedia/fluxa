@@ -6,17 +6,22 @@ import com.fluxa.app.shared.feature.auth.AuthUiState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
-import platform.Foundation.NSNotificationCenter
+
+data class AppleAuthSubmitSnapshot(
+    val email: String,
+    val password: String,
+    val isSignup: Boolean
+)
+
+data class AppleAuthSnapshot(
+    val isSubmitting: Boolean = false,
+    val isAuthenticated: Boolean = false,
+    val globalError: String? = null
+)
 
 class AppleAuthDataSource : AuthDataSource {
     private val state = MutableStateFlow(AuthUiState())
+    private var onSubmitRequested: (AppleAuthSubmitSnapshot) -> Unit = {}
 
     override fun observeAuth(): Flow<AuthUiState> = state.asStateFlow()
 
@@ -54,51 +59,22 @@ class AppleAuthDataSource : AuthDataSource {
 
     override suspend fun submit() {
         state.value = state.value.copy(isSubmitting = true)
-        postAction("FluxaAppleAuthSubmitRequested") {
-            put("email", state.value.email)
-            put("password", state.value.password)
-            put("isSignup", state.value.isSignupTab)
-        }
+        onSubmitRequested(AppleAuthSubmitSnapshot(state.value.email, state.value.password, state.value.isSignupTab))
     }
 
     override suspend fun confirmImport() {
-        postAction("FluxaAppleAuthConfirmImportRequested") { }
+        Unit
     }
 
-    private fun postAction(name: String, extra: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit) {
-        NSNotificationCenter.defaultCenter.postNotificationName(
-            aName = name,
-            `object` = buildJsonObject(extra).toString(),
-            userInfo = null
+    fun setOnSubmitRequested(handler: (AppleAuthSubmitSnapshot) -> Unit) {
+        onSubmitRequested = handler
+    }
+
+    fun update(snapshot: AppleAuthSnapshot) {
+        state.value = state.value.copy(
+            globalError = snapshot.globalError,
+            isSubmitting = snapshot.isSubmitting,
+            isAuthenticated = snapshot.isAuthenticated
         )
     }
-
-    fun updateJson(authJson: String) {
-        state.value = runCatching {
-            val root = Json.parseToJsonElement(authJson).jsonObject
-            val current = state.value
-            AuthUiState(
-                stage = root.string("stage")?.let { name -> runCatching { AuthStage.valueOf(name) }.getOrNull() } ?: current.stage,
-                showProviderActions = root.string("showProviderActions")?.toBooleanStrictOrNull() ?: true,
-                allowSignup = root.string("allowSignup")?.toBooleanStrictOrNull() ?: true,
-                isSignupTab = root.boolean("isSignupTab"),
-                email = current.email,
-                password = current.password,
-                confirmPassword = current.confirmPassword,
-                emailError = root.string("emailError"),
-                passwordError = root.string("passwordError"),
-                confirmError = root.string("confirmError"),
-                globalError = root.string("globalError"),
-                isSubmitting = root.boolean("isSubmitting"),
-                importDone = root.boolean("importDone"),
-                isAuthenticated = root.boolean("isAuthenticated")
-            )
-        }.getOrElse { state.value }
-    }
 }
-
-private fun Map<String, JsonElement>.string(key: String): String? =
-    get(key)?.jsonPrimitive?.contentOrNull
-
-private fun Map<String, JsonElement>.boolean(key: String): Boolean =
-    string(key)?.toBooleanStrictOrNull() ?: false

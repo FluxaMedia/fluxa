@@ -349,7 +349,7 @@ class MainActivity : FragmentActivity() {
                         player
                     }
 
-                    val androidFluxaPlatformServices = remember(deviceType, mainPlayer, homeViewModel, sharedDetailViewModel, profileManager) {
+                    val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager) {
                         if (deviceType == DeviceType.Mobile) {
                             AndroidFluxaPlatformServices(
                                 homeViewModel = homeViewModel,
@@ -357,8 +357,6 @@ class MainActivity : FragmentActivity() {
                                 profileManager = profileManager,
                                 activeProfile = { activeProfile },
                                 onActiveProfileChanged = { updated -> activeProfile = updated },
-                                player = mainPlayer,
-                                playerContent = { null },
                                 offlineDownloadManager = offlineDownloadManager,
                                 appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}"
                             )

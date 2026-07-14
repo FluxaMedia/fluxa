@@ -1,11 +1,8 @@
 package com.fluxa.app.ui
 
-import androidx.media3.exoplayer.ExoPlayer
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.player.AndroidPlaybackController
-import com.fluxa.app.shared.feature.player.PlayerContentUiModel
 import com.fluxa.app.shared.platform.FluxaMobilePlatformServices
 import com.fluxa.app.ui.catalog.AndroidAddonStoreDataSource
 import com.fluxa.app.ui.catalog.AndroidAuthDataSource
@@ -27,8 +24,6 @@ class AndroidFluxaPlatformServices(
     profileManager: ProfileManager,
     activeProfile: () -> UserProfile?,
     onActiveProfileChanged: (UserProfile) -> Unit,
-    player: ExoPlayer,
-    playerContent: () -> PlayerContentUiModel?,
     offlineDownloadManager: OfflineDownloadManager,
     appVersionLabel: String
 ) : FluxaMobilePlatformServices {
@@ -46,7 +41,6 @@ class AndroidFluxaPlatformServices(
     )
     override val detailDataSource = AndroidDetailDataSource(detailViewModel, activeProfile)
     override val profileDataSource = AndroidProfileDataSource(profileManager)
-    override val playbackController = AndroidPlaybackController(player, playerContent)
     override val addonStoreDataSource = AndroidAddonStoreDataSource(
         pluginManager = AppContainer.pluginManager,
         repository = AppContainer.repository,

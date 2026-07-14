@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,10 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import com.fluxa.app.shared.image.FluxaRemoteImage
 
 @Composable
 fun HomeCatalogCard(
@@ -47,15 +43,6 @@ fun HomeCatalogCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?
 ) {
-    val context = LocalPlatformContext.current
-    val request = remember(context, artwork) {
-        ImageRequest.Builder(context)
-            .data(artwork)
-            .crossfade(false)
-            .memoryCacheKey(artwork?.let { "home-catalog:$it" })
-            .diskCacheKey(artwork)
-            .build()
-    }
     val clickModifier = if (onLongClick != null) {
         Modifier.combinedClickable(interactionSource = null, indication = null, onClick = onClick, onLongClick = onLongClick)
     } else {
@@ -75,8 +62,9 @@ fun HomeCatalogCard(
             contentAlignment = Alignment.Center
         ) {
             if (!artwork.isNullOrBlank()) {
-                AsyncImage(
-                    model = request,
+                FluxaRemoteImage(
+                    imageUrl = artwork,
+                    cacheKey = "home-catalog:$artwork",
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

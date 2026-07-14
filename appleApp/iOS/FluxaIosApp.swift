@@ -6,13 +6,6 @@ struct FluxaIosApp: App {
     private let headlessRuntime: FluxaAppleHeadlessRuntime
     private let appRuntime: FluxaAppleAppRuntime
     private let catalogStartup: FluxaAppleCatalogStartup
-    private let catalogObserver: FluxaAppleCatalogNotificationObserver
-    private let detailObserver: FluxaAppleDetailNotificationObserver
-    private let searchObserver: FluxaAppleSearchNotificationObserver
-    private let discoverObserver: FluxaAppleDiscoverNotificationObserver
-    private let calendarObserver: FluxaAppleCalendarNotificationObserver
-    private let libraryObserver: FluxaAppleLibraryNotificationObserver
-    private let authObserver: FluxaAppleAuthNotificationObserver
 
     init() {
         let runtime = requireFluxaAppleHeadlessRuntime()
@@ -20,23 +13,54 @@ struct FluxaIosApp: App {
         headlessRuntime = runtime
         appRuntime = FluxaAppleAppRuntime(runtime: runtime)
         catalogStartup = FluxaAppleCatalogStartup(coordinator: appRuntime.coordinator)
-        catalogObserver = FluxaAppleCatalogNotificationObserver(startup: catalogStartup)
-        detailObserver = FluxaAppleDetailNotificationObserver(
-            startup: FluxaAppleDetailStartup(coordinator: appRuntime.coordinator)
+        let detailStartup = FluxaAppleDetailStartup(coordinator: appRuntime.coordinator)
+        let searchStartup = FluxaAppleSearchStartup(coordinator: appRuntime.coordinator)
+        let discoverStartup = FluxaAppleDiscoverStartup(coordinator: appRuntime.coordinator)
+        let calendarStartup = FluxaAppleCalendarStartup(coordinator: appRuntime.coordinator)
+        let libraryStartup = FluxaAppleLibraryStartup(coordinator: appRuntime.coordinator)
+        let authStartup = FluxaAppleAuthStartup()
+        FluxaApple.shared.setCatalogHomeRefreshHandler {
+            Task { @MainActor in
+                await self.catalogStartup.refresh()
+            }
+        }
+        FluxaApple.shared.setSearchHandler { query in
+            Task { @MainActor in
+                await searchStartup.search(query: query)
+            }
+        }
+        FluxaApple.shared.setDiscoverHandler { request in
+            Task { @MainActor in
+                await discoverStartup.discover(request: request)
+            }
+        }
+        FluxaApple.shared.setCalendarMonthHandler { year, month in
+            Task { @MainActor in
+                await calendarStartup.load(year: year.intValue, month: month.intValue)
+            }
+        }
+        FluxaApple.shared.setAuthSubmitHandler { request in
+            Task { @MainActor in
+                await authStartup.submit(request: request)
+            }
+        }
+        FluxaApple.shared.setLibraryRefreshHandler {
+            Task { @MainActor in
+                await libraryStartup.refresh()
+            }
+        }
+        FluxaApple.shared.setDetailHandlers(
+            load: { request in
+                Task { @MainActor in
+                    await detailStartup.load(request: request)
+                }
+            },
+            watchlist: { request in
+                Task { @MainActor in
+                    await detailStartup.toggleWatchlist(request: request)
+                }
+            }
         )
-        searchObserver = FluxaAppleSearchNotificationObserver(
-            startup: FluxaAppleSearchStartup(coordinator: appRuntime.coordinator)
-        )
-        discoverObserver = FluxaAppleDiscoverNotificationObserver(
-            startup: FluxaAppleDiscoverStartup(coordinator: appRuntime.coordinator)
-        )
-        calendarObserver = FluxaAppleCalendarNotificationObserver(
-            startup: FluxaAppleCalendarStartup(coordinator: appRuntime.coordinator)
-        )
-        libraryObserver = FluxaAppleLibraryNotificationObserver(
-            startup: FluxaAppleLibraryStartup(coordinator: appRuntime.coordinator)
-        )
-        authObserver = FluxaAppleAuthNotificationObserver(startup: FluxaAppleAuthStartup())
     }
 
     var body: some Scene {

@@ -4,24 +4,14 @@ import Foundation
 @MainActor
 final class FluxaAppleDetailStartup {
     private let coordinator: FluxaAppleHeadlessCoordinator
-    private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
-    init(runtime: FluxaAppleHeadlessRuntime) {
-        let configurationStore = FluxaAppleAddonConfigurationStore()
-        let handler = FluxaAppleHomeEffectHandler(
-            configurationStore: configurationStore,
-            catalogBootstrap: FluxaAppleCatalogBootstrap()
-        )
-        coordinator = FluxaAppleHeadlessCoordinator(
-            runtime: runtime,
-            executor: FluxaApplePlatformEffectExecutor(handler: handler)
-        )
+    init(coordinator: FluxaAppleHeadlessCoordinator) {
+        self.coordinator = coordinator
     }
 
-    func load(requestJson: String) async {
+    func load(request: AppleDetailRequestSnapshot) async {
         do {
-            let request = try decoder.decode(FluxaAppleDetailRequest.self, from: Data(requestJson.utf8))
             let action = FluxaAppleDetailAction(
                 type: "detailLoadRequested",
                 contentType: request.type,
@@ -35,7 +25,25 @@ final class FluxaAppleDetailStartup {
             let result = try await coordinator.dispatch(actionJson: actionJson)
             updateSharedDetail(result: result, request: request)
         } catch {
-            FluxaApple.shared.updateDetailJson(detailJson: "{\"isLoading\":false,\"errorKey\":\"auto.no_results_found\"}")
+            updateEmptyDetail(request: request)
+        }
+    }
+
+    func toggleWatchlist(request: AppleDetailRequestSnapshot) async {
+        do {
+            let action = FluxaAppleToggleWatchlistAction(
+                type: "toggleWatchlistRequested",
+                item: FluxaAppleToggleWatchlistItem(
+                    id: request.id,
+                    type: request.type,
+                    name: request.title ?? request.id
+                )
+            )
+            let actionJson = String(decoding: try encoder.encode(action), as: UTF8.self)
+            let result = try await coordinator.dispatch(actionJson: actionJson)
+            updateSharedDetail(result: result, request: request)
+        } catch {
+            return
         }
     }
 
@@ -45,71 +53,28 @@ final class FluxaAppleDetailStartup {
     ) {
         guard case .object(let detail)? = result.state["detail"],
               case .object(let meta)? = detail["meta"] else {
-            FluxaApple.shared.updateDetailJson(detailJson: "{\"isLoading\":false,\"errorKey\":\"auto.no_results_found\"}")
+            updateEmptyDetail(request: request)
             return
         }
-        let snapshot = FluxaAppleJsonValue.object([
-            "id": meta["id"] ?? .string(request.id),
-            "type": meta["type"] ?? .string(request.type),
-            "title": text(meta["name"]) ?? .string(request.id),
-            "description": text(meta["description"]) ?? .string(""),
-            "posterUrl": meta["poster"] ?? .null,
-            "backgroundUrl": meta["background"] ?? .null,
-            "logoUrl": meta["logo"] ?? .null,
-            "releaseLabel": text(meta["releaseInfo"]) ?? .string(""),
-            "ratingLabel": text(meta["imdbRating"]) ?? .string(""),
-            "isInWatchlist": detail["isInWatchlist"] ?? .boolean(false),
-            "relatedItems": .array([]),
-            "isLoading": .boolean(false)
-        ])
-        guard let data = try? encoder.encode(snapshot) else {
-            return
-        }
-        FluxaApple.shared.updateDetailJson(detailJson: String(decoding: data, as: UTF8.self))
+        FluxaApple.shared.updateDetail(snapshot: AppleDetailSnapshot(id: text(meta["id"]) ?? request.id, type: text(meta["type"]) ?? request.type, title: text(meta["name"]) ?? request.id, description: text(meta["description"]) ?? "", posterUrl: text(meta["poster"]), backgroundUrl: text(meta["background"]), logoUrl: text(meta["logo"]), releaseLabel: text(meta["releaseInfo"]) ?? "", ratingLabel: text(meta["imdbRating"]) ?? "", isInWatchlist: bool(detail["isInWatchlist"]), isLoading: false, errorKey: nil))
     }
 
-    private func text(_ value: FluxaAppleJsonValue?) -> FluxaAppleJsonValue? {
+    private func updateEmptyDetail(request: AppleDetailRequestSnapshot) {
+        FluxaApple.shared.updateDetail(snapshot: AppleDetailSnapshot(id: request.id, type: request.type, title: request.title ?? request.id, description: "", posterUrl: nil, backgroundUrl: nil, logoUrl: nil, releaseLabel: "", ratingLabel: "", isInWatchlist: false, isLoading: false, errorKey: "auto.no_results_found"))
+    }
+
+    private func text(_ value: FluxaAppleJsonValue?) -> String? {
         switch value {
-        case .string:
-            value
-        case .number(let number):
-            .string(String(number))
-        default:
-            nil
-        }
-    }
-}
-
-final class FluxaAppleDetailNotificationObserver {
-    private let startup: FluxaAppleDetailStartup
-    private let token: NSObjectProtocol
-
-    init(startup: FluxaAppleDetailStartup) {
-        self.startup = startup
-        token = NotificationCenter.default.addObserver(
-            forName: Notification.Name("FluxaAppleDetailRequested"),
-            object: nil,
-            queue: .main
-        ) { [weak startup] notification in
-            guard let requestJson = notification.object as? String else {
-                return
-            }
-            Task { @MainActor in
-                await startup?.load(requestJson: requestJson)
-            }
+        case .string(let text): return text
+        case .number(let number): return String(number)
+        default: return nil
         }
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(token)
+    private func bool(_ value: FluxaAppleJsonValue?) -> Bool {
+        if case .boolean(let value)? = value { return value }
+        return false
     }
-}
-
-private struct FluxaAppleDetailRequest: Decodable {
-    let id: String
-    let type: String
-    let addonTransportUrl: String?
-    let catalogType: String?
 }
 
 private struct FluxaAppleDetailAction: Encodable {
@@ -124,4 +89,15 @@ private struct FluxaAppleDetailAction: Encodable {
 
 private struct FluxaAppleDetailProfile: Encodable {
     let id: String
+}
+
+private struct FluxaAppleToggleWatchlistAction: Encodable {
+    let type: String
+    let item: FluxaAppleToggleWatchlistItem
+}
+
+private struct FluxaAppleToggleWatchlistItem: Encodable {
+    let id: String
+    let type: String
+    let name: String
 }

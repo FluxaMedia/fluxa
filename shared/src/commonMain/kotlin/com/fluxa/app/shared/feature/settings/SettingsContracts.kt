@@ -11,6 +11,7 @@ data class SettingsAccountUiModel(
     val displayName: String = "",
     val avatarUrl: String? = null,
     val isGuest: Boolean = true,
+    val hasNuvio: Boolean = false,
     val hasTrakt: Boolean = false,
     val hasSimkl: Boolean = false,
     val hasAnilist: Boolean = false,

@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
+import com.fluxa.app.shared.image.FluxaRemoteImage
 
 @Composable
 fun MobileExplorePosterCard(
@@ -30,8 +30,9 @@ fun MobileExplorePosterCard(
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
-        AsyncImage(
-            model = artworkUrl,
+        FluxaRemoteImage(
+            imageUrl = artworkUrl,
+            cacheKey = artworkUrl?.let { "explore-poster:$it" },
             contentDescription = title,
             modifier = Modifier
                 .fillMaxWidth()

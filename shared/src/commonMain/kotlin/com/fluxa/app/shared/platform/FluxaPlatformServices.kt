@@ -7,7 +7,6 @@ import com.fluxa.app.shared.feature.calendar.CalendarDataSource
 import com.fluxa.app.shared.feature.detail.DetailDataSource
 import com.fluxa.app.shared.feature.discover.DiscoverDataSource
 import com.fluxa.app.shared.feature.library.LibraryDataSource
-import com.fluxa.app.shared.feature.player.PlaybackController
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.settings.SettingsDataSource
@@ -40,10 +39,6 @@ interface FluxaProfileServices {
     val profileDataSource: ProfileDataSource
 }
 
-interface FluxaPlaybackServices {
-    val playbackController: PlaybackController
-}
-
 interface FluxaAddonStoreServices {
     val addonStoreDataSource: AddonStoreDataSource
 }
@@ -64,7 +59,6 @@ interface FluxaMobilePlatformServices :
     FluxaLibraryServices,
     FluxaDetailServices,
     FluxaProfileServices,
-    FluxaPlaybackServices,
     FluxaAddonStoreServices,
     FluxaAuthServices,
     FluxaSettingsServices

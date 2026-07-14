@@ -6,22 +6,14 @@ final class FluxaAppleSearchStartup {
     private let coordinator: FluxaAppleHeadlessCoordinator
     private let encoder = JSONEncoder()
 
-    init(runtime: FluxaAppleHeadlessRuntime) {
-        let configurationStore = FluxaAppleAddonConfigurationStore()
-        let handler = FluxaAppleHomeEffectHandler(
-            configurationStore: configurationStore,
-            catalogBootstrap: FluxaAppleCatalogBootstrap()
-        )
-        coordinator = FluxaAppleHeadlessCoordinator(
-            runtime: runtime,
-            executor: FluxaApplePlatformEffectExecutor(handler: handler)
-        )
+    init(coordinator: FluxaAppleHeadlessCoordinator) {
+        self.coordinator = coordinator
     }
 
     func search(query: String) async {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedQuery.isEmpty else {
-            FluxaApple.shared.updateSearchJson(searchJson: "{\"query\":\"\",\"results\":[],\"isLoading\":false}")
+            FluxaApple.shared.updateSearch(snapshot: AppleSearchSnapshot(query: "", results: [], isLoading: false))
             return
         }
         do {
@@ -35,46 +27,29 @@ final class FluxaAppleSearchStartup {
             let result = try await coordinator.dispatch(actionJson: actionJson)
             updateSharedSearch(result: result, query: normalizedQuery)
         } catch {
-            FluxaApple.shared.updateSearchJson(searchJson: "{\"query\":\"\(normalizedQuery)\",\"results\":[],\"isLoading\":false}")
+            FluxaApple.shared.updateSearch(snapshot: AppleSearchSnapshot(query: normalizedQuery, results: [], isLoading: false))
         }
     }
 
     private func updateSharedSearch(result: FluxaAppleHeadlessResult, query: String) {
-        let results: [FluxaAppleJsonValue]
+        let results: [AppleCatalogItemSnapshot]
         if case .object(let search)? = result.state["search"],
            case .array(let values)? = search["results"] {
             results = values.compactMap(sharedItem)
         } else {
             results = []
         }
-        let snapshot = FluxaAppleJsonValue.object([
-            "query": .string(query),
-            "results": .array(results),
-            "isLoading": .boolean(false)
-        ])
-        guard let data = try? encoder.encode(snapshot) else {
-            return
-        }
-        FluxaApple.shared.updateSearchJson(searchJson: String(decoding: data, as: UTF8.self))
+        FluxaApple.shared.updateSearch(snapshot: AppleSearchSnapshot(query: query, results: results, isLoading: false))
     }
 
-    private func sharedItem(_ value: FluxaAppleJsonValue) -> FluxaAppleJsonValue? {
+    private func sharedItem(_ value: FluxaAppleJsonValue) -> AppleCatalogItemSnapshot? {
         guard case .object(let item) = value,
               let id = text(item["id"]),
               let type = text(item["type"]),
               let title = text(item["name"]) else {
             return nil
         }
-        return .object([
-            "id": .string(id),
-            "type": .string(type),
-            "title": .string(title),
-            "subtitle": item["releaseInfo"] ?? .string(""),
-            "artworkUrl": item["poster"] ?? .null,
-            "logoUrl": item["logo"] ?? .null,
-            "addonTransportUrl": item["addonTransportUrl"] ?? .null,
-            "catalogType": item["catalogType"] ?? .null
-        ])
+        return AppleCatalogItemSnapshot(id: id, type: type, title: title, subtitle: text(item["releaseInfo"]) ?? "", artworkUrl: text(item["poster"]), logoUrl: text(item["logo"]), addonTransportUrl: text(item["addonTransportUrl"]), catalogType: text(item["catalogType"]), progress: nil, topTenRank: nil)
     }
 
     private func text(_ value: FluxaAppleJsonValue?) -> String? {
@@ -82,31 +57,6 @@ final class FluxaAppleSearchStartup {
             return nil
         }
         return text
-    }
-}
-
-final class FluxaAppleSearchNotificationObserver {
-    private let startup: FluxaAppleSearchStartup
-    private let token: NSObjectProtocol
-
-    init(startup: FluxaAppleSearchStartup) {
-        self.startup = startup
-        token = NotificationCenter.default.addObserver(
-            forName: Notification.Name("FluxaAppleSearchRequested"),
-            object: nil,
-            queue: .main
-        ) { [weak startup] notification in
-            guard let query = notification.object as? String else {
-                return
-            }
-            Task { @MainActor in
-                await startup?.search(query: query)
-            }
-        }
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(token)
     }
 }
 

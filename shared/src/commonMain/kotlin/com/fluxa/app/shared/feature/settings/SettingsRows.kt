@@ -16,7 +16,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -33,6 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.ui.catalog.FluxaColors
@@ -148,24 +162,33 @@ fun SettingsStepperRow(
     ) {
         Text(label, color = Color.White, modifier = Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SettingsStepperButton("−") { onValueChanged((value - step).coerceIn(min, max)) }
+            SettingsIconButton(Icons.Filled.Remove) { onValueChanged((value - step).coerceIn(min, max)) }
             Text(formatValue(value), color = Color.White, modifier = Modifier.width(48.dp), fontSize = 14.sp)
-            SettingsStepperButton("+") { onValueChanged((value + step).coerceIn(min, max)) }
+            SettingsIconButton(Icons.Filled.Add) { onValueChanged((value + step).coerceIn(min, max)) }
         }
     }
 }
 
 @Composable
-private fun SettingsStepperButton(symbol: String, onClick: () -> Unit) {
+private fun SettingsIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .size(28.dp)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.1f))
-            .clickable(onClick = onClick),
+            .background(Color.White.copy(alpha = if (enabled) 0.1f else 0.04f))
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(symbol, color = Color.White, fontWeight = FontWeight.Bold)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = if (enabled) 0.85f else 0.25f),
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
@@ -247,7 +270,7 @@ fun SettingsOrderedToggleRow(
                 .clickable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {
-            if (selected) Text("✓", color = Color.Black, fontSize = 12.sp)
+            if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -255,9 +278,9 @@ fun SettingsOrderedToggleRow(
             if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
         }
         if (selected) {
-            SettingsStepperButton("↑".takeIf { canMoveUp } ?: "") { if (canMoveUp) onMoveUp() }
+            SettingsIconButton(Icons.Filled.KeyboardArrowUp, enabled = canMoveUp) { onMoveUp() }
             Spacer(Modifier.width(4.dp))
-            SettingsStepperButton("↓".takeIf { canMoveDown } ?: "") { if (canMoveDown) onMoveDown() }
+            SettingsIconButton(Icons.Filled.KeyboardArrowDown, enabled = canMoveDown) { onMoveDown() }
         }
     }
 }
@@ -293,6 +316,101 @@ fun SettingsActionRow(
         if (value != null) {
             Text(value, color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
         }
+    }
+}
+
+@Composable
+fun SettingsConnectionRow(
+    label: String,
+    connected: Boolean,
+    connectedLabel: String,
+    icon: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.White.copy(alpha = 0.08f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    icon()
+                }
+                Spacer(Modifier.width(14.dp))
+            }
+            Text(label, color = Color.White, fontWeight = FontWeight.Medium)
+        }
+        if (connected) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = FluxaColors.successGreen,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(connectedLabel, color = FluxaColors.successGreen, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            }
+        } else {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.35f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun SettingsSecretFieldRow(
+    label: String,
+    value: String,
+    placeholder: String? = null,
+    onValueChanged: (String) -> Unit
+) {
+    var revealed by remember { mutableStateOf(false) }
+    androidx.compose.material3.OutlinedTextField(
+        value = value,
+        onValueChange = onValueChanged,
+        label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it, color = Color.White.copy(alpha = 0.3f)) } },
+        singleLine = true,
+        visualTransformation = if (revealed) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            IconButtonToggle(revealed) { revealed = !revealed }
+        },
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            focusedBorderColor = Color.White.copy(alpha = 0.4f),
+            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+            focusedLabelColor = Color.White.copy(alpha = 0.7f),
+            unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
+            cursorColor = Color.White
+        )
+    )
+}
+
+@Composable
+private fun IconButtonToggle(revealed: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(24.dp).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (revealed) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.6f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -334,7 +452,12 @@ fun SettingsNavRow(label: String, icon: androidx.compose.ui.graphics.vector.Imag
             }
             Text(label, color = Color.White, fontWeight = FontWeight.Medium)
         }
-        Text("›", color = Color.White.copy(alpha = 0.4f), fontSize = 18.sp)
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.35f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

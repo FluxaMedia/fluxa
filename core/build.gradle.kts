@@ -6,6 +6,7 @@ plugins {
 
 android {
     namespace = "com.fluxa.app.core"
+    sourceSets.getByName("main").assets.srcDir("src/commonMain/resources")
 }
 
 kotlin {

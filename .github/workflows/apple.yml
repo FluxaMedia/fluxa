@@ -74,8 +74,8 @@ jobs:
             brew install xcodegen
           fi
 
-      - name: Verify shared iOS code
-        run: ./gradlew --no-daemon :shared:iosSimulatorArm64Test
+      - name: Verify iOS shared code
+        run: ./gradlew --no-daemon :checkAppleTypedCatalogBridge :core:linkDebugFrameworkIosSimulatorArm64 :shared:iosSimulatorArm64Test
 
       - name: Generate Apple host project
         working-directory: appleApp
@@ -133,8 +133,8 @@ jobs:
             brew install xcodegen
           fi
 
-      - name: Build tvOS shared core
-        run: ./gradlew --no-daemon :core:linkDebugFrameworkTvosSimulatorArm64
+      - name: Verify tvOS shared core
+        run: ./gradlew --no-daemon :core:linkDebugFrameworkTvosSimulatorArm64 :core:tvosSimulatorArm64Test
 
       - name: Generate Apple host project
         working-directory: appleApp

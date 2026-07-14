@@ -23,7 +23,7 @@ targets:
       - path: iOS
       - path: Generated/FluxaRustCore.swift
     resources:
-      - path: ../core/src/androidMain/assets/i18n
+      - path: ../core/src/commonMain/resources/i18n
     dependencies:
       - sdk: UIKit.framework
     preBuildScripts:
@@ -39,9 +39,10 @@ targets:
     sources:
       - path: AppleCore
       - path: tvOS
+      - path: iOS/FluxaAppleHomeEffectHandler.swift
       - path: Generated/FluxaRustCore.swift
     resources:
-      - path: ../core/src/androidMain/assets/i18n
+      - path: ../core/src/commonMain/resources/i18n
     preBuildScripts:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh

@@ -63,7 +63,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.parseAddonResourceResult",
         "FluxaCoreNative.parseExtraArgs"
     ),
-    "player/src/main/java/com/fluxa/app/player/TorrServerEngine.kt" to listOf(
+    "player/src/main/java/com/fluxa/app/player/TorrentServerEngine.kt" to listOf(
         "FluxaCoreNative.startTorrentServer",
         "FluxaCoreNative.stopTorrentServer"
     ),
@@ -203,6 +203,99 @@ tasks.register("checkKotlinFileSize") {
             throw GradleException(
                 "Kotlin files exceed $maxKotlinFileLines lines:\n${oversizedFiles.joinToString("\n")}"
             )
+        }
+    }
+}
+
+tasks.register("checkSharedUiBoundary") {
+    group = "verification"
+    description = "Fails when shared Compose UI depends on Android or Android-only application layers."
+
+    doLast {
+        val forbiddenImports = listOf(
+            "import android.",
+            "import androidx.media3.",
+            "import com.fluxa.app.data.",
+            "import com.fluxa.app.player."
+        )
+        val violations = fileTree("shared/src/commonMain") {
+            include("**/*.kt")
+        }.files.flatMap { file ->
+            val text = file.readText()
+            forbiddenImports
+                .filter { forbidden -> text.contains(forbidden) }
+                .map { forbidden -> "${file.relativeTo(rootDir)} must not depend on $forbidden" }
+        }
+        if (violations.isNotEmpty()) {
+            throw GradleException(violations.joinToString("\n"))
+        }
+    }
+}
+
+tasks.register("checkAppleTypedCatalogBridge") {
+    group = "verification"
+    description = "Fails when the Apple catalog bridge falls back to JSON or notification handoffs."
+
+    doLast {
+        val requiredFiles = mapOf(
+            "shared/src/iosMain/kotlin/com/fluxa/app/shared/platform/AppleCatalogHomeDataSource.kt" to listOf(
+                "AppleCatalogHomeSnapshot",
+                "setOnRefreshRequested",
+                "fun update(snapshot: AppleCatalogHomeSnapshot)"
+            ),
+            "appleApp/iOS/FluxaAppleCatalogStartup.swift" to listOf(
+                "AppleCatalogHomeSnapshot",
+                "AppleCatalogRowSnapshot",
+                "AppleCatalogItemSnapshot"
+            ),
+            "appleApp/iOS/FluxaIosApp.swift" to listOf("setCatalogHomeRefreshHandler")
+        )
+        val forbiddenTokens = listOf(
+            "updateCatalogHomeJson",
+            "FluxaAppleCatalogRefreshRequested",
+            "NSNotificationCenter",
+            "NotificationCenter.default.addObserver"
+        )
+        val violations = requiredFiles.flatMap { (relativePath, requiredTokens) ->
+            val file = rootProject.file(relativePath)
+            if (!file.exists()) {
+                return@flatMap listOf("$relativePath is missing")
+            }
+            val text = file.readText()
+            (requiredTokens.filterNot(text::contains).map { token ->
+                "$relativePath must contain $token"
+            } + forbiddenTokens.filter(text::contains).map { token ->
+                "$relativePath must not contain $token"
+            })
+        }
+        if (violations.isNotEmpty()) {
+            throw GradleException(violations.joinToString("\n"))
+        }
+
+        val bridgeFiles = fileTree("shared/src/iosMain/kotlin/com/fluxa/app/shared/platform") {
+            include("Apple*DataSource.kt")
+        }.files + fileTree("appleApp/iOS") {
+            include("FluxaApple*Startup.swift", "FluxaIosApp.swift")
+        }.files
+        val legacyBridgeTokens = listOf(
+            "updateDetailJson",
+            "updateSearchJson",
+            "updateDiscoverJson",
+            "updateLibraryJson",
+            "updateCalendarJson",
+            "updateAddonStoreJson",
+            "updateAuthJson",
+            "NSNotificationCenter",
+            "NotificationCenter.default.addObserver"
+        )
+        val legacyViolations = bridgeFiles.flatMap { file ->
+            val text = file.readText()
+            legacyBridgeTokens.filter(text::contains).map { token ->
+                "${file.relativeTo(rootDir)} must not contain $token"
+            }
+        }
+        if (legacyViolations.isNotEmpty()) {
+            throw GradleException(legacyViolations.joinToString("\n"))
         }
     }
 }
@@ -386,6 +479,8 @@ tasks.register("qualityCheck") {
     description = "Runs the default local quality gate for Fluxa."
     dependsOn(
         "checkKotlinFileSize",
+        "checkSharedUiBoundary",
+        "checkAppleTypedCatalogBridge",
         "checkRustCoreBoundary",
         "checkFluxaCoreJniSymbols",
         "checkFluxaStreamingJniSymbols",

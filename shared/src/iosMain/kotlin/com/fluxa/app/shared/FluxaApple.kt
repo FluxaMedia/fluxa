@@ -2,7 +2,16 @@ package com.fluxa.app.shared
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.window.ComposeUIViewController
-import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
+import com.fluxa.app.shared.platform.AppleCatalogHomeSnapshot
+import com.fluxa.app.shared.platform.AppleSearchSnapshot
+import com.fluxa.app.shared.platform.AppleDiscoverRequestSnapshot
+import com.fluxa.app.shared.platform.AppleDiscoverSnapshot
+import com.fluxa.app.shared.platform.AppleCalendarSnapshot
+import com.fluxa.app.shared.platform.AppleAuthSubmitSnapshot
+import com.fluxa.app.shared.platform.AppleAuthSnapshot
+import com.fluxa.app.shared.platform.AppleLibrarySnapshot
+import com.fluxa.app.shared.platform.AppleDetailRequestSnapshot
+import com.fluxa.app.shared.platform.AppleDetailSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
 import com.fluxa.app.shared.platform.AppleAuthDataSource
 import com.fluxa.app.shared.platform.AppleCatalogHomeDataSource
@@ -44,41 +53,69 @@ object FluxaApple {
         FluxaAppleApp()
     }
 
-    fun updateCatalogHome(home: CatalogHomeUiState) {
-        catalogHomeDataSource.update(home)
+    fun setCatalogHomeRefreshHandler(handler: () -> Unit) {
+        catalogHomeDataSource.setOnRefreshRequested(handler)
     }
 
-    fun updateCatalogHomeJson(homeJson: String) {
-        catalogHomeDataSource.updateJson(homeJson)
+    fun updateCatalogHome(snapshot: AppleCatalogHomeSnapshot) {
+        catalogHomeDataSource.update(snapshot)
     }
 
-    fun updateDetailJson(detailJson: String) {
-        detailDataSource.updateJson(detailJson)
+    fun setSearchHandler(handler: (String) -> Unit) {
+        searchDataSource.setOnSearchRequested(handler)
     }
 
-    fun updateSearchJson(searchJson: String) {
-        searchDataSource.updateJson(searchJson)
+    fun updateSearch(snapshot: AppleSearchSnapshot) {
+        searchDataSource.update(snapshot)
     }
 
-    fun updateDiscoverJson(discoverJson: String) {
-        discoverDataSource.updateJson(discoverJson)
+    fun setDiscoverHandler(handler: (AppleDiscoverRequestSnapshot) -> Unit) {
+        discoverDataSource.setOnDiscoverRequested(handler)
     }
 
-    fun updateLibraryJson(libraryJson: String) {
-        libraryDataSource.updateJson(libraryJson)
+    fun updateDiscover(snapshot: AppleDiscoverSnapshot) {
+        discoverDataSource.update(snapshot)
     }
 
-    fun updateCalendarJson(calendarJson: String) {
-        calendarDataSource.updateJson(calendarJson)
+    fun setCalendarMonthHandler(handler: (Int, Int) -> Unit) {
+        calendarDataSource.setOnMonthRequested(handler)
     }
 
-    fun updateAddonStoreJson(addonStoreJson: String) {
-        addonStoreDataSource.updateJson(addonStoreJson)
+    fun updateCalendar(snapshot: AppleCalendarSnapshot) {
+        calendarDataSource.update(snapshot)
     }
 
-    fun updateAuthJson(authJson: String) {
-        authDataSource.updateJson(authJson)
+    fun setAuthSubmitHandler(handler: (AppleAuthSubmitSnapshot) -> Unit) {
+        authDataSource.setOnSubmitRequested(handler)
     }
+
+    fun updateAuth(snapshot: AppleAuthSnapshot) {
+        authDataSource.update(snapshot)
+    }
+
+    fun setLibraryRefreshHandler(handler: () -> Unit) {
+        libraryDataSource.setOnRefreshRequested(handler)
+    }
+
+    fun updateLibrary(snapshot: AppleLibrarySnapshot) {
+        libraryDataSource.update(snapshot)
+    }
+
+    fun setDetailHandlers(
+        load: (AppleDetailRequestSnapshot) -> Unit,
+        watchlist: (AppleDetailRequestSnapshot) -> Unit
+    ) {
+        detailDataSource.setHandlers(load, watchlist)
+    }
+
+    fun updateDetail(snapshot: AppleDetailSnapshot) {
+        detailDataSource.update(snapshot)
+    }
+
+
+
+
+
 
 }
 

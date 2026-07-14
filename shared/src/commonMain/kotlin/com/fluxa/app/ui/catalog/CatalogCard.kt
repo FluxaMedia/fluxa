@@ -30,10 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import com.fluxa.app.shared.image.FluxaRemoteImage
 
 @Composable
 fun CatalogCard(
@@ -42,28 +39,8 @@ fun CatalogCard(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null
 ) {
-    val context = LocalPlatformContext.current
     val density = LocalDensity.current
-
-    val artworkRequest = remember(context, model.artworkUrl, model.requestWidthPx, model.requestHeightPx) {
-        ImageRequest.Builder(context)
-            .data(model.artworkUrl)
-            .crossfade(false)
-            .memoryCacheKey(model.artworkMemoryCacheKey)
-            .diskCacheKey(model.artworkDiskCacheKey)
-            .size(model.requestWidthPx, model.requestHeightPx)
-            .build()
-    }
     var failed by remember(model.artworkUrl) { mutableStateOf(model.artworkUrl.isNullOrBlank()) }
-
-    val logoRequest = remember(model.logoUrl, model.showLogo) {
-        if (!model.showLogo || model.logoUrl == null) null else ImageRequest.Builder(context)
-            .data(model.logoUrl)
-            .crossfade(false)
-            .memoryCacheKey(model.logoMemoryCacheKey)
-            .diskCacheKey(model.logoUrl)
-            .build()
-    }
 
     val rankFontSize = remember(model.topTenRank, model.imageHeight, model.rankFontSizeRatio, density) {
         if (model.topTenRank != null) {
@@ -118,8 +95,9 @@ fun CatalogCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (model.loadArtwork && !failed) {
-                    AsyncImage(
-                        model = artworkRequest,
+                    FluxaRemoteImage(
+                        imageUrl = model.artworkUrl,
+                        cacheKey = model.artworkMemoryCacheKey,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -143,10 +121,11 @@ fun CatalogCard(
                         fontWeight = FontWeight.Black
                     )
                 }
-                if (model.loadArtwork && model.showLogo && logoRequest != null) {
+                if (model.loadArtwork && model.showLogo && model.logoUrl != null) {
                     Box(modifier = Modifier.fillMaxSize().background(MOBILE_CARD_BOTTOM_GRADIENT))
-                    AsyncImage(
-                        model = logoRequest,
+                    FluxaRemoteImage(
+                        imageUrl = model.logoUrl,
+                        cacheKey = model.logoMemoryCacheKey,
                         contentDescription = null,
                         modifier = Modifier
                             .align(Alignment.BottomStart)

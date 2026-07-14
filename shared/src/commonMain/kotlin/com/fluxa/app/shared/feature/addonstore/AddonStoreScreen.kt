@@ -21,6 +21,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -72,7 +81,7 @@ fun AddonStoreScreen(
                             .clickable(onClick = onBackRequested),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("←", color = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                     Text(
                         text = AppStrings.t(language, "auto.addons"),
@@ -191,7 +200,7 @@ private fun AddonSmartInput(
                     state.inputDetectedType != AddonStoreInputType.SEARCH_QUERY
                 ) {
                     IconButton(enabled = state.inputText.isNotBlank(), onClick = onSubmit) {
-                        Text("+", color = Color.White, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White)
                     }
                 }
             },
@@ -250,7 +259,7 @@ private fun CloudstreamRepoItem(
                 )
             }
             IconButton(onClick = onRemove) {
-                Text("✕", color = Color.White.copy(alpha = 0.5f))
+                Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -295,24 +304,24 @@ private fun InstalledAddonItem(
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (onConfigure != null) {
                             IconButton(onClick = onConfigure) {
-                                Text("⚙", color = Color.White.copy(alpha = 0.68f))
+                                Icon(Icons.Filled.Settings, contentDescription = null, tint = Color.White.copy(alpha = 0.68f), modifier = Modifier.size(18.dp))
                             }
                         }
                         IconButton(onClick = onRefresh, enabled = !addon.isRefreshing) {
                             if (addon.isRefreshing) {
                                 CircularProgressIndicator(color = Color.White.copy(alpha = 0.68f), strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                             } else {
-                                Text("↻", color = Color.White.copy(alpha = 0.68f))
+                                Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White.copy(alpha = 0.68f), modifier = Modifier.size(18.dp))
                             }
                         }
                         IconButton(onClick = onMoveUp, enabled = addon.canMoveUp) {
-                            Text("↑", color = Color.White.copy(alpha = if (addon.canMoveUp) 0.68f else 0.22f))
+                            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = null, tint = Color.White.copy(alpha = if (addon.canMoveUp) 0.68f else 0.22f))
                         }
                         IconButton(onClick = onMoveDown, enabled = addon.canMoveDown) {
-                            Text("↓", color = Color.White.copy(alpha = if (addon.canMoveDown) 0.68f else 0.22f))
+                            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Color.White.copy(alpha = if (addon.canMoveDown) 0.68f else 0.22f))
                         }
                         IconButton(onClick = onRemove) {
-                            Text("✕", color = Color.White.copy(alpha = 0.62f))
+                            Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.62f), modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -447,9 +456,11 @@ private fun CloudstreamPluginItem(
         if (isInstalling) {
             CircularProgressIndicator(color = accentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
         } else {
-            Text(
-                text = if (plugin.isInstalled) "✕" else "⤓",
-                color = if (plugin.isInstalled) FluxaColors.errorRed else Color.White.copy(alpha = 0.5f)
+            Icon(
+                imageVector = if (plugin.isInstalled) Icons.Filled.Close else Icons.Filled.Download,
+                contentDescription = null,
+                tint = if (plugin.isInstalled) FluxaColors.errorRed else Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }

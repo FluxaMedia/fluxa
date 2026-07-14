@@ -94,8 +94,8 @@ class AppStrings private constructor(
         private fun load(language: String?): AppStrings {
             val fileName = languageFileName(language)
             return cache.getOrPut(fileName) {
-                val fallback = readAsset("en-US.json")
-                val values = if (fileName == "en-US.json") fallback else readAsset(fileName)
+                val fallback = readAsset("english_us.json")
+                val values = if (fileName == "english_us.json") fallback else readAsset(fileName)
                 AppStrings(values, fallback)
             }
         }
@@ -106,9 +106,9 @@ class AppStrings private constructor(
                 .orEmpty()
             val languageCode = normalized.removeSuffix(".json")
             return when (languageCode.lowercase()) {
-                "" -> "en-US.json"
-                "en", "en-us" -> "en-US.json"
-                "tr", "tr-tr" -> "tr-TR.json"
+                "" -> "english_us.json"
+                "en", "en-us", "english_us" -> "english_us.json"
+                "tr", "tr-tr", "tr_tr" -> "tr_tr.json"
                 else -> if (normalized.endsWith(".json")) normalized else "$normalized.json"
             }
         }

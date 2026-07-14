@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -179,25 +181,34 @@ private fun SettingsHubContent(
 @Composable
 private fun SettingsAccountContent(model: SettingsAccountUiModel, lang: String?, brandIcons: SettingsBrandIcons, onAction: (SettingsAction) -> Unit) {
     SettingsSectionHeader(AppStrings.t(lang, "auto.account_sync"))
-    SettingsActionRow(
+    SettingsConnectionRow(
         AppStrings.t(lang, "brand.stremio"),
-        value = if (!model.isGuest) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+        connected = !model.isGuest,
+        connectedLabel = AppStrings.t(lang, "auto.connected"),
         icon = brandIcons.stremio
     ) { onAction(SettingsAction.ConnectStremioRequested) }
-    SettingsActionRow(AppStrings.t(lang, "brand.nuvio"), icon = brandIcons.nuvio) { onAction(SettingsAction.ConnectNuvioRequested) }
-    SettingsActionRow(
+    SettingsConnectionRow(
+        AppStrings.t(lang, "brand.nuvio"),
+        connected = model.hasNuvio,
+        connectedLabel = AppStrings.t(lang, "auto.connected"),
+        icon = brandIcons.nuvio
+    ) { onAction(SettingsAction.ConnectNuvioRequested) }
+    SettingsConnectionRow(
         AppStrings.t(lang, "brand.trakt"),
-        value = if (model.hasTrakt) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+        connected = model.hasTrakt,
+        connectedLabel = AppStrings.t(lang, "auto.connected"),
         icon = brandIcons.trakt
     ) { onAction(SettingsAction.ConnectTraktRequested) }
-    SettingsActionRow(
+    SettingsConnectionRow(
         AppStrings.t(lang, "brand.simkl"),
-        value = if (model.hasSimkl) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+        connected = model.hasSimkl,
+        connectedLabel = AppStrings.t(lang, "auto.connected"),
         icon = brandIcons.simkl
     ) { onAction(SettingsAction.ConnectSimklRequested) }
-    SettingsActionRow(
+    SettingsConnectionRow(
         AppStrings.t(lang, "brand.anilist"),
-        value = if (model.hasAnilist) AppStrings.t(lang, "auto.connected") else AppStrings.t(lang, "auto.not_connected"),
+        connected = model.hasAnilist,
+        connectedLabel = AppStrings.t(lang, "auto.connected"),
         icon = brandIcons.anilist
     ) { onAction(SettingsAction.ConnectAnilistRequested) }
     if (model.hasAnySync) {
@@ -205,22 +216,44 @@ private fun SettingsAccountContent(model: SettingsAccountUiModel, lang: String?,
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.tmdb_api"))
-    SettingsTextFieldRow(AppStrings.t(lang, "settings.tmdb_api_key"), model.tmdbApiKey.orEmpty()) {
+    val tmdbConfigured = !model.tmdbApiKey.isNullOrBlank()
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(AppStrings.t(lang, "brand.tmdb"), color = Color.White)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (tmdbConfigured) {
+                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = FluxaColors.successGreen, modifier = Modifier.size(14.dp))
+            }
+            Text(
+                AppStrings.t(lang, if (tmdbConfigured) "settings.tmdb_api_configured" else "settings.tmdb_api_not_configured"),
+                color = if (tmdbConfigured) FluxaColors.successGreen else Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp
+            )
+        }
+    }
+    SettingsSecretFieldRow(
+        AppStrings.t(lang, "settings.tmdb_api_key"),
+        model.tmdbApiKey.orEmpty(),
+        placeholder = AppStrings.t(lang, "settings.tmdb_api_key_placeholder")
+    ) {
         onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbApiKey = it)))
     }
-    if (!model.tmdbApiKey.isNullOrBlank()) {
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_cast_images"), value = model.tmdbCastImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCastImagesEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_similar_results"), value = model.tmdbSimilarResultsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbSimilarResultsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_trailers"), value = model.tmdbTrailersEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbTrailersEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_recommendations"), value = model.tmdbRecommendationsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRecommendationsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_collection_info"), value = model.tmdbCollectionInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCollectionInfoEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_episode_images"), value = model.tmdbEpisodeImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbEpisodeImagesEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_logos_backdrops"), value = model.tmdbLogosBackdropsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbLogosBackdropsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_ratings"), value = model.tmdbRatingsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRatingsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_basic_info"), value = model.tmdbBasicInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbBasicInfoEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_details"), value = model.tmdbDetailsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbDetailsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_productions"), value = model.tmdbProductionsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbProductionsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_networks"), value = model.tmdbNetworksEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbNetworksEnabled = it))) }
+    if (tmdbConfigured) {
+        var tmdbExpanded by remember { mutableStateOf(false) }
+        SettingsNavRow(AppStrings.t(lang, "settings.apis")) { tmdbExpanded = !tmdbExpanded }
+        if (tmdbExpanded) {
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_cast_images"), value = model.tmdbCastImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCastImagesEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_similar_results"), value = model.tmdbSimilarResultsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbSimilarResultsEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_trailers"), value = model.tmdbTrailersEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbTrailersEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_recommendations"), value = model.tmdbRecommendationsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRecommendationsEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_collection_info"), value = model.tmdbCollectionInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCollectionInfoEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_episode_images"), value = model.tmdbEpisodeImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbEpisodeImagesEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_logos_backdrops"), value = model.tmdbLogosBackdropsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbLogosBackdropsEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_ratings"), value = model.tmdbRatingsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRatingsEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_basic_info"), value = model.tmdbBasicInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbBasicInfoEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_details"), value = model.tmdbDetailsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbDetailsEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_productions"), value = model.tmdbProductionsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbProductionsEnabled = it))) }
+            SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_networks"), value = model.tmdbNetworksEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbNetworksEnabled = it))) }
+        }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.notifications"))

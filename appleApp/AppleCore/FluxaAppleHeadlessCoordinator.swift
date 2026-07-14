@@ -86,6 +86,7 @@ final class FluxaAppleHeadlessCoordinator {
     private let maxEffectsPerDispatch: Int
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
+    private let dispatchMutex = FluxaAppleAsyncMutex()
 
     init(
         runtime: FluxaAppleHeadlessRuntime,
@@ -98,11 +99,29 @@ final class FluxaAppleHeadlessCoordinator {
     }
 
     func dispatch(actionJson: String) async throws -> FluxaAppleHeadlessResult {
-        try await drain(runtime.dispatch(actionJson: actionJson))
+        try await withExclusiveRuntime {
+            try await drain(runtime.dispatch(actionJson: actionJson))
+        }
     }
 
     func complete(completion: FluxaAppleHeadlessCompletion) async throws -> FluxaAppleHeadlessResult {
-        try await drain(runtime.completeEffect(resultJson: try encode(completion)))
+        try await withExclusiveRuntime {
+            try await drain(runtime.completeEffect(resultJson: try encode(completion)))
+        }
+    }
+
+    private func withExclusiveRuntime<T>(
+        operation: () async throws -> T
+    ) async throws -> T {
+        await dispatchMutex.acquire()
+        do {
+            let value = try await operation()
+            await dispatchMutex.release()
+            return value
+        } catch {
+            await dispatchMutex.release()
+            throw error
+        }
     }
 
     private func drain(_ initialJson: String) async throws -> FluxaAppleHeadlessResult {
@@ -125,5 +144,28 @@ final class FluxaAppleHeadlessCoordinator {
 
     private func encode(_ completion: FluxaAppleHeadlessCompletion) throws -> String {
         String(decoding: try encoder.encode(completion), as: UTF8.self)
+    }
+}
+
+actor FluxaAppleAsyncMutex {
+    private var isLocked = false
+    private var waiters = [CheckedContinuation<Void, Never>]()
+
+    func acquire() async {
+        if !isLocked {
+            isLocked = true
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func release() {
+        if waiters.isEmpty {
+            isLocked = false
+        } else {
+            waiters.removeFirst().resume()
+        }
     }
 }

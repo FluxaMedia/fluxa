@@ -22,8 +22,13 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -389,7 +394,7 @@ private fun LibraryDetailHeader(title: String, onBack: () -> Unit) {
             modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.06f)).clickable(onClick = onBack),
             contentAlignment = Alignment.Center
         ) {
-            Text("←", color = Color.White)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(12.dp))
         Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -435,7 +440,7 @@ private fun LibraryDownloadFoldersSection(
                     Text(group.title, color = Color.White, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("${group.episodes.size} · ${group.totalSizeLabel}", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
                 }
-                Text("›", color = Color.White.copy(alpha = 0.4f), fontSize = 18.sp)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -463,7 +468,12 @@ private fun LibraryDownloadGroupPage(
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(episode.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Text("✕", color = FluxaColors.errorRed, modifier = Modifier.clickable { onCancel(episode.id) }.padding(8.dp))
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = null,
+                            tint = FluxaColors.errorRed,
+                            modifier = Modifier.size(18.dp).clickable { onCancel(episode.id) }.padding(2.dp)
+                        )
                     }
                     Text("${episode.statusLabel} · ${episode.sizeLabel}", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
                     if (!episode.isDownloaded) {
