@@ -69,7 +69,15 @@ data class NuvioCollectionFolderSource(
     @SerializedName("addonId") val addonId: String?,
     @SerializedName("catalogId") val catalogId: String?,
     val type: String?,
-    val genre: String? = null
+    val genre: String? = null,
+    val title: String? = null,
+    @SerializedName("mediaType") val mediaType: String? = null,
+    @SerializedName("traktListId") val traktListId: Long? = null,
+    @SerializedName("tmdbSourceType") val tmdbSourceType: String? = null,
+    @SerializedName("tmdbId") val tmdbId: Long? = null,
+    @SerializedName("sortBy") val sortBy: String? = null,
+    @SerializedName("sortHow") val sortHow: String? = null,
+    val filters: Map<String, String>? = null
 )
 
 data class NuvioCollectionFolder(

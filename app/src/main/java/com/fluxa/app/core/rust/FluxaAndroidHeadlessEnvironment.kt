@@ -3,6 +3,8 @@ package com.fluxa.app.core.rust
 import android.content.Context
 import android.util.Log
 import com.fluxa.app.core.StremioId
+import com.fluxa.app.BuildConfig
+import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.OfflineSubtitleOption
 import com.fluxa.app.data.local.ProfileManager
@@ -21,6 +23,9 @@ import com.fluxa.app.data.remote.MetaRating
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.SubtitleData
 import com.fluxa.app.data.remote.Video
+import com.fluxa.app.data.remote.TmdbMeta
+import com.fluxa.app.data.remote.TmdbService
+import com.fluxa.app.data.remote.TraktApi
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktRepository
@@ -58,6 +63,8 @@ import com.fluxa.app.ui.catalog.DirectPlaybackTarget
 import com.fluxa.app.ui.catalog.TraktScrobbleWorker
 import com.fluxa.app.ui.catalog.SimklScrobbleWorker
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -877,6 +884,19 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
 
     private suspend fun fetchCatalogPage(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val payload = effect.payload
+        val remoteSources = payload.remoteSources()
+        if (remoteSources.isNotEmpty()) {
+            return ok(
+                effect,
+                mapOf(
+                    "items" to fetchRemoteCollectionSources(
+                        sources = remoteSources,
+                        skip = payload.number("skip")?.toInt() ?: 0,
+                        profile = payload.profile()
+                    )
+                )
+            )
+        }
         return ok(
             effect,
             mapOf(
@@ -890,6 +910,125 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 )
             )
         )
+    }
+
+    private suspend fun fetchRemoteCollectionSources(
+        sources: List<LibraryRemoteSource>,
+        skip: Int,
+        profile: UserProfile?
+    ): List<Meta> = coroutineScope {
+        sources.map { source ->
+            async {
+                when (source.provider.trim().lowercase()) {
+                    "trakt" -> fetchTraktCollectionSource(source, skip)
+                    "tmdb" -> fetchTmdbCollectionSource(source, skip, profile)
+                    else -> emptyList()
+                }
+            }
+        }.awaitAll().flatten().distinctBy { "${it.type}:${it.id}" }
+    }
+
+    private suspend fun fetchTraktCollectionSource(source: LibraryRemoteSource, skip: Int): List<Meta> {
+        if (!TraktIntegration.hasClient(BuildConfig.TRAKT_CLIENT_ID)) return emptyList()
+        val listId = source.traktListId ?: return emptyList()
+        val isSeries = source.mediaType.equals("series", ignoreCase = true) || source.mediaType.equals("show", ignoreCase = true) || source.mediaType.equals("tv", ignoreCase = true)
+        return TraktApi.create().getListItems(
+            listId = listId,
+            type = if (isSeries) "show" else "movie",
+            apiKey = BuildConfig.TRAKT_CLIENT_ID,
+            page = (skip / 50) + 1,
+            sortBy = source.sortBy,
+            sortHow = source.sortHow
+        ).mapNotNull { item ->
+            val summary = (if (isSeries) item.show else item.movie) ?: return@mapNotNull null
+            val id = summary.ids.imdb ?: summary.ids.tmdb?.let { "tmdb:$it" } ?: return@mapNotNull null
+            Meta(
+                id = id,
+                name = summary.title ?: return@mapNotNull null,
+                type = if (isSeries) "series" else "movie",
+                poster = null,
+                releaseInfo = summary.year?.toString(),
+                runtime = summary.runtime?.toString()
+            )
+        }
+    }
+
+    private suspend fun fetchTmdbCollectionSource(source: LibraryRemoteSource, skip: Int, profile: UserProfile?): List<Meta> {
+        val apiKey = profile?.safeTmdbApiKey.orEmpty()
+        val sourceId = source.tmdbId ?: return emptyList()
+        if (apiKey.isBlank()) return emptyList()
+        val mediaType = if (source.mediaType.equals("series", true) || source.mediaType.equals("tv", true) || source.mediaType.equals("show", true)) "tv" else "movie"
+        val sourceType = source.tmdbSourceType.orEmpty().uppercase()
+        val path = when (sourceType) {
+            "LIST" -> "list/$sourceId"
+            "COLLECTION" -> "collection/$sourceId"
+            "PERSON", "DIRECTOR" -> "person/$sourceId/combined_credits"
+            "COMPANY" -> "discover/$mediaType"
+            "NETWORK" -> "discover/tv"
+            else -> "discover/$mediaType"
+        }
+        val url = Uri.parse("https://api.themoviedb.org/3/$path").buildUpon()
+            .appendQueryParameter("api_key", apiKey)
+            .appendQueryParameter("language", profile?.safeLanguage ?: "en")
+            .apply {
+                if (sourceType !in setOf("COLLECTION", "PERSON", "DIRECTOR")) {
+                    appendQueryParameter("page", (skip / 20 + 1).toString())
+                }
+                when (sourceType) {
+                    "COMPANY" -> appendQueryParameter("with_companies", sourceId.toString())
+                    "NETWORK" -> appendQueryParameter("with_networks", sourceId.toString())
+                }
+                if (sourceType !in setOf("LIST", "COLLECTION", "PERSON", "DIRECTOR")) {
+                    appendQueryParameter("sort_by", source.sortBy ?: "popularity.desc")
+                }
+                val filters = source.filters.orEmpty()
+                mapOf(
+                    "year" to if (mediaType == "tv") "first_air_date_year" else "year",
+                    "withGenres" to "with_genres",
+                    "watchRegion" to "watch_region",
+                    "voteCountGte" to "vote_count.gte",
+                    "withKeywords" to "with_keywords",
+                    "withNetworks" to "with_networks",
+                    "withCompanies" to "with_companies",
+                    "releaseDateGte" to if (mediaType == "tv") "first_air_date.gte" else "primary_release_date.gte",
+                    "releaseDateLte" to if (mediaType == "tv") "first_air_date.lte" else "primary_release_date.lte",
+                    "voteAverageGte" to "vote_average.gte",
+                    "voteAverageLte" to "vote_average.lte",
+                    "withOriginCountry" to "with_origin_country",
+                    "withWatchProviders" to "with_watch_providers",
+                    "withOriginalLanguage" to "with_original_language"
+                ).forEach { (input, output) -> filters[input]?.let { appendQueryParameter(output, it) } }
+            }
+            .build()
+            .toString()
+        val root = TmdbService.create().getCollectionSource(url)
+        val items = root.asJsonObjectOrNull()?.let { objectNode ->
+            when {
+                sourceType == "DIRECTOR" -> objectNode.getAsJsonArrayOrNull("crew")?.filter { it.asJsonObjectOrNull()?.get("job")?.asString == "Director" && it.asJsonObjectOrNull()?.get("media_type")?.asString == mediaType }
+                sourceType == "PERSON" -> objectNode.getAsJsonArrayOrNull("cast")?.filter { it.asJsonObjectOrNull()?.get("media_type")?.asString == mediaType }
+                else -> listOf("results", "parts", "items", "cast", "crew").firstNotNullOfOrNull { key -> objectNode.getAsJsonArrayOrNull(key) }
+            }
+        } ?: emptyList<JsonElement>()
+        return items.mapNotNull { item ->
+            runCatching { gson.fromJson(item, TmdbMeta::class.java) }.getOrNull()?.toCollectionMeta(mediaType)
+        }
+    }
+
+    private fun TmdbMeta.toCollectionMeta(defaultMediaType: String): Meta? {
+        val type = if (media_type == "tv" || defaultMediaType == "tv") "series" else "movie"
+        val title = if (type == "series") name else title
+        return title?.let {
+            Meta(
+                id = "tmdb:$id",
+                name = it,
+                type = type,
+                poster = posterPath?.let { path -> "https://image.tmdb.org/t/p/w500$path" },
+                background = backdropPath?.let { path -> "https://image.tmdb.org/t/p/w1280$path" },
+                description = overview,
+                releaseInfo = (if (type == "series") first_air_date else release_date)?.take(4),
+                originalName = original_name
+            )
+        }
     }
 
     private suspend fun fetchSeasonEpisodes(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
@@ -1209,6 +1348,19 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     }
 
     internal fun Map<String, Any?>.profile(): UserProfile? = parseProfile(gson)
+
+    private fun Map<String, Any?>.remoteSources(): List<LibraryRemoteSource> {
+        val raw = this["remoteSource"] ?: return emptyList()
+        val values = raw as? List<*> ?: listOf(raw)
+        return values.mapNotNull { value ->
+            runCatching { gson.fromJson(gson.toJsonTree(value), LibraryRemoteSource::class.java) }.getOrNull()
+        }
+    }
+
+    private fun JsonElement.asJsonObjectOrNull() = takeIf { it.isJsonObject }?.asJsonObject
+
+    private fun com.google.gson.JsonObject.getAsJsonArrayOrNull(key: String): JsonArray? =
+        get(key)?.takeIf { it.isJsonArray }?.asJsonArray
 
     internal fun calendarItems(effect: NativeHeadlessEffect): List<CalendarUpcomingItem> =
         effect.payload.list("items").mapNotNull { raw ->

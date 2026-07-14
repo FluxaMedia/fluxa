@@ -925,6 +925,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val catalogSources = category.catalogSources.orEmpty()
+                val remoteSources = category.remoteSources.orEmpty()
                 if (catalogSources.isNotEmpty()) {
                     val nextSkip = if (category.items.isEmpty()) 0 else category.skip + 20
                     val lang = currentActiveProfile?.safeLanguage ?: "en"
@@ -967,7 +968,9 @@ class HomeViewModel @Inject constructor(
                         "catalogId" to category.catalogId,
                         "skip" to (category.skip + category.items.size),
                         "genre" to category.addonGenre,
-                        "search" to null
+                        "search" to null,
+                        "remoteSource" to remoteSources,
+                        "profile" to currentActiveProfile
                     )
                 )
                 val home = result.state["home"] as? Map<*, *> ?: return@launch

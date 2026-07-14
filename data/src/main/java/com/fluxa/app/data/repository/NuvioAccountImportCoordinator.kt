@@ -4,6 +4,7 @@ import android.util.Log
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.LibraryCatalogSource
+import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
@@ -258,6 +259,24 @@ class NuvioAccountImportCoordinator(
                                 type = source.type ?: "movie"
                             )
                         }?.filter { it.catalogId.isNotBlank() }
+                        ,
+                        sources = folder.catalogSources?.map { source ->
+                            LibraryRemoteSource(
+                                provider = source.provider ?: "addon",
+                                title = source.title,
+                                mediaType = source.mediaType,
+                                traktListId = source.traktListId,
+                                tmdbSourceType = source.tmdbSourceType,
+                                tmdbId = source.tmdbId,
+                                sortBy = source.sortBy,
+                                sortHow = source.sortHow,
+                                filters = source.filters,
+                                addonId = source.addonId,
+                                catalogId = source.catalogId,
+                                type = source.type,
+                                genre = source.genre
+                            )
+                        }
                     )
                 }
             )

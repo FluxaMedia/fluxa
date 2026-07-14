@@ -83,30 +83,34 @@ internal class HomeCatalogFeedCoordinator(
             }
             val folderResultCategories = collection.folders.orEmpty().mapNotNull { folder ->
                 val sources = folderSources[folder].orEmpty()
-                if (sources.isEmpty()) return@mapNotNull null
+                val remoteSources = folder.sources.orEmpty()
+                if (sources.isEmpty() && remoteSources.isEmpty()) return@mapNotNull null
                 HomeCategory(
                     name = folder.title,
                     items = emptyList(),
                     id = folder.id,
                     type = "collection_folder",
-                    catalogId = sources.first().catalogId,
-                    addonTransportUrl = sources.first().transportUrl,
+                    catalogId = sources.firstOrNull()?.catalogId ?: folder.id,
+                    addonTransportUrl = sources.firstOrNull()?.transportUrl,
                     addonGenre = folder.genre,
-                    catalogSources = sources
+                    catalogSources = sources,
+                    remoteSources = remoteSources
                 )
             }
             val allSources = collection.folders.orEmpty().flatMap { folderSources[it].orEmpty() }
+            val allRemoteSources = collection.folders.orEmpty().flatMap { it.sources.orEmpty() }
             val allCategoryId = "${collection.id}.all"
-            val allResultCategory = if (collection.showAllTab == true && allSources.isNotEmpty()) {
+            val allResultCategory = if (collection.showAllTab == true && (allSources.isNotEmpty() || allRemoteSources.isNotEmpty())) {
                 HomeCategory(
                     name = AppStrings.t(lang, "auto.all"),
                     items = emptyList(),
                     id = allCategoryId,
                     type = "collection_folder",
-                    catalogId = allSources.first().catalogId,
-                    addonTransportUrl = allSources.first().transportUrl,
+                    catalogId = allSources.firstOrNull()?.catalogId ?: allCategoryId,
+                    addonTransportUrl = allSources.firstOrNull()?.transportUrl,
                     addonGenre = null,
-                    catalogSources = allSources
+                    catalogSources = allSources,
+                    remoteSources = allRemoteSources
                 )
             } else {
                 null

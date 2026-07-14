@@ -11,6 +11,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Url
 
 interface TmdbService {
     @GET("3/{type}/{id}/recommendations")
@@ -45,6 +46,9 @@ interface TmdbService {
 
     @GET("3/collection/{id}")
     suspend fun getCollection(@Path("id") id: Int, @Query("language") lang: String = "en", @Query("api_key") apiKey: String = ""): TmdbCollectionResponse
+
+    @GET
+    suspend fun getCollectionSource(@Url url: String): JsonElement
 
     companion object {
         private var instance: TmdbService? = null
@@ -103,7 +107,10 @@ data class TmdbMeta(
     val original_name: String? = null,
     val release_date: String?,
     val first_air_date: String?,
-    val media_type: String?
+    val media_type: String?,
+    @SerializedName("poster_path") val posterPath: String? = null,
+    @SerializedName("backdrop_path") val backdropPath: String? = null,
+    val overview: String? = null
 )
 
 // Full detail response (movie or TV)

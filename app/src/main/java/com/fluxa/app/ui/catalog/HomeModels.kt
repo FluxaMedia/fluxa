@@ -3,6 +3,7 @@ package com.fluxa.app.ui.catalog
 import androidx.compose.runtime.Immutable
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
 
 @Immutable
@@ -28,6 +29,7 @@ data class HomeCategory(
     val addonTransportUrl: String? = null,
     val addonGenre: String? = null,
     val catalogSources: List<HomeCatalogSource>? = emptyList(),
+    val remoteSources: List<LibraryRemoteSource>? = emptyList(),
     val addonIconUrl: String? = null
 )
 

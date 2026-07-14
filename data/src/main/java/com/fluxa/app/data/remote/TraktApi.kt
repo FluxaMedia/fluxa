@@ -26,6 +26,18 @@ interface TraktApi {
     ): List<TraktSearchResult>
 
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("lists/{listId}/items/{type}")
+    suspend fun getListItems(
+        @Path("listId") listId: Long,
+        @Path("type") type: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int = 50,
+        @Query("sort_by") sortBy: String? = null,
+        @Query("sort_how") sortHow: String? = null
+    ): List<TraktListItem>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
     @GET("shows/{id}/seasons/{season}")
     suspend fun getSeasonEpisodes(
         @Path("id") traktOrImdbId: String, 

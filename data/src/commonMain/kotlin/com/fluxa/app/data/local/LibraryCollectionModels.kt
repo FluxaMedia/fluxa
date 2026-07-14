@@ -19,6 +19,22 @@ data class LibraryCatalogSource(
     val type: String
 )
 
+data class LibraryRemoteSource(
+    val provider: String,
+    val title: String? = null,
+    val mediaType: String? = null,
+    val traktListId: Long? = null,
+    val tmdbSourceType: String? = null,
+    val tmdbId: Long? = null,
+    val sortBy: String? = null,
+    val sortHow: String? = null,
+    val filters: Map<String, String>? = null,
+    val addonId: String? = null,
+    val catalogId: String? = null,
+    val type: String? = null,
+    val genre: String? = null
+)
+
 data class LibraryUserCollectionFolder(
     val id: String,
     val title: String,
@@ -30,6 +46,7 @@ data class LibraryUserCollectionFolder(
     val hideTitle: Boolean? = false,
     val focusGifEnabled: Boolean? = true,
     val catalogSources: List<LibraryCatalogSource>? = null,
+    val sources: List<LibraryRemoteSource>? = null,
     val coverEmoji: String? = null,
     val coverImageUrl: String? = null,
     val focusGifUrl: String? = null,

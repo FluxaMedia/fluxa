@@ -40,6 +40,11 @@ data class TraktSyncItem(
     val seasons: List<TraktWatchedSeason>? = null
 )
 
+data class TraktListItem(
+    val movie: TraktSummary? = null,
+    val show: TraktSummary? = null
+)
+
 data class TraktWatchedSeason(
     val number: Int? = null,
     val episodes: List<TraktWatchedEpisode>? = null
