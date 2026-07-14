@@ -16,7 +16,8 @@ data class LibraryUserCollection(
 data class LibraryCatalogSource(
     val addonId: String? = null,
     val catalogId: String,
-    val type: String
+    val type: String,
+    val genre: String? = null
 )
 
 data class LibraryRemoteSource(
@@ -51,5 +52,6 @@ data class LibraryUserCollectionFolder(
     val coverImageUrl: String? = null,
     val focusGifUrl: String? = null,
     val titleLogoUrl: String? = null,
-    val heroBackdropUrl: String? = null
+    val heroBackdropUrl: String? = null,
+    val heroVideoUrl: String? = null
 )

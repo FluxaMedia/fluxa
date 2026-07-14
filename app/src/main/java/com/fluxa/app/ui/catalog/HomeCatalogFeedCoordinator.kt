@@ -78,7 +78,7 @@ internal class HomeCatalogFeedCoordinator(
             val folderSources = collection.folders.orEmpty().associateWith { folder ->
                 folder.catalogSources.orEmpty().mapNotNull { source ->
                     val transportUrl = resolveCollectionSourceTransportUrl(source, addons) ?: return@mapNotNull null
-                    HomeCatalogSource(transportUrl, source.catalogId, source.type, folder.genre)
+                    HomeCatalogSource(transportUrl, source.catalogId, source.type, source.genre ?: folder.genre)
                 }
             }
             val folderResultCategories = collection.folders.orEmpty().mapNotNull { folder ->

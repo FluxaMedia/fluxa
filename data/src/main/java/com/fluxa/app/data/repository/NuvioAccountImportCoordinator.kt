@@ -250,13 +250,15 @@ class NuvioAccountImportCoordinator(
                         focusGifEnabled = folder.focusGifEnabled ?: true,
                         titleLogoUrl = folder.titleLogoUrl,
                         heroBackdropUrl = folder.heroBackdropUrl,
+                        heroVideoUrl = folder.heroVideoUrl,
                         shape = folder.tileShape.toNuvioFolderShape(),
                         hideTitle = folder.hideTitle,
                         catalogSources = folder.catalogSources?.map { source ->
                             LibraryCatalogSource(
                                 addonId = source.addonId,
                                 catalogId = source.catalogId ?: "",
-                                type = source.type ?: "movie"
+                                type = source.type ?: "movie",
+                                genre = source.genre
                             )
                         }?.filter { it.catalogId.isNotBlank() }
                         ,

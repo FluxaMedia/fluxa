@@ -140,11 +140,12 @@ private fun LibraryUserCollection.toNuvioCollection(): Map<String, Any?> = mapOf
             "focusGifEnabled" to folder.focusGifEnabled,
             "titleLogoUrl" to folder.titleLogoUrl,
             "heroBackdropUrl" to folder.heroBackdropUrl,
+            "heroVideoUrl" to folder.heroVideoUrl,
             "tileShape" to folder.shape,
             "hideTitle" to folder.hideTitle,
             "sources" to (folder.sources.orEmpty().ifEmpty {
                 folder.catalogSources.orEmpty().map { source ->
-                    com.fluxa.app.data.local.LibraryRemoteSource(provider = "addon", addonId = source.addonId, catalogId = source.catalogId, type = source.type)
+                    com.fluxa.app.data.local.LibraryRemoteSource(provider = "addon", addonId = source.addonId, catalogId = source.catalogId, type = source.type, genre = source.genre)
                 }
             }).map { source ->
                 mapOf("provider" to source.provider, "title" to source.title, "mediaType" to source.mediaType, "traktListId" to source.traktListId, "tmdbSourceType" to source.tmdbSourceType, "tmdbId" to source.tmdbId, "sortBy" to source.sortBy, "sortHow" to source.sortHow, "filters" to source.filters, "addonId" to source.addonId, "catalogId" to source.catalogId, "type" to source.type, "genre" to source.genre)

@@ -89,6 +89,7 @@ data class NuvioCollectionFolder(
     @SerializedName("focusGifEnabled") val focusGifEnabled: Boolean? = null,
     @SerializedName("titleLogoUrl") val titleLogoUrl: String?,
     @SerializedName("heroBackdropUrl") val heroBackdropUrl: String? = null,
+    @SerializedName("heroVideoUrl") val heroVideoUrl: String? = null,
     @SerializedName("tileShape") val tileShape: String?,
     @SerializedName("hideTitle") val hideTitle: Boolean?,
     @SerializedName(value = "catalogSources", alternate = ["sources"]) val catalogSources: List<NuvioCollectionFolderSource>?
