@@ -16,6 +16,7 @@ class CatalogHomeStore(
         when (action) {
             CatalogAction.Refresh -> dataSource.refresh()
             is CatalogAction.LoadMore -> dataSource.loadMore(action.rowId)
+            is CatalogAction.FilterChanged -> dataSource.setFilter(action.filter)
             is CatalogAction.ItemSelected,
             is CatalogAction.PlayRequested,
             is CatalogAction.ResumeRequested,

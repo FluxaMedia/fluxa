@@ -19,10 +19,11 @@ class AndroidCatalogHomeDataSource(
     override fun observeHome(): Flow<CatalogHomeUiState> = combine(
         homeViewModel.categories,
         homeViewModel.isLoading,
+        homeViewModel.currentFilter,
         billboardResolution(),
-    ) { categories, isLoading, billboardResolution ->
+    ) { categories, isLoading, filter, billboardResolution ->
         val profile = activeProfile()
-        val orderedCategories = orderHomeCategories(categories)
+        val orderedCategories = orderHomeCategories(categories, filter)
         val effectiveBillboardMeta = billboardResolution.movie ?: orderedCategories.firstOrNull()?.items?.firstOrNull()
         CatalogHomeUiState(
             rows = orderedCategories.map { category -> category.toRowUiModel(profile) },
@@ -34,7 +35,8 @@ class AndroidCatalogHomeDataSource(
                     trailerUrl = billboardResolution.trailerUrl
                 )
             },
-            showHeroSection = profile?.safeShowHeroSection != false
+            showHeroSection = profile?.safeShowHeroSection != false,
+            activeFilter = filter
         )
     }
 
@@ -65,6 +67,10 @@ class AndroidCatalogHomeDataSource(
 
     override suspend fun loadMore(rowId: String) {
         homeViewModel.loadMore(rowId)
+    }
+
+    override suspend fun setFilter(filter: String) {
+        homeViewModel.setFilter(filter)
     }
 
     fun resolveMeta(id: String, type: String): Meta? =

@@ -23,12 +23,13 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core"))
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
+        }
+        androidMain.dependencies {
             implementation(libs.coil3)
             implementation(libs.coil3.compose)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            implementation(libs.androidx.lifecycle.viewmodel)
+            implementation(libs.coil3.network.okhttp)
         }
     }
 }

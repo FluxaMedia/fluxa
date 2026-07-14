@@ -50,7 +50,8 @@ data class CatalogHomeUiState(
     val rows: List<CatalogRowUiModel> = emptyList(),
     val isLoading: Boolean = false,
     val billboard: CatalogBillboardUiModel? = null,
-    val showHeroSection: Boolean = true
+    val showHeroSection: Boolean = true,
+    val activeFilter: String = "all"
 )
 
 sealed interface CatalogAction {
@@ -60,10 +61,12 @@ sealed interface CatalogAction {
     data class PlayRequested(val item: CatalogItemUiModel) : CatalogAction
     data class ResumeRequested(val item: CatalogItemUiModel) : CatalogAction
     data class ItemFocused(val item: CatalogItemUiModel, val rowId: String) : CatalogAction
+    data class FilterChanged(val filter: String) : CatalogAction
 }
 
 interface CatalogHomeDataSource {
     fun observeHome(): Flow<CatalogHomeUiState>
     suspend fun refresh()
     suspend fun loadMore(rowId: String)
+    suspend fun setFilter(filter: String)
 }

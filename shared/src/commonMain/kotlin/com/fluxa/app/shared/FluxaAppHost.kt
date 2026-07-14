@@ -271,6 +271,11 @@ fun FluxaAppHost(
             calendarStore?.dispatch(CalendarAction.Refresh)
         }
     }
+    LaunchedEffect(appState.uiState.showNotifications, calendarStore) {
+        if (appState.uiState.showNotifications) {
+            calendarStore?.dispatch(CalendarAction.Refresh)
+        }
+    }
     LaunchedEffect(appState.uiState.destination, addonStoreStore) {
         if (appState.uiState.destination == FluxaDestination.AddonStore) {
             addonStoreStore?.dispatch(AddonStoreAction.Refresh)
@@ -337,6 +342,8 @@ fun FluxaAppHost(
             }
         },
         calendarState = calendarState,
+        onNotificationsRequested = { appState.openNotifications() },
+        onNotificationsBackRequested = { appState.closeNotifications() },
         onCalendarAction = { action ->
             if (action is CalendarAction.ItemSelected) {
                 appState.selectDetail(action.item)

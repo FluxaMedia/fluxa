@@ -15,15 +15,31 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import androidx.compose.ui.unit.dp
+import platform.Foundation.NSNotificationCenter
 
 class AppleCatalogHomeDataSource : CatalogHomeDataSource {
     private val state = MutableStateFlow(CatalogHomeUiState())
 
     override fun observeHome(): Flow<CatalogHomeUiState> = state.asStateFlow()
 
-    override suspend fun refresh() = Unit
+    override suspend fun refresh() {
+        NSNotificationCenter.defaultCenter.postNotificationName(
+            aName = "FluxaAppleCatalogRefreshRequested",
+            `object` = null,
+            userInfo = null
+        )
+    }
 
     override suspend fun loadMore(rowId: String) = Unit
+
+    override suspend fun setFilter(filter: String) {
+        state.value = state.value.copy(activeFilter = filter)
+        NSNotificationCenter.defaultCenter.postNotificationName(
+            aName = "FluxaAppleCatalogFilterChanged",
+            `object` = filter,
+            userInfo = null
+        )
+    }
 
     fun update(home: CatalogHomeUiState) {
         state.value = home

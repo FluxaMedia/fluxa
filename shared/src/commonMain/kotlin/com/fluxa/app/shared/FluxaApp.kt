@@ -28,16 +28,20 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -60,6 +64,7 @@ import com.fluxa.app.shared.feature.auth.AuthUiState
 import com.fluxa.app.shared.feature.calendar.CalendarAction
 import com.fluxa.app.shared.feature.calendar.CalendarScreen
 import com.fluxa.app.shared.feature.calendar.CalendarUiState
+import com.fluxa.app.shared.feature.calendar.NotificationsScreen
 import com.fluxa.app.shared.feature.detail.DetailAction
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailScreen
@@ -117,7 +122,8 @@ data class FluxaAppUiState(
     val destination: FluxaDestination = FluxaDestination.Home,
     val catalogHome: CatalogHomeUiState = CatalogHomeUiState(),
     val selectedDetail: DetailRequestUiModel? = null,
-    val editingProfile: ProfileEditTarget? = null
+    val editingProfile: ProfileEditTarget? = null,
+    val showNotifications: Boolean = false
 )
 
 @Composable
@@ -134,6 +140,8 @@ fun FluxaApp(
     onDiscoverAction: (DiscoverAction) -> Unit = {},
     calendarState: CalendarUiState? = null,
     onCalendarAction: (CalendarAction) -> Unit = {},
+    onNotificationsRequested: () -> Unit = {},
+    onNotificationsBackRequested: () -> Unit = {},
     libraryState: LibraryUiState? = null,
     onLibraryItemSelected: (CatalogItemUiModel) -> Unit = {},
     onLibraryAction: (LibraryAction) -> Unit = {},
@@ -179,6 +187,7 @@ fun FluxaApp(
             val screenKey = when {
                 state.editingProfile != null -> "profileEdit"
                 state.selectedDetail != null -> "detail:${state.selectedDetail.id}"
+                state.showNotifications -> "notifications"
                 else -> "dest:${state.destination}"
             }
             AnimatedContent(
@@ -203,6 +212,13 @@ fun FluxaApp(
                     onSave = onProfileSave,
                     onDelete = onProfileDelete,
                     onCancel = onProfileEditCancel,
+                    modifier = Modifier.fillMaxSize()
+                )
+                state.showNotifications -> NotificationsScreen(
+                    state = calendarState,
+                    language = state.language,
+                    onBack = onNotificationsBackRequested,
+                    onItemSelected = { release -> onCalendarAction(CalendarAction.ItemSelected(release.item)) },
                     modifier = Modifier.fillMaxSize()
                 )
                 state.selectedDetail != null && detailState != null -> DetailScreen(
@@ -282,6 +298,9 @@ fun FluxaApp(
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
                     state = state,
                     onCatalogAction = onCatalogAction,
+                    onNotificationsRequested = onNotificationsRequested,
+                    onAvatarClick = { onDestinationSelected(FluxaDestination.Settings) },
+                    profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                     modifier = Modifier.fillMaxSize()
                 )
                 else -> FluxaDestinationPlaceholder(
@@ -319,8 +338,104 @@ private fun FluxaNavigationBar(
     }
 }
 
+private enum class FluxaHomeFilter(val value: String, val titleKey: String) {
+    All("all", "nav.home"),
+    Series("series", "auto.series"),
+    Movies("movie", "auto.movie")
+}
+
+@Composable
+private fun FluxaHomeTopBar(
+    activeFilter: String,
+    language: String?,
+    profileAvatarUrl: String?,
+    onFilterSelected: (String) -> Unit,
+    onNotificationsRequested: () -> Unit,
+    onAvatarClick: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth().background(FluxaColors.background)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Notifications,
+                contentDescription = AppStrings.t(language, "auto.notifications"),
+                tint = Color.White,
+                modifier = Modifier.size(24.dp).clickable(onClick = onNotificationsRequested)
+            )
+            Box(
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(FluxaColors.surfaceRaised)
+                    .clickable(onClick = onAvatarClick)
+            ) {
+                if (profileAvatarUrl != null) {
+                    FluxaRemoteImage(
+                        imageUrl = profileAvatarUrl,
+                        cacheKey = "profile-avatar:$profileAvatarUrl",
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            FluxaHomeFilter.entries.forEach { filter ->
+                val selected = filter.value == activeFilter || (filter == FluxaHomeFilter.All && activeFilter.isBlank())
+                Column(modifier = Modifier.clickable { onFilterSelected(filter.value) }) {
+                    Text(
+                        text = AppStrings.t(language, filter.titleKey),
+                        color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 15.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 8.dp, bottom = 12.dp)
+                            .height(2.dp)
+                            .width(if (selected) 20.dp else 0.dp)
+                            .background(if (selected) Color.White else Color.Transparent)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun FluxaHomeContent(
+    state: FluxaAppUiState,
+    onCatalogAction: (CatalogAction) -> Unit,
+    onNotificationsRequested: () -> Unit,
+    onAvatarClick: () -> Unit,
+    profileAvatarUrl: String?,
+    modifier: Modifier
+) {
+    Column(modifier = modifier) {
+        FluxaHomeTopBar(
+            activeFilter = state.catalogHome.activeFilter,
+            language = state.language,
+            profileAvatarUrl = profileAvatarUrl,
+            onFilterSelected = { filter -> onCatalogAction(CatalogAction.FilterChanged(filter)) },
+            onNotificationsRequested = onNotificationsRequested,
+            onAvatarClick = onAvatarClick
+        )
+        FluxaHomeList(state = state, onCatalogAction = onCatalogAction, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun FluxaHomeList(
     state: FluxaAppUiState,
     onCatalogAction: (CatalogAction) -> Unit,
     modifier: Modifier

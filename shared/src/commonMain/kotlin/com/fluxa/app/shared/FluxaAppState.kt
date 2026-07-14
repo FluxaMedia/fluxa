@@ -32,6 +32,14 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
         uiState = uiState.copy(selectedDetail = null)
     }
 
+    fun openNotifications() {
+        uiState = uiState.copy(showNotifications = true)
+    }
+
+    fun closeNotifications() {
+        uiState = uiState.copy(showNotifications = false)
+    }
+
     fun beginProfileEdit(target: ProfileEditTarget?) {
         uiState = uiState.copy(editingProfile = target)
     }
