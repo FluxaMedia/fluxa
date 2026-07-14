@@ -102,7 +102,7 @@ private class LibassInterceptingExtractorOutput(
 ) : ExtractorOutput {
     private val textTracks = mutableListOf<LibassInterceptingTrackOutput>()
     val collectedFonts = mutableListOf<NativeAssFont>()
-    private var providerFontsLoaded = false
+    private var fontsResolved = false
 
     override fun track(id: Int, type: Int): TrackOutput {
         val delegateTrack = delegate.track(id, type)
@@ -132,7 +132,7 @@ private class LibassInterceptingExtractorOutput(
     }
 
     fun fontsForRenderer(): List<NativeAssFont> {
-        if (!providerFontsLoaded) {
+        if (!fontsResolved) {
             val providerFonts = fontAttachmentsProvider?.let { provider ->
                 runCatching { provider() }
                     .onFailure { LibassDebugLog.w("font attachment provider failed", it) }
@@ -153,7 +153,7 @@ private class LibassInterceptingExtractorOutput(
             } else if (passiveFonts.isEmpty()) {
                 LibassDebugLog.d("font attachment provider supplied no fonts")
             }
-            providerFontsLoaded = collectedFonts.isNotEmpty()
+            fontsResolved = true
         }
         return collectedFonts.distinctBy { it.name }
     }
@@ -180,7 +180,7 @@ private class PrefixCaptureBuffer {
     fun shouldCapture(position: Long): Boolean = position in 0 until MAX_CAPTURE_BYTES.toLong()
 
     private companion object {
-        const val MAX_CAPTURE_BYTES = 8 * 1024 * 1024
+        const val MAX_CAPTURE_BYTES = 16 * 1024 * 1024
     }
 }
 

@@ -3,7 +3,7 @@ package com.fluxa.app.core.rust
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.fluxa.app.common.Constants
-import com.fluxa.app.player.TorrServerEngine
+import com.fluxa.app.player.TorrentServerEngine
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -18,16 +18,16 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class TorrentEngineComparisonInstrumentationBenchmark {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
-    private var torrServerEngine: TorrServerEngine? = null
+    private var torrentServerEngine: TorrentServerEngine? = null
 
     @After
     fun tearDown() {
-        torrServerEngine?.stop()
+        torrentServerEngine?.stop()
         FluxaStreamingNative.stopTorrentServer()
     }
 
     @Test
-    fun compareTorrServerAndRustEngineFirstRangeRead() {
+    fun compareTorrentServerAndRustEngineFirstRangeRead() {
         val args = InstrumentationRegistry.getArguments()
         val torrentLink = args.getString("torrentLink").orEmpty()
         assumeTrue("Pass -e torrentLink <magnet-or-torrent-url> to run this benchmark.", torrentLink.isNotBlank())
@@ -41,17 +41,17 @@ class TorrentEngineComparisonInstrumentationBenchmark {
         val rustBaseUrl = rustInfo.getString("url")
         val rustUrl = torrentStreamUrl(rustBaseUrl, torrentLink)
 
-        torrServerEngine = TorrServerEngine(context).also { it.start() }
-        waitForHttp(Constants.LocalServer.TORR_SERVER_BASE_URL)
-        val torrServerUrl = torrentStreamUrl(Constants.LocalServer.TORR_SERVER_BASE_URL, torrentLink)
+        torrentServerEngine = TorrentServerEngine(context).also { it.start() }
+        waitForHttp(Constants.LocalServer.TORRENT_SERVER_BASE_URL)
+        val torrentServerUrl = torrentStreamUrl(Constants.LocalServer.TORRENT_SERVER_BASE_URL, torrentLink)
 
         val rustDelayMs = measureFirstRangeMs(rustUrl)
-        val torrServerDelayMs = measureFirstRangeMs(torrServerUrl)
+        val torrentServerDelayMs = measureFirstRangeMs(torrentServerUrl)
 
         println("torrent-rust-engine-first-range-ms=$rustDelayMs")
-        println("torrent-torrserver-first-range-ms=$torrServerDelayMs")
+        println("torrent-torrserver-first-range-ms=$torrentServerDelayMs")
         assertTrue(rustDelayMs > 0)
-        assertTrue(torrServerDelayMs > 0)
+        assertTrue(torrentServerDelayMs > 0)
     }
 
     private fun torrentStreamUrl(baseUrl: String, torrentLink: String): String {

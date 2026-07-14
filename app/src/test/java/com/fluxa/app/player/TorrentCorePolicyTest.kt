@@ -43,10 +43,10 @@ class TorrentCorePolicyTest {
     @Test
     fun resolvesTorrentFileIndexByPreferredFilenameThenEpisodeThenLargestVideo() {
         val stats = listOf(
-            TorrFileStat(id = 1, path = "Show/Extras/sample.txt", length = 10),
-            TorrFileStat(id = 2, path = "Show/Show.S01E02.1080p.mkv", length = 200),
-            TorrFileStat(id = 3, path = "Show/Show.S01E03.1080p.mkv", length = 300),
-            TorrFileStat(id = 4, path = "Show/Movie.mp4", length = 500)
+            TorrentFileStat(id = 1, path = "Show/Extras/sample.txt", length = 10),
+            TorrentFileStat(id = 2, path = "Show/Show.S01E02.1080p.mkv", length = 200),
+            TorrentFileStat(id = 3, path = "Show/Show.S01E03.1080p.mkv", length = 300),
+            TorrentFileStat(id = 4, path = "Show/Movie.mp4", length = 500)
         )
 
         assertEquals(
@@ -94,10 +94,10 @@ class TorrentCorePolicyTest {
             sources = emptyList(),
             rejectedIndex = 2,
             fileStats = listOf(
-                TorrFileStat(id = 1, path = "Show.S01E02.mkv", length = 100),
-                TorrFileStat(id = 2, path = "Show.S01E02.1080p.mkv", length = 400),
-                TorrFileStat(id = 3, path = "Show.S01E03.1080p.mkv", length = 500),
-                TorrFileStat(id = 4, path = "readme.txt", length = 1000)
+                TorrentFileStat(id = 1, path = "Show.S01E02.mkv", length = 100),
+                TorrentFileStat(id = 2, path = "Show.S01E02.1080p.mkv", length = 400),
+                TorrentFileStat(id = 3, path = "Show.S01E03.1080p.mkv", length = 500),
+                TorrentFileStat(id = 4, path = "readme.txt", length = 1000)
             )
         )
 
@@ -107,7 +107,7 @@ class TorrentCorePolicyTest {
     @Test
     fun computesTorrentStatusRuntimeState() {
         val preloaded = TorrentCorePolicy.statusInfo(
-            TorrStatus(
+            TorrentStatus(
                 hash = "hash",
                 title = "title",
                 downloadSpeed = 0.0,
@@ -125,7 +125,7 @@ class TorrentCorePolicyTest {
         assertFalse(preloaded.isPlayableEnough)
 
         val ready = TorrentCorePolicy.statusInfo(
-            TorrStatus(
+            TorrentStatus(
                 hash = "hash",
                 title = "title",
                 downloadSpeed = 0.0,

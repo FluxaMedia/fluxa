@@ -61,12 +61,11 @@
 # Maintain generic type information for Retrofit
 -keep class kotlin.coroutines.Continuation
 
-# TorrServer & Native
 -keep class com.fluxa.app.core.rust.** { *; }
--keep class com.fluxa.app.player.TorrServerApi { *; }
--keep class com.fluxa.app.player.TorrStatus { *; }
--keep class com.fluxa.app.player.TorrFileStat { *; }
--keep class com.fluxa.app.player.TorrSettings { *; }
+-keep class com.fluxa.app.player.TorrentServerApi { *; }
+-keep class com.fluxa.app.player.TorrentStatus { *; }
+-keep class com.fluxa.app.player.TorrentFileStat { *; }
+-keep class com.fluxa.app.player.TorrentSettings { *; }
 
 # JNA — native libjnidispatch.so looks up field/method names by string via JNI reflection.
 # R8 must not rename or strip anything in com.sun.jna.

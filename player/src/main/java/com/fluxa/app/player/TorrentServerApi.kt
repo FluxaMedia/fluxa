@@ -7,7 +7,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
-data class TorrRequest(
+data class TorrentRequest(
     val action: String,
     val link: String? = null,
     val hash: String? = null,
@@ -16,36 +16,36 @@ data class TorrRequest(
     @SerializedName("file_id") val fileId: Int? = null
 )
 
-data class TorrSettings(
+data class TorrentSettings(
     @SerializedName("PreloadSize") val preloadSize: Long = 16,
 )
 
-data class TorrAddRequest(
+data class TorrentAddRequest(
     val link: String,
     val title: String = "",
     val poster: String = "",
     @SerializedName("save_to_db") val saveToDb: Boolean = false
 )
 
-interface TorrServerApi {
+interface TorrentServerApi {
     //  Matrix / Lana (Modern) @POST("torrents")
     @POST("torrents")
-    suspend fun addTorrent(@Body request: TorrRequest): Response<TorrStatus>
+    suspend fun addTorrent(@Body request: TorrentRequest): Response<TorrentStatus>
 
     @POST("torrents")
-    suspend fun getTorrent(@Body request: TorrRequest): Response<TorrStatus>
+    suspend fun getTorrent(@Body request: TorrentRequest): Response<TorrentStatus>
 
     @POST("torrents")
-    suspend fun removeTorrent(@Body request: TorrRequest): Response<Unit>
+    suspend fun removeTorrent(@Body request: TorrentRequest): Response<Unit>
 
     //  Legacy (Classic) @POST("torrent/add")
-    suspend fun addTorrentLegacy(@Body request: TorrAddRequest): Response<TorrStatus>
+    suspend fun addTorrentLegacy(@Body request: TorrentAddRequest): Response<TorrentStatus>
 
     @POST("torrent/get")
-    suspend fun getTorrentLegacy(@Body request: String): Response<TorrStatus> // Often expects raw hash string or simple JSON
+    suspend fun getTorrentLegacy(@Body request: String): Response<TorrentStatus> // Often expects raw hash string or simple JSON
 
     @POST("settings")
-    suspend fun updateSettings(@Body request: TorrSettings): Response<Unit>
+    suspend fun updateSettings(@Body request: TorrentSettings): Response<Unit>
 
     companion object {
         private val localClient by lazy {
@@ -57,14 +57,14 @@ interface TorrServerApi {
                 .build()
         }
 
-        fun create(baseUrl: String = Constants.LocalServer.TORR_SERVER_BASE_URL): TorrServerApi {
+        fun create(baseUrl: String = Constants.LocalServer.TORRENT_SERVER_BASE_URL): TorrentServerApi {
             val url = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
             return Retrofit.Builder()
                 .baseUrl(url)
                 .client(localClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
-                .create(TorrServerApi::class.java)
+                .create(TorrentServerApi::class.java)
         }
     }
 }

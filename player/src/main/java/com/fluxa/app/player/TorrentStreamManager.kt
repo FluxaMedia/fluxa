@@ -49,13 +49,13 @@ class TorrentStreamManager private constructor() {
         .retryOnConnectionFailure(false)
         .build()
     private val gson = Gson()
-    private val api = TorrServerApi.create()
+    private val api = TorrentServerApi.create()
     private val engineLock = Mutex()
     private var statusJob: Job? = null
-    @Volatile private var appliedSettings: TorrSettings? = null
+    @Volatile private var appliedSettings: TorrentSettings? = null
     @Volatile private var pendingSettings = defaultSettings()
     @Volatile private var appContext: Context? = null
-    @Volatile private var engine: TorrServerEngine? = null
+    @Volatile private var engine: TorrentServerEngine? = null
 
     private val _status = MutableStateFlow(TorrentStreamStatus())
     val status: StateFlow<TorrentStreamStatus> = _status.asStateFlow()
@@ -72,7 +72,7 @@ class TorrentStreamManager private constructor() {
     }
 
     fun configurePreferences(speedPreset: String?) {
-        val newSettings = TorrSettings(preloadSize = speedPreset.toPreloadSizeMb())
+        val newSettings = TorrentSettings(preloadSize = speedPreset.toPreloadSizeMb())
         if (newSettings == pendingSettings) return
         pendingSettings = newSettings
         scope.launch {
@@ -93,7 +93,7 @@ class TorrentStreamManager private constructor() {
                     fileStats = emptyList()
                 )
                 api.addTorrent(
-                    TorrRequest(
+                    TorrentRequest(
                         action = "add",
                         link = plan.normalizedLink,
                         title = title,
@@ -128,8 +128,8 @@ class TorrentStreamManager private constructor() {
                 applySettingsIfChanged()
                 val smartPreload = estimatePreloadMb(fileSizeBytes, durationMs)
                 if (smartPreload != appliedSettings?.preloadSize) {
-                    runCatching { api.updateSettings(TorrSettings(preloadSize = smartPreload)) }
-                        .onSuccess { appliedSettings = TorrSettings(preloadSize = smartPreload) }
+                    runCatching { api.updateSettings(TorrentSettings(preloadSize = smartPreload)) }
+                        .onSuccess { appliedSettings = TorrentSettings(preloadSize = smartPreload) }
                 }
                 val plan = TorrentCorePolicy.plan(
                     link = link,
@@ -148,7 +148,7 @@ class TorrentStreamManager private constructor() {
                 scope.launch {
                     runCatching {
                         api.addTorrent(
-                            TorrRequest(
+                            TorrentRequest(
                                 action = "add",
                                 link = plan.normalizedLink,
                                 title = videoId,
@@ -176,7 +176,7 @@ class TorrentStreamManager private constructor() {
     fun shutdown() {
         stop()
         scope.launch {
-            runCatching { api.updateSettings(TorrSettings(preloadSize = 0L)) }
+            runCatching { api.updateSettings(TorrentSettings(preloadSize = 0L)) }
         }
     }
 
@@ -186,7 +186,7 @@ class TorrentStreamManager private constructor() {
         ensureEngineReady()
         runCatching { api.updateSettings(desired) }
             .onSuccess { appliedSettings = desired }
-            .onFailure { Log.w(TAG, "TorrServer settings update failed", it) }
+            .onFailure { Log.w(TAG, "TorrentServer settings update failed", it) }
     }
 
     private fun startStatusPolling(link: String, title: String) {
@@ -211,20 +211,20 @@ class TorrentStreamManager private constructor() {
             stat = true
         ).streamUrl
         val body = runCatching { requestUrl(statusUrl) }.getOrNull() ?: return
-        val torrStatus = runCatching { gson.fromJson(body, TorrStatus::class.java) }.getOrNull() ?: return
-        val statusInfo = TorrentCorePolicy.statusInfo(torrStatus)
+        val torrentStatus = runCatching { gson.fromJson(body, TorrentStatus::class.java) }.getOrNull() ?: return
+        val statusInfo = TorrentCorePolicy.statusInfo(torrentStatus)
         _status.value = TorrentStreamStatus(
             bufferProgress = statusInfo.bufferProgress,
-            detailedStatus = torrStatus.statString.ifBlank { statusInfo.statusKey },
-            downloadSpeed = torrStatus.downloadSpeed,
-            activePeers = torrStatus.activePeers,
-            totalPeers = torrStatus.totalPeers
+            detailedStatus = torrentStatus.statString.ifBlank { statusInfo.statusKey },
+            downloadSpeed = torrentStatus.downloadSpeed,
+            activePeers = torrentStatus.activePeers,
+            totalPeers = torrentStatus.totalPeers
         )
     }
 
     private suspend fun requestUrl(url: String): String = withContext(Dispatchers.IO) {
         client.newCall(Request.Builder().url(url).build()).execute().use { response ->
-            if (!response.isSuccessful) error("TorrServer HTTP ${response.code}")
+            if (!response.isSuccessful) error("TorrentServer HTTP ${response.code}")
             response.body.string()
         }
     }
@@ -246,7 +246,7 @@ class TorrentStreamManager private constructor() {
         engineLock.withLock {
             if (isEngineHealthy()) return@withLock
             val context = appContext ?: error("Torrent engine context is unavailable")
-            val current = engine ?: TorrServerEngine(context).also { engine = it }
+            val current = engine ?: TorrentServerEngine(context).also { engine = it }
             if (!current.isRunning()) {
                 current.start()
                 appliedSettings = null
@@ -255,7 +255,7 @@ class TorrentStreamManager private constructor() {
 
             Log.w(TAG, "Torrent engine health check failed. Restarting engine.")
             current.stop()
-            val restarted = TorrServerEngine(context).also { engine = it }
+            val restarted = TorrentServerEngine(context).also { engine = it }
             restarted.start()
             appliedSettings = null
             if (!isEngineHealthy()) {
@@ -265,8 +265,8 @@ class TorrentStreamManager private constructor() {
     }
 
     private suspend fun isEngineHealthy(): Boolean = withContext(Dispatchers.IO) {
-        requestHealth("${Constants.LocalServer.TORR_SERVER_BASE_URL}/health") ||
-            requestHealth(Constants.LocalServer.TORR_SERVER_BASE_URL)
+        requestHealth("${Constants.LocalServer.TORRENT_SERVER_BASE_URL}/health") ||
+            requestHealth(Constants.LocalServer.TORRENT_SERVER_BASE_URL)
     }
 
     private fun requestHealth(url: String): Boolean {
@@ -309,6 +309,6 @@ class TorrentStreamManager private constructor() {
         fun getInstance(): TorrentStreamManager =
             instance ?: error("TorrentStreamManager not initialized — call getInstance(context) first")
 
-        private fun defaultSettings(): TorrSettings = TorrSettings(preloadSize = 3L)
+        private fun defaultSettings(): TorrentSettings = TorrentSettings(preloadSize = 3L)
     }
 }

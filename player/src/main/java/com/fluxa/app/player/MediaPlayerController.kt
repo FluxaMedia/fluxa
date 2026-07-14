@@ -43,10 +43,6 @@ import android.media.MediaCodecList
 import java.util.Locale
 import java.util.Collections
 import java.util.WeakHashMap
-import java.util.concurrent.Callable
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 
 @UnstableApi
@@ -87,16 +83,10 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             @Volatile var dvHdr10PlusMode: String = "auto"
             @Volatile var disableDiskCache: Boolean = false
             @Volatile var videoEffectsActive: Boolean = false
-            @Volatile var embeddedAssFontFuture: Future<List<NativeAssFont>>? = null
-            @Volatile var streamOpenLatch = CountDownLatch(1)
         }
 
         private val requestContexts = Collections.synchronizedMap(WeakHashMap<ExoPlayer, ExoRequestContext>())
         private val libassRelays = Collections.synchronizedMap(WeakHashMap<ExoPlayer, LibassEventRelay>())
-        private val libassFontExecutor = Executors.newSingleThreadExecutor { runnable ->
-            Thread(runnable, "fluxa-libass-fonts").apply { isDaemon = true }
-        }
-
         fun getLibassRelay(player: ExoPlayer): LibassEventRelay? = libassRelays[player]
 
         private const val BYTES_PER_MB = 1024 * 1024
@@ -298,7 +288,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                 )
             }
             
-            // Always probe MKV cues for seekability. rqbit/TorrServer supports range requests
+            // Always probe MKV cues for seekability. rqbit/TorrentServer supports range requests
             // and will download the tail pieces on demand. Previously this was disabled for
             // localhost (torrent proxy) to avoid a seek-to-end probe, but that made torrent
             // MKV streams non-seekable — ExoPlayer reverts to position 0 on seekTo() without cues.
@@ -308,20 +298,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                 relay,
                 DefaultExtractorsFactory().setMatroskaExtractorFlags(MatroskaExtractor.FLAG_EMIT_RAW_SUBTITLE_DATA),
                 fontsDir,
-                fontAttachmentsProvider = {
-                    val future = requestContext.embeddedAssFontFuture
-                    if (future == null) {
-                        LibassDebugLog.d("font attachment provider has no future")
-                        emptyList()
-                    } else {
-                        runCatching {
-                            future.get(250, TimeUnit.MILLISECONDS)
-                        }.onFailure { error ->
-                            LibassDebugLog.w("font attachment provider timed out or failed", error)
-                        }.getOrDefault(emptyList())
-                    }
-                },
-                onExtractorsCreated = { requestContext.streamOpenLatch.countDown() }
+                fontAttachmentsProvider = null
             )
             val mediaSourceFactory = DefaultMediaSourceFactory(context, extractorsFactory)
                 .setDataSourceFactory(dataSourceFactory)
@@ -721,24 +698,9 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                 ctx.videoEffectsActive = false
             }
             ctx.streamHeaders = headersForPlayback
-            ctx.embeddedAssFontFuture?.cancel(true)
             libassRelays[exoPlayer]?.resetFonts()
-            ctx.streamOpenLatch = CountDownLatch(1)
-            ctx.embeddedAssFontFuture = if (shouldScanEmbeddedAssFonts(url, streamTitle)) {
-                LibassDebugLog.d("scheduling embedded ASS font attachment scan url=${LibassDebugLog.urlSummary(url)} title=$streamTitle")
-                libassFontExecutor.submit(Callable {
-                    if (!ctx.streamOpenLatch.await(10, TimeUnit.SECONDS)) {
-                        LibassDebugLog.d("font scan proceeding without stream open signal")
-                    }
-                    val fonts = MkvNativeAssExtractor.extractFontAttachmentsForPlayback(url, headersForPlayback) {
-                        libassRelays[exoPlayer]?.hasFonts() == true
-                    }
-                    if (fonts.isNotEmpty()) libassRelays[exoPlayer]?.updateFonts(fonts)
-                    fonts
-                })
-            } else {
-                LibassDebugLog.d("skipping embedded ASS font attachment scan url=${LibassDebugLog.urlSummary(url)} title=$streamTitle")
-                null
+            if (shouldScanEmbeddedAssFonts(url, streamTitle)) {
+                LibassDebugLog.d("embedded ASS fonts will be collected from the active Matroska stream")
             }
             ctx.disableDiskCache = stream?.behaviorHints?.let { hints ->
                 hints["cs3Type"] != null ||

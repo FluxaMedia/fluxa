@@ -1,4 +1,7 @@
-@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@file:androidx.annotation.OptIn(
+    androidx.media3.common.util.UnstableApi::class,
+    androidx.media3.common.util.ExperimentalApi::class
+)
 package com.fluxa.app.player
 
 import androidx.media3.common.C
@@ -114,7 +117,11 @@ class AppAudioRendererFactory(context: Context, private val audioDecoderMode: St
     ) {
         LibassDebugLog.d("building text renderers with NativeAssTextRenderer before Media3 TextRenderer")
         out.add(NativeAssTextRenderer())
-        out.add(TextRenderer(output, outputLooper))
+        out.add(
+            TextRenderer(output, outputLooper).apply {
+                experimentalSetLegacyDecodingEnabled(true)
+            }
+        )
     }
 }
 

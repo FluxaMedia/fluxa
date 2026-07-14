@@ -5,8 +5,8 @@ import com.fluxa.app.data.remote.AddonManifest
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.domain.discovery.StremioAddonUrls
 import com.fluxa.app.domain.discovery.hasStremioResource
-import com.fluxa.app.player.TorrFileStat
-import com.fluxa.app.player.TorrStatus
+import com.fluxa.app.player.TorrentFileStat
+import com.fluxa.app.player.TorrentStatus
 import com.fluxa.app.player.TorrentCorePolicy
 import java.net.HttpURLConnection
 import java.net.ServerSocket
@@ -142,7 +142,7 @@ class FluxaCoreBenchmarkTest {
             )
         }
         val torrentStats = List(64) { index ->
-            TorrFileStat(
+            TorrentFileStat(
                 id = index,
                 path = if (index == 42) {
                     "Show/Show.S01E02.1080p.mkv"
@@ -165,7 +165,7 @@ class FluxaCoreBenchmarkTest {
         }
         val torrentStatus = benchmark("native-torrent-status-policy", iterations = 20_000) { _ ->
             val info = TorrentCorePolicy.statusInfo(
-                TorrStatus(
+                TorrentStatus(
                     hash = "hash",
                     title = "title",
                     downloadSpeed = 0.0,

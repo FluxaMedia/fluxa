@@ -8,7 +8,7 @@ import java.net.ServerSocket
 import java.util.UUID
 import kotlinx.coroutines.*
 
-class TorrServerEngine(private val context: Context) {
+class TorrentServerEngine(private val context: Context) {
     companion object {
         @Volatile
         var castAccessToken: String = ""
@@ -24,8 +24,9 @@ class TorrServerEngine(private val context: Context) {
         if (isRunning()) return
 
         ensurePortFree()
-        // Clear stale cache so rqbit doesn't spend time hash-checking old pieces on startup
-        val dataDir = java.io.File(context.filesDir, "rust_torrent_cache").apply {
+        val legacyDataDir = java.io.File(context.filesDir, "rust_torrent_cache")
+        if (legacyDataDir.exists()) legacyDataDir.deleteRecursively()
+        val dataDir = java.io.File(context.cacheDir, "rust_torrent_cache").apply {
             deleteRecursively()
             mkdirs()
         }
@@ -35,16 +36,16 @@ class TorrServerEngine(private val context: Context) {
             val result = FluxaStreamingNative.startTorrentServer(dataDir.absolutePath, port, castAccessToken)
             running = result.isNotBlank()
             if (running) {
-                Log.i("TorrServer", "Rust torrent engine started on port $port")
+                Log.i("TorrentServer", "Rust torrent engine started on port $port")
                 startWatcher()
             } else {
-                Log.w("TorrServer", "Rust torrent engine did not report readiness on port $port")
+                Log.w("TorrentServer", "Rust torrent engine did not report readiness on port $port")
             }
         } catch (e: IOException) {
-            Log.e("TorrServer", "Failed to start engine", e)
+            Log.e("TorrentServer", "Failed to start engine", e)
             running = false
         } catch (e: Exception) {
-            Log.e("TorrServer", "Failed to start Rust torrent engine", e)
+            Log.e("TorrentServer", "Failed to start Rust torrent engine", e)
             running = false
         }
     }
@@ -55,7 +56,7 @@ class TorrServerEngine(private val context: Context) {
             while (isActive) {
                 delay(3000)
                 if (!isRunning()) {
-                    Log.w("TorrServer", "Rust torrent engine stopped. Restarting...")
+                    Log.w("TorrentServer", "Rust torrent engine stopped. Restarting...")
                     running = false
                     start()
                 }
@@ -65,13 +66,13 @@ class TorrServerEngine(private val context: Context) {
 
     fun stop() {
         watcherJob?.cancel()
-        Log.i("TorrServer", "Stopping Rust torrent engine...")
+        Log.i("TorrentServer", "Stopping Rust torrent engine...")
         try {
             FluxaStreamingNative.stopTorrentServer()
             running = false
             castAccessToken = ""
         } catch (e: Exception) {
-            Log.e("TorrServer", "Rust torrent engine stop failed", e)
+            Log.e("TorrentServer", "Rust torrent engine stop failed", e)
         }
         
         scope.launch {
@@ -88,7 +89,7 @@ class TorrServerEngine(private val context: Context) {
         try {
             ServerSocket(port).use { /* Port is free */ }
         } catch (e: IOException) {
-            Log.w("TorrServer", "Port $port is busy. Engine might be already running or zombie process exists.")
+            Log.w("TorrentServer", "Port $port is busy. Engine might be already running or zombie process exists.")
             // Instead of lsof, we just hope destroyForcibly worked or the new process can take over
         }
     }

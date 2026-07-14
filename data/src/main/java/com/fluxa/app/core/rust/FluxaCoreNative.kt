@@ -62,8 +62,8 @@ import com.fluxa.app.data.repository.TraktWatchedState
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.player.NativeTorrentRuntimeInfo
 import com.fluxa.app.player.NativeTorrentStatusInfo
-import com.fluxa.app.player.TorrFileStat
-import com.fluxa.app.player.TorrStatus
+import com.fluxa.app.player.TorrentFileStat
+import com.fluxa.app.player.TorrentStatus
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
@@ -458,7 +458,7 @@ private data class NativeTorrentRuntimeRequest(
     val requestedFileIdx: Int?,
     val preferredFilename: String?,
     val sources: List<String>,
-    val fileStats: List<TorrFileStat>,
+    val fileStats: List<TorrentFileStat>,
     val rejectedIndex: Int?,
     val baseUrl: String,
     val play: Boolean,
@@ -1186,7 +1186,7 @@ object FluxaCoreNative {
         requestedFileIdx: Int?,
         preferredFilename: String?,
         sources: List<String>,
-        fileStats: List<TorrFileStat>,
+        fileStats: List<TorrentFileStat>,
         rejectedIndex: Int?,
         baseUrl: String,
         play: Boolean,
@@ -1208,7 +1208,7 @@ object FluxaCoreNative {
         gson.fromJson(json, NativeTorrentRuntimeInfo::class.java) ?: NativeTorrentRuntimeInfo()
     }
 
-    fun torrentStatusInfo(status: TorrStatus): NativeTorrentStatusInfo = call {
+    fun torrentStatusInfo(status: TorrentStatus): NativeTorrentStatusInfo = call {
         val json = torrentStatusInfoJsonNative(gson.toJson(status))
         gson.fromJson(json, NativeTorrentStatusInfo::class.java) ?: NativeTorrentStatusInfo()
     }

@@ -10,9 +10,9 @@ object TorrentCorePolicy {
         requestedFileIdx: Int?,
         preferredFilename: String?,
         sources: List<String>,
-        fileStats: List<TorrFileStat>,
+        fileStats: List<TorrentFileStat>,
         rejectedIndex: Int? = null,
-        baseUrl: String = Constants.LocalServer.TORR_SERVER_BASE_URL,
+        baseUrl: String = Constants.LocalServer.TORRENT_SERVER_BASE_URL,
         play: Boolean = true,
         stat: Boolean = false
     ): NativeTorrentRuntimeInfo {
@@ -30,7 +30,7 @@ object TorrentCorePolicy {
         )
     }
 
-    fun statusInfo(status: TorrStatus): NativeTorrentStatusInfo {
+    fun statusInfo(status: TorrentStatus): NativeTorrentStatusInfo {
         return FluxaCoreNative.torrentStatusInfo(status)
     }
 }

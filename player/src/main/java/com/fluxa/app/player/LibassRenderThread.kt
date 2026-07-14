@@ -12,6 +12,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.nio.ByteBuffer
 
+data class LibassVideoFrame(
+    val width: Int,
+    val height: Int,
+    val offsetX: Int,
+    val offsetY: Int
+)
+
 class LibassRenderThread {
     private val thread = HandlerThread("fluxa-libass").also { it.start() }
     private val handler = Handler(thread.looper)
@@ -23,6 +30,7 @@ class LibassRenderThread {
     private var surface: Surface? = null
     private var surfaceWidth = 0
     private var surfaceHeight = 0
+    private var videoFrame: LibassVideoFrame? = null
     private var delayMs = 0L
 
     private val glyphCache = LongSparseArray<Bitmap>()
@@ -85,6 +93,16 @@ class LibassRenderThread {
         handler.post {
             if (delayMs != ms) {
                 delayMs = ms
+                forceNextRender = true
+                requestRenderLocked()
+            }
+        }
+    }
+
+    fun setVideoFrame(frame: LibassVideoFrame?) {
+        handler.post {
+            if (videoFrame != frame) {
+                videoFrame = frame
                 forceNextRender = true
                 requestRenderLocked()
             }
@@ -172,8 +190,9 @@ class LibassRenderThread {
             return
         }
 
+        val frame = videoFrame ?: LibassVideoFrame(surfaceWidth, surfaceHeight, 0, 0)
         val forceRender = forceNextRender
-        val count = r.renderImages(ptsMs + delayMs, surfaceWidth, surfaceHeight, outMeta, outCoverage, forceRender)
+        val count = r.renderImages(ptsMs + delayMs, frame.width, frame.height, outMeta, outCoverage, forceRender)
         if (count < 0) return
 
         if (glyphCache.size() > 256) clearGlyphCache()
@@ -204,7 +223,7 @@ class LibassRenderThread {
                 val b_ch = (assColor ushr 8) and 0xFF
                 val alpha = 255 - (assColor and 0xFF)
                 paint.color = (alpha shl 24) or (r_ch shl 16) or (g_ch shl 8) or b_ch
-                canvas.drawBitmap(glyph, x.toFloat(), y.toFloat(), paint)
+                canvas.drawBitmap(glyph, (x + frame.offsetX).toFloat(), (y + frame.offsetY).toFloat(), paint)
             }
         } finally {
             s.unlockCanvasAndPost(canvas)

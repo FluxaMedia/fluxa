@@ -65,8 +65,8 @@ object Constants {
         const val PORT = 11471
         const val PROXY_PORT = 11470
         const val BASE_URL = "http://$HOST:$PORT"
-        const val TORR_SERVER_PORT = 8090
-        const val TORR_SERVER_BASE_URL = "http://$HOST:$TORR_SERVER_PORT"
+        const val TORRENT_SERVER_PORT = 8090
+        const val TORRENT_SERVER_BASE_URL = "http://$HOST:$TORRENT_SERVER_PORT"
     }
     
     // Plugin/Extension

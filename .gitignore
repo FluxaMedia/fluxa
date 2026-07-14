@@ -7,6 +7,7 @@
 /app/build/
 **/build/
 **/.cxx/
+/app/src/main/jniLibs/
 /rust/**/target/
 /local.properties
 /.env

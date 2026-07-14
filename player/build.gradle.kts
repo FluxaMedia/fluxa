@@ -28,7 +28,7 @@ dependencies {
     implementation(libs.jellyfin.media3)
     implementation(libs.mpv)
 
-    // Network (TorrServer API)
+    // Network (TorrentServer API)
     implementation(libs.bundles.retrofit)
     implementation(libs.okhttp.logging)
 
