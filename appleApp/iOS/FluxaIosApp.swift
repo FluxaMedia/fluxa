@@ -1,3 +1,4 @@
+import FluxaShared
 import SwiftUI
 
 @main
