@@ -77,7 +77,7 @@ data class NuvioCollectionFolderSource(
     @SerializedName("tmdbId") val tmdbId: Long? = null,
     @SerializedName("sortBy") val sortBy: String? = null,
     @SerializedName("sortHow") val sortHow: String? = null,
-    val filters: Map<String, String>? = null
+    val filters: Map<String, Any?>? = null
 )
 
 data class NuvioCollectionFolder(

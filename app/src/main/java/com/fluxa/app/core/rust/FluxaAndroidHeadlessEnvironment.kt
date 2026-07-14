@@ -997,7 +997,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                     "withOriginCountry" to "with_origin_country",
                     "withWatchProviders" to "with_watch_providers",
                     "withOriginalLanguage" to "with_original_language"
-                ).forEach { (input, output) -> filters[input]?.let { appendQueryParameter(output, it) } }
+                ).forEach { (input, output) -> filters[input]?.let { appendQueryParameter(output, it.toString()) } }
             }
             .build()
             .toString()

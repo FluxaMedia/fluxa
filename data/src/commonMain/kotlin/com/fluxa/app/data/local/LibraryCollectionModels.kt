@@ -29,7 +29,7 @@ data class LibraryRemoteSource(
     val tmdbId: Long? = null,
     val sortBy: String? = null,
     val sortHow: String? = null,
-    val filters: Map<String, String>? = null,
+    val filters: Map<String, Any?>? = null,
     val addonId: String? = null,
     val catalogId: String? = null,
     val type: String? = null,
