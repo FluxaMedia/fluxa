@@ -1324,6 +1324,12 @@ class HomeViewModel @Inject constructor(
 
     suspend fun isNuvioHealthy(): Boolean = nuvioSyncCoordinator.isHealthy()
 
+    fun pushNuvioAddons(profile: UserProfile) {
+        viewModelScope.launch {
+            runCatching { nuvioSyncCoordinator.pushAddons(profile) }
+        }
+    }
+
     fun syncStremioIntegration(
         profile: UserProfile,
         onProfileUpdated: (UserProfile) -> Unit,

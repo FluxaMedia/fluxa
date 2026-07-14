@@ -31,6 +31,28 @@ class NuvioSyncCoordinator @Inject constructor(
         ).requireSuccess()
         profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
     }
+
+    suspend fun pushAddons(profile: UserProfile) {
+        val current = freshProfile(profile) ?: return
+        val token = current.nuvioAccessToken ?: return
+        val index = current.nuvioProfileIndex ?: return
+        val disabled = current.safeDisabledLocalAddonIds
+        nuvioService.pushAddons(
+            "Bearer $token",
+            mapOf(
+                "p_profile_id" to index,
+                "p_addons" to current.safeInstalledLocalAddons.mapIndexed { sortOrder, url ->
+                    mapOf(
+                        "url" to url,
+                        "name" to url,
+                        "enabled" to (com.fluxa.app.domain.discovery.StremioAddonUrls.identity(url) !in disabled),
+                        "sort_order" to sortOrder
+                    )
+                }
+            )
+        ).requireSuccess()
+        profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
+    }
     suspend fun pushWatchlist(profile: UserProfile, meta: Meta, isInWatchlist: Boolean) {
         val current = freshProfile(profile) ?: return
         val token = current.nuvioAccessToken ?: return
