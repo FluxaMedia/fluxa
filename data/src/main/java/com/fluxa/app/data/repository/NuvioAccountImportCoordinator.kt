@@ -110,15 +110,32 @@ class NuvioAccountImportCoordinator(
 
         val existingProfiles = profileManager.getProfiles()
         val importedProfiles = profiles.map { remote ->
-            val existing = existingProfiles.firstOrNull {
+            val matchedProfile = existingProfiles.firstOrNull {
                 it.nuvioUserId == connectedProfile.nuvioUserId && it.nuvioProfileIndex == remote.profileIndex
+            }
+            val localProfile = existingProfiles.firstOrNull {
+                it.id != baseProfile.id &&
+                    (it.email.equals(connectedProfile.email, ignoreCase = true) ||
+                        it.nuvioEmail.equals(connectedProfile.nuvioEmail, ignoreCase = true)) &&
+                    (it.nuvioProfileIndex == null || it.nuvioProfileIndex == remote.profileIndex) &&
+                    (!it.profileName.isNullOrBlank() || !it.avatarUrl.isNullOrBlank())
+            }
+            val existing = matchedProfile ?: localProfile ?: baseProfile.takeIf {
+                remote.profileIndex == profileIndex &&
+                    (it.nuvioProfileIndex == null || it.nuvioProfileIndex == remote.profileIndex)
             }
             val avatarUrl = remote.avatarUrl ?: remote.avatarId
                 ?.let { avatarId -> avatars.firstOrNull { it.id == avatarId }?.storagePath }
                 ?.let { "$supabaseUrl/storage/v1/object/public/avatars/$it" }
+            val remoteName = remote.name?.trim()?.takeIf { it.isNotBlank() }
+            val preservedName = existing?.profileName?.trim()?.takeIf { it.isNotBlank() }
             (existing ?: connectedProfile.copy(id = stableNuvioProfileId(connectedProfile, remote.profileIndex))).copy(
                 email = connectedProfile.email,
-                profileName = remote.name?.takeIf { it.isNotBlank() } ?: existing?.profileName,
+                profileName = when {
+                    remoteName == null -> preservedName
+                    remoteName.equals(connectedProfile.nuvioEmail, ignoreCase = true) && preservedName != null -> preservedName
+                    else -> remoteName
+                },
                 avatarUrl = avatarUrl ?: existing?.avatarUrl,
                 nuvioAccessToken = connectedProfile.nuvioAccessToken,
                 nuvioRefreshToken = connectedProfile.nuvioRefreshToken,
