@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.local.LibraryCatalogSource
+import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.google.gson.GsonBuilder
@@ -16,6 +17,8 @@ private val collectionsGson = GsonBuilder()
 private data class CollectionJson(
     val id: String? = null,
     val title: String? = null,
+    val imageUrl: String? = null,
+    val backdropImageUrl: String? = null,
     val showAllTab: Boolean? = null,
     val viewMode: String? = null,
     val showOnHome: Boolean? = null,
@@ -32,6 +35,7 @@ private data class CollectionFolderJson(
     val hideTitle: Boolean? = null,
     val focusGifEnabled: Boolean? = null,
     val catalogSources: List<LibraryCatalogSource>? = null,
+    val sources: List<LibraryRemoteSource>? = null,
     val coverEmoji: String? = null,
     @SerializedName(value = "coverImageUrl", alternate = ["coverUrl", "coverImage", "cover", "poster", "thumbnail", "thumb"])
     val coverImageUrl: String? = null,
@@ -41,6 +45,7 @@ private data class CollectionFolderJson(
     val titleLogoUrl: String? = null,
     @SerializedName(value = "heroBackdropUrl", alternate = ["background", "backdrop", "backgroundUrl", "backdropUrl"])
     val heroBackdropUrl: String? = null,
+    val heroVideoUrl: String? = null,
     val catalogId: String? = null,
     val catalogTitle: String? = null,
     val genre: String? = null
@@ -60,7 +65,7 @@ internal fun importLibraryCollectionsJson(rawJson: String): List<LibraryUserColl
         LibraryUserCollection(
             id = collection.id?.takeIf { it.isNotBlank() } ?: "imported_${System.currentTimeMillis()}_$index",
             title = title,
-            imageUrl = collection.folders.orEmpty().firstNotNullOfOrNull { it.normalizedCoverImageUrl() },
+            imageUrl = collection.backdropImageUrl ?: collection.imageUrl ?: collection.folders.orEmpty().firstNotNullOfOrNull { it.normalizedCoverImageUrl() },
             showOnHome = collection.showOnHome ?: false,
             folders = collection.folders.orEmpty().mapIndexedNotNull { folderIndex, folder ->
                 val folderTitle = folder.title?.trim().orEmpty()
@@ -84,11 +89,13 @@ internal fun importLibraryCollectionsJson(rawJson: String): List<LibraryUserColl
                     hideTitle = folder.hideTitle ?: false,
                     focusGifEnabled = folder.focusGifEnabled ?: true,
                     catalogSources = sources.takeIf { it.isNotEmpty() },
+                    sources = folder.sources,
                     coverEmoji = folder.coverEmoji,
                     coverImageUrl = coverImageUrl,
                     focusGifUrl = focusGifUrl,
                     titleLogoUrl = folder.titleLogoUrl,
-                    heroBackdropUrl = heroBackdropUrl
+                    heroBackdropUrl = heroBackdropUrl,
+                    heroVideoUrl = folder.heroVideoUrl.cleanedUrl()
                 )
             },
             showAllTab = collection.showAllTab ?: true,
@@ -104,6 +111,8 @@ internal fun exportLibraryCollectionsJson(collections: List<LibraryUserCollectio
         CollectionJson(
             id = collection.id,
             title = collection.title,
+            imageUrl = collection.imageUrl,
+            backdropImageUrl = collection.imageUrl,
             showAllTab = collection.showAllTab ?: true,
             viewMode = collection.viewMode ?: "FOLLOW_LAYOUT",
             showOnHome = collection.showOnHome ?: false,
@@ -119,11 +128,13 @@ internal fun exportLibraryCollectionsJson(collections: List<LibraryUserCollectio
                     catalogSources = folder.catalogSources.orEmpty().ifEmpty {
                         folder.catalogId?.let { listOf(LibraryCatalogSource(catalogId = it, type = "movie")) }.orEmpty()
                     },
+                    sources = folder.sources,
                     coverEmoji = folder.coverEmoji,
                     coverImageUrl = folder.coverImageUrl ?: folder.imageUrl,
                     focusGifUrl = folder.focusGifUrl,
                     titleLogoUrl = folder.titleLogoUrl,
-                    heroBackdropUrl = folder.heroBackdropUrl
+                    heroBackdropUrl = folder.heroBackdropUrl,
+                    heroVideoUrl = folder.heroVideoUrl
                 )
             }
         )
