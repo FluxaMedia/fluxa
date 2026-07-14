@@ -90,6 +90,8 @@ jobs:
         run: xcodegen generate
 
       - name: Build Fluxa Rust core
+        env:
+          FLUXA_BUILD_STREAMING_ENGINE: "1"
         run: appleApp/scripts/build-rust-core-xcframework.sh
 
       - name: Build iOS host

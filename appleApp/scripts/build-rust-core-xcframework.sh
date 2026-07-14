@@ -22,11 +22,17 @@ build_rust_core() {
 }
 
 build_streaming_engine() {
+    local ios_deployment_target="${IPHONEOS_DEPLOYMENT_TARGET:-18.5}"
+
     if [[ "$profile" == "Release" ]]; then
-        cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@" --release
+        IPHONEOS_DEPLOYMENT_TARGET="$ios_deployment_target" cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@" --release
     else
-        cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@"
+        IPHONEOS_DEPLOYMENT_TARGET="$ios_deployment_target" cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@"
     fi
+}
+
+should_build_streaming_engine() {
+    [[ "${FLUXA_BUILD_STREAMING_ENGINE:-0}" == "1" ]] || [[ "${PLATFORM_NAME:-}" == "iphoneos" ]] || [[ "${PLATFORM_NAME:-}" == "iphonesimulator" ]]
 }
 
 targets=(
@@ -61,9 +67,11 @@ for target in "${targets[@]}"; do
     build_rust_core --target "$target"
 done
 
-for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios; do
-    build_streaming_engine --target "$target"
-done
+if should_build_streaming_engine; then
+    for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios; do
+        build_streaming_engine --target "$target"
+    done
+fi
 
 lipo -create \
     "target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_core.a" \
@@ -72,11 +80,13 @@ lipo -create \
 cp "target/aarch64-apple-ios/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-ios.a"
 cp "target/aarch64-apple-tvos/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-tvos.a"
 cp "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-tvos-simulator.a"
-lipo -create \
-    "target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_streaming_engine.a" \
-    "target/x86_64-apple-ios/$cargo_profile/libfluxa_streaming_engine.a" \
-    -output "$output_dir/libfluxa_streaming_engine-ios-simulator.a"
-cp "target/aarch64-apple-ios/$cargo_profile/libfluxa_streaming_engine.a" "$output_dir/libfluxa_streaming_engine-ios.a"
+if should_build_streaming_engine; then
+    lipo -create \
+        "target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_streaming_engine.a" \
+        "target/x86_64-apple-ios/$cargo_profile/libfluxa_streaming_engine.a" \
+        -output "$output_dir/libfluxa_streaming_engine-ios-simulator.a"
+    cp "target/aarch64-apple-ios/$cargo_profile/libfluxa_streaming_engine.a" "$output_dir/libfluxa_streaming_engine-ios.a"
+fi
 cp "$output_dir/FluxaRustCoreFFI.h" "$headers_dir/FluxaRustCoreFFI.h"
 cp "$output_dir/FluxaRustCoreFFI.modulemap" "$headers_dir/module.modulemap"
 
