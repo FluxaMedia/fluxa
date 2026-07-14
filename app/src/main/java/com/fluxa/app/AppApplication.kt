@@ -21,7 +21,6 @@ import com.lagradost.cloudstream3.AcraApplication
 import com.lagradost.cloudstream3.app
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.common.initialize
-import com.fluxa.app.shared.di.initSharedKoin
 import com.fluxa.app.ui.catalog.EpisodeReleaseWorker
 import com.fluxa.app.plugins.PluginAutoUpdateWorker
 import com.fluxa.app.ui.catalog.TrailerResolver
@@ -52,7 +51,6 @@ class AppApplication : Application(), SingletonImageLoader.Factory, Configuratio
         // CloudStream library's app singleton is auto-initialized by the library
 
         AppStrings.initialize(this)
-        initSharedKoin()
         TrailerResolver.init(cacheDir)
         PluginAutoUpdateWorker.enqueue(this)
         EpisodeReleaseWorker.enqueue(this)
