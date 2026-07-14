@@ -85,6 +85,42 @@ sealed interface DetailNavigationEvent {
     data class SelectSources(val episodeId: String?, val resumeProgress: Long = 0L) : DetailNavigationEvent
 }
 
+object DetailNavigationLogic {
+    fun resumeProgressFor(resumeVideoId: String?, resumeProgress: Long, targetVideoId: String?): Long =
+        if (targetVideoId != null && targetVideoId == resumeVideoId) resumeProgress else 0L
+
+    fun forStream(
+        contentResumeVideoId: String?,
+        contentResumeProgress: Long,
+        stream: DetailStreamUiModel,
+        episodeId: String?
+    ): DetailNavigationEvent.PlayStream {
+        val targetVideoId = episodeId ?: contentResumeVideoId
+        return DetailNavigationEvent.PlayStream(
+            stream = stream,
+            episodeId = episodeId,
+            resumeProgress = resumeProgressFor(contentResumeVideoId, contentResumeProgress, targetVideoId)
+        )
+    }
+
+    fun forPlay(
+        contentId: String?,
+        contentResumeVideoId: String?,
+        contentResumeProgress: Long,
+        episodeId: String?,
+        firstStreamIfCs3: DetailStreamUiModel?
+    ): DetailNavigationEvent {
+        val targetVideoId = episodeId ?: contentResumeVideoId
+        val progress = resumeProgressFor(contentResumeVideoId, contentResumeProgress, targetVideoId)
+        val isCs3 = contentId?.startsWith("cs3:") == true || targetVideoId?.startsWith("cs3:") == true
+        return if (isCs3 && firstStreamIfCs3 != null) {
+            DetailNavigationEvent.PlayStream(firstStreamIfCs3, episodeId, progress)
+        } else {
+            DetailNavigationEvent.SelectSources(episodeId, progress)
+        }
+    }
+}
+
 interface DetailDataSource {
     fun observeDetail(id: String, type: String): Flow<DetailUiState>
     suspend fun loadDetail(request: DetailRequestUiModel)

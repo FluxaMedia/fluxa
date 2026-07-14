@@ -32,31 +32,29 @@ class DetailStore(
             is DetailAction.DownloadSeason -> dataSource.downloadSeason(action.season)
             is DetailAction.StreamSelected -> {
                 val content = state.value.content
-                val targetVideoId = action.episodeId ?: content?.resumeVideoId
-                val progress = resumeProgressFor(content, targetVideoId)
-                _navigation.emit(DetailNavigationEvent.PlayStream(action.stream, action.episodeId, progress))
+                _navigation.emit(
+                    DetailNavigationLogic.forStream(
+                        contentResumeVideoId = content?.resumeVideoId,
+                        contentResumeProgress = content?.resumeProgress ?: 0L,
+                        stream = action.stream,
+                        episodeId = action.episodeId
+                    )
+                )
             }
             DetailAction.Play -> {
                 val content = state.value.content
                 val episodeId = content?.selectedEpisodeId
-                val targetVideoId = episodeId ?: content?.resumeVideoId
-                val progress = resumeProgressFor(content, targetVideoId)
-                val isCs3 = content?.id?.startsWith("cs3:") == true || episodeId?.startsWith("cs3:") == true
-                if (isCs3) {
-                    val stream = content?.streams?.firstOrNull()
-                    if (stream != null) {
-                        _navigation.emit(DetailNavigationEvent.PlayStream(stream, episodeId, progress))
-                    } else {
-                        _navigation.emit(DetailNavigationEvent.SelectSources(episodeId, progress))
-                    }
-                } else {
-                    _navigation.emit(DetailNavigationEvent.SelectSources(episodeId, progress))
-                }
+                _navigation.emit(
+                    DetailNavigationLogic.forPlay(
+                        contentId = content?.id,
+                        contentResumeVideoId = content?.resumeVideoId,
+                        contentResumeProgress = content?.resumeProgress ?: 0L,
+                        episodeId = episodeId,
+                        firstStreamIfCs3 = content?.streams?.firstOrNull()
+                    )
+                )
             }
             is DetailAction.RelatedItemSelected -> Unit
         }
     }
-
-    private fun resumeProgressFor(content: DetailUiModel?, targetVideoId: String?): Long =
-        if (targetVideoId != null && targetVideoId == content?.resumeVideoId) content.resumeProgress else 0L
 }

@@ -129,12 +129,16 @@ private fun Video.toUiModel(watchedIds: Set<String>): DetailEpisodeUiModel = Det
     isWatched = id in watchedIds
 )
 
+internal fun com.fluxa.app.data.remote.Stream.toDetailStreamUiModel(): DetailStreamUiModel? {
+    val url = playableUrl ?: return null
+    return DetailStreamUiModel(
+        addonName = addonName.orEmpty(),
+        title = title ?: name.orEmpty(),
+        playableUrl = url
+    )
+}
+
 private fun List<com.fluxa.app.data.remote.Stream>.toUiModels(): List<DetailStreamUiModel> =
     mapNotNull { stream ->
-        val url = stream.playableUrl ?: return@mapNotNull null
-        DetailStreamUiModel(
-            addonName = stream.addonName.orEmpty(),
-            title = stream.title ?: stream.name.orEmpty(),
-            playableUrl = url
-        )
+        stream.toDetailStreamUiModel()
     }
