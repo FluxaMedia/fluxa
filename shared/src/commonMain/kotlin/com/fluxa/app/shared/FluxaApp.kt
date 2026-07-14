@@ -691,7 +691,7 @@ private fun FluxaHomeHeroSlide(
                     color = Color.White.copy(alpha = 0.85f),
                     fontSize = 13.sp,
                     lineHeight = 15.sp,
-                    maxLines = 2,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
