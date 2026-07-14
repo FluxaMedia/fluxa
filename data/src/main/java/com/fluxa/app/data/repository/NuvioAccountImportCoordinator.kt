@@ -281,7 +281,7 @@ class NuvioAccountImportCoordinator(
                 }
             )
         }
-        if (collections.isNotEmpty()) {
+        if (collectionRows.isNotEmpty()) {
             profile = profile.copy(libraryCollections = collections)
         }
         onStep(NuvioImportStep.COLLECTIONS)
