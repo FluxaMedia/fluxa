@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 
 
 @Immutable
-internal data class PlaybackSnapshot(
+data class PlaybackSnapshot(
     val isPlaying: Boolean = false,
     val playWhenReadyForScrobble: Boolean = true,
     val isBuffering: Boolean = true,
@@ -13,25 +13,25 @@ internal data class PlaybackSnapshot(
 )
 
 @Immutable
-internal data class TimelineSnapshot(
+data class TimelineSnapshot(
     val position: Long = 0L,
     val duration: Long = 0L,
 )
 
 @Immutable
-internal data class BufferSnapshot(
+data class BufferSnapshot(
     val bufferPercent: Int = 0,
     val loadProgress: Float = 0f,
     val seekbarBufferedProgress: Float = 0f,
 )
 
 @Immutable
-internal data class RenderSnapshot(
+data class RenderSnapshot(
     val isVideoRendered: Boolean = false,
 )
 
 @Immutable
-internal data class PlayerEngineSnapshot(
+data class PlayerEngineSnapshot(
     val playback: PlaybackSnapshot = PlaybackSnapshot(),
     val timeline: TimelineSnapshot = TimelineSnapshot(),
     val buffer: BufferSnapshot = BufferSnapshot(),
