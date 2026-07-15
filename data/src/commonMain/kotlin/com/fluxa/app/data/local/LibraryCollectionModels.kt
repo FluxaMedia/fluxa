@@ -10,14 +10,16 @@ data class LibraryUserCollection(
     val showAllTab: Boolean? = true,
     val viewMode: String? = "FOLLOW_LAYOUT",
     val pinToTop: Boolean? = false,
-    val focusGlowEnabled: Boolean? = true
+    val focusGlowEnabled: Boolean? = true,
+    val community: Map<String, Any?>? = null
 )
 
 data class LibraryCatalogSource(
     val addonId: String? = null,
     val catalogId: String,
     val type: String,
-    val genre: String? = null
+    val genre: String? = null,
+    val displayName: String? = null
 )
 
 data class LibraryRemoteSource(

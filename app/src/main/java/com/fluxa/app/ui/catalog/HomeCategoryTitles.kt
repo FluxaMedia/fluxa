@@ -27,6 +27,16 @@ fun displayHomeCategoryTitle(category: HomeCategory, language: String?): String 
     return if (typeLabel != null) "$title  —  $typeLabel" else title
 }
 
+fun folderSectionTitle(baseName: String, type: String, language: String?): String {
+    val typeLabel = when (type) {
+        "movie" -> AppStrings.t(language, "auto.movies")
+        "series" -> AppStrings.t(language, "auto.series")
+        "anime" -> AppStrings.t(language, "auto.anime")
+        else -> null
+    } ?: return baseName
+    return "${stripTypeSuffix(baseName, type, language)}  —  $typeLabel"
+}
+
 private fun stripTypeSuffix(title: String, type: String, language: String?): String {
     val suffixes = when (type) {
         "movie" -> listOf(

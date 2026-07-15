@@ -44,7 +44,10 @@ data class NuvioLibraryItem(
     val description: String?,
     @SerializedName("release_info") val releaseInfo: String?,
     @SerializedName("imdb_rating") val imdbRating: Double?,
-    val genres: List<String>?
+    val genres: List<String>?,
+    @SerializedName("poster_shape") val posterShape: String? = null,
+    @SerializedName("addon_base_url") val addonBaseUrl: String? = null,
+    @SerializedName("added_at") val addedAt: Long? = null
 )
 
 data class NuvioWatchProgress(
@@ -55,14 +58,17 @@ data class NuvioWatchProgress(
     val episode: Int?,
     val position: Long,
     val duration: Long,
-    @SerializedName("last_watched") val lastWatched: Long
+    @SerializedName("last_watched") val lastWatched: Long,
+    @SerializedName("progress_key") val progressKey: String? = null
 )
 
 data class NuvioWatchedItem(
     @SerializedName("content_id") val contentId: String,
     @SerializedName("content_type") val contentType: String,
+    val title: String? = null,
     val season: Int?,
-    val episode: Int?
+    val episode: Int?,
+    @SerializedName("watched_at") val watchedAt: Long? = null
 )
 
 data class NuvioCollectionFolderSource(
@@ -105,7 +111,8 @@ data class NuvioCollection(
     @SerializedName("viewMode") val viewMode: String?,
     @SerializedName("showAllTab") val showAllTab: Boolean?,
     @SerializedName("focusGlowEnabled") val focusGlowEnabled: Boolean? = null,
-    val folders: List<NuvioCollectionFolder>?
+    val folders: List<NuvioCollectionFolder>?,
+    val community: Map<String, Any?>? = null
 )
 
 data class NuvioCollectionRow(

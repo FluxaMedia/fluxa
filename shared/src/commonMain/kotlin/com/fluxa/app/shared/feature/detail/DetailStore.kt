@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 class DetailStore(
@@ -13,6 +14,10 @@ class DetailStore(
     scope: CoroutineScope
 ) {
     val state: StateFlow<DetailUiState> = dataSource.observeDetail(request.id, request.type)
+        .map { state ->
+            if (state.content != null || request.initialContent == null) state
+            else state.copy(content = request.initialContent)
+        }
         .stateIn(scope, SharingStarted.WhileSubscribed(5_000), DetailUiState(isLoading = true))
 
     private val _navigation = MutableSharedFlow<DetailNavigationEvent>(extraBufferCapacity = 1)
@@ -20,6 +25,10 @@ class DetailStore(
 
     suspend fun load() {
         dataSource.loadDetail(request)
+    }
+
+    suspend fun loadSources(episodeId: String?) {
+        dataSource.loadSources(request.id, request.type, episodeId)
     }
 
     suspend fun dispatch(action: DetailAction) {

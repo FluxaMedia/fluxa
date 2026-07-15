@@ -76,13 +76,11 @@ sealed class Screen {
     object Welcome : Screen()
     object Profiles : Screen()
     data class Login(val startOnNuvio: Boolean = false) : Screen()
-    data class ProfileEdit(val profile: UserProfile? = null) : Screen()
     object Home : Screen()
     object Search : Screen()
     object Watchlist : Screen()
     object Calendar : Screen()
     data class Explore(val initialType: String = "movie", val initialGenre: String? = null) : Screen()
-    data class CategoryResults(val categoryId: String, val title: String) : Screen()
     object AddonStore : Screen()
     data class Settings(val initialSection: String? = null) : Screen()
     data class Detail(val type: String, val id: String, val initialProgress: Long? = null, val lastVideoId: String? = null, val lastStreamIndex: Int? = null, val autoPlay: Boolean = false, val targetSeason: Int? = null, val targetEpisode: Int? = null, val lastStreamUrl: String? = null, val lastStreamTitle: String? = null, val sourceAddonTransportUrl: String? = null, val sourceAddonCatalogType: String? = null, val initialMeta: Meta? = null) : Screen()
@@ -95,46 +93,14 @@ sealed class Screen {
         val lastStreamUrl: String? = null,
         val lastStreamTitle: String? = null,
         val preferredBingeGroup: String? = null,
-        val returnToSourcesOnError: Boolean = false
+        val returnToSourcesOnError: Boolean = false,
+        val showSourceSelection: Boolean = false
     ) : Screen()
-    data class Sources(
-        val meta: Meta,
-        val video: Video? = null,
-        val videoId: String? = null,
-        val initialProgress: Long = 0L,
-        val lastStreamIndex: Int? = null,
-        val lastStreamUrl: String? = null,
-        val lastStreamTitle: String? = null,
-        val autoSelectSavedSource: Boolean = true,
-        val downloadMode: Boolean = false
-    ) : Screen()
-}
-
-internal enum class MobileNavDestination {
-    Home,
-    Discover,
-    Calendar,
-    Library,
-    Settings
-}
-
-internal fun Screen.mobileNavDestination(): MobileNavDestination? = when (this) {
-    is Screen.Home -> MobileNavDestination.Home
-    is Screen.Explore -> MobileNavDestination.Discover
-    is Screen.Calendar -> MobileNavDestination.Calendar
-    is Screen.Watchlist -> MobileNavDestination.Library
-    is Screen.Settings -> MobileNavDestination.Settings
-    else -> null
 }
 
 internal fun navDirection(from: Screen, to: Screen): Int {
-    val fromMobile = from.mobileNavDestination()
-    val toMobile = to.mobileNavDestination()
-    if (fromMobile != null && toMobile != null) {
-        return if (toMobile.ordinal >= fromMobile.ordinal) 1 else -1
-    }
     return when {
-        from is Screen.Player || to is Screen.Detail || to is Screen.Sources -> 1
+        from is Screen.Player || to is Screen.Detail -> 1
         to is Screen.Home || to is Screen.Profiles -> -1
         else -> 1
     }
@@ -156,94 +122,6 @@ internal fun MetaDetail.asNavigationMeta() = Meta(
     videos = videos,
     trailers = trailers
 )
-
-@Composable
-internal fun MobileBottomNav(
-    currentScreen: Screen,
-    activeProfile: UserProfile?,
-    profiles: List<UserProfile> = emptyList(),
-    onNavigate: (MobileNavDestination) -> Unit,
-    onQuickProfileSelected: (UserProfile) -> Unit = {}
-) {
-    val selected = currentScreen.mobileNavDestination() ?: return
-    val lang = activeProfile?.safeLanguage ?: "en"
-    val selectedColor = Color(activeProfile?.safeAccentColorArgb ?: Color.White.toArgb())
-    val navBackground = Color.Black
-    val inactiveColor = Color(0xFFA0A5AD)
-    val items = listOf(
-        MobileBottomNavItem(MobileNavDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHomeOutline, AppStrings.t(lang, "nav.home")),
-        MobileBottomNavItem(MobileNavDestination.Discover, FluxaIcons.BottomDiscover, FluxaIcons.BottomDiscoverOutline, AppStrings.t(lang, "nav.discover")),
-        MobileBottomNavItem(MobileNavDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendarOutline, AppStrings.t(lang, "nav.calendar")),
-        MobileBottomNavItem(MobileNavDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline, AppStrings.t(lang, "nav.library"))
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(navBackground)
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-            .padding(horizontal = 12.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        items.forEach { item ->
-            val isSelected = selected == item.destination
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable { onNavigate(item.destination) }
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    if (isSelected) item.selectedIcon else item.icon,
-                    item.label,
-                    tint = if (isSelected) selectedColor else inactiveColor,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-    }
-}
-
-private data class MobileBottomNavItem(
-    val destination: MobileNavDestination,
-    val selectedIcon: ImageVector,
-    val icon: ImageVector,
-    val label: String
-)
-
-@Composable
-internal fun MobileBottomProfileAvatar(
-    profile: UserProfile?,
-    selected: Boolean,
-    selectedColor: Color
-) {
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .clip(CircleShape)
-            .background(Color(profile?.safeColorArgb ?: 0xFF2A2D36.toInt()))
-            .border(
-                width = if (selected) 2.dp else 0.dp,
-                color = if (selected) selectedColor else Color.Transparent,
-                shape = CircleShape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (!profile?.avatarUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = profile.avatarUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            DefaultProfileAvatar(modifier = Modifier.size(20.dp))
-        }
-    }
-}
 
 @Composable
 internal fun TraktIntegrationSheet(

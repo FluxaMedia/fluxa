@@ -26,34 +26,42 @@ class FluxaHeadlessAppRuntime(
     private val _state = MutableStateFlow<Map<String, Any?>>(emptyMap())
     val state: StateFlow<Map<String, Any?>> = _state.asStateFlow()
 
-    suspend fun dispatch(action: Any): NativeHeadlessEngineResult = mutex.withLock {
-        drain(engine.dispatch(action)).also { result ->
+    suspend fun dispatch(action: Any): NativeHeadlessEngineResult {
+        val initial = mutex.withLock {
+            engine.dispatch(action)
+        }
+        return drain(initial).also { result ->
             _state.value = result.state
         }
     }
 
-    suspend fun complete(result: HeadlessEffectCompletion): NativeHeadlessEngineResult = mutex.withLock {
-        drain(engine.completeEffect(result)).also { next ->
+    suspend fun complete(result: HeadlessEffectCompletion): NativeHeadlessEngineResult {
+        val initial = mutex.withLock {
+            engine.completeEffect(result)
+        }
+        return drain(initial).also { next ->
             _state.value = next.state
         }
     }
 
     private suspend fun drain(initial: NativeHeadlessEngineResult): NativeHeadlessEngineResult = coroutineScope {
         var current = initial
-        val patches = mutableListOf(current)
+        val patches = mutableListOf(initial)
         var remaining = maxEffectsPerDispatch
         while (current.effects.isNotEmpty() && remaining > 0) {
             val batch = current.effects.take(remaining)
             val completions = batch.map { effect -> async { environment.execute(effect) } }.awaitAll()
             remaining -= batch.size
             for (completion in completions) {
-                current = engine.completeEffect(completion)
+                current = mutex.withLock {
+                    engine.completeEffect(completion)
+                }
                 patches += current
             }
         }
         NativeHeadlessEngineResult(
             effects = current.effects,
-            stateProvider = { patches.fold(emptyMap<String, Any?>()) { acc, patch -> acc + patch.state } }
+            stateProvider = { patches.fold(emptyMap<String, Any?>()) { state, patch -> state + patch.state } }
         )
     }
 

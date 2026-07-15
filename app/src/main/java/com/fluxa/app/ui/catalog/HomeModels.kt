@@ -11,7 +11,9 @@ data class HomeCatalogSource(
     val transportUrl: String,
     val catalogId: String,
     val type: String,
-    val genre: String? = null
+    val genre: String? = null,
+    val displayName: String? = null,
+    val emoji: String? = null
 )
 
 @Immutable
@@ -29,6 +31,10 @@ data class HomeCategory(
     val addonTransportUrl: String? = null,
     val addonGenre: String? = null,
     val catalogSources: List<HomeCatalogSource>? = emptyList(),
+    val showAllSourcesTab: Boolean = false,
+    val folderViewMode: String? = null,
+    val folderHeroImageUrl: String? = null,
+    val folderSourcesLoading: Boolean = false,
     val remoteSources: List<LibraryRemoteSource>? = emptyList(),
     val resultSources: Map<String, HomeCatalogSource> = emptyMap(),
     val addonIconUrl: String? = null

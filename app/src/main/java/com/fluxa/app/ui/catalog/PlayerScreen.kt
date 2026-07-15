@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.exoplayer.ExoPlayer
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
@@ -349,6 +350,7 @@ fun PlayerScreen(
                 meta = meta,
                 videoId = state.currentVideoId ?: videoId,
                 progress = progress,
+                streams = state.currentStreams,
                 streamIndex = state.currentStreamIndex.takeIf { it >= 0 },
                 streamUrl = selectedStream?.playableUrl ?: state.currentUrl,
                 streamTitle = selectedStream?.title

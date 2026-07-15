@@ -60,7 +60,14 @@ class AndroidFluxaPlatformServices(
         homeViewModel = homeViewModel,
         profileManager = profileManager,
         activeProfile = activeProfile,
-        onProfileChanged = onActiveProfileChanged,
+        onProfileChanged = { updated ->
+            val reloadHome = activeProfile().requiresHomeReload(updated)
+            onActiveProfileChanged(updated)
+            homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = reloadHome)
+            if (reloadHome) {
+                homeViewModel.loadInitialData(updated, force = true)
+            }
+        },
         offlineDownloadManager = offlineDownloadManager,
         appVersionLabel = appVersionLabel,
         language = { activeProfile()?.language ?: "en" }

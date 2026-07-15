@@ -7,14 +7,7 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.ui.catalog.FluxaIcons
-import com.fluxa.app.ui.routes.DetailRoute
 import com.fluxa.app.ui.routes.AppRoutesHost
-import com.fluxa.app.ui.routes.HomeRoute
-import com.fluxa.app.ui.routes.PlayerRoute
-import com.fluxa.app.ui.routes.SettingsRoute
-import com.fluxa.app.ui.routes.SourcesRoute
-import com.fluxa.app.ui.routes.detailScreen
-import com.fluxa.app.ui.routes.sourcesScreen
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.data.remote.StremioService
 
@@ -206,6 +199,29 @@ class MainActivity : FragmentActivity() {
                     val sharedDetailViewModel: com.fluxa.app.ui.catalog.DetailViewModel =
                         androidx.hilt.navigation.compose.hiltViewModel(key = "SharedMobileDetailViewModel")
                     val offlineDownloadManager = remember(context) { OfflineDownloadManager.getInstance(context) }
+
+                    LaunchedEffect(activeProfile?.id, activeProfile?.nuvioAccessToken) {
+                        val profile = activeProfile ?: return@LaunchedEffect
+                        if (profile.nuvioAccessToken.isNullOrBlank()) return@LaunchedEffect
+                        var wasHealthy: Boolean? = null
+                        while (isActive) {
+                            val isHealthy = homeViewModel.isNuvioHealthy()
+                            if (isHealthy && wasHealthy != true) {
+                                homeViewModel.syncNuvioIntegration(
+                                    profile = profile,
+                                    onProfileUpdated = { updated ->
+                                        activeProfile = updated
+                                        profileManager.saveProfile(updated)
+                                        profileManager.setLastActiveProfile(updated)
+                                        homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                                    },
+                                    onComplete = {}
+                                )
+                            }
+                            wasHealthy = isHealthy
+                            delay(if (isHealthy) 60_000L else 30_000L)
+                        }
+                    }
                     val isDirectLoading by homeViewModel.isDirectLoading.collectAsState()
                     val traktContinueWatchingLastUpdatedAt by homeViewModel.traktContinueWatchingLastUpdatedAt.collectAsState()
                     val isNetworkAvailable by remember(context) {
@@ -480,18 +496,13 @@ class MainActivity : FragmentActivity() {
                             onActiveProfileChanged = { activeProfile = it },
                             navigator = navigator,
                             profileManager = profileManager,
-                            nuvioSyncCoordinator = nuvioSyncCoordinator,
                             homeViewModel = homeViewModel,
-                            previewPlayer = previewPlayer,
                             mainPlayer = mainPlayer,
                             coroutineScope = coroutineScope,
                             offlineDownloadManager = offlineDownloadManager,
-                            oauthPrefs = oauthPrefs,
                             onShowTraktSheet = { showTraktSheet = true },
-                            onShowMalSheet = { showMalSheet = true },
                             onShowSimklSheet = { showSimklSheet = true },
                             onTraktDeviceAuthChanged = { traktDeviceAuth = it },
-                            onPendingMalCodeVerifierChanged = { pendingMalCodeVerifier = it },
                             onUpdateInfoChanged = { updateInfo = it },
                             navigateBackSafely = navigateBackSafely
                         )
@@ -499,17 +510,10 @@ class MainActivity : FragmentActivity() {
                         AppChromeOverlays(
                             context = context,
                             applicationContext = applicationContext,
-                            currentScreen = currentScreen,
                             deviceType = deviceType,
                             activeProfile = activeProfile,
-                            profiles = profiles,
                             onActiveProfileChanged = { activeProfile = it },
-                            onQuickProfileSelected = { profile ->
-                                activeProfile = profile
-                                profileManager.setLastActiveProfile(profile)
-                            },
                             profileManager = profileManager,
-                            navigator = navigator,
                             homeViewModel = homeViewModel,
                             updateInfo = updateInfo,
                             isDownloading = isDownloading,

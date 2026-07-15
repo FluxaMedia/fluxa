@@ -2,6 +2,7 @@ package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.safeDisabledLocalAddonIds
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.NuvioRefreshRequest
@@ -37,20 +38,37 @@ class NuvioSyncCoordinator @Inject constructor(
         val token = current.nuvioAccessToken ?: return
         val index = current.nuvioProfileIndex ?: return
         val disabled = current.safeDisabledLocalAddonIds
+        val desired = current.safeInstalledLocalAddons.mapIndexed { sortOrder, url ->
+            mapOf(
+                "url" to url,
+                "name" to url,
+                "enabled" to (com.fluxa.app.domain.discovery.StremioAddonUrls.identity(url) !in disabled),
+                "sort_order" to sortOrder
+            )
+        }
+        val authorization = "Bearer $token"
+        val existing = nuvioService.pullAddons(authorization, profileId = "eq.$index").body()
+            ?: throw IllegalStateException("Unable to load Nuvio add-ons")
+        val desiredByUrl = desired.associateBy { it["url"] as String }
         nuvioService.pushAddons(
-            "Bearer $token",
+            authorization,
             mapOf(
                 "p_profile_id" to index,
-                "p_addons" to current.safeInstalledLocalAddons.mapIndexed { sortOrder, url ->
-                    mapOf(
-                        "url" to url,
-                        "name" to url,
-                        "enabled" to (com.fluxa.app.domain.discovery.StremioAddonUrls.identity(url) !in disabled),
-                        "sort_order" to sortOrder
-                    )
-                }
+                "p_addons" to desired
             )
         ).requireSuccess()
+        existing.forEach { addon ->
+            val desiredAddon = desiredByUrl[addon.url]
+            if (desiredAddon == null) {
+                addon.id?.let { id ->
+                    nuvioService.deleteAddon(authorization, "eq.$id", "eq.$index").requireSuccess()
+                }
+            } else {
+                addon.id?.let { id ->
+                    nuvioService.updateAddon(authorization, "eq.$id", "eq.$index", desiredAddon).requireSuccess()
+                }
+            }
+        }
         profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
     }
     suspend fun pushWatchlist(profile: UserProfile, meta: Meta, isInWatchlist: Boolean) {
@@ -110,6 +128,13 @@ class NuvioSyncCoordinator @Inject constructor(
         val token = current.nuvioAccessToken ?: return
         val index = current.nuvioProfileIndex ?: return
         val episode = videoId?.split(':')?.takeIf { it.size == 3 }
+        val season = episode?.getOrNull(1)?.toIntOrNull()
+        val episodeNumber = episode?.getOrNull(2)?.toIntOrNull()
+        val progressKey = if (season != null && episodeNumber != null) {
+            "${meta.id}_s${season}e$episodeNumber"
+        } else {
+            meta.id
+        }
         nuvioService.pushWatchProgress(
             "Bearer $token",
             mapOf(
@@ -122,8 +147,9 @@ class NuvioSyncCoordinator @Inject constructor(
                         "position" to position,
                         "duration" to duration,
                         "last_watched" to System.currentTimeMillis(),
-                        "season" to episode?.getOrNull(1)?.toIntOrNull(),
-                        "episode" to episode?.getOrNull(2)?.toIntOrNull()
+                        "season" to season,
+                        "episode" to episodeNumber,
+                        "progress_key" to progressKey
                     )
                 )
             )
@@ -156,6 +182,7 @@ private fun LibraryUserCollection.toNuvioCollection(): Map<String, Any?> = mapOf
     "viewMode" to viewMode,
     "showAllTab" to showAllTab,
     "focusGlowEnabled" to focusGlowEnabled,
+    "community" to community,
     "folders" to folders.orEmpty().map { folder ->
         mapOf(
             "id" to folder.id,
@@ -190,6 +217,7 @@ private fun Meta.toNuvioLibraryItem(): Map<String, Any?> = mapOf(
     "release_info" to releaseInfo,
     "imdb_rating" to imdbRating?.toDoubleOrNull(),
     "genres" to genres,
+    "poster_shape" to "POSTER",
     "added_at" to System.currentTimeMillis()
 )
 
@@ -202,7 +230,10 @@ private fun com.fluxa.app.data.remote.NuvioLibraryItem.toNuvioLibraryItem(): Map
     "description" to description,
     "release_info" to releaseInfo,
     "imdb_rating" to imdbRating,
-    "genres" to genres
+    "genres" to genres,
+    "poster_shape" to (posterShape ?: "POSTER"),
+    "addon_base_url" to addonBaseUrl,
+    "added_at" to addedAt
 )
 
 private fun <T> Response<T>.bodyOrNull(): T? = if (isSuccessful) body() else null

@@ -95,6 +95,7 @@ data class PlayerSourceSelectionRequest(
     val meta: Meta,
     val videoId: String?,
     val progress: Long,
+    val streams: List<Stream>,
     val streamIndex: Int?,
     val streamUrl: String?,
     val streamTitle: String?,

@@ -2,6 +2,7 @@ package com.fluxa.app.ui.catalog
 
 import android.util.LruCache
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.remote.Meta

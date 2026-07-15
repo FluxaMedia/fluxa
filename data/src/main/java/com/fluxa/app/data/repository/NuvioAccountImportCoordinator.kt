@@ -168,7 +168,7 @@ class NuvioAccountImportCoordinator(
         onStep(NuvioImportStep.ADDONS)
 
         val libraryItems = try {
-            nuvioService.pullLibrary(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 500, "p_offset" to 0)).requireBody()
+            pullAllLibraryItems(token, profileIndex)
         } catch (error: Exception) {
             Log.w("NuvioImport", "Import step ${NuvioImportStep.LIBRARY} failed; continuing without it", error)
             null
@@ -191,13 +191,35 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.LIBRARY)
 
-        val watchProgress = importOrDefault(NuvioImportStep.PROGRESS, emptyList()) {
-            nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to profileIndex, "p_limit" to 200)).requireBody()
+        val watchProgress = try {
+            nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to profileIndex)).requireBody()
+        } catch (error: Exception) {
+            Log.w("NuvioImport", "Import step ${NuvioImportStep.PROGRESS} failed; keeping existing playback progress", error)
+            null
         }
-        val importedProgressVideoIds = mutableMapOf<String, String>()
-        for (entry in watchProgress) {
-            val meta = metaById[entry.contentId] ?: run {
-                val detail = runCatching {
+        val importedProgressVideoIds = watchProgress.orEmpty().mapTo(mutableSetOf()) { entry ->
+            if (entry.season != null && entry.episode != null) {
+                "${entry.contentId}:${entry.season}:${entry.episode}"
+            } else {
+                entry.videoId.ifBlank { entry.contentId }
+            }
+        }
+        if (watchProgress != null) {
+            watchlistManager.clearAllPlaybackProgress()
+        }
+        val latestProgressByContent = watchProgress.orEmpty()
+            .groupBy { it.contentId }
+            .values
+            .mapNotNull { entries -> entries.maxWithOrNull(compareBy({ it.lastWatched }, { it.position })) }
+            .sortedByDescending { it.lastWatched }
+        for (entry in latestProgressByContent) {
+            val detail = if (
+                entry.contentType == "series" ||
+                entry.contentType == "tv" ||
+                entry.contentType == "anime" ||
+                entry.contentId !in metaById
+            ) {
+                runCatching {
                     addonRepository.getAddonMetaDetail(
                         type = entry.contentType,
                         id = entry.contentId,
@@ -205,12 +227,24 @@ class NuvioAccountImportCoordinator(
                         localAddons = profile.localAddons
                     )
                 }.getOrNull()
+            } else {
+                null
+            }
+            val episode = detail?.videos?.firstOrNull {
+                it.season == entry.season && it.number == entry.episode
+            }
+            val meta = metaById[entry.contentId]?.copy(
+                continueWatchingPoster = episode?.thumbnail,
+                continueWatchingBackground = episode?.thumbnail
+            ) ?: run {
                 Meta(
                     id = entry.contentId,
                     name = detail?.name?.takeIf { it.isNotBlank() } ?: entry.contentId,
                     type = entry.contentType,
                     poster = detail?.poster,
-                    background = detail?.background
+                    background = detail?.background,
+                    continueWatchingPoster = episode?.thumbnail,
+                    continueWatchingBackground = episode?.thumbnail
                 )
             }
             val videoId = if (entry.season != null && entry.episode != null) {
@@ -218,40 +252,51 @@ class NuvioAccountImportCoordinator(
             } else {
                 entry.videoId.ifBlank { entry.contentId }
             }
+            val isUpNextPlaceholder = entry.position <= NUVIO_UP_NEXT_POSITION_MS &&
+                entry.duration == NUVIO_UP_NEXT_DURATION_MS
             watchlistManager.savePlaybackProgress(
                 meta = meta,
-                timeOffset = entry.position,
-                duration = entry.duration,
-                lastVideoId = videoId
+                timeOffset = if (isUpNextPlaceholder) 0L else entry.position,
+                duration = if (isUpNextPlaceholder) 0L else entry.duration,
+                lastVideoId = videoId,
+                lastEpisodeName = episode?.name,
+                updatedAt = entry.lastWatched
             )
-            importedProgressVideoIds[entry.contentId] = videoId
+            if (entry.contentType != "movie") {
+                watchlistManager.markEpisodeWatched(entry.contentId, videoId, false)
+            }
         }
         onStep(NuvioImportStep.PROGRESS)
 
-        val watchedItems = importOrDefault(NuvioImportStep.HISTORY, emptyList()) {
-            nuvioService.pullWatchedItems(token, mapOf("p_profile_id" to profileIndex, "p_page" to 1, "p_page_size" to 500)).requireBody()
+        val watchedItems = try {
+            pullAllWatchedItems(token, profileIndex)
+        } catch (error: Exception) {
+            Log.w("NuvioImport", "Import step ${NuvioImportStep.HISTORY} failed; keeping existing watched episodes", error)
+            null
+        }
+        if (watchedItems != null) {
+            watchlistManager.clearAllWatchedEpisodes()
         }
         val watchedBySeries = mutableMapOf<String, MutableSet<String>>()
-        for (item in watchedItems) {
+        for (item in watchedItems.orEmpty()) {
             val videoId = if (item.season != null && item.episode != null) {
                 "${item.contentId}:${item.season}:${item.episode}"
             } else {
                 item.contentId
             }
-            watchedBySeries.getOrPut(item.contentId) { mutableSetOf() }.add(videoId)
+            if (videoId !in importedProgressVideoIds) {
+                watchedBySeries.getOrPut(item.contentId) { mutableSetOf() }.add(videoId)
+            }
         }
         for ((seriesId, videoIds) in watchedBySeries) {
             watchlistManager.markEpisodesWatched(seriesId, videoIds)
-            if (importedProgressVideoIds[seriesId]?.let(videoIds::contains) == true) {
-                watchlistManager.clearPlaybackProgress(seriesId)
-            }
         }
         onStep(NuvioImportStep.HISTORY)
 
         val collectionRows = importOrDefault(NuvioImportStep.COLLECTIONS, emptyList()) {
             nuvioService.pullCollections(token, mapOf("p_profile_id" to profileIndex)).requireBody()
         }
-        val collections = collectionRows.firstOrNull()?.collectionsJson.orEmpty().map { collection ->
+        val collections = collectionRows.flatMap { it.collectionsJson.orEmpty() }.map { collection ->
             LibraryUserCollection(
                 id = collection.id ?: java.util.UUID.randomUUID().toString(),
                 title = collection.title ?: "",
@@ -261,6 +306,7 @@ class NuvioAccountImportCoordinator(
                 viewMode = collection.viewMode,
                 showAllTab = collection.showAllTab,
                 focusGlowEnabled = collection.focusGlowEnabled ?: true,
+                community = collection.community,
                 folders = collection.folders?.map { folder ->
                     LibraryUserCollectionFolder(
                         id = folder.id ?: java.util.UUID.randomUUID().toString(),
@@ -324,6 +370,40 @@ class NuvioAccountImportCoordinator(
     } catch (error: Exception) {
         Log.w("NuvioImport", "Import step $step failed; continuing without it", error)
         fallback
+    }
+
+    private suspend fun pullAllLibraryItems(token: String, profileIndex: Int): List<com.fluxa.app.data.remote.NuvioLibraryItem> {
+        val items = mutableListOf<com.fluxa.app.data.remote.NuvioLibraryItem>()
+        var offset = 0
+        do {
+            val page = nuvioService.pullLibrary(
+                token,
+                mapOf("p_profile_id" to profileIndex, "p_limit" to NUVIO_PAGE_SIZE, "p_offset" to offset)
+            ).requireBody()
+            items += page
+            offset += page.size
+        } while (page.size == NUVIO_PAGE_SIZE)
+        return items
+    }
+
+    private suspend fun pullAllWatchedItems(token: String, profileIndex: Int): List<com.fluxa.app.data.remote.NuvioWatchedItem> {
+        val items = mutableListOf<com.fluxa.app.data.remote.NuvioWatchedItem>()
+        var pageNumber = 1
+        do {
+            val page = nuvioService.pullWatchedItems(
+                token,
+                mapOf("p_profile_id" to profileIndex, "p_page" to pageNumber, "p_page_size" to NUVIO_PAGE_SIZE)
+            ).requireBody()
+            items += page
+            pageNumber += 1
+        } while (page.size == NUVIO_PAGE_SIZE)
+        return items
+    }
+
+    private companion object {
+        const val NUVIO_PAGE_SIZE = 500
+        const val NUVIO_UP_NEXT_POSITION_MS = 1_000L
+        const val NUVIO_UP_NEXT_DURATION_MS = 99_999_000L
     }
 }
 

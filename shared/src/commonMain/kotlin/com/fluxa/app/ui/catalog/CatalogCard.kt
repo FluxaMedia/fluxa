@@ -53,7 +53,17 @@ fun CatalogCard(
     Box(
         modifier = modifier
             .width(model.outerWidth)
-            .height(model.imageHeight + if (model.showTitleBar) FluxaDimensions.cardMetaBarHeight else 0.dp)
+            .height(
+                model.imageHeight + if (model.showTitleBar) {
+                    if (model.subtitle.isNotBlank()) {
+                        FluxaDimensions.cardMetaBarWithEpisodeLabelHeight
+                    } else {
+                        FluxaDimensions.cardMetaBarHeight
+                    }
+                } else {
+                    0.dp
+                }
+            )
             .combinedClickable(
                 interactionSource = null,
                 indication = null,
@@ -157,38 +167,43 @@ fun CatalogCard(
                     Text(
                         text = model.upNextLabel,
                         color = Color.White,
-                        fontSize = FluxaDimensions.CardText.subtitleSize,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .background(Color.Black.copy(alpha = FluxaDimensions.Alpha.upNextBadge))
-                            .padding(horizontal = 8.dp, vertical = 5.dp)
+                            .padding(2.dp)
+                            .background(
+                                if (model.upNextBadgeAccent) FluxaColors.progressFill
+                                else Color.Black.copy(alpha = FluxaDimensions.Alpha.upNextBadge)
+                            )
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
                     )
                 }
             }
             if (model.showTitleBar) {
-                Text(
-                    text = model.title,
-                    color = Color.White,
-                    fontSize = FluxaDimensions.CardText.titleSize,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-                if (model.subtitle.isNotBlank()) {
+                Column(modifier = Modifier.padding(top = 3.dp)) {
                     Text(
-                        text = model.subtitle,
-                        color = Color.White.copy(alpha = FluxaDimensions.Alpha.cardSubtitle),
-                        fontSize = FluxaDimensions.CardText.subtitleSize,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 1.dp)
+                        text = model.title,
+                        color = Color.White,
+                        fontSize = FluxaDimensions.CardText.titleSize,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 13.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    if (model.subtitle.isNotBlank()) {
+                        Text(
+                            text = model.subtitle,
+                            color = Color.White.copy(alpha = FluxaDimensions.Alpha.cardSubtitle),
+                            fontSize = FluxaDimensions.CardText.subtitleSize,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }

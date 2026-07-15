@@ -2,16 +2,9 @@ package com.fluxa.app.ui
 
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.ime
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewModelScope
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.common.AppStrings
@@ -26,14 +19,10 @@ import kotlinx.coroutines.withContext
 internal fun AppChromeOverlays(
     context: Context,
     applicationContext: Context,
-    currentScreen: Screen,
     deviceType: DeviceType,
     activeProfile: UserProfile?,
-    profiles: List<UserProfile>,
     onActiveProfileChanged: (UserProfile?) -> Unit,
-    onQuickProfileSelected: (UserProfile) -> Unit,
     profileManager: ProfileManager,
-    navigator: AppNavigator,
     homeViewModel: HomeViewModel,
     updateInfo: UpdateManager.UpdateInfo?,
     isDownloading: Boolean,
@@ -161,33 +150,5 @@ internal fun AppChromeOverlays(
                 onShowSimklSheetChanged(false)
             }
         )
-    }
-    val density = LocalDensity.current
-    val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
-    if (deviceType == DeviceType.Mobile && currentScreen.mobileNavDestination() != null && !isKeyboardVisible) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(120f),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            MobileBottomNav(
-                currentScreen = currentScreen,
-                activeProfile = activeProfile,
-                profiles = profiles,
-                onNavigate = { destination ->
-                    if (currentScreen.mobileNavDestination() != destination) {
-                        when (destination) {
-                            MobileNavDestination.Home -> navigator.navigateTo(Screen.Home, clearStack = true)
-                            MobileNavDestination.Discover -> navigator.navigateTo(Screen.Explore(), clearStack = true)
-                            MobileNavDestination.Calendar -> navigator.navigateTo(Screen.Calendar, clearStack = true)
-                            MobileNavDestination.Library -> navigator.navigateTo(Screen.Watchlist, clearStack = true)
-                            MobileNavDestination.Settings -> navigator.navigateTo(Screen.Settings(), clearStack = true)
-                        }
-                    }
-                },
-                onQuickProfileSelected = onQuickProfileSelected
-            )
-        }
     }
 }

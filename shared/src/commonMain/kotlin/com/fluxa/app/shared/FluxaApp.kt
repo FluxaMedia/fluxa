@@ -12,15 +12,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -30,7 +35,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +67,7 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.catalog.CategoryResultsScreen
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreScreen
@@ -68,10 +83,12 @@ import com.fluxa.app.shared.feature.detail.DetailAction
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailScreen
 import com.fluxa.app.shared.feature.detail.DetailUiState
+import com.fluxa.app.shared.feature.detail.SourceSelectionScreen
 import com.fluxa.app.shared.feature.discover.DiscoverAction
 import com.fluxa.app.shared.feature.discover.DiscoverScreen
 import com.fluxa.app.shared.feature.discover.DiscoverUiState
 import com.fluxa.app.shared.feature.library.LibraryAction
+import com.fluxa.app.shared.feature.library.LibraryFolderDetailScreen
 import com.fluxa.app.shared.feature.library.LibraryScreen
 import com.fluxa.app.shared.feature.library.LibraryUiState
 import com.fluxa.app.shared.feature.profile.ProfileAction
@@ -104,15 +121,6 @@ private val FluxaColorScheme = darkColorScheme(
     error = FluxaColors.errorRed
 )
 
-private val FluxaBottomNavDestinations = listOf(
-    FluxaDestination.Home,
-    FluxaDestination.Search,
-    FluxaDestination.Discover,
-    FluxaDestination.Calendar,
-    FluxaDestination.Library,
-    FluxaDestination.Settings
-)
-
 enum class FluxaDestination(val titleKey: String) {
     Home("nav.home"),
     Search("auto.search"),
@@ -130,6 +138,9 @@ data class FluxaAppUiState(
     val destination: FluxaDestination = FluxaDestination.Home,
     val catalogHome: CatalogHomeUiState = CatalogHomeUiState(),
     val selectedDetail: DetailRequestUiModel? = null,
+    val showSourceSelection: Boolean = false,
+    val selectedCategoryId: String? = null,
+    val selectedCategoryTitle: String? = null,
     val editingProfile: ProfileEditTarget? = null,
     val showNotifications: Boolean = false
 )
@@ -137,11 +148,15 @@ data class FluxaAppUiState(
 @Composable
 fun FluxaApp(
     state: FluxaAppUiState,
+    deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
     onDestinationSelected: (FluxaDestination) -> Unit,
     onCatalogAction: (CatalogAction) -> Unit,
     detailState: DetailUiState? = null,
     onDetailAction: (DetailAction) -> Unit = {},
     onDetailBackRequested: () -> Unit = {},
+    onSourceSelectionBackRequested: () -> Unit = {},
+    onCategoryBackRequested: () -> Unit = {},
+    onCategoryItemSelected: (CatalogItemUiModel) -> Unit = {},
     searchState: SearchUiState? = null,
     onSearchAction: (SearchAction) -> Unit = {},
     discoverState: DiscoverUiState? = null,
@@ -185,16 +200,12 @@ fun FluxaApp(
                 .fillMaxSize()
                 .background(FluxaColors.background)
         ) {
-            if (showNavigationBar) {
-                FluxaNavigationBar(
-                    language = state.language,
-                    destination = state.destination,
-                    onDestinationSelected = onDestinationSelected
-                )
-            }
             val screenKey = when {
                 state.editingProfile != null -> "profileEdit"
+                state.showSourceSelection -> "sources"
                 state.selectedDetail != null -> "detail:${state.selectedDetail.id}"
+                libraryState?.folderDetail?.folder != null -> "folder:${libraryState.folderDetail.folder!!.id}"
+                state.selectedCategoryId != null -> "category:${state.selectedCategoryId}"
                 state.showNotifications -> "notifications"
                 else -> "dest:${state.destination}"
             }
@@ -229,11 +240,42 @@ fun FluxaApp(
                     onItemSelected = { release -> onCalendarAction(CalendarAction.ItemSelected(release.item)) },
                     modifier = Modifier.fillMaxSize()
                 )
+                state.showSourceSelection && detailState?.content != null -> SourceSelectionScreen(
+                    content = detailState.content,
+                    language = state.language,
+                    onBack = onSourceSelectionBackRequested,
+                    onStreamSelected = { stream ->
+                        onDetailAction(DetailAction.StreamSelected(stream, detailState.content.selectedEpisodeId))
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
                 state.selectedDetail != null && detailState != null -> DetailScreen(
                     state = detailState,
                     language = state.language,
                     onAction = onDetailAction,
                     onBack = onDetailBackRequested,
+                    modifier = Modifier.fillMaxSize()
+                )
+                libraryState?.folderDetail?.folder != null -> LibraryFolderDetailScreen(
+                    state = libraryState.folderDetail,
+                    onBack = { onLibraryAction(LibraryAction.FolderClosed) },
+                    onItemSelected = onLibraryItemSelected,
+                    modifier = Modifier.fillMaxSize()
+                )
+                state.selectedCategoryId != null -> CategoryResultsScreen(
+                    title = state.selectedCategoryTitle.orEmpty(),
+                    items = state.catalogHome.rows.firstOrNull { it.id == state.selectedCategoryId }?.items.orEmpty(),
+                    language = state.language,
+                    onBack = onCategoryBackRequested,
+                    onItemSelected = onCategoryItemSelected,
+                    modifier = Modifier.fillMaxSize()
+                )
+                state.destination == FluxaDestination.Search && searchState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.search.TvSearchScreen(
+                    state = searchState,
+                    language = state.language,
+                    onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
+                    onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
+                    onClearHistory = { onSearchAction(SearchAction.ClearHistory) },
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Search && searchState != null -> SearchScreen(
@@ -242,6 +284,19 @@ fun FluxaApp(
                     onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
                     onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
                     onClearHistory = { onSearchAction(SearchAction.ClearHistory) },
+                    modifier = Modifier.fillMaxSize()
+                )
+                state.destination == FluxaDestination.Discover && discoverState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.discover.TvDiscoverScreen(
+                    state = discoverState,
+                    language = state.language,
+                    onFiltersChanged = { filters -> onDiscoverAction(DiscoverAction.FiltersChanged(filters)) },
+                    onItemSelected = { item -> onDiscoverAction(DiscoverAction.ItemSelected(item)) },
+                    onLoadMore = { onDiscoverAction(DiscoverAction.LoadMore) },
+                    searchQuery = searchState?.query.orEmpty(),
+                    onSearchQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
+                    searchResultRows = searchState?.resultRows.orEmpty(),
+                    searchResults = searchState?.results.orEmpty(),
+                    isSearching = searchState?.isLoading == true,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Discover && discoverState != null -> DiscoverScreen(
@@ -257,10 +312,23 @@ fun FluxaApp(
                     isSearching = searchState?.isLoading == true,
                     modifier = Modifier.fillMaxSize()
                 )
+                state.destination == FluxaDestination.Calendar && calendarState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.calendar.TvCalendarScreen(
+                    state = calendarState,
+                    language = state.language,
+                    onAction = onCalendarAction,
+                    modifier = Modifier.fillMaxSize()
+                )
                 state.destination == FluxaDestination.Calendar && calendarState != null -> CalendarScreen(
                     state = calendarState,
                     language = state.language,
                     onAction = onCalendarAction,
+                    modifier = Modifier.fillMaxSize()
+                )
+                state.destination == FluxaDestination.Library && libraryState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.library.TvLibraryScreen(
+                    state = libraryState,
+                    language = state.language,
+                    onAction = onLibraryAction,
+                    onItemSelected = onLibraryItemSelected,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Library && libraryState != null -> LibraryScreen(
@@ -303,6 +371,16 @@ fun FluxaApp(
                     onBiometricRequested = onProfileBiometricRequested,
                     modifier = Modifier.fillMaxSize()
                 )
+                state.destination == FluxaDestination.Home && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.catalog.TvCatalogHomeScreen(
+                    state = state.catalogHome,
+                    onAction = onCatalogAction,
+                    language = state.language,
+                    onSearchRequested = { onDestinationSelected(FluxaDestination.Search) },
+                    onLibraryRequested = { onDestinationSelected(FluxaDestination.Library) },
+                    onDiscoverRequested = { onDestinationSelected(FluxaDestination.Discover) },
+                    onSettingsRequested = { onDestinationSelected(FluxaDestination.Settings) },
+                    modifier = Modifier.fillMaxSize()
+                )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
                     state = state,
                     onCatalogAction = onCatalogAction,
@@ -318,30 +396,65 @@ fun FluxaApp(
                 )
             }
             }
+            if (showNavigationBar) {
+                FluxaNavigationBar(
+                    destination = state.destination,
+                    accentColorArgb = profileState?.activeProfile?.accentColorArgb,
+                    onDestinationSelected = onDestinationSelected
+                )
+            }
         }
     }
 }
 
+private data class FluxaBottomNavItem(
+    val destination: FluxaDestination,
+    val selectedIcon: ImageVector,
+    val icon: ImageVector
+)
+
+private val FluxaBottomNavItems = listOf(
+    FluxaBottomNavItem(FluxaDestination.Home, Icons.Filled.Home, Icons.Outlined.Home),
+    FluxaBottomNavItem(FluxaDestination.Discover, Icons.Filled.Explore, Icons.Outlined.Explore),
+    FluxaBottomNavItem(FluxaDestination.Calendar, Icons.Filled.DateRange, Icons.Outlined.DateRange),
+    FluxaBottomNavItem(FluxaDestination.Library, Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary)
+)
+
 @Composable
 private fun FluxaNavigationBar(
-    language: String?,
     destination: FluxaDestination,
+    accentColorArgb: Long?,
     onDestinationSelected: (FluxaDestination) -> Unit
 ) {
+    val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
+    val inactiveColor = Color(0xFFA0A5AD)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(20.dp)
+            .background(Color.Black)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+            .padding(horizontal = 12.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        FluxaBottomNavDestinations.forEach { item ->
-            val selected = item == destination
-            Text(
-                text = AppStrings.t(language, item.titleKey),
-                color = if (selected) Color.White else Color.White.copy(alpha = 0.65f),
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                modifier = Modifier.clickable { onDestinationSelected(item) }
-            )
+        FluxaBottomNavItems.forEach { item ->
+            val isSelected = item.destination == destination
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { onDestinationSelected(item.destination) }
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    if (isSelected) item.selectedIcon else item.icon,
+                    contentDescription = null,
+                    tint = if (isSelected) selectedColor else inactiveColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }
@@ -445,14 +558,14 @@ private fun FluxaHomeContent(
         return
     }
 
-    val heroItems = state.catalogHome.rows.firstOrNull()?.items?.take(5).orEmpty()
+    val heroItems = state.catalogHome.heroItems
 
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        if (heroItems.isNotEmpty()) {
+        if (state.catalogHome.showHeroSection && heroItems.isNotEmpty()) {
             item(key = "hero") {
                 Box {
                     FluxaHomeHero(
@@ -471,7 +584,10 @@ private fun FluxaHomeContent(
                 }
             }
         }
-        items(state.catalogHome.rows, key = { it.id }) { row ->
+        items(
+            state.catalogHome.rows.filterNot { it.categoryType == "collection_folder" },
+            key = { it.id }
+        ) { row ->
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     modifier = Modifier

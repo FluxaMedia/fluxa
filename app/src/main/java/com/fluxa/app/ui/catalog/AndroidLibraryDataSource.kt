@@ -2,15 +2,18 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.LibraryUserCollection
+import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.library.LibraryCollectionUiModel
 import com.fluxa.app.shared.feature.library.LibraryDataSource
 import com.fluxa.app.shared.feature.library.LibraryDownloadEpisodeUiModel
 import com.fluxa.app.shared.feature.library.LibraryDownloadGroupUiModel
+import com.fluxa.app.shared.feature.library.LibraryFolderSectionUiModel
 import com.fluxa.app.shared.feature.library.LibraryUiState
+import com.fluxa.app.shared.feature.library.toCatalogCardUiModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
@@ -52,13 +55,14 @@ class AndroidLibraryDataSource(
                 )
             }
             profile?.safeLibraryCollections.orEmpty().forEach { collection ->
-                val items = collection.itemIds.orEmpty()
+                val folders = collection.folders.orEmpty()
                 add(
                     LibraryCollectionUiModel(
                         id = collection.id,
                         title = collection.title,
-                        subtitle = "${items.size}",
-                        items = emptyList(),
+                        subtitle = "${if (folders.isNotEmpty()) folders.size else collection.itemIds.orEmpty().size}",
+                        items = folders.map { folder -> folder.toLibraryCatalogItem() },
+                        folders = folders,
                         locked = false
                     )
                 )
@@ -143,4 +147,20 @@ class AndroidLibraryDataSource(
     override suspend fun cancelDownload(id: String) {
         offlineDownloadManager.cancel(id)
     }
+
+    override suspend fun loadFolder(folder: LibraryUserCollectionFolder): List<LibraryFolderSectionUiModel> {
+        val profile = activeProfile()
+        return homeViewModel.loadFolderSections(folder).map { (title, metas) ->
+            LibraryFolderSectionUiModel(title = title, items = metas.toCatalogItems(profile))
+        }
+    }
+}
+
+private fun LibraryUserCollectionFolder.toLibraryCatalogItem(): CatalogItemUiModel {
+    return CatalogItemUiModel(
+        id = id,
+        type = "catalog_folder",
+        card = toCatalogCardUiModel(),
+        backdropUrl = heroBackdropUrl ?: effectiveImageUrl()
+    )
 }

@@ -2,6 +2,7 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.AddonDescriptor

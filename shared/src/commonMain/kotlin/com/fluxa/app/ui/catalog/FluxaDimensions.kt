@@ -46,7 +46,7 @@ object FluxaDimensions {
         val deltaXlarge = 61.dp
     }
 
-    val cardMetaBarHeight = 42.dp
+    val cardMetaBarHeight = 28.dp
     val cardMetaBarWithEpisodeLabelHeight = 50.dp
 
     val cardProgressBarHeight = 4.dp

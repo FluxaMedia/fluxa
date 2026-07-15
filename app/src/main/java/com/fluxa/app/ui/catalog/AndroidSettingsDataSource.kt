@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import android.content.SharedPreferences
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.OfflineDownloadItem
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
@@ -121,8 +122,11 @@ class AndroidSettingsDataSource(
         return SettingsUiState(
             account = SettingsAccountUiModel(
                 displayName = profile.profileName?.takeIf { it.isNotBlank() } ?: profile.email,
+                email = profile.email,
+                nuvioEmail = profile.nuvioEmail,
                 avatarUrl = profile.avatarUrl,
                 isGuest = profile.isGuest,
+                hasStremio = profile.authKey.isNotBlank(),
                 hasNuvio = !profile.nuvioAccessToken.isNullOrBlank(),
                 hasTrakt = !profile.traktAccessToken.isNullOrBlank(),
                 hasSimkl = !profile.simklAccessToken.isNullOrBlank(),
@@ -130,6 +134,14 @@ class AndroidSettingsDataSource(
                 hasAnySync = !profile.traktAccessToken.isNullOrBlank() ||
                     !profile.simklAccessToken.isNullOrBlank() ||
                     !profile.anilistAccessToken.isNullOrBlank(),
+                nuvioLastSyncAt = profile.nuvioLastSyncAt ?: 0L,
+                traktLastSyncAt = profile.safeTraktLastSyncAt,
+                simklLastSyncAt = profile.safeSimklLastSyncAt,
+                traktItemCount = profile.safeTraktLastSyncedItems,
+                traktContinueWatchingCount = profile.safeTraktLastContinueWatchingCount,
+                continueWatchingCount = homeViewModel.currentContinueWatchingCount.value,
+                traktLibraryCount = profile.safeTraktLastWatchlistCount,
+                addonCount = profile.safeLocalAddons.size,
                 tmdbApiKey = profile.tmdbApiKey,
                 tmdbCastImagesEnabled = profile.safeTmdbCastImagesEnabled,
                 tmdbSimilarResultsEnabled = profile.safeTmdbSimilarResultsEnabled,

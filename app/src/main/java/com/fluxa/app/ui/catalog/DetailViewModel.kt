@@ -14,7 +14,9 @@ import com.fluxa.app.core.StremioId
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.supportsStremioResource
 import com.google.gson.Gson
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -35,6 +37,8 @@ class DetailViewModel @Inject constructor(
 
     private var currentProfile: UserProfile? = null
     private var currentSeriesLookupId: String? = null
+    private var detailLoadGeneration = 0L
+    private var detailLoadJob: Job? = null
 
     private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
 
@@ -58,11 +62,13 @@ class DetailViewModel @Inject constructor(
     }
 
     fun loadDetail(type: String, id: String, profile: UserProfile? = null, sourceAddonTransportUrl: String? = null, sourceAddonCatalogType: String? = null, initialMeta: Meta? = null) {
+        val generation = ++detailLoadGeneration
+        detailLoadJob?.cancel()
         currentProfile = profile
         currentSeriesLookupId = normalizeSeriesLookupId(id)
         val lang = profile?.language ?: "en"
         val initialDetail = initialMeta?.toInitialDetailFallback()
-        viewModelScope.launch {
+        detailLoadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     detail = initialDetail,
@@ -91,6 +97,7 @@ class DetailViewModel @Inject constructor(
                 )
                 val detailState = headlessResult.state["detail"] as? Map<*, *>
                 val result = gson.fromState<MetaDetail>(detailState?.get("meta"))
+                if (generation != detailLoadGeneration) return@launch
                 _uiState.update {
                     it.copy(
                         detail = result ?: initialDetail,
@@ -116,6 +123,7 @@ class DetailViewModel @Inject constructor(
                     )
                 ).state["detail"] as? Map<*, *>
 
+                if (generation != detailLoadGeneration) return@launch
                 _uiState.update {
                     it.copy(
                         savedPlayback = gson.fromState(localState?.get("savedPlayback")),
@@ -138,6 +146,7 @@ class DetailViewModel @Inject constructor(
                             "profile" to profile
                         )
                     ).state["detail"] as? Map<*, *>
+                    if (generation != detailLoadGeneration) return@launch
                     _uiState.update {
                         it.copy(
                             watchedVideoIds = gson.fromStateList(secondary?.get("watchedVideoIds")),
@@ -168,9 +177,13 @@ class DetailViewModel @Inject constructor(
                     )
                 }
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
-                _uiState.update { it.copy(isLoading = false) }
+                if (generation == detailLoadGeneration) {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
             }
         }
     }

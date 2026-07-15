@@ -30,14 +30,3 @@ internal fun Meta.resumePlayerScreen(returnToSourcesOnError: Boolean): Screen.Pl
         returnToSourcesOnError = returnToSourcesOnError
     )
 }
-
-internal fun Meta.sourcesScreen(): Screen.Sources {
-    return Screen.Sources(
-        meta = this,
-        videoId = lastVideoId,
-        initialProgress = timeOffset ?: 0L,
-        lastStreamIndex = lastStreamIndex,
-        lastStreamUrl = lastStreamUrl,
-        lastStreamTitle = lastStreamTitle
-    )
-}

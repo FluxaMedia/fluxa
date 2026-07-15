@@ -2,6 +2,7 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
 import android.util.Log
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.AddonDescriptor
@@ -17,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 internal class HomeCatalogFeedCoordinator(
@@ -77,8 +79,22 @@ internal class HomeCatalogFeedCoordinator(
         return collections.flatMap { collection ->
             val folderSources = collection.folders.orEmpty().associateWith { folder ->
                 folder.catalogSources.orEmpty().mapNotNull { source ->
-                    val transportUrl = resolveCollectionSourceTransportUrl(source, addons) ?: return@mapNotNull null
-                    HomeCatalogSource(transportUrl, source.catalogId, source.type, source.genre ?: folder.genre)
+                    val addon = resolveCollectionSourceAddon(source, addons) ?: return@mapNotNull null
+                    val catalogName = addon.manifest.catalogs.orEmpty()
+                        .firstOrNull { catalog ->
+                            catalog.id == source.catalogId &&
+                                normalizeCollectionContentType(catalog.type) == normalizeCollectionContentType(source.type)
+                        }
+                        ?.name
+                        ?.takeIf(String::isNotBlank)
+                    HomeCatalogSource(
+                        transportUrl = addon.transportUrl,
+                        catalogId = source.catalogId,
+                        type = source.type,
+                        genre = normalizeCollectionGenre(source.genre ?: folder.genre),
+                        displayName = source.displayName?.takeIf(String::isNotBlank) ?: catalogName,
+                        emoji = folder.coverEmoji?.takeIf(String::isNotBlank)
+                    )
                 }
             }
             val folderResultCategories = collection.folders.orEmpty().mapNotNull { folder ->
@@ -94,6 +110,9 @@ internal class HomeCatalogFeedCoordinator(
                     addonTransportUrl = sources.firstOrNull()?.transportUrl,
                     addonGenre = folder.genre,
                     catalogSources = sources,
+                    showAllSourcesTab = collection.showAllTab == true,
+                    folderViewMode = collection.viewMode,
+                    folderHeroImageUrl = folder.effectiveImageUrl(),
                     remoteSources = remoteSources
                 )
             }
@@ -156,19 +175,69 @@ internal class HomeCatalogFeedCoordinator(
         }
     }
 
-    private fun resolveCollectionSourceTransportUrl(source: com.fluxa.app.data.local.LibraryCatalogSource, addons: List<AddonDescriptor>): String? {
+    suspend fun fetchFolderSections(
+        folder: com.fluxa.app.data.local.LibraryUserCollectionFolder,
+        lang: String
+    ): List<Pair<String, List<Meta>>> {
+        val addons = userAddons()
+        return coroutineScope {
+            folder.catalogSources.orEmpty().map { source ->
+                async(Dispatchers.IO) {
+                    val addon = resolveCollectionSourceAddon(source, addons) ?: return@async null
+                    val catalogName = addon.manifest.catalogs.orEmpty()
+                        .firstOrNull { catalog ->
+                            catalog.id == source.catalogId &&
+                                normalizeCollectionContentType(catalog.type) == normalizeCollectionContentType(source.type)
+                        }
+                        ?.name
+                        ?.takeIf(String::isNotBlank)
+                    val baseName = normalizeCollectionGenre(source.genre)
+                        ?: source.displayName?.takeIf(String::isNotBlank)
+                        ?: catalogName?.takeUnless { it.equals(source.type, ignoreCase = true) }
+                        ?: folder.title
+                    val emojiPrefix = folder.coverEmoji?.takeIf(String::isNotBlank)?.let { "$it " }.orEmpty()
+                    val label = emojiPrefix + folderSectionTitle(baseName, source.type, lang)
+                    val items = try {
+                        normalizeCatalogItems(
+                            addonRepository.getAddonCatalog(
+                                addon.transportUrl,
+                                source.type,
+                                source.catalogId,
+                                skip = 0,
+                                genre = normalizeCollectionGenre(source.genre ?: folder.genre)
+                            ),
+                            source.catalogId,
+                            lang,
+                            source.genre
+                        )
+                    } catch (e: Exception) {
+                        emptyList()
+                    }
+                    label to items
+                }
+            }.awaitAll().filterNotNull().filter { it.second.isNotEmpty() }
+        }
+    }
+
+    private fun resolveCollectionSourceAddon(
+        source: com.fluxa.app.data.local.LibraryCatalogSource,
+        addons: List<AddonDescriptor>
+    ): AddonDescriptor? {
         val addonId = source.addonId
         if (!addonId.isNullOrBlank()) {
+            val normalizedAddonId = normalizeAddonIdentity(addonId)
             return addons.firstOrNull { addon ->
                 addon.manifest.id.equals(addonId, ignoreCase = true) ||
-                    addon.transportUrl.contains(addonId, ignoreCase = true)
-            }?.transportUrl
+                    addon.transportUrl.contains(addonId, ignoreCase = true) ||
+                    normalizeAddonIdentity(addon.manifest.id) == normalizedAddonId ||
+                    normalizeAddonIdentity(addon.transportUrl).contains(normalizedAddonId)
+            }
         }
         return addons.firstOrNull { addon ->
             addon.manifest.catalogs.orEmpty().any { catalog ->
                 catalog.id == source.catalogId && normalizeCollectionContentType(catalog.type) == normalizeCollectionContentType(source.type)
             }
-        }?.transportUrl
+        }
     }
 
     private fun normalizeCollectionContentType(value: String?): String? {
@@ -177,6 +246,14 @@ internal class HomeCatalogFeedCoordinator(
             "series", "tv", "show", "shows" -> "series"
             else -> value?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
         }
+    }
+
+    private fun normalizeCollectionGenre(value: String?): String? {
+        return value?.trim()?.takeIf { it.isNotBlank() && !it.equals("none", ignoreCase = true) }
+    }
+
+    private fun normalizeAddonIdentity(value: String?): String {
+        return value.orEmpty().lowercase().filter(Char::isLetterOrDigit)
     }
 
     fun loadRemainingCatalogs(profile: UserProfile?) {

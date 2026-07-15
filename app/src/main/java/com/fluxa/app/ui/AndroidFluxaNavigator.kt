@@ -22,6 +22,5 @@ fun FluxaRoute.toAndroidScreen(): Screen = when (this) {
     FluxaRoute.Calendar -> Screen.Calendar
     FluxaRoute.Settings -> Screen.Settings()
     is FluxaRoute.Discover -> Screen.Explore(initialType = type, initialGenre = genre)
-    is FluxaRoute.Category -> Screen.CategoryResults(categoryId = id, title = title)
     is FluxaRoute.Detail -> Screen.Detail(type = type, id = id)
 }

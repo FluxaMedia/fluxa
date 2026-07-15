@@ -2,8 +2,10 @@ package com.fluxa.app.data.remote
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Query
 
@@ -35,46 +37,61 @@ interface NuvioService {
     ): Response<List<NuvioAddon>>
 
     @POST("rest/v1/rpc/sync_push_profiles")
-    suspend fun pushProfiles(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun pushProfiles(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 
     @POST("rest/v1/rpc/sync_push_addons")
-    suspend fun pushAddons(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun pushAddons(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
+
+    @PATCH("rest/v1/addons")
+    suspend fun updateAddon(
+        @Header("Authorization") authorization: String,
+        @Query("id") id: String,
+        @Query("profile_id") profileId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<Unit>
+
+    @DELETE("rest/v1/addons")
+    suspend fun deleteAddon(
+        @Header("Authorization") authorization: String,
+        @Query("id") id: String,
+        @Query("profile_id") profileId: String
+    ): Response<Unit>
 
     @POST("rest/v1/rpc/sync_push_library")
-    suspend fun pushLibrary(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun pushLibrary(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 
     @POST("rest/v1/rpc/sync_push_watch_progress")
-    suspend fun pushWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun pushWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 
     @POST("rest/v1/rpc/sync_delete_watch_progress")
-    suspend fun deleteWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun deleteWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 
     @POST("rest/v1/rpc/sync_push_watched_items")
-    suspend fun pushWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun pushWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 
     @POST("rest/v1/rpc/sync_delete_watched_items")
-    suspend fun deleteWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun deleteWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 
     @POST("rest/v1/rpc/sync_push_collections")
-    suspend fun pushCollections(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun pushCollections(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 
     @POST("rest/v1/rpc/sync_push_profile_settings_blob")
-    suspend fun pushProfileSettings(@Header("Authorization") authorization: String, @Body body: Map<String, Any?>): Response<Unit>
+    suspend fun pushProfileSettings(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 
     @POST("rest/v1/rpc/sync_pull_library")
-    suspend fun pullLibrary(@Header("Authorization") authorization: String, @Body body: Map<String, Any>): Response<List<NuvioLibraryItem>>
+    suspend fun pullLibrary(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioLibraryItem>>
 
     @POST("rest/v1/rpc/sync_pull_watch_progress")
-    suspend fun pullWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, Any>): Response<List<NuvioWatchProgress>>
+    suspend fun pullWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioWatchProgress>>
 
     @POST("rest/v1/rpc/sync_pull_watched_items")
-    suspend fun pullWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, Any>): Response<List<NuvioWatchedItem>>
+    suspend fun pullWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioWatchedItem>>
 
     @POST("rest/v1/rpc/sync_pull_collections")
-    suspend fun pullCollections(@Header("Authorization") authorization: String, @Body body: Map<String, Any>): Response<List<NuvioCollectionRow>>
+    suspend fun pullCollections(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioCollectionRow>>
 
     @POST("rest/v1/rpc/sync_pull_profile_settings_blob")
-    suspend fun pullProfileSettings(@Header("Authorization") authorization: String, @Body body: Map<String, Any>): Response<List<NuvioProfileSettingsRow>>
+    suspend fun pullProfileSettings(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioProfileSettingsRow>>
 
     @POST("rest/v1/rpc/get_avatar_catalog")
     suspend fun listAvatars(@Body body: Map<String, String> = emptyMap()): Response<List<NuvioAvatar>>

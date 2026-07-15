@@ -51,6 +51,7 @@ data class CatalogHomeUiState(
     val rows: List<CatalogRowUiModel> = emptyList(),
     val isLoading: Boolean = false,
     val billboard: CatalogBillboardUiModel? = null,
+    val heroItems: List<CatalogItemUiModel> = emptyList(),
     val showHeroSection: Boolean = true,
     val activeFilter: String = "all"
 )
@@ -67,6 +68,7 @@ sealed interface CatalogAction {
 
 interface CatalogHomeDataSource {
     fun observeHome(): Flow<CatalogHomeUiState>
+    fun initialHomeState(): CatalogHomeUiState? = null
     suspend fun refresh()
     suspend fun loadMore(rowId: String)
     suspend fun setFilter(filter: String)

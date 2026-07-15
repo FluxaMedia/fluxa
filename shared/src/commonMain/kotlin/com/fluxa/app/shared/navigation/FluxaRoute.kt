@@ -7,7 +7,6 @@ sealed interface FluxaRoute {
     data object Calendar : FluxaRoute
     data object Settings : FluxaRoute
     data class Discover(val type: String = "movie", val genre: String? = null) : FluxaRoute
-    data class Category(val id: String, val title: String) : FluxaRoute
     data class Detail(val id: String, val type: String) : FluxaRoute
 }
 

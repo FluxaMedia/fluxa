@@ -11,6 +11,8 @@ import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
 import com.fluxa.app.domain.discovery.Cs3CatalogFeedDescriptor
 import com.fluxa.app.domain.discovery.MetadataFeedOption
+import com.fluxa.app.domain.discovery.buildDiscoverCatalogOptions
+import com.fluxa.app.domain.discovery.buildDiscoverContentTypes
 import com.fluxa.app.domain.discovery.buildCs3MetadataFeedOptions
 import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
 import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
@@ -41,6 +43,7 @@ import com.fluxa.app.data.repository.CloudStreamCatalogClient
 import com.lagradost.cloudstream3.MainAPI
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -144,6 +147,7 @@ class HomeViewModel @Inject constructor(
     private val _headlessDiscoverCatalogs = MutableStateFlow<List<DiscoverCatalogOption>>(emptyList())
     private val _headlessDiscoverContentTypes = MutableStateFlow<List<String>>(emptyList())
     private val discoverResultSourceMapType = object : TypeToken<Map<String, HomeCatalogSource>>() {}.type
+    private var discoverJob: Job? = null
 
     val discoverUiState: StateFlow<DiscoverUiState> = combine(
         combine(
@@ -237,6 +241,12 @@ class HomeViewModel @Inject constructor(
         libraryCoordinator.load(activeProfile)
     }
 
+    suspend fun loadFolderSections(
+        folder: com.fluxa.app.data.local.LibraryUserCollectionFolder
+    ): List<Pair<String, List<Meta>>> {
+        return feedCoordinator.fetchFolderSections(folder, currentActiveProfile?.safeLanguage ?: "en")
+    }
+
     val loadedCs3ApiNames: StateFlow<List<String>> = pluginManager.loadedApis
         .map { apis -> apis.map { it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -246,6 +256,8 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private var currentWatchlist: List<Meta> = emptyList()
+    private val _currentContinueWatchingCount = MutableStateFlow(0)
+    val currentContinueWatchingCount: StateFlow<Int> = _currentContinueWatchingCount.asStateFlow()
     private var externalContinueWatching: List<Meta> = emptyList()
     private var traktWatchedState: TraktWatchedState = TraktWatchedState()
     private var currentActiveProfile: UserProfile? = null
@@ -928,33 +940,45 @@ class HomeViewModel @Inject constructor(
                 val catalogSources = category.catalogSources.orEmpty()
                 val remoteSources = category.remoteSources.orEmpty()
                 if (catalogSources.isNotEmpty() || remoteSources.isNotEmpty()) {
+                    updateHomeCategory(categoryId) { existing -> existing.copy(folderSourcesLoading = true) }
                     val nextSkip = if (category.items.isEmpty()) 0 else category.skip + 20
                     val lang = currentActiveProfile?.safeLanguage ?: "en"
                     val semaphore = Semaphore(permits = 4)
-                    val addonResults = coroutineScope {
-                        catalogSources.map { source ->
-                            async(Dispatchers.IO) {
+                    val sourceResults = Channel<Pair<HomeCatalogSource, List<Meta>>>(catalogSources.size)
+                    coroutineScope {
+                        catalogSources.forEach { source ->
+                            launch(Dispatchers.IO) {
                                 semaphore.withPermit {
-                                    source to normalizeCatalogItems(
-                                        addonRepository.getAddonCatalog(
-                                            source.transportUrl,
-                                            source.type,
+                                    sourceResults.send(
+                                        source to normalizeCatalogItems(
+                                            addonRepository.getAddonCatalog(
+                                                source.transportUrl,
+                                                source.type,
+                                                source.catalogId,
+                                                skip = nextSkip,
+                                                genre = source.genre
+                                            ),
                                             source.catalogId,
-                                            skip = nextSkip,
-                                            genre = source.genre
-                                        ),
-                                        source.catalogId,
-                                        lang,
-                                        source.genre
+                                            lang,
+                                            source.genre
+                                        )
                                     )
                                 }
                             }
-                        }.awaitAll()
+                        }
+                        repeat(catalogSources.size) {
+                            val (source, sourceItems) = sourceResults.receive()
+                            val sourceMap = sourceItems.flatMap { item ->
+                                listOf("${item.type}:${item.id}" to source, item.id to source)
+                            }.toMap()
+                            updateHomeCategory(categoryId) { existing ->
+                                existing.copy(
+                                    items = (existing.items + sourceItems).distinctBy { "${it.type}:${it.id}" },
+                                    resultSources = existing.resultSources + sourceMap
+                                )
+                            }
+                        }
                     }
-                    val addonItems = addonResults.flatMap { it.second }
-                    val addonResultSources = addonResults.flatMap { (source, items) ->
-                        items.flatMap { item -> listOf("${item.type}:${item.id}" to source, item.id to source) }
-                    }.toMap()
                     val remoteItems = if (remoteSources.isEmpty()) {
                         emptyList()
                     } else {
@@ -976,13 +1000,11 @@ class HomeViewModel @Inject constructor(
                         val paging = home["paging"] as? Map<*, *> ?: emptyMap<Any, Any>()
                         fromStateList<Meta>(paging["items"], metaListType)
                     }
-                    val newItems = addonItems + remoteItems
                     updateHomeCategory(categoryId) { existing ->
                         existing.copy(
-                            items = if (newItems.isEmpty()) existing.items else (existing.items + newItems).distinctBy { "${it.type}:${it.id}" },
+                            items = if (remoteItems.isEmpty()) existing.items else (existing.items + remoteItems).distinctBy { "${it.type}:${it.id}" },
                             skip = nextSkip,
-                            canLoadMore = newItems.isNotEmpty(),
-                            resultSources = existing.resultSources + addonResultSources
+                            canLoadMore = existing.items.isNotEmpty() || remoteItems.isNotEmpty()
                         )
                     }
                     return@launch
@@ -1011,6 +1033,9 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             } finally {
+                if (category.catalogSources.orEmpty().isNotEmpty() || category.remoteSources.orEmpty().isNotEmpty()) {
+                    updateHomeCategory(categoryId) { existing -> existing.copy(folderSourcesLoading = false) }
+                }
                 loadMoreInFlight.remove(categoryId)
             }
         }
@@ -1037,8 +1062,18 @@ class HomeViewModel @Inject constructor(
         _headlessDiscoverResults.value = emptyList()
     }
 
+    fun discoverCatalogOptions(type: String): List<DiscoverCatalogOption> =
+        buildDiscoverCatalogOptions(_userAddons.value, type)
+
+    fun discoverContentTypes(): List<String> = buildDiscoverContentTypes(_userAddons.value)
+
+    fun setDiscoverLoading(isLoading: Boolean) {
+        _headlessDiscoverLoading.value = isLoading
+    }
+
     fun discover(type: String, catalogKey: String?, genre: String?, year: String?, rating: Float?, provider: String?, region: String?) {
-        viewModelScope.launch {
+        discoverJob?.cancel()
+        discoverJob = viewModelScope.launch {
             _headlessDiscoverLoading.value = true
             try {
                 val result = dispatchHeadless(
@@ -1122,7 +1157,11 @@ class HomeViewModel @Inject constructor(
         _headlessDiscoverGenres.value = emptyList()
     }
 
-    fun loadDiscoverCatalogFilters(type: String, selectedCatalogKey: String?) {
+    fun loadDiscoverCatalogFilters(
+        type: String,
+        selectedCatalogKey: String?,
+        onLoaded: ((List<DiscoverCatalogOption>) -> Unit)? = null
+    ) {
         viewModelScope.launch {
             val result = dispatchHeadless(
                 mapOf(
@@ -1134,9 +1173,11 @@ class HomeViewModel @Inject constructor(
                 )
             )
             val discover = result.state["discover"] as? Map<*, *> ?: return@launch
-            _headlessDiscoverCatalogs.value = fromStateList(discover["catalogs"], discoverCatalogListType)
+            val catalogs = fromStateList<DiscoverCatalogOption>(discover["catalogs"], discoverCatalogListType)
+            _headlessDiscoverCatalogs.value = catalogs
             _headlessDiscoverGenres.value = fromStateList(discover["genres"], discoverGenreListType)
             _headlessDiscoverContentTypes.value = fromStateList(discover["contentTypes"], discoverContentTypeListType)
+            onLoaded?.invoke(catalogs)
         }
     }
 
@@ -1311,12 +1352,15 @@ class HomeViewModel @Inject constructor(
             )
             val sync = result.state["sync"] as? Map<*, *>
             val updated = fromStateObject(
-                (sync?.get("snapshot") as? Map<*, *>)?.get("profile"),
+                sync?.get("profile")
+                    ?: (sync?.get("snapshot") as? Map<*, *>)?.get("profile")
+                    ?: (result.state["profile"] as? Map<*, *>)?.get("active"),
                 UserProfile::class.java
             )
             if (updated != null) {
                 setActiveProfileState(updated)
                 onProfileUpdated(updated)
+                loadLibraryData(updated)
             }
             onComplete(sync?.get("error") == null)
         }
@@ -1403,7 +1447,21 @@ class HomeViewModel @Inject constructor(
         when {
             categories.isEmpty() -> _collectionFolderCategories.value = emptyMap()
             hiddenCollectionFolders.isNotEmpty() || categories.any { it.type == "collection" } -> {
-                _collectionFolderCategories.value = hiddenCollectionFolders.associateBy { it.id }
+                val existingFolders = _collectionFolderCategories.value
+                _collectionFolderCategories.value = hiddenCollectionFolders.associate { incoming ->
+                    val existing = existingFolders[incoming.id]
+                    incoming.id to if (existing == null || (existing.items.isEmpty() && !existing.folderSourcesLoading)) {
+                        incoming
+                    } else {
+                        incoming.copy(
+                            items = existing.items,
+                            skip = existing.skip,
+                            canLoadMore = existing.canLoadMore,
+                            resultSources = existing.resultSources,
+                            folderSourcesLoading = existing.folderSourcesLoading
+                        )
+                    }
+                }
             }
         }
         val signature = visibleCategories.renderSignatureForHome()
@@ -1441,11 +1499,14 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun setActiveProfileState(profile: UserProfile?) {
+        if (profile == null && currentActiveProfile != null) return
         currentActiveProfile = profile
+        watchlistManager.setActiveProfile(profile?.id ?: "guest")
     }
 
     private fun setCurrentWatchlistState(items: List<Meta>) {
         currentWatchlist = items
+        _currentContinueWatchingCount.value = items.size
     }
 
     private fun setExternalContinueWatchingState(items: List<Meta>) {

@@ -2,6 +2,8 @@ package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.BuildConfig
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.safeLanguage
+import com.fluxa.app.data.local.safeLocalAddons
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.common.AppStrings
 import kotlinx.coroutines.Dispatchers

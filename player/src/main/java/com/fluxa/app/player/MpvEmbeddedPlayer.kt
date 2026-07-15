@@ -8,6 +8,14 @@ import android.util.Log
 import android.view.Surface
 import androidx.media3.common.C
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.safeSubtitleSize
+import com.fluxa.app.data.local.safeSubtitleOutlineOpacity
+import com.fluxa.app.data.local.safeSubtitleTextOpacity
+import com.fluxa.app.data.local.safeSubtitleColor
+import com.fluxa.app.data.local.safeSubtitleOutlineColor
+import com.fluxa.app.data.local.safeSubtitleBackgroundOpacity
+import com.fluxa.app.data.local.safeSubtitleBackgroundColor
+import com.fluxa.app.data.local.safeSubtitleShadow
 import com.fluxa.app.data.remote.Stream
 import dev.jdtech.mpv.MPVLib
 import kotlinx.coroutines.CoroutineScope

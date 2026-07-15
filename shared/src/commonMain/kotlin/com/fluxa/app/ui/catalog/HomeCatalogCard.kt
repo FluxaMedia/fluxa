@@ -105,9 +105,9 @@ fun HomeCatalogCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .padding(4.dp)
                         .background(Color.Black.copy(alpha = 0.72f))
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
                 )
             }
             if (topTenRank != null) {

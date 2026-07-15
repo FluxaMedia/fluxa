@@ -15,7 +15,8 @@ data class DetailRequestUiModel(
     val targetSeason: Int? = null,
     val targetEpisode: Int? = null,
     val lastStreamUrl: String? = null,
-    val lastStreamTitle: String? = null
+    val lastStreamTitle: String? = null,
+    val initialContent: DetailUiModel? = null
 )
 
 data class DetailEpisodeUiModel(
@@ -132,6 +133,7 @@ interface DetailDataSource {
     suspend fun toggleWatchlist(id: String, type: String)
     suspend fun selectSeason(season: Int)
     suspend fun selectEpisode(episodeId: String)
+    suspend fun loadSources(contentId: String, contentType: String, episodeId: String?)
     suspend fun selectAddonFilter(addonName: String?)
     suspend fun downloadEpisode(episodeId: String)
     suspend fun downloadSeason(season: Int)

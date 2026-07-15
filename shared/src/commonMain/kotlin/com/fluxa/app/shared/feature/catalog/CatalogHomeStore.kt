@@ -10,7 +10,7 @@ class CatalogHomeStore(
     scope: CoroutineScope
 ) {
     val state: StateFlow<CatalogHomeUiState> = dataSource.observeHome()
-        .stateIn(scope, SharingStarted.WhileSubscribed(5_000), CatalogHomeUiState(isLoading = true))
+        .stateIn(scope, SharingStarted.WhileSubscribed(5_000), dataSource.initialHomeState() ?: CatalogHomeUiState(isLoading = true))
 
     suspend fun dispatch(action: CatalogAction) {
         when (action) {

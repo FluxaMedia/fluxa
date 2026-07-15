@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
+import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.profile.ProfileEditTarget
 
 @Stable
@@ -17,11 +18,43 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
         private set
 
     fun selectDestination(destination: FluxaDestination) {
-        uiState = uiState.copy(destination = destination, selectedDetail = null, editingProfile = null)
+        uiState = uiState.copy(destination = destination, selectedDetail = null, selectedCategoryId = null, selectedCategoryTitle = null, editingProfile = null)
     }
 
     fun selectDetail(item: CatalogItemUiModel) {
-        uiState = uiState.copy(selectedDetail = DetailRequestUiModel(item.id, item.type, item.source))
+        uiState = uiState.copy(
+            selectedDetail = DetailRequestUiModel(
+                id = item.id,
+                type = item.type,
+                source = item.source,
+                initialProgress = item.resume?.positionMs,
+                lastVideoId = item.resume?.videoId,
+                lastStreamUrl = item.resume?.streamUrl,
+                lastStreamTitle = item.resume?.streamTitle,
+                initialContent = DetailUiModel(
+                    id = item.id,
+                    type = item.type,
+                    title = item.card.title,
+                    description = item.description.orEmpty(),
+                    posterUrl = item.card.artworkUrl,
+                    backgroundUrl = item.backdropUrl ?: item.card.artworkUrl,
+                    logoUrl = item.card.logoUrl,
+                    releaseLabel = item.card.subtitle,
+                    ratingLabel = "",
+                    runtimeLabel = item.runtimeLabel,
+                    ageRating = item.ageRating,
+                    isInWatchlist = false,
+                    relatedItems = emptyList(),
+                    availableSeasons = if (item.type == "series" && (item.seasonsCount ?: 0) > 0) {
+                        (1..item.seasonsCount!!).toList()
+                    } else {
+                        emptyList()
+                    },
+                    resumeVideoId = item.resume?.videoId,
+                    resumeProgress = item.resume?.positionMs ?: 0L
+                )
+            )
+        )
     }
 
     fun selectDetail(request: DetailRequestUiModel) {
@@ -29,7 +62,23 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
     }
 
     fun clearDetail() {
-        uiState = uiState.copy(selectedDetail = null)
+        uiState = uiState.copy(selectedDetail = null, showSourceSelection = false)
+    }
+
+    fun openSourceSelection() {
+        uiState = uiState.copy(showSourceSelection = true)
+    }
+
+    fun closeSourceSelection() {
+        uiState = uiState.copy(showSourceSelection = false)
+    }
+
+    fun selectCategory(id: String, title: String) {
+        uiState = uiState.copy(selectedCategoryId = id, selectedCategoryTitle = title, selectedDetail = null)
+    }
+
+    fun clearCategory() {
+        uiState = uiState.copy(selectedCategoryId = null, selectedCategoryTitle = null)
     }
 
     fun openNotifications() {

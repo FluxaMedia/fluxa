@@ -1,5 +1,6 @@
 package com.fluxa.app.shared.feature.library
 
+import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import kotlinx.coroutines.flow.Flow
 
@@ -12,7 +13,19 @@ data class LibraryCollectionUiModel(
     val title: String,
     val subtitle: String,
     val items: List<CatalogItemUiModel>,
+    val folders: List<LibraryUserCollectionFolder> = emptyList(),
     val locked: Boolean = false
+)
+
+data class LibraryFolderSectionUiModel(
+    val title: String,
+    val items: List<CatalogItemUiModel>
+)
+
+data class LibraryFolderDetailUiState(
+    val folder: LibraryUserCollectionFolder? = null,
+    val sections: List<LibraryFolderSectionUiModel> = emptyList(),
+    val isLoading: Boolean = false
 )
 
 data class LibraryDownloadEpisodeUiModel(
@@ -39,7 +52,8 @@ data class LibraryUiState(
     val completed: List<CatalogItemUiModel> = emptyList(),
     val favorites: List<CatalogItemUiModel> = emptyList(),
     val collections: List<LibraryCollectionUiModel> = emptyList(),
-    val downloadGroups: List<LibraryDownloadGroupUiModel> = emptyList()
+    val downloadGroups: List<LibraryDownloadGroupUiModel> = emptyList(),
+    val folderDetail: LibraryFolderDetailUiState = LibraryFolderDetailUiState()
 )
 
 sealed interface LibraryAction {
@@ -50,6 +64,8 @@ sealed interface LibraryAction {
     data class CollectionDeleted(val id: String) : LibraryAction
     data class DownloadOpened(val id: String) : LibraryAction
     data class DownloadCancelled(val id: String) : LibraryAction
+    data class FolderSelected(val folder: LibraryUserCollectionFolder) : LibraryAction
+    data object FolderClosed : LibraryAction
 }
 
 interface LibraryDataSource {
@@ -59,4 +75,5 @@ interface LibraryDataSource {
     suspend fun renameCollection(id: String, title: String)
     suspend fun deleteCollection(id: String)
     suspend fun cancelDownload(id: String)
+    suspend fun loadFolder(folder: LibraryUserCollectionFolder): List<LibraryFolderSectionUiModel>
 }

@@ -120,7 +120,8 @@ class WatchlistManager @Inject constructor(
         lastStreamTitle: String? = null,
         lastBingeGroup: String? = null,
         lastAudioLanguage: String? = null,
-        lastSubtitleLanguage: String? = null
+        lastSubtitleLanguage: String? = null,
+        updatedAt: Long = System.currentTimeMillis()
     ) {
         val profileId = pid()
         val existing = dao.getContentState(profileId, meta.id)
@@ -141,7 +142,8 @@ class WatchlistManager @Inject constructor(
                 lastStreamTitle = lastStreamTitle ?: existing?.lastStreamTitle,
                 lastBingeGroup = lastBingeGroup ?: existing?.lastBingeGroup,
                 continueWatchingPoster = meta.continueWatchingPoster ?: existing?.continueWatchingPoster,
-                continueWatchingBackground = meta.continueWatchingBackground ?: existing?.continueWatchingBackground
+                continueWatchingBackground = meta.continueWatchingBackground ?: existing?.continueWatchingBackground,
+                updatedAt = updatedAt
             )
         )
         if (lastAudioLanguage != null || lastSubtitleLanguage != null || existing?.lastAudioLanguage != null || existing?.lastSubtitleLanguage != null) {
@@ -253,6 +255,14 @@ class WatchlistManager @Inject constructor(
         val profileId = pid()
         dao.deletePlaybackProgress(profileId, id)
         dao.deleteTrackPreference(profileId, id)
+    }
+
+    suspend fun clearAllPlaybackProgress() {
+        dao.deleteAllPlaybackProgress(pid())
+    }
+
+    suspend fun clearAllWatchedEpisodes() {
+        dao.deleteAllWatchedEpisodes(pid())
     }
 
     suspend fun replaceExternalContinueWatching(items: List<Meta>) {

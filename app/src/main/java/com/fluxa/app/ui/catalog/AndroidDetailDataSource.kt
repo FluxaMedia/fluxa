@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.shared.feature.detail.DetailDataSource
 import com.fluxa.app.shared.feature.detail.DetailEpisodeUiModel
@@ -20,6 +21,11 @@ class AndroidDetailDataSource(
     private var selectedEpisodeId: String? = null
     private var requestedVideoId: String? = null
     private var requestedProgress: Long? = null
+    private var initialMeta: Meta? = null
+
+    fun setInitialMeta(value: Meta?) {
+        initialMeta = value
+    }
 
     override fun observeDetail(id: String, type: String): Flow<SharedDetailUiState> {
         return detailViewModel.uiState.map { state ->
@@ -80,7 +86,8 @@ class AndroidDetailDataSource(
             id = request.id,
             profile = activeProfile(),
             sourceAddonTransportUrl = request.source.addonTransportUrl,
-            sourceAddonCatalogType = request.source.catalogType
+            sourceAddonCatalogType = request.source.catalogType,
+            initialMeta = initialMeta?.takeIf { it.id == request.id && it.type == request.type }
         )
     }
 
@@ -99,6 +106,11 @@ class AndroidDetailDataSource(
         selectedEpisodeId = episodeId
         val type = detailViewModel.uiState.value.detail?.type ?: return
         detailViewModel.fetchStreamsForSelection(type, episodeId)
+    }
+
+    override suspend fun loadSources(contentId: String, contentType: String, episodeId: String?) {
+        selectedEpisodeId = episodeId
+        detailViewModel.fetchStreamsForSelection(contentType, episodeId ?: contentId)
     }
 
     override suspend fun selectAddonFilter(addonName: String?) {

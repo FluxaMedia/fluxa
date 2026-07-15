@@ -1,5 +1,6 @@
 package com.fluxa.app.ui
 
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.remote.Meta

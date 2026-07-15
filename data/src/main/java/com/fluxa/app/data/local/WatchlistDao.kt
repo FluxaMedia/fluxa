@@ -323,11 +323,17 @@ interface WatchlistDao {
     @Query("DELETE FROM playback_progress WHERE profileId = :profileId AND contentId = :contentId")
     suspend fun deletePlaybackProgress(profileId: String, contentId: String)
 
+    @Query("DELETE FROM playback_progress WHERE profileId = :profileId")
+    suspend fun deleteAllPlaybackProgress(profileId: String)
+
     @Query("DELETE FROM track_preferences WHERE profileId = :profileId AND contentId = :contentId")
     suspend fun deleteTrackPreference(profileId: String, contentId: String)
 
     @Query("DELETE FROM watched_episodes WHERE profileId = :profileId AND seriesId = :seriesId AND videoId IN (:videoIds)")
     suspend fun deleteWatchedEpisodes(profileId: String, seriesId: String, videoIds: List<String>)
+
+    @Query("DELETE FROM watched_episodes WHERE profileId = :profileId")
+    suspend fun deleteAllWatchedEpisodes(profileId: String)
 
     @Query("DELETE FROM external_playback_progress WHERE profileId = :profileId")
     suspend fun deleteExternalPlaybackProgress(profileId: String)

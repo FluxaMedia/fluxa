@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import kotlinx.coroutines.CoroutineScope
@@ -38,7 +39,24 @@ internal class HomeDynamicRowsCoordinator(
             val aboveContinueWatching = buildUserCollectionHomeCategories(profile, true)
             val belowContinueWatching = buildUserCollectionHomeCategories(profile, false)
 
-            val continueWatching = if (profile?.safeContinueWatchingEnabled != false) buildContinueWatchingItems(lang) else emptyList()
+            val previousContinueWatchingOrder = currentCategories
+                .firstOrNull { it.id == "continue_watching" }
+                ?.items
+                ?.mapIndexed { index, meta -> ContinueWatchingListMerger.identityKey(meta) to index }
+                ?.toMap()
+                .orEmpty()
+            val continueWatching = if (profile?.safeContinueWatchingEnabled != false) {
+                buildContinueWatchingItems(lang)
+                    .mapIndexed { index, meta -> index to meta }
+                    .sortedWith(
+                        compareBy<Pair<Int, Meta>> {
+                            previousContinueWatchingOrder[ContinueWatchingListMerger.identityKey(it.second)] ?: Int.MAX_VALUE
+                        }.thenBy { it.first }
+                    )
+                    .map { it.second }
+            } else {
+                emptyList()
+            }
             var insertIndex = 0
             staticCategories.addAll(insertIndex, aboveContinueWatching)
             insertIndex += aboveContinueWatching.size

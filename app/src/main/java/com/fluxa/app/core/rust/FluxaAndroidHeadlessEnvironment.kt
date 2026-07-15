@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.fluxa.app.core.StremioId
 import com.fluxa.app.BuildConfig
+import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.OfflineSubtitleOption
@@ -822,7 +823,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val catalogs = selectedCatalogKey
             ?.let { key -> catalogOptions.filter { it.key == key } }
             ?.takeIf { it.isNotEmpty() }
-            ?: catalogOptions
+            ?: catalogOptions.take(1)
         // Fan out catalog fetches concurrently (was a sequential flatMap). awaitAll preserves
         // catalog order in the merged result; the semaphore caps concurrent addon requests.
         val semaphore = Semaphore(8)

@@ -25,6 +25,7 @@ data class CatalogCardUiModel(
     val showProgressBar: Boolean,
     val showUpNextBadge: Boolean,
     val upNextLabel: String,
+    val upNextBadgeAccent: Boolean = false,
     val topTenRank: Int?,
     val rankNumberBoxWidth: Dp,
     val rankOffsetX: Dp,

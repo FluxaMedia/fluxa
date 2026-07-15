@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun FluxaAppHost(
     platformServices: FluxaPlatformServices,
+    deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     destination: FluxaDestination? = null,
@@ -66,7 +67,6 @@ fun FluxaAppHost(
     onDetailNavigationEvent: (com.fluxa.app.shared.feature.detail.DetailNavigationEvent) -> Unit = {},
     onDetailBackRequested: () -> Unit = {},
     showNavigationBar: Boolean = true,
-    onPlayRequested: () -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
     onAddonStoreBackRequested: () -> Unit = {},
     onAuthBackRequested: () -> Unit = {},
@@ -80,6 +80,7 @@ fun FluxaAppHost(
     biometricAvailable: Boolean = false,
     onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
     onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
+    onProfileSelectionCompleted: (String) -> Unit = {},
     onManageAddonsRequested: () -> Unit = {},
     onConnectStremioRequested: () -> Unit = {},
     onConnectNuvioRequested: () -> Unit = {},
@@ -102,6 +103,7 @@ fun FluxaAppHost(
         addonStoreDataSource = (platformServices as? FluxaAddonStoreServices)?.addonStoreDataSource,
         authDataSource = (platformServices as? FluxaAuthServices)?.authDataSource,
         settingsDataSource = (platformServices as? FluxaSettingsServices)?.settingsDataSource,
+        deviceType = deviceType,
         language = language,
         onCatalogAction = onCatalogAction,
         destination = destination,
@@ -109,7 +111,6 @@ fun FluxaAppHost(
         onDetailNavigationEvent = onDetailNavigationEvent,
         onDetailBackRequested = onDetailBackRequested,
         showNavigationBar = showNavigationBar,
-        onPlayRequested = onPlayRequested,
         onOpenUrlRequested = onOpenUrlRequested,
         onAddonStoreBackRequested = onAddonStoreBackRequested,
         onAuthBackRequested = onAuthBackRequested,
@@ -123,6 +124,7 @@ fun FluxaAppHost(
         biometricAvailable = biometricAvailable,
         onPickAvatarRequested = onPickAvatarRequested,
         onBiometricAuthRequested = onBiometricAuthRequested,
+        onProfileSelectionCompleted = onProfileSelectionCompleted,
         onManageAddonsRequested = onManageAddonsRequested,
         onConnectStremioRequested = onConnectStremioRequested,
         onConnectNuvioRequested = onConnectNuvioRequested,
@@ -148,6 +150,7 @@ fun FluxaAppHost(
     addonStoreDataSource: AddonStoreDataSource? = null,
     authDataSource: AuthDataSource? = null,
     settingsDataSource: SettingsDataSource? = null,
+    deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
     language: String? = null,
     onCatalogAction: (CatalogAction) -> Unit = {},
     destination: FluxaDestination? = null,
@@ -155,7 +158,6 @@ fun FluxaAppHost(
     onDetailNavigationEvent: (com.fluxa.app.shared.feature.detail.DetailNavigationEvent) -> Unit = {},
     onDetailBackRequested: () -> Unit = {},
     showNavigationBar: Boolean = true,
-    onPlayRequested: () -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
     onAddonStoreBackRequested: () -> Unit = {},
     onAuthBackRequested: () -> Unit = {},
@@ -169,6 +171,7 @@ fun FluxaAppHost(
     biometricAvailable: Boolean = false,
     onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
     onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
+    onProfileSelectionCompleted: (String) -> Unit = {},
     onManageAddonsRequested: () -> Unit = {},
     onConnectStremioRequested: () -> Unit = {},
     onConnectNuvioRequested: () -> Unit = {},
@@ -217,7 +220,13 @@ fun FluxaAppHost(
         remember(source) { AuthStore(source, scope) }
     }
     val authState = authStore?.state?.collectAsState()?.value
-    val appState = rememberFluxaAppState()
+    val appState = rememberFluxaAppState(
+        FluxaAppUiState(
+            language = language,
+            destination = destination ?: FluxaDestination.Home,
+            catalogHome = catalogHome
+        )
+    )
     var profileAvatarUrl by remember(appState.uiState.editingProfile) {
         val target = appState.uiState.editingProfile
         val initial = (target as? ProfileEditTarget.Existing)?.let { existing ->
@@ -228,7 +237,7 @@ fun FluxaAppHost(
     val selectedDetail = appState.uiState.selectedDetail
     val detailStore = selectedDetail?.let { request ->
         detailDataSource?.let { source ->
-            remember(request.id, request.type, source) {
+            remember(request, source) {
                 DetailStore(request, source, scope)
             }
         }
@@ -254,7 +263,15 @@ fun FluxaAppHost(
         detailStore?.load()
     }
     LaunchedEffect(detailStore) {
-        detailStore?.navigation?.collect { event -> onDetailNavigationEvent(event) }
+        detailStore?.navigation?.collect { event ->
+            when (event) {
+                is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources -> {
+                    appState.openSourceSelection()
+                    detailStore.loadSources(event.episodeId)
+                }
+                is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.PlayStream -> onDetailNavigationEvent(event)
+            }
+        }
     }
     LaunchedEffect(appState.uiState.destination, discoverStore) {
         if (appState.uiState.destination == FluxaDestination.Discover) {
@@ -294,10 +311,19 @@ fun FluxaAppHost(
 
     FluxaApp(
         state = appState.uiState,
+        deviceType = deviceType,
         onDestinationSelected = appState::selectDestination,
         onCatalogAction = { action ->
             if (action is CatalogAction.ItemSelected) {
-                appState.selectDetail(action.item)
+                if (action.item.type == "catalog_folder") {
+                    libraryState?.collections?.flatMap { it.folders }
+                        ?.firstOrNull { it.id == action.item.id }
+                        ?.let { folder ->
+                            scope.launch { libraryStore?.dispatch(LibraryAction.FolderSelected(folder)) }
+                        }
+                } else {
+                    appState.selectDetail(action.item)
+                }
             }
             scope.launch {
                 catalogHomeStore.dispatch(action)
@@ -310,9 +336,6 @@ fun FluxaAppHost(
                 appState.selectDetail(action.item)
                 onCatalogAction(CatalogAction.ItemSelected(action.item))
             }
-            if (action is DetailAction.Play) {
-                onPlayRequested()
-            }
             scope.launch {
                 detailStore?.dispatch(action)
             }
@@ -320,6 +343,12 @@ fun FluxaAppHost(
         onDetailBackRequested = {
             appState.clearDetail()
             onDetailBackRequested()
+        },
+        onSourceSelectionBackRequested = appState::closeSourceSelection,
+        onCategoryBackRequested = appState::clearCategory,
+        onCategoryItemSelected = { item ->
+            appState.selectDetail(item)
+            onCatalogAction(CatalogAction.ItemSelected(item))
         },
         searchState = searchState,
         onSearchAction = { action ->
@@ -355,7 +384,15 @@ fun FluxaAppHost(
         },
         libraryState = libraryState,
         onLibraryItemSelected = { item ->
-            appState.selectDetail(item)
+            if (item.type == "catalog_folder") {
+                libraryState?.collections?.flatMap { it.folders }
+                    ?.firstOrNull { it.id == item.id }
+                    ?.let { folder ->
+                        scope.launch { libraryStore?.dispatch(LibraryAction.FolderSelected(folder)) }
+                    }
+            } else {
+                appState.selectDetail(item)
+            }
             onCatalogAction(CatalogAction.ItemSelected(item))
         },
         onLibraryAction = { action ->
@@ -418,13 +455,20 @@ fun FluxaAppHost(
                     profileAvatarUrl = action.profile.avatarUrl
                     appState.beginProfileEdit(ProfileEditTarget.Existing(action.profile.id))
                 }
+                is ProfileAction.Selected -> scope.launch {
+                    profileStore?.dispatch(action)
+                    if (!action.profile.hasPin) onProfileSelectionCompleted(action.profile.id)
+                }
                 else -> scope.launch { profileStore?.dispatch(action) }
             }
         },
         onProfileBiometricRequested = { profile ->
             onBiometricAuthRequested(profile) { success ->
                 if (success) {
-                    scope.launch { profileDataSource?.confirmBiometricUnlock(profile.id) }
+                    scope.launch {
+                        profileDataSource?.confirmBiometricUnlock(profile.id)
+                        onProfileSelectionCompleted(profile.id)
+                    }
                 }
             }
         },

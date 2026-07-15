@@ -3,6 +3,8 @@ package com.fluxa.app.data.repository
 import android.util.Log
 import com.fluxa.app.data.BuildConfig
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.safeLocalAddons
+import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.SimklEpisode
