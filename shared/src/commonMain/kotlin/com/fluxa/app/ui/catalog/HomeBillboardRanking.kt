@@ -2,14 +2,15 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.ReleaseDateUtils
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.domain.ContentIdentity
+import com.fluxa.app.domain.contentBillboardKey
+import com.fluxa.app.domain.normalizedBillboardTitle
 
-internal data class EditorialPickSpec(
+data class EditorialPickSpec(
     val title: String,
     val minYear: Int
 )
 
-internal object HomeBillboardRanking {
+object HomeBillboardRanking {
     fun scoreCandidate(meta: Meta): Int {
         val daysSinceRelease = ReleaseDateUtils.daysSince(meta.released)
         val releaseBoost = when {
@@ -54,10 +55,10 @@ internal object HomeBillboardRanking {
     }
 
     fun normalizeTitle(value: String): String {
-        return ContentIdentity.normalizedBillboardTitle(value)
+        return normalizedBillboardTitle(value)
     }
 
     fun contentIdentityKey(meta: Meta): String {
-        return ContentIdentity.billboardKey(meta)
+        return contentBillboardKey(meta)
     }
 }
