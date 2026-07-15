@@ -44,7 +44,7 @@ interface StremioService {
     suspend fun getCatalogWithGenre(@Path("type") type: String, @Path("id") id: String, @Path("genre") genre: String): CatalogResponse
 
     @GET("meta/{type}/{id}.json")
-    suspend fun getMetaDetail(@Path("type") type: String, @Path("id") id: String): MetaDetailResponse
+    suspend fun getMetaDetail(@Path("type") type: String, @Path("id") id: String): okhttp3.ResponseBody
 
     @GET
     suspend fun getStreams(@Url url: String): StreamResponse

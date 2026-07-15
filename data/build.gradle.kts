@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.fluxa.kmp.library)
     alias(libs.plugins.fluxa.android.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val localProperties = Properties().apply {
@@ -43,6 +44,11 @@ kotlin {
     tvosSimulatorArm64()
 
     sourceSets {
+        commonMain {
+            dependencies {
+                implementation(libs.kotlinx.serialization.json)
+            }
+        }
         androidMain {
             kotlin.srcDir("src/main/java")
             dependencies {

@@ -27,7 +27,6 @@ data class LibraryItemState(
 )
 
 data class CatalogResponse(val metas: List<Meta>? = null)
-data class MetaDetailResponse(val meta: MetaDetail? = null)
 data class StreamResponse(val streams: List<Stream>? = null)
 
 data class SubtitleResponse(val subtitles: List<SubtitleData>? = null) // Stremio format

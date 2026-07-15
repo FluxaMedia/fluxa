@@ -8,11 +8,15 @@ import com.fluxa.app.domain.discovery.*
 import android.util.Log
 import com.fluxa.app.data.BuildConfig
 import kotlinx.coroutines.*
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private val stremioMetaJson = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
 @Singleton
 class StremioRepository @Inject constructor(
@@ -91,7 +95,12 @@ class StremioRepository @Inject constructor(
             Log.d("MetaFetch", "getMetaDetail fromAddon: ${if (fromAddon != null) "OK name=${fromAddon.name}" else "NULL"}")
             fromAddon?.let { return it }
         }
-        return if (plan.fallbackToStremioMetaDetail) authService.getMetaDetail(type, id).meta else null
+        return if (plan.fallbackToStremioMetaDetail) {
+            val body = authService.getMetaDetail(type, id).string()
+            runCatching { stremioMetaJson.decodeFromString<MetaDetailResponse>(body) }.getOrNull()?.meta
+        } else {
+            null
+        }
     }
 
     suspend fun getAddonMetaDetail(

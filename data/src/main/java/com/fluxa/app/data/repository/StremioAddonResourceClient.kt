@@ -6,8 +6,6 @@ import com.fluxa.app.core.rust.models.NativeAddonFetchResult
 import okhttp3.Request
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.AuthRequest
-import com.fluxa.app.data.remote.CastMember
-import com.fluxa.app.data.remote.CastMemberDeserializer
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.MetaDetailResponse
@@ -28,6 +26,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.io.IOException
 import java.lang.reflect.Type
@@ -44,11 +45,9 @@ class StremioAddonResourceClient @Inject constructor(
     private val addonManifestClient: StremioAddonManifestClient,
     @param:Named("AddonResourceClient") private val httpClient: OkHttpClient
 ) {
-    private val stremioGson = GsonBuilder()
-        .registerTypeAdapter(CastMember::class.java, CastMemberDeserializer())
-        .create()
+    private val stremioGson = GsonBuilder().create()
+    private val stremioJson = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
     private val streamListType = object : TypeToken<List<Stream>>() {}.type
-    private val metaListType = object : TypeToken<List<Meta>>() {}.type
     private val subtitleListType = object : TypeToken<List<SubtitleData>>() {}.type
     private val userAddonsLocks = ConcurrentHashMap<String, Mutex>()
 
@@ -61,7 +60,7 @@ class StremioAddonResourceClient @Inject constructor(
             .map(addonManifestClient::normalizeAddonTransportUrl)
             .filter { it.isNotBlank() }
             .distinctBy(StremioAddonUrls::identity)
-        val cacheKey = "addons_v9_${authKey}_${normalizedLocalAddons.joinToString("|")}"
+        val cacheKey = "addons_v10_${authKey}_${normalizedLocalAddons.joinToString("|")}"
         if (!forceRefresh) {
             cache.get<List<AddonDescriptor>>(cacheKey)?.let { return@withContext it }
             persistentCache.getUserAddons(cacheKey).takeIf { it.isNotEmpty() }?.let {
@@ -88,9 +87,9 @@ class StremioAddonResourceClient @Inject constructor(
                             val liveManifest = withTimeoutOrNull(3000) {
                                 addonManifestClient.getAddonManifest(addon.transportUrl, forceRefresh)
                             }
-                            addAddon(with(addonManifestClient) { addon.mergeLiveManifest(liveManifest) })
+                            with(addonManifestClient) { addon.mergeLiveManifest(liveManifest) }
                         }
-                    }.awaitAll()
+                    }.awaitAll().forEach(::addAddon)
                 } catch (e: Exception) {
                     Log.w("StremioRepository", "Failed to load user addons", e)
                 }
@@ -100,12 +99,13 @@ class StremioAddonResourceClient @Inject constructor(
                     try {
                         withTimeoutOrNull(3000) {
                             addonManifestClient.getAddonManifest(url, forceRefresh)
-                        }?.let(::addAddon)
+                        }
                     } catch (e: Exception) {
                         Log.w("StremioRepository", "Failed to load local addon manifest: $url", e)
+                        null
                     }
                 }
-            }.awaitAll()
+            }.awaitAll().filterNotNull().forEach(::addAddon)
             allAddons.toList().ifEmpty {
                 persistentCache.getUserAddons(cacheKey)
             }.also {
@@ -250,11 +250,24 @@ class StremioAddonResourceClient @Inject constructor(
             fallbackUrl = addonManifestClient.buildAddonResourceUrl(transportUrl, "catalog", type, id, extraArgs)
         )
         val success = parsed as? AddonResourceResult.Success ?: return@withContext parsed.toTypedEmpty()
-        val result = decodeResourceList<Meta>(result = success, type = metaListType)
+        val result = decodeMetaList(success)
         if (result is AddonResourceResult.Success) {
             cache.put(cacheKey, result.value)
         }
         result
+    }
+
+    private fun decodeMetaList(result: AddonResourceResult.Success<String>): AddonResourceResult<List<Meta>> {
+        return try {
+            val items = stremioJson.decodeFromString<List<Meta>>(result.value)
+            if (items.isEmpty()) AddonResourceResult.Empty(result.url) else AddonResourceResult.Success(items, result.url)
+        } catch (e: SerializationException) {
+            AddonResourceResult.ParseError(result.url, e)
+        } catch (e: IOException) {
+            AddonResourceResult.NetworkError(result.url, e)
+        } catch (e: Exception) {
+            AddonResourceResult.NetworkError(result.url, e)
+        }
     }
 
     private fun <T> decodeResourceList(
@@ -285,7 +298,7 @@ class StremioAddonResourceClient @Inject constructor(
                 ?.applyLinks()
                 ?.let { AddonResourceResult.Success(it, result.url) }
                 ?: AddonResourceResult.Empty(result.url)
-        } catch (e: JsonParseException) {
+        } catch (e: SerializationException) {
             AddonResourceResult.ParseError(result.url, e)
         } catch (e: IOException) {
             AddonResourceResult.NetworkError(result.url, e)
@@ -295,8 +308,8 @@ class StremioAddonResourceClient @Inject constructor(
     }
 
     private fun decodeMetaDetailPayload(json: String): MetaDetail? {
-        return stremioGson.fromJson(json, MetaDetailResponse::class.java)?.meta
-            ?: stremioGson.fromJson(json, MetaDetail::class.java)
+        return runCatching { stremioJson.decodeFromString<MetaDetailResponse>(json) }.getOrNull()?.meta
+            ?: runCatching { stremioJson.decodeFromString<MetaDetail>(json) }.getOrNull()
     }
 
     private fun MetaDetail.applyAppExtras(): MetaDetail {
