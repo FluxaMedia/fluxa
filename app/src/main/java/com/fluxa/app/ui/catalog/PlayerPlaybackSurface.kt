@@ -48,6 +48,7 @@ import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.TorrentStreamStatus
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
+import com.fluxa.app.shared.feature.player.PlayerTopIconButton
 
 private data class ExoSurfaceConfig(
     val resizeMode: Int,

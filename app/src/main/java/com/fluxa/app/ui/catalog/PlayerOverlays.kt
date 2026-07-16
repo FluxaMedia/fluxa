@@ -7,7 +7,9 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.domain.discovery.*
+import com.fluxa.app.shared.feature.player.MobilePlayerUIContent
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
+import com.fluxa.app.shared.feature.player.TvPlayerUIContent
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -435,6 +437,10 @@ internal fun PlayerUIContent(
     onClose: () -> Unit,
     accentColor: Color = FluxaColors.accent
 ) {
+    val seekPreviewBitmap = rememberSeekThumbnail(
+        LocalSeekSurfaceView.current, scrubPosition, isScrubbing, position, isPlaying, onScrubSeek
+    )
+
     if (deviceType == DeviceType.Mobile) {
         MobilePlayerUIContent(
             title = content.title,
@@ -473,7 +479,7 @@ internal fun PlayerUIContent(
             isScrubbing = isScrubbing,
             scrubPosition = scrubPosition,
             onScrubbingChange = onScrubbingChange,
-            onScrubSeek = onScrubSeek,
+            seekPreviewBitmap = seekPreviewBitmap,
             accentColor = accentColor
         )
         return
@@ -502,7 +508,7 @@ internal fun PlayerUIContent(
         isScrubbing = isScrubbing,
         scrubPosition = scrubPosition,
         onScrubbingChange = onScrubbingChange,
-        onScrubSeek = onScrubSeek,
+        seekPreviewBitmap = seekPreviewBitmap,
         isSwitchingAudioSource = isSwitchingAudioSource,
         detailedStatus = detailedStatus,
         episodeMetaLine = episodeMetaLine,
