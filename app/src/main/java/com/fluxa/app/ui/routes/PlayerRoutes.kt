@@ -28,7 +28,8 @@ internal fun PlayerRoute(
             DetailStreamUiModel(
                 addonName = stream.addonName.orEmpty(),
                 title = stream.title.orEmpty(),
-                playableUrl = stream.playableUrl.orEmpty()
+                playableUrl = stream.playableUrl.orEmpty(),
+                name = stream.name.orEmpty()
             )
         }.filter { it.playableUrl.isNotBlank() }
         SourceSelectionScreen(

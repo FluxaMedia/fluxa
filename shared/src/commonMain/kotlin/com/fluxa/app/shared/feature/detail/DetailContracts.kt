@@ -36,7 +36,8 @@ data class DetailStreamUiModel(
     val addonName: String,
     val title: String,
     val playableUrl: String,
-    val requestHeadersJson: String = "{}"
+    val requestHeadersJson: String = "{}",
+    val name: String = ""
 )
 
 data class DetailUiModel(

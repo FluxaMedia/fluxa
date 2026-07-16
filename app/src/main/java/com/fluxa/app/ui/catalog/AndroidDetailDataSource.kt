@@ -149,7 +149,8 @@ internal fun com.fluxa.app.data.remote.Stream.toDetailStreamUiModel(): DetailStr
     return DetailStreamUiModel(
         addonName = addonName.orEmpty(),
         title = title ?: name.orEmpty(),
-        playableUrl = url
+        playableUrl = url,
+        name = name.orEmpty()
     )
 }
 

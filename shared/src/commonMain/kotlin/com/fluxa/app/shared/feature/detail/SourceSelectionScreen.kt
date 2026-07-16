@@ -79,7 +79,7 @@ fun SourceSelectionScreen(
                 )
             }
             when {
-                content.isLoadingStreams -> Box(
+                visibleStreams.isEmpty() && content.isLoadingStreams -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
@@ -102,6 +102,19 @@ fun SourceSelectionScreen(
                 ) {
                     items(visibleStreams, key = { it.playableUrl }) { stream ->
                         StreamCard(stream = stream, onClick = { onStreamSelected(stream) })
+                    }
+                    if (content.isLoadingStreams) {
+                        item(key = "loading-more") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -246,44 +259,10 @@ private fun AddonChip(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-private data class StreamCardInfo(
-    val headline: String,
-    val detail: String?,
-    val badges: List<String>
-)
-
-private val qualityPattern = Regex("(2160p|4k|1440p|1080p|720p|480p|360p)", RegexOption.IGNORE_CASE)
-private val tagPatterns = listOf(
-    Regex("\\bdolby\\s*vision\\b|\\bdv\\b", RegexOption.IGNORE_CASE) to "DV",
-    Regex("\\bhdr10\\+?|\\bhdr\\b", RegexOption.IGNORE_CASE) to "HDR",
-    Regex("\\bhevc\\b|\\bx265\\b|\\bh\\.?265\\b", RegexOption.IGNORE_CASE) to "HEVC",
-    Regex("\\bremux\\b", RegexOption.IGNORE_CASE) to "REMUX"
-)
-
-private fun parseStreamCard(stream: DetailStreamUiModel): StreamCardInfo {
-    val lines = stream.title.lines().map { it.trim() }.filter { it.isNotBlank() }
-    val headline = lines.firstOrNull() ?: stream.addonName
-    val extra = lines.drop(1).joinToString("  ·  ")
-    val detail = listOf(stream.addonName, extra)
-        .filter { it.isNotBlank() && !headline.contains(it) }
-        .joinToString("  ·  ")
-        .takeIf { it.isNotBlank() }
-
-    val badges = buildList {
-        qualityPattern.find(stream.title)?.let { match ->
-            val value = match.value.lowercase()
-            add(if (value == "2160p" || value == "4k") "4K" else value)
-        }
-        tagPatterns.forEach { (pattern, label) ->
-            if (pattern.containsMatchIn(stream.title)) add(label)
-        }
-    }
-    return StreamCardInfo(headline = headline, detail = detail, badges = badges)
-}
-
 @Composable
 private fun StreamCard(stream: DetailStreamUiModel, onClick: () -> Unit) {
-    val info = remember(stream) { parseStreamCard(stream) }
+    val headline = stream.name.trim().ifBlank { stream.addonName }
+    val body = stream.title.trim().takeIf { it.isNotBlank() && it != headline }
     var focused by remember { mutableStateOf(false) }
     val bg by animateColorAsState(
         targetValue = if (focused) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.05f),
@@ -311,27 +290,19 @@ private fun StreamCard(stream: DetailStreamUiModel, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            if (info.badges.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    info.badges.forEach { badge -> QualityBadge(text = badge) }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
             Text(
-                text = info.headline,
+                text = headline,
                 color = Color.White,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                lineHeight = 19.sp,
+                fontWeight = FontWeight.SemiBold
             )
-            info.detail?.let {
+            body?.let {
                 Text(
                     text = it,
-                    color = Color.White.copy(alpha = 0.55f),
+                    color = Color.White.copy(alpha = 0.6f),
                     fontSize = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 17.sp,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -346,16 +317,3 @@ private fun StreamCard(stream: DetailStreamUiModel, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun QualityBadge(text: String) {
-    Text(
-        text = text,
-        color = Color.White,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 0.5.sp,
-        modifier = Modifier
-            .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
-            .padding(horizontal = 6.dp, vertical = 3.dp)
-    )
-}
