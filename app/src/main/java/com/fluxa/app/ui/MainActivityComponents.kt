@@ -72,40 +72,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-sealed class Screen {
-    object Welcome : Screen()
-    object Profiles : Screen()
-    data class Login(val startOnNuvio: Boolean = false) : Screen()
-    object Home : Screen()
-    object Search : Screen()
-    object Watchlist : Screen()
-    object Calendar : Screen()
-    data class Explore(val initialType: String = "movie", val initialGenre: String? = null) : Screen()
-    object AddonStore : Screen()
-    data class Settings(val initialSection: String? = null) : Screen()
-    data class Detail(val type: String, val id: String, val initialProgress: Long? = null, val lastVideoId: String? = null, val lastStreamIndex: Int? = null, val autoPlay: Boolean = false, val targetSeason: Int? = null, val targetEpisode: Int? = null, val lastStreamUrl: String? = null, val lastStreamTitle: String? = null, val sourceAddonTransportUrl: String? = null, val sourceAddonCatalogType: String? = null, val initialMeta: Meta? = null) : Screen()
-    data class Player(
-        val meta: Meta,
-        val videoId: String? = null,
-        val initialProgress: Long = 0L,
-        val streamIndex: Int = 0,
-        val initialStreams: List<Stream> = emptyList(),
-        val lastStreamUrl: String? = null,
-        val lastStreamTitle: String? = null,
-        val preferredBingeGroup: String? = null,
-        val returnToSourcesOnError: Boolean = false,
-        val showSourceSelection: Boolean = false
-    ) : Screen()
-}
-
-internal fun navDirection(from: Screen, to: Screen): Int {
-    return when {
-        from is Screen.Player || to is Screen.Detail -> 1
-        to is Screen.Home || to is Screen.Profiles -> -1
-        else -> 1
-    }
-}
-
 internal fun MetaDetail.asNavigationMeta() = Meta(
     id = id,
     name = name,

@@ -73,7 +73,7 @@ internal fun TraktDeviceAuthDialog(
 
 @Composable
 internal fun PlayerLifecycleEffect(
-    currentScreen: Screen,
+    isPlayerActive: Boolean,
     activeProfile: UserProfile?,
     mainPlayer: ExoPlayer,
     previewPlayer: ExoPlayer,
@@ -81,7 +81,7 @@ internal fun PlayerLifecycleEffect(
     enterPictureInPicture: () -> Unit
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    val latestScreen by rememberUpdatedState(currentScreen)
+    val latestIsPlayerActive by rememberUpdatedState(isPlayerActive)
     val latestActiveProfile by rememberUpdatedState(activeProfile)
     val latestBackgroundPlayback by rememberUpdatedState(activeProfile?.safeBackgroundPlayback == true)
     val latestPictureInPicture by rememberUpdatedState(activeProfile?.safePictureInPicture == true)
@@ -94,7 +94,7 @@ internal fun PlayerLifecycleEffect(
                 homeViewModel.refreshExternalContinueWatching()
             } else if (event == Lifecycle.Event.ON_PAUSE) {
                 previewPlayer.pause()
-                val isPlayerScreen = latestScreen is Screen.Player
+                val isPlayerScreen = latestIsPlayerActive
                 val shouldEnterPip = isPlayerScreen &&
                     latestPictureInPicture
 

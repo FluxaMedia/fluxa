@@ -6,6 +6,7 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
+import com.fluxa.app.shared.FluxaDestination
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.routes.AppRoutesHost
 import com.fluxa.app.plugins.PluginManager
@@ -174,12 +175,18 @@ class MainActivity : FragmentActivity() {
                     }
 
                     val initialProfile = loadedInitialProfile
-                    val initialScreen = remember(initialProfile, deviceType) {
-                        if (profileManager.getProfiles().isEmpty() && deviceType == DeviceType.Mobile) Screen.Login()
-                        else if (profileManager.getProfiles().isEmpty()) Screen.Welcome
-                        else initialScreenForProfile(initialProfile)
+                    val initialDestination = remember(initialProfile, deviceType) {
+                        if (profileManager.getProfiles().isEmpty()) FluxaDestination.Auth
+                        else initialDestinationForProfile(initialProfile)
                     }
-                    val navigator = rememberAppNavigator(initialScreen)
+                    var currentDestination by remember { mutableStateOf(initialDestination) }
+                    var previousDestination by remember { mutableStateOf<FluxaDestination?>(null) }
+                    var authStartOnNuvio by remember { mutableStateOf(false) }
+                    var playerRequest by remember { mutableStateOf<PlayerLaunchRequest?>(null) }
+                    val navigateToDestination = { destination: FluxaDestination, clearStack: Boolean ->
+                        previousDestination = if (clearStack || destination == currentDestination) null else currentDestination
+                        currentDestination = destination
+                    }
 
                     var activeProfile by remember { mutableStateOf<UserProfile?>(initialProfile) }
                     var profiles by remember { mutableStateOf(profileManager.getProfiles()) }
@@ -191,7 +198,6 @@ class MainActivity : FragmentActivity() {
                     val coroutineScope = rememberCoroutineScope()
                     
 
-                    val currentScreen = navigator.currentScreen
                     var updateInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
                     var downloadProgress by remember { mutableFloatStateOf(0f) }
                     var isDownloading by remember { mutableStateOf(false) }
@@ -250,7 +256,7 @@ class MainActivity : FragmentActivity() {
                                 activeProfile = profiles.firstOrNull()
                             }
                             if (activeProfile != null) {
-                                navigator.navigateTo(Screen.Search)
+                                navigateToDestination(FluxaDestination.Search, false)
                                 homeViewModel.search(query)
                             }
                         }
@@ -385,7 +391,7 @@ class MainActivity : FragmentActivity() {
                     }
 
                     PlayerLifecycleEffect(
-                        currentScreen = currentScreen,
+                        isPlayerActive = playerRequest != null,
                         activeProfile = activeProfile,
                         mainPlayer = mainPlayer,
                         previewPlayer = previewPlayer,
@@ -447,16 +453,16 @@ class MainActivity : FragmentActivity() {
                         previousNetworkAvailable = isNetworkAvailable
                     }
 
-                    LaunchedEffect(currentScreen) {
-                        if (currentScreen is Screen.Player) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    LaunchedEffect(playerRequest != null) {
+                        if (playerRequest != null) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     }
 
-                    DisposableEffect(currentScreen, deviceType) {
+                    DisposableEffect(playerRequest != null, deviceType) {
                         val controller = WindowInsetsControllerCompat(window, window.decorView)
                         if (deviceType == DeviceType.Mobile) {
                             WindowCompat.setDecorFitsSystemWindows(window, false)
-                            if (currentScreen is Screen.Player) {
+                            if (playerRequest != null) {
                                 controller.systemBarsBehavior =
                                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                                 controller.hide(WindowInsetsCompat.Type.systemBars())
@@ -476,27 +482,33 @@ class MainActivity : FragmentActivity() {
                     }
 
                     val navigateBackSafely = {
-                        if (deviceType == DeviceType.Mobile && activeProfile == null && profileManager.getProfiles().isEmpty()) {
-                            navigator.navigateTo(Screen.Login(), true)
-                        } else if (deviceType == DeviceType.Mobile && activeProfile != null && !navigator.canNavigateBack() && currentScreen !is Screen.Home) {
-                            navigator.navigateTo(Screen.Home, true)
-                        } else {
-                            navigator.navigateBack()
+                        if (playerRequest != null) {
+                            playerRequest = null
+                        } else if (deviceType == DeviceType.Mobile && activeProfile == null && profileManager.getProfiles().isEmpty()) {
+                            navigateToDestination(FluxaDestination.Auth, true)
+                            authStartOnNuvio = false
+                        } else if (deviceType == DeviceType.Mobile && activeProfile != null && previousDestination == null && currentDestination != FluxaDestination.Home) {
+                            navigateToDestination(FluxaDestination.Home, true)
+                        } else if (previousDestination != null) {
+                            currentDestination = previousDestination!!
+                            previousDestination = null
                         }
                     }
 
-                    BackHandler(enabled = currentScreen !is Screen.Player) { navigateBackSafely() }
+                    BackHandler(enabled = playerRequest == null) { navigateBackSafely() }
 
                     Box(modifier = Modifier.fillMaxSize()) {
                         AppRoutesHost(
                             context = context,
-                            currentScreen = currentScreen,
+                            currentDestination = currentDestination,
+                            authStartOnNuvio = authStartOnNuvio,
+                            playerRequest = playerRequest,
                             deviceType = deviceType,
                             androidFluxaPlatformServices = androidFluxaPlatformServices,
-                            sharedDetailViewModel = sharedDetailViewModel,
                             activeProfile = activeProfile,
                             onActiveProfileChanged = { activeProfile = it },
-                            navigator = navigator,
+                            onNavigateToDestination = { destination -> navigateToDestination(destination, false) },
+                            onPlayerRequestChanged = { playerRequest = it },
                             profileManager = profileManager,
                             homeViewModel = homeViewModel,
                             mainPlayer = mainPlayer,

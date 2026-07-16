@@ -6,6 +6,7 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.shared.FluxaDestination
 import com.fluxa.app.ui.catalog.DeviceType
 
 internal fun MetaDetail.toMeta() = Meta(id, name, type, poster, background, logo, description, imdbRating, releaseInfo = releaseInfo, originalLanguage = originalLanguage, videos = videos, trailers = trailers)
@@ -40,14 +41,14 @@ internal fun initialProfileForDevice(profileManager: ProfileManager, deviceType:
         ?: profiles.firstOrNull()
 }
 
-internal fun initialScreenForProfile(profile: UserProfile?): Screen {
+internal fun initialDestinationForProfile(profile: UserProfile?): FluxaDestination {
     return profile?.let {
         when (it.safeStartPage) {
-            "discover" -> Screen.Explore()
-            "library" -> Screen.Watchlist
-            else -> Screen.Home
+            "discover" -> FluxaDestination.Discover
+            "library" -> FluxaDestination.Library
+            else -> FluxaDestination.Home
         }
-    } ?: Screen.Profiles
+    } ?: FluxaDestination.ProfileList
 }
 
 internal fun generateOAuthCodeVerifier(): String {
