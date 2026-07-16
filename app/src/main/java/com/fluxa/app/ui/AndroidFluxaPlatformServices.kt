@@ -3,6 +3,7 @@ package com.fluxa.app.ui
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.WatchlistStore
 import com.fluxa.app.shared.platform.FluxaMobilePlatformServices
 import com.fluxa.app.ui.catalog.AndroidAddonStoreDataSource
 import com.fluxa.app.ui.catalog.AndroidAuthDataSource
@@ -25,6 +26,7 @@ class AndroidFluxaPlatformServices(
     activeProfile: () -> UserProfile?,
     onActiveProfileChanged: (UserProfile) -> Unit,
     offlineDownloadManager: OfflineDownloadManager,
+    watchlistStore: WatchlistStore,
     appVersionLabel: String
 ) : FluxaMobilePlatformServices {
     override val catalogHomeDataSource = AndroidCatalogHomeDataSource(homeViewModel, activeProfile)
@@ -37,6 +39,7 @@ class AndroidFluxaPlatformServices(
         activeProfile = activeProfile,
         onProfileChanged = onActiveProfileChanged,
         offlineDownloadManager = offlineDownloadManager,
+        watchlistStore = watchlistStore,
         language = { activeProfile()?.language ?: "en" }
     )
     override val detailDataSource = AndroidDetailDataSource(detailViewModel, activeProfile)

@@ -6,11 +6,17 @@ data class PlayerContentUiModel(
     val id: String,
     val type: String,
     val title: String,
-    val subtitle: String,
-    val logoUrl: String?,
-    val backgroundUrl: String?,
-    val streamLabel: String
-)
+    val subtitle: String = "",
+    val logoUrl: String? = null,
+    val backgroundUrl: String? = null,
+    val streamLabel: String = "",
+    val releaseInfo: String? = null,
+    val runtime: String? = null
+) {
+    val logo: String get() = logoUrl.orEmpty()
+    val background: String get() = backgroundUrl.orEmpty()
+    val isSeries: Boolean get() = type == "series"
+}
 
 data class PlayerUiState(
     val content: PlayerContentUiModel? = null,

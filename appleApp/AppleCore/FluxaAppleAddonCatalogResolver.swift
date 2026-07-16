@@ -1,8 +1,8 @@
+import FluxaShared
 import Foundation
 
 struct FluxaAppleAddonCatalogResolver {
     private let session: URLSession
-    private let decoder = JSONDecoder()
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -22,7 +22,9 @@ struct FluxaAppleAddonCatalogResolver {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                let manifest = try decoder.decode(FluxaAppleAddonManifest.self, from: data)
+                guard let manifest = FluxaApple.shared.parseAddonManifest(body: String(decoding: data, as: UTF8.self)) else {
+                    throw URLError(.cannotParseResponse)
+                }
                 guard manifest.supportsCatalog else {
                     continue
                 }
@@ -60,7 +62,9 @@ struct FluxaAppleAddonCatalogResolver {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                let manifest = try decoder.decode(FluxaAppleAddonManifest.self, from: data)
+                guard let manifest = FluxaApple.shared.parseAddonManifest(body: String(decoding: data, as: UTF8.self)) else {
+                    throw URLError(.cannotParseResponse)
+                }
                 guard manifest.supportsCatalog else {
                     continue
                 }
@@ -95,7 +99,9 @@ struct FluxaAppleAddonCatalogResolver {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                let manifest = try decoder.decode(FluxaAppleAddonManifest.self, from: data)
+                guard let manifest = FluxaApple.shared.parseAddonManifest(body: String(decoding: data, as: UTF8.self)) else {
+                    throw URLError(.cannotParseResponse)
+                }
                 guard manifest.supportsCatalog else {
                     continue
                 }
@@ -123,16 +129,13 @@ struct FluxaAppleAddonCatalogResolver {
         catalogId: String,
         genre: String?
     ) -> URL? {
-        let lower = transportUrl.lowercased()
-        let base: String
-        if let range = lower.range(of: "manifest.json", options: .backwards) {
-            base = String(transportUrl[..<range.lowerBound])
-        } else {
-            base = transportUrl
-        }
-        let normalizedBase = base.hasSuffix("/") ? base : "\(base)/"
-        let extra = genre.map { "/genre=\(encodePathSegment($0))" } ?? ""
-        return URL(string: "\(normalizedBase)catalog/\(encodePathSegment(contentType))/\(encodePathSegment(catalogId))\(extra).json")
+        URL(string: FluxaApple.shared.addonCatalogUrl(
+            transportUrl: transportUrl,
+            contentType: contentType,
+            catalogId: catalogId,
+            extraName: genre == nil ? nil : "genre",
+            extraValue: genre
+        ))
     }
 
     func resourceUrl(
@@ -150,8 +153,8 @@ struct FluxaAppleAddonCatalogResolver {
     }
 
     private func makeRequest(
-        catalog: FluxaAppleAddonCatalog,
-        manifest: FluxaAppleAddonManifest,
+        catalog: AppleAddonCatalogSnapshot,
+        manifest: AppleAddonManifestSnapshot,
         transportUrl: String
     ) -> FluxaAppleCatalogRequest? {
         guard let catalogId = catalog.id?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -180,7 +183,7 @@ struct FluxaAppleAddonCatalogResolver {
     }
 
     private func makeSearchRequest(
-        catalog: FluxaAppleAddonCatalog,
+        catalog: AppleAddonCatalogSnapshot,
         transportUrl: String,
         query: String
     ) -> FluxaAppleSearchRequest? {
@@ -206,8 +209,8 @@ struct FluxaAppleAddonCatalogResolver {
     }
 
     private func makeDiscoverCatalog(
-        catalog: FluxaAppleAddonCatalog,
-        manifest: FluxaAppleAddonManifest,
+        catalog: AppleAddonCatalogSnapshot,
+        manifest: AppleAddonManifestSnapshot,
         transportUrl: String,
         contentType: String
     ) -> FluxaAppleDiscoverCatalog? {
@@ -246,36 +249,17 @@ struct FluxaAppleAddonCatalogResolver {
         catalogId: String,
         query: String
     ) -> URL? {
-        let lower = transportUrl.lowercased()
-        let base: String
-        if let range = lower.range(of: "manifest.json", options: .backwards) {
-            base = String(transportUrl[..<range.lowerBound])
-        } else {
-            base = transportUrl
-        }
-        let normalizedBase = base.hasSuffix("/") ? base : "\(base)/"
-        let encodedQuery = encodePathSegment(query)
-        return URL(string: "\(normalizedBase)catalog/\(encodePathSegment(contentType))/\(encodePathSegment(catalogId))/search=\(encodedQuery).json")
+        URL(string: FluxaApple.shared.addonCatalogUrl(
+            transportUrl: transportUrl,
+            contentType: contentType,
+            catalogId: catalogId,
+            extraName: "search",
+            extraValue: query
+        ))
     }
 
     private func normalizeManifestUrl(_ rawUrl: String) -> String {
-        let trimmed = rawUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            return ""
-        }
-        let lower = trimmed.lowercased()
-        let withScheme: String
-        if lower.hasPrefix("stremio://") {
-            withScheme = "https://" + String(trimmed.dropFirst("stremio://".count))
-        } else if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
-            withScheme = trimmed
-        } else {
-            withScheme = "https://\(trimmed)"
-        }
-        if withScheme.lowercased().hasSuffix("manifest.json") {
-            return withScheme
-        }
-        return withScheme.hasSuffix("/") ? "\(withScheme)manifest.json" : "\(withScheme)/manifest.json"
+        FluxaApple.shared.normalizeAddonManifestUrl(rawUrl: rawUrl)
     }
 
     private func resourceUrlString(
@@ -284,74 +268,13 @@ struct FluxaAppleAddonCatalogResolver {
         contentType: String,
         id: String
     ) -> String {
-        let lower = transportUrl.lowercased()
-        let base: String
-        if let range = lower.range(of: "manifest.json", options: .backwards) {
-            base = String(transportUrl[..<range.lowerBound])
-        } else {
-            base = transportUrl
-        }
-        let normalizedBase = base.hasSuffix("/") ? base : "\(base)/"
-        return "\(normalizedBase)\(resource)/\(encodePathSegment(contentType))/\(encodePathSegment(id)).json"
+        FluxaApple.shared.addonResourceUrl(
+            transportUrl: transportUrl,
+            resource: resource,
+            contentType: contentType,
+            id: id
+        )
     }
-
-    private func encodePathSegment(_ value: String) -> String {
-        value.addingPercentEncoding(withAllowedCharacters: .alphanumerics.union(CharacterSet(charactersIn: "-_.*"))) ?? value
-    }
-}
-
-private struct FluxaAppleAddonManifest: Decodable {
-    let id: String
-    let resources: [FluxaAppleAddonResource]?
-    let catalogs: [FluxaAppleAddonCatalog]?
-
-    var supportsCatalog: Bool {
-        resources?.contains(where: { $0.name == "catalog" }) ?? false
-    }
-}
-
-private struct FluxaAppleAddonResource: Decodable {
-    let name: String
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let name = try? container.decode(String.self) {
-            self.name = name
-        } else {
-            self.name = try container.decode(FluxaAppleAddonResourceObject.self).name
-        }
-    }
-}
-
-private struct FluxaAppleAddonResourceObject: Decodable {
-    let name: String
-}
-
-private struct FluxaAppleAddonCatalog: Decodable {
-    let type: String?
-    let id: String?
-    let name: String?
-    let genres: [String]?
-    let extra: [FluxaAppleAddonCatalogExtra]?
-    let extraSupported: [String]?
-
-    var supportsInitialLoad: Bool {
-        !(extra?.contains(where: { $0.isRequired == true }) ?? false)
-    }
-
-    var supportsSearch: Bool {
-        extraSupported?.contains("search") == true || extra?.contains(where: { $0.name == "search" }) == true
-    }
-
-    var hasRequiredExtraExceptGenre: Bool {
-        extra?.contains { $0.isRequired == true && $0.name?.lowercased() != "genre" } ?? false
-    }
-}
-
-private struct FluxaAppleAddonCatalogExtra: Decodable {
-    let name: String?
-    let isRequired: Bool?
-    let options: [String]?
 }
 
 struct FluxaAppleDiscoverCatalog: Sendable {

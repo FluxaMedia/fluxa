@@ -40,8 +40,12 @@ targets:
     platform: tvOS
     sources:
       - path: AppleCore
+        excludes:
+          - FluxaAppleAddonCatalogResolver.swift
+          - FluxaAppleAddonResourceLoader.swift
+          - FluxaAppleCatalogBootstrap.swift
+          - FluxaAppleCatalogLoader.swift
       - path: tvOS
-      - path: iOS/FluxaAppleHomeEffectHandler.swift
       - path: Generated/FluxaRustCore.swift
     resources:
       - path: ../core/src/commonMain/resources/i18n
@@ -51,4 +55,10 @@ targets:
         basedOnDependencyAnalysis: false
       - name: Build FluxaCore
         script: ../gradlew -p .. :core:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
+      - name: Build FluxaData
+        script: ../gradlew -p .. :data:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
+      - name: Build FluxaPlayer
+        script: ../gradlew -p .. :player:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false

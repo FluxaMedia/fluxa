@@ -1,9 +1,6 @@
 package com.fluxa.app.core.rust
 
 import java.io.Closeable
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,46 +20,20 @@ class FluxaHeadlessAppRuntime(
     private val maxEffectsPerDispatch: Int = 64
 ) : Closeable {
     private val mutex = Mutex()
+    private val runner = FluxaHeadlessEffectRunner(engine, environment, maxEffectsPerDispatch)
     private val _state = MutableStateFlow<Map<String, Any?>>(emptyMap())
     val state: StateFlow<Map<String, Any?>> = _state.asStateFlow()
 
     suspend fun dispatch(action: Any): NativeHeadlessEngineResult {
-        val initial = mutex.withLock {
-            engine.dispatch(action)
-        }
-        return drain(initial).also { result ->
+        return mutex.withLock { runner.dispatchAndDrain(action) }.also { result ->
             _state.value = result.state
         }
     }
 
     suspend fun complete(result: HeadlessEffectCompletion): NativeHeadlessEngineResult {
-        val initial = mutex.withLock {
-            engine.completeEffect(result)
-        }
-        return drain(initial).also { next ->
+        return mutex.withLock { runner.completeAndDrain(result) }.also { next ->
             _state.value = next.state
         }
-    }
-
-    private suspend fun drain(initial: NativeHeadlessEngineResult): NativeHeadlessEngineResult = coroutineScope {
-        var current = initial
-        val patches = mutableListOf(initial)
-        var remaining = maxEffectsPerDispatch
-        while (current.effects.isNotEmpty() && remaining > 0) {
-            val batch = current.effects.take(remaining)
-            val completions = batch.map { effect -> async { environment.execute(effect) } }.awaitAll()
-            remaining -= batch.size
-            for (completion in completions) {
-                current = mutex.withLock {
-                    engine.completeEffect(completion)
-                }
-                patches += current
-            }
-        }
-        NativeHeadlessEngineResult(
-            effects = current.effects,
-            stateProvider = { patches.fold(emptyMap<String, Any?>()) { state, patch -> state + patch.state } }
-        )
     }
 
     override fun close() {

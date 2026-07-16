@@ -1,6 +1,5 @@
 package com.fluxa.app.shared.feature.library
 
-import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaDimensions
@@ -12,19 +11,19 @@ import androidx.compose.ui.unit.dp
 
 enum class FolderTileShape { Poster, Landscape, Square }
 
-fun LibraryUserCollectionFolder.tileShape(): FolderTileShape = when (shape?.trim()?.lowercase()) {
+fun LibraryFolderUiModel.tileShape(): FolderTileShape = when (shape?.trim()?.lowercase()) {
     "wide", "landscape" -> FolderTileShape.Landscape
     "square" -> FolderTileShape.Square
     else -> FolderTileShape.Poster
 }
 
-fun LibraryUserCollectionFolder.effectiveCoverUrl(): String? =
+fun LibraryFolderUiModel.effectiveCoverUrl(): String? =
     coverImageUrl?.takeIf { it.isNotBlank() } ?: imageUrl?.takeIf { it.isNotBlank() }
 
-fun LibraryUserCollectionFolder.toCatalogCardUiModel(widthPreset: String = "medium"): CatalogCardUiModel {
+fun LibraryFolderUiModel.toCatalogCardUiModel(widthPreset: String = "medium"): CatalogCardUiModel {
     val staticArtwork = effectiveCoverUrl()
     val artwork = focusGifUrl
-        ?.takeIf { it.isNotBlank() && focusGifEnabled != false }
+        ?.takeIf { it.isNotBlank() && focusGifEnabled }
         ?: staticArtwork
     val shape = tileShape()
     val width = when (shape) {
@@ -40,7 +39,7 @@ fun LibraryUserCollectionFolder.toCatalogCardUiModel(widthPreset: String = "medi
     return CatalogCardUiModel(
         title = title,
         subtitle = catalogTitle.orEmpty(),
-        showTitleBar = hideTitle != true,
+        showTitleBar = !hideTitle,
         artworkUrl = artwork,
         artworkMemoryCacheKey = "collection-folder:$id",
         artworkDiskCacheKey = "collection-folder:$id",

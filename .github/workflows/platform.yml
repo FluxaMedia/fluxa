@@ -47,4 +47,12 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Compile Android shared modules
-        run: ./gradlew --no-daemon :checkSharedUiBoundary :checkKmpCommonBoundary :core:compileDebugKotlinAndroid :data:compileDebugKotlinAndroid :player:compileDebugKotlinAndroid :shared:compileDebugKotlinAndroid
+        run: >-
+          ./gradlew --no-daemon
+          checkSharedUiBoundary
+          checkKmpCommonBoundary
+          checkSharedPlayerBoundary
+          :core:compileDebugKotlinAndroid
+          :data:compileDebugKotlinAndroid
+          :player:compileDebugKotlinAndroid
+          :shared:compileDebugKotlinAndroid

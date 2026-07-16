@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
@@ -43,6 +44,7 @@ import com.fluxa.app.ui.catalog.FluxaColors
 @Composable
 fun LibraryFolderDetailScreen(
     state: LibraryFolderDetailUiState,
+    language: String?,
     onBack: () -> Unit,
     onItemSelected: (CatalogItemUiModel) -> Unit,
     modifier: Modifier = Modifier
@@ -114,7 +116,7 @@ fun LibraryFolderDetailScreen(
                 }
                 state.sections.isEmpty() -> item {
                     Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
-                        Text("No items found", color = Color.White.copy(alpha = 0.5f))
+                        Text(AppStrings.t(language, "library.empty"), color = Color.White.copy(alpha = 0.5f))
                     }
                 }
                 else -> itemsIndexed(state.sections, key = { index, section -> "$index:${section.title}" }) { _, section ->

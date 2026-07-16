@@ -1,4 +1,5 @@
 import FluxaCore
+import FluxaPlayer
 import SwiftUI
 
 @main

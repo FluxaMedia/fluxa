@@ -56,14 +56,14 @@ class HomeViewModel @Inject constructor(
     private val traktRepository: TraktRepository,
     private val addonRepository: AddonRepository,
     private val watchlistManager: WatchlistManager,
+    private val watchlistStore: WatchlistStore,
     private val searchHistoryStore: SearchHistoryStore,
     private val homeCategoryCache: HomeCategoryCache,
     private val forgottenContinueWatchingStore: ForgottenContinueWatchingStore,
     private val coordinatorFactory: HomeViewModelCoordinatorFactory,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
     private val nuvioSyncCoordinator: NuvioSyncCoordinator,
-    private val pluginManager: PluginManager,
-    private val cloudStreamCatalogClient: CloudStreamCatalogClient,
+    private val platformContentGateway: HomePlatformContentGateway,
     private val imdbApiService: ImdbApiService,
     private val gson: Gson,
     @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context
@@ -228,8 +228,8 @@ class HomeViewModel @Inject constructor(
 
     private val _likedItems = MutableStateFlow<List<Meta>>(emptyList())
     val likedItems: StateFlow<List<Meta>> = _likedItems.asStateFlow()
-    val totalWatchedContentDuration: StateFlow<Long> = watchlistManager
-        .getTotalWatchedContentDurationFlow()
+    val totalWatchedContentDuration: StateFlow<Long> = watchlistStore
+        .observeTotalWatchedDuration()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
     private val libraryCoordinator by lazy {
@@ -247,11 +247,11 @@ class HomeViewModel @Inject constructor(
         return feedCoordinator.fetchFolderSections(folder, currentActiveProfile?.safeLanguage ?: "en")
     }
 
-    val loadedCs3ApiNames: StateFlow<List<String>> = pluginManager.loadedApis
+    val loadedCs3ApiNames: StateFlow<List<String>> = platformContentGateway.loadedApis
         .map { apis -> apis.map { it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val loadedCs3CatalogFeedOptions: StateFlow<List<MetadataFeedOption>> = pluginManager.loadedApis
+    val loadedCs3CatalogFeedOptions: StateFlow<List<MetadataFeedOption>> = platformContentGateway.loadedApis
         .map { apis -> buildCs3MetadataFeedOptions(apis.toCs3CatalogFeedDescriptors()) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -322,7 +322,7 @@ class HomeViewModel @Inject constructor(
             setSeasonPosterUrl = { billboardState.seasonPosterUrlValue = it },
             getMetaDetail = { type, id ->
                 val profile = currentActiveProfile
-                addonRepository.getAddonMetaDetail(type, id, profile?.authKey ?: "", profile?.safeLocalAddons)
+                platformContentGateway.addonMetaDetail(type, id, profile?.authKey ?: "", profile?.safeLocalAddons.orEmpty())
             },
             parseSeasonEpisode = ::formatSeasonEpisode,
             prefetchDirectPlayback = ::prefetchDirectPlayback,
@@ -338,7 +338,7 @@ class HomeViewModel @Inject constructor(
             getMetadataFeeds = { profile -> feedCoordinator.getMetadataFeeds(profile) },
             getCs3MetadataFeeds = { loadedCs3CatalogFeedOptions.value },
             fetchCs3FeedItems = { feed ->
-                cloudStreamCatalogClient.fetchFeedItems(pluginManager.loadedApis.value, feed.key)
+                platformContentGateway.cloudFeedItems(feed.key)
             },
             setPool = { billboardState.poolValue = it },
             updateContent = billboardRuntime::updateContent,
@@ -391,7 +391,7 @@ class HomeViewModel @Inject constructor(
 
     private val watchlistFlowBinder by lazy {
         HomeWatchlistFlowBinder(
-            watchlistManager = watchlistManager,
+            watchlistStore = watchlistStore,
             scope = viewModelScope,
             setWatchlist = ::setWatchlistState,
             setLocalContinueWatching = ::setCurrentWatchlistState,
@@ -417,7 +417,7 @@ class HomeViewModel @Inject constructor(
                 val profile = currentActiveProfile
                 val homeFeedToggles = profile?.homeFeedToggles
                 val cs3FeedsConfigured = profile?.cs3FeedsConfigured == true
-                val apis = pluginManager.loadedApis.value
+                val apis = platformContentGateway.loadedApis.value
                     .filter { it.hasMainPage }
                 val cs3FeedOptions = buildCs3MetadataFeedOptions(apis.toCs3CatalogFeedDescriptors())
                 val enabledCs3FeedKeys = if (homeFeedToggles == null || !cs3FeedsConfigured) {
@@ -435,10 +435,10 @@ class HomeViewModel @Inject constructor(
                     if (withoutCs3.size != _categories.value.size) setCategoriesAndCache(withoutCs3)
                     return@launch
                 }
-                val iconsByApiName = pluginManager.installedPlugins.value
+                val iconsByApiName = platformContentGateway.installedPlugins.value
                     .filter { !it.iconUrl.isNullOrBlank() }
                     .associate { it.name to it.iconUrl!! }
-                val cs3Rows = cloudStreamCatalogClient.fetchHomeCatalogCategories(
+                val cs3Rows = platformContentGateway.cloudHomeCategories(
                     apis = apis,
                     iconsByApiName = iconsByApiName,
                     enabledFeedKeys = enabledCs3FeedKeys
@@ -461,7 +461,7 @@ class HomeViewModel @Inject constructor(
 
     private fun observeCloudStreamPlugins() {
         viewModelScope.launch {
-            pluginManager.loadedApis
+            platformContentGateway.loadedApis
                 .map { apis -> apis.toCs3CatalogFeedDescriptors().map { "${it.pluginName}:${it.catalogIndex}:${it.catalogName}" }.toSet() }
                 .distinctUntilChanged()
                 .collect {
@@ -861,7 +861,7 @@ class HomeViewModel @Inject constructor(
         val profile = currentActiveProfile
         val tmdbTrailers = if (profile?.safeTmdbApiKey?.isNotBlank() == true && profile.safeTmdbTrailersEnabled) {
             runCatching {
-                repository.getTmdbTrailers(type, id, language, profile.safeTmdbApiKey)
+                platformContentGateway.trailers(type, id, language, profile.safeTmdbApiKey)
             }.getOrElse { emptyList() }
         } else {
             emptyList()
@@ -889,16 +889,13 @@ class HomeViewModel @Inject constructor(
                 delay(400)
                 if (!isActive) return@launch
                 val trimmedQuery = query.trim()
-                val rows = addonRepository.searchRows(
+                val allRows = platformContentGateway.searchRows(
                     query = trimmedQuery,
                     language = currentActiveProfile?.safeLanguage ?: "en",
                     authKey = currentActiveProfile?.authKey.orEmpty(),
                     localAddons = currentActiveProfile?.safeLocalAddons.orEmpty()
                 )
                 if (!isActive) return@launch
-                val cs3Rows = cloudStreamCatalogClient.searchRows(pluginManager.loadedApis.value, trimmedQuery)
-                if (!isActive) return@launch
-                val allRows = rows + cs3Rows
                 searchFocusState.searchRowsValue = allRows
                 searchFocusState.searchResultsValue = allRows.flatMap { it.items }.distinctBy { it.id }.take(80)
             } catch (e: Exception) {
@@ -951,7 +948,7 @@ class HomeViewModel @Inject constructor(
                                 semaphore.withPermit {
                                     sourceResults.send(
                                         source to normalizeCatalogItems(
-                                            addonRepository.getAddonCatalog(
+                                            platformContentGateway.addonCatalog(
                                                 source.transportUrl,
                                                 source.type,
                                                 source.catalogId,

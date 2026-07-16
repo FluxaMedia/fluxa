@@ -319,7 +319,7 @@ fun FluxaAppHost(
                     libraryState?.collections?.flatMap { it.folders }
                         ?.firstOrNull { it.id == action.item.id }
                         ?.let { folder ->
-                            scope.launch { libraryStore?.dispatch(LibraryAction.FolderSelected(folder)) }
+                            scope.launch { libraryStore.dispatch(LibraryAction.FolderSelected(folder)) }
                         }
                 } else {
                     appState.selectDetail(action.item)
@@ -388,7 +388,7 @@ fun FluxaAppHost(
                 libraryState?.collections?.flatMap { it.folders }
                     ?.firstOrNull { it.id == item.id }
                     ?.let { folder ->
-                        scope.launch { libraryStore?.dispatch(LibraryAction.FolderSelected(folder)) }
+                        scope.launch { libraryStore.dispatch(LibraryAction.FolderSelected(folder)) }
                     }
             } else {
                 appState.selectDetail(item)

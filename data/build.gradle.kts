@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     alias(libs.plugins.fluxa.kmp.library)
@@ -43,16 +44,31 @@ kotlin {
     tvosArm64()
     tvosSimulatorArm64()
 
+    targets
+        .withType<KotlinNativeTarget>()
+        .matching { it.name.startsWith("tvos") }
+        .configureEach {
+            binaries.framework {
+                baseName = "FluxaData"
+                isStatic = true
+            }
+        }
+
     sourceSets {
         commonMain {
             dependencies {
+                implementation(project(":core"))
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.coroutines.core)
             }
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
         androidMain {
             kotlin.srcDir("src/main/java")
             dependencies {
-                implementation(project(":core"))
                 implementation(libs.androidx.core.ktx)
                 implementation(libs.bundles.coroutines)
                 implementation(libs.androidx.work.runtime)

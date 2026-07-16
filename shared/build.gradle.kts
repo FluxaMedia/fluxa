@@ -18,6 +18,7 @@ kotlin {
                 isStatic = true
                 export(project(":core"))
                 export(project(":data"))
+                export(project(":player"))
             }
         }
 
@@ -28,11 +29,16 @@ kotlin {
             api(project(":player"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
             implementation(libs.coil3)
             implementation(libs.coil3.compose)
             implementation(libs.coil3.network.okhttp)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

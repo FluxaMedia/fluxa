@@ -1,21 +1,7 @@
 package com.fluxa.app.data.repository
 
-import com.fluxa.app.data.local.WatchedContentDurationRecord
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.TraktSyncItem
-
-data class TraktSyncSnapshot(
-    val continueWatchingCount: Int = 0,
-    val watchlistCount: Int = 0,
-    val syncedItems: Int = continueWatchingCount + watchlistCount
-)
-
-data class TraktWatchedState(
-    val movieKeys: Set<String> = emptySet(),
-    val episodeKeys: Set<String> = emptySet(),
-    val episodeIdsBySeries: Map<String, Set<String>> = emptyMap(),
-    val durationRecords: List<WatchedContentDurationRecord> = emptyList()
-)
 
 internal fun TraktSyncItem.toMeta(type: String, unknownName: () -> String): Meta? {
     val traktRes = movie ?: show ?: return null
@@ -28,10 +14,6 @@ internal fun TraktSyncItem.toMeta(type: String, unknownName: () -> String): Meta
         releaseInfo = traktRes.year?.toString(),
         released = traktRes.year?.let { "$it-01-01" }
     )
-}
-
-internal fun traktWatchedEpisodeKey(seriesKey: String, season: Int, episode: Int): String {
-    return "$seriesKey:$season:$episode"
 }
 
 internal suspend fun fetchTraktSyncPages(

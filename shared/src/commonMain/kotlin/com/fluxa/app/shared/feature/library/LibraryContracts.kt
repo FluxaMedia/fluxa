@@ -1,6 +1,5 @@
 package com.fluxa.app.shared.feature.library
 
-import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import kotlinx.coroutines.flow.Flow
 
@@ -8,12 +7,26 @@ enum class LibrarySection { Planned, Completed, Favorites, Downloads, Collection
 
 enum class LibraryTypeFilter { All, Movie, Series, Anime }
 
+data class LibraryFolderUiModel(
+    val id: String,
+    val title: String,
+    val imageUrl: String? = null,
+    val shape: String? = "poster",
+    val catalogTitle: String? = null,
+    val hideTitle: Boolean = false,
+    val focusGifEnabled: Boolean = true,
+    val coverEmoji: String? = null,
+    val coverImageUrl: String? = null,
+    val focusGifUrl: String? = null,
+    val heroBackdropUrl: String? = null
+)
+
 data class LibraryCollectionUiModel(
     val id: String? = null,
     val title: String,
     val subtitle: String,
     val items: List<CatalogItemUiModel>,
-    val folders: List<LibraryUserCollectionFolder> = emptyList(),
+    val folders: List<LibraryFolderUiModel> = emptyList(),
     val locked: Boolean = false
 )
 
@@ -23,7 +36,7 @@ data class LibraryFolderSectionUiModel(
 )
 
 data class LibraryFolderDetailUiState(
-    val folder: LibraryUserCollectionFolder? = null,
+    val folder: LibraryFolderUiModel? = null,
     val sections: List<LibraryFolderSectionUiModel> = emptyList(),
     val isLoading: Boolean = false
 )
@@ -64,7 +77,7 @@ sealed interface LibraryAction {
     data class CollectionDeleted(val id: String) : LibraryAction
     data class DownloadOpened(val id: String) : LibraryAction
     data class DownloadCancelled(val id: String) : LibraryAction
-    data class FolderSelected(val folder: LibraryUserCollectionFolder) : LibraryAction
+    data class FolderSelected(val folder: LibraryFolderUiModel) : LibraryAction
     data object FolderClosed : LibraryAction
 }
 
@@ -75,5 +88,5 @@ interface LibraryDataSource {
     suspend fun renameCollection(id: String, title: String)
     suspend fun deleteCollection(id: String)
     suspend fun cancelDownload(id: String)
-    suspend fun loadFolder(folder: LibraryUserCollectionFolder): List<LibraryFolderSectionUiModel>
+    suspend fun loadFolder(folder: LibraryFolderUiModel): List<LibraryFolderSectionUiModel>
 }

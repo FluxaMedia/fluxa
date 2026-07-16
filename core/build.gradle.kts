@@ -33,5 +33,9 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             implementation(libs.kotlinx.coroutines.android)
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+        }
     }
 }

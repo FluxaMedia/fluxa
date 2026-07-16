@@ -1,90 +1,68 @@
 package com.fluxa.app.ui.profile
 
 import android.content.SharedPreferences
-import com.fluxa.app.data.local.*
-import com.fluxa.app.data.local.PinHasher
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.safeAccentColorArgb
+import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
+import com.fluxa.app.shared.feature.profile.ProfilePersistence
+import com.fluxa.app.shared.feature.profile.ProfileStoreSnapshot
 import com.fluxa.app.shared.feature.profile.ProfileUiModel
-import com.fluxa.app.shared.feature.profile.ProfileUiState
+import com.fluxa.app.shared.feature.profile.SharedProfileDataSource
+import java.util.UUID
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.combine
 
 class AndroidProfileDataSource(
+    profileManager: ProfileManager
+) : ProfileDataSource by SharedProfileDataSource(AndroidProfileStore(profileManager))
+
+private class AndroidProfileStore(
     private val profileManager: ProfileManager
-) : ProfileDataSource {
-
-    private val pendingPinId = MutableStateFlow<String?>(null)
-    private val pinError = MutableStateFlow(false)
-
-    override fun observeProfiles(): Flow<ProfileUiState> = combine(profilesFlow(), pendingPinId, pinError) { state, pendingId, error ->
-        state.copy(
-            pendingPinProfile = state.profiles.firstOrNull { it.id == pendingId },
-            pinError = error
-        )
-    }
-
-    override suspend fun selectProfile(id: String) {
-        val target = profileManager.getProfiles().firstOrNull { it.id == id } ?: return
-        if (target.pinHash.isNullOrBlank()) {
-            profileManager.setLastActiveProfile(target)
-        } else {
-            pendingPinId.value = target.id
-            pinError.value = false
+) : ProfilePersistence {
+    override fun observe(): Flow<ProfileStoreSnapshot> = callbackFlow {
+        fun emit() {
+            val profiles = profileManager.getProfiles()
+            val activeId = profileManager.getLastActiveProfileId()
+            trySend(
+                ProfileStoreSnapshot(
+                    activeProfile = profiles.firstOrNull { it.id == activeId }?.toUiModel(),
+                    profiles = profiles.map(UserProfile::toUiModel)
+                )
+            )
         }
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> emit() }
+        profileManager.registerOnChangeListener(listener)
+        emit()
+        awaitClose { profileManager.unregisterOnChangeListener(listener) }
     }
 
-    override suspend fun attemptPin(profileId: String, pin: String) {
-        val target = profileManager.getProfiles().firstOrNull { it.id == profileId } ?: return
-        if (PinHasher.hash(pin) == target.pinHash) {
-            profileManager.setLastActiveProfile(target)
-            pendingPinId.value = null
-            pinError.value = false
-        } else {
-            pinError.value = true
-        }
+    override suspend fun pinHash(profileId: String): String? =
+        profileManager.getProfiles().firstOrNull { it.id == profileId }?.pinHash
+
+    override suspend fun activate(profileId: String) {
+        profileManager.setLastActiveProfile(profileManager.getProfiles().firstOrNull { it.id == profileId })
     }
 
-    override suspend fun confirmBiometricUnlock(profileId: String) {
-        val target = profileManager.getProfiles().firstOrNull { it.id == profileId } ?: return
-        profileManager.setLastActiveProfile(target)
-        pendingPinId.value = null
-        pinError.value = false
+    override suspend fun delete(profileId: String) {
+        profileManager.deleteProfileById(profileId)
     }
 
-    override suspend fun cancelPinUnlock() {
-        pendingPinId.value = null
-        pinError.value = false
-    }
-
-    override suspend fun deleteProfile(id: String) {
-        profileManager.deleteProfileById(id)
-    }
-
-    override suspend fun saveProfile(edit: ProfileEditUiModel): String {
+    override suspend fun save(edit: ProfileEditUiModel, pinHash: String?): String {
         val existing = edit.id?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
-        val newPin = edit.newPin
-        val pinHash = when {
-            newPin != null -> PinHasher.hash(newPin)
-            edit.keepExistingPin -> existing?.pinHash
-            else -> null
-        }
         val profile = existing?.copy(
             profileName = edit.name,
             avatarUrl = edit.avatarUrl,
             pinHash = pinHash,
             biometricEnabled = edit.biometricEnabled
         ) ?: UserProfile(
-            id = java.util.UUID.randomUUID().toString(),
+            id = UUID.randomUUID().toString(),
             email = edit.name,
             profileName = edit.name,
             authKey = "",
-            isGuest = false,
             language = "en",
             avatarUrl = edit.avatarUrl,
             pinHash = pinHash,
@@ -94,24 +72,9 @@ class AndroidProfileDataSource(
         profileManager.saveProfile(profile)
         return profile.id
     }
-
-    private fun profilesFlow(): Flow<ProfileUiState> = callbackFlow {
-        fun emit() {
-            val profiles = profileManager.getProfiles()
-            val activeId = profileManager.getLastActiveProfileId()
-            trySend(ProfileUiState(
-                activeProfile = profiles.firstOrNull { it.id == activeId }?.toProfileUiModel(),
-                profiles = profiles.map { it.toProfileUiModel() }
-            ))
-        }
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> emit() }
-        profileManager.registerOnChangeListener(listener)
-        emit()
-        awaitClose { profileManager.unregisterOnChangeListener(listener) }
-    }
 }
 
-private fun UserProfile.toProfileUiModel(): ProfileUiModel = ProfileUiModel(
+private fun UserProfile.toUiModel(): ProfileUiModel = ProfileUiModel(
     id = id,
     name = profileName?.takeIf { it.isNotBlank() } ?: email,
     avatarUrl = avatarUrl,

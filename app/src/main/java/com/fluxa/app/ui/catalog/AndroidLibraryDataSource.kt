@@ -6,12 +6,14 @@ import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.WatchlistStore
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.library.LibraryCollectionUiModel
 import com.fluxa.app.shared.feature.library.LibraryDataSource
 import com.fluxa.app.shared.feature.library.LibraryDownloadEpisodeUiModel
 import com.fluxa.app.shared.feature.library.LibraryDownloadGroupUiModel
 import com.fluxa.app.shared.feature.library.LibraryFolderSectionUiModel
+import com.fluxa.app.shared.feature.library.LibraryFolderUiModel
 import com.fluxa.app.shared.feature.library.LibraryUiState
 import com.fluxa.app.shared.feature.library.toCatalogCardUiModel
 import kotlinx.coroutines.flow.Flow
@@ -23,12 +25,13 @@ class AndroidLibraryDataSource(
     private val activeProfile: () -> UserProfile?,
     private val onProfileChanged: (UserProfile) -> Unit,
     private val offlineDownloadManager: OfflineDownloadManager,
+    private val watchlistStore: WatchlistStore,
     private val language: () -> String
 ) : LibraryDataSource {
 
     override fun observeLibrary(): Flow<LibraryUiState> = combine(
-        homeViewModel.watchlist,
-        homeViewModel.likedItems,
+        watchlistStore.observeWatchlist(),
+        watchlistStore.observeLiked(),
         homeViewModel.libraryUiState,
         homeViewModel.isLoading,
         offlineDownloadManager.items
@@ -62,7 +65,7 @@ class AndroidLibraryDataSource(
                         title = collection.title,
                         subtitle = "${if (folders.isNotEmpty()) folders.size else collection.itemIds.orEmpty().size}",
                         items = folders.map { folder -> folder.toLibraryCatalogItem() },
-                        folders = folders,
+                        folders = folders.map { folder -> folder.toLibraryFolderUiModel() },
                         locked = false
                     )
                 )
@@ -148,19 +151,39 @@ class AndroidLibraryDataSource(
         offlineDownloadManager.cancel(id)
     }
 
-    override suspend fun loadFolder(folder: LibraryUserCollectionFolder): List<LibraryFolderSectionUiModel> {
+    override suspend fun loadFolder(folder: LibraryFolderUiModel): List<LibraryFolderSectionUiModel> {
         val profile = activeProfile()
-        return homeViewModel.loadFolderSections(folder).map { (title, metas) ->
+        val domainFolder = profile?.safeLibraryCollections.orEmpty()
+            .asSequence()
+            .flatMap { it.folders.orEmpty().asSequence() }
+            .firstOrNull { it.id == folder.id }
+            ?: return emptyList()
+        return homeViewModel.loadFolderSections(domainFolder).map { (title, metas) ->
             LibraryFolderSectionUiModel(title = title, items = metas.toCatalogItems(profile))
         }
     }
 }
 
 private fun LibraryUserCollectionFolder.toLibraryCatalogItem(): CatalogItemUiModel {
+    val uiModel = toLibraryFolderUiModel()
     return CatalogItemUiModel(
         id = id,
         type = "catalog_folder",
-        card = toCatalogCardUiModel(),
+        card = uiModel.toCatalogCardUiModel(),
         backdropUrl = heroBackdropUrl ?: effectiveImageUrl()
     )
 }
+
+private fun LibraryUserCollectionFolder.toLibraryFolderUiModel(): LibraryFolderUiModel = LibraryFolderUiModel(
+    id = id,
+    title = title,
+    imageUrl = imageUrl,
+    shape = shape,
+    catalogTitle = catalogTitle,
+    hideTitle = hideTitle == true,
+    focusGifEnabled = focusGifEnabled != false,
+    coverEmoji = coverEmoji,
+    coverImageUrl = coverImageUrl,
+    focusGifUrl = focusGifUrl,
+    heroBackdropUrl = heroBackdropUrl
+)

@@ -3,6 +3,7 @@ package com.fluxa.app.shared
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.window.ComposeUIViewController
 import com.fluxa.app.shared.platform.AppleCatalogHomeSnapshot
+import com.fluxa.app.shared.platform.AppleCatalogItemSnapshot
 import com.fluxa.app.shared.platform.AppleSearchSnapshot
 import com.fluxa.app.shared.platform.AppleDiscoverRequestSnapshot
 import com.fluxa.app.shared.platform.AppleDiscoverSnapshot
@@ -12,6 +13,7 @@ import com.fluxa.app.shared.platform.AppleAuthSnapshot
 import com.fluxa.app.shared.platform.AppleLibrarySnapshot
 import com.fluxa.app.shared.platform.AppleDetailRequestSnapshot
 import com.fluxa.app.shared.platform.AppleDetailSnapshot
+import com.fluxa.app.shared.platform.AppleDetailStreamSnapshot
 import com.fluxa.app.shared.platform.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
 import com.fluxa.app.shared.platform.AppleAuthDataSource
@@ -24,16 +26,23 @@ import com.fluxa.app.shared.platform.AppleLibraryDataSource
 import com.fluxa.app.shared.platform.AppleProfileDataSource
 import com.fluxa.app.shared.platform.AppleSearchDataSource
 import com.fluxa.app.shared.platform.AppleSettingsDataSource
+import com.fluxa.app.data.apple.AppleAddonManifestSnapshot
+import com.fluxa.app.data.apple.AppleStremioBridge
+import com.fluxa.app.data.local.AppleWatchlistStore
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import platform.UIKit.UIViewController
 
 object FluxaApple {
+    private val json = Json
+    internal val watchlistStore = AppleWatchlistStore()
     internal val catalogHomeDataSource = AppleCatalogHomeDataSource()
-    internal val detailDataSource = AppleDetailDataSource()
+    internal val detailDataSource = AppleDetailDataSource(watchlistStore)
     internal val searchDataSource = AppleSearchDataSource()
     internal val discoverDataSource = AppleDiscoverDataSource()
     internal val calendarDataSource = AppleCalendarDataSource()
-    internal val libraryDataSource = AppleLibraryDataSource()
-    internal val profileDataSource = AppleProfileDataSource()
+    internal val libraryDataSource = AppleLibraryDataSource(watchlistStore)
+    internal val profileDataSource = AppleProfileDataSource(watchlistStore::setActiveProfile)
     internal val settingsDataSource = AppleSettingsDataSource()
     internal val addonStoreDataSource = AppleAddonStoreDataSource()
     internal val authDataSource = AppleAuthDataSource()
@@ -102,6 +111,50 @@ object FluxaApple {
     fun updateLibrary(snapshot: AppleLibrarySnapshot) {
         libraryDataSource.update(snapshot)
     }
+
+    fun parseAddonManifest(body: String): AppleAddonManifestSnapshot? = AppleStremioBridge.parseManifest(body)
+
+    fun normalizeAddonManifestUrl(rawUrl: String): String = AppleStremioBridge.normalizeManifestUrl(rawUrl)
+
+    fun addonResourceUrl(transportUrl: String, resource: String, contentType: String, id: String): String =
+        AppleStremioBridge.resourceUrl(transportUrl, resource, contentType, id)
+
+    fun addonCatalogUrl(
+        transportUrl: String,
+        contentType: String,
+        catalogId: String,
+        extraName: String?,
+        extraValue: String?
+    ): String = AppleStremioBridge.catalogUrl(transportUrl, contentType, catalogId, extraName, extraValue)
+
+    fun parseCatalogItems(
+        body: String,
+        fallbackType: String,
+        addonTransportUrl: String?,
+        catalogType: String?
+    ): List<AppleCatalogItemSnapshot>? = AppleStremioBridge.parseCatalogItems(body, fallbackType)?.map { item ->
+        AppleCatalogItemSnapshot(
+            id = item.id,
+            type = item.type,
+            title = item.title,
+            subtitle = item.subtitle,
+            artworkUrl = item.artworkUrl,
+            logoUrl = item.logoUrl,
+            addonTransportUrl = addonTransportUrl,
+            catalogType = catalogType
+        )
+    }
+
+    fun parseDirectStreams(body: String, addonName: String): List<AppleDetailStreamSnapshot>? =
+        AppleStremioBridge.parseDirectStreams(body)?.mapNotNull { stream ->
+            val playableUrl = stream.playableUrl ?: return@mapNotNull null
+            AppleDetailStreamSnapshot(
+                addonName = addonName,
+                title = stream.title ?: addonName,
+                playableUrl = playableUrl,
+                requestHeadersJson = json.encodeToString(stream.requestHeaders)
+            )
+        }
 
     fun setDetailHandlers(
         load: (AppleDetailRequestSnapshot) -> Unit,

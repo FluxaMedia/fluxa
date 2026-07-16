@@ -97,16 +97,6 @@ private fun JsonObject.toDolbyVisionRpuConvertResult(): NativeDolbyVisionRpuConv
         error = stringOrNull("error")
     )
 
-class NativeHeadlessEngineResult(
-    val effects: List<NativeHeadlessEffect> = emptyList(),
-    stateProvider: () -> Map<String, Any?> = { emptyMap() }
-) {
-    // State is materialized lazily. The effect-drain loop only reads `effects` on each
-    // intermediate completion, so the (potentially large) state map of intermediate steps
-    // is never parsed or allocated — only the final result's state is.
-    val state: Map<String, Any?> by lazy { stateProvider() }
-}
-
 data class NativeCacheEntryPolicy(
     val key: String = "",
     val storedAtMillis: Long = 0L,

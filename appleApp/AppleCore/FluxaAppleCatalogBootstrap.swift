@@ -1,3 +1,4 @@
+import FluxaShared
 import Foundation
 
 @MainActor
@@ -13,11 +14,11 @@ final class FluxaAppleCatalogBootstrap {
         self.resolver = resolver
     }
 
-    func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [FluxaAppleCatalogRow] {
+    func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [AppleCatalogRowSnapshot] {
         try await loader.loadRows(requests: requests)
     }
 
-    func loadRows(localAddonUrls: [String]) async throws -> [FluxaAppleCatalogRow] {
+    func loadRows(localAddonUrls: [String]) async throws -> [AppleCatalogRowSnapshot] {
         let requests = try await resolver.resolveRequests(localAddonUrls: localAddonUrls)
         return try await loadRows(requests: requests)
     }
@@ -25,7 +26,7 @@ final class FluxaAppleCatalogBootstrap {
     func loadSearchItems(
         localAddonUrls: [String],
         query: String
-    ) async throws -> [FluxaAppleCatalogItem] {
+    ) async throws -> [AppleCatalogItemSnapshot] {
         let requests = try await resolver.resolveSearchRequests(
             localAddonUrls: localAddonUrls,
             query: query

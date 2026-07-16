@@ -81,7 +81,14 @@ jobs:
           fi
 
       - name: Verify iOS shared code
-        run: ./gradlew --no-daemon :checkAppleTypedCatalogBridge :core:linkIosSimulatorArm64 :data:compileIosMainKotlinMetadata :player:compileIosMainKotlinMetadata :shared:iosSimulatorArm64Test
+        run: >-
+          ./gradlew --no-daemon
+          checkAppleTypedCatalogBridge
+          checkSharedPlayerBoundary
+          :core:linkIosSimulatorArm64
+          :data:compileIosMainKotlinMetadata
+          :player:compileIosMainKotlinMetadata
+          :shared:iosSimulatorArm64Test
 
       - name: Verify Apple streaming bridge
         working-directory: fluxa-core
@@ -147,8 +154,17 @@ jobs:
             brew install xcodegen
           fi
 
-      - name: Verify tvOS shared core
-        run: ./gradlew --no-daemon :core:linkDebugFrameworkTvosSimulatorArm64 :core:tvosSimulatorArm64Test :data:compileTvosMainKotlinMetadata
+      - name: Verify tvOS shared code
+        run: >-
+          ./gradlew --no-daemon
+          checkAppleTvosKmpBoundary
+          checkSharedPlayerBoundary
+          :core:linkDebugFrameworkTvosSimulatorArm64
+          :data:linkDebugFrameworkTvosSimulatorArm64
+          :player:linkDebugFrameworkTvosSimulatorArm64
+          :core:tvosSimulatorArm64Test
+          :data:tvosSimulatorArm64Test
+          :player:tvosSimulatorArm64Test
 
       - name: Generate Apple host project
         working-directory: appleApp

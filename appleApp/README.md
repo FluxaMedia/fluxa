@@ -1,6 +1,6 @@
 # Apple hosts
 
-`FluxaIos` is a SwiftUI host for the Compose Multiplatform `FluxaShared` framework. `FluxaTvos` is a native SwiftUI host backed by the Kotlin Multiplatform `FluxaCore` framework and loads its catalog through the same Rust headless action/effect flow as iOS. The current Compose and Coil dependency stack does not publish tvOS artifacts, so the tvOS visual layer remains native SwiftUI while application logic is shared through KMP core and the Rust headless runtime.
+`FluxaIos` is a SwiftUI host for the Compose Multiplatform `FluxaShared` framework. `FluxaTvos` is a native SwiftUI host backed by the Kotlin Multiplatform `FluxaCore` and `FluxaData` frameworks and loads its catalog through the same Rust headless action/effect flow as iOS. The current Compose and Coil dependency stack does not publish tvOS artifacts, so the tvOS visual layer remains native SwiftUI while application logic, Stremio protocol handling, and player state are shared through KMP and the Rust headless runtime.
 
 On macOS, install XcodeGen and generate the project:
 

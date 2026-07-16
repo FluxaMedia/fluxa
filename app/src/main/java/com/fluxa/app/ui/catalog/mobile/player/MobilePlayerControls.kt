@@ -6,6 +6,7 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
+import com.fluxa.app.shared.feature.player.PlayerContentUiModel
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn

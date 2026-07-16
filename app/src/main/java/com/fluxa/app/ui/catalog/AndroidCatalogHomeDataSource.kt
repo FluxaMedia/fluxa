@@ -11,6 +11,7 @@ import com.fluxa.app.shared.feature.catalog.CatalogResumeUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.library.toCatalogCardUiModel
+import com.fluxa.app.shared.feature.library.LibraryFolderUiModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
@@ -185,7 +186,7 @@ class AndroidCatalogHomeDataSource(
                         CatalogItemUiModel(
                             id = folder.id,
                             type = "catalog_folder",
-                            card = folder.toCatalogCardUiModel(profile.safePosterWidthPreset ?: "medium"),
+                            card = folder.toSharedUiModel().toCatalogCardUiModel(profile.safePosterWidthPreset ?: "medium"),
                             backdropUrl = folder.heroBackdropUrl ?: folder.effectiveImageUrl()
                         )
                     }
@@ -194,6 +195,20 @@ class AndroidCatalogHomeDataSource(
             .toList()
     }
 }
+
+private fun LibraryUserCollectionFolder.toSharedUiModel(): LibraryFolderUiModel = LibraryFolderUiModel(
+    id = id,
+    title = title,
+    imageUrl = imageUrl,
+    shape = shape,
+    catalogTitle = catalogTitle,
+    hideTitle = hideTitle == true,
+    focusGifEnabled = focusGifEnabled != false,
+    coverEmoji = coverEmoji,
+    coverImageUrl = coverImageUrl,
+    focusGifUrl = focusGifUrl,
+    heroBackdropUrl = heroBackdropUrl
+)
 
 private fun com.fluxa.app.data.remote.Meta.toCatalogResumeUiModel(): CatalogResumeUiModel? {
     val positionMs = timeOffset ?: 0L

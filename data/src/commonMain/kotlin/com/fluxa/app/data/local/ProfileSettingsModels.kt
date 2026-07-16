@@ -1,7 +1,7 @@
 package com.fluxa.app.data.local
 
 private const val CINEMETA_ADDON_URL = "https://v3-cinemeta.strem.io/manifest.json"
-internal val DEFAULT_ADDON_URLS = listOf(CINEMETA_ADDON_URL)
+val DEFAULT_ADDON_URLS = listOf(CINEMETA_ADDON_URL)
 
 data class ExternalAccounts(
     val traktAccessToken: String? = null,

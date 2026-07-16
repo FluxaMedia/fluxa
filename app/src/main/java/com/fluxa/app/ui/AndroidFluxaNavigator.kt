@@ -23,4 +23,5 @@ fun FluxaRoute.toAndroidScreen(): Screen = when (this) {
     FluxaRoute.Settings -> Screen.Settings()
     is FluxaRoute.Discover -> Screen.Explore(initialType = type, initialGenre = genre)
     is FluxaRoute.Detail -> Screen.Detail(type = type, id = id)
+    is FluxaRoute.Player -> Screen.Detail(type = type, id = id, lastVideoId = episodeId, autoPlay = true)
 }

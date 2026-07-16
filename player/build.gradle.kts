@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+
 plugins {
     alias(libs.plugins.fluxa.kmp.library)
     alias(libs.plugins.fluxa.android.hilt)
@@ -15,9 +17,26 @@ android {
 }
 
 kotlin {
+    tvosArm64()
+    tvosSimulatorArm64()
+
+    targets
+        .withType<KotlinNativeTarget>()
+        .matching { it.name.startsWith("ios") || it.name.startsWith("tvos") }
+        .configureEach {
+            binaries.framework {
+                baseName = "FluxaPlayer"
+                isStatic = true
+            }
+        }
+
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
         androidMain {
             kotlin.srcDir("src/main/java")

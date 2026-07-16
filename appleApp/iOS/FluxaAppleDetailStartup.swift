@@ -81,7 +81,7 @@ final class FluxaAppleDetailStartup {
                     result.append(addon)
                 }
             }
-        var results = [FluxaAppleDirectStream]()
+        var results = [AppleDetailStreamSnapshot]()
         for addon in addons {
             if let streams = try? await addonResourceLoader.loadDirectStreams(
                 transportUrl: addon,
@@ -91,9 +91,7 @@ final class FluxaAppleDetailStartup {
                 results.append(contentsOf: streams)
             }
         }
-        return results.map {
-            AppleDetailStreamSnapshot(addonName: $0.addonName, title: $0.title, playableUrl: $0.url, requestHeadersJson: $0.requestHeadersJson)
-        }
+        return results
     }
 
     private func updateEmptyDetail(request: AppleDetailRequestSnapshot) {

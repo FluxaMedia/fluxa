@@ -63,7 +63,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         }
     }
 
-    private func homeCategory(_ row: FluxaAppleCatalogRow) -> FluxaAppleJsonValue {
+    private func homeCategory(_ row: AppleCatalogRowSnapshot) -> FluxaAppleJsonValue {
         .object([
             "id": .string(row.id),
             "name": .string(row.title),
@@ -74,7 +74,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         ])
     }
 
-    private func homeMeta(_ item: FluxaAppleCatalogItem) -> FluxaAppleJsonValue {
+    private func homeMeta(_ item: AppleCatalogItemSnapshot) -> FluxaAppleJsonValue {
         .object([
             "id": .string(item.id),
             "type": .string(item.type),
@@ -221,7 +221,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             guard let item = command["item"] else {
                 throw URLError(.cannotParseResponse)
             }
-            let result = libraryStore.toggleWatchlist(item: item)
+            let result = libraryStore.watchlistState(item: item)
             return .object([
                 "watchlist": .array(result.watchlist),
                 "isInWatchlist": .boolean(result.isInWatchlist)

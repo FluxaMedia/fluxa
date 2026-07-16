@@ -38,14 +38,14 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.parseEpisodeLocator",
         "FluxaCoreNative.streamRequestIds"
     ),
-    "data/src/main/java/com/fluxa/app/data/remote/Stream.kt" to listOf(
+    "data/src/androidMain/kotlin/com/fluxa/app/data/remote/StreamPlaybackResolver.android.kt" to listOf(
         "FluxaCoreNative.streamPlaybackInfo"
     ),
     "player/src/main/java/com/fluxa/app/player/TorrentStreamManager.kt" to listOf(
         "TorrentCorePolicy.plan",
         "TorrentCorePolicy.statusInfo"
     ),
-    "app/src/main/java/com/fluxa/app/ui/catalog/shared/player/PlayerScreenHelpers.kt" to listOf(
+    "app/src/main/java/com/fluxa/app/ui/catalog/PlayerScreenHelpers.kt" to listOf(
         "FluxaCoreNative.streamMatchesEpisode",
         "FluxaCoreNative.streamPlaybackInfo",
         "FluxaCoreNative.isTorrentPlaybackUrl"
@@ -53,26 +53,24 @@ val rustCoreDelegateFiles = mapOf(
     "data/src/main/java/com/fluxa/app/data/repository/StremioAddonManifestClient.kt" to listOf(
         "FluxaCoreNative.buildResourceUrl",
         "FluxaCoreNative.manifestFetchPlan",
-        "FluxaCoreNative.fetchAddonResource",
         "FluxaCoreNative.parseManifestJson",
         "FluxaCoreNative.resolveManifestAssets",
         "FluxaCoreNative.mergeLiveManifest"
     ),
     "data/src/main/java/com/fluxa/app/data/repository/StremioAddonResourceClient.kt" to listOf(
-        "FluxaCoreNative.fetchAddonResource",
         "FluxaCoreNative.parseAddonResourceResult",
         "FluxaCoreNative.parseExtraArgs"
     ),
     "player/src/main/java/com/fluxa/app/player/TorrentServerEngine.kt" to listOf(
-        "FluxaCoreNative.startTorrentServer",
-        "FluxaCoreNative.stopTorrentServer"
+        "FluxaStreamingNative.startTorrentServer",
+        "FluxaStreamingNative.stopTorrentServer"
     ),
     "player/src/main/java/com/fluxa/app/player/TorrentCorePolicy.kt" to listOf(
         "FluxaCoreNative.torrentRuntimeInfo",
         "FluxaCoreNative.torrentStatusInfo"
     ),
     "player/src/main/java/com/fluxa/app/player/MediaPlayerController.kt" to listOf(
-        "FluxaCoreNative.rewriteDolbyVisionProfile7Codecs"
+        "FluxaStreamingNative.dvRewriteSegmentBytes"
     ),
     "app/src/main/java/com/fluxa/app/ui/catalog/StreamSourceSelectionPolicy.kt" to listOf(
         "FluxaCoreNative.selectStreamIndex"
@@ -85,38 +83,34 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.discoverCatalogCacheKey",
         "FluxaCoreNative.providerSearchTerms"
     ),
-    "data/src/main/java/com/fluxa/app/domain/discovery/StreamDiscovery.kt" to listOf(
+    "app/src/main/java/com/fluxa/app/domain/discovery/StreamDiscovery.kt" to listOf(
         "FluxaCoreNative.streamDiscoveryExecutionPolicy"
     ),
     "data/src/main/java/com/fluxa/app/domain/discovery/MetadataFeeds.kt" to listOf(
-        "FluxaCoreNative.discoverCatalogLabel",
         "FluxaCoreNative.normalizeContentType",
         "FluxaCoreNative.stableFeedPart",
-        "FluxaCoreNative.metadataFeedHomeTitle",
         "FluxaCoreNative.effectiveMetadataFeedSelection",
         "FluxaCoreNative.toggleMetadataFeed",
         "FluxaCoreNative.setMetadataFeedGroupEnabled",
         "FluxaCoreNative.orderedMetadataFeedKeys",
         "FluxaCoreNative.moveMetadataFeedOrder"
     ),
-    "app/src/main/java/com/fluxa/app/ui/catalog/ContentIdentity.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/domain/ContentIdentity.kt" to listOf(
         "FluxaCoreNative.contentTraktKey",
-        "FluxaCoreNative.contentBillboardKey",
         "FluxaCoreNative.contentMergeKeys",
-        "FluxaCoreNative.contentWatchedKeys",
-        "FluxaCoreNative.normalizedBillboardTitle"
+        "FluxaCoreNative.contentWatchedKeysBatch"
     ),
-    "app/src/main/java/com/fluxa/app/ui/catalog/shared/player/PlayerPlaybackRuntimeEffects.kt" to listOf(
+    "app/src/main/java/com/fluxa/app/ui/catalog/PlayerPlaybackRuntimeEffects.kt" to listOf(
         "viewModel.resolvePlayerPlayback"
     ),
-    "app/src/main/java/com/fluxa/app/ui/catalog/shared/player/PlayerLoadingEffects.kt" to listOf(
+    "app/src/main/java/com/fluxa/app/ui/catalog/PlayerLoadingEffects.kt" to listOf(
         "viewModel.loadPlayerStreams"
     ),
-    "app/src/main/java/com/fluxa/app/core/rust/FluxaHeadlessEffectRunner.kt" to listOf(
+    "core/src/commonMain/kotlin/com/fluxa/app/core/rust/FluxaHeadlessEffectRunner.kt" to listOf(
         "FluxaHeadlessEngine",
         "HeadlessPlatformEnvironment"
     ),
-    "app/src/main/java/com/fluxa/app/core/rust/FluxaCoreNative.kt" to listOf(
+    "data/src/main/java/com/fluxa/app/core/rust/FluxaCoreNative.kt" to listOf(
         "NativeCoreCapabilitySet",
         "coreCapabilitiesJsonNative"
     ),
@@ -124,7 +118,7 @@ val rustCoreDelegateFiles = mapOf(
         "com.fluxa.core.uniffi",
         "FluxaHeadlessEngine"
     ),
-    "app/src/main/java/com/fluxa/app/ui/catalog/shared/player/PlayerScrobbleCoordinator.kt" to listOf(
+    "app/src/main/java/com/fluxa/app/ui/catalog/PlayerScrobbleCoordinator.kt" to listOf(
         "FluxaCoreNative.playerProgressPercent",
         "FluxaCoreNative.playerShouldSendScrobbleStart",
         "FluxaCoreNative.playerShouldMarkScrobbleStopped",
@@ -133,7 +127,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.playerShouldSavePeriodicProgress",
         "FluxaCoreNative.playerShouldSaveOnDispose"
     ),
-    "app/src/main/java/com/fluxa/app/ui/catalog/shared/player/TrackSelectionState.kt" to listOf(
+    "app/src/main/java/com/fluxa/app/ui/catalog/TrackSelectionState.kt" to listOf(
         "FluxaCoreNative.playerTrackState",
         "FluxaCoreNative.subtitleLanguageMatches",
         "preferredSubtitleIndex"
@@ -161,9 +155,10 @@ val rustCoreDelegateFiles = mapOf(
     ),
     "data/src/main/java/com/fluxa/app/data/local/ProfileManager.kt" to listOf(
         "FluxaCoreNative.sanitizeProfile",
-        "FluxaCoreNative.profileLocalAddonsKey",
+        "FluxaCoreNative.profileLocalAddonsKey"
+    ),
+    "data/src/main/java/com/fluxa/app/data/local/UserProfileSafePrefs.kt" to listOf(
         "FluxaCoreNative.safePlayerBufferCacheMb",
-        "FluxaCoreNative.safeDolbyVisionFallbackMode",
         "FluxaCoreNative.safeStreamSourceSelectionMode"
     ),
     "app/src/main/java/com/fluxa/app/plugins/PluginManager.kt" to listOf(
@@ -175,7 +170,6 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaHeadlessRuntimeFactory",
         "FluxaAndroidHeadlessEnvironment",
         "detailLoadRequested",
-        "detailSelectedAddonChanged",
         "markWatchedRequested",
         "toggleWatchlistRequested"
     ),
@@ -291,13 +285,25 @@ tasks.register("checkAppleTypedCatalogBridge") {
                 "AppleCatalogRowSnapshot",
                 "AppleCatalogItemSnapshot"
             ),
-            "appleApp/iOS/FluxaIosApp.swift" to listOf("setCatalogHomeRefreshHandler")
+            "appleApp/iOS/FluxaIosApp.swift" to listOf("setCatalogHomeRefreshHandler"),
+            "appleApp/AppleCore/FluxaAppleAddonCatalogResolver.swift" to listOf(
+                "parseAddonManifest",
+                "normalizeAddonManifestUrl",
+                "addonCatalogUrl",
+                "addonResourceUrl"
+            ),
+            "appleApp/AppleCore/FluxaAppleCatalogLoader.swift" to listOf("parseCatalogItems"),
+            "appleApp/AppleCore/FluxaAppleAddonResourceLoader.swift" to listOf("parseDirectStreams")
         )
         val forbiddenTokens = listOf(
             "updateCatalogHomeJson",
             "FluxaAppleCatalogRefreshRequested",
             "NSNotificationCenter",
-            "NotificationCenter.default.addObserver"
+            "NotificationCenter.default.addObserver",
+            "private struct FluxaAppleAddonManifest",
+            "private struct FluxaAppleStremioCatalogResponse",
+            "struct FluxaAppleCatalogRow",
+            "struct FluxaAppleCatalogItem"
         )
         val violations = requiredFiles.flatMap { (relativePath, requiredTokens) ->
             val file = rootProject.file(relativePath)
@@ -339,6 +345,65 @@ tasks.register("checkAppleTypedCatalogBridge") {
         }
         if (legacyViolations.isNotEmpty()) {
             throw GradleException(legacyViolations.joinToString("\n"))
+        }
+    }
+}
+
+tasks.register("checkAppleTvosKmpBoundary") {
+    group = "verification"
+    description = "Fails when tvOS links Compose UI or duplicates shared Stremio protocol logic."
+
+    doLast {
+        val projectText = rootProject.file("appleApp/project.yml").readText()
+        val handlerText = rootProject.file("appleApp/tvOS/FluxaTvosEffectHandler.swift").readText()
+        val requiredProjectTokens = listOf(
+            ":core:embedAndSignAppleFrameworkForXcode",
+            ":data:embedAndSignAppleFrameworkForXcode",
+            ":player:embedAndSignAppleFrameworkForXcode",
+            "FluxaAppleAddonCatalogResolver.swift",
+            "FluxaAppleCatalogLoader.swift"
+        )
+        val requiredHandlerTokens = listOf(
+            "import FluxaData",
+            "AppleStremioBridge.shared.parseManifest",
+            "AppleStremioBridge.shared.parseCatalogItems",
+            "AppleStremioBridge.shared.catalogUrl"
+        )
+        val violations = requiredProjectTokens.filterNot(projectText::contains).map { token ->
+            "appleApp/project.yml must contain $token"
+        } + requiredHandlerTokens.filterNot(handlerText::contains).map { token ->
+            "appleApp/tvOS/FluxaTvosEffectHandler.swift must contain $token"
+        } + listOf("import FluxaShared", "JSONDecoder()", "struct Stremio").filter(handlerText::contains).map { token ->
+            "appleApp/tvOS/FluxaTvosEffectHandler.swift must not contain $token"
+        }
+        if (violations.isNotEmpty()) {
+            throw GradleException(violations.joinToString("\n"))
+        }
+    }
+}
+
+tasks.register("checkSharedPlayerBoundary") {
+    group = "verification"
+    description = "Fails when platform hosts duplicate shared player state or render models."
+
+    doLast {
+        val commonContracts = rootProject.file(
+            "player/src/commonMain/kotlin/com/fluxa/app/shared/feature/player/PlayerContracts.kt"
+        ).readText()
+        val androidModels = rootProject.file("app/src/main/java/com/fluxa/app/ui/catalog/PlayerUiModels.kt").readText()
+        val applePresenter = rootProject.file("appleApp/iOS/FluxaApplePlaybackPresenter.swift").readText()
+        val violations = listOf(
+            "data class PlayerContentUiModel" to commonContracts.contains("data class PlayerContentUiModel"),
+            "Android shared PlayerContentUiModel import" to androidModels.contains(
+                "import com.fluxa.app.shared.feature.player.PlayerContentUiModel"
+            ),
+            "Apple NativePlayerStateBridge" to applePresenter.contains("NativePlayerStateBridge")
+        ).filterNot { it.second }.map { it.first } +
+            listOf("data class PlayerContentUiModel", "class PlayerStateStore").filter(androidModels::contains).map { token ->
+                "app/src/main/java/com/fluxa/app/ui/catalog/PlayerUiModels.kt must not contain $token"
+            }
+        if (violations.isNotEmpty()) {
+            throw GradleException(violations.joinToString("\n"))
         }
     }
 }

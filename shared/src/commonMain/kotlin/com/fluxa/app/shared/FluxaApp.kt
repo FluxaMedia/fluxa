@@ -103,6 +103,9 @@ import com.fluxa.app.shared.feature.settings.SettingsUiState
 import com.fluxa.app.shared.feature.search.SearchAction
 import com.fluxa.app.shared.feature.search.SearchScreen
 import com.fluxa.app.shared.feature.search.SearchUiState
+import com.fluxa.app.shared.feature.player.PlayerControlsSurface
+import com.fluxa.app.shared.feature.player.PlayerRenderAction
+import com.fluxa.app.shared.feature.player.PlayerRenderState
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
 
@@ -190,6 +193,8 @@ fun FluxaApp(
     onProfileSave: (ProfileEditUiModel) -> Unit = {},
     onProfileDelete: (() -> Unit)? = null,
     onProfileEditCancel: () -> Unit = {},
+    playerState: PlayerRenderState? = null,
+    onPlayerAction: (PlayerRenderAction) -> Unit = {},
     biometricAvailable: Boolean = false,
     showNavigationBar: Boolean = true,
     modifier: Modifier = Modifier
@@ -201,10 +206,11 @@ fun FluxaApp(
                 .background(FluxaColors.background)
         ) {
             val screenKey = when {
+                playerState?.content != null -> "player:${playerState.content?.id.orEmpty()}"
                 state.editingProfile != null -> "profileEdit"
                 state.showSourceSelection -> "sources"
                 state.selectedDetail != null -> "detail:${state.selectedDetail.id}"
-                libraryState?.folderDetail?.folder != null -> "folder:${libraryState.folderDetail.folder!!.id}"
+                libraryState?.folderDetail?.folder != null -> "folder:${libraryState.folderDetail.folder.id}"
                 state.selectedCategoryId != null -> "category:${state.selectedCategoryId}"
                 state.showNotifications -> "notifications"
                 else -> "dest:${state.destination}"
@@ -219,6 +225,12 @@ fun FluxaApp(
                 modifier = Modifier.weight(1f)
             ) { _ ->
             when {
+                playerState?.content != null -> PlayerControlsSurface(
+                    state = playerState,
+                    language = state.language,
+                    onAction = onPlayerAction,
+                    modifier = Modifier.fillMaxSize()
+                )
                 state.editingProfile != null && profileState != null -> ProfileEditScreen(
                     initialProfile = (state.editingProfile as? ProfileEditTarget.Existing)?.let { target ->
                         profileState.profiles.firstOrNull { it.id == target.id }
@@ -258,6 +270,7 @@ fun FluxaApp(
                 )
                 libraryState?.folderDetail?.folder != null -> LibraryFolderDetailScreen(
                     state = libraryState.folderDetail,
+                    language = state.language,
                     onBack = { onLibraryAction(LibraryAction.FolderClosed) },
                     onItemSelected = onLibraryItemSelected,
                     modifier = Modifier.fillMaxSize()

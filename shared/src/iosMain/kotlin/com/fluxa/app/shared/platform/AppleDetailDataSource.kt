@@ -7,6 +7,8 @@ import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState
+import com.fluxa.app.data.local.WatchlistStore
+import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
@@ -52,7 +54,9 @@ data class AppleDetailStreamSnapshot(
     val requestHeadersJson: String = "{}"
 )
 
-class AppleDetailDataSource : DetailDataSource {
+class AppleDetailDataSource(
+    private val watchlistStore: WatchlistStore
+) : DetailDataSource {
     private val state = MutableStateFlow(DetailUiState())
     private var onLoadRequested: (AppleDetailRequestSnapshot) -> Unit = {}
     private var onWatchlistRequested: (AppleDetailRequestSnapshot) -> Unit = {}
@@ -64,6 +68,23 @@ class AppleDetailDataSource : DetailDataSource {
     }
 
     override suspend fun toggleWatchlist(id: String, type: String) {
+        val content = state.value.content
+        if (content != null) {
+            watchlistStore.toggleWatchlist(
+                Meta(
+                    id = content.id,
+                    name = content.title,
+                    type = content.type,
+                    poster = content.posterUrl,
+                    background = content.backgroundUrl,
+                    logo = content.logoUrl,
+                    description = content.description
+                )
+            )
+            state.value = state.value.copy(
+                content = content.copy(isInWatchlist = watchlistStore.isInWatchlist(id))
+            )
+        }
         onWatchlistRequested(AppleDetailRequestSnapshot(id, type, title = state.value.content?.title))
     }
 
@@ -72,6 +93,10 @@ class AppleDetailDataSource : DetailDataSource {
     }
 
     override suspend fun selectEpisode(episodeId: String) {
+        Unit
+    }
+
+    override suspend fun loadSources(contentId: String, contentType: String, episodeId: String?) {
         Unit
     }
 

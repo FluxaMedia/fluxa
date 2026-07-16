@@ -13,12 +13,6 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class WatchedContentDurationRecord(
-    val contentId: String,
-    val videoId: String?,
-    val duration: Long
-)
-
 @OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class WatchlistManager @Inject constructor(

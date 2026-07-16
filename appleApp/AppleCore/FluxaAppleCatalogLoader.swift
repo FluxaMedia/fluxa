@@ -1,3 +1,4 @@
+import FluxaShared
 import Foundation
 
 struct FluxaAppleCatalogRequest: Sendable {
@@ -11,20 +12,13 @@ struct FluxaAppleCatalogRequest: Sendable {
 
 final class FluxaAppleCatalogLoader {
     private let session: URLSession
-    private let decoder = JSONDecoder()
-    private let encoder = JSONEncoder()
 
     init(session: URLSession = .shared) {
         self.session = session
     }
 
-    func loadSnapshot(requests: [FluxaAppleCatalogRequest]) async throws -> String {
-        let rows = try await loadRows(requests: requests)
-        return String(decoding: try encoder.encode(FluxaAppleCatalogSnapshot(rows: rows)), as: UTF8.self)
-    }
-
-    func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [FluxaAppleCatalogRow] {
-        var rows = [FluxaAppleCatalogRow]()
+    func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [AppleCatalogRowSnapshot] {
+        var rows = [AppleCatalogRowSnapshot]()
         var lastError: Error?
         for request in requests {
             do {
@@ -33,24 +27,33 @@ final class FluxaAppleCatalogLoader {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                let catalog = try decoder.decode(FluxaAppleStremioCatalogResponse.self, from: data)
+                guard let catalogItems = FluxaApple.shared.parseCatalogItems(
+                    body: String(decoding: data, as: UTF8.self),
+                    fallbackType: request.contentType,
+                    addonTransportUrl: request.addonTransportUrl,
+                    catalogType: request.catalogType
+                ) else {
+                    throw URLError(.cannotParseResponse)
+                }
                 rows.append(
-                    FluxaAppleCatalogRow(
+                    AppleCatalogRowSnapshot(
                         id: request.id,
                         title: request.title,
-                        canLoadMore: false,
-                        items: catalog.metas.map {
-                            FluxaAppleCatalogItem(
+                        items: catalogItems.map {
+                            AppleCatalogItemSnapshot(
                                 id: $0.id,
-                                type: $0.type ?? request.contentType,
-                                title: $0.name,
-                                subtitle: $0.releaseInfo ?? "",
-                                artworkUrl: $0.poster,
-                                logoUrl: $0.logo,
-                                addonTransportUrl: request.addonTransportUrl,
-                                catalogType: request.catalogType
+                                type: $0.type,
+                                title: $0.title,
+                                subtitle: $0.subtitle,
+                                artworkUrl: $0.artworkUrl,
+                                logoUrl: $0.logoUrl,
+                                addonTransportUrl: $0.addonTransportUrl,
+                                catalogType: $0.catalogType,
+                                progress: nil,
+                                topTenRank: nil
                             )
-                        }
+                        },
+                        canLoadMore: false
                     )
                 )
             } catch {
@@ -63,8 +66,8 @@ final class FluxaAppleCatalogLoader {
         return rows
     }
 
-    func loadSearchItems(requests: [FluxaAppleSearchRequest]) async throws -> [FluxaAppleCatalogItem] {
-        var items = [FluxaAppleCatalogItem]()
+    func loadSearchItems(requests: [FluxaAppleSearchRequest]) async throws -> [AppleCatalogItemSnapshot] {
+        var items = [AppleCatalogItemSnapshot]()
         var lastError: Error?
         for request in requests {
             do {
@@ -73,17 +76,26 @@ final class FluxaAppleCatalogLoader {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                let catalog = try decoder.decode(FluxaAppleStremioCatalogResponse.self, from: data)
-                items.append(contentsOf: catalog.metas.map {
-                    FluxaAppleCatalogItem(
+                guard let catalogItems = FluxaApple.shared.parseCatalogItems(
+                    body: String(decoding: data, as: UTF8.self),
+                    fallbackType: request.contentType,
+                    addonTransportUrl: request.addonTransportUrl,
+                    catalogType: request.catalogType
+                ) else {
+                    throw URLError(.cannotParseResponse)
+                }
+                items.append(contentsOf: catalogItems.map {
+                    AppleCatalogItemSnapshot(
                         id: $0.id,
-                        type: $0.type ?? request.contentType,
-                        title: $0.name,
-                        subtitle: $0.releaseInfo ?? "",
-                        artworkUrl: $0.poster,
-                        logoUrl: $0.logo,
-                        addonTransportUrl: request.addonTransportUrl,
-                        catalogType: request.catalogType
+                        type: $0.type,
+                        title: $0.title,
+                        subtitle: $0.subtitle,
+                        artworkUrl: $0.artworkUrl,
+                        logoUrl: $0.logoUrl,
+                        addonTransportUrl: $0.addonTransportUrl,
+                        catalogType: $0.catalogType,
+                        progress: nil,
+                        topTenRank: nil
                     )
                 })
             } catch {
@@ -95,40 +107,4 @@ final class FluxaAppleCatalogLoader {
         }
         return items
     }
-}
-
-private struct FluxaAppleStremioCatalogResponse: Decodable {
-    let metas: [FluxaAppleStremioMeta]
-}
-
-private struct FluxaAppleStremioMeta: Decodable {
-    let id: String
-    let type: String?
-    let name: String
-    let poster: String?
-    let logo: String?
-    let releaseInfo: String?
-}
-
-struct FluxaAppleCatalogSnapshot: Encodable {
-    let rows: [FluxaAppleCatalogRow]
-    let isLoading = false
-}
-
-struct FluxaAppleCatalogRow: Encodable {
-    let id: String
-    let title: String
-    let canLoadMore: Bool
-    let items: [FluxaAppleCatalogItem]
-}
-
-struct FluxaAppleCatalogItem: Encodable {
-    let id: String
-    let type: String
-    let title: String
-    let subtitle: String
-    let artworkUrl: String?
-    let logoUrl: String?
-    let addonTransportUrl: String?
-    let catalogType: String?
 }
