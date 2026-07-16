@@ -11,12 +11,12 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     private lazy var stateBridge = NativePlayerStateBridge(
         callbacks: NativePlayerCommandCallbacks(
             setPlaying: { [weak self] playing in
-                playing ? self?.activePlayer?.play() : self?.activePlayer?.pause()
+                playing.boolValue ? self?.activePlayer?.play() : self?.activePlayer?.pause()
             },
             seekTo: { [weak self] positionMs in
                 self?.activePlayer?.seek(to: CMTime(seconds: Double(positionMs) / 1000, preferredTimescale: 600))
             },
-            setVolume: { [weak self] volume in self?.activePlayer?.volume = volume },
+            setVolume: { [weak self] volume in self?.activePlayer?.volume = volume.floatValue },
             setSubtitleEnabled: { _ in },
             stop: { [weak self] in self?.activePlayer?.pause() }
         )

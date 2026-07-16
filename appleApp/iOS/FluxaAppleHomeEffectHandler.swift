@@ -1,4 +1,5 @@
 import Foundation
+import FluxaShared
 
 final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
     private let configurationStore: FluxaAppleAddonConfigurationStore
