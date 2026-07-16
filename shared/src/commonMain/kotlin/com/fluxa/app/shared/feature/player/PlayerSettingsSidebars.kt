@@ -1,64 +1,31 @@
-@file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
-package com.fluxa.app.ui.catalog
+package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
-import com.fluxa.app.data.local.*
-import com.fluxa.app.data.remote.*
-import com.fluxa.app.data.repository.*
-import com.fluxa.app.domain.discovery.*
-import com.fluxa.app.shared.feature.player.SeekIconButton
+import com.fluxa.app.player.MediaTrack
+import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.FluxaIcons
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import coil3.compose.AsyncImage
-import com.fluxa.app.player.MediaTrack
-import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun UniversalSettingsSidebar(
@@ -84,6 +51,7 @@ fun UniversalSettingsSidebar(
     onSubtitleOutlineOpacityChange: (Float) -> Unit,
     deviceType: DeviceType,
     lang: String = "en",
+    languageDisplayName: (String) -> String = { it },
     onClose: () -> Unit
 ) {
     val title = when (activeTab) {
@@ -106,10 +74,7 @@ fun UniversalSettingsSidebar(
     ) {
         val listMaxHeight = if (activeTab == 0 || activeTab == 1) 720.dp else if (deviceType == DeviceType.TV) 420.dp else 300.dp
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Crossfade(
-                targetState = activeTab,
-                
-            ) { tab ->
+            Crossfade(targetState = activeTab) { tab ->
                 when (tab) {
                     0 -> {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
@@ -124,7 +89,7 @@ fun UniversalSettingsSidebar(
                             }
                             items(audioTracks, key = { it.id }) { track ->
                                 val title = if (track.language != null) {
-                                    nativeLanguageName(track.language!!)
+                                    languageDisplayName(track.language!!)
                                 } else {
                                     track.label
                                 }
@@ -195,7 +160,7 @@ fun UniversalSettingsSidebar(
                                     title = track.label,
                                     isSelected = track == currentSubtitle,
                                     onClick = { onSelectSubtitle(track) },
-                                    subtitle = track.language?.let { nativeLanguageName(it) } ?: AppStrings.t(lang, "player.embedded_subtitle"),
+                                    subtitle = track.language?.let { languageDisplayName(it) } ?: AppStrings.t(lang, "player.embedded_subtitle"),
                                     deviceType = deviceType,
                                     leadingIcon = FluxaIcons.Subtitles
                                 )
@@ -251,7 +216,7 @@ fun UniversalSettingsSidebar(
 }
 
 private fun formatSpeedLabel(speed: Float): String {
-    val rounded = Math.round(speed * 100) / 100f
+    val rounded = (speed * 100).roundToInt() / 100f
     val text = if (rounded == rounded.toInt().toFloat()) rounded.toInt().toString() else rounded.toString()
     return "${text}x"
 }
@@ -323,8 +288,10 @@ private fun DelayAdjustmentItem(
 }
 
 private fun formatDelayMs(valueMs: Long): String {
-    val seconds = valueMs / 1000.0
-    return "${if (valueMs >= 0) "+" else ""}${String.format(Locale.US, "%.2f", seconds)}s"
+    val hundredths = (kotlin.math.abs(valueMs) / 10) % 100
+    val seconds = kotlin.math.abs(valueMs) / 1000
+    val sign = if (valueMs >= 0) "+" else "-"
+    return "$sign$seconds.${hundredths.toString().padStart(2, '0')}s"
 }
 
 @Composable

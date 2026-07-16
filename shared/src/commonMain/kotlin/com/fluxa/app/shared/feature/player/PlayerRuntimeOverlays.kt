@@ -1,8 +1,11 @@
-@file:OptIn(androidx.compose.animation.ExperimentalAnimationApi::class)
+package com.fluxa.app.shared.feature.player
 
-package com.fluxa.app.ui.catalog
+import com.fluxa.app.data.remote.IntroTimestamps
+import com.fluxa.app.data.remote.Video
+import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.FluxaDimensions
+import com.fluxa.app.ui.catalog.FluxaIcons
 
-import com.fluxa.app.shared.feature.player.PlayerSeekFeedback
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -40,13 +43,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.fluxa.app.data.local.*
-import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.data.remote.IntroTimestamps
-import com.fluxa.app.data.remote.Video
 
 @Composable
-internal fun PlayerSkipSegmentOverlay(
+fun PlayerSkipSegmentOverlay(
     currentPosition: Long,
     skipSegments: List<IntroTimestamps>,
     dismissedSkipSegments: Set<String>,
@@ -117,13 +116,13 @@ internal fun PlayerSkipSegmentOverlay(
     }
 }
 
-internal enum class ZoomOverlayMode { Original, Fit, Zoom }
+enum class ZoomOverlayMode { Original, Fit, Zoom }
 
 @Composable
-internal fun BoxScope.PlayerTransientOverlays(
+fun BoxScope.PlayerTransientOverlays(
     showSegmentSkipFeedback: Boolean,
     holdSpeedVisible: Boolean,
-    activeProfile: UserProfile?,
+    holdSpeed: Float,
     deviceType: DeviceType,
     showVolumeBar: Boolean,
     currentVolume: Int,
@@ -209,7 +208,7 @@ internal fun BoxScope.PlayerTransientOverlays(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${activeProfile?.safeHoldSpeed ?: 2f}x",
+                    text = "${holdSpeed}x",
                     color = Color.White,
                     fontSize = if (deviceType == DeviceType.Mobile) 18.sp else 22.sp,
                     fontWeight = FontWeight.Black
@@ -256,6 +255,6 @@ internal fun BoxScope.PlayerTransientOverlays(
     }
 }
 
-internal fun IntroTimestamps.dismissKey(): String {
+fun IntroTimestamps.dismissKey(): String {
     return "$type:$startTime:$endTime"
 }

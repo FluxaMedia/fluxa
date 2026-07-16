@@ -34,6 +34,9 @@ import com.fluxa.app.player.MediaTrack
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.TorrentStreamStatus
+import com.fluxa.app.shared.feature.player.dismissKey
+import com.fluxa.app.shared.feature.player.playerInputControls
+import com.fluxa.app.shared.feature.player.playerText
 
 private fun markSegmentCooldownRemainingSec(state: PlayerScreenState, meta: Meta): Long? {
     val type = state.markSegmentType ?: return null
@@ -135,9 +138,10 @@ internal fun PlayerScreenContent(
                 deviceType = deviceType,
                 hasStartedPlaying = state.engine.playback.hasStartedPlaying,
                 showControls = state.showControls,
-                activeProfile = activeProfile,
-                activeEngine = activeEngine,
+                holdToSpeedEnabled = activeProfile?.safeHoldToSpeedEnabled != false,
+                holdSpeed = activeProfile?.safeHoldSpeed ?: 2f,
                 playbackSpeed = state.playbackSpeed,
+                onSetSpeed = { activeEngine?.setSpeed(it) },
                 onRaiseVolume = {
                     audioManager.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_RAISE, 0)
                     state.currentVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)

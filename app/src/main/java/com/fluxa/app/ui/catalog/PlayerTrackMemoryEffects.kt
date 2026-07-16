@@ -12,6 +12,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.player.MediaTrack
 import com.fluxa.app.player.PlayerEngine
+import com.fluxa.app.shared.feature.player.withCurrentEpisodeArtwork
 import java.util.Locale
 
 @Composable

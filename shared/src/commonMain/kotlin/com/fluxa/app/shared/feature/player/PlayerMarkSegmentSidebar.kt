@@ -1,4 +1,6 @@
-package com.fluxa.app.ui.catalog
+package com.fluxa.app.shared.feature.player
+
+import com.fluxa.app.ui.catalog.DeviceType
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,10 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.concurrent.TimeUnit
 
 @Composable
-internal fun MarkSegmentSidebar(
+fun MarkSegmentSidebar(
     deviceType: DeviceType,
     lang: String,
     selectedType: String?,
@@ -198,9 +199,9 @@ private fun MarkSegmentSubmitButton(enabled: Boolean, submitting: Boolean, label
 
 private fun formatSegmentTime(ms: Long): String {
     val totalSeconds = ms / 1000
-    val minutes = TimeUnit.SECONDS.toMinutes(totalSeconds)
-    val seconds = totalSeconds - TimeUnit.MINUTES.toSeconds(minutes)
-    return "%02d:%02d".format(minutes, seconds)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds - minutes * 60
+    return "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
 }
 
 private fun formatCooldown(remainingSec: Long): String {

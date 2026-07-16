@@ -23,14 +23,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
-data class TorrentStreamStatus(
-    val bufferProgress: Int = 0,
-    val detailedStatus: String = "",
-    val downloadSpeed: Double = 0.0,
-    val activePeers: Int = 0,
-    val totalPeers: Int = 0
-)
-
 sealed class TorrentStreamResult {
     data class Success(val url: String) : TorrentStreamResult()
     data class Error(val message: String) : TorrentStreamResult()

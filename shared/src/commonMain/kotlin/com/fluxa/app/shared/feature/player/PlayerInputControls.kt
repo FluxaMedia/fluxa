@@ -1,4 +1,6 @@
-package com.fluxa.app.ui.catalog
+package com.fluxa.app.shared.feature.player
+
+import com.fluxa.app.ui.catalog.DeviceType
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -10,20 +12,21 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import com.fluxa.app.data.local.*
-import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.player.PlayerEngine
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
-internal fun Modifier.playerInputControls(
+@OptIn(ExperimentalTime::class)
+fun Modifier.playerInputControls(
     deviceType: DeviceType,
     hasStartedPlaying: Boolean,
     showControls: Boolean,
-    activeProfile: UserProfile?,
-    activeEngine: PlayerEngine?,
+    holdToSpeedEnabled: Boolean,
+    holdSpeed: Float,
     playbackSpeed: Float,
+    onSetSpeed: (Float) -> Unit,
     onRaiseVolume: () -> Unit,
     onLowerVolume: () -> Unit,
     onShowControlsTemp: () -> Unit,
@@ -81,10 +84,9 @@ internal fun Modifier.playerInputControls(
                 Modifier.pointerInput(
                     hasStartedPlaying,
                     showControls,
-                    activeProfile?.safeHoldToSpeedEnabled,
-                    activeProfile?.safeHoldSpeed,
-                    playbackSpeed,
-                    activeEngine
+                    holdToSpeedEnabled,
+                    holdSpeed,
+                    playbackSpeed
                 ) {
                     detectTapGestures(
                         onPress = {
@@ -93,16 +95,16 @@ internal fun Modifier.playerInputControls(
                                 var appliedHoldSpeed = false
                                 val holdJob = launch {
                                     delay(260)
-                                    if (hasStartedPlaying && activeProfile?.safeHoldToSpeedEnabled != false) {
+                                    if (hasStartedPlaying && holdToSpeedEnabled) {
                                         appliedHoldSpeed = true
                                         onHoldSpeedVisibleChanged(true)
-                                        activeEngine?.setSpeed(activeProfile?.safeHoldSpeed ?: 2f)
+                                        onSetSpeed(holdSpeed)
                                     }
                                 }
                                 tryAwaitRelease()
                                 holdJob.cancel()
                                 if (appliedHoldSpeed) {
-                                    activeEngine?.setSpeed(originalSpeed)
+                                    onSetSpeed(originalSpeed)
                                     onHoldSpeedVisibleChanged(false)
                                 }
                             }
@@ -121,7 +123,7 @@ internal fun Modifier.playerInputControls(
                     var lastZoomMs = 0L
                     detectTransformGestures { _, _, zoom, _ ->
                         if (zoom != 1.0f) {
-                            val now = System.currentTimeMillis()
+                            val now = Clock.System.now().toEpochMilliseconds()
                             if (now - lastZoomMs > 350L) onPinchZoomGestureStart()
                             lastZoomMs = now
                             onPinchZoom(zoom)

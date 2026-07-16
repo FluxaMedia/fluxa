@@ -47,8 +47,16 @@ import com.fluxa.app.player.MpvAndroidSurfaceView
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.TorrentStreamStatus
+import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.shared.feature.player.ArtisticLoadingOverlay
+import com.fluxa.app.shared.feature.player.MarkSegmentSidebar
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
+import com.fluxa.app.shared.feature.player.PlayerSkipSegmentOverlay
 import com.fluxa.app.shared.feature.player.PlayerTopIconButton
+import com.fluxa.app.shared.feature.player.PlayerTransientOverlays
+import com.fluxa.app.shared.feature.player.SourceSidebar
+import com.fluxa.app.shared.feature.player.UniversalSettingsSidebar
+import com.fluxa.app.shared.feature.player.ZoomOverlayMode
 
 private data class ExoSurfaceConfig(
     val resizeMode: Int,
@@ -250,7 +258,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
         (!render.isVideoRendered && !(useMpvBackend && playback.hasStartedPlaying)) ||
         (playback.hasStartedPlaying && playback.isBuffering)
     if (showLoadingOverlay) {
-        ArtisticLoadingOverlay(content.background, content.logo, content.title, torrentStatus, deviceType, buffer, playerError, currentUrl, isSwitchingAudioSource, currentSourceIdx = currentStreamIndex + 1, totalSources = currentStreamsSize, playback, hasRenderedFirstFrame = render.isVideoRendered, lang = lang)
+        ArtisticLoadingOverlay(content.background, content.logo, content.title, torrentStatus, deviceType, buffer, playerError, currentUrl, isSwitchingAudioSource, currentSourceIdx = currentStreamIndex + 1, totalSources = currentStreamsSize, playback, hasRenderedFirstFrame = render.isVideoRendered, lang = lang, isTorrentUrl = FluxaCoreNative.isTorrentPlaybackUrl(currentUrl))
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -368,7 +376,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
     PlayerTransientOverlays(
         showSegmentSkipFeedback = showSegmentSkipFeedback,
         holdSpeedVisible = holdSpeedVisible,
-        activeProfile = activeProfile,
+        holdSpeed = activeProfile?.safeHoldSpeed ?: 2f,
         deviceType = deviceType,
         showVolumeBar = showVolumeBar,
         currentVolume = currentVolume,
@@ -537,6 +545,7 @@ internal fun PlayerSettingsPanel(
             onSubtitleOutlineOpacityChange = onSubtitleOutlineOpacityChange,
             deviceType = deviceType,
             lang = lang,
+            languageDisplayName = ::nativeLanguageName,
             onClose = onCloseSettings
         )
     }
