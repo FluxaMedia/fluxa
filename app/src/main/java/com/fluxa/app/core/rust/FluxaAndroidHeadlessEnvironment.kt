@@ -113,6 +113,24 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     private val _streamProgressFlow = MutableSharedFlow<StreamProgressUpdate>(replay = 0, extraBufferCapacity = 32)
     val streamProgressFlow: SharedFlow<StreamProgressUpdate> = _streamProgressFlow
 
+    private val authEffectHandler = AndroidAuthEffectHandler(
+        repository = repository,
+        traktRepository = traktRepository,
+        watchlistManager = watchlistManager,
+        nuvioAccountImportCoordinator = nuvioAccountImportCoordinator,
+        gson = gson
+    )
+
+    private val calendarEffectHandler = AndroidCalendarEffectHandler(
+        context = context,
+        repository = repository,
+        watchlistManager = watchlistManager,
+        gson = gson
+    )
+
+    private val offlineEffectHandler = AndroidOfflineEffectHandler(context, gson)
+    private val cloudStreamRuntime = AndroidCloudStreamRuntime(pluginManager)
+
     override suspend fun execute(effect: NativeHeadlessEffect): HeadlessEffectCompletion = withContext(Dispatchers.IO) {
         runCatching {
             syncWatchlistProfile(effect)
@@ -148,17 +166,17 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 "fetchDiscoverPage" -> fetchCatalogPage(effect)
                 "fetchSeasonEpisodes" -> fetchSeasonEpisodes(effect)
                 "fetchSubtitles" -> fetchSubtitles(effect)
-                "runExternalSync" -> runExternalSync(effect)
-                "runAuthFlow" -> runAuthFlow(effect)
-                "exchangeAuthCode" -> exchangeAuthCode(effect)
-                "refreshAuthToken" -> refreshAuthToken(effect)
-                "syncExternalIntegration" -> syncExternalIntegration(effect)
+                "runExternalSync",
+                "runAuthFlow",
+                "exchangeAuthCode",
+                "refreshAuthToken",
+                "syncExternalIntegration" -> authEffectHandler.execute(effect)
                 "writeSettings" -> writeSettings(effect)
-                "readCalendarMonth" -> readCalendarMonth(effect)
-                "replaceExternalContinueWatching" -> replaceExternalContinueWatching(effect)
-                "updateCalendarWidget" -> updateCalendarWidget(effect)
-                "notifyReleasedEpisodes" -> notifyReleasedEpisodes(effect)
-                "enqueueOfflineDownload" -> enqueueOfflineDownload(effect)
+                "readCalendarMonth",
+                "replaceExternalContinueWatching",
+                "updateCalendarWidget",
+                "notifyReleasedEpisodes" -> calendarEffectHandler.execute(effect)
+                "enqueueOfflineDownload" -> offlineEffectHandler.enqueue(effect)
                 else -> error(effect, "unsupported_effect")
             }
         }.getOrElse { throwable ->
@@ -1070,196 +1088,6 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         return ok(effect, mapOf("subtitles" to stream?.subtitles.orEmpty()))
     }
 
-    private suspend fun runExternalSync(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val profile = effect.payload.profile() ?: return ok(effect, emptyMap<String, Any?>())
-        if (effect.payload.string("provider") == "nuvio") {
-            val updatedProfile = nuvioAccountImportCoordinator.sync(profile) {}
-            return ok(effect, mapOf("profile" to updatedProfile))
-        }
-        return ok(
-            effect,
-            mapOf(
-                "snapshot" to when (effect.payload.string("provider")) {
-                    "trakt" -> traktRepository.getSyncSnapshot(profile, effect.payload.string("language", profile.safeLanguage))
-                    else -> repository.getExternalContinueWatching(profile, effect.payload.string("language", profile.safeLanguage))
-                }
-            )
-        )
-    }
-
-    private suspend fun runAuthFlow(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        return when (effect.payload.string("provider")) {
-            "trakt" -> when (effect.payload.string("mode")) {
-                "deviceCode" -> ok(effect, repository.createTraktDeviceCode())
-                else -> error(effect, "unsupported_auth_mode")
-            }
-            else -> error(effect, "unsupported_auth_provider")
-        }
-    }
-
-    private suspend fun exchangeAuthCode(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val payload = effect.payload
-        val profile = payload.profile() ?: return error(effect, "missing_profile")
-        val updated = when (payload.string("provider")) {
-            "trakt" -> {
-                val response = repository.exchangeTraktCode(payload.string("code"))
-                profile.copy(
-                    traktAccessToken = response.accessToken,
-                    traktRefreshToken = response.refreshToken,
-                    traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(response.createdAt, response.expiresIn)
-                )
-            }
-            "traktDevice" -> {
-                val response = repository.exchangeTraktDeviceCode(payload.string("code"))
-                if (!response.isSuccessful) {
-                    val errorCode = response.errorBody()?.string()?.let(FluxaCoreNative::traktOAuthErrorCode)
-                    return ok(
-                        effect,
-                        mapOf(
-                            "status" to "pending",
-                            "errorCode" to (errorCode ?: "http_${response.code()}"),
-                            "httpCode" to response.code(),
-                            "retryAfterSeconds" to response.headers()["Retry-After"]?.toLongOrNull()
-                        )
-                    )
-                }
-                val tokenResponse = response.body() ?: return error(effect, "empty_device_token")
-                profile.copy(
-                    traktAccessToken = tokenResponse.accessToken,
-                    traktRefreshToken = tokenResponse.refreshToken,
-                    traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(tokenResponse.createdAt, tokenResponse.expiresIn)
-                )
-            }
-            "mal" -> {
-                val response = repository.exchangeMalCode(payload.string("code"), payload.string("codeVerifier"))
-                profile.copy(
-                    malAccessToken = response.accessToken,
-                    malRefreshToken = response.refreshToken,
-                    malTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
-                )
-            }
-            "simkl" -> {
-                val response = repository.exchangeSimklCode(payload.string("code"))
-                profile.copy(simklAccessToken = response.accessToken)
-            }
-            "anilist" -> {
-                val response = repository.exchangeAnilistCode(payload.string("code"))
-                profile.copy(
-                    anilistAccessToken = response.accessToken,
-                    anilistRefreshToken = response.refreshToken,
-                    anilistTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
-                )
-            }
-            else -> return error(effect, "unsupported_auth_provider")
-        }
-        return ok(effect, mapOf("profile" to updated))
-    }
-
-    private suspend fun refreshAuthToken(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val payload = effect.payload
-        val profile = payload.profile() ?: return error(effect, "missing_profile")
-        val updated = when (payload.string("provider")) {
-            "trakt" -> refreshTraktTokenIfNeeded(profile)
-            "mal" -> refreshMalTokenIfNeeded(profile)
-            else -> return error(effect, "unsupported_auth_provider")
-        }
-        return ok(effect, mapOf("profile" to updated))
-    }
-
-    private suspend fun refreshTraktTokenIfNeeded(profile: UserProfile): UserProfile {
-        val refreshToken = profile.traktRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
-        val refreshWindowMs = 24L * 60L * 60L * 1000L
-        if (!profile.traktAccessToken.isNullOrBlank() && profile.safeTraktTokenExpiresAt > System.currentTimeMillis() + refreshWindowMs) {
-            return profile
-        }
-        return runCatching {
-            val response = traktRepository.refreshTraktToken(refreshToken)
-            profile.copy(
-                traktAccessToken = response.accessToken,
-                traktRefreshToken = response.refreshToken,
-                traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(response.createdAt, response.expiresIn)
-            )
-        }.getOrElse { throwable ->
-            Log.w("Trakt", "Token refresh failed", throwable)
-            val status = (throwable as? retrofit2.HttpException)?.code()
-            if (status == 400 || status == 401) {
-                profile.copy(traktAccessToken = null, traktRefreshToken = null, traktTokenExpiresAt = null)
-            } else {
-                profile
-            }
-        }
-    }
-
-    private suspend fun refreshMalTokenIfNeeded(profile: UserProfile): UserProfile {
-        val refreshToken = profile.malRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
-        val refreshWindowMs = 24L * 60L * 60L * 1000L
-        if (!profile.malAccessToken.isNullOrBlank() && profile.safeMalTokenExpiresAt > System.currentTimeMillis() + refreshWindowMs) {
-            return profile
-        }
-        return runCatching {
-            val response = repository.refreshMalToken(refreshToken)
-            profile.copy(
-                malAccessToken = response.accessToken,
-                malRefreshToken = response.refreshToken ?: refreshToken,
-                malTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
-            )
-        }.getOrElse { throwable ->
-            Log.w("Mal", "Token refresh failed", throwable)
-            val status = (throwable as? retrofit2.HttpException)?.code()
-            if (status == 400 || status == 401) {
-                profile.copy(malAccessToken = null, malRefreshToken = null, malTokenExpiresAt = null)
-            } else {
-                profile
-            }
-        }
-    }
-
-    private suspend fun syncExternalIntegration(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val payload = effect.payload
-        val profile = payload.profile() ?: return error(effect, "missing_profile")
-        if (payload.string("provider") == "stremio") {
-            if (profile.authKey.isBlank()) return error(effect, "missing_stremio_token")
-            val addons = repository.getUserAddons(profile.authKey, forceRefresh = true)
-            val library = repository.getLibraryItems(profile.authKey)
-            val updated = profile.copy(localAddons = addons.map { addon -> addon.transportUrl }.distinct())
-            return ok(
-                effect,
-                mapOf(
-                    "profile" to updated,
-                    "snapshot" to mapOf("addons" to addons, "library" to library),
-                    "externalContinueWatching" to library
-                )
-            )
-        }
-        val traktToken = profile.traktAccessToken
-        if (traktToken.isNullOrBlank()) return error(effect, "missing_trakt_token")
-        val language = payload.string("language", profile.safeLanguage)
-        val snapshot = traktRepository.getTraktSyncSnapshot(profile, language)
-        val watchedState = withTimeoutOrNull(8_000L) {
-            traktRepository.getTraktWatchedState(traktToken)
-        }
-        if (watchedState != null) {
-            watchlistManager.replaceExternalWatchedEpisodes("trakt", watchedState.episodeIdsBySeries)
-            watchlistManager.replaceExternalWatchedContentDurations("trakt", watchedState.durationRecords)
-        }
-        val externalItems = repository.getExternalContinueWatching(profile, language)
-        val updated = profile.copy(
-            traktLastSyncAt = System.currentTimeMillis(),
-            traktLastSyncedItems = snapshot.syncedItems,
-            traktLastContinueWatchingCount = snapshot.continueWatchingCount,
-            traktLastWatchlistCount = snapshot.watchlistCount
-        )
-        return ok(
-            effect,
-            mapOf(
-                "profile" to updated,
-                "snapshot" to snapshot,
-                "watchedState" to watchedState,
-                "externalContinueWatching" to externalItems
-            )
-        )
-    }
-
     private fun writeSettings(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         return ok(
             effect,
@@ -1267,73 +1095,6 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 "key" to effect.payload.string("key"),
                 "value" to effect.payload["value"]
             )
-        )
-    }
-
-    private suspend fun readCalendarMonth(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val profile = effect.payload.profile()
-        val year = effect.payload.number("year")?.toInt() ?: return error(effect, "missing_year")
-        val month = effect.payload.number("month")?.toInt() ?: return error(effect, "missing_month")
-        val plannedItems = effect.payload.list("plannedItems").mapNotNull { raw ->
-            runCatching { gson.fromJson(gson.toJsonTree(raw), Meta::class.java) }.getOrNull()
-        }
-        val result = EpisodeCalendarLoader(repository, watchlistManager).loadMonth(profile, year, month, plannedItems)
-        return ok(
-            effect,
-            mapOf(
-                "items" to result.items,
-                "localItems" to result.localItems,
-                "externalItems" to result.externalItems
-            )
-        )
-    }
-
-    private suspend fun replaceExternalContinueWatching(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val items = effect.payload.list("items").mapNotNull { raw ->
-            runCatching { gson.fromJson(gson.toJsonTree(raw), Meta::class.java) }.getOrNull()
-        }
-        watchlistManager.replaceExternalContinueWatching(items)
-        return ok(effect, mapOf("count" to items.size))
-    }
-
-    private fun updateCalendarWidget(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val profile = effect.payload.profile()
-        val items = calendarItems(effect)
-        CalendarWidgetProvider.updateCalendar(
-            context = context,
-            items = items,
-            language = profile?.safeLanguage ?: "en",
-            accentColorArgb = profile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt()
-        )
-        return ok(effect, mapOf("count" to items.size))
-    }
-
-    private suspend fun notifyReleasedEpisodes(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val profile = effect.payload.profile()
-        val items = calendarItems(effect)
-        EpisodeNotificationHelper.notifyReleasedEpisodes(
-            context = context,
-            profile = profile,
-            items = items,
-            todayIso = ReleaseDateUtils.todayIso()
-        )
-        return ok(effect, mapOf("count" to items.size))
-    }
-
-    private suspend fun enqueueOfflineDownload(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-        val payload = effect.payload
-        val result = OfflineDownloadManager.getInstance(context).enqueue(
-            profileId = payload.stringOrNull("profileId"),
-            meta = gson.fromJson(gson.toJsonTree(payload["meta"]), Meta::class.java),
-            video = payload.objectValue("video")?.let { gson.fromJson(gson.toJsonTree(it), Video::class.java) },
-            videoId = payload.stringOrNull("videoId"),
-            stream = gson.fromJson(gson.toJsonTree(payload["stream"]), Stream::class.java),
-            subtitle = payload.objectValue("subtitle")?.let { gson.fromJson(gson.toJsonTree(it), OfflineSubtitleOption::class.java) },
-            profileLanguage = payload.stringOrNull("language")
-        )
-        return result.fold(
-            onSuccess = { ok(effect, it) },
-            onFailure = { error(effect, it.message ?: "offline_download_failed") }
         )
     }
 
@@ -1363,207 +1124,15 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     private fun com.google.gson.JsonObject.getAsJsonArrayOrNull(key: String): JsonArray? =
         get(key)?.takeIf { it.isJsonArray }?.asJsonArray
 
-    internal fun calendarItems(effect: NativeHeadlessEffect): List<CalendarUpcomingItem> =
-        effect.payload.list("items").mapNotNull { raw ->
-            runCatching { gson.fromJson(gson.toJsonTree(raw), CalendarUpcomingItem::class.java) }.getOrNull()
-        }
-
     internal fun isTmdbContentId(id: String): Boolean =
         id.startsWith("tmdb:", ignoreCase = true) || id.toIntOrNull() != null
 
-    internal suspend fun loadCsNativeMetaDetail(id: String): MetaDetail? {
-        val (apiName, url) = CloudStreamCatalogClient.decodeCsId(id) ?: return null
-        val api = pluginManager.loadedApis.value.firstOrNull { it.name == apiName } ?: run {
-            Log.w("CS3Detail", "Plugin not found: $apiName")
-            return null
-        }
-        val runner = ExternalExtensionRunner()
-        val load = withTimeoutOrNull(20_000L) { runner.loadContent(api, url) } ?: run {
-            Log.w("CS3Detail", "$apiName: loadContent timed out or returned null for url=$url")
-            return null
-        }
-        Log.d("CS3Detail", "$apiName: load type=${load.type}, episodeCount=${load.episodes?.size ?: "null"}")
-        val stremioType = load.type.toStremioType()
-        val videos = load.episodes?.mapIndexed { idx, ep ->
-            Video(
-                id = CloudStreamCatalogClient.encodeCsId(apiName, ep.data),
-                name = ep.name ?: "Episode ${idx + 1}",
-                season = ep.season,
-                number = ep.episode,
-                released = ep.date?.toCs3IsoDate(),
-                thumbnail = ep.posterUrl,
-                overview = ep.description,
-                rating = ep.rating?.let(::cs3RatingString),
-                episodeRuntime = ep.runTime
-            )
-        }
-        Log.d("CS3Detail", "$apiName: built MetaDetail with ${videos?.size ?: "null"} videos")
-        return MetaDetail(
-            id = id,
-            type = stremioType,
-            name = load.title,
-            genres = load.tags,
-            poster = load.posterUrl,
-            background = load.backgroundPosterUrl ?: load.posterUrl,
-            logo = load.logoUrl,
-            description = load.plot,
-            releaseInfo = load.year?.toString(),
-            released = load.year?.let { "$it-01-01" },
-            runtime = load.duration?.let { "${it}m" },
-            videos = videos,
-            trailers = load.trailers?.mapIndexedNotNull { index, trailer -> trailer.toDetailTrailer(apiName, index) },
-            imdbRating = load.rating?.let(::cs3RatingString),
-            ageRating = load.contentRating,
-            ratings = load.rating?.let { listOf(MetaRating("Cloudstream", cs3RatingString(it))) },
-            cast = load.actors?.map { it.toCastMember() },
-            links = load.toMetaLinks(),
-            status = when {
-                load.comingSoon -> "Coming Soon"
-                else -> load.status
-            },
-            originalName = load.synonyms?.firstOrNull { it != load.title },
-            collectionParts = load.recommendations?.mapNotNull { it.toCs3Meta(apiName) }
-        )
-    }
+    internal suspend fun loadCsNativeMetaDetail(id: String): MetaDetail? = cloudStreamRuntime.loadMetaDetail(id)
 
-    private fun Long.toCs3IsoDate(): String {
-        val millis = if (this > 10_000_000_000L) this else this * 1000L
-        return java.time.Instant.ofEpochMilli(millis)
-            .atZone(java.time.ZoneOffset.UTC)
-            .toLocalDate()
-            .toString()
-    }
+    internal suspend fun loadCsNativeStreams(id: String, directTimeoutMs: Long = 30_000L): List<Stream> =
+        cloudStreamRuntime.loadStreams(id, directTimeoutMs)
 
-    private fun cs3RatingString(rating: Int): String =
-        "%.1f".format(java.util.Locale.US, rating.toFloat() / 10f)
-
-    private fun ScraperActor.toCastMember(): CastMember =
-        CastMember(name = name, character = role, profilePath = image)
-
-    private fun ScraperTrailer.toDetailTrailer(apiName: String, index: Int): DetailTrailer? {
-        val targetUrl = url.takeIf { it.isNotBlank() } ?: return null
-        return DetailTrailer(
-            id = "cs3:$apiName:trailer:$index",
-            title = "Trailer ${index + 1}",
-            type = if (raw) "Trailer" else "Extractor",
-            url = targetUrl,
-            thumbnail = null,
-            source = apiName
-        )
-    }
-
-    private fun ScraperSearchResult.toCs3Meta(apiName: String): Meta? {
-        val title = title.takeIf { it.isNotBlank() } ?: return null
-        return Meta(
-            id = CloudStreamCatalogClient.encodeCsId(apiName, url),
-            name = title,
-            type = type?.toStremioType() ?: "movie",
-            poster = posterUrl,
-            releaseInfo = year?.toString(),
-            imdbRating = quality,
-            background = posterUrl
-        )
-    }
-
-    private fun ScraperLoadResult.toMetaLinks(): List<MetaLink>? {
-        val links = mutableListOf<MetaLink>()
-        uniqueUrl?.takeIf { it.isNotBlank() }?.let { links.add(MetaLink("Source", "Cloudstream", it)) }
-        url.takeIf { it.isNotBlank() && it != uniqueUrl }?.let { links.add(MetaLink("Page", "Cloudstream", it)) }
-        syncData.orEmpty().forEach { (key, value) ->
-            if (key.isNotBlank() && value.isNotBlank()) links.add(MetaLink(key, "Cloudstream Sync", value))
-        }
-        synonyms.orEmpty().forEach { synonym ->
-            links.add(MetaLink(synonym, "Cloudstream Synonym", synonym))
-        }
-        nextAiringUnixTime?.let { unix ->
-            val label = listOfNotNull(
-                nextAiringSeason?.let { "S$it" },
-                nextAiringEpisode?.let { "E$it" }
-            ).joinToString("").ifBlank { "Next airing" }
-            links.add(MetaLink(label, "Cloudstream Next Airing", unix.toString()))
-        }
-        seasonNames.orEmpty().forEach { season ->
-            val name = season.name?.takeIf { it.isNotBlank() } ?: "Season ${season.displaySeason ?: season.season}"
-            links.add(MetaLink(name, "Cloudstream Season", season.season.toString()))
-        }
-        return links.takeIf { it.isNotEmpty() }
-    }
-
-    internal suspend fun loadCsNativeStreams(id: String, directTimeoutMs: Long = 30_000L): List<Stream> {
-        val (apiName, data) = CloudStreamCatalogClient.decodeCsId(id) ?: return emptyList()
-        val api = pluginManager.loadedApis.value.firstOrNull { it.name == apiName } ?: return emptyList()
-        val runner = ExternalExtensionRunner()
-
-        val directResult = try {
-            withTimeoutOrNull(directTimeoutMs) { runner.loadStreams(api, data) }
-        } catch (_: Throwable) { null }
-        if (directResult != null && directResult.links.isNotEmpty()) {
-            return directResult.links
-                .sortedByDescending { csQualityScore(it.quality) }
-                .map { link ->
-                    Stream(
-                        name = " $apiName\n${link.quality}",
-                        title = link.name,
-                        url = link.url,
-                        subtitles = directResult.subtitles.map { it.toSubtitleData() },
-                        behaviorHints = buildMap {
-                            put("proxyHeaders", buildMap { put("request", link.headers) })
-                            link.referer?.let { put("referer", it) }
-                            put("cs3Type", link.type)
-                            put("isM3u8", link.isM3u8)
-                            put("isDash", link.isDash)
-                        },
-                        addonName = " $apiName"
-                    )
-                }
-        }
-
-        val streamData = try {
-            withTimeoutOrNull(15_000L) { runner.loadContent(api, data)?.data }
-        } catch (e: Exception) {
-            null
-        } ?: data
-        val result = withTimeoutOrNull(30_000L) {
-            runner.loadStreams(api, streamData)
-        } ?: return emptyList()
-        return result.links
-            .sortedByDescending { csQualityScore(it.quality) }
-            .map { link ->
-                Stream(
-                    name = " $apiName\n${link.quality}",
-                    title = link.name,
-                    url = link.url,
-                    subtitles = result.subtitles.map { it.toSubtitleData() },
-                    behaviorHints = buildMap {
-                        put("proxyHeaders", buildMap { put("request", link.headers) })
-                        link.referer?.let { put("referer", it) }
-                        put("cs3Type", link.type)
-                        put("isM3u8", link.isM3u8)
-                        put("isDash", link.isDash)
-                    },
-                    addonName = " $apiName"
-                )
-            }
-    }
-
-    private fun ScraperSubtitle.toSubtitleData() = SubtitleData(
-        url = url,
-        lang = lang
-    )
-
-    internal fun csQualityScore(quality: String): Int {
-        val q = quality.lowercase()
-        return when {
-            q.contains("4k") || q.contains("2160") -> 2160
-            q.contains("1440") -> 1440
-            q.contains("1080") -> 1080
-            q.contains("720") -> 720
-            q.contains("480") -> 480
-            q.contains("360") -> 360
-            q.contains("240") -> 240
-            else -> 0
-        }
-    }
+    internal fun csQualityScore(quality: String): Int = cloudStreamRuntime.qualityScore(quality)
 
     internal suspend fun buildPlaybackStreamRequestIds(
         type: String,

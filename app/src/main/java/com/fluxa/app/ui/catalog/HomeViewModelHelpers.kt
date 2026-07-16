@@ -4,6 +4,9 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.common.ReleaseDateUtils
 import com.fluxa.app.core.StremioId
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.remote.Video
+import com.fluxa.app.domain.discovery.Cs3CatalogFeedDescriptor
+import com.lagradost.cloudstream3.MainAPI
 
 internal fun preferredHomeRowLabels(lang: String): List<String> {
     return listOf(
@@ -52,4 +55,26 @@ internal fun isRecentlyReleased(dateStr: String?, windowDays: Int): Boolean {
 
 internal fun isUpcomingRelease(dateStr: String?): Boolean {
     return ReleaseDateUtils.isUpcoming(dateStr)
+}
+
+internal fun List<MainAPI>.toCs3CatalogFeedDescriptors(): List<Cs3CatalogFeedDescriptor> {
+    return filter { it.hasMainPage }.flatMap { api ->
+        api.mainPage.mapIndexed { index, page ->
+            Cs3CatalogFeedDescriptor(
+                pluginName = api.name,
+                catalogName = page.name.takeIf { it.isNotBlank() } ?: api.name,
+                catalogIndex = index
+            )
+        }
+    }
+}
+
+internal fun Video.continueWatchingTitleForHome(): String {
+    val seasonEpisode = if (season != null && number != null) "S$season, E$number" else null
+    val title = name?.trim()?.takeIf { it.isNotBlank() }
+    return when {
+        seasonEpisode != null && title != null -> "$seasonEpisode: $title"
+        seasonEpisode != null -> seasonEpisode
+        else -> title.orEmpty()
+    }
 }

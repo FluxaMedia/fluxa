@@ -27,15 +27,15 @@ class DolbyVisionShaderMathTest {
     }
 
     private val m2Inv = arrayOf(
-        floatArrayOf(1f, 1f, 1f),
-        floatArrayOf(0.0086053084f, -0.0086053084f, 0.5600319713f),
-        floatArrayOf(0.1110296250f, -0.1110296250f, -0.3206271744f)
+        floatArrayOf(1f, 0.0086053084f, 0.1110296250f),
+        floatArrayOf(1f, -0.0086053084f, -0.1110296250f),
+        floatArrayOf(1f, 0.5600319713f, -0.3206271744f)
     )
 
     private val mLmsXyz = arrayOf(
-        floatArrayOf(2.0701800566f, 0.3650292938f, -0.0495955500f),
-        floatArrayOf(-1.3264812278f, 0.6804494857f, -0.0494211680f),
-        floatArrayOf(0.2066101766f, -0.0454801996f, 1.1879355232f)
+        floatArrayOf(2.0701800566f, -1.3264812278f, 0.2066101766f),
+        floatArrayOf(0.3650292938f, 0.6804494857f, -0.0454801996f),
+        floatArrayOf(-0.0495955500f, -0.0494211680f, 1.1879355232f)
     )
 
     private val mXyzBt709 = arrayOf(
@@ -83,7 +83,11 @@ class DolbyVisionShaderMathTest {
         val lms = floatArrayOf(pqEotf(lmsPq[0]), pqEotf(lmsPq[1]), pqEotf(lmsPq[2]))
         val xyz = mat3Mul(mLmsXyz, lms)
         val rgb = mat3Mul(mXyzBt2020, xyz).map { max(it, 0f) }.toFloatArray()
-        return floatArrayOf(pqOetf(rgb[0]), pqOetf(rgb[1]), pqOetf(rgb[2]))
+        return floatArrayOf(
+            pqOetf(rgb[0].coerceIn(0f, 1f)),
+            pqOetf(rgb[1].coerceIn(0f, 1f)),
+            pqOetf(rgb[2].coerceIn(0f, 1f))
+        )
     }
 
     @Test

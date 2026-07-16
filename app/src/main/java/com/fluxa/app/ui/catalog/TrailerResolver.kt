@@ -17,27 +17,10 @@ import okhttp3.Dns
 import org.json.JSONObject
 import java.net.Inet4Address
 import java.util.concurrent.ConcurrentHashMap
-
-internal data class SubtitleInfo(
-    val languageTag: String,
-    val label: String,
-    val url: String,
-    val mimeType: String,
-    val isAuto: Boolean
-)
-
-internal data class TrailerResult(
-    val streamUrl: String,
-    val audioUrl: String?,
-    val subtitles: List<SubtitleInfo>,
-    val streamMimeType: String?
-)
-
-internal sealed interface TrailerResolveResult {
-    data class Ok(val data: TrailerResult) : TrailerResolveResult
-    data object GeoBlocked : TrailerResolveResult
-    data object Failed : TrailerResolveResult
-}
+import com.fluxa.app.player.TrailerPolicy
+import com.fluxa.app.player.TrailerResolveResult
+import com.fluxa.app.player.TrailerResult
+import com.fluxa.app.player.TrailerSubtitle
 
 internal object TrailerResolver {
 
@@ -52,11 +35,8 @@ internal object TrailerResolver {
 
     fun init(cacheDir: java.io.File) = Unit
 
-    private fun videoId(youtubeUrl: String): String? =
-        Regex("(?:v=|youtu\\.be/|embed/)([A-Za-z0-9_-]{11})").find(youtubeUrl)?.groupValues?.get(1)
-
     suspend fun resolve(youtubeUrl: String): TrailerResolveResult = withContext(Dispatchers.IO) {
-        val id = videoId(youtubeUrl) ?: return@withContext TrailerResolveResult.Failed
+        val id = TrailerPolicy.youtubeVideoId(youtubeUrl) ?: return@withContext TrailerResolveResult.Failed
         memCache[id]?.let { return@withContext it }
 
         val result = try {
@@ -126,7 +106,7 @@ internal object TrailerResolver {
                     (0 until tracks.length()).mapNotNull { index ->
                         tracks.optJSONObject(index)?.let { track ->
                             val url = track.optString("baseUrl")
-                            if (url.isBlank()) null else SubtitleInfo(
+                            if (url.isBlank()) null else TrailerSubtitle(
                                 languageTag = track.optString("languageCode", "und"),
                                 label = track.optJSONObject("name")?.optString("simpleText")?.ifBlank { track.optString("languageCode") } ?: "",
                                 url = url,
@@ -187,7 +167,8 @@ internal object TrailerResolver {
                 val pixels = resolution?.let { it.groupValues[1].toLong() * it.groupValues[2].toLong() } ?: 0L
                 val bandwidth = Regex("BANDWIDTH=(\\d+)").find(streamAttributes)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
                 val url = masterUrl.toHttpUrlOrNull()?.resolve(line)?.toString() ?: return@forEach
-                if (best == null || pixels > best!!.first || (pixels == best!!.first && bandwidth > best!!.second)) {
+                val currentBest = best
+                if (currentBest == null || pixels > currentBest.first || (pixels == currentBest.first && bandwidth > currentBest.second)) {
                     best = Triple(pixels, bandwidth, url)
                 }
             }
@@ -203,7 +184,7 @@ internal object TrailerResolver {
                 subtitles = response.optJSONArray("subtitles")?.let { tracks ->
                     (0 until tracks.length()).map { i ->
                         val track = tracks.getJSONObject(i)
-                        SubtitleInfo(
+                        TrailerSubtitle(
                             languageTag = track.getString("languageTag"),
                             label = track.getString("label"),
                             url = track.getString("url"),

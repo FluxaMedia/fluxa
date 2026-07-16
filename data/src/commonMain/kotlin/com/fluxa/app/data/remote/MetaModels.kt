@@ -8,6 +8,8 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
@@ -65,6 +67,13 @@ data class DetailTrailer(
 
 @Serializable
 data class MetaDetailResponse(val meta: MetaDetail? = null)
+
+private val metaPayloadJson = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
+
+fun decodeMetaDetailPayload(payload: String): MetaDetail? {
+    return runCatching { metaPayloadJson.decodeFromString<MetaDetailResponse>(payload) }.getOrNull()?.meta
+        ?: runCatching { metaPayloadJson.decodeFromString<MetaDetail>(payload) }.getOrNull()
+}
 
 @Serializable(with = MetaDetailSerializer::class)
 data class MetaDetail(

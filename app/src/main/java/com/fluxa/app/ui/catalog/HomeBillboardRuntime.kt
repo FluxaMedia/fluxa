@@ -1,5 +1,7 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.player.TrailerResolveResult
+
 import android.util.LruCache
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager

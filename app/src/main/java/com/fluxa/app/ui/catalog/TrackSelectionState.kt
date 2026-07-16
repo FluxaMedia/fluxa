@@ -8,17 +8,12 @@ import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.SubtitleTrackRef
 import com.fluxa.app.player.MediaTrack
+import com.fluxa.app.player.resolveAudioLanguagePreference
 import java.util.Locale
 
 object TrackSelectionState {
     private fun resolveAudioLanguagePref(profile: UserProfile?, meta: Meta): String? {
-        val isAnime = meta.genres?.any { it.lowercase().contains("anime") } == true
-        if (isAnime && profile?.safeAnimePreferJapaneseAudio == true) return "ja"
-        return when (val pref = profile?.preferredAudioLanguage) {
-            "original" -> meta.originalLanguage?.takeIf { it.isNotBlank() }
-            "device_language" -> Locale.getDefault().language.takeIf { it.isNotBlank() }
-            else -> pref
-        }
+        return resolveAudioLanguagePreference(profile, meta, Locale.getDefault().language)
     }
 
     fun resolvePreferredAudioLanguage(profile: UserProfile?, meta: Meta): String {

@@ -1,47 +1,69 @@
 package com.fluxa.app.ui.catalog
 
-import android.util.Log
-import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.core.rust.NativeHeadlessEngineResult
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.TraktDeviceCodeResponse
-import com.fluxa.app.data.repository.StremioRepository
-import com.fluxa.app.data.repository.TraktIntegration
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 internal class HomeAuthCoordinator(
-    private val repository: StremioRepository,
     private val scope: CoroutineScope,
+    private val gson: Gson,
+    private val dispatch: suspend (Any) -> NativeHeadlessEngineResult,
     private val activeProfile: () -> UserProfile?,
+    private val updateActiveProfile: (UserProfile) -> Unit,
     private val invalidateHome: () -> Unit
 ) {
-    fun exchangeTraktCode(
+    fun refreshTokenIfNeeded(
+        provider: String,
+        profile: UserProfile,
+        onProfileUpdated: (UserProfile) -> Unit
+    ) {
+        scope.launch {
+            val result = dispatch(
+                mapOf(
+                    "type" to "authRefreshRequested",
+                    "provider" to provider,
+                    "profile" to profile
+                )
+            )
+            updatedProfile(result)?.takeIf { it != profile }?.let { updated ->
+                accept(updated, onProfileUpdated)
+            }
+        }
+    }
+
+    fun exchangeCode(
+        provider: String,
         code: String,
+        codeVerifier: String?,
         onProfileUpdated: (UserProfile) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val response = repository.exchangeTraktCode(code)
-                activeProfile()?.let { profile ->
-                    val updated = profile.copy(
-                        traktAccessToken = response.accessToken,
-                        traktRefreshToken = response.refreshToken,
-                        traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(response.createdAt, response.expiresIn)
-                    )
-                    withContext(Dispatchers.Main) {
-                        onProfileUpdated(updated)
-                        invalidateHome()
-                        onComplete(true)
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) { onComplete(false) }
+        scope.launch {
+            val profile = activeProfile()
+            if (profile == null) {
+                onComplete(false)
+                return@launch
             }
+            val result = dispatch(
+                mapOf(
+                    "type" to "authExchangeRequested",
+                    "provider" to provider,
+                    "code" to code,
+                    "codeVerifier" to codeVerifier,
+                    "profile" to profile
+                )
+            )
+            val updated = updatedProfile(result)
+            if (updated == null) {
+                onComplete(false)
+                return@launch
+            }
+            accept(updated, onProfileUpdated)
+            onComplete(true)
         }
     }
 
@@ -50,112 +72,86 @@ internal class HomeAuthCoordinator(
         onProfileUpdated: (UserProfile) -> Unit,
         onComplete: (Boolean, String?) -> Unit
     ) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val codeResponse = repository.createTraktDeviceCode()
-                withContext(Dispatchers.Main) { onCodeReady(codeResponse) }
-                val startedAt = System.currentTimeMillis()
-                val expiresAt = startedAt + codeResponse.expiresIn * 1000L
-                var intervalMs = codeResponse.interval.coerceAtLeast(5) * 1000L
-                var failureMessageKey: String? = "toast.trakt_connect_failed"
-                while (System.currentTimeMillis() < expiresAt) {
-                    delay(intervalMs)
-                    val response = repository.exchangeTraktDeviceCode(codeResponse.deviceCode)
-                    if (response.isSuccessful) {
-                        val tokenResponse = response.body() ?: break
-                        activeProfile()?.let { profile ->
-                            val updated = profile.copy(
-                                traktAccessToken = tokenResponse.accessToken,
-                                traktRefreshToken = tokenResponse.refreshToken,
-                                traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(tokenResponse.createdAt, tokenResponse.expiresIn)
-                            )
-                            withContext(Dispatchers.Main) {
-                                onProfileUpdated(updated)
-                                invalidateHome()
-                                onComplete(true, null)
-                            }
-                            return@launch
-                        }
+        scope.launch {
+            val profile = activeProfile()
+            if (profile == null) {
+                onComplete(false, "toast.trakt_connect_failed")
+                return@launch
+            }
+            val codeResult = dispatch(
+                mapOf(
+                    "type" to "authFlowRequested",
+                    "provider" to "trakt",
+                    "mode" to "deviceCode"
+                )
+            )
+            val codeResponse = decode<TraktDeviceCodeResponse>(
+                (codeResult.state["auth"] as? Map<*, *>)?.get("result")
+            )
+            if (codeResponse == null) {
+                onComplete(false, "toast.trakt_connect_failed")
+                return@launch
+            }
+            onCodeReady(codeResponse)
+            val expiresAt = System.currentTimeMillis() + codeResponse.expiresIn * 1000L
+            var intervalMs = codeResponse.interval.coerceAtLeast(5) * 1000L
+            var failureMessageKey = "toast.trakt_connect_failed"
+            while (System.currentTimeMillis() < expiresAt) {
+                delay(intervalMs)
+                val tokenResult = dispatch(
+                    mapOf(
+                        "type" to "authExchangeRequested",
+                        "provider" to "traktDevice",
+                        "code" to codeResponse.deviceCode,
+                        "profile" to (activeProfile() ?: profile)
+                    )
+                )
+                val authResult = (tokenResult.state["auth"] as? Map<*, *>)?.get("result") as? Map<*, *>
+                val updated = decode<UserProfile>(authResult?.get("profile"))
+                if (updated != null) {
+                    accept(updated, onProfileUpdated)
+                    onComplete(true, null)
+                    return@launch
+                }
+                val errorCode = authResult?.get("errorCode") as? String
+                val httpCode = (authResult?.get("httpCode") as? Number)?.toInt()
+                when {
+                    errorCode == "slow_down" || httpCode == 429 -> {
+                        val retryAfterMs = (authResult.get("retryAfterSeconds") as? Number)?.toLong()?.times(1000L)
+                        intervalMs = (retryAfterMs ?: intervalMs + 5_000L).coerceAtMost(60_000L)
+                    }
+                    errorCode == "expired_token" || errorCode == "invalid_grant" -> {
+                        failureMessageKey = "toast.trakt_device_code_expired"
                         break
                     }
-                    val errorCode = response.errorBody()?.string()?.let(FluxaCoreNative::traktOAuthErrorCode)
-                    when {
-                        errorCode == "slow_down" || response.code() == 429 -> {
-                            val retryAfterMs = response.headers()["Retry-After"]?.toLongOrNull()?.let { it * 1000L }
-                            intervalMs = (retryAfterMs ?: (intervalMs + 5_000L)).coerceAtMost(60_000L)
-                            continue
-                        }
-                        errorCode == "expired_token" || errorCode == "invalid_grant" -> {
-                            Log.w("Trakt", "Device auth expired: $errorCode")
-                            failureMessageKey = "toast.trakt_device_code_expired"
-                            break
-                        }
-                        errorCode == "authorization_pending" || response.code() in setOf(400, 404, 409, 428) -> {
-                            continue
-                        }
-                        else -> {
-                            Log.w("Trakt", "Device auth failed: HTTP ${response.code()} ${errorCode.orEmpty()}")
-                            break
-                        }
-                    }
+                    errorCode == "authorization_pending" || httpCode in setOf(400, 404, 409, 428) -> Unit
+                    else -> break
                 }
-                if (System.currentTimeMillis() >= expiresAt) {
-                    failureMessageKey = "toast.trakt_device_code_expired"
-                }
-                withContext(Dispatchers.Main) { onComplete(false, failureMessageKey) }
-            } catch (e: Exception) {
-                Log.w("Trakt", "Device authorization failed", e)
-                withContext(Dispatchers.Main) { onComplete(false, "toast.trakt_connect_failed") }
             }
+            if (System.currentTimeMillis() >= expiresAt) {
+                failureMessageKey = "toast.trakt_device_code_expired"
+            }
+            onComplete(false, failureMessageKey)
         }
     }
 
-    fun exchangeMalCode(
-        code: String,
-        codeVerifier: String,
-        onProfileUpdated: (UserProfile) -> Unit,
-        onComplete: (Boolean) -> Unit
-    ) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val response = repository.exchangeMalCode(code, codeVerifier)
-                activeProfile()?.let { profile ->
-                    val updated = profile.copy(
-                        malAccessToken = response.accessToken,
-                        malRefreshToken = response.refreshToken
-                    )
-                    withContext(Dispatchers.Main) {
-                        onProfileUpdated(updated)
-                        onComplete(true)
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) { onComplete(false) }
-            }
-        }
+    private fun accept(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
+        updateActiveProfile(profile)
+        onProfileUpdated(profile)
+        invalidateHome()
     }
 
-    fun exchangeSimklCode(
-        code: String,
-        onProfileUpdated: (UserProfile) -> Unit,
-        onComplete: (Boolean) -> Unit
-    ) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val response = repository.exchangeSimklCode(code)
-                activeProfile()?.let { profile ->
-                    val updated = profile.copy(simklAccessToken = response.accessToken)
-                    withContext(Dispatchers.Main) {
-                        onProfileUpdated(updated)
-                        onComplete(true)
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) { onComplete(false) }
-            }
-        }
+    private fun updatedProfile(result: NativeHeadlessEngineResult): UserProfile? {
+        val auth = result.state["auth"] as? Map<*, *>
+        val authResult = auth?.get("result")
+        val value = (authResult as? Map<*, *>)?.get("profile")
+            ?: authResult
+            ?: (result.state["profile"] as? Map<*, *>)?.get("active")
+        return decode(value)
     }
 
+    private inline fun <reified T> decode(value: Any?): T? {
+        if (value == null) return null
+        return runCatching { gson.fromJson(gson.toJsonTree(value), T::class.java) }.getOrNull()
+    }
 }

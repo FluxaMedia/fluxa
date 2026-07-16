@@ -124,6 +124,7 @@ data class NativeProfileSafePrefs(
     val forceSoftwareAudio: Boolean = false,
     val preferredPlayer: String = "exoplayer",
     val cardLayout: String = "vertical",
+    val detailEpisodeViewMode: String = "modern",
     val continueWatchingLayout: String = "horizontal",
     val continueWatchingArtwork: String = "episode",
     val continueWatchingEnabled: Boolean = true,

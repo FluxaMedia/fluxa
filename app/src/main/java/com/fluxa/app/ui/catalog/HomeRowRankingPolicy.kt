@@ -46,8 +46,7 @@ object HomeRowRankingPolicy {
         val json = FluxaCoreNative.optimizeHomeRowsJson(gson.toJson(request))
         val optimized = gson.fromJson<List<HomeCategory>>(json, homeCategoryListType) ?: emptyList()
         return optimized.map { category ->
-            val original = originalItemsById[category.id]
-            if (original != null) category.copy(items = original.items) else category
+            originalItemsById[category.id] ?: category
         }
     }
 
@@ -73,8 +72,7 @@ object HomeRowRankingPolicy {
         )
         val result = gson.fromJson<List<HomeCategory>>(json, homeCategoryListType) ?: emptyList()
         return result.map { category ->
-            val original = originalItemsById[category.id]
-            if (original != null) category.copy(items = original.items) else category
+            originalItemsById[category.id] ?: category
         }
     }
 

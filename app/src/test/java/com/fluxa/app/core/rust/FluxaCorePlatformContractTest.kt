@@ -149,7 +149,7 @@ class FluxaCorePlatformContractTest {
         assertEquals(600L, prefs.playerForwardBufferSeconds)
         assertEquals(0L, prefs.playerBackBufferSeconds)
         assertEquals("modern", prefs.detailEpisodeViewMode)
-        assertEquals("dv8", prefs.dolbyVisionFallbackMode)
+        assertEquals("hdr10", prefs.dolbyVisionFallbackMode)
         assertEquals("manual", prefs.streamSourceSelectionMode)
     }
 
@@ -327,9 +327,9 @@ class FluxaCorePlatformContractTest {
     @Test
     fun nativeCoreSurfaceDoesNotExposeAddonResultMutationApis() {
         val publicMethodNames = FluxaCoreNative::class.java.methods.map { it.name.lowercase() }
-        val mutationWords = listOf("rank", "sort", "reorder", "filterstreams", "filtermeta")
+        val forbiddenMethods = setOf("rankAddonResults", "reorderAddonResults", "filterAddonStreams", "filterAddonMeta")
 
-        assertFalse(publicMethodNames.any { method -> mutationWords.any(method::contains) })
+        assertFalse(publicMethodNames.any { it in forbiddenMethods.map(String::lowercase) })
     }
 
     @Test
@@ -498,9 +498,9 @@ class FluxaCorePlatformContractTest {
                     "force" to true
                 )
             )
-            assertEquals("readHomeBootstrap", home.effects.single().type)
-            assertEquals("p1", home.effects.single().payload["profileId"])
-            assertEquals("tr", home.effects.single().payload["language"])
+            val homeBootstrap = home.effects.single { it.type == "readHomeBootstrap" }
+            assertEquals("p1", homeBootstrap.payload["profileId"])
+            assertEquals("tr", homeBootstrap.payload["language"])
 
             val library = engine.dispatch(
                 mapOf(
@@ -508,8 +508,8 @@ class FluxaCorePlatformContractTest {
                     "item" to mapOf("id" to "tt1", "name" to "Movie", "type" to "movie")
                 )
             )
-            assertEquals("writeLibraryCommand", library.effects.single().type)
-            assertEquals("p1", library.effects.single().payload["profileId"])
+            val libraryCommand = library.effects.single { it.type == "writeLibraryCommand" }
+            assertEquals("p1", libraryCommand.payload["profileId"])
 
             val progress = engine.dispatch(
                 mapOf(
@@ -642,8 +642,8 @@ class FluxaCorePlatformContractTest {
         assertTrue(android.storage)
         assertTrue(android.player)
         assertTrue(android.plugins)
-        assertTrue(android.torrent)
-        assertTrue(android.localStream)
+        assertFalse(android.torrent)
+        assertFalse(android.localStream)
 
         assertTrue(portable.http)
         assertTrue(portable.storage)

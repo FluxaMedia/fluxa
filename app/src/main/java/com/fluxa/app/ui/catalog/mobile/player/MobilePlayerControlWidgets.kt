@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.shared.feature.player.formatPlayerTime
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -198,7 +199,7 @@ internal fun MobilePlayerSeekbar(
                     )
                 }
                 Text(
-                    text = formatTime(sliderPosition.toLong()),
+                    text = formatPlayerTime(sliderPosition.toLong()),
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,

@@ -1,13 +1,12 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.remote.MetaDetailResponse
-import com.google.gson.GsonBuilder
+import com.fluxa.app.data.remote.decodeMetaDetailPayload
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class StremioAddonResourceClientTest {
-
     @Test
     fun aiometadataMetaDetailKeepsEpisodesTrailersAndNullableSeasonPosters() {
         val json = """
@@ -44,9 +43,7 @@ class StremioAddonResourceClientTest {
             }
         """.trimIndent()
 
-        val detail = GsonBuilder().create()
-            .fromJson(json, MetaDetailResponse::class.java)
-            .meta!!
+        val detail = decodeMetaDetailPayload(json)!!
 
         val episode = detail.videos!!.single()
         assertEquals("Step Into My Office", episode.name)
@@ -77,9 +74,7 @@ class StremioAddonResourceClientTest {
             }
         """.trimIndent()
 
-        val detail = GsonBuilder().create()
-            .fromJson(json, MetaDetailResponse::class.java)
-            .meta!!
+        val detail = decodeMetaDetailPayload(json)!!
 
         assertEquals(
             listOf("Nicolas Cage", "Pedro Pascal", "Bella Ramsey"),

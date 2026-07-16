@@ -409,8 +409,8 @@ class FluxaCoreBenchmarkTest {
         assertTrue(nativeCacheStorageFunctions.isEmpty())
         assertTrue(nativeFunctionNames.any { it == "cacheEntryPolicyJsonNative" })
         assertTrue(nativeFunctionNames.any { it == "cacheTrimPolicyJsonNative" })
-        assertTrue(nativeFunctionNames.any { it == "startLocalStreamServerNative" })
-        assertTrue(nativeFunctionNames.any { it == "stopLocalStreamServerNative" })
+        assertFalse(nativeFunctionNames.any { it == "startLocalStreamServerNative" })
+        assertFalse(nativeFunctionNames.any { it == "stopLocalStreamServerNative" })
         assertTrue(nativeFunctionNames.any { it == "parseManifestJsonNative" })
     }
 

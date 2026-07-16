@@ -301,7 +301,9 @@ tasks.matching { it.name == "preBuild" }.configureEach {
 
 tasks.withType<Test>().configureEach {
     dependsOn(rootProject.tasks.named("buildFluxaCoreHost"))
+    dependsOn(rootProject.tasks.named("buildFluxaStreamingEngineHost"))
     dependsOn(generateFluxaCoreUniFfiBindings)
+    jvmArgs("-Djava.library.path=${rustCrateDir.resolve("target/debug").absolutePath}")
     systemProperty(
         "jna.library.path",
         rustCrateDir.resolve("target/debug").absolutePath

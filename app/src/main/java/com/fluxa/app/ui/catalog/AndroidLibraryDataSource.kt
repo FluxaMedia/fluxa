@@ -4,6 +4,7 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.OfflineDownloadManager
+import com.fluxa.app.data.local.isPlayable
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistStore
@@ -73,7 +74,7 @@ class AndroidLibraryDataSource(
         }
 
         val profileDownloads = downloads.filter { it.profileId == null || it.profileId == profile?.id }
-        val downloadGroups = profileDownloads.toOfflineDownloadGroups().map { group ->
+        val downloadGroups = profileDownloads.toOfflineDownloadGroups(String::toFileImageModel).map { group ->
             LibraryDownloadGroupUiModel(
                 key = group.key,
                 title = group.title,

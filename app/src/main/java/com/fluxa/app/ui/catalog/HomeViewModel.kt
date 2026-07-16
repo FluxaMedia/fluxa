@@ -9,16 +9,12 @@ import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreStateHandle
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
-import com.fluxa.app.domain.discovery.Cs3CatalogFeedDescriptor
 import com.fluxa.app.domain.discovery.MetadataFeedOption
-import com.fluxa.app.domain.discovery.buildDiscoverCatalogOptions
-import com.fluxa.app.domain.discovery.buildDiscoverContentTypes
 import com.fluxa.app.domain.discovery.buildCs3MetadataFeedOptions
 import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
 import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,13 +36,8 @@ import java.util.Locale
 
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.data.repository.CloudStreamCatalogClient
-import com.lagradost.cloudstream3.MainAPI
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -74,13 +65,9 @@ class HomeViewModel @Inject constructor(
     private val streamListType = object : TypeToken<List<Stream>>() {}.type
     private val trailerListType = object : TypeToken<List<DetailTrailer>>() {}.type
     private val categoryListType = object : TypeToken<List<HomeCategory>>() {}.type
-    private val calendarItemListType = object : TypeToken<List<CalendarUpcomingItem>>() {}.type
     private val videoListType = object : TypeToken<List<Video>>() {}.type
     private val subtitleListType = object : TypeToken<List<SubtitleData>>() {}.type
     private val introTimestampsListType = object : TypeToken<List<IntroTimestamps>>() {}.type
-    private val discoverCatalogListType = object : TypeToken<List<DiscoverCatalogOption>>() {}.type
-    private val discoverGenreListType = object : TypeToken<List<DiscoverGenreOption>>() {}.type
-    private val discoverContentTypeListType = object : TypeToken<List<String>>() {}.type
     private val addonListType = object : TypeToken<List<AddonDescriptor>>() {}.type
     private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
     private val initialSearchHistory = searchHistoryStore.load(null)
@@ -109,10 +96,9 @@ class HomeViewModel @Inject constructor(
             "library" to mapOf("uiState" to LibraryUiState())
         )
     )
-    private val _categories = MutableStateFlow<List<HomeCategory>>(emptyList())
-    val categories: StateFlow<List<HomeCategory>> = _categories
-    private val _collectionFolderCategories = MutableStateFlow<Map<String, HomeCategory>>(emptyMap())
-    val collectionFolderCategories: StateFlow<Map<String, HomeCategory>> = _collectionFolderCategories.asStateFlow()
+    private val categoryState = HomeCategoryStateStore()
+    val categories: StateFlow<List<HomeCategory>> = categoryState.categories
+    val collectionFolderCategories: StateFlow<Map<String, HomeCategory>> = categoryState.folderCategories
 
     var savedHomeScrollIndex: Int = 0
     var savedHomeScrollOffset: Int = 0
@@ -120,7 +106,6 @@ class HomeViewModel @Inject constructor(
     var savedTvHomeScrollOffset: Int = 0
     var savedTvFocusedRowIndex: Int = -1
     val savedCategoryScrollPositions: HashMap<String, Pair<Int, Int>> = HashMap()
-    private var categoriesRenderSignature: Int? = null
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -140,38 +125,32 @@ class HomeViewModel @Inject constructor(
     val searchResults: StateFlow<List<Meta>> = searchFocusState.searchResults
     val searchRows: StateFlow<List<SearchResultRow>> = searchFocusState.searchRows
 
-    private val _headlessDiscoverResults = MutableStateFlow<List<Meta>>(emptyList())
-    private val _headlessDiscoverResultSources = MutableStateFlow<Map<String, HomeCatalogSource>>(emptyMap())
-    private val _headlessDiscoverLoading = MutableStateFlow(false)
-    private val _headlessDiscoverGenres = MutableStateFlow<List<DiscoverGenreOption>>(emptyList())
-    private val _headlessDiscoverCatalogs = MutableStateFlow<List<DiscoverCatalogOption>>(emptyList())
-    private val _headlessDiscoverContentTypes = MutableStateFlow<List<String>>(emptyList())
-    private val discoverResultSourceMapType = object : TypeToken<Map<String, HomeCatalogSource>>() {}.type
-    private var discoverJob: Job? = null
+    private val browseCoordinator by lazy {
+        HomeHeadlessBrowseCoordinator(
+            scope = viewModelScope,
+            gson = gson,
+            dispatch = ::dispatchHeadless,
+            activeProfile = { currentActiveProfile },
+            userAddons = { _userAddons.value }
+        )
+    }
+    val discoverUiState: StateFlow<DiscoverUiState> get() = browseCoordinator.discoverUiState
+    val discoverGenres: StateFlow<List<DiscoverGenreOption>> get() = browseCoordinator.discoverGenres
+    val calendarUiState: StateFlow<CalendarUiState> get() = browseCoordinator.calendarUiState
 
-    val discoverUiState: StateFlow<DiscoverUiState> = combine(
-        combine(
-            _headlessDiscoverResults,
-            _headlessDiscoverResultSources,
-            _headlessDiscoverLoading
-        ) { results, resultSources, loading -> Triple(results, resultSources, loading) },
-        _headlessDiscoverGenres,
-        _headlessDiscoverCatalogs,
-        _headlessDiscoverContentTypes
-    ) { (results, resultSources, loading), genres, catalogs, contentTypes ->
-        DiscoverUiState(results, loading, genres, catalogs, contentTypes, resultSources)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DiscoverUiState())
-
-    val discoverGenres: StateFlow<List<DiscoverGenreOption>> get() = _headlessDiscoverGenres.asStateFlow()
-
-    private val _headlessCalendarItems = MutableStateFlow<List<CalendarUpcomingItem>>(emptyList())
-    private val _headlessCalendarLoading = MutableStateFlow(false)
-
-    val calendarUiState: StateFlow<CalendarUiState> = combine(
-        _headlessCalendarItems,
-        _headlessCalendarLoading
-    ) { items, loading -> CalendarUiState(items, loading) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CalendarUiState())
+    private val syncCoordinator by lazy {
+        HomeHeadlessSyncCoordinator(
+            scope = viewModelScope,
+            gson = gson,
+            dispatch = ::dispatchHeadless,
+            setActiveProfile = { setActiveProfileState(it) },
+            setWatchlist = ::setWatchlistState,
+            setContinueWatching = ::setCurrentWatchlistState,
+            setExternalContinueWatching = ::setExternalContinueWatchingState,
+            setLiked = ::setLikedItemsState,
+            refreshDynamicRows = ::refreshDynamicRows
+        )
+    }
 
     private val billboardState = HomeBillboardStateHolder()
     val billboardError: StateFlow<String?> = billboardState.error
@@ -264,7 +243,20 @@ class HomeViewModel @Inject constructor(
     private var searchJob: Job? = null
     private val _isSearchLoading = MutableStateFlow(false)
     val isSearchLoading: StateFlow<Boolean> = _isSearchLoading.asStateFlow()
-    private val loadMoreInFlight = mutableSetOf<String>()
+    private val pagingCoordinator by lazy {
+        HomeCatalogPagingCoordinator(
+            scope = viewModelScope,
+            platformContentGateway = platformContentGateway,
+            activeProfile = { currentActiveProfile },
+            categories = categoryState::currentCategories,
+            setCategories = ::setCategoriesState,
+            folderCategories = categoryState::currentFolderCategories,
+            setFolderCategories = categoryState::replaceFolderCategories,
+            normalizeItems = ::normalizeCatalogItems,
+            dispatch = ::dispatchHeadless,
+            decodeItems = { fromStateList(it, metaListType) }
+        )
+    }
     private val playbackController by lazy {
         coordinatorFactory.playback(
             context = appContext,
@@ -311,7 +303,7 @@ class HomeViewModel @Inject constructor(
             setPool = { billboardState.poolValue = it },
             index = { billboardState.indexValue },
             setIndex = { billboardState.indexValue = it },
-            categories = { _categories.value },
+            categories = categoryState::currentCategories,
             language = { currentActiveProfile?.safeLanguage ?: "en" },
             setMovie = { billboardState.movieValue = it },
             setLogo = { billboardState.logoValue = it },
@@ -361,7 +353,7 @@ class HomeViewModel @Inject constructor(
             continueWatchingItems = ::buildContinueWatchingItems,
             normalizeCatalogItems = ::normalizeCatalogItems,
             setCategories = ::setCategoriesState,
-            currentCategories = { _categories.value }
+            currentCategories = categoryState::currentCategories
         )
     }
 
@@ -380,12 +372,23 @@ class HomeViewModel @Inject constructor(
     private val dynamicRowsCoordinator by lazy {
         HomeDynamicRowsCoordinator(
             scope = viewModelScope,
-            categories = { _categories.value },
+            categories = categoryState::currentCategories,
             setCategories = ::setCategoriesAndCache,
             activeProfile = { currentActiveProfile },
             buildUserCollectionHomeCategories = ::buildUserCollectionHomeCategories,
             buildContinueWatchingItems = ::buildContinueWatchingItems,
             optimizeHomeCategories = ::optimizeHomeCategories
+        )
+    }
+
+    private val authCoordinator by lazy {
+        HomeAuthCoordinator(
+            scope = viewModelScope,
+            gson = gson,
+            dispatch = ::dispatchHeadless,
+            activeProfile = { currentActiveProfile },
+            updateActiveProfile = ::setActiveProfileState,
+            invalidateHome = { setCategoriesState(emptyList()) }
         )
     }
 
@@ -402,77 +405,26 @@ class HomeViewModel @Inject constructor(
         )
     }
 
+    private val cloudStreamCoordinator by lazy {
+        HomeCloudStreamCoordinator(
+            scope = viewModelScope,
+            gateway = platformContentGateway,
+            hasLoadedHome = _hasLoadedHome,
+            activeProfile = { currentActiveProfile },
+            categories = categoryState::currentCategories,
+            setCategories = ::setCategoriesAndCache,
+            billboardIsEmpty = { billboardState.poolValue.isEmpty() },
+            refreshBillboard = billboardLoader::load
+        )
+    }
+
     init {
         watchlistFlowBinder.bind()
-        observeCloudStreamPlugins()
+        cloudStreamCoordinator.bind()
     }
-
-    private var cs3FetchJob: Job? = null
 
     private fun scheduleCs3Refresh() {
-        cs3FetchJob?.cancel()
-        cs3FetchJob = viewModelScope.launch {
-            try {
-                _hasLoadedHome.first { it }
-                val profile = currentActiveProfile
-                val homeFeedToggles = profile?.homeFeedToggles
-                val cs3FeedsConfigured = profile?.cs3FeedsConfigured == true
-                val apis = platformContentGateway.loadedApis.value
-                    .filter { it.hasMainPage }
-                val cs3FeedOptions = buildCs3MetadataFeedOptions(apis.toCs3CatalogFeedDescriptors())
-                val enabledCs3FeedKeys = if (homeFeedToggles == null || !cs3FeedsConfigured) {
-                    null
-                } else if (homeFeedToggles.any { it.startsWith("cs3_catalog_") }) {
-                    effectiveHomeMetadataFeedSelection(homeFeedToggles, cs3FeedOptions.map { it.key })?.toSet()
-                } else if (homeFeedToggles.any { it.startsWith("cs3_plugin_") }) {
-                    homeFeedToggles.toSet()
-                } else {
-                    null
-                }
-                android.util.Log.d("HomeViewModel", "CS3 refresh: ${apis.size} APIs: ${apis.map { it.name }}")
-                if (apis.isEmpty()) {
-                    val withoutCs3 = _categories.value.filter { !it.id.startsWith("cs3_") }
-                    if (withoutCs3.size != _categories.value.size) setCategoriesAndCache(withoutCs3)
-                    return@launch
-                }
-                val iconsByApiName = platformContentGateway.installedPlugins.value
-                    .filter { !it.iconUrl.isNullOrBlank() }
-                    .associate { it.name to it.iconUrl!! }
-                val cs3Rows = platformContentGateway.cloudHomeCategories(
-                    apis = apis,
-                    iconsByApiName = iconsByApiName,
-                    enabledFeedKeys = enabledCs3FeedKeys
-                )
-                android.util.Log.d("HomeViewModel", "CS3 refresh: got ${cs3Rows.size} rows from ${apis.size} APIs")
-                if (!isActive) return@launch
-                val cs3RowsById = cs3Rows.associateBy { it.id }
-                val currentCategories = _categories.value
-                val existingCs3Ids = currentCategories.filter { it.id.startsWith("cs3_") }.map { it.id }.toSet()
-                val merged = currentCategories.mapNotNull { cat ->
-                    if (cat.id.startsWith("cs3_")) cs3RowsById[cat.id] else cat
-                }
-                val newCs3Rows = cs3Rows.filter { it.id !in existingCs3Ids }
-                setCategoriesAndCache(merged + newCs3Rows)
-            } catch (t: Throwable) {
-                android.util.Log.w("HomeViewModel", "CS3 refresh failed", t)
-            }
-        }
-    }
-
-    private fun observeCloudStreamPlugins() {
-        viewModelScope.launch {
-            platformContentGateway.loadedApis
-                .map { apis -> apis.toCs3CatalogFeedDescriptors().map { "${it.pluginName}:${it.catalogIndex}:${it.catalogName}" }.toSet() }
-                .distinctUntilChanged()
-                .collect {
-                    scheduleCs3Refresh()
-                    if (billboardState.poolValue.isEmpty()) {
-                        viewModelScope.launch {
-                            billboardLoader.load(currentActiveProfile)
-                        }
-                    }
-                }
-        }
+        cloudStreamCoordinator.refresh()
     }
 
     override fun onCleared() {
@@ -710,7 +662,7 @@ class HomeViewModel @Inject constructor(
                 "initialStreamIndex" to initialStreamIndex,
                 "savedUrl" to savedUrl,
                 "savedTitle" to savedTitle,
-                "sourceSelectionMode" to (profile?.safeStreamSourceSelectionMode ?: STREAM_SOURCE_MODE_MANUAL),
+                "sourceSelectionMode" to (profile?.safeStreamSourceSelectionMode ?: com.fluxa.app.player.STREAM_SOURCE_MODE_MANUAL),
                 "regexPattern" to profile?.safeStreamSourceRegexPattern,
                 "preferredBingeGroup" to preferredBingeGroup,
                 "title" to meta.name,
@@ -928,230 +880,36 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadMore(categoryId: String) {
-        val category = _categories.value.firstOrNull { it.id == categoryId }
-            ?: _collectionFolderCategories.value[categoryId]
-            ?: return
-        if (!category.canLoadMore || !loadMoreInFlight.add(categoryId)) return
-        viewModelScope.launch {
-            try {
-                val catalogSources = category.catalogSources.orEmpty()
-                val remoteSources = category.remoteSources.orEmpty()
-                if (catalogSources.isNotEmpty() || remoteSources.isNotEmpty()) {
-                    updateHomeCategory(categoryId) { existing -> existing.copy(folderSourcesLoading = true) }
-                    val nextSkip = if (category.items.isEmpty()) 0 else category.skip + 20
-                    val lang = currentActiveProfile?.safeLanguage ?: "en"
-                    val semaphore = Semaphore(permits = 4)
-                    val sourceResults = Channel<Pair<HomeCatalogSource, List<Meta>>>(catalogSources.size)
-                    coroutineScope {
-                        catalogSources.forEach { source ->
-                            launch(Dispatchers.IO) {
-                                semaphore.withPermit {
-                                    sourceResults.send(
-                                        source to normalizeCatalogItems(
-                                            platformContentGateway.addonCatalog(
-                                                source.transportUrl,
-                                                source.type,
-                                                source.catalogId,
-                                                skip = nextSkip,
-                                                genre = source.genre
-                                            ),
-                                            source.catalogId,
-                                            lang,
-                                            source.genre
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                        repeat(catalogSources.size) {
-                            val (source, sourceItems) = sourceResults.receive()
-                            val sourceMap = sourceItems.flatMap { item ->
-                                listOf("${item.type}:${item.id}" to source, item.id to source)
-                            }.toMap()
-                            updateHomeCategory(categoryId) { existing ->
-                                existing.copy(
-                                    items = (existing.items + sourceItems).distinctBy { "${it.type}:${it.id}" },
-                                    resultSources = existing.resultSources + sourceMap
-                                )
-                            }
-                        }
-                    }
-                    val remoteItems = if (remoteSources.isEmpty()) {
-                        emptyList()
-                    } else {
-                        val result = dispatchHeadless(
-                            mapOf(
-                                "type" to "catalogPageRequested",
-                                "categoryId" to categoryId,
-                                "transportUrl" to null,
-                                "contentType" to category.type,
-                                "catalogId" to category.catalogId,
-                                "skip" to nextSkip,
-                                "genre" to null,
-                                "search" to null,
-                                "remoteSource" to remoteSources,
-                                "profile" to currentActiveProfile
-                            )
-                        )
-                        val home = result.state["home"] as? Map<*, *> ?: emptyMap<Any, Any>()
-                        val paging = home["paging"] as? Map<*, *> ?: emptyMap<Any, Any>()
-                        fromStateList<Meta>(paging["items"], metaListType)
-                    }
-                    updateHomeCategory(categoryId) { existing ->
-                        existing.copy(
-                            items = if (remoteItems.isEmpty()) existing.items else (existing.items + remoteItems).distinctBy { "${it.type}:${it.id}" },
-                            skip = nextSkip,
-                            canLoadMore = existing.items.isNotEmpty() || remoteItems.isNotEmpty()
-                        )
-                    }
-                    return@launch
-                }
-                val result = dispatchHeadless(
-                    mapOf(
-                        "type" to "catalogPageRequested",
-                        "categoryId" to categoryId,
-                        "transportUrl" to category.addonTransportUrl,
-                        "contentType" to category.type,
-                        "catalogId" to category.catalogId,
-                        "skip" to (category.skip + category.items.size),
-                        "genre" to category.addonGenre,
-                        "search" to null,
-                        "remoteSource" to remoteSources,
-                        "profile" to currentActiveProfile
-                    )
-                )
-                val home = result.state["home"] as? Map<*, *> ?: return@launch
-                val paging = home["paging"] as? Map<*, *> ?: return@launch
-                val newItems = fromStateList<Meta>(paging["items"], metaListType)
-                updateHomeCategory(categoryId) { existing ->
-                    existing.copy(
-                        items = if (newItems.isEmpty()) existing.items else (existing.items + newItems).distinctBy { "${it.type}:${it.id}" },
-                        canLoadMore = newItems.isNotEmpty()
-                    )
-                }
-            } finally {
-                if (category.catalogSources.orEmpty().isNotEmpty() || category.remoteSources.orEmpty().isNotEmpty()) {
-                    updateHomeCategory(categoryId) { existing -> existing.copy(folderSourcesLoading = false) }
-                }
-                loadMoreInFlight.remove(categoryId)
-            }
-        }
-    }
-
-    private fun updateHomeCategory(categoryId: String, update: (HomeCategory) -> HomeCategory) {
-        val hiddenCategory = _collectionFolderCategories.value[categoryId]
-        if (hiddenCategory != null) {
-            _collectionFolderCategories.value = _collectionFolderCategories.value + (categoryId to update(hiddenCategory))
-            return
-        }
-        setCategoriesState(
-            _categories.value.map { existing ->
-                if (existing.id == categoryId) {
-                    update(existing)
-                } else {
-                    existing
-                }
-            }
-        )
+        pagingCoordinator.loadMore(categoryId)
     }
 
     fun clearDiscoverResults() {
-        _headlessDiscoverResults.value = emptyList()
+        browseCoordinator.clearResults()
     }
 
     fun discoverCatalogOptions(type: String): List<DiscoverCatalogOption> =
-        buildDiscoverCatalogOptions(_userAddons.value, type)
+        browseCoordinator.catalogOptions(type)
 
-    fun discoverContentTypes(): List<String> = buildDiscoverContentTypes(_userAddons.value)
+    fun discoverContentTypes(): List<String> = browseCoordinator.availableContentTypes()
 
     fun setDiscoverLoading(isLoading: Boolean) {
-        _headlessDiscoverLoading.value = isLoading
+        browseCoordinator.setLoading(isLoading)
     }
 
     fun discover(type: String, catalogKey: String?, genre: String?, year: String?, rating: Float?, provider: String?, region: String?) {
-        discoverJob?.cancel()
-        discoverJob = viewModelScope.launch {
-            _headlessDiscoverLoading.value = true
-            try {
-                val result = dispatchHeadless(
-                    mapOf(
-                        "type" to "discoverRequested",
-                        "contentType" to type,
-                        "filters" to mapOf(
-                            "catalogKey" to catalogKey,
-                            "genre" to genre,
-                            "year" to year,
-                            "rating" to rating,
-                            "provider" to provider,
-                            "region" to region
-                        ),
-                        "profile" to currentActiveProfile,
-                        "language" to (currentActiveProfile?.safeLanguage ?: "en")
-                    )
-                )
-                val discover = result.state["discover"] as? Map<*, *>
-                _headlessDiscoverResults.value = fromStateList(discover?.get("results"), metaListType)
-                _headlessDiscoverResultSources.value = fromStateSourceMap(discover?.get("resultSources"))
-            } finally {
-                _headlessDiscoverLoading.value = false
-            }
-        }
+        browseCoordinator.discover(type, catalogKey, genre, year, rating, provider, region)
     }
 
     fun loadMoreDiscoverResults(transportUrl: String, contentType: String, catalogId: String, genre: String?) {
-        if (_headlessDiscoverLoading.value) return
-        viewModelScope.launch {
-            _headlessDiscoverLoading.value = true
-            try {
-                val result = dispatchHeadless(
-                    mapOf(
-                        "type" to "discoverPageRequested",
-                        "transportUrl" to transportUrl,
-                        "contentType" to contentType,
-                        "catalogId" to catalogId,
-                        "skip" to _headlessDiscoverResults.value.size,
-                        "genre" to genre
-                    )
-                )
-                val discover = result.state["discover"] as? Map<*, *>
-                val updatedResults = fromStateList<Meta>(discover?.get("results"), metaListType)
-                val source = HomeCatalogSource(transportUrl, catalogId, contentType, genre)
-                val updatedSources = _headlessDiscoverResultSources.value.toMutableMap()
-                updatedResults.forEach { item ->
-                    updatedSources.putIfAbsent("${item.type}:${item.id}", source)
-                    updatedSources.putIfAbsent(item.id, source)
-                }
-                _headlessDiscoverResults.value = updatedResults
-                _headlessDiscoverResultSources.value = updatedSources
-            } finally {
-                _headlessDiscoverLoading.value = false
-            }
-        }
+        browseCoordinator.loadMore(transportUrl, contentType, catalogId, genre)
     }
 
     fun loadCalendarMonth(activeProfile: UserProfile?, year: Int, month: Int, plannedItems: List<Meta> = emptyList()) {
-        viewModelScope.launch {
-            _headlessCalendarLoading.value = true
-            try {
-                val result = dispatchHeadless(
-                    mapOf(
-                        "type" to "calendarMonthRequested",
-                        "profile" to activeProfile,
-                        "year" to year,
-                        "month" to month,
-                        "plannedItems" to plannedItems
-                    )
-                )
-                val calendar = result.state["calendar"] as? Map<*, *>
-                _headlessCalendarItems.value = fromStateList(calendar?.get("items"), calendarItemListType)
-            } finally {
-                _headlessCalendarLoading.value = false
-            }
-        }
+        browseCoordinator.loadCalendar(activeProfile, year, month, plannedItems)
     }
 
     fun loadDiscoverGenres(type: String) {
-        _headlessDiscoverGenres.value = emptyList()
+        browseCoordinator.clearGenres()
     }
 
     fun loadDiscoverCatalogFilters(
@@ -1159,23 +917,7 @@ class HomeViewModel @Inject constructor(
         selectedCatalogKey: String?,
         onLoaded: ((List<DiscoverCatalogOption>) -> Unit)? = null
     ) {
-        viewModelScope.launch {
-            val result = dispatchHeadless(
-                mapOf(
-                    "type" to "discoverCatalogFiltersRequested",
-                    "contentType" to type,
-                    "selectedCatalogKey" to selectedCatalogKey,
-                    "profile" to currentActiveProfile,
-                    "language" to (currentActiveProfile?.safeLanguage ?: "en")
-                )
-            )
-            val discover = result.state["discover"] as? Map<*, *> ?: return@launch
-            val catalogs = fromStateList<DiscoverCatalogOption>(discover["catalogs"], discoverCatalogListType)
-            _headlessDiscoverCatalogs.value = catalogs
-            _headlessDiscoverGenres.value = fromStateList(discover["genres"], discoverGenreListType)
-            _headlessDiscoverContentTypes.value = fromStateList(discover["contentTypes"], discoverContentTypeListType)
-            onLoaded?.invoke(catalogs)
-        }
+        browseCoordinator.loadFilters(type, selectedCatalogKey, onLoaded)
     }
 
     fun setUserAddons(addons: List<AddonDescriptor>) {
@@ -1217,7 +959,7 @@ class HomeViewModel @Inject constructor(
             savedTvFocusedRowIndex = -1
             savedCategoryScrollPositions.clear()
         }
-        if (_categories.value.isEmpty()) {
+        if (categoryState.currentCategories().isEmpty()) {
             val cached = homeCategoryCache.load(activeProfile)
             if (cached.isNotEmpty()) {
                 setCategoriesState(cached)
@@ -1261,29 +1003,11 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshTraktTokenIfNeeded(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
-        refreshAuthTokenIfNeeded("trakt", profile, onProfileUpdated)
+        authCoordinator.refreshTokenIfNeeded("trakt", profile, onProfileUpdated)
     }
 
     fun refreshMalTokenIfNeeded(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
-        refreshAuthTokenIfNeeded("mal", profile, onProfileUpdated)
-    }
-
-    private fun refreshAuthTokenIfNeeded(provider: String, profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
-        viewModelScope.launch {
-            val result = dispatchHeadless(
-                mapOf(
-                    "type" to "authRefreshRequested",
-                    "provider" to provider,
-                    "profile" to profile
-                )
-            )
-            val auth = result.state["auth"] as? Map<*, *>
-            val updated = fromStateObject(auth?.get("result")?.let { (it as? Map<*, *>)?.get("profile") } ?: auth?.get("result"), UserProfile::class.java)
-            if (updated != null && updated != profile) {
-                setActiveProfileState(updated)
-                onProfileUpdated(updated)
-            }
-        }
+        authCoordinator.refreshTokenIfNeeded("mal", profile, onProfileUpdated)
     }
 
     fun refreshExternalContinueWatching() {
@@ -1291,19 +1015,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadLibraryData(activeProfile: UserProfile?) {
-        viewModelScope.launch {
-            val result = dispatchHeadless(
-                mapOf(
-                    "type" to "libraryHydrateRequested",
-                    "profileId" to activeProfile?.id
-                )
-            )
-            val library = result.state["library"] as? Map<*, *> ?: return@launch
-            setWatchlistState(fromStateList(library["watchlist"], metaListType))
-            setCurrentWatchlistState(fromStateList(library["continueWatching"], metaListType))
-            setLikedItemsState(fromStateList(library["liked"], metaListType))
-            refreshDynamicRows()
-        }
+        syncCoordinator.loadLibrary(activeProfile)
     }
 
     fun syncTraktIntegration(
@@ -1311,26 +1023,7 @@ class HomeViewModel @Inject constructor(
         onProfileUpdated: (UserProfile) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        viewModelScope.launch {
-            val result = dispatchHeadless(
-                mapOf(
-                    "type" to "externalIntegrationSyncRequested",
-                    "provider" to "trakt",
-                    "profile" to profile,
-                    "language" to profile.safeLanguage
-                )
-            )
-            val sync = result.state["sync"] as? Map<*, *>
-            val error = sync?.get("error")
-            val updated = fromStateObject((sync?.get("snapshot") as? Map<*, *>)?.get("profile") ?: (result.state["profile"] as? Map<*, *>)?.get("active"), UserProfile::class.java)
-            if (updated != null) {
-                setActiveProfileState(updated)
-                onProfileUpdated(updated)
-                setExternalContinueWatchingState(fromStateList((result.state["home"] as? Map<*, *>)?.get("externalContinueWatching"), metaListType))
-                refreshDynamicRows()
-            }
-            onComplete(error == null && updated != null)
-        }
+        syncCoordinator.syncTrakt(profile, onProfileUpdated, onComplete)
     }
 
     fun syncNuvioIntegration(
@@ -1338,29 +1031,7 @@ class HomeViewModel @Inject constructor(
         onProfileUpdated: (UserProfile) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        viewModelScope.launch {
-            val result = dispatchHeadless(
-                mapOf(
-                    "type" to "externalSyncRequested",
-                    "provider" to "nuvio",
-                    "profile" to profile,
-                    "language" to profile.safeLanguage
-                )
-            )
-            val sync = result.state["sync"] as? Map<*, *>
-            val updated = fromStateObject(
-                sync?.get("profile")
-                    ?: (sync?.get("snapshot") as? Map<*, *>)?.get("profile")
-                    ?: (result.state["profile"] as? Map<*, *>)?.get("active"),
-                UserProfile::class.java
-            )
-            if (updated != null) {
-                setActiveProfileState(updated)
-                onProfileUpdated(updated)
-                loadLibraryData(updated)
-            }
-            onComplete(sync?.get("error") == null)
-        }
+        syncCoordinator.syncNuvio(profile, onProfileUpdated, onComplete, ::loadLibraryData)
     }
 
     suspend fun isNuvioHealthy(): Boolean = nuvioSyncCoordinator.isHealthy()
@@ -1376,26 +1047,7 @@ class HomeViewModel @Inject constructor(
         onProfileUpdated: (UserProfile) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        viewModelScope.launch {
-            val result = dispatchHeadless(
-                mapOf(
-                    "type" to "externalIntegrationSyncRequested",
-                    "provider" to "stremio",
-                    "profile" to profile,
-                    "language" to profile.safeLanguage
-                )
-            )
-            val sync = result.state["sync"] as? Map<*, *>
-            val snapshot = sync?.get("snapshot") as? Map<*, *>
-            val updated = fromStateObject(snapshot?.get("profile") ?: (result.state["profile"] as? Map<*, *>)?.get("active"), UserProfile::class.java)
-            if (updated != null) {
-                setActiveProfileState(updated)
-                setExternalContinueWatchingState(fromStateList((result.state["home"] as? Map<*, *>)?.get("externalContinueWatching"), metaListType))
-                onProfileUpdated(updated)
-                refreshDynamicRows()
-            }
-            onComplete(sync?.get("error") == null && updated != null)
-        }
+        syncCoordinator.syncStremio(profile, onProfileUpdated, onComplete)
     }
 
     private fun buildUserCollectionHomeCategories(profile: UserProfile?, showAboveContinueWatching: Boolean? = null): List<HomeCategory> {
@@ -1439,32 +1091,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun setCategoriesState(categories: List<HomeCategory>) {
-        val hiddenCollectionFolders = categories.filter { it.isCollectionFolderCategory() }
-        val visibleCategories = categories.filterNot { it.isCollectionFolderCategory() || it.type == "collection" }
-        when {
-            categories.isEmpty() -> _collectionFolderCategories.value = emptyMap()
-            hiddenCollectionFolders.isNotEmpty() || categories.any { it.type == "collection" } -> {
-                val existingFolders = _collectionFolderCategories.value
-                _collectionFolderCategories.value = hiddenCollectionFolders.associate { incoming ->
-                    val existing = existingFolders[incoming.id]
-                    incoming.id to if (existing == null || (existing.items.isEmpty() && !existing.folderSourcesLoading)) {
-                        incoming
-                    } else {
-                        incoming.copy(
-                            items = existing.items,
-                            skip = existing.skip,
-                            canLoadMore = existing.canLoadMore,
-                            resultSources = existing.resultSources,
-                            folderSourcesLoading = existing.folderSourcesLoading
-                        )
-                    }
-                }
-            }
-        }
-        val signature = visibleCategories.renderSignatureForHome()
-        if (categoriesRenderSignature == signature) return
-        categoriesRenderSignature = signature
-        _categories.value = visibleCategories
+        categoryState.setCategories(categories)
     }
 
     private fun setLoadingState(isLoading: Boolean) {
@@ -1555,195 +1182,19 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private suspend fun fromStateSourceMap(value: Any?): Map<String, HomeCatalogSource> {
-        return withContext(Dispatchers.Default) {
-            runCatching {
-                gson.fromJson<Map<String, HomeCatalogSource>>(gson.toJsonTree(value), discoverResultSourceMapType)
-            }.getOrNull() ?: emptyMap()
-        }
-    }
+    fun exchangeTraktCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
+        authCoordinator.exchangeCode("trakt", code, null, onProfileUpdated, onComplete)
 
-    fun exchangeTraktCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) {
-        exchangeAuthCode("trakt", code, null, onProfileUpdated, onComplete)
-    }
+    fun startTraktDeviceAuthorization(onCodeReady: (TraktDeviceCodeResponse) -> Unit, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean, String?) -> Unit) =
+        authCoordinator.startTraktDeviceAuthorization(onCodeReady, onProfileUpdated, onComplete)
 
-    fun startTraktDeviceAuthorization(
-        onCodeReady: (TraktDeviceCodeResponse) -> Unit,
-        onProfileUpdated: (UserProfile) -> Unit,
-        onComplete: (Boolean, String?) -> Unit
-    ) {
-        viewModelScope.launch {
-            val profile = currentActiveProfile
-            if (profile == null) {
-                onComplete(false, "toast.trakt_connect_failed")
-                return@launch
-            }
-            val codeResult = dispatchHeadless(
-                mapOf(
-                    "type" to "authFlowRequested",
-                    "provider" to "trakt",
-                    "mode" to "deviceCode"
-                )
-            )
-            val codeResponse = fromStateObject((codeResult.state["auth"] as? Map<*, *>)?.get("result"), TraktDeviceCodeResponse::class.java)
-            if (codeResponse == null) {
-                onComplete(false, "toast.trakt_connect_failed")
-                return@launch
-            }
-            onCodeReady(codeResponse)
-            val startedAt = System.currentTimeMillis()
-            val expiresAt = startedAt + codeResponse.expiresIn * 1000L
-            var intervalMs = codeResponse.interval.coerceAtLeast(5) * 1000L
-            var failureMessageKey: String? = "toast.trakt_connect_failed"
-            while (System.currentTimeMillis() < expiresAt) {
-                delay(intervalMs)
-                val tokenResult = dispatchHeadless(
-                    mapOf(
-                        "type" to "authExchangeRequested",
-                        "provider" to "traktDevice",
-                        "code" to codeResponse.deviceCode,
-                        "profile" to (currentActiveProfile ?: profile)
-                    )
-                )
-                val auth = tokenResult.state["auth"] as? Map<*, *>
-                val result = auth?.get("result") as? Map<*, *>
-                val updated = fromStateObject(result?.get("profile"), UserProfile::class.java)
-                if (updated != null) {
-                    setActiveProfileState(updated)
-                    onProfileUpdated(updated)
-                    setCategoriesState(emptyList())
-                    onComplete(true, null)
-                    return@launch
-                }
-                val errorCode = result?.get("errorCode") as? String
-                val httpCode = (result?.get("httpCode") as? Number)?.toInt()
-                when {
-                    errorCode == "slow_down" || httpCode == 429 -> {
-                        val retryAfterMs = (result.get("retryAfterSeconds") as? Number)?.toLong()?.let { it * 1000L }
-                        intervalMs = (retryAfterMs ?: (intervalMs + 5_000L)).coerceAtMost(60_000L)
-                    }
-                    errorCode == "expired_token" || errorCode == "invalid_grant" -> {
-                        failureMessageKey = "toast.trakt_device_code_expired"
-                        break
-                    }
-                    errorCode == "authorization_pending" || httpCode in setOf(400, 404, 409, 428) -> {
-                        continue
-                    }
-                    else -> break
-                }
-            }
-            if (System.currentTimeMillis() >= expiresAt) {
-                failureMessageKey = "toast.trakt_device_code_expired"
-            }
-            onComplete(false, failureMessageKey)
-        }
-    }
+    fun exchangeMalCode(code: String, codeVerifier: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
+        authCoordinator.exchangeCode("mal", code, codeVerifier, onProfileUpdated, onComplete)
 
-    fun exchangeMalCode(code: String, codeVerifier: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) {
-        exchangeAuthCode("mal", code, codeVerifier, onProfileUpdated, onComplete)
-    }
+    fun exchangeSimklCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
+        authCoordinator.exchangeCode("simkl", code, null, onProfileUpdated, onComplete)
 
-    fun exchangeSimklCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) {
-        exchangeAuthCode("simkl", code, null, onProfileUpdated, onComplete)
-    }
+    fun exchangeAnilistCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
+        authCoordinator.exchangeCode("anilist", code, null, onProfileUpdated, onComplete)
 
-    fun exchangeAnilistCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) {
-        exchangeAuthCode("anilist", code, null, onProfileUpdated, onComplete)
-    }
-
-    private fun exchangeAuthCode(
-        provider: String,
-        code: String,
-        codeVerifier: String?,
-        onProfileUpdated: (UserProfile) -> Unit,
-        onComplete: (Boolean) -> Unit
-    ) {
-        viewModelScope.launch {
-            val profile = currentActiveProfile
-            if (profile == null) {
-                onComplete(false)
-                return@launch
-            }
-            val result = dispatchHeadless(
-                mapOf(
-                    "type" to "authExchangeRequested",
-                    "provider" to provider,
-                    "code" to code,
-                    "codeVerifier" to codeVerifier,
-                    "profile" to profile
-                )
-            )
-            val updated = fromStateObject((result.state["profile"] as? Map<*, *>)?.get("active"), UserProfile::class.java)
-            if (updated != null) {
-                setActiveProfileState(updated)
-                onProfileUpdated(updated)
-                setCategoriesState(emptyList())
-                onComplete(true)
-            } else {
-                onComplete(false)
-            }
-        }
-    }
-
-}
-
-private fun List<MainAPI>.toCs3CatalogFeedDescriptors(): List<Cs3CatalogFeedDescriptor> {
-    return filter { it.hasMainPage }.flatMap { api ->
-        api.mainPage.mapIndexed { index, page ->
-            Cs3CatalogFeedDescriptor(
-                pluginName = api.name,
-                catalogName = page.name.takeIf { it.isNotBlank() } ?: api.name,
-                catalogIndex = index
-            )
-        }
-    }
-}
-
-private fun List<HomeCategory>.renderSignatureForHome(): Int {
-    var result = size
-    for (category in this) {
-        result = 31 * result + category.id.hashCode()
-        result = 31 * result + category.name.hashCode()
-        result = 31 * result + category.type.hashCode()
-        result = 31 * result + (category.addonIconUrl?.hashCode() ?: 0)
-        result = 31 * result + category.items.size
-        result = 31 * result + category.skip
-        result = 31 * result + category.canLoadMore.hashCode()
-        if (category.type == "collection_folder") {
-            continue
-        }
-        val visibleCount = minOf(category.items.size, 24)
-        for (index in 0 until visibleCount) {
-            val item = category.items[index]
-            result = 31 * result + item.id.hashCode()
-            result = 31 * result + item.type.hashCode()
-            result = 31 * result + item.name.hashCode()
-            result = 31 * result + (item.poster?.hashCode() ?: 0)
-            result = 31 * result + (item.background?.hashCode() ?: 0)
-            result = 31 * result + (item.logo?.hashCode() ?: 0)
-            result = 31 * result + (item.releaseInfo?.hashCode() ?: 0)
-            result = 31 * result + (item.reason?.hashCode() ?: 0)
-            result = 31 * result + (item.timeOffset?.hashCode() ?: 0)
-            result = 31 * result + (item.duration?.hashCode() ?: 0)
-            result = 31 * result + (item.lastVideoId?.hashCode() ?: 0)
-            result = 31 * result + (item.lastEpisodeName?.hashCode() ?: 0)
-            result = 31 * result + (item.continueWatchingPoster?.hashCode() ?: 0)
-            result = 31 * result + (item.continueWatchingBackground?.hashCode() ?: 0)
-        }
-    }
-    return result
-}
-
-private fun HomeCategory.isCollectionFolderCategory(): Boolean {
-    return type == "collection_folder"
-}
-
-private fun Video.continueWatchingTitleForHome(): String {
-    val seasonEpisode = if (season != null && number != null) "S$season, E$number" else null
-    val title = name?.trim()?.takeIf { it.isNotBlank() }
-    return when {
-        seasonEpisode != null && title != null -> "$seasonEpisode: $title"
-        seasonEpisode != null -> seasonEpisode
-        else -> title.orEmpty()
-    }
 }

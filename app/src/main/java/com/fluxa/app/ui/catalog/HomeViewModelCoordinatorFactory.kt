@@ -6,25 +6,15 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktRepository
 import com.fluxa.app.data.repository.TraktWatchedState
-import com.fluxa.app.domain.discovery.DiscoverCatalogContentLoader
 import com.fluxa.app.domain.discovery.StreamDiscoveryUseCase
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 
 class HomeViewModelCoordinatorFactory @Inject constructor() {
-    internal fun search(addonRepository: AddonRepository, searchHistoryStore: SearchHistoryStore): HomeSearchCoordinator {
-        return HomeSearchCoordinator(addonRepository, searchHistoryStore)
-    }
-
-    internal fun episodeCalendar(repository: StremioRepository, watchlistManager: WatchlistManager): EpisodeCalendarLoader {
-        return EpisodeCalendarLoader(repository, watchlistManager)
-    }
-
     internal fun library(
         repository: StremioRepository,
         traktRepository: TraktRepository,
@@ -33,59 +23,6 @@ class HomeViewModelCoordinatorFactory @Inject constructor() {
         gson: Gson
     ): HomeLibraryCoordinator {
         return HomeLibraryCoordinator(repository, traktRepository, scope, coreState, gson)
-    }
-
-    internal fun auth(
-        repository: StremioRepository,
-        scope: CoroutineScope,
-        activeProfile: () -> UserProfile?,
-        invalidateHome: () -> Unit
-    ): HomeAuthCoordinator {
-        return HomeAuthCoordinator(repository, scope, activeProfile, invalidateHome)
-    }
-
-    internal fun discover(
-        addonRepository: AddonRepository,
-        discoverCatalogContentLoader: DiscoverCatalogContentLoader,
-        scope: CoroutineScope,
-        activeProfile: () -> UserProfile?,
-        userAddons: () -> List<AddonDescriptor>,
-        setUserAddons: (List<AddonDescriptor>) -> Unit,
-        normalizeCatalogItems: suspend (List<Meta>, String, String, String?) -> List<Meta>,
-        coreState: FluxaCoreStateHandle
-    ): HomeDiscoverController {
-        return HomeDiscoverController(
-            addonRepository = addonRepository,
-            discoverCatalogContentLoader = discoverCatalogContentLoader,
-            scope = scope,
-            activeProfile = activeProfile,
-            userAddons = userAddons,
-            setUserAddons = setUserAddons,
-            normalizeCatalogItems = normalizeCatalogItems,
-            coreState = coreState
-        )
-    }
-
-    internal fun calendar(
-        context: Context,
-        episodeCalendarLoader: EpisodeCalendarLoader,
-        watchlistManager: WatchlistManager,
-        scope: CoroutineScope,
-        activeProfile: () -> UserProfile?,
-        setActiveProfile: (UserProfile?) -> Unit,
-        onSnapshotLoaded: (HomeCalendarSnapshot) -> Unit,
-        coreState: FluxaCoreStateHandle
-    ): HomeCalendarController {
-        return HomeCalendarController(
-            context = context,
-            episodeCalendarLoader = episodeCalendarLoader,
-            watchlistManager = watchlistManager,
-            scope = scope,
-            activeProfile = activeProfile,
-            setActiveProfile = setActiveProfile,
-            onSnapshotLoaded = onSnapshotLoaded,
-            coreState = coreState
-        )
     }
 
     internal fun playback(

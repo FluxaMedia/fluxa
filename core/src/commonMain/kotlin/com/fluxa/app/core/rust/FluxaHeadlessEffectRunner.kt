@@ -26,14 +26,22 @@ class FluxaHeadlessEffectRunner(
     private suspend fun drain(initial: NativeHeadlessEngineResult): NativeHeadlessEngineResult {
         var current = initial
         val patches = mutableListOf(initial)
+        val pending = ArrayDeque<NativeHeadlessEffect>()
+        val queuedIds = mutableSetOf<String>()
+        initial.effects.forEach { effect ->
+            if (queuedIds.add(effect.id)) pending.addLast(effect)
+        }
         var remaining = maxEffectsPerDispatch
-        while (current.effects.isNotEmpty() && remaining > 0) {
-            current = engine.completeEffect(environment.execute(current.effects.first()))
+        while (pending.isNotEmpty() && remaining > 0) {
+            current = engine.completeEffect(environment.execute(pending.removeFirst()))
             patches += current
+            current.effects.forEach { effect ->
+                if (queuedIds.add(effect.id)) pending.addLast(effect)
+            }
             remaining--
         }
         return NativeHeadlessEngineResult(
-            effects = current.effects,
+            effects = pending.toList(),
             stateProvider = { patches.fold(emptyMap<String, Any?>()) { state, patch -> state + patch.state } }
         )
     }

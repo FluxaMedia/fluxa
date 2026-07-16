@@ -67,7 +67,6 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
         androidMain {
-            kotlin.srcDir("src/main/java")
             dependencies {
                 implementation(libs.androidx.core.ktx)
                 implementation(libs.bundles.coroutines)

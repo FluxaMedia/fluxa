@@ -2,6 +2,7 @@
 
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.shared.feature.player.PlayerSeekFeedback
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -250,7 +251,7 @@ internal fun BoxScope.PlayerTransientOverlays(
             .zIndex(300f)
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            SeekFeedback(seekDirection, seekFeedbackMs.takeIf { it > 0L } ?: if (seekDirection > 0) seekForwardMs else seekBackwardMs)
+            PlayerSeekFeedback(seekDirection, seekFeedbackMs.takeIf { it > 0L } ?: if (seekDirection > 0) seekForwardMs else seekBackwardMs)
         }
     }
 }

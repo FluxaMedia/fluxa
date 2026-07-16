@@ -2,6 +2,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.shared.feature.player.formatPlayerTime
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -207,7 +208,7 @@ internal fun MobilePlayerUIContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = formatTime(if (isScrubbing) scrubPosition else position),
+                    text = formatPlayerTime(if (isScrubbing) scrubPosition else position),
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
@@ -230,7 +231,7 @@ internal fun MobilePlayerUIContent(
                     )
                 }
                 Text(
-                    text = formatTime(duration),
+                    text = formatPlayerTime(duration),
                     color = Color.White.copy(alpha = 0.84f),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium

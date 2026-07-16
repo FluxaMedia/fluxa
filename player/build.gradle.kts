@@ -32,6 +32,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project(":data"))
             implementation(libs.kotlinx.coroutines.core)
         }
         commonTest.dependencies {
@@ -39,7 +40,6 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
         androidMain {
-            kotlin.srcDir("src/main/java")
             dependencies {
                 implementation(project(":core"))
                 implementation(project(":data"))

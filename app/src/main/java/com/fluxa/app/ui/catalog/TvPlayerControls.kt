@@ -5,6 +5,7 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
+import com.fluxa.app.shared.feature.player.formatPlayerTime
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -379,7 +380,7 @@ internal fun TvPlayerUIContent(
                 
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = formatTime(if (isScrubbing) scrubPosition else position),
+                        text = formatPlayerTime(if (isScrubbing) scrubPosition else position),
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
@@ -397,7 +398,7 @@ internal fun TvPlayerUIContent(
                         Text(
                             text = when {
                                 isSwitchingAudioSource -> playerText(lang, "english_source")
-                                hasStartedPlaying && duration > 0 -> formatTime(duration)
+                                hasStartedPlaying && duration > 0 -> formatPlayerTime(duration)
                                 else -> playerStatusText(lang, detailedStatus)
                             },
                             color = Color.White,

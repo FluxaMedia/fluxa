@@ -1,5 +1,8 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.player.STREAM_SOURCE_MODE_FIRST
+import com.fluxa.app.player.STREAM_SOURCE_MODE_MANUAL
+
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
