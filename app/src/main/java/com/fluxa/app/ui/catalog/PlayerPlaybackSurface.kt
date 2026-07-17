@@ -303,6 +303,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
                 isScrubbing = isScrubbing,
                 scrubPosition = scrubPosition,
                 onScrubbingChange = onScrubbingChange,
+                onScrubSeek = { activeEngine?.seekTo(it, exact = false) },
                 isSwitchingAudioSource = isSwitchingAudioSource,
                 detailedStatus = torrentStatus.detailedStatus,
                 episodeMetaLine = currentEpisodeMetaLine,

@@ -6,9 +6,13 @@ import com.fluxa.app.shared.feature.player.MobilePlayerUIContent
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
 import com.fluxa.app.shared.feature.player.TvPlayerUIContent
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 
 internal suspend fun resolveIntroImdbId(
     viewModel: HomeViewModel,
@@ -27,7 +31,7 @@ internal fun extractSeasonEpisode(videoId: String?): Pair<Int, Int>? {
 internal fun PlayerUIContent(
     content: PlayerContentUiModel, lang: String, duration: Long, position: Long, bufferedFraction: Float, chapters: List<com.fluxa.app.player.Chapter> = emptyList(), isPlaying: Boolean, isBuffering: Boolean, hasStartedPlaying: Boolean, deviceType: DeviceType,
     onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onToggleSubtitles: () -> Unit, onToggleAspect: () -> Unit, onSpeedChange: (Float) -> Unit, playbackSpeed: Float, playPauseFocusRequester: FocusRequester, seekbarFocusRequester: FocusRequester,
-    isScrubbing: Boolean, scrubPosition: Long, onScrubbingChange: (Boolean, Long) -> Unit,
+    isScrubbing: Boolean, scrubPosition: Long, onScrubbingChange: (Boolean, Long) -> Unit, onScrubSeek: (Long) -> Unit = {},
     isSwitchingAudioSource: Boolean = false, detailedStatus: String = "", episodeMetaLine: String? = null, streamDetailLine: String? = null, subtitlesEnabled: Boolean = false, technicalInfo: String? = null,
     supportsTrackSettings: Boolean = true,
     seekForwardMs: Long = 10_000L, seekBackwardMs: Long = 10_000L,
@@ -45,9 +49,19 @@ internal fun PlayerUIContent(
     onClose: () -> Unit,
     accentColor: Color = FluxaColors.accent
 ) {
+    val seekSurfaceView = LocalSeekSurfaceView.current
     val seekPreviewBitmap = rememberSeekThumbnail(
-        LocalSeekSurfaceView.current, scrubPosition, isScrubbing, position, isPlaying
+        seekSurfaceView, scrubPosition, isScrubbing, position, isPlaying, onScrubSeek
     )
+    val scrubFreezeFrame = rememberScrubFreezeFrame(seekSurfaceView, isScrubbing)
+    scrubFreezeFrame?.let { frozen ->
+        Image(
+            bitmap = frozen,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
+    }
 
     if (deviceType == DeviceType.Mobile) {
         MobilePlayerUIContent(
