@@ -66,17 +66,10 @@ fun UniversalSettingsSidebar(
         tab == 1 -> AppStrings.t(lang, "player.subtitles_title")
         else -> AppStrings.t(lang, "player.speed_title")
     }
-    val subtitle = when {
-        showAdjust && tab == 0 -> AppStrings.t(lang, "player.adjust_audio_subtitle")
-        showAdjust && tab == 1 -> AppStrings.t(lang, "player.adjust_subtitles_subtitle")
-        tab == 0 -> AppStrings.t(lang, "player.audio_subtitle")
-        tab == 1 -> AppStrings.t(lang, "player.subtitles_subtitle")
-        else -> AppStrings.t(lang, "player.speed_subtitle")
-    }
 
     PlayerSidebarShell(
         title = title,
-        subtitle = subtitle,
+        subtitle = "",
         deviceType = deviceType,
         onClose = onClose,
         onBack = if (showAdjust) { { showAdjust = false } } else null
@@ -210,11 +203,7 @@ fun UniversalSettingsSidebar(
                                     title = formatSpeedLabel(speed),
                                     isSelected = playbackSpeed == speed,
                                     onClick = { onSpeedChange(speed) },
-                                    subtitle = when {
-                                        speed == 1.0f -> AppStrings.t(lang, "player.speed_standard")
-                                        speed < 1.0f -> AppStrings.t(lang, "player.speed_slower")
-                                        else -> AppStrings.t(lang, "player.speed_faster")
-                                    },
+                                    subtitle = if (speed == 1.0f) AppStrings.t(lang, "player.speed_standard") else null,
                                     deviceType = deviceType
                                 )
                             }

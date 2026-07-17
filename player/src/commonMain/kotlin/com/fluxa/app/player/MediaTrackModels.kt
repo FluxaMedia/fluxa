@@ -16,8 +16,8 @@ data class MediaTrack(
         get() {
             if (type != AUDIO_TRACK_TYPE) return ""
             return when (channelCount) {
-                1 -> "1.0"
-                2 -> "2.0"
+                1 -> "Mono"
+                2 -> "Stereo"
                 3 -> "2.1"
                 4 -> "4.0"
                 5 -> "5.0"

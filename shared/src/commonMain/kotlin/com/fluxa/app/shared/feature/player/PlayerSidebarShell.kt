@@ -123,8 +123,8 @@ fun PlayerSidebarShell(
         val panelSizeModifier = when {
             isSideSheet && isMobile -> Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(0.46f)
-                .widthIn(min = 300.dp, max = 520.dp)
+                .fillMaxWidth(0.38f)
+                .widthIn(min = 300.dp, max = 400.dp)
             isSideSheet -> Modifier
                 .widthIn(min = 300.dp, max = 420.dp)
                 .wrapContentHeight()
@@ -256,11 +256,11 @@ fun TrackItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = if (resolvedDeviceType == DeviceType.TV) 56.dp else 52.dp)
+            .heightIn(min = if (resolvedDeviceType == DeviceType.TV) 52.dp else 46.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
