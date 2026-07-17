@@ -235,6 +235,7 @@ fun FluxaApp(
             var navBarHeightPx by remember { mutableIntStateOf(0) }
             val density = LocalDensity.current
             val navBarHeightDp = with(density) { navBarHeightPx.toDp() }
+            val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
             AnimatedContent(
                 targetState = screenKey,
                 transitionSpec = {
@@ -247,7 +248,8 @@ fun FluxaApp(
                 } else {
                     Modifier.fillMaxSize().padding(bottom = navBarHeightDp)
                 }
-            ) { _ ->
+            ) { key ->
+            saveableStateHolder.SaveableStateProvider(key) {
             when {
                 playerState?.content != null -> PlayerControlsSurface(
                     state = playerState,
@@ -439,6 +441,7 @@ fun FluxaApp(
                     destination = state.destination,
                     modifier = Modifier.fillMaxSize()
                 )
+            }
             }
             }
             if (showNavigationBar) {
