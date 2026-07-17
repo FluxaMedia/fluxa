@@ -35,7 +35,20 @@ class DetailStore(
         when (action) {
             DetailAction.ToggleWatchlist -> dataSource.toggleWatchlist(request.id, request.type)
             is DetailAction.SeasonSelected -> dataSource.selectSeason(action.season)
-            is DetailAction.EpisodeSelected -> dataSource.selectEpisode(action.episodeId)
+            is DetailAction.EpisodeSelected -> {
+                dataSource.selectEpisode(action.episodeId)
+                val content = state.value.content
+                _navigation.emit(
+                    DetailNavigationEvent.SelectSources(
+                        episodeId = action.episodeId,
+                        resumeProgress = DetailNavigationLogic.resumeProgressFor(
+                            resumeVideoId = content?.resumeVideoId,
+                            resumeProgress = content?.resumeProgress ?: 0L,
+                            targetVideoId = action.episodeId
+                        )
+                    )
+                )
+            }
             is DetailAction.AddonFilterSelected -> dataSource.selectAddonFilter(action.addonName)
             is DetailAction.DownloadEpisode -> dataSource.downloadEpisode(action.episodeId)
             is DetailAction.DownloadSeason -> dataSource.downloadSeason(action.season)

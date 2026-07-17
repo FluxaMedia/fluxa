@@ -10,7 +10,8 @@ import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState as SharedDetailUiState
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 
 class AndroidDetailDataSource(
     val detailViewModel: DetailViewModel,
@@ -18,7 +19,7 @@ class AndroidDetailDataSource(
 ) : DetailDataSource {
 
     private var selectedSeason: Int = 1
-    private var selectedEpisodeId: String? = null
+    private val selectedEpisodeIdFlow = MutableStateFlow<String?>(null)
     private var requestedVideoId: String? = null
     private var requestedProgress: Long? = null
     private var initialMeta: Meta? = null
@@ -28,7 +29,7 @@ class AndroidDetailDataSource(
     }
 
     override fun observeDetail(id: String, type: String): Flow<SharedDetailUiState> {
-        return detailViewModel.uiState.map { state ->
+        return combine(detailViewModel.uiState, selectedEpisodeIdFlow) { state, selectedEpisodeId ->
             SharedDetailUiState(
                 content = state.detail?.let { detail ->
                     val effectiveWatched = state.watchedVideoIds.toSet() + state.localWatchedVideoIds
@@ -78,7 +79,7 @@ class AndroidDetailDataSource(
 
     override suspend fun loadDetail(request: DetailRequestUiModel) {
         selectedSeason = request.targetSeason ?: 1
-        selectedEpisodeId = request.lastVideoId
+        selectedEpisodeIdFlow.value = request.lastVideoId
         requestedVideoId = request.lastVideoId
         requestedProgress = request.initialProgress
         detailViewModel.loadDetail(
@@ -97,19 +98,19 @@ class AndroidDetailDataSource(
 
     override suspend fun selectSeason(season: Int) {
         selectedSeason = season
-        selectedEpisodeId = null
+        selectedEpisodeIdFlow.value = null
         val id = detailViewModel.uiState.value.detail?.id ?: return
         detailViewModel.loadSeason(id, season)
     }
 
     override suspend fun selectEpisode(episodeId: String) {
-        selectedEpisodeId = episodeId
+        selectedEpisodeIdFlow.value = episodeId
         val type = detailViewModel.uiState.value.detail?.type ?: return
         detailViewModel.fetchStreamsForSelection(type, episodeId)
     }
 
     override suspend fun loadSources(contentId: String, contentType: String, episodeId: String?) {
-        selectedEpisodeId = episodeId
+        selectedEpisodeIdFlow.value = episodeId
         detailViewModel.fetchStreamsForSelection(contentType, episodeId ?: contentId)
     }
 
