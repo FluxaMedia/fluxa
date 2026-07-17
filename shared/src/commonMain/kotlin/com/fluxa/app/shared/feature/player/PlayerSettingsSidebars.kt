@@ -11,6 +11,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,9 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -78,6 +83,7 @@ fun UniversalSettingsSidebar(
         val twoColumn = deviceType != DeviceType.Mobile || maxWidth > maxHeight
         var tab by remember(activeTab) { mutableStateOf(activeTab.coerceIn(0, 1)) }
         var showAdjust by remember(activeTab) { mutableStateOf(false) }
+        var sliderActive by remember { mutableStateOf(false) }
         val listMaxHeight = if (deviceType == DeviceType.TV) 400.dp else 440.dp
 
         val audioList: @Composable () -> Unit = {
@@ -102,16 +108,6 @@ fun UniversalSettingsSidebar(
                         deviceType = deviceType
                     )
                 }
-                item {
-                    TrackItem(
-                        title = AppStrings.t(lang, "player.audio_delay"),
-                        isSelected = false,
-                        onClick = { onInlineDelayAdjust(0) },
-                        subtitle = formatDelayMs(audioDelayMs),
-                        deviceType = deviceType,
-                        trailingIcon = FluxaIcons.ChevronRight
-                    )
-                }
             }
         }
         val subtitleList: @Composable () -> Unit = {
@@ -133,15 +129,6 @@ fun UniversalSettingsSidebar(
                         deviceType = deviceType
                     )
                 }
-                item {
-                    TrackItem(
-                        title = AppStrings.t(lang, "player.adjust"),
-                        isSelected = false,
-                        onClick = { showAdjust = true },
-                        deviceType = deviceType,
-                        trailingIcon = FluxaIcons.ChevronRight
-                    )
-                }
             }
         }
         val subtitleAdjust: @Composable () -> Unit = {
@@ -158,67 +145,86 @@ fun UniversalSettingsSidebar(
                     title = AppStrings.t(lang, "settings.subtitle_text"),
                     value = subtitleTextOpacity,
                     deviceType = deviceType,
-                    onChange = onSubtitleTextOpacityChange
+                    onChange = onSubtitleTextOpacityChange,
+                    onDragActiveChange = { sliderActive = it }
                 )
                 OpacityAdjustmentItem(
                     title = AppStrings.t(lang, "settings.subtitle_background"),
                     value = subtitleBackgroundOpacity,
                     deviceType = deviceType,
-                    onChange = onSubtitleBackgroundOpacityChange
+                    onChange = onSubtitleBackgroundOpacityChange,
+                    onDragActiveChange = { sliderActive = it }
                 )
                 OpacityAdjustmentItem(
                     title = AppStrings.t(lang, "settings.subtitle_outline"),
                     value = subtitleOutlineOpacity,
                     deviceType = deviceType,
-                    onChange = onSubtitleOutlineOpacityChange
+                    onChange = onSubtitleOutlineOpacityChange,
+                    onDragActiveChange = { sliderActive = it }
                 )
             }
         }
 
-        if (twoColumn) {
+        if (showAdjust) {
+            SubtitlePreviewCue(
+                lang = lang,
+                textOpacity = subtitleTextOpacity,
+                backgroundOpacity = subtitleBackgroundOpacity,
+                outlineOpacity = subtitleOutlineOpacity
+            )
             PlayerSidebarShell(
-                title = if (showAdjust) AppStrings.t(lang, "player.adjust") else "",
+                title = AppStrings.t(lang, "player.adjust"),
                 deviceType = deviceType,
                 onClose = onClose,
-                onBack = if (showAdjust) { { showAdjust = false } } else null,
-                cardWidth = if (showAdjust) 380.dp else 580.dp
+                onBack = { showAdjust = false },
+                cardWidth = 380.dp,
+                anchorTop = true,
+                scrimAlpha = 0.06f,
+                dimmed = sliderActive
             ) {
-                if (showAdjust) {
-                    subtitleAdjust()
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            ColumnLabel(AppStrings.t(lang, "player.audio_title"))
-                            audioList()
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            ColumnLabel(AppStrings.t(lang, "player.subtitles_title"))
-                            subtitleList()
-                        }
+                subtitleAdjust()
+            }
+        } else if (twoColumn) {
+            PlayerSidebarShell(
+                title = "",
+                deviceType = deviceType,
+                onClose = onClose,
+                cardWidth = 580.dp
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        ColumnHeader(AppStrings.t(lang, "player.audio_title")) { onInlineDelayAdjust(0) }
+                        audioList()
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        ColumnHeader(AppStrings.t(lang, "player.subtitles_title")) { showAdjust = true }
+                        subtitleList()
                     }
                 }
             }
         } else {
             PlayerSidebarShell(
-                title = if (showAdjust) AppStrings.t(lang, "player.adjust") else "",
+                title = "",
                 deviceType = deviceType,
-                onClose = onClose,
-                onBack = if (showAdjust) { { showAdjust = false } } else null
+                onClose = onClose
             ) {
-                if (showAdjust) {
-                    subtitleAdjust()
-                } else {
-                    SegmentedTabRow(
-                        options = listOf(
-                            AppStrings.t(lang, "player.audio_title") to 0,
-                            AppStrings.t(lang, "player.subtitles_title") to 1
-                        ),
-                        selected = tab,
-                        onSelect = { tab = it }
-                    )
-                    Spacer(Modifier.height(14.dp))
-                    if (tab == 0) audioList() else subtitleList()
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        SegmentedTabRow(
+                            options = listOf(
+                                AppStrings.t(lang, "player.audio_title") to 0,
+                                AppStrings.t(lang, "player.subtitles_title") to 1
+                            ),
+                            selected = tab,
+                            onSelect = { tab = it }
+                        )
+                    }
+                    AdjustIconButton {
+                        if (tab == 0) onInlineDelayAdjust(0) else showAdjust = true
+                    }
                 }
+                Spacer(Modifier.height(14.dp))
+                if (tab == 0) audioList() else subtitleList()
             }
         }
     }
@@ -353,14 +359,67 @@ private fun PillIconButton(icon: ImageVector, onClick: () -> Unit, emphasized: B
 }
 
 @Composable
-private fun ColumnLabel(text: String) {
-    Text(
-        text = text,
-        color = Color.White.copy(alpha = 0.55f),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 12.dp, bottom = 6.dp)
-    )
+private fun ColumnHeader(text: String, onAdjust: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            color = Color.White.copy(alpha = 0.55f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        AdjustIconButton(onAdjust)
+    }
+}
+
+@Composable
+private fun AdjustIconButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.06f))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(FluxaIcons.Tune, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+    }
+}
+
+@Composable
+private fun SubtitlePreviewCue(
+    lang: String,
+    textOpacity: Float,
+    backgroundOpacity: Float,
+    outlineOpacity: Float
+) {
+    Box(modifier = Modifier.fillMaxSize().zIndex(60f)) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 56.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = backgroundOpacity.coerceIn(0f, 1f)))
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = AppStrings.t(lang, "player.subtitle_sample"),
+                color = Color.White.copy(alpha = textOpacity.coerceIn(0f, 1f)),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = outlineOpacity.coerceIn(0f, 1f)),
+                        offset = Offset.Zero,
+                        blurRadius = 4f
+                    )
+                )
+            )
+        }
+    }
 }
 
 @Composable
@@ -413,8 +472,13 @@ private fun OpacityAdjustmentItem(
     title: String,
     value: Float,
     deviceType: DeviceType,
-    onChange: (Float) -> Unit
+    onChange: (Float) -> Unit,
+    onDragActiveChange: (Boolean) -> Unit = {}
 ) {
+    val sliderInteraction = remember { MutableInteractionSource() }
+    val dragged by sliderInteraction.collectIsDraggedAsState()
+    val pressed by sliderInteraction.collectIsPressedAsState()
+    LaunchedEffect(dragged, pressed) { onDragActiveChange(dragged || pressed) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -445,6 +509,7 @@ private fun OpacityAdjustmentItem(
                 value = value.coerceIn(0f, 1f),
                 onValueChange = { onChange(it.coerceIn(0f, 1f)) },
                 valueRange = 0f..1f,
+                interactionSource = sliderInteraction,
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
                     activeTrackColor = Color.White,

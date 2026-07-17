@@ -98,6 +98,7 @@ object FluxaIcons {
     val Forward10: ImageVector = Icons.Filled.Forward10
     val Search: ImageVector = Icons.Filled.Search
     val Settings: ImageVector = Icons.Filled.Settings
+    val Tune: ImageVector = Icons.Filled.Tune
     val Share: ImageVector = Icons.Filled.Share
     val SkipNext: ImageVector = Icons.Filled.SkipNext
     val SkipPrevious: ImageVector = Icons.Filled.SkipPrevious

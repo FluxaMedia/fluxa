@@ -778,6 +778,7 @@
   "player.hide_subtitles": "Hide subtitles",
   "player.embedded_subtitle": "Embedded subtitle",
   "player.speed_standard": "Normal",
+  "player.subtitle_sample": "This is what subtitles will look like",
   "player.speed_slower": "Slower pace",
   "player.speed_faster": "Faster playback",
   "player.choose_preferred_source": "Choose your preferred source.",

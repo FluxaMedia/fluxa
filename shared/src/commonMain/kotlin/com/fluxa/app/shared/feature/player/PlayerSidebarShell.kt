@@ -78,6 +78,9 @@ fun PlayerSidebarShell(
     onClose: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     cardWidth: Dp? = null,
+    anchorTop: Boolean = false,
+    scrimAlpha: Float = 0.42f,
+    dimmed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     var shown by remember { mutableStateOf(false) }
@@ -100,14 +103,20 @@ fun PlayerSidebarShell(
     }
     val isMobile = deviceType == DeviceType.Mobile
 
+    val dim by animateFloatAsState(
+        targetValue = if (dimmed) 0.15f else 1f,
+        animationSpec = tween(150),
+        label = "sidebarDim"
+    )
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize().zIndex(100f)) {
         val isLandscape = maxWidth > maxHeight
-        val isCard = !isMobile || isLandscape
+        val isCard = !isMobile || isLandscape || anchorTop
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.42f * progress))
+                .background(Color.Black.copy(alpha = scrimAlpha * progress * dim))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -121,6 +130,7 @@ fun PlayerSidebarShell(
         }
         val panelSizeModifier = if (isCard) {
             Modifier
+                .padding(top = if (anchorTop) 16.dp else 0.dp)
                 .width(minOf(cardWidth ?: if (isMobile) 340.dp else 360.dp, maxWidth - 48.dp))
                 .wrapContentHeight()
                 .heightIn(max = maxHeight - 48.dp)
@@ -138,13 +148,19 @@ fun PlayerSidebarShell(
 
         Column(
             modifier = Modifier
-                .align(if (isCard) Alignment.Center else Alignment.BottomCenter)
+                .align(
+                    when {
+                        anchorTop -> Alignment.TopCenter
+                        isCard -> Alignment.Center
+                        else -> Alignment.BottomCenter
+                    }
+                )
                 .then(panelSizeModifier)
                 .animateContentSize(tween(220, easing = FastOutSlowInEasing))
                 .graphicsLayer {
-                    alpha = if (isCard) progress else 1f
+                    alpha = (if (isCard) progress else 1f) * dim
                     translationY = if (isCard) {
-                        (1f - progress) * 16.dp.toPx()
+                        (1f - progress) * (if (anchorTop) (-16).dp.toPx() else 16.dp.toPx())
                     } else {
                         (1f - progress) * size.height + dragOffsetPx
                     }

@@ -778,6 +778,7 @@
   "player.hide_subtitles": "Altyazıyı gizle",
   "player.embedded_subtitle": "Gömülü altyazı",
   "player.speed_standard": "Normal",
+  "player.subtitle_sample": "Altyazılar böyle görünecek",
   "player.speed_slower": "Daha sakin tempo",
   "player.speed_faster": "Daha hızlı oynatım",
   "player.choose_preferred_source": "Tercih ettiğiniz kaynağı seçin.",
