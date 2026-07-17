@@ -64,6 +64,7 @@ data class DetailUiModel(
     val streams: List<DetailStreamUiModel> = emptyList(),
     val isLoadingStreams: Boolean = false,
     val availableAddons: List<String> = emptyList(),
+    val loadingAddonNames: List<String> = emptyList(),
     val selectedAddon: String? = null,
     val hasStreamProviders: Boolean = true
 )

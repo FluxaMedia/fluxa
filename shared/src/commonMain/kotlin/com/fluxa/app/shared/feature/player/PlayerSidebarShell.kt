@@ -13,9 +13,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -42,6 +40,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -51,9 +50,9 @@ import kotlinx.coroutines.delay
 fun SourceSidebar(streams: List<Stream>, currentUrl: String, deviceType: DeviceType, lang: String = "en", onSelect: (String) -> Unit, onClose: (() -> Unit)? = null) {
     PlayerSidebarShell(
         title = AppStrings.t(lang, "player.source_selection_title"),
-        subtitle = AppStrings.t(lang, "player.source_selection_subtitle"),
         deviceType = deviceType,
-        onClose = onClose
+        onClose = onClose,
+        cardWidth = 420.dp
     ) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             items(streams, key = { it.playableUrl ?: (it.title.orEmpty() + it.name.orEmpty()) }) { stream ->
@@ -75,10 +74,10 @@ fun SourceSidebar(streams: List<Stream>, currentUrl: String, deviceType: DeviceT
 @Composable
 fun PlayerSidebarShell(
     title: String,
-    subtitle: String,
     deviceType: DeviceType,
     onClose: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
+    cardWidth: Dp? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     var shown by remember { mutableStateOf(false) }
@@ -103,29 +102,28 @@ fun PlayerSidebarShell(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().zIndex(100f)) {
         val isLandscape = maxWidth > maxHeight
-        val isSideSheet = !isMobile || isLandscape
+        val isCard = !isMobile || isLandscape
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.48f * progress))
+                .background(Color.Black.copy(alpha = 0.42f * progress))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { requestClose() }
         )
 
-        val panelShape = if (isSideSheet) {
-            RoundedCornerShape(20.dp)
+        val panelShape = if (isCard) {
+            RoundedCornerShape(24.dp)
         } else {
-            RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+            RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
         }
-        val panelSizeModifier = if (isSideSheet) {
+        val panelSizeModifier = if (isCard) {
             Modifier
-                .padding(end = 16.dp)
-                .width(if (isMobile) 340.dp else 400.dp)
+                .width(minOf(cardWidth ?: if (isMobile) 340.dp else 360.dp, maxWidth - 48.dp))
                 .wrapContentHeight()
-                .heightIn(max = maxHeight - 40.dp)
+                .heightIn(max = maxHeight - 48.dp)
         } else {
             Modifier
                 .fillMaxWidth(0.92f)
@@ -140,20 +138,23 @@ fun PlayerSidebarShell(
 
         Column(
             modifier = Modifier
-                .align(if (isSideSheet) Alignment.CenterEnd else Alignment.BottomCenter)
+                .align(if (isCard) Alignment.Center else Alignment.BottomCenter)
                 .then(panelSizeModifier)
                 .animateContentSize(tween(220, easing = FastOutSlowInEasing))
                 .graphicsLayer {
-                    translationY = if (!isSideSheet) (1f - progress) * size.height + dragOffsetPx else 0f
-                    translationX = if (isSideSheet) (1f - progress) * (size.width + 32.dp.toPx()) else 0f
+                    alpha = if (isCard) progress else 1f
+                    translationY = if (isCard) {
+                        (1f - progress) * 16.dp.toPx()
+                    } else {
+                        (1f - progress) * size.height + dragOffsetPx
+                    }
                 }
-                .background(Color(0xFF10141A), shape = panelShape)
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape = panelShape)
+                .background(Color(0xE6101418), shape = panelShape)
                 .clip(panelShape)
-                .windowInsetsPadding(WindowInsets.navigationBars)
+                .then(if (!isCard) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier)
                 .padding(16.dp)
         ) {
-            if (!isSideSheet) {
+            if (!isCard) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
@@ -179,53 +180,30 @@ fun PlayerSidebarShell(
                         }
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (onBack != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(if (deviceType == DeviceType.TV) 38.dp else 34.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.08f))
-                            .clickable { onBack() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(FluxaIcons.ChevronLeft, null, tint = Color.White, modifier = Modifier.size(if (deviceType == DeviceType.TV) 22.dp else 18.dp))
+            if (title.isNotBlank() || onBack != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (onBack != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(if (deviceType == DeviceType.TV) 34.dp else 30.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.06f))
+                                .clickable { onBack() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(FluxaIcons.ChevronLeft, null, tint = Color.White, modifier = Modifier.size(if (deviceType == DeviceType.TV) 20.dp else 16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                }
-                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         color = Color.White,
                         fontSize = if (deviceType == DeviceType.TV) 16.sp else 15.sp,
                         fontWeight = FontWeight.SemiBold
                     )
-                    if (subtitle.isNotBlank()) {
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = subtitle,
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontSize = if (deviceType == DeviceType.TV) 12.sp else 11.sp,
-                            lineHeight = 15.sp
-                        )
-                    }
-                }
-
-                if (onClose != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(if (deviceType == DeviceType.TV) 34.dp else 28.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.06f))
-                            .clickable { requestClose() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(FluxaIcons.Close, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(if (deviceType == DeviceType.TV) 18.dp else 14.dp))
-                    }
                 }
             }
             content()

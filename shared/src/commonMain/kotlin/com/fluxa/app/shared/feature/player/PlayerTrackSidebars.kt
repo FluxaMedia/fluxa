@@ -39,7 +39,6 @@ fun TrackSidebar(
 ) {
     PlayerSidebarShell(
         title = title,
-        subtitle = AppStrings.t(lang, "player.choose_preferred_source"),
         deviceType = deviceType
     ) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -60,7 +59,6 @@ fun TrackSidebar(
 fun QuickSettingsSidebar(profile: UserProfile?, onUpdateProfile: (UserProfile) -> Unit, currentOffset: Long, onOffsetChange: (Long) -> Unit, deviceType: DeviceType, lang: String = "en", onClose: () -> Unit) {
     PlayerSidebarShell(
         title = AppStrings.t(lang, "player.quick_settings_title"),
-        subtitle = AppStrings.t(lang, "player.quick_settings_subtitle"),
         deviceType = deviceType,
         onClose = onClose
     ) {

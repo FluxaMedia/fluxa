@@ -83,7 +83,18 @@ fun SourceSelectionScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color.White)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = Color.White)
+                        if (content.loadingAddonNames.isNotEmpty()) {
+                            Text(
+                                text = AppStrings.t(language, "auto.waiting_for_addon")
+                                    .replace("{addon}", content.loadingAddonNames.joinToString(", ")),
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(top = 14.dp)
+                            )
+                        }
+                    }
                 }
                 visibleStreams.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),
@@ -105,15 +116,7 @@ fun SourceSelectionScreen(
                     }
                     if (content.isLoadingStreams) {
                         item(key = "loading-more") {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
+                            LoadingAddonsRow(addonNames = content.loadingAddonNames, language = language)
                         }
                     }
                 }
@@ -256,6 +259,28 @@ private fun AddonChip(label: String, selected: Boolean, onClick: () -> Unit) {
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+private fun LoadingAddonsRow(addonNames: List<String>, language: String?) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator(
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.size(22.dp)
+        )
+        if (addonNames.isNotEmpty()) {
+            Text(
+                text = AppStrings.t(language, "auto.waiting_for_addon")
+                    .replace("{addon}", addonNames.joinToString(", ")),
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
     }
 }
 

@@ -111,6 +111,7 @@ internal class PlayerScreenState(
 
     var showSettings by mutableStateOf(false)
     var activeSettingsTab by mutableIntStateOf(0)
+    var inlineDelayTarget by mutableStateOf<Int?>(null)
     var audioDelayMs by mutableLongStateOf(0L)
     var subtitleDelayMs by mutableLongStateOf(0L)
 

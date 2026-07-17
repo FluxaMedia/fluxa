@@ -68,6 +68,7 @@ class AndroidDetailDataSource(
                         streams = state.filteredStreams.toUiModels(),
                         isLoadingStreams = state.isLoadingStreams,
                         availableAddons = state.availableAddons,
+                        loadingAddonNames = state.loadingAddonNames,
                         selectedAddon = state.selectedAddon,
                         hasStreamProviders = state.hasStreamProviders
                     )

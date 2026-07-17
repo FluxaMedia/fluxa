@@ -45,7 +45,6 @@ fun MarkSegmentSidebar(
 ) {
     PlayerSidebarShell(
         title = playerText(lang, "mark_segment"),
-        subtitle = playerText(lang, "mark_segment_subtitle"),
         deviceType = deviceType,
         onClose = onClose
     ) {
