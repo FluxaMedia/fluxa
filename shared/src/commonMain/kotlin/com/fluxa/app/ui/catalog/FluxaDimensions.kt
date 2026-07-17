@@ -112,6 +112,14 @@ object FluxaDimensions {
         const val topScrimAlpha = 0.72f
         const val bottomScrimAlpha = 0.86f
         val seekTrackHeight = 4.dp
+
+        val edgeMargin = 20.dp
+        val iconSize = 22.dp
+        val pillCornerRadius = 999.dp
+        const val chromeDimAlpha = 0.35f
+        const val textAlphaPrimary = 1.0f
+        const val textAlphaSecondary = 0.7f
+        const val textAlphaDisabled = 0.35f
     }
 
     val mobileFocusBorderStroke = 2.dp

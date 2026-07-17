@@ -93,7 +93,12 @@ internal class PlayerScreenState(
     var introDbCooldowns by mutableStateOf<Map<String, Long>>(emptyMap())
 
     var currentVolume by mutableIntStateOf(initialVolume)
+    var currentVolumeExact by mutableFloatStateOf(initialVolume.toFloat())
     var showVolumeBar by mutableStateOf(false)
+    var volumeBarVersion by mutableIntStateOf(0)
+    var currentBrightness by mutableFloatStateOf(1f)
+    var showBrightnessBar by mutableStateOf(false)
+    var brightnessBarVersion by mutableIntStateOf(0)
     var showZoomOverlay by mutableStateOf(false)
     var zoomOverlayVersion by mutableIntStateOf(0)
     var showSeekFeedback by mutableStateOf(false)
@@ -105,13 +110,15 @@ internal class PlayerScreenState(
     var pendingSeekTarget by mutableStateOf<Long?>(null)
 
     var showSettings by mutableStateOf(false)
-    var showMobileTrackPicker by mutableStateOf(false)
     var activeSettingsTab by mutableIntStateOf(0)
     var audioDelayMs by mutableLongStateOf(0L)
     var subtitleDelayMs by mutableLongStateOf(0L)
 
     var isScrubbing by mutableStateOf(false)
     var scrubPosition by mutableLongStateOf(0L)
+
+    var isLocked by mutableStateOf(false)
+    var showLockHint by mutableStateOf(false)
 
     var currentExternalSubtitleTracks by mutableStateOf<List<ExternalSubtitleTrack>>(emptyList())
     var embeddedNativeAssTracks by mutableStateOf<List<NativeAssTrack>>(emptyList())

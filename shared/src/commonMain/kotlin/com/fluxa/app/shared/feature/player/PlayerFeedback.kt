@@ -59,7 +59,7 @@ fun PlayerSeekFeedback(direction: Int, seekMs: Long) {
 fun formatPlayerTime(ms: Long): String {
     val totalSeconds = ms / 1000L
     val hours = totalSeconds / 3600L
-    val minutes = (totalSeconds % 3600L).toString().padStart(2, '0')
+    val minutes = ((totalSeconds % 3600L) / 60L).toString().padStart(2, '0')
     val seconds = (totalSeconds % 60L).toString().padStart(2, '0')
     return if (hours > 0L) "${hours.toString().padStart(2, '0')}:$minutes:$seconds" else "$minutes:$seconds"
 }

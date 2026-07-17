@@ -22,9 +22,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -119,6 +123,51 @@ fun PlayerSkipSegmentOverlay(
 enum class ZoomOverlayMode { Original, Fit, Zoom }
 
 @Composable
+private fun PlayerToastPill(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, deviceType: DeviceType) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(FluxaDimensions.PlayerChrome.pillCornerRadius))
+            .background(Color.Black.copy(alpha = 0.74f))
+            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(FluxaDimensions.PlayerChrome.pillCornerRadius))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(15.dp))
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = if (deviceType == DeviceType.Mobile) 15.sp else 18.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun PlayerEdgeLevelIndicator(level: Float, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(110.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(Color.White.copy(alpha = 0.22f)),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(level.coerceIn(0f, 1f))
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White)
+            )
+        }
+    }
+}
+
+@Composable
 fun BoxScope.PlayerTransientOverlays(
     showSegmentSkipFeedback: Boolean,
     holdSpeedVisible: Boolean,
@@ -127,6 +176,8 @@ fun BoxScope.PlayerTransientOverlays(
     showVolumeBar: Boolean,
     currentVolume: Int,
     maxVolume: Int,
+    showBrightnessBar: Boolean = false,
+    currentBrightness: Float = 1f,
     showSeekFeedback: Boolean,
     seekDirection: Int,
     seekFeedbackMs: Long,
@@ -159,33 +210,12 @@ fun BoxScope.PlayerTransientOverlays(
             .zIndex(295f)
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Color.Black.copy(alpha = 0.74f))
-                    .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(999.dp))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                val icon = when (zoomOverlayMode) {
-                    ZoomOverlayMode.Original -> FluxaIcons.ZoomFitScreen
-                    ZoomOverlayMode.Fit -> FluxaIcons.ZoomOutMap
-                    ZoomOverlayMode.Zoom -> FluxaIcons.ZoomIn
-                }
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(15.dp)
-                )
-                Text(
-                    text = zoomLabelText,
-                    color = Color.White,
-                    fontSize = if (deviceType == DeviceType.Mobile) 15.sp else 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+            val icon = when (zoomOverlayMode) {
+                ZoomOverlayMode.Original -> FluxaIcons.ZoomFitScreen
+                ZoomOverlayMode.Fit -> FluxaIcons.ZoomOutMap
+                ZoomOverlayMode.Zoom -> FluxaIcons.ZoomIn
             }
+            PlayerToastPill(icon = icon, text = zoomLabelText, deviceType = deviceType)
         }
     }
 
@@ -199,35 +229,58 @@ fun BoxScope.PlayerTransientOverlays(
             .zIndex(310f)
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Color.Black.copy(alpha = 0.74f))
-                    .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(999.dp))
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${holdSpeed}x",
-                    color = Color.White,
-                    fontSize = if (deviceType == DeviceType.Mobile) 18.sp else 22.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
+            PlayerToastPill(icon = FluxaIcons.Speed, text = "${holdSpeed}x", deviceType = deviceType)
         }
     }
 
-    AnimatedVisibility(
-        visible = showVolumeBar,
-        enter = fadeIn() + slideInVertically(),
-        exit = fadeOut() + slideOutVertically(),
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .padding(top = 40.dp)
-            .zIndex(300f)
-    ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            VolumeBar(currentVolume, maxVolume)
+    if (deviceType == DeviceType.Mobile) {
+        AnimatedVisibility(
+            visible = showVolumeBar,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = FluxaDimensions.PlayerChrome.edgeMargin)
+                .zIndex(300f)
+        ) {
+            val volumeIcon = when {
+                maxVolume <= 0 || currentVolume <= 0 -> FluxaIcons.VolumeMute
+                currentVolume.toFloat() / maxVolume.toFloat() < 0.5f -> FluxaIcons.VolumeDown
+                else -> FluxaIcons.VolumeUp
+            }
+            PlayerEdgeLevelIndicator(
+                level = if (maxVolume > 0) currentVolume.toFloat() / maxVolume.toFloat() else 0f,
+                icon = volumeIcon
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showBrightnessBar,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = FluxaDimensions.PlayerChrome.edgeMargin)
+                .zIndex(300f)
+        ) {
+            PlayerEdgeLevelIndicator(
+                level = currentBrightness,
+                icon = if (currentBrightness < 0.5f) FluxaIcons.BrightnessLow else FluxaIcons.BrightnessHigh
+            )
+        }
+    } else {
+        AnimatedVisibility(
+            visible = showVolumeBar,
+            enter = fadeIn() + slideInVertically(),
+            exit = fadeOut() + slideOutVertically(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 40.dp)
+                .zIndex(300f)
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                VolumeBar(currentVolume, maxVolume)
+            }
         }
     }
 

@@ -47,8 +47,7 @@ fun MarkSegmentSidebar(
         title = playerText(lang, "mark_segment"),
         subtitle = playerText(lang, "mark_segment_subtitle"),
         deviceType = deviceType,
-        onClose = onClose,
-        sideSheetOnMobile = false
+        onClose = onClose
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             SegmentTypeChip(playerText(lang, "mark_segment_intro"), selectedType == "intro") { onSelectType("intro") }

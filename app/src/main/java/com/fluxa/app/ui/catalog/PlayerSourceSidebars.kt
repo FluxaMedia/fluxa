@@ -83,8 +83,7 @@ fun EpisodeSidebar(
         title = AppStrings.t(lang, "auto.episodes"),
         subtitle = "",
         deviceType = deviceType,
-        onClose = onClose,
-        sideSheetOnMobile = false
+        onClose = onClose
     ) {
             Box {
                 val chevronRotation by animateFloatAsState(if (showSeasonMenu) 180f else 0f, label = "seasonChevron")

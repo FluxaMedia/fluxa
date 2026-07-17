@@ -17,6 +17,10 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,105 +58,128 @@ fun UniversalSettingsSidebar(
     languageDisplayName: (String) -> String = { it },
     onClose: () -> Unit
 ) {
-    val title = when (activeTab) {
-        0 -> AppStrings.t(lang, "player.audio_title")
-        1 -> AppStrings.t(lang, "player.subtitles_title")
+    var tab by remember(activeTab) { mutableStateOf(activeTab.coerceIn(0, 2)) }
+    var showAdjust by remember(activeTab) { mutableStateOf(false) }
+
+    val title = when {
+        showAdjust -> AppStrings.t(lang, "player.adjust")
+        tab == 0 -> AppStrings.t(lang, "player.audio_title")
+        tab == 1 -> AppStrings.t(lang, "player.subtitles_title")
         else -> AppStrings.t(lang, "player.speed_title")
     }
-    val subtitle = when (activeTab) {
-        0 -> AppStrings.t(lang, "player.audio_subtitle")
-        1 -> AppStrings.t(lang, "player.subtitles_subtitle")
+    val subtitle = when {
+        showAdjust && tab == 0 -> AppStrings.t(lang, "player.adjust_audio_subtitle")
+        showAdjust && tab == 1 -> AppStrings.t(lang, "player.adjust_subtitles_subtitle")
+        tab == 0 -> AppStrings.t(lang, "player.audio_subtitle")
+        tab == 1 -> AppStrings.t(lang, "player.subtitles_subtitle")
         else -> AppStrings.t(lang, "player.speed_subtitle")
     }
+
     PlayerSidebarShell(
         title = title,
         subtitle = subtitle,
         deviceType = deviceType,
         onClose = onClose,
-        sideSheetOnMobile = activeTab == 0 || activeTab == 1,
-        compactCenterOnMobile = activeTab == 2
+        onBack = if (showAdjust) { { showAdjust = false } } else null
     ) {
-        val listMaxHeight = if (activeTab == 0 || activeTab == 1) 720.dp else if (deviceType == DeviceType.TV) 420.dp else 300.dp
+        if (!showAdjust && (tab == 0 || tab == 1)) {
+            SegmentedTabRow(
+                options = listOf(
+                    AppStrings.t(lang, "player.audio_title") to 0,
+                    AppStrings.t(lang, "player.subtitles_title") to 1
+                ),
+                selected = tab,
+                onSelect = { tab = it }
+            )
+            Spacer(Modifier.height(14.dp))
+        }
+
+        val listMaxHeight = if (deviceType == DeviceType.TV) 420.dp else 480.dp
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Crossfade(targetState = activeTab) { tab ->
-                when (tab) {
-                    0 -> {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
-                            item {
-                                DelayAdjustmentItem(
-                                    title = AppStrings.t(lang, "player.audio_delay"),
-                                    valueMs = audioDelayMs,
-                                    deviceType = deviceType,
-                                    onDecrease = { onAudioDelayChange(audioDelayMs - 250L) },
-                                    onIncrease = { onAudioDelayChange(audioDelayMs + 250L) }
-                                )
-                            }
+            Crossfade(targetState = Triple(tab, showAdjust, deviceType)) { (currentTab, adjusting, _) ->
+                when {
+                    currentTab == 0 && adjusting -> {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            DelayAdjustmentItem(
+                                title = AppStrings.t(lang, "player.audio_delay"),
+                                valueMs = audioDelayMs,
+                                deviceType = deviceType,
+                                onDecrease = { onAudioDelayChange(audioDelayMs - 250L) },
+                                onIncrease = { onAudioDelayChange(audioDelayMs + 250L) }
+                            )
+                        }
+                    }
+                    currentTab == 0 -> {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
                             items(audioTracks, key = { it.id }) { track ->
-                                val title = if (track.language != null) {
+                                val trackTitle = if (track.language != null) {
                                     languageDisplayName(track.language!!)
                                 } else {
                                     track.label
                                 }
                                 val channelLabel = track.audioChannelLabel
-                                val subtitle = when {
+                                val trackSubtitle = when {
                                     !track.isSupported -> AppStrings.t(lang, "player.unsupported")
                                     channelLabel.isNotBlank() -> channelLabel
                                     else -> null
                                 }
                                 TrackItem(
-                                    title = title,
+                                    title = trackTitle,
                                     isSelected = track == currentAudio,
                                     onClick = { onSelectAudio(track) },
-                                    subtitle = subtitle,
+                                    subtitle = trackSubtitle,
+                                    deviceType = deviceType
+                                )
+                            }
+                            item {
+                                TrackItem(
+                                    title = AppStrings.t(lang, "player.adjust"),
+                                    isSelected = false,
+                                    onClick = { showAdjust = true },
                                     deviceType = deviceType,
-                                    leadingIcon = FluxaIcons.AudioTrack
+                                    leadingIcon = FluxaIcons.Settings,
+                                    trailingIcon = FluxaIcons.ChevronRight
                                 )
                             }
                         }
                     }
-                    1 -> {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
-                            item {
-                                DelayAdjustmentItem(
-                                    title = AppStrings.t(lang, "player.subtitle_delay"),
-                                    valueMs = subtitleDelayMs,
-                                    deviceType = deviceType,
-                                    onDecrease = { onSubtitleDelayChange(subtitleDelayMs - 250L) },
-                                    onIncrease = { onSubtitleDelayChange(subtitleDelayMs + 250L) }
-                                )
-                            }
-                            item {
-                                OpacityAdjustmentItem(
-                                    title = AppStrings.t(lang, "settings.subtitle_text"),
-                                    value = subtitleTextOpacity,
-                                    deviceType = deviceType,
-                                    onChange = onSubtitleTextOpacityChange
-                                )
-                            }
-                            item {
-                                OpacityAdjustmentItem(
-                                    title = AppStrings.t(lang, "settings.subtitle_background"),
-                                    value = subtitleBackgroundOpacity,
-                                    deviceType = deviceType,
-                                    onChange = onSubtitleBackgroundOpacityChange
-                                )
-                            }
-                            item {
-                                OpacityAdjustmentItem(
-                                    title = AppStrings.t(lang, "settings.subtitle_outline"),
-                                    value = subtitleOutlineOpacity,
-                                    deviceType = deviceType,
-                                    onChange = onSubtitleOutlineOpacityChange
-                                )
-                            }
+                    currentTab == 1 && adjusting -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            DelayAdjustmentItem(
+                                title = AppStrings.t(lang, "player.subtitle_delay"),
+                                valueMs = subtitleDelayMs,
+                                deviceType = deviceType,
+                                onDecrease = { onSubtitleDelayChange(subtitleDelayMs - 250L) },
+                                onIncrease = { onSubtitleDelayChange(subtitleDelayMs + 250L) }
+                            )
+                            OpacityAdjustmentItem(
+                                title = AppStrings.t(lang, "settings.subtitle_text"),
+                                value = subtitleTextOpacity,
+                                deviceType = deviceType,
+                                onChange = onSubtitleTextOpacityChange
+                            )
+                            OpacityAdjustmentItem(
+                                title = AppStrings.t(lang, "settings.subtitle_background"),
+                                value = subtitleBackgroundOpacity,
+                                deviceType = deviceType,
+                                onChange = onSubtitleBackgroundOpacityChange
+                            )
+                            OpacityAdjustmentItem(
+                                title = AppStrings.t(lang, "settings.subtitle_outline"),
+                                value = subtitleOutlineOpacity,
+                                deviceType = deviceType,
+                                onChange = onSubtitleOutlineOpacityChange
+                            )
+                        }
+                    }
+                    currentTab == 1 -> {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
                             item {
                                 TrackItem(
                                     title = AppStrings.t(lang, "player.off"),
                                     isSelected = currentSubtitle == null,
                                     onClick = { onDisableSubtitle() },
-                                    subtitle = AppStrings.t(lang, "player.hide_subtitles"),
-                                    deviceType = deviceType,
-                                    leadingIcon = FluxaIcons.SubtitlesOff
+                                    deviceType = deviceType
                                 )
                             }
                             items(subtitleTracks, key = { it.id }) { track ->
@@ -161,13 +188,22 @@ fun UniversalSettingsSidebar(
                                     isSelected = track == currentSubtitle,
                                     onClick = { onSelectSubtitle(track) },
                                     subtitle = track.language?.let { languageDisplayName(it) } ?: AppStrings.t(lang, "player.embedded_subtitle"),
+                                    deviceType = deviceType
+                                )
+                            }
+                            item {
+                                TrackItem(
+                                    title = AppStrings.t(lang, "player.adjust"),
+                                    isSelected = false,
+                                    onClick = { showAdjust = true },
                                     deviceType = deviceType,
-                                    leadingIcon = FluxaIcons.Subtitles
+                                    leadingIcon = FluxaIcons.Settings,
+                                    trailingIcon = FluxaIcons.ChevronRight
                                 )
                             }
                         }
                     }
-                    2 -> {
+                    else -> {
                         val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
                         if (deviceType == DeviceType.Mobile) {
                             Column(
@@ -191,7 +227,7 @@ fun UniversalSettingsSidebar(
                                 }
                             }
                         } else {
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
                                 items(speeds, key = { it }) { speed ->
                                     TrackItem(
                                         title = formatSpeedLabel(speed),
@@ -202,14 +238,45 @@ fun UniversalSettingsSidebar(
                                             speed < 1.0f -> AppStrings.t(lang, "player.speed_slower")
                                             else -> AppStrings.t(lang, "player.speed_faster")
                                         },
-                                        deviceType = deviceType,
-                                        leadingIcon = FluxaIcons.Speed
+                                        deviceType = deviceType
                                     )
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SegmentedTabRow(options: List<Pair<String, Int>>, selected: Int, onSelect: (Int) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        options.forEach { (label, value) ->
+            val isSelected = value == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(if (isSelected) Color.White.copy(alpha = 0.12f) else Color.Transparent)
+                    .clickable { onSelect(value) }
+                    .padding(vertical = 9.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    color = Color.White.copy(alpha = if (isSelected) 1f else 0.55f),
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                )
             }
         }
     }
@@ -232,15 +299,16 @@ private fun SpeedChip(
         modifier = modifier
             .height(46.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(if (isSelected) Color.White else Color.White.copy(alpha = 0.08f))
+            .background(Color.White.copy(alpha = if (isSelected) 0.10f else 0.04f))
+            .border(1.dp, Color.White.copy(alpha = if (isSelected) 0.4f else 0.08f), RoundedCornerShape(10.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.85f),
+            color = Color.White.copy(alpha = if (isSelected) 1f else 0.6f),
             fontSize = 14.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
         )
     }
 }
@@ -256,9 +324,8 @@ private fun DelayAdjustmentItem(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(Color.White.copy(alpha = 0.05f))
-            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(20.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(
@@ -270,7 +337,7 @@ private fun DelayAdjustmentItem(
                 text = title,
                 color = Color.White.copy(alpha = 0.82f),
                 fontSize = if (deviceType == DeviceType.TV) 16.sp else 14.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f)
             )
             SeekIconButton(FluxaIcons.Remove, deviceType, onClick = onDecrease)
@@ -278,7 +345,7 @@ private fun DelayAdjustmentItem(
                 text = formatDelayMs(valueMs),
                 color = Color.White,
                 fontSize = if (deviceType == DeviceType.TV) 17.sp else 14.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.width(if (deviceType == DeviceType.TV) 76.dp else 62.dp)
             )
@@ -304,9 +371,8 @@ private fun OpacityAdjustmentItem(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(Color.White.copy(alpha = 0.05f))
-            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(20.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -318,14 +384,14 @@ private fun OpacityAdjustmentItem(
                     text = title,
                     color = Color.White.copy(alpha = 0.82f),
                     fontSize = if (deviceType == DeviceType.TV) 16.sp else 14.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = "${(value.coerceIn(0f, 1f) * 100).toInt()}%",
                     color = Color.White,
                     fontSize = if (deviceType == DeviceType.TV) 15.sp else 13.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.SemiBold
                 )
             }
             Slider(

@@ -109,10 +109,13 @@ internal fun PlayerEngineSettingsEffects(
 @Composable
 internal fun PlayerTransientFeedbackEffects(
     showVolumeBar: Boolean,
+    volumeBarVersion: Int = 0,
+    brightnessBarVersion: Int = 0,
     seekFeedbackVersion: Int,
     segmentSkipFeedbackVersion: Int,
     zoomOverlayVersion: Int,
     setShowVolumeBar: (Boolean) -> Unit,
+    setShowBrightnessBar: (Boolean) -> Unit = {},
     setShowSeekFeedback: (Boolean) -> Unit,
     resetPendingSeek: () -> Unit,
     setShowSegmentSkipFeedback: (Boolean) -> Unit,
@@ -122,6 +125,20 @@ internal fun PlayerTransientFeedbackEffects(
         if (showVolumeBar) {
             delay(2000)
             setShowVolumeBar(false)
+        }
+    }
+    LaunchedEffect(volumeBarVersion) {
+        if (volumeBarVersion > 0) {
+            setShowVolumeBar(true)
+            delay(1200)
+            setShowVolumeBar(false)
+        }
+    }
+    LaunchedEffect(brightnessBarVersion) {
+        if (brightnessBarVersion > 0) {
+            setShowBrightnessBar(true)
+            delay(1200)
+            setShowBrightnessBar(false)
         }
     }
     LaunchedEffect(seekFeedbackVersion) {

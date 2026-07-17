@@ -111,16 +111,55 @@ fun PlayerScreen(
     val seekBackwardMs = (activeProfile?.safeSeekBackwardSeconds ?: 10) * 1000L
     val seekForwardMs = (activeProfile?.safeSeekForwardSeconds ?: 10) * 1000L
 
+    LaunchedEffect(Unit) {
+        val windowBrightness = activity?.window?.attributes?.screenBrightness ?: -1f
+        state.currentBrightness = if (windowBrightness in 0f..1f) {
+            windowBrightness
+        } else {
+            runCatching {
+                android.provider.Settings.System.getInt(
+                    context.contentResolver,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS
+                ) / 255f
+            }.getOrDefault(0.5f)
+        }
+    }
+
+    fun adjustVolumeByDelta(delta: Float) {
+        val next = (state.currentVolumeExact + delta * maxVolume).coerceIn(0f, maxVolume.toFloat())
+        state.currentVolumeExact = next
+        val rounded = next.toInt()
+        if (rounded != state.currentVolume) {
+            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, rounded, 0)
+            state.currentVolume = rounded
+        }
+        state.volumeBarVersion += 1
+    }
+
+    fun adjustBrightnessByDelta(delta: Float) {
+        val next = (state.currentBrightness + delta).coerceIn(0.02f, 1f)
+        state.currentBrightness = next
+        activity?.window?.let { window ->
+            val params = window.attributes
+            params.screenBrightness = next
+            window.attributes = params
+        }
+        state.brightnessBarVersion += 1
+    }
+
     LaunchedEffect(activeProfile?.safeTorrentSpeedPreset) {
         torrentManager.configurePreferences(speedPreset = activeProfile?.safeTorrentSpeedPreset)
     }
     
     PlayerTransientFeedbackEffects(
         showVolumeBar = state.showVolumeBar,
+        volumeBarVersion = state.volumeBarVersion,
+        brightnessBarVersion = state.brightnessBarVersion,
         seekFeedbackVersion = state.seekFeedbackVersion,
         segmentSkipFeedbackVersion = state.segmentSkipFeedbackVersion,
         zoomOverlayVersion = state.zoomOverlayVersion,
         setShowVolumeBar = { state.showVolumeBar = it },
+        setShowBrightnessBar = { state.showBrightnessBar = it },
         setShowSeekFeedback = { state.showSeekFeedback = it },
         resetPendingSeek = {
             state.pendingSeekTarget = null
@@ -619,8 +658,7 @@ fun PlayerScreen(
     }
 
     BackHandler {
-        if (state.showMobileTrackPicker) state.showMobileTrackPicker = false
-        else if (state.showSettings) state.showSettings = false
+        if (state.showSettings) state.showSettings = false
         else onBack()
     }
 
@@ -727,6 +765,8 @@ fun PlayerScreen(
         seekSafely = ::seekSafely,
         toggleSubtitleSelection = ::toggleSubtitleSelection,
         performRelativeSeek = ::performRelativeSeek,
+        onVolumeSwipe = ::adjustVolumeByDelta,
+        onBrightnessSwipe = ::adjustBrightnessByDelta,
         playPrevious = ::playPrevious,
         playNext = ::playNext,
         smartCast = ::smartCast,

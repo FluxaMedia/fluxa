@@ -4,28 +4,50 @@
 package com.fluxa.app.ui.catalog
 
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
@@ -34,6 +56,7 @@ import com.fluxa.app.player.MediaTrack
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.TorrentStreamStatus
+import com.fluxa.app.shared.feature.player.PlayerTopIconButton
 import com.fluxa.app.shared.feature.player.dismissKey
 import com.fluxa.app.shared.feature.player.playerInputControls
 import com.fluxa.app.shared.feature.player.playerText
@@ -80,6 +103,8 @@ internal fun PlayerScreenContent(
     seekSafely: (Long) -> Unit,
     toggleSubtitleSelection: () -> Unit,
     performRelativeSeek: (Int) -> Unit,
+    onVolumeSwipe: (Float) -> Unit,
+    onBrightnessSwipe: (Float) -> Unit,
     playPrevious: () -> Unit,
     playNext: () -> Unit,
     smartCast: () -> Unit,
@@ -196,7 +221,11 @@ internal fun PlayerScreenContent(
                     }
                     state.showZoomOverlay = true
                     state.zoomOverlayVersion += 1
-                }
+                },
+                isLocked = state.isLocked,
+                onToggleLockHint = { state.showLockHint = !state.showLockHint },
+                onVolumeSwipe = onVolumeSwipe,
+                onBrightnessSwipe = onBrightnessSwipe
             )
     ) {
         PlayerPlaybackSurface(
@@ -220,7 +249,7 @@ internal fun PlayerScreenContent(
             currentStreamDetailLine = currentStreamDetailLine,
             currentStreamsSize = state.currentStreams.size,
             lang = lang,
-            showControls = state.showControls,
+            showControls = state.showControls && !state.isLocked,
             activeEngine = activeEngine,
             showControlsTemp = showControlsTemp,
             seekSafely = seekSafely,
@@ -270,9 +299,6 @@ internal fun PlayerScreenContent(
                     openSourceSelectionScreen()
                 } else if (tab == 3 && meta.type != "series") {
                     showControlsTemp()
-                } else if ((tab == 0 || tab == 1) && deviceType == DeviceType.Mobile) {
-                    state.showMobileTrackPicker = true
-                    state.showControls = false
                 } else {
                     state.activeSettingsTab = tab
                     state.showSettings = true
@@ -302,6 +328,8 @@ internal fun PlayerScreenContent(
             showVolumeBar = state.showVolumeBar,
             currentVolume = state.currentVolume,
             maxVolume = maxVolume,
+            showBrightnessBar = state.showBrightnessBar,
+            currentBrightness = state.currentBrightness,
             showSeekFeedback = state.showSeekFeedback,
             seekDirection = state.seekDirection,
             seekFeedbackMs = state.seekFeedbackMs,
@@ -312,6 +340,26 @@ internal fun PlayerScreenContent(
             showParentsGuide = state.showParentsGuide,
             onParentsGuideAnimationComplete = { state.showParentsGuide = false }
         )
+
+        if (deviceType == DeviceType.Mobile) {
+            PlayerLockControl(
+                lang = lang,
+                isLocked = state.isLocked,
+                showControls = state.showControls,
+                showLockHint = state.showLockHint,
+                onLock = {
+                    state.isLocked = true
+                    state.showControls = false
+                    state.showLockHint = true
+                },
+                onUnlock = {
+                    state.isLocked = false
+                    state.showLockHint = false
+                    showControlsTemp()
+                },
+                onHideLockHint = { state.showLockHint = false }
+            )
+        }
 
         if (state.showSettings) {
             PlayerSettingsPanel(
@@ -412,43 +460,63 @@ internal fun PlayerScreenContent(
             )
         }
 
-        if (state.showMobileTrackPicker && deviceType == DeviceType.Mobile) {
-            MobileTrackPickerOverlay(
-                lang = lang,
-                availableAudios = availableAudios,
-                currentAudio = currentAudio,
-                availableSubtitles = availableSubtitles,
-                currentSubtitle = currentSubtitle,
-                audioDelayMs = state.audioDelayMs,
-                subtitleDelayMs = state.subtitleDelayMs,
-                subtitleTextOpacity = activeProfile?.safeSubtitleTextOpacity ?: 1f,
-                subtitleBackgroundOpacity = activeProfile?.safeSubtitleBackgroundOpacity ?: 0.5f,
-                subtitleOutlineOpacity = activeProfile?.safeSubtitleOutlineOpacity ?: 1f,
-                onApply = { selectedAudio, selectedSubtitle ->
-                    selectedAudio?.let { activeEngine?.selectAudio(it) }
-                    if (selectedSubtitle != null) {
-                        activeEngine?.enableSubtitle(selectedSubtitle)
-                    } else {
-                        activeEngine?.disableSubtitles()
-                    }
-                    state.showMobileTrackPicker = false
-                    showControlsTemp()
-                },
-                onAudioDelayChange = { state.audioDelayMs = it.coerceIn(-5_000L, 5_000L) },
-                onSubtitleDelayChange = { state.subtitleDelayMs = it.coerceIn(-5_000L, 5_000L) },
-                onSubtitleTextOpacityChange = { value ->
-                    activeProfile?.let { onUpdateProfile(it.copy(subtitleTextOpacity = value.coerceIn(0f, 1f))) }
-                },
-                onSubtitleBackgroundOpacityChange = { value ->
-                    activeProfile?.let { onUpdateProfile(it.copy(subtitleBackgroundOpacity = value.coerceIn(0f, 1f))) }
-                },
-                onSubtitleOutlineOpacityChange = { value ->
-                    activeProfile?.let { onUpdateProfile(it.copy(subtitleOutlineOpacity = value.coerceIn(0f, 1f))) }
-                },
-                onDismiss = {
-                    state.showMobileTrackPicker = false
-                    showControlsTemp()
-                }
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.PlayerLockControl(
+    lang: String,
+    isLocked: Boolean,
+    showControls: Boolean,
+    showLockHint: Boolean,
+    onLock: () -> Unit,
+    onUnlock: () -> Unit,
+    onHideLockHint: () -> Unit
+) {
+    LaunchedEffect(isLocked, showLockHint) {
+        if (isLocked && showLockHint) {
+            delay(2500)
+            onHideLockHint()
+        }
+    }
+
+    AnimatedVisibility(
+        visible = !isLocked && showControls,
+        modifier = Modifier
+            .align(Alignment.CenterEnd)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(end = 18.dp),
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        PlayerTopIconButton(
+            icon = FluxaIcons.Lock,
+            onClick = onLock,
+            contentDescription = AppStrings.t(lang, "player.lock")
+        )
+    }
+
+    AnimatedVisibility(
+        visible = isLocked && showLockHint,
+        modifier = Modifier.align(Alignment.Center),
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(Color.Black.copy(alpha = 0.6f))
+                .clickable { onUnlock() }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(FluxaIcons.LockOpen, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Text(
+                text = AppStrings.t(lang, "player.locked"),
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
             )
         }
     }

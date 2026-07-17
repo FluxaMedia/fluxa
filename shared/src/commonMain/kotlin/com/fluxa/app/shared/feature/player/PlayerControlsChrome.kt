@@ -9,8 +9,12 @@ import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +26,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -475,22 +480,91 @@ fun PlayerTopIconButton(icon: ImageVector, onClick: () -> Unit, modifier: Modifi
 }
 
 @Composable
-fun MobileTransportButton(icon: ImageVector, enabled: Boolean, onClick: () -> Unit) {
+fun PlayerFlatIconButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    enabled: Boolean = true,
+    size: Dp = FluxaDimensions.PlayerChrome.iconSize,
+    touchSize: Dp = 44.dp
+) {
     Box(
-        modifier = Modifier
-            .size(48.dp)
+        modifier = modifier
+            .size(touchSize)
             .clip(CircleShape)
-            .background(Color.Black.copy(alpha = if (enabled) 0.40f else 0.18f))
-            .border(1.dp, Color.White.copy(alpha = if (enabled) 0.10f else 0.04f), CircleShape)
             .clickable(enabled = enabled) { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Icon(
             icon,
-            null,
-            tint = Color.White.copy(alpha = if (enabled) 0.92f else 0.26f),
-            modifier = Modifier.size(24.dp)
+            contentDescription,
+            tint = Color.White.copy(alpha = if (enabled) FluxaDimensions.PlayerChrome.textAlphaPrimary else FluxaDimensions.PlayerChrome.textAlphaDisabled),
+            modifier = Modifier.size(size)
         )
+    }
+}
+
+@Composable
+private fun PlayerOverflowMenuButton(
+    lang: String,
+    showOverflowMenu: Boolean,
+    onToggle: () -> Unit,
+    onDismiss: () -> Unit,
+    onPictureInPicture: () -> Unit,
+    onCast: () -> Unit,
+    onOpenInExternalPlayer: () -> Unit
+) {
+    Box {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            PlayerFlatIconButton(
+                icon = FluxaIcons.PictureInPictureAlt,
+                onClick = onPictureInPicture,
+                contentDescription = AppStrings.t(lang, "common.picture_in_picture")
+            )
+            PlayerFlatIconButton(
+                icon = FluxaIcons.MoreVert,
+                onClick = onToggle,
+                contentDescription = AppStrings.t(lang, "player.more_options")
+            )
+        }
+        AnimatedVisibility(
+            visible = showOverflowMenu,
+            modifier = Modifier.align(Alignment.TopEnd).offset(y = 48.dp),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .width(200.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Black.copy(alpha = 0.85f))
+            ) {
+                PlayerOverflowMenuItem(FluxaIcons.Cast, AppStrings.t(lang, "auto.cast")) {
+                    onDismiss()
+                    onCast()
+                }
+                PlayerOverflowMenuItem(FluxaIcons.OpenInNew, AppStrings.t(lang, "common.external_player")) {
+                    onDismiss()
+                    onOpenInExternalPlayer()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PlayerOverflowMenuItem(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(FluxaDimensions.PlayerChrome.iconSize))
+        Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -499,7 +573,8 @@ fun MobileBottomAction(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    iconOnly: Boolean = false
 ) {
     Row(
         modifier = modifier
@@ -511,20 +586,22 @@ fun MobileBottomAction(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = if (iconOnly) label else null,
             tint = Color.White,
             modifier = Modifier.size(24.dp)
         )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = label,
-            color = Color.White,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Start,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        if (!iconOnly) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Start,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -627,6 +704,9 @@ fun MobilePlayerSeekbar(
             }
         }
 
+        val thumbSize by animateDpAsState(targetValue = if (isDragging) 18.dp else 12.dp, label = "seekThumbSize")
+        val trackThickness by animateDpAsState(targetValue = if (isDragging) 6.dp else 4.dp, label = "seekTrackThickness")
+
         Slider(
             value = sliderPosition,
             onValueChange = {
@@ -651,7 +731,7 @@ fun MobilePlayerSeekbar(
             thumb = {
                 Box(
                     modifier = Modifier
-                        .size(12.dp)
+                        .size(thumbSize)
                         .clip(CircleShape)
                         .background(accentColor)
                 )
@@ -660,9 +740,9 @@ fun MobilePlayerSeekbar(
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(4.dp)
+                        .height(trackThickness)
                 ) {
-                    val trackHeight = 4.dp.toPx()
+                    val trackHeight = trackThickness.toPx()
                     val radius = CornerRadius(trackHeight / 2f)
                     val activeFraction = if (duration > 0L) {
                         (sliderState.value / duration.toFloat()).coerceIn(0f, 1f)
@@ -771,127 +851,121 @@ fun MobilePlayerUIContent(
     seekPreviewBitmap: ImageBitmap? = null,
     accentColor: Color = FluxaColors.accent
 ) {
-    val topFade = Brush.verticalGradient(
-        listOf(Color.Black.copy(alpha = FluxaDimensions.PlayerChrome.topScrimAlpha), Color.Transparent)
+    var showRemainingTime by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
+    val chromeVisible = !isScrubbing
+    val edgeMargin = FluxaDimensions.PlayerChrome.edgeMargin
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (chromeVisible) FluxaDimensions.PlayerChrome.chromeDimAlpha else 0f,
+        label = "chromeDim"
     )
-    val bottomFade = Brush.verticalGradient(
-        listOf(Color.Transparent, Color.Black.copy(alpha = FluxaDimensions.PlayerChrome.bottomScrimAlpha))
-    )
+    val chromeEnter = fadeIn() + slideInVertically { it / 6 }
+    val chromeExit = fadeOut() + slideOutVertically { it / 6 }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = dimAlpha)))
+
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(FluxaDimensions.PlayerChrome.topScrimHeight)
-                .background(topFade)
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(FluxaDimensions.PlayerChrome.bottomScrimHeight)
-                .background(bottomFade)
-        )
-
-        Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .padding(horizontal = 18.dp)
-                    .padding(top = 14.dp)
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = edgeMargin)
+        ) {
+            AnimatedVisibility(
+                visible = chromeVisible,
+                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
+                enter = fadeIn() + slideInVertically { -it / 4 },
+                exit = fadeOut() + slideOutVertically { -it / 4 }
             ) {
-                PlayerTopIconButton(
-                    icon = FluxaIcons.ArrowBack,
-                    onClick = onClose,
-                    modifier = Modifier.align(Alignment.TopStart),
-                    contentDescription = AppStrings.t(lang, "common.back")
-                )
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .padding(horizontal = 112.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val topLine = streamDetailLine ?: episodeMetaLine ?: content.releaseInfo ?: content.runtime ?: ""
-                    val secondaryLine = if (!streamDetailLine.isNullOrBlank()) {
-                        episodeMetaLine ?: content.releaseInfo ?: content.runtime ?: ""
-                    } else {
-                        ""
-                    }
-                    Text(
-                        text = title,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
-                    )
-                    if (topLine.isNotBlank()) {
-                        Text(
-                            text = topLine,
-                            color = Color.White.copy(alpha = 0.82f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    if (secondaryLine.isNotBlank()) {
-                        Text(
-                            text = secondaryLine,
-                            color = Color.White.copy(alpha = 0.68f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
                 Row(
-                    modifier = Modifier.align(Alignment.TopEnd),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    PlayerTopIconButton(FluxaIcons.Cast, onCast, contentDescription = AppStrings.t(lang, "auto.cast"))
-                    PlayerTopIconButton(FluxaIcons.OpenInNew, onOpenInExternalPlayer, contentDescription = AppStrings.t(lang, "common.external_player"))
-                    PlayerTopIconButton(FluxaIcons.PictureInPictureAlt, onPictureInPicture, contentDescription = AppStrings.t(lang, "common.picture_in_picture"))
+                    PlayerFlatIconButton(
+                        icon = FluxaIcons.ArrowBack,
+                        onClick = onClose,
+                        contentDescription = AppStrings.t(lang, "common.back")
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f).padding(top = 12.dp)) {
+                        Text(
+                            text = title,
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        val metaLine = episodeMetaLine?.takeIf { it.isNotBlank() }
+                            ?: listOfNotNull(content.releaseInfo, content.runtime).joinToString("   ").takeIf { it.isNotBlank() }
+                        if (!metaLine.isNullOrBlank()) {
+                            Text(
+                                text = metaLine,
+                                color = Color.White.copy(alpha = FluxaDimensions.PlayerChrome.textAlphaSecondary),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                    PlayerOverflowMenuButton(
+                        lang = lang,
+                        showOverflowMenu = showOverflowMenu,
+                        onToggle = { showOverflowMenu = !showOverflowMenu },
+                        onDismiss = { showOverflowMenu = false },
+                        onPictureInPicture = onPictureInPicture,
+                        onCast = onCast,
+                        onOpenInExternalPlayer = onOpenInExternalPlayer
+                    )
                 }
             }
 
             AnimatedVisibility(
-                visible = !isScrubbing,
+                visible = chromeVisible,
                 modifier = Modifier.align(Alignment.Center),
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = chromeEnter,
+                exit = chromeExit
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(30.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    MobileTransportButton(FluxaIcons.SkipPrevious, enabled = hasPreviousEpisode) { onPlayPrevious() }
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.46f))
-                            .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
-                            .clickable { onPlayPause() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
+                    PlayerFlatIconButton(
+                        icon = FluxaIcons.Replay10,
+                        onClick = { onSeek((position - seekBackwardMs).coerceAtLeast(0L)) },
+                        contentDescription = AppStrings.t(lang, "player.rewind_10"),
+                        size = 26.dp,
+                        touchSize = 48.dp
+                    )
+                    Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                        if (isBuffering && hasStartedPlaying) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.5.dp,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        } else {
+                            PlayerFlatIconButton(
+                                icon = if (isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow,
+                                onClick = onPlayPause,
+                                contentDescription = if (isPlaying) AppStrings.t(lang, "player.pause") else AppStrings.t(lang, "player.play"),
+                                size = 40.dp,
+                                touchSize = 56.dp
+                            )
+                        }
                     }
-                    MobileTransportButton(FluxaIcons.SkipNext, enabled = hasNextEpisode) { onPlayNext() }
+                    PlayerFlatIconButton(
+                        icon = FluxaIcons.Forward10,
+                        onClick = {
+                            val maxDuration = duration.takeIf { it > 0L } ?: Long.MAX_VALUE
+                            onSeek((position + seekForwardMs).coerceAtMost(maxDuration))
+                        },
+                        contentDescription = AppStrings.t(lang, "player.forward_10"),
+                        size = 26.dp,
+                        touchSize = 48.dp
+                    )
                 }
             }
 
@@ -899,8 +973,7 @@ fun MobilePlayerUIContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 22.dp)
-                    .padding(bottom = 10.dp)
+                    .padding(bottom = 14.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -909,7 +982,7 @@ fun MobilePlayerUIContent(
                     Text(
                         text = formatPlayerTime(if (isScrubbing) scrubPosition else position),
                         color = Color.White,
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
                     Box(
@@ -922,64 +995,82 @@ fun MobilePlayerUIContent(
                             duration = duration,
                             bufferedFraction = bufferedFraction,
                             onSeek = onSeek,
-                            accentColor = FluxaColors.accent,
+                            accentColor = accentColor,
                             onScrubbingChange = onScrubbingChange,
                             seekPreviewBitmap = seekPreviewBitmap,
                             chapters = chapters
                         )
                     }
                     Text(
-                        text = formatPlayerTime(duration),
-                        color = Color.White.copy(alpha = 0.84f),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        text = if (showRemainingTime) {
+                            "-" + formatPlayerTime((duration - (if (isScrubbing) scrubPosition else position)).coerceAtLeast(0L))
+                        } else {
+                            formatPlayerTime(duration)
+                        },
+                        color = Color.White.copy(alpha = FluxaDimensions.PlayerChrome.textAlphaSecondary),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clickable { showRemainingTime = !showRemainingTime }
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                AnimatedVisibility(
+                    visible = chromeVisible,
+                    enter = chromeEnter,
+                    exit = chromeExit
                 ) {
-                    MobileBottomAction(
-                        icon = FluxaIcons.Speed,
-                        label = "${AppStrings.t(lang, "player.speed")} (${playbackSpeed}x)",
-                        onClick = { onShowSettings(2) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (supportsTrackSettings) {
-                        MobileBottomAction(
-                            icon = if (subtitlesEnabled) FluxaIcons.Subtitles else FluxaIcons.AudioTrack,
-                            label = AppStrings.t(lang, "player.audio_and_subtitles"),
-                            onClick = { onShowSettings(0) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (showEpisodesButton) {
-                        MobileBottomAction(
-                            icon = FluxaIcons.List,
-                            label = AppStrings.t(lang, "player.episodes"),
-                            onClick = { onShowSettings(3) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (showSourcesButton) {
-                        MobileBottomAction(
-                            icon = FluxaIcons.Storage,
-                            label = AppStrings.t(lang, "player.source"),
-                            onClick = { onShowSettings(4) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (introDbMarkingEnabled) {
-                        MobileBottomAction(
-                            icon = FluxaIcons.BookmarkBorder,
-                            label = AppStrings.t(lang, "player.mark_segment"),
-                            onClick = { onShowSettings(5) },
-                            modifier = Modifier.weight(1f)
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                            if (supportsTrackSettings) {
+                                MobileBottomAction(
+                                    icon = if (subtitlesEnabled) FluxaIcons.Subtitles else FluxaIcons.AudioTrack,
+                                    label = AppStrings.t(lang, "player.audio_and_subtitles"),
+                                    onClick = { onShowSettings(0) }
+                                )
+                            }
+                            MobileBottomAction(
+                                icon = FluxaIcons.Speed,
+                                label = "${AppStrings.t(lang, "player.speed")} (${playbackSpeed}x)",
+                                onClick = { onShowSettings(2) }
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                            if (showEpisodesButton) {
+                                MobileBottomAction(
+                                    icon = FluxaIcons.List,
+                                    label = AppStrings.t(lang, "player.episodes"),
+                                    onClick = { onShowSettings(3) }
+                                )
+                            }
+                            if (hasNextEpisode) {
+                                MobileBottomAction(
+                                    icon = FluxaIcons.SkipNext,
+                                    label = AppStrings.t(lang, "player.next_ep_short"),
+                                    onClick = onPlayNext
+                                )
+                            }
+                            if (showSourcesButton) {
+                                MobileBottomAction(
+                                    icon = FluxaIcons.Storage,
+                                    label = AppStrings.t(lang, "player.source"),
+                                    onClick = { onShowSettings(4) }
+                                )
+                            }
+                            if (introDbMarkingEnabled) {
+                                MobileBottomAction(
+                                    icon = FluxaIcons.BookmarkBorder,
+                                    label = AppStrings.t(lang, "player.mark_segment"),
+                                    onClick = { onShowSettings(5) },
+                                    iconOnly = true
+                                )
+                            }
+                        }
                     }
                 }
             }

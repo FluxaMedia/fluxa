@@ -5,6 +5,7 @@ import com.fluxa.app.ui.catalog.DeviceType
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -35,8 +36,30 @@ fun Modifier.playerInputControls(
     onRelativeSeek: (Int) -> Unit,
     onClosePlayer: () -> Unit,
     onPinchZoom: (Float) -> Unit = {},
-    onPinchZoomGestureStart: () -> Unit = {}
+    onPinchZoomGestureStart: () -> Unit = {},
+    isLocked: Boolean = false,
+    onToggleLockHint: () -> Unit = {},
+    onVolumeSwipe: (Float) -> Unit = {},
+    onBrightnessSwipe: (Float) -> Unit = {}
 ): Modifier {
+    if (isLocked) {
+        return onKeyEvent { event ->
+            if (event.type == KeyEventType.KeyDown && event.key == Key.Back) {
+                onClosePlayer()
+                true
+            } else {
+                false
+            }
+        }.then(
+            if (deviceType == DeviceType.Mobile) {
+                Modifier.pointerInput(Unit) {
+                    detectTapGestures(onTap = { onToggleLockHint() })
+                }
+            } else {
+                Modifier
+            }
+        )
+    }
     return onKeyEvent { event ->
         if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
         when (event.key) {
@@ -129,6 +152,17 @@ fun Modifier.playerInputControls(
                             onPinchZoom(zoom)
                         }
                     }
+                }.pointerInput(hasStartedPlaying) {
+                    if (!hasStartedPlaying) return@pointerInput
+                    var isRightSide = true
+                    detectVerticalDragGestures(
+                        onDragStart = { offset -> isRightSide = offset.x > size.width / 2f },
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            val delta = -dragAmount / size.height.toFloat()
+                            if (isRightSide) onVolumeSwipe(delta) else onBrightnessSwipe(delta)
+                        }
+                    )
                 }
             } else {
                 Modifier

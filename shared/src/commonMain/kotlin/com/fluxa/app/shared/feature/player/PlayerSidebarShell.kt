@@ -10,8 +10,6 @@ import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.streamRawBody
 import com.fluxa.app.ui.catalog.streamSourceHeader
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -19,7 +17,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,11 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,10 +52,9 @@ fun SourceSidebar(streams: List<Stream>, currentUrl: String, deviceType: DeviceT
         title = AppStrings.t(lang, "player.source_selection_title"),
         subtitle = AppStrings.t(lang, "player.source_selection_subtitle"),
         deviceType = deviceType,
-        onClose = onClose,
-        sideSheetOnMobile = false
+        onClose = onClose
     ) {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             items(streams, key = { it.playableUrl ?: (it.title.orEmpty() + it.name.orEmpty()) }) { stream ->
                 val playableUrl = stream.playableUrl
                 TrackItem(
@@ -66,7 +63,6 @@ fun SourceSidebar(streams: List<Stream>, currentUrl: String, deviceType: DeviceT
                     isSelected = stream.playableUrl == currentUrl,
                     onClick = { playableUrl?.let(onSelect) },
                     subtitle = stream.streamRawBody(),
-                    badge = null,
                     deviceType = deviceType,
                     leadingIcon = FluxaIcons.PlayArrow
                 )
@@ -81,8 +77,7 @@ fun PlayerSidebarShell(
     subtitle: String,
     deviceType: DeviceType,
     onClose: (() -> Unit)? = null,
-    sideSheetOnMobile: Boolean = false,
-    compactCenterOnMobile: Boolean = false,
+    onBack: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     var shown by remember { mutableStateOf(false) }
@@ -90,39 +85,11 @@ fun PlayerSidebarShell(
     val panelAlpha by animateFloatAsState(if (shown) 1f else 0f, animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha), label = "sidebarAlpha")
     val panelOffset by animateFloatAsState(if (shown) 0f else 44f, animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing), label = "sidebarOffset")
     val isMobile = deviceType == DeviceType.Mobile
-    val panelShape = if (isMobile) {
-        if (compactCenterOnMobile) {
-            RoundedCornerShape(24.dp)
-        } else if (sideSheetOnMobile) {
-            RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp, topEnd = 0.dp, bottomEnd = 0.dp)
-        } else {
-            RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
-        }
-    } else {
-        RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp, topEnd = 0.dp, bottomEnd = 0.dp)
-    }
-    val panelSizeModifier = when {
-        isMobile && compactCenterOnMobile -> Modifier
-            .fillMaxWidth(0.74f)
-            .widthIn(max = 340.dp)
-            .wrapContentHeight()
-            .heightIn(min = 160.dp, max = 390.dp)
-        isMobile && sideSheetOnMobile -> Modifier
-            .fillMaxHeight()
-            .fillMaxWidth(0.46f)
-            .widthIn(min = 300.dp, max = 520.dp)
-        isMobile -> Modifier
-            .fillMaxWidth(0.92f)
-            .widthIn(max = 430.dp)
-            .wrapContentHeight()
-            .heightIn(min = 180.dp, max = 520.dp)
-        else -> Modifier
-            .widthIn(min = 300.dp, max = 420.dp)
-            .wrapContentHeight()
-            .heightIn(max = 620.dp)
-    }
 
-    Box(modifier = Modifier.fillMaxSize().zIndex(100f)) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().zIndex(100f)) {
+        val isLandscape = maxWidth > maxHeight
+        val isSideSheet = !isMobile || isLandscape
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -133,42 +100,47 @@ fun PlayerSidebarShell(
                 ) { onClose?.invoke() }
         )
 
+        val panelShape = if (isSideSheet) {
+            RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 0.dp, bottomEnd = 0.dp)
+        } else {
+            RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+        }
+        val panelSizeModifier = when {
+            isSideSheet && isMobile -> Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(0.46f)
+                .widthIn(min = 300.dp, max = 520.dp)
+            isSideSheet -> Modifier
+                .widthIn(min = 300.dp, max = 420.dp)
+                .wrapContentHeight()
+                .heightIn(max = 620.dp)
+            else -> Modifier
+                .fillMaxWidth(0.92f)
+                .widthIn(max = 430.dp)
+                .wrapContentHeight()
+                .heightIn(min = 180.dp, max = 560.dp)
+        }
+
+        val density = LocalDensity.current
+        var dragOffsetPx by remember { mutableStateOf(0f) }
+        val dismissThresholdPx = with(density) { 110.dp.toPx() }
+
         Column(
             modifier = Modifier
-                .align(
-                    if (isMobile) {
-                        if (compactCenterOnMobile) Alignment.Center else if (sideSheetOnMobile) Alignment.CenterEnd else Alignment.BottomCenter
-                    } else {
-                        Alignment.CenterEnd
-                    }
-                )
+                .align(if (isSideSheet) Alignment.CenterEnd else Alignment.BottomCenter)
                 .then(panelSizeModifier)
                 .graphicsLayer {
                     alpha = panelAlpha
-                    translationY = if (isMobile && !sideSheetOnMobile) panelOffset else 0f
-                    translationX = if (!isMobile || sideSheetOnMobile) panelOffset else 0f
+                    translationY = if (!isSideSheet) panelOffset + dragOffsetPx else 0f
+                    translationX = if (isSideSheet) panelOffset else 0f
                 }
-                .background(
-                    brush = if (isMobile && !sideSheetOnMobile) {
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF151A22).copy(alpha = 0.99f), Color(0xFF0D1218).copy(alpha = 0.99f))
-                        )
-                    } else {
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF121922).copy(alpha = 0.98f), Color(0xFF0A0F15).copy(alpha = 0.98f))
-                        )
-                    },
-                    shape = panelShape
-                )
-                .border(
-                    BorderStroke(1.dp, Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.14f), Color.Transparent))),
-                    shape = panelShape
-                )
+                .background(Color(0xFF10141A), shape = panelShape)
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape = panelShape)
                 .clip(panelShape)
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(if (deviceType == DeviceType.TV) 16.dp else if (isMobile && !sideSheetOnMobile) 18.dp else 16.dp)
+                .padding(16.dp)
         ) {
-            if (isMobile && sideSheetOnMobile) {
+            if (!isSideSheet) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
@@ -177,6 +149,20 @@ fun PlayerSidebarShell(
                         .height(5.dp)
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.16f))
+                        .pointerInput(onClose) {
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    if (dragOffsetPx > dismissThresholdPx) {
+                                        onClose?.invoke()
+                                    }
+                                    dragOffsetPx = 0f
+                                },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    dragOffsetPx = (dragOffsetPx + dragAmount).coerceAtLeast(0f)
+                                }
+                            )
+                        }
                 )
             }
             Row(
@@ -184,19 +170,31 @@ fun PlayerSidebarShell(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
+                if (onBack != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(if (deviceType == DeviceType.TV) 38.dp else 34.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .clickable { onBack() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(FluxaIcons.ChevronLeft, null, tint = Color.White, modifier = Modifier.size(if (deviceType == DeviceType.TV) 22.dp else 18.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         color = Color.White,
-                        fontSize = if (deviceType == DeviceType.TV) 18.sp else 17.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.8.sp
+                        fontSize = if (deviceType == DeviceType.TV) 17.sp else 16.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                     if (subtitle.isNotBlank()) {
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             text = subtitle,
-                            color = Color.White.copy(alpha = 0.58f),
+                            color = Color.White.copy(alpha = 0.55f),
                             fontSize = if (deviceType == DeviceType.TV) 11.sp else 10.sp,
                             lineHeight = 14.sp
                         )
@@ -231,136 +229,63 @@ fun TrackItem(
     badge: String? = null,
     formatBadge: (@Composable () -> Unit)? = null,
     deviceType: DeviceType? = null,
-    leadingIcon: ImageVector? = null
+    leadingIcon: ImageVector? = null,
+    trailingIcon: ImageVector? = null
 ) {
     val resolvedDeviceType = deviceType ?: LocalDeviceType.current
-    var isFocused by remember { mutableStateOf(false) }
-    val bgColor by animateColorAsState(
-        targetValue = when {
-            isSelected -> Color.White
-            isFocused -> Color.White.copy(alpha = 0.18f)
-            else -> Color.White.copy(alpha = 0.04f)
-        },
-        animationSpec = tween(FluxaDimensions.AnimDuration.heroSnap),
-        label = "bg"
-    )
-    val textColor = if (isSelected) Color.Black else Color.White
-    val secondaryTextColor = if (isSelected) Color.Black.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.56f)
-    val iconColor = if (isSelected) Color.Black else Color.White
-    val iconBackgroundColor = if (isSelected) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.07f)
-    val badgeBackgroundColor = if (isSelected) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.1f)
-    val scale by animateFloatAsState(
-        targetValue = when {
-            isSelected -> 1.015f
-            isFocused -> 1.01f
-            else -> 1f
-        },
-        animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing),
-        label = "trackScale"
-    )
-    val minHeight = if (subtitle.isNullOrBlank()) {
-        if (resolvedDeviceType == DeviceType.TV) 70.dp else 68.dp
-    } else {
-        if (resolvedDeviceType == DeviceType.TV) 88.dp else 84.dp
-    }
+    val contentAlpha = if (isSelected) 1f else 0.7f
+    val secondaryLine = listOfNotNull(subtitle?.takeIf { it.isNotBlank() }, badge?.takeIf { it.isNotBlank() })
+        .joinToString(" · ")
 
-    Box(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = minHeight)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .animateContentSize(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing))
-            .clip(RoundedCornerShape(if (resolvedDeviceType == DeviceType.TV) 18.dp else 16.dp))
-            .background(bgColor)
+            .heightIn(min = if (resolvedDeviceType == DeviceType.TV) 56.dp else 52.dp)
             .clickable { onClick() }
-            .onFocusChanged { isFocused = it.isFocused }
-            .focusable(),
-        contentAlignment = Alignment.CenterStart
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            if (leadingIcon != null) {
-                Box(
-                    modifier = Modifier
-                        .size(if (resolvedDeviceType == DeviceType.TV) 36.dp else 34.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(iconBackgroundColor),
-                    contentAlignment = Alignment.Center
+        if (leadingIcon != null) {
+            Icon(
+                leadingIcon,
+                null,
+                tint = Color.White.copy(alpha = contentAlpha),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = Color.White.copy(alpha = contentAlpha),
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                fontSize = if (resolvedDeviceType == DeviceType.TV) 15.sp else 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (secondaryLine.isNotBlank() || formatBadge != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(leadingIcon, null, tint = iconColor, modifier = Modifier.size(20.dp))
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = title,
-                        modifier = Modifier.weight(1f, fill = false),
-                        color = textColor,
-                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
-                        fontSize = if (resolvedDeviceType == DeviceType.TV) 15.sp else 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (!badge.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(badgeBackgroundColor)
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = badge,
-                                color = textColor,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
-                                maxLines = 1
-                            )
-                        }
+                    if (secondaryLine.isNotBlank()) {
+                        Text(
+                            text = secondaryLine,
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
-                }
-                if (!subtitle.isNullOrBlank() || formatBadge != null) {
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        if (!subtitle.isNullOrBlank()) {
-                            Text(
-                                text = subtitle,
-                                color = secondaryTextColor,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                lineHeight = 15.sp
-                            )
-                        }
-                        if (formatBadge != null) {
-                            formatBadge()
-                        }
-                    }
+                    formatBadge?.invoke()
                 }
             }
+        }
 
-            if (isSelected) {
-                Spacer(modifier = Modifier.width(12.dp))
-                Icon(
-                    imageVector = FluxaIcons.CheckCircle,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+        when {
+            isSelected -> Icon(FluxaIcons.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            trailingIcon != null -> Icon(trailingIcon, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
         }
     }
 }

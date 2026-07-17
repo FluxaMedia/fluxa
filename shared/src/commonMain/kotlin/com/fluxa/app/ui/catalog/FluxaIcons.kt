@@ -28,6 +28,8 @@ object FluxaIcons {
     val AspectRatio: ImageVector = Icons.Filled.AspectRatio
     val Backspace: ImageVector = Icons.Filled.Close
     val Bookmark: ImageVector = Icons.Filled.Bookmark
+    val BrightnessHigh: ImageVector = Icons.Filled.BrightnessHigh
+    val BrightnessLow: ImageVector = Icons.Filled.BrightnessLow
     val BookmarkBorder: ImageVector = Icons.Filled.Bookmark
     val BottomCalendar: ImageVector = Icons.Filled.DateRange
     val BottomCalendarOutline: ImageVector = Icons.Outlined.DateRange
@@ -73,9 +75,11 @@ object FluxaIcons {
     val List: ImageVector = Icons.AutoMirrored.Filled.List
     val LocalMovies: ImageVector = Icons.Filled.LocalMovies
     val Lock: ImageVector = Icons.Filled.Lock
+    val LockOpen: ImageVector = Icons.Filled.LockOpen
     val Logout: ImageVector = Icons.AutoMirrored.Filled.Logout
     val Memory: ImageVector = Icons.Filled.Memory
     val MenuBook: ImageVector = Icons.AutoMirrored.Filled.MenuBook
+    val MoreVert: ImageVector = Icons.Filled.MoreVert
     val Movie: ImageVector = Icons.Filled.Movie
     val Notifications: ImageVector = Icons.Filled.Notifications
     @Suppress("DEPRECATION")
@@ -90,6 +94,8 @@ object FluxaIcons {
     val PowerSettingsNew: ImageVector = Icons.Filled.PowerSettingsNew
     val Refresh: ImageVector = Icons.Filled.Refresh
     val Remove: ImageVector = Icons.Filled.Remove
+    val Replay10: ImageVector = Icons.Filled.Replay10
+    val Forward10: ImageVector = Icons.Filled.Forward10
     val Search: ImageVector = Icons.Filled.Search
     val Settings: ImageVector = Icons.Filled.Settings
     val Share: ImageVector = Icons.Filled.Share
