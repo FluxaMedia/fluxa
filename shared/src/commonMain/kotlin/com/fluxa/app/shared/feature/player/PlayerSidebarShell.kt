@@ -116,20 +116,18 @@ fun PlayerSidebarShell(
         )
 
         val panelShape = if (isSideSheet) {
-            RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 0.dp, bottomEnd = 0.dp)
+            RoundedCornerShape(20.dp)
         } else {
             RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
         }
-        val panelSizeModifier = when {
-            isSideSheet && isMobile -> Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(0.38f)
-                .widthIn(min = 300.dp, max = 400.dp)
-            isSideSheet -> Modifier
-                .widthIn(min = 300.dp, max = 420.dp)
+        val panelSizeModifier = if (isSideSheet) {
+            Modifier
+                .padding(end = 16.dp)
+                .width(if (isMobile) 340.dp else 400.dp)
                 .wrapContentHeight()
-                .heightIn(max = 620.dp)
-            else -> Modifier
+                .heightIn(max = maxHeight - 40.dp)
+        } else {
+            Modifier
                 .fillMaxWidth(0.92f)
                 .widthIn(max = 430.dp)
                 .wrapContentHeight()
@@ -147,7 +145,7 @@ fun PlayerSidebarShell(
                 .animateContentSize(tween(220, easing = FastOutSlowInEasing))
                 .graphicsLayer {
                     translationY = if (!isSideSheet) (1f - progress) * size.height + dragOffsetPx else 0f
-                    translationX = if (isSideSheet) (1f - progress) * size.width else 0f
+                    translationX = if (isSideSheet) (1f - progress) * (size.width + 32.dp.toPx()) else 0f
                 }
                 .background(Color(0xFF10141A), shape = panelShape)
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape = panelShape)
@@ -182,9 +180,9 @@ fun PlayerSidebarShell(
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (onBack != null) {
                     Box(
@@ -203,7 +201,7 @@ fun PlayerSidebarShell(
                     Text(
                         text = title,
                         color = Color.White,
-                        fontSize = if (deviceType == DeviceType.TV) 17.sp else 16.sp,
+                        fontSize = if (deviceType == DeviceType.TV) 16.sp else 15.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     if (subtitle.isNotBlank()) {
@@ -220,13 +218,13 @@ fun PlayerSidebarShell(
                 if (onClose != null) {
                     Box(
                         modifier = Modifier
-                            .size(if (deviceType == DeviceType.TV) 38.dp else 34.dp)
+                            .size(if (deviceType == DeviceType.TV) 34.dp else 28.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(Color.White.copy(alpha = 0.06f))
                             .clickable { requestClose() },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(FluxaIcons.Close, null, tint = Color.White, modifier = Modifier.size(if (deviceType == DeviceType.TV) 20.dp else 16.dp))
+                        Icon(FluxaIcons.Close, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(if (deviceType == DeviceType.TV) 18.dp else 14.dp))
                     }
                 }
             }
