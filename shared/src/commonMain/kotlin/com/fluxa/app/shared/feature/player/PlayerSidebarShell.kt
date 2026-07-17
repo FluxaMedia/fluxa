@@ -210,9 +210,9 @@ fun PlayerSidebarShell(
                         Spacer(Modifier.height(6.dp))
                         Text(
                             text = subtitle,
-                            color = Color.White.copy(alpha = 0.55f),
-                            fontSize = if (deviceType == DeviceType.TV) 11.sp else 10.sp,
-                            lineHeight = 14.sp
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = if (deviceType == DeviceType.TV) 12.sp else 11.sp,
+                            lineHeight = 15.sp
                         )
                     }
                 }
@@ -257,8 +257,10 @@ fun TrackItem(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = if (resolvedDeviceType == DeviceType.TV) 56.dp else 52.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
             .clickable { onClick() }
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
