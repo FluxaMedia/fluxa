@@ -7,7 +7,6 @@ import com.fluxa.app.ui.catalog.FluxaIcons
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -205,42 +204,19 @@ fun UniversalSettingsSidebar(
                     }
                     else -> {
                         val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-                        if (deviceType == DeviceType.Mobile) {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                speeds.chunked(3).forEach { row ->
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        row.forEach { speed ->
-                                            SpeedChip(
-                                                label = formatSpeedLabel(speed),
-                                                isSelected = playbackSpeed == speed,
-                                                onClick = { onSpeedChange(speed) },
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
-                                items(speeds, key = { it }) { speed ->
-                                    TrackItem(
-                                        title = formatSpeedLabel(speed),
-                                        isSelected = playbackSpeed == speed,
-                                        onClick = { onSpeedChange(speed) },
-                                        subtitle = when {
-                                            speed == 1.0f -> AppStrings.t(lang, "player.speed_standard")
-                                            speed < 1.0f -> AppStrings.t(lang, "player.speed_slower")
-                                            else -> AppStrings.t(lang, "player.speed_faster")
-                                        },
-                                        deviceType = deviceType
-                                    )
-                                }
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
+                            items(speeds, key = { it }) { speed ->
+                                TrackItem(
+                                    title = formatSpeedLabel(speed),
+                                    isSelected = playbackSpeed == speed,
+                                    onClick = { onSpeedChange(speed) },
+                                    subtitle = when {
+                                        speed == 1.0f -> AppStrings.t(lang, "player.speed_standard")
+                                        speed < 1.0f -> AppStrings.t(lang, "player.speed_slower")
+                                        else -> AppStrings.t(lang, "player.speed_faster")
+                                    },
+                                    deviceType = deviceType
+                                )
                             }
                         }
                     }
@@ -286,31 +262,6 @@ private fun formatSpeedLabel(speed: Float): String {
     val rounded = (speed * 100).roundToInt() / 100f
     val text = if (rounded == rounded.toInt().toFloat()) rounded.toInt().toString() else rounded.toString()
     return "${text}x"
-}
-
-@Composable
-private fun SpeedChip(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .height(46.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = if (isSelected) 0.10f else 0.04f))
-            .border(1.dp, Color.White.copy(alpha = if (isSelected) 0.4f else 0.08f), RoundedCornerShape(10.dp))
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            color = Color.White.copy(alpha = if (isSelected) 1f else 0.6f),
-            fontSize = 14.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-        )
-    }
 }
 
 @Composable

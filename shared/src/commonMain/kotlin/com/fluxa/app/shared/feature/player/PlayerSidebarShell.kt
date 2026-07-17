@@ -4,12 +4,12 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.ui.catalog.DeviceType
-import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.streamRawBody
 import com.fluxa.app.ui.catalog.streamSourceHeader
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
 
 @Composable
 fun SourceSidebar(streams: List<Stream>, currentUrl: String, deviceType: DeviceType, lang: String = "en", onSelect: (String) -> Unit, onClose: (() -> Unit)? = null) {
@@ -81,9 +82,23 @@ fun PlayerSidebarShell(
     content: @Composable ColumnScope.() -> Unit
 ) {
     var shown by remember { mutableStateOf(false) }
+    var closing by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
-    val panelAlpha by animateFloatAsState(if (shown) 1f else 0f, animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha), label = "sidebarAlpha")
-    val panelOffset by animateFloatAsState(if (shown) 0f else 44f, animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing), label = "sidebarOffset")
+    val visible = shown && !closing
+    val progress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = if (visible) tween(300, easing = FastOutSlowInEasing) else tween(200, easing = FastOutSlowInEasing),
+        label = "sidebarProgress"
+    )
+    fun requestClose() {
+        if (onClose != null && !closing) closing = true
+    }
+    LaunchedEffect(closing) {
+        if (closing) {
+            delay(210L)
+            onClose?.invoke()
+        }
+    }
     val isMobile = deviceType == DeviceType.Mobile
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().zIndex(100f)) {
@@ -93,11 +108,11 @@ fun PlayerSidebarShell(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.48f))
+                .background(Color.Black.copy(alpha = 0.48f * progress))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
-                ) { onClose?.invoke() }
+                ) { requestClose() }
         )
 
         val panelShape = if (isSideSheet) {
@@ -129,10 +144,10 @@ fun PlayerSidebarShell(
             modifier = Modifier
                 .align(if (isSideSheet) Alignment.CenterEnd else Alignment.BottomCenter)
                 .then(panelSizeModifier)
+                .animateContentSize(tween(220, easing = FastOutSlowInEasing))
                 .graphicsLayer {
-                    alpha = panelAlpha
-                    translationY = if (!isSideSheet) panelOffset + dragOffsetPx else 0f
-                    translationX = if (isSideSheet) panelOffset else 0f
+                    translationY = if (!isSideSheet) (1f - progress) * size.height + dragOffsetPx else 0f
+                    translationX = if (isSideSheet) (1f - progress) * size.width else 0f
                 }
                 .background(Color(0xFF10141A), shape = panelShape)
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape = panelShape)
@@ -153,9 +168,10 @@ fun PlayerSidebarShell(
                             detectVerticalDragGestures(
                                 onDragEnd = {
                                     if (dragOffsetPx > dismissThresholdPx) {
-                                        onClose?.invoke()
+                                        requestClose()
+                                    } else {
+                                        dragOffsetPx = 0f
                                     }
-                                    dragOffsetPx = 0f
                                 },
                                 onVerticalDrag = { change, dragAmount ->
                                     change.consume()
@@ -207,7 +223,7 @@ fun PlayerSidebarShell(
                             .size(if (deviceType == DeviceType.TV) 38.dp else 34.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.08f))
-                            .clickable { onClose() },
+                            .clickable { requestClose() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(FluxaIcons.Close, null, tint = Color.White, modifier = Modifier.size(if (deviceType == DeviceType.TV) 20.dp else 16.dp))
