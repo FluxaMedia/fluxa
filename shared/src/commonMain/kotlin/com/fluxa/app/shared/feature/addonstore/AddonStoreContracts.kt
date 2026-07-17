@@ -53,7 +53,8 @@ data class AddonStoreUiState(
     val openRepoPlugins: List<CloudstreamPluginUiModel> = emptyList(),
     val isLoadingRepoPlugins: Boolean = false,
     val installingPluginKeys: Set<String> = emptySet(),
-    val repoDialogError: String? = null
+    val repoDialogError: String? = null,
+    val addedAddonName: String? = null
 )
 
 sealed interface AddonStoreAction {
@@ -69,6 +70,7 @@ sealed interface AddonStoreAction {
     data object RepoDialogDismissed : AddonStoreAction
     data class RepoRemoved(val url: String) : AddonStoreAction
     data class RepoPluginToggled(val repoUrl: String, val internalName: String) : AddonStoreAction
+    data object AddedAddonDialogDismissed : AddonStoreAction
 }
 
 interface AddonStoreDataSource {
@@ -85,4 +87,5 @@ interface AddonStoreDataSource {
     suspend fun dismissRepoDialog()
     suspend fun removeRepo(url: String)
     suspend fun toggleRepoPlugin(repoUrl: String, internalName: String)
+    suspend fun dismissAddedAddonDialog()
 }

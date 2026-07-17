@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,9 +28,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -56,11 +55,24 @@ data class SettingsChoiceOption(val value: String, val label: String)
 @Composable
 fun SettingsSectionHeader(title: String) {
     Text(
-        text = title,
+        text = title.uppercase(),
         color = Color.White.copy(alpha = 0.5f),
         fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
-        modifier = Modifier.padding(bottom = 4.dp, top = 12.dp)
+        letterSpacing = 0.6.sp,
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, top = 20.dp)
+    )
+}
+
+@Composable
+fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.045f))
+            .padding(horizontal = 14.dp, vertical = 4.dp),
+        content = content
     )
 }
 
@@ -117,32 +129,43 @@ fun SettingsChoiceDialog(
     onSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title, color = Color.White, fontWeight = FontWeight.Bold) },
-        text = {
-            LazyColumn {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(FluxaColors.surfaceRaised)
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
+            )
+            androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
                 items(options.size) { index ->
                     val option = options[index]
+                    val isSelected = option.value == selected
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onSelected(option.value) }
-                            .padding(vertical = 10.dp),
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RadioButton(selected = option.value == selected, onClick = { onSelected(option.value) })
-                        Spacer(Modifier.width(8.dp))
-                        Text(option.label, color = Color.White)
+                        Text(option.label, color = if (isSelected) Color.White else Color.White.copy(alpha = 0.75f))
+                        if (isSelected) {
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("OK", color = Color.White) }
-        },
-        containerColor = Color(0xFF1A1D26)
-    )
+            Spacer(Modifier.height(4.dp))
+        }
+    }
 }
 
 @Composable
@@ -426,7 +449,12 @@ fun SettingsInfoRow(label: String, value: String) {
 }
 
 @Composable
-fun SettingsNavRow(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, onClick: () -> Unit) {
+fun SettingsNavRow(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    value: String? = null,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -452,12 +480,18 @@ fun SettingsNavRow(label: String, icon: androidx.compose.ui.graphics.vector.Imag
             }
             Text(label, color = Color.White, fontWeight = FontWeight.Medium)
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.35f),
-            modifier = Modifier.size(20.dp)
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (value != null) {
+                Text(value, color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+                Spacer(Modifier.width(8.dp))
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.35f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 

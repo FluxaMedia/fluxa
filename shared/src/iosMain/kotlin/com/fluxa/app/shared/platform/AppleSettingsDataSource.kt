@@ -10,6 +10,7 @@ import com.fluxa.app.shared.feature.settings.SettingsContentUiModel
 import com.fluxa.app.shared.feature.settings.SettingsDataSource
 import com.fluxa.app.shared.feature.settings.SettingsDownloadsUiModel
 import com.fluxa.app.shared.feature.settings.SettingsGeneralUiModel
+import com.fluxa.app.shared.feature.settings.SettingsNotificationsUiModel
 import com.fluxa.app.shared.feature.settings.SettingsPlaybackUiModel
 import com.fluxa.app.shared.feature.settings.SettingsSubtitlesUiModel
 import com.fluxa.app.shared.feature.settings.SettingsSystemUiModel
@@ -157,8 +158,6 @@ class AppleSettingsDataSource : SettingsDataSource {
         defaults.setBool(value.tmdbDetailsEnabled, K.tmdbDetailsEnabled)
         defaults.setBool(value.tmdbProductionsEnabled, K.tmdbProductionsEnabled)
         defaults.setBool(value.tmdbNetworksEnabled, K.tmdbNetworksEnabled)
-        defaults.setBool(value.notificationsEnabled, K.notificationsEnabled)
-        defaults.setBool(value.alertNewEpisodes, K.alertNewEpisodes)
         state.value = state.value.copy(account = state.value.account.copy(
             tmdbApiKey = value.tmdbApiKey,
             tmdbCastImagesEnabled = value.tmdbCastImagesEnabled,
@@ -172,10 +171,14 @@ class AppleSettingsDataSource : SettingsDataSource {
             tmdbBasicInfoEnabled = value.tmdbBasicInfoEnabled,
             tmdbDetailsEnabled = value.tmdbDetailsEnabled,
             tmdbProductionsEnabled = value.tmdbProductionsEnabled,
-            tmdbNetworksEnabled = value.tmdbNetworksEnabled,
-            notificationsEnabled = value.notificationsEnabled,
-            alertNewEpisodes = value.alertNewEpisodes
+            tmdbNetworksEnabled = value.tmdbNetworksEnabled
         ))
+    }
+
+    override suspend fun updateNotifications(value: SettingsNotificationsUiModel) {
+        defaults.setBool(value.notificationsEnabled, K.notificationsEnabled)
+        defaults.setBool(value.alertNewEpisodes, K.alertNewEpisodes)
+        state.value = state.value.copy(notifications = value)
     }
 
     override suspend fun updateShowHeroSection(value: Boolean) {
@@ -189,7 +192,6 @@ class AppleSettingsDataSource : SettingsDataSource {
     override suspend fun moveHomeFeed(key: String, direction: Int) = Unit
     override suspend fun toggleTopTenFeed(key: String) = Unit
     override suspend fun disconnectSync() = Unit
-    override suspend fun cancelDownload(id: String) = Unit
 
     private fun readState(): SettingsUiState = SettingsUiState(
         account = SettingsAccountUiModel(
@@ -205,7 +207,9 @@ class AppleSettingsDataSource : SettingsDataSource {
             tmdbBasicInfoEnabled = defaults.boolOrDefault(K.tmdbBasicInfoEnabled, true),
             tmdbDetailsEnabled = defaults.boolOrDefault(K.tmdbDetailsEnabled, true),
             tmdbProductionsEnabled = defaults.boolOrDefault(K.tmdbProductionsEnabled, true),
-            tmdbNetworksEnabled = defaults.boolOrDefault(K.tmdbNetworksEnabled, true),
+            tmdbNetworksEnabled = defaults.boolOrDefault(K.tmdbNetworksEnabled, true)
+        ),
+        notifications = SettingsNotificationsUiModel(
             notificationsEnabled = defaults.boolOrDefault(K.notificationsEnabled, true),
             alertNewEpisodes = defaults.boolOrDefault(K.alertNewEpisodes, true)
         ),

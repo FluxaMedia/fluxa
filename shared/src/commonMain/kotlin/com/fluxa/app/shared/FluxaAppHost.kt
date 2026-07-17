@@ -90,6 +90,8 @@ fun FluxaAppHost(
     onCheckForUpdateRequested: () -> Unit = {},
     onDownloadOpened: (String) -> Unit = {},
     onSettingsBackRequested: () -> Unit = {},
+    settingsPopRequestId: Int = 0,
+    onSettingsCanPopChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     FluxaAppHost(
@@ -134,6 +136,8 @@ fun FluxaAppHost(
         onCheckForUpdateRequested = onCheckForUpdateRequested,
         onDownloadOpened = onDownloadOpened,
         onSettingsBackRequested = onSettingsBackRequested,
+        settingsPopRequestId = settingsPopRequestId,
+        onSettingsCanPopChanged = onSettingsCanPopChanged,
         modifier = modifier
     )
 }
@@ -181,6 +185,8 @@ fun FluxaAppHost(
     onCheckForUpdateRequested: () -> Unit = {},
     onDownloadOpened: (String) -> Unit = {},
     onSettingsBackRequested: () -> Unit = {},
+    settingsPopRequestId: Int = 0,
+    onSettingsCanPopChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -308,6 +314,14 @@ fun FluxaAppHost(
             settingsStore?.refreshContentFeeds()
         }
     }
+    LaunchedEffect(appState.uiState.settingsBackStack) {
+        onSettingsCanPopChanged(appState.uiState.settingsBackStack.isNotEmpty())
+    }
+    LaunchedEffect(settingsPopRequestId) {
+        if (settingsPopRequestId > 0) {
+            appState.popSettingsCategory()
+        }
+    }
 
     FluxaApp(
         state = appState.uiState,
@@ -414,12 +428,15 @@ fun FluxaAppHost(
                 SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
                 SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
                 SettingsAction.CheckForUpdateRequested -> onCheckForUpdateRequested()
-                is SettingsAction.DownloadOpened -> onDownloadOpened(action.id)
+                SettingsAction.ManageDownloadsRequested -> appState.openLibraryDownloads()
                 else -> scope.launch { settingsStore?.dispatch(action) }
             }
         },
         onSwitchProfilesRequested = { appState.selectDestination(FluxaDestination.ProfileList) },
         onSettingsBackRequested = onSettingsBackRequested,
+        onSettingsPushCategory = appState::pushSettingsCategory,
+        onSettingsPopCategory = appState::popSettingsCategory,
+        onSettingsSelectCategory = appState::selectSettingsCategory,
         settingsBrandIcons = com.fluxa.app.shared.feature.settings.SettingsBrandIcons(
             stremio = stremioIcon,
             nuvio = nuvioIcon,

@@ -3,8 +3,8 @@ package com.fluxa.app.shared.feature.settings
 import kotlinx.coroutines.flow.Flow
 
 enum class SettingsCategory {
-    Hub, Account, General, Appearance, AppearanceHome, AppearanceDetail,
-    Playback, Subtitles, Advanced, Content, Addons, Downloads, Developer
+    Hub, Account, TmdbFeatures, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
+    Playback, Subtitles, Advanced, Content, Downloads, Developer
 }
 
 data class SettingsAccountUiModel(
@@ -39,7 +39,10 @@ data class SettingsAccountUiModel(
     val tmdbBasicInfoEnabled: Boolean = true,
     val tmdbDetailsEnabled: Boolean = true,
     val tmdbProductionsEnabled: Boolean = true,
-    val tmdbNetworksEnabled: Boolean = true,
+    val tmdbNetworksEnabled: Boolean = true
+)
+
+data class SettingsNotificationsUiModel(
     val notificationsEnabled: Boolean = true,
     val alertNewEpisodes: Boolean = true
 )
@@ -150,19 +153,10 @@ data class SettingsAddonsUiModel(
     val torrentWifiOnly: Boolean = false
 )
 
-data class SettingsDownloadItemUiModel(
-    val id: String,
-    val title: String,
-    val progressPercent: Int,
-    val isCompleted: Boolean,
-    val isPlayable: Boolean
-)
-
 data class SettingsDownloadsUiModel(
     val downloadSourceSelectionMode: String = "auto",
     val downloadSourceRegexPattern: String = "",
-    val downloadSubtitleLanguage: String = "none",
-    val items: List<SettingsDownloadItemUiModel> = emptyList()
+    val downloadSubtitleLanguage: String = "none"
 )
 
 data class SettingsSystemUiModel(
@@ -179,6 +173,7 @@ data class SettingsDeveloperUiModel(
 
 data class SettingsUiState(
     val account: SettingsAccountUiModel = SettingsAccountUiModel(),
+    val notifications: SettingsNotificationsUiModel = SettingsNotificationsUiModel(),
     val general: SettingsGeneralUiModel = SettingsGeneralUiModel(),
     val appearance: SettingsAppearanceUiModel = SettingsAppearanceUiModel(),
     val appearanceHome: SettingsAppearanceHomeUiModel = SettingsAppearanceHomeUiModel(),
@@ -207,6 +202,7 @@ sealed interface SettingsAction {
     data class DownloadsChanged(val value: SettingsDownloadsUiModel) : SettingsAction
     data class SystemChanged(val value: SettingsSystemUiModel) : SettingsAction
     data class TmdbAccountChanged(val value: SettingsAccountUiModel) : SettingsAction
+    data class NotificationsChanged(val value: SettingsNotificationsUiModel) : SettingsAction
     data class HeroFeedToggled(val key: String) : SettingsAction
     data class HeroFeedMoved(val key: String, val direction: Int) : SettingsAction
     data class HomeFeedToggled(val key: String) : SettingsAction
@@ -221,8 +217,7 @@ sealed interface SettingsAction {
     data object DisconnectSyncRequested : SettingsAction
     data object SwitchProfilesRequested : SettingsAction
     data object CheckForUpdateRequested : SettingsAction
-    data class DownloadOpened(val id: String) : SettingsAction
-    data class DownloadCancelled(val id: String) : SettingsAction
+    data object ManageDownloadsRequested : SettingsAction
 }
 
 interface SettingsDataSource {
@@ -239,6 +234,7 @@ interface SettingsDataSource {
     suspend fun updateDownloads(value: SettingsDownloadsUiModel)
     suspend fun updateSystem(value: SettingsSystemUiModel)
     suspend fun updateTmdbAccount(value: SettingsAccountUiModel)
+    suspend fun updateNotifications(value: SettingsNotificationsUiModel)
     suspend fun updateShowHeroSection(value: Boolean)
     suspend fun toggleHeroFeed(key: String)
     suspend fun moveHeroFeed(key: String, direction: Int)
@@ -246,5 +242,4 @@ interface SettingsDataSource {
     suspend fun moveHomeFeed(key: String, direction: Int)
     suspend fun toggleTopTenFeed(key: String)
     suspend fun disconnectSync()
-    suspend fun cancelDownload(id: String)
 }

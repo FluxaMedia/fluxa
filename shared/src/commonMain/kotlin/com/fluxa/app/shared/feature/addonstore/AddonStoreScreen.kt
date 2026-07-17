@@ -159,6 +159,21 @@ fun AddonStoreScreen(
                 }
             )
         }
+
+        val addedAddonName = state.addedAddonName
+        if (addedAddonName != null) {
+            AlertDialog(
+                onDismissRequest = { onAction(AddonStoreAction.AddedAddonDialogDismissed) },
+                title = { Text(AppStrings.t(language, "addons.added_title"), color = Color.White, fontWeight = FontWeight.Bold) },
+                text = { Text(AppStrings.format(language, "addons.added_message", addedAddonName), color = Color.White.copy(alpha = 0.8f)) },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = { onAction(AddonStoreAction.AddedAddonDialogDismissed) }) {
+                        Text(AppStrings.t(language, "common.ok"), color = Color.White)
+                    }
+                },
+                containerColor = FluxaColors.surfaceRaised
+            )
+        }
     }
 }
 
@@ -189,21 +204,15 @@ private fun AddonSmartInput(
                     fontSize = 13.sp
                 )
             },
-            trailingIcon = {
-                if (state.isSubmittingInput) {
+            trailingIcon = if (state.isSubmittingInput) {
+                {
                     CircularProgressIndicator(
                         color = Color.White.copy(alpha = 0.72f),
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(18.dp)
                     )
-                } else if (state.inputDetectedType != AddonStoreInputType.UNKNOWN &&
-                    state.inputDetectedType != AddonStoreInputType.SEARCH_QUERY
-                ) {
-                    IconButton(enabled = state.inputText.isNotBlank(), onClick = onSubmit) {
-                        Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White)
-                    }
                 }
-            },
+            } else null,
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
                 focusedTextColor = Color.White,
@@ -218,6 +227,22 @@ private fun AddonSmartInput(
         val error = state.inputError
         if (error != null) {
             Text(text = error, color = FluxaColors.errorRed, fontSize = 12.sp)
+        }
+        if (!state.isSubmittingInput &&
+            state.inputDetectedType != AddonStoreInputType.UNKNOWN &&
+            state.inputDetectedType != AddonStoreInputType.SEARCH_QUERY
+        ) {
+            androidx.compose.material3.Button(
+                onClick = onSubmit,
+                enabled = state.inputText.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(AppStrings.t(language, "addons.add"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
         }
     }
 }

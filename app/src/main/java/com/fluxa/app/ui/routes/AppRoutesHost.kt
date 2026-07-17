@@ -56,7 +56,9 @@ internal fun AppRoutesHost(
     onShowSimklSheet: () -> Unit,
     onTraktDeviceAuthChanged: (TraktDeviceAuthUiState?) -> Unit,
     onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
-    navigateBackSafely: () -> Unit
+    navigateBackSafely: () -> Unit,
+    settingsPopRequestId: Int,
+    onSettingsCanPopChanged: (Boolean) -> Unit
 ) {
     if (playerRequest != null) {
         PlayerRoute(
@@ -188,6 +190,8 @@ internal fun AppRoutesHost(
             )
         },
         onSettingsBackRequested = navigateBackSafely,
+        settingsPopRequestId = settingsPopRequestId,
+        onSettingsCanPopChanged = onSettingsCanPopChanged,
         onManageAddonsRequested = { onNavigateToDestination(FluxaDestination.AddonStore) },
         onConnectStremioRequested = {
             val profile = activeProfile

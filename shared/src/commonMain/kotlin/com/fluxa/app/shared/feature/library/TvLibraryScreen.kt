@@ -12,6 +12,7 @@ fun TvLibraryScreen(
     language: String?,
     onAction: (LibraryAction) -> Unit,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    initialSection: LibrarySection = LibrarySection.Planned,
     modifier: Modifier = Modifier
 ) {
     LibraryScreen(
@@ -19,6 +20,7 @@ fun TvLibraryScreen(
         language = language,
         onAction = onAction,
         onItemSelected = onItemSelected,
+        initialSection = initialSection,
         modifier = modifier.padding(start = 38.dp, top = 56.dp, end = 38.dp, bottom = 24.dp)
     )
 }

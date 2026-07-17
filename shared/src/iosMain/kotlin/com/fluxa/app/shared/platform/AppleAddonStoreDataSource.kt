@@ -84,6 +84,10 @@ class AppleAddonStoreDataSource : AddonStoreDataSource {
         postAction(AppleAddonStoreActionSnapshot(type = "toggleRepoPlugin", repoUrl = repoUrl, internalName = internalName))
     }
 
+    override suspend fun dismissAddedAddonDialog() {
+        state.value = state.value.copy(addedAddonName = null)
+    }
+
     fun setOnActionRequested(handler: (AppleAddonStoreActionSnapshot) -> Unit) {
         onActionRequested = handler
     }

@@ -145,7 +145,9 @@ data class FluxaAppUiState(
     val selectedCategoryId: String? = null,
     val selectedCategoryTitle: String? = null,
     val editingProfile: ProfileEditTarget? = null,
-    val showNotifications: Boolean = false
+    val showNotifications: Boolean = false,
+    val settingsBackStack: List<com.fluxa.app.shared.feature.settings.SettingsCategory> = emptyList(),
+    val initialLibrarySection: com.fluxa.app.shared.feature.library.LibrarySection? = null
 )
 
 @Composable
@@ -176,6 +178,9 @@ fun FluxaApp(
     onSettingsAction: (SettingsAction) -> Unit = {},
     onSwitchProfilesRequested: () -> Unit = {},
     onSettingsBackRequested: () -> Unit = {},
+    onSettingsPushCategory: (com.fluxa.app.shared.feature.settings.SettingsCategory) -> Unit = {},
+    onSettingsPopCategory: () -> Unit = {},
+    onSettingsSelectCategory: (com.fluxa.app.shared.feature.settings.SettingsCategory) -> Unit = {},
     settingsBrandIcons: com.fluxa.app.shared.feature.settings.SettingsBrandIcons = com.fluxa.app.shared.feature.settings.SettingsBrandIcons(),
     addonStoreState: AddonStoreUiState? = null,
     onAddonStoreAction: (AddonStoreAction) -> Unit = {},
@@ -342,6 +347,7 @@ fun FluxaApp(
                     language = state.language,
                     onAction = onLibraryAction,
                     onItemSelected = onLibraryItemSelected,
+                    initialSection = state.initialLibrarySection ?: com.fluxa.app.shared.feature.library.LibrarySection.Planned,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Library && libraryState != null -> LibraryScreen(
@@ -349,14 +355,20 @@ fun FluxaApp(
                     language = state.language,
                     onAction = onLibraryAction,
                     onItemSelected = onLibraryItemSelected,
+                    initialSection = state.initialLibrarySection ?: com.fluxa.app.shared.feature.library.LibrarySection.Planned,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Settings && settingsState != null -> SettingsScreen(
                     state = settingsState,
                     language = state.language,
+                    backStack = state.settingsBackStack,
                     onAction = onSettingsAction,
                     onSwitchProfilesRequested = onSwitchProfilesRequested,
                     onBackRequested = onSettingsBackRequested,
+                    onPushCategory = onSettingsPushCategory,
+                    onPopCategory = onSettingsPopCategory,
+                    onSelectCategory = onSettingsSelectCategory,
+                    deviceType = deviceType,
                     brandIcons = settingsBrandIcons,
                     modifier = Modifier.fillMaxSize()
                 )

@@ -57,9 +57,10 @@ fun LibraryScreen(
     language: String?,
     onAction: (LibraryAction) -> Unit,
     onItemSelected: (com.fluxa.app.shared.feature.catalog.CatalogItemUiModel) -> Unit,
+    initialSection: LibrarySection = LibrarySection.Planned,
     modifier: Modifier = Modifier
 ) {
-    var section by remember { mutableStateOf(LibrarySection.Planned) }
+    var section by remember(initialSection) { mutableStateOf(initialSection) }
     var typeFilter by remember { mutableStateOf(LibraryTypeFilter.All) }
     var viewingCollectionId by remember { mutableStateOf<String?>(null) }
     var viewingDownloadGroupKey by remember { mutableStateOf<String?>(null) }

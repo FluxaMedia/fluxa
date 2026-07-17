@@ -27,6 +27,7 @@ class SettingsStore(
             is SettingsAction.DownloadsChanged -> dataSource.updateDownloads(action.value)
             is SettingsAction.SystemChanged -> dataSource.updateSystem(action.value)
             is SettingsAction.TmdbAccountChanged -> dataSource.updateTmdbAccount(action.value)
+            is SettingsAction.NotificationsChanged -> dataSource.updateNotifications(action.value)
             is SettingsAction.ShowHeroSectionChanged -> dataSource.updateShowHeroSection(action.value)
             is SettingsAction.HeroFeedToggled -> dataSource.toggleHeroFeed(action.key)
             is SettingsAction.HeroFeedMoved -> dataSource.moveHeroFeed(action.key, action.direction)
@@ -42,8 +43,7 @@ class SettingsStore(
             SettingsAction.DisconnectSyncRequested -> dataSource.disconnectSync()
             SettingsAction.SwitchProfilesRequested -> Unit
             SettingsAction.CheckForUpdateRequested -> Unit
-            is SettingsAction.DownloadOpened -> Unit
-            is SettingsAction.DownloadCancelled -> dataSource.cancelDownload(action.id)
+            SettingsAction.ManageDownloadsRequested -> Unit
         }
     }
 }

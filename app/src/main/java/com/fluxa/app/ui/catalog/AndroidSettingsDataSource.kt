@@ -2,8 +2,6 @@ package com.fluxa.app.ui.catalog
 
 import android.content.SharedPreferences
 import com.fluxa.app.data.local.*
-import com.fluxa.app.data.local.OfflineDownloadItem
-import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.domain.discovery.MetadataFeedOption
@@ -25,10 +23,10 @@ import com.fluxa.app.shared.feature.settings.SettingsAppearanceUiModel
 import com.fluxa.app.shared.feature.settings.SettingsContentUiModel
 import com.fluxa.app.shared.feature.settings.SettingsDataSource
 import com.fluxa.app.shared.feature.settings.SettingsDeveloperUiModel
-import com.fluxa.app.shared.feature.settings.SettingsDownloadItemUiModel
 import com.fluxa.app.shared.feature.settings.SettingsDownloadsUiModel
 import com.fluxa.app.shared.feature.settings.SettingsFeedItemUiModel
 import com.fluxa.app.shared.feature.settings.SettingsGeneralUiModel
+import com.fluxa.app.shared.feature.settings.SettingsNotificationsUiModel
 import com.fluxa.app.shared.feature.settings.SettingsPlaybackUiModel
 import com.fluxa.app.shared.feature.settings.SettingsSubtitlesUiModel
 import com.fluxa.app.shared.feature.settings.SettingsSystemUiModel
@@ -45,7 +43,6 @@ class AndroidSettingsDataSource(
     private val profileManager: ProfileManager,
     private val activeProfile: () -> UserProfile?,
     private val onProfileChanged: (UserProfile) -> Unit,
-    private val offlineDownloadManager: OfflineDownloadManager,
     private val appVersionLabel: String,
     private val language: () -> String
 ) : SettingsDataSource {
@@ -54,13 +51,12 @@ class AndroidSettingsDataSource(
         profileFlow(),
         homeViewModel.userAddons,
         homeViewModel.loadedCs3CatalogFeedOptions,
-        offlineDownloadManager.items,
         LastMediaDebugInfoStore.state
-    ) { profile, addons, cs3Options, downloads, debugInfo ->
+    ) { profile, addons, cs3Options, debugInfo ->
         if (profile == null) {
             SettingsUiState(isLoading = true)
         } else {
-            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, downloads, debugInfo)
+            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo)
         }
     }
 
@@ -79,7 +75,6 @@ class AndroidSettingsDataSource(
     private fun buildState(
         profile: UserProfile,
         metadataOptions: List<MetadataFeedOption>,
-        downloads: List<OfflineDownloadItem>,
         debugInfo: com.fluxa.app.player.LastMediaDebugInfo
     ): SettingsUiState {
         val heroOptions = orderedMetadataFeeds(metadataOptions, profile.heroFeedOrder)
@@ -154,7 +149,9 @@ class AndroidSettingsDataSource(
                 tmdbBasicInfoEnabled = profile.safeTmdbBasicInfoEnabled,
                 tmdbDetailsEnabled = profile.safeTmdbDetailsEnabled,
                 tmdbProductionsEnabled = profile.safeTmdbProductionsEnabled,
-                tmdbNetworksEnabled = profile.safeTmdbNetworksEnabled,
+                tmdbNetworksEnabled = profile.safeTmdbNetworksEnabled
+            ),
+            notifications = SettingsNotificationsUiModel(
                 notificationsEnabled = profile.safeNotificationsEnabled,
                 alertNewEpisodes = profile.safeAlertNewEpisodes
             ),
@@ -189,7 +186,7 @@ class AndroidSettingsDataSource(
                 episodeCardsLayout = profile.safeEpisodeCardsLayout
             ),
             playback = SettingsPlaybackUiModel(
-                preferredPlayer = profile.safePreferredPlayer,
+                preferredPlayer = if (profile.safePreferredPlayer == "mpv") "mpv" else "internal",
                 mpvCustomOptions = profile.safeMpvCustomOptions,
                 animeUseMpv = profile.safeAnimeUseMpv,
                 animePreferJapaneseAudio = profile.safeAnimePreferJapaneseAudio,
@@ -249,16 +246,7 @@ class AndroidSettingsDataSource(
             downloads = SettingsDownloadsUiModel(
                 downloadSourceSelectionMode = profile.safeDownloadSourceSelectionMode,
                 downloadSourceRegexPattern = profile.downloadSourceRegexPattern.orEmpty(),
-                downloadSubtitleLanguage = profile.safeDownloadSubtitleLanguage,
-                items = downloads.map {
-                    SettingsDownloadItemUiModel(
-                        id = it.id,
-                        title = it.title,
-                        progressPercent = it.progress,
-                        isCompleted = it.status == "downloaded",
-                        isPlayable = it.isPlayable
-                    )
-                }
+                downloadSubtitleLanguage = profile.safeDownloadSubtitleLanguage
             ),
             system = SettingsSystemUiModel(
                 automaticUpdates = profile.safeAutomaticUpdates,
@@ -407,10 +395,12 @@ class AndroidSettingsDataSource(
             tmdbBasicInfoEnabled = value.tmdbBasicInfoEnabled,
             tmdbDetailsEnabled = value.tmdbDetailsEnabled,
             tmdbProductionsEnabled = value.tmdbProductionsEnabled,
-            tmdbNetworksEnabled = value.tmdbNetworksEnabled,
-            notificationsEnabled = value.notificationsEnabled,
-            alertNewEpisodes = value.alertNewEpisodes
+            tmdbNetworksEnabled = value.tmdbNetworksEnabled
         )
+    }
+
+    override suspend fun updateNotifications(value: SettingsNotificationsUiModel) = update {
+        it.copy(notificationsEnabled = value.notificationsEnabled, alertNewEpisodes = value.alertNewEpisodes)
     }
 
     override suspend fun updateShowHeroSection(value: Boolean) = update {
@@ -458,9 +448,5 @@ class AndroidSettingsDataSource(
             anilistRefreshToken = null,
             anilistTokenExpiresAt = null
         )
-    }
-
-    override suspend fun cancelDownload(id: String) {
-        offlineDownloadManager.cancel(id)
     }
 }

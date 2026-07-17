@@ -71,7 +71,6 @@ class AndroidFluxaPlatformServices(
                 homeViewModel.loadInitialData(updated, force = true)
             }
         },
-        offlineDownloadManager = offlineDownloadManager,
         appVersionLabel = appVersionLabel,
         language = { activeProfile()?.language ?: "en" }
     )

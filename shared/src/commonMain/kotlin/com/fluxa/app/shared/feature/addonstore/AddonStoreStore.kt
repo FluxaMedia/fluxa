@@ -26,6 +26,7 @@ class AddonStoreStore(
             AddonStoreAction.RepoDialogDismissed -> dataSource.dismissRepoDialog()
             is AddonStoreAction.RepoRemoved -> dataSource.removeRepo(action.url)
             is AddonStoreAction.RepoPluginToggled -> dataSource.toggleRepoPlugin(action.repoUrl, action.internalName)
+            AddonStoreAction.AddedAddonDialogDismissed -> dataSource.dismissAddedAddonDialog()
         }
     }
 }

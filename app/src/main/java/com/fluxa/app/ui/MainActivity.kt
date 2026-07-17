@@ -481,6 +481,9 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
+                    var canPopSettings by remember { mutableStateOf(false) }
+                    var settingsPopRequestId by remember { mutableStateOf(0) }
+
                     val navigateBackSafely = {
                         if (playerRequest != null) {
                             playerRequest = null
@@ -495,7 +498,13 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    BackHandler(enabled = playerRequest == null) { navigateBackSafely() }
+                    BackHandler(enabled = playerRequest == null) {
+                        if (canPopSettings) {
+                            settingsPopRequestId++
+                        } else {
+                            navigateBackSafely()
+                        }
+                    }
 
                     Box(modifier = Modifier.fillMaxSize()) {
                         AppRoutesHost(
@@ -507,6 +516,8 @@ class MainActivity : FragmentActivity() {
                             androidFluxaPlatformServices = androidFluxaPlatformServices,
                             activeProfile = activeProfile,
                             onActiveProfileChanged = { activeProfile = it },
+                            settingsPopRequestId = settingsPopRequestId,
+                            onSettingsCanPopChanged = { canPopSettings = it },
                             onNavigateToDestination = { destination -> navigateToDestination(destination, false) },
                             onPlayerRequestChanged = { playerRequest = it },
                             profileManager = profileManager,

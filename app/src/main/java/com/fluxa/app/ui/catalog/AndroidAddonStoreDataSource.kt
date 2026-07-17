@@ -47,7 +47,8 @@ class AndroidAddonStoreDataSource(
         val isLoadingRepoPlugins: Boolean = false,
         val installingPluginKeys: Set<String> = emptySet(),
         val repoDialogError: String? = null,
-        val profileRevision: Long = 0L
+        val profileRevision: Long = 0L,
+        val addedAddonName: String? = null
     )
 
     private val extras = MutableStateFlow(Extras())
@@ -156,7 +157,8 @@ class AndroidAddonStoreDataSource(
             openRepoPlugins = pluginModels,
             isLoadingRepoPlugins = ex.isLoadingRepoPlugins,
             installingPluginKeys = ex.installingPluginKeys,
-            repoDialogError = ex.repoDialogError
+            repoDialogError = ex.repoDialogError,
+            addedAddonName = ex.addedAddonName
         )
     }
 
@@ -187,9 +189,28 @@ class AndroidAddonStoreDataSource(
         if (trimmed.isEmpty()) return
         when (detectInputType(trimmed)) {
             AddonStoreInputType.STREMIO_MANIFEST -> {
-                installLocalAddonForProfile(activeProfile(), trimmed, profileManager, homeViewModel, onProfileChanged)
-                refreshProfileState()
-                extras.update { it.copy(inputText = "", detectedType = AddonStoreInputType.UNKNOWN, inputError = null) }
+                extras.update { it.copy(isSubmittingInput = true, inputError = null) }
+                val descriptor = repository.getAddonManifest(trimmed, forceRefresh = true)
+                if (descriptor == null) {
+                    extras.update {
+                        it.copy(
+                            isSubmittingInput = false,
+                            inputError = AppStrings.t(activeProfile()?.language ?: "en", "addons.manifest_unreachable")
+                        )
+                    }
+                } else {
+                    installLocalAddonForProfile(activeProfile(), trimmed, profileManager, homeViewModel, onProfileChanged)
+                    refreshProfileState()
+                    extras.update {
+                        it.copy(
+                            inputText = "",
+                            detectedType = AddonStoreInputType.UNKNOWN,
+                            inputError = null,
+                            isSubmittingInput = false,
+                            addedAddonName = descriptor.manifest.name.takeIf { name -> name.isNotBlank() } ?: trimmed
+                        )
+                    }
+                }
             }
             AddonStoreInputType.CLOUDSTREAM_REPO -> {
                 extras.update { it.copy(isSubmittingInput = true, inputError = null) }
@@ -281,5 +302,9 @@ class AndroidAddonStoreDataSource(
             }
         }
         extras.update { it.copy(installingPluginKeys = it.installingPluginKeys - key) }
+    }
+
+    override suspend fun dismissAddedAddonDialog() {
+        extras.update { it.copy(addedAddonName = null) }
     }
 }

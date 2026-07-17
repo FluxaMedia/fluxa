@@ -18,7 +18,15 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
         private set
 
     fun selectDestination(destination: FluxaDestination) {
-        uiState = uiState.copy(destination = destination, selectedDetail = null, selectedCategoryId = null, selectedCategoryTitle = null, editingProfile = null)
+        uiState = uiState.copy(
+            destination = destination,
+            selectedDetail = null,
+            selectedCategoryId = null,
+            selectedCategoryTitle = null,
+            editingProfile = null,
+            settingsBackStack = emptyList(),
+            initialLibrarySection = null
+        )
     }
 
     fun selectDetail(item: CatalogItemUiModel) {
@@ -99,6 +107,30 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
 
     fun updateLanguage(language: String?) {
         uiState = uiState.copy(language = language)
+    }
+
+    fun pushSettingsCategory(category: com.fluxa.app.shared.feature.settings.SettingsCategory) {
+        uiState = uiState.copy(settingsBackStack = uiState.settingsBackStack + category)
+    }
+
+    fun selectSettingsCategory(category: com.fluxa.app.shared.feature.settings.SettingsCategory) {
+        uiState = uiState.copy(settingsBackStack = listOf(category))
+    }
+
+    fun popSettingsCategory() {
+        uiState = uiState.copy(settingsBackStack = uiState.settingsBackStack.dropLast(1))
+    }
+
+    fun openLibraryDownloads() {
+        uiState = uiState.copy(
+            destination = FluxaDestination.Library,
+            initialLibrarySection = com.fluxa.app.shared.feature.library.LibrarySection.Downloads,
+            selectedDetail = null,
+            selectedCategoryId = null,
+            selectedCategoryTitle = null,
+            editingProfile = null,
+            settingsBackStack = emptyList()
+        )
     }
 }
 
