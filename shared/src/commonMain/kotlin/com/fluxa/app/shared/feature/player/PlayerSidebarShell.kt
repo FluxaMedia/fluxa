@@ -15,6 +15,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -109,7 +110,14 @@ fun PlayerSidebarShell(
         label = "sidebarDim"
     )
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().zIndex(100f)) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(100f)
+            .pointerInput(Unit) {
+                detectDragGestures { change, _ -> change.consume() }
+            }
+    ) {
         val isLandscape = maxWidth > maxHeight
         val isCard = !isMobile || isLandscape || anchorTop
 

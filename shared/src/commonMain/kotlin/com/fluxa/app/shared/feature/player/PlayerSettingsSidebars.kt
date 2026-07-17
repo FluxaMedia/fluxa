@@ -10,6 +10,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -37,6 +40,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -132,7 +136,10 @@ fun UniversalSettingsSidebar(
             }
         }
         val subtitleAdjust: @Composable () -> Unit = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            ) {
                 TrackItem(
                     title = AppStrings.t(lang, "player.subtitle_delay"),
                     isSelected = false,
@@ -246,7 +253,14 @@ private fun SpeedPopup(playbackSpeed: Float, lang: String, onSpeedChange: (Float
             onClose()
         }
     }
-    Box(modifier = Modifier.fillMaxSize().zIndex(100f)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(100f)
+            .pointerInput(Unit) {
+                detectDragGestures { change, _ -> change.consume() }
+            }
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
