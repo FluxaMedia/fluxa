@@ -11,8 +11,10 @@ import com.fluxa.app.ui.catalog.FluxaIcons
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
@@ -1014,15 +1016,13 @@ fun MobilePlayerUIContent(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
                 AnimatedVisibility(
                     visible = chromeVisible,
-                    enter = chromeEnter,
-                    exit = chromeExit
+                    enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                    exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
