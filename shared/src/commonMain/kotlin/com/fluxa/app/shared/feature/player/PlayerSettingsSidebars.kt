@@ -14,8 +14,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -88,7 +86,9 @@ fun UniversalSettingsSidebar(
         val twoColumn = deviceType != DeviceType.Mobile || maxWidth > maxHeight
         var tab by remember(activeTab) { mutableStateOf(activeTab.coerceIn(0, 1)) }
         var showAdjust by remember(activeTab) { mutableStateOf(false) }
-        var sliderActive by remember { mutableStateOf(false) }
+        var liveTextOpacity by remember(subtitleTextOpacity) { mutableStateOf(subtitleTextOpacity) }
+        var liveBackgroundOpacity by remember(subtitleBackgroundOpacity) { mutableStateOf(subtitleBackgroundOpacity) }
+        var liveOutlineOpacity by remember(subtitleOutlineOpacity) { mutableStateOf(subtitleOutlineOpacity) }
         val listMaxHeight = if (deviceType == DeviceType.TV) 400.dp else 440.dp
 
         val audioList: @Composable () -> Unit = {
@@ -151,24 +151,24 @@ fun UniversalSettingsSidebar(
                 )
                 OpacityAdjustmentItem(
                     title = AppStrings.t(lang, "settings.subtitle_text"),
-                    value = subtitleTextOpacity,
+                    value = liveTextOpacity,
                     deviceType = deviceType,
-                    onChange = onSubtitleTextOpacityChange,
-                    onDragActiveChange = { sliderActive = it }
+                    onChange = { liveTextOpacity = it },
+                    onCommit = { onSubtitleTextOpacityChange(liveTextOpacity) }
                 )
                 OpacityAdjustmentItem(
                     title = AppStrings.t(lang, "settings.subtitle_background"),
-                    value = subtitleBackgroundOpacity,
+                    value = liveBackgroundOpacity,
                     deviceType = deviceType,
-                    onChange = onSubtitleBackgroundOpacityChange,
-                    onDragActiveChange = { sliderActive = it }
+                    onChange = { liveBackgroundOpacity = it },
+                    onCommit = { onSubtitleBackgroundOpacityChange(liveBackgroundOpacity) }
                 )
                 OpacityAdjustmentItem(
                     title = AppStrings.t(lang, "settings.subtitle_outline"),
-                    value = subtitleOutlineOpacity,
+                    value = liveOutlineOpacity,
                     deviceType = deviceType,
-                    onChange = onSubtitleOutlineOpacityChange,
-                    onDragActiveChange = { sliderActive = it }
+                    onChange = { liveOutlineOpacity = it },
+                    onCommit = { onSubtitleOutlineOpacityChange(liveOutlineOpacity) }
                 )
             }
         }
@@ -176,9 +176,9 @@ fun UniversalSettingsSidebar(
         if (showAdjust) {
             SubtitlePreviewCue(
                 lang = lang,
-                textOpacity = subtitleTextOpacity,
-                backgroundOpacity = subtitleBackgroundOpacity,
-                outlineOpacity = subtitleOutlineOpacity
+                textOpacity = liveTextOpacity,
+                backgroundOpacity = liveBackgroundOpacity,
+                outlineOpacity = liveOutlineOpacity
             )
             PlayerSidebarShell(
                 title = AppStrings.t(lang, "player.adjust"),
@@ -187,8 +187,7 @@ fun UniversalSettingsSidebar(
                 onBack = { showAdjust = false },
                 cardWidth = 380.dp,
                 anchorTop = true,
-                scrimAlpha = 0.06f,
-                dimmed = sliderActive
+                scrimAlpha = 0.06f
             ) {
                 subtitleAdjust()
             }
@@ -415,7 +414,7 @@ private fun SubtitlePreviewCue(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 56.dp)
+                .padding(bottom = 20.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(Color.Black.copy(alpha = backgroundOpacity.coerceIn(0f, 1f)))
                 .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -488,12 +487,8 @@ private fun OpacityAdjustmentItem(
     value: Float,
     deviceType: DeviceType,
     onChange: (Float) -> Unit,
-    onDragActiveChange: (Boolean) -> Unit = {}
+    onCommit: () -> Unit = {}
 ) {
-    val sliderInteraction = remember { MutableInteractionSource() }
-    val dragged by sliderInteraction.collectIsDraggedAsState()
-    val pressed by sliderInteraction.collectIsPressedAsState()
-    LaunchedEffect(dragged, pressed) { onDragActiveChange(dragged || pressed) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -515,8 +510,8 @@ private fun OpacityAdjustmentItem(
         Slider(
             value = value.coerceIn(0f, 1f),
             onValueChange = { onChange(it.coerceIn(0f, 1f)) },
+            onValueChangeFinished = onCommit,
             valueRange = 0f..1f,
-            interactionSource = sliderInteraction,
             colors = SliderDefaults.colors(
                 thumbColor = Color.White,
                 activeTrackColor = Color.White,

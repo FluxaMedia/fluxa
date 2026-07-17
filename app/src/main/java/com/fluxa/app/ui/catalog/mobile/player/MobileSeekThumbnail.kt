@@ -18,11 +18,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayOutputStream
 import kotlin.coroutines.resume
 
@@ -34,7 +32,6 @@ private const val BackgroundCaptureIntervalMs = 60_000L
 private const val ThumbWidth = 480
 private const val ThumbHeight = 270
 private const val CacheMaxBytes = 32 * 1024 * 1024
-private const val FrameTimeoutMs = 300L
 
 @Composable
 internal fun rememberSeekThumbnail(
@@ -42,45 +39,19 @@ internal fun rememberSeekThumbnail(
     scrubPosition: Long,
     isScrubbing: Boolean,
     livePosition: Long,
-    isPlaying: Boolean,
-    onScrubSeek: (Long) -> Unit
+    isPlaying: Boolean
 ): ImageBitmap? {
-    val exoPlayer = LocalSeekExoPlayer.current
     var thumbnail by remember { mutableStateOf<ImageBitmap?>(null) }
     val cache = remember {
         object : LruCache<Long, ByteArray>(CacheMaxBytes) {
             override fun sizeOf(key: Long, value: ByteArray) = value.size
         }
     }
-    val latestScrubPosition by rememberUpdatedState(scrubPosition)
     val bucket = (scrubPosition / BucketMs) * BucketMs
 
-    LaunchedEffect(bucket, isScrubbing, surfaceView != null) {
+    LaunchedEffect(bucket, isScrubbing) {
         if (!isScrubbing) { thumbnail = null; return@LaunchedEffect }
-        val sv = surfaceView ?: return@LaunchedEffect
-        if (android.os.Build.VERSION.SDK_INT < 26) return@LaunchedEffect
-
-        cache[bucket]?.let { thumbnail = decodeJpeg(it); return@LaunchedEffect }
-
-        delay(80)
-        if (!isScrubbing) return@LaunchedEffect
-        val target = latestScrubPosition
-
-        if (exoPlayer != null) {
-            val listener = FirstFrameListener(exoPlayer)
-            onScrubSeek(target)
-            withTimeoutOrNull(FrameTimeoutMs) { listener.await() }
-            listener.detach()
-        } else {
-            onScrubSeek(target)
-            delay(140)
-        }
-        if (!isScrubbing) return@LaunchedEffect
-
-        val captured = capturePixelCopy(sv) ?: return@LaunchedEffect
-        val bytes = compressToJpeg(captured)
-        cache.put(bucket, bytes)
-        thumbnail = decodeJpeg(bytes)
+        cache[bucket]?.let { thumbnail = decodeJpeg(it) }
     }
 
     val latestIsScrubbing by rememberUpdatedState(isScrubbing)
@@ -106,29 +77,6 @@ internal fun rememberSeekThumbnail(
     }
 
     return thumbnail
-}
-
-private class FirstFrameListener(private val player: ExoPlayer) : Player.Listener {
-    private var continuation: kotlinx.coroutines.CancellableContinuation<Unit>? = null
-
-    init { player.addListener(this) }
-
-    override fun onRenderedFirstFrame() {
-        val cont = continuation ?: return
-        continuation = null
-        player.removeListener(this)
-        cont.resume(Unit)
-    }
-
-    suspend fun await() = suspendCancellableCoroutine<Unit> { cont ->
-        continuation = cont
-        cont.invokeOnCancellation { continuation = null }
-    }
-
-    fun detach() {
-        continuation = null
-        runCatching { player.removeListener(this) }
-    }
 }
 
 private fun compressToJpeg(captured: Bitmap): ByteArray {

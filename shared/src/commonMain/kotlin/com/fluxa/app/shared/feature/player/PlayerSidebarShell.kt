@@ -81,7 +81,6 @@ fun PlayerSidebarShell(
     cardWidth: Dp? = null,
     anchorTop: Boolean = false,
     scrimAlpha: Float = 0.42f,
-    dimmed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     var shown by remember { mutableStateOf(false) }
@@ -104,12 +103,6 @@ fun PlayerSidebarShell(
     }
     val isMobile = deviceType == DeviceType.Mobile
 
-    val dim by animateFloatAsState(
-        targetValue = if (dimmed) 0.15f else 1f,
-        animationSpec = tween(150),
-        label = "sidebarDim"
-    )
-
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -124,7 +117,7 @@ fun PlayerSidebarShell(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = scrimAlpha * progress * dim))
+                .background(Color.Black.copy(alpha = scrimAlpha * progress))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -166,7 +159,7 @@ fun PlayerSidebarShell(
                 .then(panelSizeModifier)
                 .animateContentSize(tween(220, easing = FastOutSlowInEasing))
                 .graphicsLayer {
-                    alpha = (if (isCard) progress else 1f) * dim
+                    alpha = if (isCard) progress else 1f
                     translationY = if (isCard) {
                         (1f - progress) * (if (anchorTop) (-16).dp.toPx() else 16.dp.toPx())
                     } else {

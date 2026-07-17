@@ -27,7 +27,7 @@ internal fun extractSeasonEpisode(videoId: String?): Pair<Int, Int>? {
 internal fun PlayerUIContent(
     content: PlayerContentUiModel, lang: String, duration: Long, position: Long, bufferedFraction: Float, chapters: List<com.fluxa.app.player.Chapter> = emptyList(), isPlaying: Boolean, isBuffering: Boolean, hasStartedPlaying: Boolean, deviceType: DeviceType,
     onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onToggleSubtitles: () -> Unit, onToggleAspect: () -> Unit, onSpeedChange: (Float) -> Unit, playbackSpeed: Float, playPauseFocusRequester: FocusRequester, seekbarFocusRequester: FocusRequester,
-    isScrubbing: Boolean, scrubPosition: Long, onScrubbingChange: (Boolean, Long) -> Unit, onScrubSeek: (Long) -> Unit = {},
+    isScrubbing: Boolean, scrubPosition: Long, onScrubbingChange: (Boolean, Long) -> Unit,
     isSwitchingAudioSource: Boolean = false, detailedStatus: String = "", episodeMetaLine: String? = null, streamDetailLine: String? = null, subtitlesEnabled: Boolean = false, technicalInfo: String? = null,
     supportsTrackSettings: Boolean = true,
     seekForwardMs: Long = 10_000L, seekBackwardMs: Long = 10_000L,
@@ -46,7 +46,7 @@ internal fun PlayerUIContent(
     accentColor: Color = FluxaColors.accent
 ) {
     val seekPreviewBitmap = rememberSeekThumbnail(
-        LocalSeekSurfaceView.current, scrubPosition, isScrubbing, position, isPlaying, onScrubSeek
+        LocalSeekSurfaceView.current, scrubPosition, isScrubbing, position, isPlaying
     )
 
     if (deviceType == DeviceType.Mobile) {
