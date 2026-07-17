@@ -20,6 +20,11 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.player.PlayerEngine
 
+internal object PlayerPipSuppression {
+    @Volatile
+    var suppressAutoEnter = false
+}
+
 private const val PIP_ACTION_PLAY_PAUSE = "com.fluxa.app.PIP_PLAY_PAUSE"
 private const val PIP_ACTION_NEXT = "com.fluxa.app.PIP_NEXT"
 

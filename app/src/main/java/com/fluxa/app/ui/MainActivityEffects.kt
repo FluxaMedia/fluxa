@@ -26,6 +26,7 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.HomeViewModel
+import com.fluxa.app.ui.catalog.PlayerPipSuppression
 
 @Composable
 internal fun TraktDeviceAuthDialog(
@@ -88,6 +89,7 @@ internal fun PlayerLifecycleEffect(
     DisposableEffect(lifecycleOwner, mainPlayer, previewPlayer) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                PlayerPipSuppression.suppressAutoEnter = false
                 if (latestActiveProfile != null) {
                     homeViewModel.refreshInstalledAddons(forceRefresh = true)
                 }
@@ -96,7 +98,8 @@ internal fun PlayerLifecycleEffect(
                 previewPlayer.pause()
                 val isPlayerScreen = latestIsPlayerActive
                 val shouldEnterPip = isPlayerScreen &&
-                    latestPictureInPicture
+                    latestPictureInPicture &&
+                    !PlayerPipSuppression.suppressAutoEnter
 
                 if (shouldEnterPip) {
                     runCatching { enterPictureInPicture() }

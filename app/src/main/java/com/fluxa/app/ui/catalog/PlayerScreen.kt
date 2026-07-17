@@ -282,6 +282,7 @@ fun PlayerScreen(
             )
         }
         state.externalPlayerStartedPosition = -1L
+        PlayerPipSuppression.suppressAutoEnter = false
     }
 
     fun openInExternalPlayer() {
@@ -301,9 +302,11 @@ fun PlayerScreen(
                 putExtra("subs.name", subs.map { it.label ?: it.language ?: "" }.toTypedArray())
             }
         }
+        PlayerPipSuppression.suppressAutoEnter = true
         try {
             externalPlayerLauncher.launch(intent)
         } catch (e: Exception) {
+            PlayerPipSuppression.suppressAutoEnter = false
             android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.external_player_not_found"), android.widget.Toast.LENGTH_SHORT).show()
         }
     }
