@@ -94,7 +94,7 @@ internal class HomeHeadlessBrowseCoordinator(
                     )
                 )
                 val state = result.state["discover"] as? Map<*, *>
-                results.value = decodeList(state?.get("results"), metaListType)
+                results.value = decodeList<Meta>(state?.get("results"), metaListType).distinctBy { "${it.type}:${it.id}" }
                 resultSources.value = decodeObject(state?.get("resultSources"), sourceMapType) ?: emptyMap()
             } finally {
                 loading.value = false
@@ -118,7 +118,7 @@ internal class HomeHeadlessBrowseCoordinator(
                     )
                 )
                 val state = result.state["discover"] as? Map<*, *>
-                val updated = decodeList<Meta>(state?.get("results"), metaListType)
+                val updated = decodeList<Meta>(state?.get("results"), metaListType).distinctBy { "${it.type}:${it.id}" }
                 val source = HomeCatalogSource(transportUrl, catalogId, contentType, genre)
                 val sources = resultSources.value.toMutableMap()
                 updated.forEach { item ->
