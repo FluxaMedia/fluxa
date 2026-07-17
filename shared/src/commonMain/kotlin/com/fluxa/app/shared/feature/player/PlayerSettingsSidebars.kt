@@ -44,6 +44,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -137,7 +138,7 @@ fun UniversalSettingsSidebar(
         }
         val subtitleAdjust: @Composable () -> Unit = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             ) {
                 TrackItem(
@@ -493,43 +494,43 @@ private fun OpacityAdjustmentItem(
     val dragged by sliderInteraction.collectIsDraggedAsState()
     val pressed by sliderInteraction.collectIsPressedAsState()
     LaunchedEffect(dragged, pressed) { onDragActiveChange(dragged || pressed) }
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = 0.05f))
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 12.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    color = Color.White.copy(alpha = 0.82f),
-                    fontSize = if (deviceType == DeviceType.TV) 16.sp else 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "${(value.coerceIn(0f, 1f) * 100).toInt()}%",
-                    color = Color.White,
-                    fontSize = if (deviceType == DeviceType.TV) 15.sp else 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            Slider(
-                value = value.coerceIn(0f, 1f),
-                onValueChange = { onChange(it.coerceIn(0f, 1f)) },
-                valueRange = 0f..1f,
-                interactionSource = sliderInteraction,
-                colors = SliderDefaults.colors(
-                    thumbColor = Color.White,
-                    activeTrackColor = Color.White,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.18f)
-                )
-            )
-        }
+        Text(
+            text = title,
+            color = Color.White.copy(alpha = 0.82f),
+            fontSize = if (deviceType == DeviceType.TV) 14.sp else 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(0.42f)
+        )
+        Slider(
+            value = value.coerceIn(0f, 1f),
+            onValueChange = { onChange(it.coerceIn(0f, 1f)) },
+            valueRange = 0f..1f,
+            interactionSource = sliderInteraction,
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color.White.copy(alpha = 0.18f)
+            ),
+            modifier = Modifier.weight(0.58f)
+        )
+        Text(
+            text = "${(value.coerceIn(0f, 1f) * 100).toInt()}%",
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(36.dp)
+        )
     }
 }

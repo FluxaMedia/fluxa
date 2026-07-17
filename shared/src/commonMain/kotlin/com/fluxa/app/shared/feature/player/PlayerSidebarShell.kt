@@ -138,7 +138,7 @@ fun PlayerSidebarShell(
         }
         val panelSizeModifier = if (isCard) {
             Modifier
-                .padding(top = if (anchorTop) 16.dp else 0.dp)
+                .padding(top = if (anchorTop) 16.dp else 0.dp, end = if (anchorTop) 16.dp else 0.dp)
                 .width(minOf(cardWidth ?: if (isMobile) 340.dp else 360.dp, maxWidth - 48.dp))
                 .wrapContentHeight()
                 .heightIn(max = maxHeight - 48.dp)
@@ -158,7 +158,7 @@ fun PlayerSidebarShell(
             modifier = Modifier
                 .align(
                     when {
-                        anchorTop -> Alignment.TopCenter
+                        anchorTop -> Alignment.TopEnd
                         isCard -> Alignment.Center
                         else -> Alignment.BottomCenter
                     }
