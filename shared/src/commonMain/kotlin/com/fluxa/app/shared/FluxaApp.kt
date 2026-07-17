@@ -821,7 +821,6 @@ private fun FluxaHomeSkeleton(modifier: Modifier = Modifier) {
 }
 
 private const val HERO_AUTO_SWIPE_DELAY_MS = 5000L
-private const val HERO_MAX_DOTS = 5
 
 @Composable
 private fun FluxaHomeHero(
@@ -859,22 +858,13 @@ private fun FluxaHomeHero(
         }
         if (items.size > 1) {
             val current = pagerState.currentPage % items.size
-            val windowRange = remember(items.size, current) {
-                if (items.size <= HERO_MAX_DOTS) {
-                    items.indices
-                } else {
-                    val half = HERO_MAX_DOTS / 2
-                    val start = (current - half).coerceIn(0, items.size - HERO_MAX_DOTS)
-                    start until (start + HERO_MAX_DOTS)
-                }
-            }
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                windowRange.forEach { index ->
+                items.indices.forEach { index ->
                     val selected = index == current
                     Box(
                         modifier = Modifier
