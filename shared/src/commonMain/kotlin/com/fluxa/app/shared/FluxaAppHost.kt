@@ -249,6 +249,15 @@ fun FluxaAppHost(
         }
     }
     val detailState = detailStore?.state?.collectAsState()?.value
+    var pendingAutoPlayId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(detailState?.content?.id, pendingAutoPlayId) {
+        val contentId = detailState?.content?.id
+        if (pendingAutoPlayId != null && contentId == pendingAutoPlayId) {
+            detailStore?.dispatch(DetailAction.Play())
+            pendingAutoPlayId = null
+        }
+    }
 
     LaunchedEffect(catalogHome) {
         appState.updateCatalogHome(catalogHome)
@@ -339,11 +348,16 @@ fun FluxaAppHost(
                     appState.selectDetail(action.item)
                 }
             }
+            if (action is CatalogAction.PlayRequested && action.item.type != "catalog_folder") {
+                pendingAutoPlayId = action.item.id
+                appState.selectDetail(action.item)
+            }
             scope.launch {
                 catalogHomeStore.dispatch(action)
             }
             onCatalogAction(action)
         },
+        onCategorySelected = { id, title -> appState.selectCategory(id, title) },
         detailState = detailState,
         onDetailAction = { action ->
             if (action is DetailAction.RelatedItemSelected) {

@@ -1,6 +1,9 @@
 package com.fluxa.app.shared
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,6 +20,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,21 +33,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,24 +47,37 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CategoryResultsScreen
 import com.fluxa.app.shared.image.FluxaRemoteImage
+import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreScreen
 import com.fluxa.app.shared.feature.addonstore.AddonStoreUiState
@@ -162,6 +171,7 @@ fun FluxaApp(
     onSourceSelectionBackRequested: () -> Unit = {},
     onCategoryBackRequested: () -> Unit = {},
     onCategoryItemSelected: (CatalogItemUiModel) -> Unit = {},
+    onCategorySelected: (id: String, title: String) -> Unit = { _, _ -> },
     searchState: SearchUiState? = null,
     onSearchAction: (SearchAction) -> Unit = {},
     discoverState: DiscoverUiState? = null,
@@ -205,7 +215,7 @@ fun FluxaApp(
     modifier: Modifier = Modifier
 ) {
     MaterialTheme(colorScheme = FluxaColorScheme) {
-        Column(
+        Box(
             modifier = modifier
                 .fillMaxSize()
                 .background(FluxaColors.background)
@@ -220,6 +230,11 @@ fun FluxaApp(
                 state.showNotifications -> "notifications"
                 else -> "dest:${state.destination}"
             }
+            val isHomeActive = screenKey == "dest:${FluxaDestination.Home}" &&
+                deviceType != com.fluxa.app.ui.catalog.DeviceType.TV
+            var navBarHeightPx by remember { mutableIntStateOf(0) }
+            val density = LocalDensity.current
+            val navBarHeightDp = with(density) { navBarHeightPx.toDp() }
             AnimatedContent(
                 targetState = screenKey,
                 transitionSpec = {
@@ -227,7 +242,11 @@ fun FluxaApp(
                         .togetherWith(fadeOut(tween(120)))
                 },
                 label = "fluxa-screen-transition",
-                modifier = Modifier.weight(1f)
+                modifier = if (isHomeActive || !showNavigationBar) {
+                    Modifier.fillMaxSize()
+                } else {
+                    Modifier.fillMaxSize().padding(bottom = navBarHeightDp)
+                }
             ) { _ ->
             when {
                 playerState?.content != null -> PlayerControlsSurface(
@@ -411,6 +430,7 @@ fun FluxaApp(
                     onCatalogAction = onCatalogAction,
                     onNotificationsRequested = onNotificationsRequested,
                     onAvatarClick = { onDestinationSelected(FluxaDestination.Settings) },
+                    onCategorySelected = onCategorySelected,
                     profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -425,7 +445,12 @@ fun FluxaApp(
                 FluxaNavigationBar(
                     destination = state.destination,
                     accentColorArgb = profileState?.activeProfile?.accentColorArgb,
-                    onDestinationSelected = onDestinationSelected
+                    language = state.language,
+                    calendarState = calendarState,
+                    onDestinationSelected = onDestinationSelected,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .onGloballyPositioned { navBarHeightPx = it.size.height }
                 )
             }
         }
@@ -435,50 +460,112 @@ fun FluxaApp(
 private data class FluxaBottomNavItem(
     val destination: FluxaDestination,
     val selectedIcon: ImageVector,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val showsCalendarBadge: Boolean = false
 )
 
 private val FluxaBottomNavItems = listOf(
-    FluxaBottomNavItem(FluxaDestination.Home, Icons.Filled.Home, Icons.Outlined.Home),
-    FluxaBottomNavItem(FluxaDestination.Discover, Icons.Filled.Explore, Icons.Outlined.Explore),
-    FluxaBottomNavItem(FluxaDestination.Calendar, Icons.Filled.DateRange, Icons.Outlined.DateRange),
-    FluxaBottomNavItem(FluxaDestination.Library, Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary)
+    FluxaBottomNavItem(FluxaDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHomeOutline),
+    FluxaBottomNavItem(FluxaDestination.Discover, FluxaIcons.BottomDiscover, FluxaIcons.BottomDiscoverOutline),
+    FluxaBottomNavItem(FluxaDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendarOutline, showsCalendarBadge = true),
+    FluxaBottomNavItem(FluxaDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline)
 )
+
+@OptIn(ExperimentalTime::class)
+private fun CalendarUiState.hasUnseenReleases(): Boolean {
+    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    return items.any { release ->
+        val date = runCatching { LocalDate.parse(release.dateIso) }.getOrNull()
+        date != null && date <= today && date.toEpochDays() >= today.toEpochDays() - 3
+    }
+}
 
 @Composable
 private fun FluxaNavigationBar(
     destination: FluxaDestination,
     accentColorArgb: Long?,
-    onDestinationSelected: (FluxaDestination) -> Unit
+    language: String?,
+    calendarState: CalendarUiState?,
+    onDestinationSelected: (FluxaDestination) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
     val inactiveColor = Color(0xFFA0A5AD)
-    Row(
-        modifier = Modifier
+    val hasCalendarBadge = calendarState?.hasUnseenReleases() == true
+    Column(
+        modifier = modifier
             .fillMaxWidth()
-            .background(Color.Black)
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-            .padding(horizontal = 12.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        FluxaBottomNavItems.forEach { item ->
-            val isSelected = item.destination == destination
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable { onDestinationSelected(item.destination) }
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    if (isSelected) item.selectedIcon else item.icon,
-                    contentDescription = null,
-                    tint = if (isSelected) selectedColor else inactiveColor,
-                    modifier = Modifier.size(28.dp)
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to FluxaColors.background.copy(alpha = 0f),
+                        0.4f to FluxaColors.background
+                    )
                 )
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.08f))
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                .padding(horizontal = 12.dp)
+                .padding(top = 10.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FluxaBottomNavItems.forEach { item ->
+                val isSelected = item.destination == destination
+                val tint by animateColorAsState(
+                    targetValue = if (isSelected) selectedColor else inactiveColor,
+                    label = "nav-item-tint"
+                )
+                val scale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.1f else 1f,
+                    label = "nav-item-scale"
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { onDestinationSelected(item.destination) }
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Box {
+                        Icon(
+                            if (isSelected) item.selectedIcon else item.icon,
+                            contentDescription = null,
+                            tint = tint,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .graphicsLayer(scaleX = scale, scaleY = scale)
+                        )
+                        if (item.showsCalendarBadge && hasCalendarBadge) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 3.dp, y = (-1).dp)
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(selectedColor)
+                            )
+                        }
+                    }
+                    Text(
+                        text = AppStrings.t(language, item.destination.titleKey),
+                        color = tint,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
@@ -495,18 +582,22 @@ private fun FluxaHomeOverlayBar(
     activeFilter: String,
     language: String?,
     profileAvatarUrl: String?,
+    scrimAlpha: Float,
     onFilterSelected: (String) -> Unit,
     onNotificationsRequested: () -> Unit,
-    onAvatarClick: () -> Unit
+    onAvatarClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val backgroundColor = androidx.compose.ui.graphics.lerp(
+        Color.Black.copy(alpha = 0.4f),
+        FluxaColors.background,
+        scrimAlpha
+    )
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(0f to Color.Black.copy(alpha = 0.55f), 1f to Color.Transparent)
-                )
-            )
+            .background(backgroundColor)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
             .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -514,6 +605,7 @@ private fun FluxaHomeOverlayBar(
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             FluxaHomeFilter.entries.forEach { filter ->
                 val selected = filter.value == activeFilter || (filter == FluxaHomeFilter.All && activeFilter.isBlank())
+                val underlineWidth by animateDpAsState(if (selected) 20.dp else 0.dp, label = "filter-underline")
                 Column(modifier = Modifier.clickable { onFilterSelected(filter.value) }) {
                     Text(
                         text = AppStrings.t(language, filter.titleKey),
@@ -525,15 +617,15 @@ private fun FluxaHomeOverlayBar(
                         modifier = Modifier
                             .padding(top = 8.dp)
                             .height(2.dp)
-                            .width(if (selected) 20.dp else 0.dp)
-                            .background(if (selected) Color.White else Color.Transparent)
+                            .width(underlineWidth)
+                            .background(Color.White)
                     )
                 }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                imageVector = Icons.Filled.Notifications,
+                imageVector = FluxaIcons.Notifications,
                 contentDescription = AppStrings.t(language, "auto.notifications"),
                 tint = Color.White,
                 modifier = Modifier.size(24.dp).clickable(onClick = onNotificationsRequested)
@@ -566,6 +658,7 @@ private fun FluxaHomeContent(
     onCatalogAction: (CatalogAction) -> Unit,
     onNotificationsRequested: () -> Unit,
     onAvatarClick: () -> Unit,
+    onCategorySelected: (id: String, title: String) -> Unit,
     profileAvatarUrl: String?,
     modifier: Modifier
 ) {
@@ -584,77 +677,101 @@ private fun FluxaHomeContent(
     }
 
     val heroItems = state.catalogHome.heroItems
+    val showHero = state.catalogHome.showHeroSection && heroItems.isNotEmpty()
+    val listState = rememberLazyListState()
+    var heroHeightPx by remember { mutableIntStateOf(0) }
+    val scrimAlpha by remember {
+        androidx.compose.runtime.derivedStateOf {
+            when {
+                !showHero -> 1f
+                listState.firstVisibleItemIndex > 0 -> 1f
+                heroHeightPx <= 0 -> 0f
+                else -> (listState.firstVisibleItemScrollOffset.toFloat() / heroHeightPx).coerceIn(0f, 1f)
+            }
+        }
+    }
 
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = PaddingValues(bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        if (state.catalogHome.showHeroSection && heroItems.isNotEmpty()) {
-            item(key = "hero") {
-                Box {
+    Box(modifier = modifier) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            if (showHero) {
+                item(key = "hero") {
                     FluxaHomeHero(
                         items = heroItems,
                         language = state.language,
-                        onCatalogAction = onCatalogAction
+                        onCatalogAction = onCatalogAction,
+                        modifier = Modifier.onGloballyPositioned { heroHeightPx = it.size.height }
                     )
-                    FluxaHomeOverlayBar(
-                        activeFilter = state.catalogHome.activeFilter,
-                        language = state.language,
-                        profileAvatarUrl = profileAvatarUrl,
-                        onFilterSelected = { filter -> onCatalogAction(CatalogAction.FilterChanged(filter)) },
-                        onNotificationsRequested = onNotificationsRequested,
-                        onAvatarClick = onAvatarClick
-                    )
+                }
+            }
+            items(
+                state.catalogHome.rows.filterNot { it.categoryType == "collection_folder" },
+                key = { it.id }
+            ) { row ->
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (row.canLoadMore) {
+                                    Modifier.clickable { onCategorySelected(row.id, row.title) }
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .padding(horizontal = 20.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = row.title,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (row.canLoadMore) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = AppStrings.t(state.language, "common.view_all"),
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier
+                                    .padding(start = 12.dp)
+                                    .size(20.dp)
+                            )
+                        }
+                    }
+                    LazyRow(
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(row.items, key = { it.id }) { item ->
+                            CatalogCard(
+                                model = item.card,
+                                onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) }
+                            )
+                        }
+                    }
                 }
             }
         }
-        items(
-            state.catalogHome.rows.filterNot { it.categoryType == "collection_folder" },
-            key = { it.id }
-        ) { row ->
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = row.title,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (row.canLoadMore) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = AppStrings.t(state.language, "common.view_all"),
-                            tint = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier
-                                .padding(start = 12.dp)
-                                .size(20.dp)
-                                .clickable {
-                                    onCatalogAction(CatalogAction.LoadMore(row.id))
-                                }
-                        )
-                    }
-                }
-                LazyRow(
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(row.items, key = { it.id }) { item ->
-                        CatalogCard(
-                            model = item.card,
-                            onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) }
-                        )
-                    }
-                }
-            }
+        if (showHero) {
+            FluxaHomeOverlayBar(
+                activeFilter = state.catalogHome.activeFilter,
+                language = state.language,
+                profileAvatarUrl = profileAvatarUrl,
+                scrimAlpha = scrimAlpha,
+                onFilterSelected = { filter -> onCatalogAction(CatalogAction.FilterChanged(filter)) },
+                onNotificationsRequested = onNotificationsRequested,
+                onAvatarClick = onAvatarClick,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 }
@@ -701,12 +818,14 @@ private fun FluxaHomeSkeleton(modifier: Modifier = Modifier) {
 }
 
 private const val HERO_AUTO_SWIPE_DELAY_MS = 5000L
+private const val HERO_MAX_DOTS = 5
 
 @Composable
 private fun FluxaHomeHero(
     items: List<CatalogItemUiModel>,
     language: String?,
-    onCatalogAction: (CatalogAction) -> Unit
+    onCatalogAction: (CatalogAction) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val loop = items.size > 1
     val virtualPageCount = if (loop) Int.MAX_VALUE else items.size
@@ -714,33 +833,46 @@ private fun FluxaHomeHero(
     val pagerState = rememberPagerState(initialPage = startPage, pageCount = { virtualPageCount })
 
     if (loop) {
-        LaunchedEffect(pagerState) {
-            while (true) {
+        LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+            if (!pagerState.isScrollInProgress) {
                 delay(HERO_AUTO_SWIPE_DELAY_MS)
-                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                if (!pagerState.isScrollInProgress) {
+                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                }
             }
         }
     }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
+    Box(modifier = modifier.fillMaxWidth()) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(3f / 4f)
+                .heightIn(max = 560.dp)
         ) { page ->
             val item = items[page % items.size]
             FluxaHomeHeroSlide(item = item, language = language, onCatalogAction = onCatalogAction)
         }
         if (items.size > 1) {
+            val current = pagerState.currentPage % items.size
+            val windowRange = remember(items.size, current) {
+                if (items.size <= HERO_MAX_DOTS) {
+                    items.indices
+                } else {
+                    val half = HERO_MAX_DOTS / 2
+                    val start = (current - half).coerceIn(0, items.size - HERO_MAX_DOTS)
+                    start until (start + HERO_MAX_DOTS)
+                }
+            }
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items.indices.forEach { index ->
-                    val selected = index == pagerState.currentPage % items.size
+                windowRange.forEach { index ->
+                    val selected = index == current
                     Box(
                         modifier = Modifier
                             .size(if (selected) 8.dp else 6.dp)
@@ -835,6 +967,30 @@ private fun FluxaHomeHeroSlide(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White)
+                    .clickable { onCatalogAction(CatalogAction.PlayRequested(item)) }
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = FluxaIcons.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = AppStrings.t(language, "common.play"),
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(start = 6.dp)
                 )
             }
         }
