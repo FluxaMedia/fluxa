@@ -68,11 +68,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
@@ -459,7 +454,6 @@ fun FluxaApp(
                     showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
                     profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                     language = state.language,
-                    calendarState = calendarState,
                     onDestinationSelected = onDestinationSelected,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -473,25 +467,15 @@ fun FluxaApp(
 private data class FluxaBottomNavItem(
     val destination: FluxaDestination,
     val selectedIcon: ImageVector,
-    val icon: ImageVector,
-    val showsCalendarBadge: Boolean = false
+    val icon: ImageVector
 )
 
 private val FluxaBottomNavItems = listOf(
     FluxaBottomNavItem(FluxaDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHomeOutline),
     FluxaBottomNavItem(FluxaDestination.Discover, FluxaIcons.BottomDiscover, FluxaIcons.BottomDiscoverOutline),
-    FluxaBottomNavItem(FluxaDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendarOutline, showsCalendarBadge = true),
+    FluxaBottomNavItem(FluxaDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendarOutline),
     FluxaBottomNavItem(FluxaDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline)
 )
-
-@OptIn(ExperimentalTime::class)
-private fun CalendarUiState.hasUnseenReleases(): Boolean {
-    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    return items.any { release ->
-        val date = runCatching { LocalDate.parse(release.dateIso) }.getOrNull()
-        date != null && date <= today && date.toEpochDays() >= today.toEpochDays() - 3
-    }
-}
 
 @Composable
 private fun FluxaNavigationBar(
@@ -502,13 +486,11 @@ private fun FluxaNavigationBar(
     showProfile: Boolean,
     profileAvatarUrl: String?,
     language: String?,
-    calendarState: CalendarUiState?,
     onDestinationSelected: (FluxaDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
     val inactiveColor = Color(0xFFA0A5AD)
-    val hasCalendarBadge = calendarState?.hasUnseenReleases() == true
     val barShape = RoundedCornerShape(if (floating) 28.dp else 0.dp)
     val items = if (showProfile) {
         FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
@@ -571,16 +553,6 @@ private fun FluxaNavigationBar(
                                 contentDescription = null,
                                 tint = tint,
                                 modifier = Modifier.size(29.dp)
-                            )
-                        }
-                        if (item.showsCalendarBadge && hasCalendarBadge) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = 3.dp, y = (-1).dp)
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(selectedColor)
                             )
                         }
                     }

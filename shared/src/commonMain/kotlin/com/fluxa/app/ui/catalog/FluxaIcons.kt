@@ -11,11 +11,11 @@ import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.ui.graphics.vector.ImageVector
 
 object FluxaIcons {
@@ -31,14 +31,14 @@ object FluxaIcons {
     val BrightnessHigh: ImageVector = Icons.Filled.BrightnessHigh
     val BrightnessLow: ImageVector = Icons.Filled.BrightnessLow
     val BookmarkBorder: ImageVector = Icons.Filled.Bookmark
-    val BottomCalendar: ImageVector = Icons.Filled.DateRange
-    val BottomCalendarOutline: ImageVector = Icons.Outlined.DateRange
+    val BottomCalendar: ImageVector = Icons.Filled.CalendarMonth
+    val BottomCalendarOutline: ImageVector = Icons.Outlined.CalendarMonth
     val BottomDiscover: ImageVector = Icons.Filled.Search
     val BottomDiscoverOutline: ImageVector = Icons.Outlined.Search
     val BottomHome: ImageVector = Icons.Filled.Home
     val BottomHomeOutline: ImageVector = Icons.Outlined.Home
-    val BottomLibrary: ImageVector = Icons.Filled.VideoLibrary
-    val BottomLibraryOutline: ImageVector = Icons.Outlined.VideoLibrary
+    val BottomLibrary: ImageVector = Icons.Filled.Bookmark
+    val BottomLibraryOutline: ImageVector = Icons.Outlined.BookmarkBorder
     val BottomSettings: ImageVector = Icons.Filled.Settings
     val BottomSettingsOutline: ImageVector = Icons.Outlined.Settings
     val Cast: ImageVector = Icons.Filled.Cast

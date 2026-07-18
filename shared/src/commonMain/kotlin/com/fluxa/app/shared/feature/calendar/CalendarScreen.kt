@@ -1,6 +1,7 @@
 package com.fluxa.app.shared.feature.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,7 +39,12 @@ import com.fluxa.app.common.localizedMonthTitle
 import com.fluxa.app.common.localizedShortWeekdayNames
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.ui.catalog.FluxaColors
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 @Composable
 fun CalendarScreen(
     state: CalendarUiState,
@@ -47,6 +53,8 @@ fun CalendarScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedDay by remember(state.year, state.month) { mutableStateOf<Int?>(null) }
+    val today = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    val todayDay = today.day.takeIf { today.year == state.year && today.month.ordinal + 1 == state.month }
     val itemsByDay = remember(state.items) {
         state.items.groupBy { it.dateIso.substringAfterLast("-").toIntOrNull() ?: 0 }
     }
@@ -79,13 +87,14 @@ fun CalendarScreen(
                         month = state.month,
                         itemsByDay = itemsByDay,
                         selectedDay = selectedDay,
+                        todayDay = todayDay,
                         onDaySelected = { day -> selectedDay = day }
                     )
                 }
                 item(key = "detail") {
                     CalendarSelectedDayDetail(
                         selectedDay = selectedDay,
-                        releases = selectedDay?.let { itemsByDay[it] }.orEmpty(),
+                        releases = selectedDay?.let { itemsByDay[it].orEmpty() } ?: state.items,
                         language = language,
                         onItemSelected = { onAction(CalendarAction.ItemSelected(it)) }
                     )
@@ -162,6 +171,7 @@ private fun CalendarMonthGrid(
     month: Int,
     itemsByDay: Map<Int, List<CalendarReleaseUiModel>>,
     selectedDay: Int?,
+    todayDay: Int?,
     onDaySelected: (Int) -> Unit
 ) {
     val totalDays = daysInMonth(year, month)
@@ -188,6 +198,13 @@ private fun CalendarMonthGrid(
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(
                                             if (day == selectedDay) FluxaColors.accent else Color.White.copy(alpha = 0.06f)
+                                        )
+                                        .then(
+                                            if (day == todayDay) {
+                                                Modifier.border(1.5.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(10.dp))
+                                            } else {
+                                                Modifier
+                                            }
                                         )
                                         .clickable { onDaySelected(day) }
                                 } else {
@@ -232,7 +249,7 @@ private fun CalendarSelectedDayDetail(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when {
-            selectedDay == null -> Text(
+            releases.isEmpty() && selectedDay == null -> Text(
                 text = AppStrings.t(language, "calendar.empty"),
                 color = Color.White.copy(alpha = 0.6f)
             )

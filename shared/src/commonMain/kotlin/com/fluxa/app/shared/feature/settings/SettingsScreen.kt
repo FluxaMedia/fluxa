@@ -320,11 +320,7 @@ private fun SettingsHubContent(
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_preferences"))
     SettingsGroupCard {
-        SettingsNavRow(
-            AppStrings.t(lang, "auto.general"),
-            icon = Icons.Filled.Tune,
-            value = if (state.general.language == "tr") "Türkçe" else "English"
-        ) { onNavigate(SettingsCategory.General) }
+        SettingsNavRow(AppStrings.t(lang, "auto.general"), icon = Icons.Filled.Tune) { onNavigate(SettingsCategory.General) }
         SettingsNavRow(AppStrings.t(lang, "auto.appearance"), icon = Icons.Filled.Palette) { onNavigate(SettingsCategory.Appearance) }
         SettingsNavRow(AppStrings.t(lang, "auto.playback"), icon = Icons.Filled.OndemandVideo) { onNavigate(SettingsCategory.Playback) }
     }
