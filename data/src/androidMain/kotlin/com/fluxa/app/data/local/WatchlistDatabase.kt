@@ -13,9 +13,11 @@ import androidx.room.RoomDatabase
         WatchedEpisodeEntity::class,
         WatchedContentDurationEntity::class,
         ExternalPlaybackProgressEntity::class,
-        ExternalWatchedEpisodeEntity::class
+        ExternalWatchedEpisodeEntity::class,
+        WatchlistRemovalEntity::class,
+        WatchedEpisodeRemovalEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

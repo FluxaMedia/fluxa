@@ -242,6 +242,12 @@ interface WatchlistDao {
     @Query("SELECT contentId FROM watchlist_entries WHERE profileId = :profileId")
     fun observeWatchlistIds(profileId: String): Flow<List<String>>
 
+    @Query("SELECT * FROM watchlist_entries WHERE profileId = :profileId")
+    suspend fun getWatchlistEntries(profileId: String): List<WatchlistEntryEntity>
+
+    @Query("SELECT * FROM watched_episodes WHERE profileId = :profileId AND seriesId = :seriesId")
+    suspend fun getWatchedEpisodeEntries(profileId: String, seriesId: String): List<WatchedEpisodeEntity>
+
     @Query("SELECT EXISTS(SELECT 1 FROM watchlist_entries WHERE profileId = :profileId AND contentId = :contentId)")
     suspend fun isInWatchlist(profileId: String, contentId: String): Boolean
 
@@ -320,6 +326,15 @@ interface WatchlistDao {
     @Query("DELETE FROM watchlist_entries WHERE profileId = :profileId AND contentId = :contentId")
     suspend fun deleteWatchlistEntry(profileId: String, contentId: String)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertWatchlistRemoval(removal: WatchlistRemovalEntity)
+
+    @Query("DELETE FROM watchlist_removals WHERE profileId = :profileId AND contentId = :contentId")
+    suspend fun clearWatchlistRemoval(profileId: String, contentId: String)
+
+    @Query("SELECT * FROM watchlist_removals WHERE profileId = :profileId")
+    suspend fun getWatchlistRemovals(profileId: String): List<WatchlistRemovalEntity>
+
     @Query("DELETE FROM playback_progress WHERE profileId = :profileId AND contentId = :contentId")
     suspend fun deletePlaybackProgress(profileId: String, contentId: String)
 
@@ -331,6 +346,15 @@ interface WatchlistDao {
 
     @Query("DELETE FROM watched_episodes WHERE profileId = :profileId AND seriesId = :seriesId AND videoId IN (:videoIds)")
     suspend fun deleteWatchedEpisodes(profileId: String, seriesId: String, videoIds: List<String>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertWatchedEpisodeRemovals(removals: List<WatchedEpisodeRemovalEntity>)
+
+    @Query("DELETE FROM watched_episode_removals WHERE profileId = :profileId AND seriesId = :seriesId AND videoId IN (:videoIds)")
+    suspend fun clearWatchedEpisodeRemovals(profileId: String, seriesId: String, videoIds: List<String>)
+
+    @Query("SELECT * FROM watched_episode_removals WHERE profileId = :profileId AND seriesId = :seriesId")
+    suspend fun getWatchedEpisodeRemovals(profileId: String, seriesId: String): List<WatchedEpisodeRemovalEntity>
 
     @Query("DELETE FROM watched_episodes WHERE profileId = :profileId")
     suspend fun deleteAllWatchedEpisodes(profileId: String)

@@ -36,7 +36,18 @@ data class ContentItemEntity(
 data class WatchlistEntryEntity(
     val profileId: String,
     val contentId: String,
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "watchlist_removals",
+    primaryKeys = ["profileId", "contentId"]
+)
+data class WatchlistRemovalEntity(
+    val profileId: String,
+    val contentId: String,
+    val removedAt: Long = System.currentTimeMillis()
 )
 
 @Entity(
@@ -90,7 +101,19 @@ data class WatchedEpisodeEntity(
     val profileId: String,
     val seriesId: String,
     val videoId: String,
-    val watchedAt: Long = System.currentTimeMillis()
+    val watchedAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "watched_episode_removals",
+    primaryKeys = ["profileId", "seriesId", "videoId"]
+)
+data class WatchedEpisodeRemovalEntity(
+    val profileId: String,
+    val seriesId: String,
+    val videoId: String,
+    val removedAt: Long = System.currentTimeMillis()
 )
 
 @Entity(

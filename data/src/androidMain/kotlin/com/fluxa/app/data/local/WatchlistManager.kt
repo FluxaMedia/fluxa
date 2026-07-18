@@ -94,7 +94,9 @@ class WatchlistManager @Inject constructor(
         dao.upsertContent(item.toContentItemEntity(profileId))
         if (dao.isInWatchlist(profileId, item.id)) {
             dao.deleteWatchlistEntry(profileId, item.id)
+            dao.upsertWatchlistRemoval(WatchlistRemovalEntity(profileId, item.id))
         } else {
+            dao.clearWatchlistRemoval(profileId, item.id)
             dao.upsertWatchlistEntry(WatchlistEntryEntity(profileId, item.id))
         }
     }
@@ -241,9 +243,11 @@ class WatchlistManager @Inject constructor(
         val cleanVideoIds = videoIds.filter { it.isNotBlank() }.distinct()
         if (cleanVideoIds.isEmpty()) return getLocalWatchedVideoIds(seriesId)
         if (watched) {
+            dao.clearWatchedEpisodeRemovals(profileId, seriesId, cleanVideoIds)
             dao.upsertWatchedEpisodes(cleanVideoIds.map { WatchedEpisodeEntity(profileId, seriesId, it) })
         } else {
             dao.deleteWatchedEpisodes(profileId, seriesId, cleanVideoIds)
+            dao.upsertWatchedEpisodeRemovals(cleanVideoIds.map { WatchedEpisodeRemovalEntity(profileId, seriesId, it) })
         }
         return getLocalWatchedVideoIds(seriesId)
     }
