@@ -38,4 +38,8 @@ object SimklIntegration {
     fun watchlistBody(imdbId: String, isSeries: Boolean): Map<String, Any> {
         return SimklSyncRequests.watchlist(imdbId, isSeries)
     }
+
+    fun watchlistRemovalBody(imdbId: String, isSeries: Boolean): Map<String, Any> {
+        return SimklSyncRequests.watchlistRemoval(imdbId, isSeries)
+    }
 }

@@ -59,8 +59,12 @@ class ExternalSyncPushCoordinator @Inject constructor(
                     }
             }
         }
-        if (isInWatchlist && !profile.simklAccessToken.isNullOrBlank()) {
-            launch { pushSimklWithTokenHandling(profile) { token -> pushSimklWatchlist(token, meta) } }
+        if (!profile.simklAccessToken.isNullOrBlank()) {
+            launch {
+                pushSimklWithTokenHandling(profile) { token ->
+                    if (isInWatchlist) pushSimklWatchlist(token, meta) else pushSimklWatchlistRemoval(token, meta)
+                }
+            }
         }
         if (isInWatchlist && !profile.malAccessToken.isNullOrBlank()) {
             launch { pushMalWithTokenHandling(profile) { token -> pushMalWatchlist(token, meta) } }
@@ -174,6 +178,13 @@ class ExternalSyncPushCoordinator @Inject constructor(
         val imdbId = SimklIntegration.imdbIdFrom(meta.id) ?: return null
         val body = SimklIntegration.watchlistBody(imdbId, meta.type == "series")
         return api.simklAddToList(clientId, "Bearer $token", body)
+    }
+
+    private suspend fun pushSimklWatchlistRemoval(token: String, meta: Meta): Response<Unit>? {
+        val clientId = BuildConfig.SIMKL_CLIENT_ID
+        val imdbId = SimklIntegration.imdbIdFrom(meta.id) ?: return null
+        val body = SimklIntegration.watchlistRemovalBody(imdbId, meta.type == "series")
+        return api.simklRemoveFromList(clientId, "Bearer $token", body)
     }
 
     private suspend fun pushMalMarkWatched(token: String, meta: Meta, episodes: List<Video>): Response<Unit>? {

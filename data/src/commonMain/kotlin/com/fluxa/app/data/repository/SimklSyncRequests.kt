@@ -18,4 +18,13 @@ object SimklSyncRequests {
             mapOf("movies" to listOf(mapOf("ids" to ids, "to" to "plantowatch")))
         }
     }
+
+    fun watchlistRemoval(imdbId: String, isSeries: Boolean): Map<String, Any> {
+        val ids = mapOf("imdb" to imdbId)
+        return if (isSeries) {
+            mapOf("shows" to listOf(mapOf("ids" to ids)))
+        } else {
+            mapOf("movies" to listOf(mapOf("ids" to ids)))
+        }
+    }
 }

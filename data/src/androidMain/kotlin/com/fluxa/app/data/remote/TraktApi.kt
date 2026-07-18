@@ -290,6 +290,14 @@ interface TraktApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>
     ): Response<Unit>
 
+    @Headers("Content-Type: application/json")
+    @POST("https://api.simkl.com/sync/remove-from-list")
+    suspend fun simklRemoveFromList(
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
     @FormUrlEncoded
     @PATCH("https://api.myanimelist.net/v2/anime/{id}/my_list_status")
     suspend fun malUpdateListStatus(
