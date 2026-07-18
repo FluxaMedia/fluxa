@@ -1,23 +1,35 @@
 package com.fluxa.app.data.repository
 
 import android.util.Log
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.data.BuildConfig
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.remote.AnilistGraphQlRequest
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.TraktApi
 import com.fluxa.app.data.remote.Video
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.reflect.TypeToken
 import retrofit2.Response
 
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val ANILIST_SAVE_MEDIA_LIST_ENTRY_MUTATION = """
+    mutation (${'$'}mediaId: Int, ${'$'}status: MediaListStatus, ${'$'}progress: Int) {
+        SaveMediaListEntry(mediaId: ${'$'}mediaId, status: ${'$'}status, progress: ${'$'}progress) { id }
+    }
+"""
+
 class ExternalSyncPushCoordinator @Inject constructor(
     private val api: TraktApi,
     private val repository: StremioRepository,
     private val profileManager: ProfileManager,
-    private val nuvioSyncCoordinator: NuvioSyncCoordinator
+    private val nuvioSyncCoordinator: NuvioSyncCoordinator,
+    private val gson: Gson
 ) {
     suspend fun pushMarkWatched(profile: UserProfile, meta: Meta, episodes: List<Video>, watched: Boolean) = coroutineScope {
         profile.traktAccessToken?.takeIf(String::isNotBlank)?.let { token ->
@@ -35,6 +47,20 @@ class ExternalSyncPushCoordinator @Inject constructor(
         }
         if (watched && !profile.malAccessToken.isNullOrBlank()) {
             launch { pushMalWithTokenHandling(profile) { token -> pushMalMarkWatched(token, meta, episodes) } }
+        }
+        if (watched && !profile.anilistAccessToken.isNullOrBlank()) {
+            launch {
+                val token = profile.anilistAccessToken
+                runCatching { pushAnilistListEntry(token, meta, "COMPLETED", episodes.size.takeIf { it > 0 }) }
+                    .onSuccess { success ->
+                        if (success) profileManager.clearExternalSyncFailure(profile.id, "anilist")
+                        else profileManager.recordExternalSyncFailure(profile.id, "anilist")
+                    }
+                    .onFailure {
+                        Log.w("ExternalSyncPush", "AniList pushMarkWatched failed for ${meta.id}", it)
+                        profileManager.recordExternalSyncFailure(profile.id, "anilist")
+                    }
+            }
         }
         if (!profile.nuvioAccessToken.isNullOrBlank()) {
             launch {
@@ -68,6 +94,20 @@ class ExternalSyncPushCoordinator @Inject constructor(
         }
         if (isInWatchlist && !profile.malAccessToken.isNullOrBlank()) {
             launch { pushMalWithTokenHandling(profile) { token -> pushMalWatchlist(token, meta) } }
+        }
+        if (isInWatchlist && !profile.anilistAccessToken.isNullOrBlank()) {
+            launch {
+                val token = profile.anilistAccessToken
+                runCatching { pushAnilistListEntry(token, meta, "PLANNING", progress = null) }
+                    .onSuccess { success ->
+                        if (success) profileManager.clearExternalSyncFailure(profile.id, "anilist")
+                        else profileManager.recordExternalSyncFailure(profile.id, "anilist")
+                    }
+                    .onFailure {
+                        Log.w("ExternalSyncPush", "AniList pushWatchlist failed for ${meta.id}", it)
+                        profileManager.recordExternalSyncFailure(profile.id, "anilist")
+                    }
+            }
         }
         if (!profile.nuvioAccessToken.isNullOrBlank()) {
             launch {
@@ -178,6 +218,24 @@ class ExternalSyncPushCoordinator @Inject constructor(
         val imdbId = SimklIntegration.imdbIdFrom(meta.id) ?: return null
         val body = SimklIntegration.watchlistBody(imdbId, meta.type == "series")
         return api.simklAddToList(clientId, "Bearer $token", body)
+    }
+
+    private suspend fun pushAnilistListEntry(token: String, meta: Meta, status: String, progress: Int?): Boolean {
+        val args = JsonObject().apply {
+            addProperty("contentId", meta.id)
+            addProperty("status", status)
+            progress?.let { addProperty("progress", it) }
+        }
+        val variablesJson = FluxaCoreUniFfi.coreInvokeValue("anilistSaveMediaListEntryVariables", args.toString())
+        if (variablesJson.isJsonNull) return false
+
+        val variablesType = object : TypeToken<Map<String, Any?>>() {}.type
+        val variables: Map<String, Any?> = gson.fromJson(variablesJson, variablesType)
+        val response = api.anilistGraphQl(
+            "Bearer $token",
+            AnilistGraphQlRequest(query = ANILIST_SAVE_MEDIA_LIST_ENTRY_MUTATION, variables = variables)
+        )
+        return response.get("errors") == null
     }
 
     private suspend fun pushSimklWatchlistRemoval(token: String, meta: Meta): Response<Unit>? {
