@@ -1,7 +1,7 @@
 package com.fluxa.app.ui.catalog
 
-import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.core.rust.FluxaCoreStateHandle
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
+import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.remote.Meta
 import com.google.gson.Gson
 import java.io.Closeable
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class HomeSearchFocusStateHolder(
     initialHistory: List<Meta>,
-    private val coreState: FluxaCoreStateHandle = FluxaCoreNative.createAppCoreState(
+    private val coreState: FluxaUniFfiCoreStateHandle = FluxaCoreUniFfi.createAppCoreState(
         mapOf(
             "homeSearch" to mapOf(
                 "searchHistory" to initialHistory

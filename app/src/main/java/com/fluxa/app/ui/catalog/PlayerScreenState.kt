@@ -11,8 +11,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.media3.ui.AspectRatioFrameLayout
-import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.core.rust.FluxaCoreStateHandle
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
+import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.Video
@@ -39,7 +39,7 @@ internal class PlayerScreenState(
     initialVolume: Int
 ) {
     private val gson = Gson()
-    private val coreState: FluxaCoreStateHandle = FluxaCoreNative.createAppCoreState(
+    private val coreState: FluxaUniFfiCoreStateHandle = FluxaCoreUniFfi.createAppCoreState(
         mapOf(
             "player" to mapOf(
                 "currentVideoId" to initialVideoId,
@@ -111,7 +111,6 @@ internal class PlayerScreenState(
 
     var showSettings by mutableStateOf(false)
     var activeSettingsTab by mutableIntStateOf(0)
-    var inlineDelayTarget by mutableStateOf<Int?>(null)
     var audioDelayMs by mutableLongStateOf(0L)
     var subtitleDelayMs by mutableLongStateOf(0L)
 

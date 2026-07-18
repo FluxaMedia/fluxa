@@ -6,7 +6,8 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
 import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.core.rust.FluxaCoreStateHandle
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
+import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
 import com.fluxa.app.domain.discovery.MetadataFeedOption
@@ -71,7 +72,7 @@ class HomeViewModel @Inject constructor(
     private val addonListType = object : TypeToken<List<AddonDescriptor>>() {}.type
     private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
     private val initialSearchHistory = searchHistoryStore.load(null)
-    private val coreState: FluxaCoreStateHandle = FluxaCoreNative.createAppCoreState(
+    private val coreState: FluxaUniFfiCoreStateHandle = FluxaCoreUniFfi.createAppCoreState(
         mapOf(
             "home" to mapOf(
                 "categories" to emptyList<HomeCategory>(),
@@ -143,6 +144,7 @@ class HomeViewModel @Inject constructor(
             scope = viewModelScope,
             gson = gson,
             dispatch = ::dispatchHeadless,
+            activeProfile = { currentActiveProfile },
             setActiveProfile = { setActiveProfileState(it) },
             setWatchlist = ::setWatchlistState,
             setContinueWatching = ::setCurrentWatchlistState,
@@ -237,6 +239,16 @@ class HomeViewModel @Inject constructor(
     private var currentWatchlist: List<Meta> = emptyList()
     private val _currentContinueWatchingCount = MutableStateFlow(0)
     val currentContinueWatchingCount: StateFlow<Int> = _currentContinueWatchingCount.asStateFlow()
+    private val _syncingProviders = MutableStateFlow<Set<String>>(emptySet())
+    val syncingProviders: StateFlow<Set<String>> = _syncingProviders.asStateFlow()
+
+    fun setProviderSyncing(provider: String, syncing: Boolean) {
+        _syncingProviders.value = if (syncing) {
+            _syncingProviders.value + provider
+        } else {
+            _syncingProviders.value - provider
+        }
+    }
     private var externalContinueWatching: List<Meta> = emptyList()
     private var traktWatchedState: TraktWatchedState = TraktWatchedState()
     private var currentActiveProfile: UserProfile? = null
@@ -1086,7 +1098,7 @@ class HomeViewModel @Inject constructor(
         cacheSaveJob?.cancel()
         cacheSaveJob = viewModelScope.launch(Dispatchers.Default) {
             delay(600)
-            homeCategoryCache.save(profile, categories)
+            homeCategoryCache.save(profile, categories.filterNot { it.id == "continue_watching" })
         }
     }
 

@@ -1,10 +1,12 @@
 package com.fluxa.app.data.repository
 
 import android.util.Log
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.data.BuildConfig
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeLocalAddons
 import com.fluxa.app.data.local.safeLanguage
+import com.fluxa.app.data.remote.AnilistGraphQlRequest
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.SimklEpisode
@@ -13,6 +15,7 @@ import com.fluxa.app.data.remote.TraktApi
 import com.fluxa.app.data.remote.TraktEpisode
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.domain.ContentIdentity
+import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -24,6 +27,29 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val EPISODE_PROGRESS_UNIT_MS = 45 * 60_000L
+
+private const val ANILIST_CURRENT_LIST_QUERY = """
+query (${'$'}userId: Int) {
+  MediaListCollection(userId: ${'$'}userId, type: ANIME, status: CURRENT) {
+    lists {
+      entries {
+        status
+        progress
+        updatedAt
+        media {
+          id
+          title { english romaji native }
+          coverImage { extraLarge large }
+          bannerImage
+          episodes
+          seasonYear
+          genres
+        }
+      }
+    }
+  }
+}
+"""
 
 @Singleton
 class ExternalLibraryClient @Inject constructor(
@@ -43,7 +69,8 @@ class ExternalLibraryClient @Inject constructor(
             val trakt = async { getTraktPlaybackItems(profile, language) }
             val mal = async { getMalContinueWatchingItems(profile.malAccessToken) }
             val simkl = async { getSimklContinueWatchingItems(profile.simklAccessToken) }
-            val combined = trakt.await() + mal.await() + simkl.await()
+            val anilist = async { getAnilistContinueWatchingItems(profile.anilistAccessToken) }
+            val combined = trakt.await() + mal.await() + simkl.await() + anilist.await()
             distinctByIdentityKey(combined)
         }
     }
@@ -255,6 +282,75 @@ class ExternalLibraryClient @Inject constructor(
             lastVideoId = latestEpisode?.let { "$id:${it.first ?: 1}:${(it.second.number ?: watchedCount) + 1}" },
             lastEpisodeName = latestEpisode?.second?.number?.let { "Episode ${it + 1}" },
             reason = "Simkl"
+        )
+    }
+
+    private suspend fun getAnilistContinueWatchingItems(token: String?): List<Meta> {
+        if (token.isNullOrBlank()) return emptyList()
+        val authorization = "Bearer $token"
+        return try {
+            val viewerResponse = traktApi.anilistGraphQl(
+                authorization,
+                AnilistGraphQlRequest(query = "query { Viewer { id } }")
+            )
+            val viewerId = viewerResponse
+                .getAsJsonObject("data")
+                ?.getAsJsonObject("Viewer")
+                ?.get("id")
+                ?.takeUnless { it.isJsonNull }
+                ?.asInt ?: return emptyList()
+
+            val listResponse = traktApi.anilistGraphQl(
+                authorization,
+                AnilistGraphQlRequest(
+                    query = ANILIST_CURRENT_LIST_QUERY,
+                    variables = mapOf("userId" to viewerId)
+                )
+            )
+            val lists = listResponse
+                .getAsJsonObject("data")
+                ?.getAsJsonObject("MediaListCollection")
+                ?.getAsJsonArray("lists")
+                ?: com.google.gson.JsonArray()
+            val entries = com.google.gson.JsonArray()
+            lists.forEach { list ->
+                list.asJsonObject.getAsJsonArray("entries")?.forEach(entries::add)
+            }
+            if (entries.size() == 0) return emptyList()
+
+            val args = com.google.gson.JsonObject().apply {
+                add("entries", entries)
+                addProperty("nowMs", System.currentTimeMillis())
+            }
+            val envelope = JsonParser.parseString(
+                FluxaCoreUniFfi.coreInvoke("anilistEntriesToSync", args.toString())
+            ).asJsonObject
+            if (envelope.get("ok")?.asBoolean != true) return emptyList()
+            val progress = envelope.getAsJsonObject("value")?.getAsJsonObject("progress") ?: return emptyList()
+            progress.entrySet().mapNotNull { (_, value) -> anilistProgressEntryToMeta(value.asJsonObject) }
+        } catch (e: Exception) {
+            Log.w("ExternalLibraryClient", "Failed to load AniList continue watching items", e)
+            emptyList()
+        }
+    }
+
+    private fun anilistProgressEntryToMeta(entry: com.google.gson.JsonObject): Meta? {
+        val meta = entry.getAsJsonObject("meta") ?: return null
+        val id = meta.get("id")?.takeUnless { it.isJsonNull }?.asString ?: return null
+        val savedAt = entry.get("savedAt")?.takeUnless { it.isJsonNull }?.asString
+        val lastWatchedAt = savedAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
+        return Meta(
+            id = id,
+            name = meta.get("name")?.takeUnless { it.isJsonNull }?.asString ?: id,
+            type = meta.get("type")?.takeUnless { it.isJsonNull }?.asString ?: "series",
+            poster = meta.get("poster")?.takeUnless { it.isJsonNull }?.asString,
+            background = meta.get("background")?.takeUnless { it.isJsonNull }?.asString,
+            timeOffset = entry.get("timeOffset")?.takeUnless { it.isJsonNull }?.asLong,
+            duration = entry.get("duration")?.takeUnless { it.isJsonNull }?.asLong,
+            lastVideoId = entry.get("lastVideoId")?.takeUnless { it.isJsonNull }?.asString,
+            lastEpisodeName = entry.get("lastEpisodeName")?.takeUnless { it.isJsonNull }?.asString,
+            lastWatchedAt = lastWatchedAt,
+            reason = "AniList"
         )
     }
 

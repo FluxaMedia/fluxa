@@ -1,7 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import android.util.Log
-import com.fluxa.app.core.rust.FluxaCoreStateHandle
+import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
@@ -36,7 +36,7 @@ internal class HomeLibraryCoordinator(
     private val repository: StremioRepository,
     private val traktRepository: TraktRepository,
     private val scope: CoroutineScope,
-    private val coreState: FluxaCoreStateHandle,
+    private val coreState: FluxaUniFfiCoreStateHandle,
     private val gson: Gson
 ) {
     private val _state = MutableStateFlow(LibraryUiState())

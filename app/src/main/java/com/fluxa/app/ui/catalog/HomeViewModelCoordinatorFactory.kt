@@ -1,7 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import android.content.Context
-import com.fluxa.app.core.rust.FluxaCoreStateHandle
+import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.remote.AddonDescriptor
@@ -19,7 +19,7 @@ class HomeViewModelCoordinatorFactory @Inject constructor() {
         repository: StremioRepository,
         traktRepository: TraktRepository,
         scope: CoroutineScope,
-        coreState: FluxaCoreStateHandle,
+        coreState: FluxaUniFfiCoreStateHandle,
         gson: Gson
     ): HomeLibraryCoordinator {
         return HomeLibraryCoordinator(repository, traktRepository, scope, coreState, gson)

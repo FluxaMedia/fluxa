@@ -34,4 +34,13 @@ class FluxaCoreUniFfiContractTest {
             assertEquals("Movie", meta["name"])
         }
     }
+
+    @Test
+    fun coreInvokeRoutesCalendarMethodThroughUniFfi() {
+        val value = FluxaCoreUniFfi.coreInvokeValue(
+            "calendarSeasonCandidates",
+            """{"seasonsCount":10,"lastVideoId":"tt1:2:3"}"""
+        )
+        assertEquals("[2,3,10]", value.toString())
+    }
 }

@@ -69,6 +69,8 @@ import com.google.gson.stream.JsonReader
 import java.io.Closeable
 import java.io.StringReader
 
+private fun urlArgs(url: String): String = JsonObject().apply { addProperty("url", url) }.toString()
+
 private fun JsonObject.stringOrNull(key: String): String? =
     get(key)?.takeUnless { it.isJsonNull }?.asString
 
@@ -209,13 +211,6 @@ data class NativeCloudstreamRequest(
     val episode: Int? = null,
     val originalName: String? = null,
     val timeoutMs: Long = 0L
-)
-
-// ── calendar_plan ─────────────────────────────────────────────────────────────
-
-data class NativeCalendarNotificationContent(
-    val items: List<Map<String, Any?>> = emptyList(),
-    val keys: List<String> = emptyList()
 )
 
 data class NativeDetailSeasonLoadPlan(
@@ -599,10 +594,10 @@ object FluxaCoreNative {
         }.getOrDefault(emptyMap())
     }
 
-    fun coreCapabilities(portable: Boolean = false): NativeCoreCapabilitySet = call {
-        val json = coreCapabilitiesJsonNative(portable)
-        json.takeIf { it.isNotBlank() }?.let { gson.fromJson(it, NativeCoreCapabilitySet::class.java) }
-            ?: NativeCoreCapabilitySet()
+    fun coreCapabilities(portable: Boolean = false): NativeCoreCapabilitySet {
+        val args = JsonObject().apply { addProperty("portable", portable) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("coreCapabilities", args.toString())
+        return gson.fromJson(value, NativeCoreCapabilitySet::class.java) ?: NativeCoreCapabilitySet()
     }
 
     internal fun appCoreStateJson(handle: Long): String = call {
@@ -621,53 +616,60 @@ object FluxaCoreNative {
         coreInvokeNative(method, argsJson).orEmpty()
     }
 
-    fun normalizeManifestUrl(rawUrl: String): String = call { normalizeManifestUrlNative(rawUrl) }
+    fun normalizeManifestUrl(rawUrl: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("normalizeManifestUrl", urlArgs(rawUrl)).asString
 
-    fun identity(rawUrl: String): String = call { identityNative(rawUrl) }
+    fun identity(rawUrl: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("identity", urlArgs(rawUrl)).asString
 
-    fun manifestCandidates(rawUrl: String): List<String> = call {
-        manifestCandidatesJsonNative(rawUrl)
-    }.let { json ->
-        gson.fromJson<List<String>>(json, stringListType)
+    fun manifestCandidates(rawUrl: String): List<String> {
+        val value = FluxaCoreUniFfi.coreInvokeValue("manifestCandidates", urlArgs(rawUrl))
+        return gson.fromJson(value, stringListType) ?: emptyList()
     }
 
-    fun manifestFetchPlan(rawUrl: String): NativeManifestFetchPlan? = call {
-        manifestFetchPlanJsonNative(rawUrl)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, NativeManifestFetchPlan::class.java) }
+    fun manifestFetchPlan(rawUrl: String): NativeManifestFetchPlan? {
+        val value = FluxaCoreUniFfi.coreInvokeValue("manifestFetchPlan", urlArgs(rawUrl))
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeManifestFetchPlan::class.java) }
     }
 
-    fun baseUrl(rawUrl: String): String = call { baseUrlNative(rawUrl) }
+    fun baseUrl(rawUrl: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("baseUrl", urlArgs(rawUrl)).asString
 
     fun preferHttpsAssetUrl(rawUrl: String): String? {
-        val resolved = call {
-            preferHttpsAssetUrlNative(rawUrl).takeIf { it.isNotBlank() }
-        }
-        return resolved
+        val value = FluxaCoreUniFfi.coreInvokeValue("preferHttpsAssetUrl", urlArgs(rawUrl))
+        return value.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
-    fun addonStoreInputType(text: String): String = call {
-        addonStoreInputTypeNative(text)
-    }
+    fun addonStoreInputType(text: String): String =
+        FluxaCoreUniFfi.coreInvokeValue(
+            "addonStoreInputType",
+            JsonObject().apply { addProperty("input", text) }.toString()
+        ).asString
 
-    fun normalizeCloudstreamRepoUrl(rawUrl: String): String = call {
-        normalizeCloudstreamRepoUrlNative(rawUrl)
-    }
+    fun normalizeCloudstreamRepoUrl(rawUrl: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("normalizeCloudstreamRepoUrl", urlArgs(rawUrl)).asString
 
-    fun normalizePluginRepositoryUrl(rawUrl: String): String = call {
-        normalizePluginRepositoryUrlNative(rawUrl)
-    }
+    fun normalizePluginRepositoryUrl(rawUrl: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("normalizePluginRepositoryUrl", urlArgs(rawUrl)).asString
 
-    fun pluginIsSecureRemoteUrl(url: String): Boolean = call {
-        pluginIsSecureRemoteUrlNative(url)
-    }
+    fun pluginIsSecureRemoteUrl(url: String): Boolean =
+        FluxaCoreUniFfi.coreInvokeValue("isSecureRemoteUrl", urlArgs(url)).asBoolean
 
-    fun pluginSameRepositoryUrl(left: String, right: String): Boolean = call {
-        pluginSameRepositoryUrlNative(left, right)
-    }
+    fun pluginSameRepositoryUrl(left: String, right: String): Boolean =
+        FluxaCoreUniFfi.coreInvokeValue(
+            "samePluginRepositoryUrl",
+            JsonObject().apply {
+                addProperty("left", left)
+                addProperty("right", right)
+            }.toString()
+        ).asBoolean
 
-    fun extractAddonManifestUrl(detailText: String): String? = call {
-        extractAddonManifestUrlNative(detailText).takeIf { it.isNotBlank() }
+    fun extractAddonManifestUrl(detailText: String): String? {
+        val value = FluxaCoreUniFfi.coreInvokeValue(
+            "extractAddonManifestUrl",
+            JsonObject().apply { addProperty("text", detailText) }.toString()
+        )
+        return value.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
     fun addonStoreSearchPolicy(
@@ -675,54 +677,52 @@ object FluxaCoreNative {
         nowMillis: Long,
         cachedAtMillis: Long?,
         ttlMillis: Long
-    ): NativeAddonStoreSearchPolicy = call {
+    ): NativeAddonStoreSearchPolicy {
         val request = NativeAddonStoreSearchPolicyRequest(
             query = query,
             nowMillis = nowMillis,
             cachedAtMillis = cachedAtMillis,
             ttlMillis = ttlMillis
         )
-        gson.fromJson(
-            addonStoreSearchPolicyJsonNative(gson.toJson(request)),
-            NativeAddonStoreSearchPolicy::class.java
-        ) ?: NativeAddonStoreSearchPolicy()
+        val value = FluxaCoreUniFfi.coreInvokeValue("addonStoreSearchPolicy", gson.toJson(request))
+        return gson.fromJson(value, NativeAddonStoreSearchPolicy::class.java) ?: NativeAddonStoreSearchPolicy()
     }
 
     fun repositoryMetaDetailPlan(
         useConfiguredAddons: Boolean,
         authKey: String?,
         localAddons: List<String>?
-    ): NativeRepositoryMetaDetailPlan = call {
+    ): NativeRepositoryMetaDetailPlan {
         val request = NativeRepositoryMetaDetailPlanRequest(
             useConfiguredAddons = useConfiguredAddons,
             authKey = authKey.orEmpty(),
             localAddons = localAddons.orEmpty()
         )
-        gson.fromJson(
-            repositoryMetaDetailPlanJsonNative(gson.toJson(request)),
-            NativeRepositoryMetaDetailPlan::class.java
-        ) ?: NativeRepositoryMetaDetailPlan()
+        val value = FluxaCoreUniFfi.coreInvokeValue("repositoryMetaDetailPlan", gson.toJson(request))
+        return gson.fromJson(value, NativeRepositoryMetaDetailPlan::class.java) ?: NativeRepositoryMetaDetailPlan()
     }
 
-    fun repositorySeasonVideos(metaDetail: MetaDetail?, seasonNumber: Int): List<Video> = call {
-        val json = repositorySeasonVideosJsonNative(gson.toJson(metaDetail), seasonNumber)
-        gson.fromJson<List<Video>>(json, object : TypeToken<List<Video>>() {}.type) ?: emptyList()
+    fun repositorySeasonVideos(metaDetail: MetaDetail?, seasonNumber: Int): List<Video> {
+        val args = JsonObject().apply {
+            addProperty("metaDetailJson", gson.toJson(metaDetail))
+            addProperty("seasonNumber", seasonNumber)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("repositorySeasonVideos", args.toString())
+        return gson.fromJson(value, object : TypeToken<List<Video>>() {}.type) ?: emptyList()
     }
 
     fun manifestFetchDecision(
         forceRefresh: Boolean,
         memoryHit: Boolean,
         persistentHit: Boolean
-    ): NativeManifestFetchDecision = call {
+    ): NativeManifestFetchDecision {
         val request = NativeManifestFetchDecisionRequest(
             forceRefresh = forceRefresh,
             memoryHit = memoryHit,
             persistentHit = persistentHit
         )
-        gson.fromJson(
-            manifestFetchDecisionJsonNative(gson.toJson(request)),
-            NativeManifestFetchDecision::class.java
-        ) ?: NativeManifestFetchDecision()
+        val value = FluxaCoreUniFfi.coreInvokeValue("manifestFetchDecision", gson.toJson(request))
+        return gson.fromJson(value, NativeManifestFetchDecision::class.java) ?: NativeManifestFetchDecision()
     }
 
     fun addonResourceRequestPlan(
@@ -732,7 +732,7 @@ object FluxaCoreNative {
         id: String,
         extraArgs: Map<String, String?> = emptyMap(),
         extraRaw: String = ""
-    ): NativeAddonResourceRequestPlan = call {
+    ): NativeAddonResourceRequestPlan {
         val request = NativeAddonResourceRequestPlanRequest(
             transportUrl = transportUrl,
             resource = resource,
@@ -741,14 +741,16 @@ object FluxaCoreNative {
             extraArgs = extraArgs,
             extraRaw = extraRaw
         )
-        gson.fromJson(
-            addonResourceRequestPlanJsonNative(gson.toJson(request)),
-            NativeAddonResourceRequestPlan::class.java
-        ) ?: NativeAddonResourceRequestPlan()
+        val value = FluxaCoreUniFfi.coreInvokeValue("addonResourceRequestPlan", gson.toJson(request))
+        return gson.fromJson(value, NativeAddonResourceRequestPlan::class.java) ?: NativeAddonResourceRequestPlan()
     }
 
-    fun addonStreamsWithProvider(streamsJson: String, addonName: String): String = call {
-        addonStreamsWithProviderJsonNative(streamsJson, addonName)
+    fun addonStreamsWithProvider(streamsJson: String, addonName: String): String {
+        val args = JsonObject().apply {
+            addProperty("streamsJson", streamsJson)
+            addProperty("addonName", addonName)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("addonStreamsWithProvider", args.toString()).toString()
     }
 
     fun buildResourceUrl(
@@ -757,14 +759,15 @@ object FluxaCoreNative {
         type: String,
         id: String,
         extraArgs: Map<String, String?>
-    ): String = call {
-        buildResourceUrlNative(
-            transportUrl,
-            resource,
-            type,
-            id,
-            gson.toJson(extraArgs.filterValues { !it.isNullOrBlank() })
-        )
+    ): String {
+        val args = JsonObject().apply {
+            addProperty("transportUrl", transportUrl)
+            addProperty("resource", resource)
+            addProperty("contentType", type)
+            addProperty("id", id)
+            addProperty("extraJson", gson.toJson(extraArgs.filterValues { !it.isNullOrBlank() }))
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("buildResourceUrl", args.toString()).asString
     }
 
     fun parseManifestJson(
@@ -772,30 +775,33 @@ object FluxaCoreNative {
         transportUrl: String,
         unknownName: String
     ): AddonDescriptor? {
-        val json = call {
-            parseManifestJsonNative(body, transportUrl, unknownName)
+        val args = JsonObject().apply {
+            addProperty("body", body)
+            addProperty("transportUrl", transportUrl)
+            addProperty("unknownName", unknownName)
         }
-        return json.takeIf { it.isNotBlank() }?.let { gson.fromJson(it, AddonDescriptor::class.java) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("parseManifest", args.toString())
+        if (value.isJsonNull) return null
+        return gson.fromJson(value, AddonDescriptor::class.java)
     }
 
-    fun resolveManifestAssets(descriptor: AddonDescriptor): AddonDescriptor? = call {
-        resolveManifestAssetsJsonNative(gson.toJson(descriptor))
-            .takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, AddonDescriptor::class.java) }
+    fun resolveManifestAssets(descriptor: AddonDescriptor): AddonDescriptor? {
+        val value = FluxaCoreUniFfi.coreInvokeValue("resolveManifestAssets", gson.toJson(descriptor))
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, AddonDescriptor::class.java) }
     }
 
     fun mergeLiveManifest(
         descriptor: AddonDescriptor,
         live: AddonDescriptor?,
         unknownName: String
-    ): AddonDescriptor? = call {
-        mergeLiveManifestJsonNative(
-            gson.toJson(descriptor),
-            live?.let(gson::toJson).orEmpty(),
-            unknownName
-        )
-            .takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, AddonDescriptor::class.java) }
+    ): AddonDescriptor? {
+        val args = JsonObject().apply {
+            addProperty("descriptor", gson.toJson(descriptor))
+            live?.let { addProperty("live", gson.toJson(it)) }
+            addProperty("unknownName", unknownName)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("mergeLiveManifest", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, AddonDescriptor::class.java) }
     }
 
     fun supportsResource(
@@ -803,30 +809,44 @@ object FluxaCoreNative {
         resourceName: String,
         type: String?,
         id: String?
-    ): Boolean = call {
-        supportsResourceNative(
-            gson.toJson(manifest),
-            resourceName,
-            type.orEmpty(),
-            id.orEmpty()
-        )
+    ): Boolean {
+        val args = JsonObject().apply {
+            addProperty("manifest", gson.toJson(manifest))
+            addProperty("resource", resourceName)
+            type?.takeIf { it.isNotEmpty() }?.let { addProperty("contentType", it) }
+            id?.takeIf { it.isNotEmpty() }?.let { addProperty("id", it) }
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("supportsResource", args.toString()).asBoolean
     }
 
-    fun catalogSupportsExtra(catalog: AddonCatalog, extraName: String): Boolean = call {
-        catalogSupportsExtraNative(gson.toJson(catalog), extraName)
+    fun catalogSupportsExtra(catalog: AddonCatalog, extraName: String): Boolean {
+        val args = JsonObject().apply {
+            addProperty("catalog", gson.toJson(catalog))
+            addProperty("extraName", extraName)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("catalogSupportsExtra", args.toString()).asBoolean
     }
 
-    fun catalogRequiresExtra(catalog: AddonCatalog, extraName: String): Boolean = call {
-        catalogRequiresExtraNative(gson.toJson(catalog), extraName)
+    fun catalogRequiresExtra(catalog: AddonCatalog, extraName: String): Boolean {
+        val args = JsonObject().apply {
+            addProperty("catalog", gson.toJson(catalog))
+            addProperty("extraName", extraName)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("catalogRequiresExtra", args.toString()).asBoolean
     }
 
-    fun catalogHasRequiredExtraExcept(catalog: AddonCatalog, allowedNames: Set<String>): Boolean = call {
-        catalogHasRequiredExtraExceptNative(gson.toJson(catalog), gson.toJson(allowedNames))
+    fun catalogHasRequiredExtraExcept(catalog: AddonCatalog, allowedNames: Set<String>): Boolean {
+        val args = JsonObject().apply {
+            addProperty("catalog", gson.toJson(catalog))
+            addProperty("allowedNames", gson.toJson(allowedNames))
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("catalogHasRequiredExtraExcept", args.toString()).asBoolean
     }
 
-    fun parseEpisodeLocator(raw: String?): NativeEpisodeLocator? = call {
-        val json = parseEpisodeLocatorJsonNative(raw.orEmpty()).orEmpty()
-        json.takeIf { it.isNotBlank() }?.let { gson.fromJson(it, NativeEpisodeLocator::class.java) }
+    fun parseEpisodeLocator(raw: String?): NativeEpisodeLocator? {
+        val args = JsonObject().apply { addProperty("input", raw.orEmpty()) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("parseEpisodeLocator", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeEpisodeLocator::class.java) }
     }
 
     fun streamRequestIds(
@@ -835,74 +855,78 @@ object FluxaCoreNative {
         detailId: String?,
         currentSeriesLookupId: String?,
         canonicalBaseId: String?
-    ): List<String> = call {
-        val json = streamRequestIdsJsonNative(
-            type,
-            id,
-            detailId.orEmpty(),
-            currentSeriesLookupId.orEmpty(),
-            canonicalBaseId.orEmpty()
-        )
-        gson.fromJson<List<String>>(json, stringListType) ?: emptyList()
+    ): List<String> {
+        val args = JsonObject().apply {
+            addProperty("contentType", type)
+            addProperty("id", id)
+            detailId?.takeIf { it.isNotEmpty() }?.let { addProperty("detailId", it) }
+            currentSeriesLookupId?.takeIf { it.isNotEmpty() }?.let { addProperty("currentSeriesLookupId", it) }
+            canonicalBaseId?.takeIf { it.isNotEmpty() }?.let { addProperty("canonicalBaseId", it) }
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("streamRequestIds", args.toString())
+        return gson.fromJson(value, stringListType) ?: emptyList()
     }
 
-    fun playbackStreamRequestIds(type: String, id: String, detailId: String?): List<String> = call {
-        val json = playbackStreamRequestIdsJsonNative(type, id, detailId.orEmpty())
-        gson.fromJson<List<String>>(json, stringListType) ?: emptyList()
+    fun playbackStreamRequestIds(type: String, id: String, detailId: String?): List<String> {
+        val args = JsonObject().apply {
+            addProperty("contentType", type)
+            addProperty("id", id)
+            detailId?.takeIf { it.isNotEmpty() }?.let { addProperty("detailId", it) }
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("playbackStreamRequestIds", args.toString())
+        return gson.fromJson(value, stringListType) ?: emptyList()
     }
 
-    fun playbackIntroLookupContentId(id: String): String = call {
-        playbackIntroLookupContentIdNative(id)
+    fun playbackIntroLookupContentId(id: String): String {
+        val args = JsonObject().apply { addProperty("id", id) }
+        return FluxaCoreUniFfi.coreInvokeValue("playbackIntroLookupContentId", args.toString()).asString
     }
 
-    fun directPlaybackPlan(meta: Meta, detail: MetaDetail?, todayIso: String): NativeDirectPlaybackPlan = call {
-        val json = directPlaybackPlanJsonNative(
-            gson.toJson(meta),
-            detail?.let(gson::toJson).orEmpty(),
-            todayIso
-        )
-        gson.fromJson(json, NativeDirectPlaybackPlan::class.java)
+    fun directPlaybackPlan(meta: Meta, detail: MetaDetail?, todayIso: String): NativeDirectPlaybackPlan {
+        val args = JsonObject().apply {
+            addProperty("metaJson", gson.toJson(meta))
+            detail?.let { addProperty("detailJson", gson.toJson(it)) }
+            addProperty("todayIso", todayIso)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("directPlaybackPlan", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeDirectPlaybackPlan::class.java) }
             ?: NativeDirectPlaybackPlan(meta = meta, lookupId = meta.id)
     }
 
     fun headlessProviderAvailability(
         addons: List<AddonDescriptor>,
         pluginNames: List<String>
-    ): NativeProviderAvailabilityPlan = call {
+    ): NativeProviderAvailabilityPlan {
         val request = NativeProviderAvailabilityPlanRequest(addons, pluginNames)
-        gson.fromJson(
-            headlessProviderAvailabilityPlanJsonNative(gson.toJson(request)),
-            NativeProviderAvailabilityPlan::class.java
-        ) ?: NativeProviderAvailabilityPlan()
+        val value = FluxaCoreUniFfi.coreInvokeValue("providerAvailabilityPlan", gson.toJson(request))
+        return gson.fromJson(value, NativeProviderAvailabilityPlan::class.java) ?: NativeProviderAvailabilityPlan()
     }
 
     fun headlessDetailStreamResult(
         attempts: List<Pair<String, List<Stream>>>,
         hasStreamProviders: Boolean
-    ): NativeDetailStreamResultPlan = call {
+    ): NativeDetailStreamResultPlan {
         val request = NativeDetailStreamResultPlanRequest(
             attempts = attempts.map { (requestId, streams) ->
                 NativeDetailStreamAttemptRequest(requestId, streams)
             },
             hasStreamProviders = hasStreamProviders
         )
-        gson.fromJson(
-            headlessDetailStreamResultPlanJsonNative(gson.toJson(request)),
-            NativeDetailStreamResultPlan::class.java
-        ) ?: NativeDetailStreamResultPlan(hasStreamProviders = hasStreamProviders)
+        val value = FluxaCoreUniFfi.coreInvokeValue("detailStreamResultPlan", gson.toJson(request))
+        return gson.fromJson(value, NativeDetailStreamResultPlan::class.java)
+            ?: NativeDetailStreamResultPlan(hasStreamProviders = hasStreamProviders)
     }
 
-    fun headlessPrefetchDetailStreams(streams: List<Stream>): NativePrefetchDetailStreamsPlan = call {
+    fun headlessPrefetchDetailStreams(streams: List<Stream>): NativePrefetchDetailStreamsPlan {
         val request = NativePrefetchDetailStreamsPlanRequest(streams)
-        gson.fromJson(
-            headlessPrefetchDetailStreamsPlanJsonNative(gson.toJson(request)),
-            NativePrefetchDetailStreamsPlan::class.java
-        ) ?: NativePrefetchDetailStreamsPlan(count = streams.size)
+        val value = FluxaCoreUniFfi.coreInvokeValue("prefetchDetailStreamsPlan", gson.toJson(request))
+        return gson.fromJson(value, NativePrefetchDetailStreamsPlan::class.java)
+            ?: NativePrefetchDetailStreamsPlan(count = streams.size)
     }
 
-    fun headlessDirectPlaybackPolicy(): NativeDirectPlaybackPolicy = call {
-        gson.fromJson(headlessDirectPlaybackPolicyJsonNative(), NativeDirectPlaybackPolicy::class.java)
-            ?: NativeDirectPlaybackPolicy()
+    fun headlessDirectPlaybackPolicy(): NativeDirectPlaybackPolicy {
+        val value = FluxaCoreUniFfi.coreInvokeValue("directPlaybackPolicy", "{}")
+        return gson.fromJson(value, NativeDirectPlaybackPolicy::class.java) ?: NativeDirectPlaybackPolicy()
     }
 
     fun streamDiscoveryEpisodeContext(
@@ -910,20 +934,21 @@ object FluxaCoreNative {
         requestId: String,
         detail: MetaDetail?,
         seasonEpisodes: List<Video>
-    ): NativeStreamDiscoveryEpisodeContext = call {
-        val json = streamDiscoveryEpisodeContextJsonNative(
-            type,
-            requestId,
-            detail?.let(gson::toJson).orEmpty(),
-            gson.toJson(seasonEpisodes)
-        )
-        gson.fromJson(json, NativeStreamDiscoveryEpisodeContext::class.java)
+    ): NativeStreamDiscoveryEpisodeContext {
+        val args = JsonObject().apply {
+            addProperty("contentType", type)
+            addProperty("requestId", requestId)
+            detail?.let { addProperty("detailJson", gson.toJson(it)) }
+            addProperty("seasonEpisodesJson", gson.toJson(seasonEpisodes))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("streamDiscoveryEpisodeContext", args.toString())
+        return gson.fromJson(value, NativeStreamDiscoveryEpisodeContext::class.java)
             ?: NativeStreamDiscoveryEpisodeContext()
     }
 
-    fun streamPlaybackInfo(stream: Stream): NativeStreamPlaybackInfo = call {
-        val json = streamPlaybackInfoJsonNative(gson.toJson(stream))
-        gson.fromJson(json, NativeStreamPlaybackInfo::class.java) ?: NativeStreamPlaybackInfo()
+    fun streamPlaybackInfo(stream: Stream): NativeStreamPlaybackInfo {
+        val value = FluxaCoreUniFfi.coreInvokeValue("streamPlaybackInfo", gson.toJson(stream))
+        return gson.fromJson(value, NativeStreamPlaybackInfo::class.java) ?: NativeStreamPlaybackInfo()
     }
 
     fun dvProxyPlan(
@@ -932,7 +957,7 @@ object FluxaCoreNative {
         fallbackMode: String,
         deviceHasDvDecoder: Boolean,
         deviceHasDvDisplay: Boolean
-    ): NativeDvProxyPlan = call {
+    ): NativeDvProxyPlan {
         val requestJson = gson.toJson(mapOf(
             "stream" to gson.fromJson(streamJson, Any::class.java),
             "url" to url,
@@ -940,37 +965,47 @@ object FluxaCoreNative {
             "deviceHasDvDecoder" to deviceHasDvDecoder,
             "deviceHasDvDisplay" to deviceHasDvDisplay
         ))
-        gson.fromJson(dvProxyPlanJsonNative(requestJson), NativeDvProxyPlan::class.java)
-            ?: NativeDvProxyPlan()
+        val value = FluxaCoreUniFfi.coreInvokeValue("dvProxyPlan", requestJson)
+        return gson.fromJson(value, NativeDvProxyPlan::class.java) ?: NativeDvProxyPlan()
     }
 
-    fun dolbyVisionRpuInfo(rpuBase64: String): NativeDolbyVisionRpuInfo = call {
-        val json = dolbyVisionRpuInfoJsonNative(gson.toJson(mapOf("rpu_base64" to rpuBase64)))
-        gson.fromJson(json, JsonObject::class.java)?.toDolbyVisionRpuInfo() ?: NativeDolbyVisionRpuInfo()
+    fun dolbyVisionRpuInfo(rpuBase64: String): NativeDolbyVisionRpuInfo {
+        val value = FluxaCoreUniFfi.coreInvokeValue("dolbyVisionRpuInfo", gson.toJson(mapOf("rpu_base64" to rpuBase64)))
+        return value.takeUnless { it.isJsonNull }?.asJsonObject?.toDolbyVisionRpuInfo() ?: NativeDolbyVisionRpuInfo()
     }
 
-    fun dolbyVisionConvertRpu(rpuBase64: String, mode: Int = 2): NativeDolbyVisionRpuConvertResult = call {
-        val json = dolbyVisionConvertRpuJsonNative(gson.toJson(mapOf("rpu_base64" to rpuBase64, "mode" to mode)))
-        gson.fromJson(json, JsonObject::class.java)?.toDolbyVisionRpuConvertResult()
+    fun dolbyVisionConvertRpu(rpuBase64: String, mode: Int = 2): NativeDolbyVisionRpuConvertResult {
+        val value = FluxaCoreUniFfi.coreInvokeValue(
+            "dolbyVisionConvertRpu",
+            gson.toJson(mapOf("rpu_base64" to rpuBase64, "mode" to mode))
+        )
+        return value.takeUnless { it.isJsonNull }?.asJsonObject?.toDolbyVisionRpuConvertResult()
             ?: NativeDolbyVisionRpuConvertResult()
     }
 
-    fun streamRequestHeaders(streamHeaders: Map<String, String>): Map<String, String> = call {
-        val json = streamRequestHeadersJsonNative(gson.toJson(streamHeaders))
-        gson.fromJson<Map<String, String>>(json, object : TypeToken<Map<String, String>>() {}.type) ?: emptyMap()
+    fun streamRequestHeaders(streamHeaders: Map<String, String>): Map<String, String> {
+        val args = JsonObject().apply { addProperty("headersJson", gson.toJson(streamHeaders)) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("streamRequestHeaders", args.toString())
+        return gson.fromJson(value, object : TypeToken<Map<String, String>>() {}.type) ?: emptyMap()
     }
 
-    fun streamRequestReferer(url: String): String? = call {
-        streamRequestRefererNative(url).takeIf { it.isNotBlank() }
+    fun streamRequestReferer(url: String): String? {
+        val value = FluxaCoreUniFfi.coreInvokeValue("streamRequestReferer", urlArgs(url))
+        return value.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
-    fun isTorrentPlaybackUrl(url: String?): Boolean = call {
+    fun isTorrentPlaybackUrl(url: String?): Boolean {
         val stream = Stream(name = null, title = null, url = url)
-        streamPlaybackInfo(stream).isTorrentPlaybackUrl
+        return streamPlaybackInfo(stream).isTorrentPlaybackUrl
     }
 
-    fun episodeTextMatches(text: String?, season: Int, episode: Int): Boolean = call {
-        episodeTextMatchesNative(text.orEmpty(), season, episode)
+    fun episodeTextMatches(text: String?, season: Int, episode: Int): Boolean {
+        val args = JsonObject().apply {
+            addProperty("text", text.orEmpty())
+            addProperty("season", season)
+            addProperty("episode", episode)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("episodeTextMatches", args.toString()).asBoolean
     }
 
     fun streamMatchesEpisode(
@@ -980,15 +1015,16 @@ object FluxaCoreNative {
         description: String?,
         filename: String?,
         effectiveFilename: String?
-    ): Boolean = call {
-        streamMatchesEpisodeNative(
-            videoId.orEmpty(),
-            title.orEmpty(),
-            name.orEmpty(),
-            description.orEmpty(),
-            filename.orEmpty(),
-            effectiveFilename.orEmpty()
-        )
+    ): Boolean {
+        val args = JsonObject().apply {
+            addProperty("videoId", videoId.orEmpty())
+            addProperty("title", title.orEmpty())
+            addProperty("name", name.orEmpty())
+            addProperty("description", description.orEmpty())
+            addProperty("filename", filename.orEmpty())
+            addProperty("effectiveFilename", effectiveFilename.orEmpty())
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("streamMatchesEpisode", args.toString()).asBoolean
     }
 
     fun selectStreamIndex(
@@ -1000,7 +1036,7 @@ object FluxaCoreNative {
         sourceSelectionMode: String,
         regexPattern: String?,
         preferredBingeGroup: String?
-    ): Int = call {
+    ): Int {
         val nativeStreams = streams.map { stream ->
             NativeStreamSelectionItem(
                 name = stream.name,
@@ -1013,21 +1049,23 @@ object FluxaCoreNative {
                 effectiveFilename = stream.effectiveFilename
             )
         }
-        selectStreamIndexNative(
-            gson.toJson(nativeStreams),
-            currentVideoId.orEmpty(),
-            initialStreamIndex,
-            savedUrl.orEmpty(),
-            savedTitle.orEmpty(),
-            sourceSelectionMode,
-            regexPattern.orEmpty(),
-            preferredBingeGroup.orEmpty()
-        )
+        val args = JsonObject().apply {
+            addProperty("streamsJson", gson.toJson(nativeStreams))
+            addProperty("currentVideoId", currentVideoId.orEmpty())
+            addProperty("initialStreamIndex", initialStreamIndex)
+            savedUrl?.takeIf { it.isNotEmpty() }?.let { addProperty("savedUrl", it) }
+            savedTitle?.takeIf { it.isNotEmpty() }?.let { addProperty("savedTitle", it) }
+            addProperty("sourceSelectionMode", sourceSelectionMode)
+            regexPattern?.takeIf { it.isNotEmpty() }?.let { addProperty("regexPattern", it) }
+            preferredBingeGroup?.takeIf { it.isNotEmpty() }?.let { addProperty("preferredBingeGroup", it) }
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("selectStreamIndex", args.toString()).asInt
     }
 
-    fun mergeContinueWatchingDuplicates(items: List<Meta>): List<Meta> = call {
-        val json = mergeContinueWatchingDuplicatesJsonNative(gson.toJson(items))
-        gson.fromJson<List<Meta>>(json, metaListType) ?: emptyList()
+    fun mergeContinueWatchingDuplicates(items: List<Meta>): List<Meta> {
+        val args = JsonObject().apply { addProperty("itemsJson", gson.toJson(items)) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("mergeContinueWatchingDuplicates", args.toString())
+        return gson.fromJson(value, metaListType) ?: emptyList()
     }
 
     fun filterDiscoverResults(
@@ -1035,31 +1073,37 @@ object FluxaCoreNative {
         year: String?,
         rating: Float?,
         region: String?
-    ): List<Meta> = call {
-        val json = filterDiscoverResultsJsonNative(
-            gson.toJson(items),
-            year.orEmpty(),
-            rating ?: 0f,
-            rating != null,
-            region.orEmpty()
-        )
-        gson.fromJson<List<Meta>>(json, metaListType) ?: emptyList()
+    ): List<Meta> {
+        val args = JsonObject().apply {
+            addProperty("itemsJson", gson.toJson(items))
+            year?.takeIf { it.isNotBlank() }?.let { addProperty("year", it) }
+            rating?.let { addProperty("rating", it) }
+            region?.takeIf { it.isNotBlank() }?.let { addProperty("region", it) }
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("filterDiscoverResults", args.toString())
+        return gson.fromJson(value, metaListType) ?: emptyList()
     }
 
     fun resolvePreferredAudioLanguage(
         lastAudioLanguage: String?,
         preferredAudioLanguage: String?,
         originalLanguage: String?
-    ): String = call {
-        resolvePreferredAudioLanguageNative(
-            lastAudioLanguage.orEmpty(),
-            preferredAudioLanguage.orEmpty(),
-            originalLanguage.orEmpty()
-        )
+    ): String {
+        val args = JsonObject().apply {
+            lastAudioLanguage?.let { addProperty("lastAudioLanguage", it) }
+            preferredAudioLanguage?.let { addProperty("preferredAudioLanguage", it) }
+            originalLanguage?.let { addProperty("originalLanguage", it) }
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("resolvePreferredAudioLanguage", args.toString()).asString
     }
 
-    fun subtitleLanguageMatches(label: String, language: String?, preferredLanguage: String): Boolean = call {
-        subtitleLanguageMatchesNative(label, language.orEmpty(), preferredLanguage)
+    fun subtitleLanguageMatches(label: String, language: String?, preferredLanguage: String): Boolean {
+        val args = JsonObject().apply {
+            addProperty("label", label)
+            language?.let { addProperty("language", it) }
+            addProperty("preferredLanguage", preferredLanguage)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("subtitleLanguageMatches", args.toString()).asBoolean
     }
 
     fun playerTrackState(
@@ -1070,7 +1114,7 @@ object FluxaCoreNative {
         lastSubtitleLanguage: String?,
         preferredSubtitleLanguage: String?,
         secondarySubtitleLanguage: String?
-    ): NativePlayerTrackState = call {
+    ): NativePlayerTrackState {
         val request = NativePlayerTrackStateRequest(
             availableSubtitles = availableSubtitles.map { NativeSubtitleTrackEntry(it.id, it.label, it.language) },
             lastAudioLanguage = lastAudioLanguage,
@@ -1080,7 +1124,8 @@ object FluxaCoreNative {
             preferredSubtitleLanguage = preferredSubtitleLanguage,
             secondarySubtitleLanguage = secondarySubtitleLanguage
         )
-        gson.fromJson(playerTrackStateJsonNative(gson.toJson(request)), NativePlayerTrackState::class.java)
+        val value = FluxaCoreUniFfi.coreInvokeValue("playerTrackState", gson.toJson(request))
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativePlayerTrackState::class.java) }
             ?: NativePlayerTrackState()
     }
 
@@ -1089,9 +1134,15 @@ object FluxaCoreNative {
         url: String,
         statusCode: Int,
         body: String?
-    ): NativeAddonResourceParseResult = call {
-        val json = parseAddonResourceResultJsonNative(resource, url, statusCode, body.orEmpty())
-        gson.fromJson(json, NativeAddonResourceParseResult::class.java) ?: NativeAddonResourceParseResult(
+    ): NativeAddonResourceParseResult {
+        val args = JsonObject().apply {
+            addProperty("resource", resource)
+            addProperty("url", url)
+            addProperty("statusCode", statusCode)
+            body?.let { addProperty("body", it) }
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("parseAddonResourceResult", args.toString())
+        return gson.fromJson(value, NativeAddonResourceParseResult::class.java) ?: NativeAddonResourceParseResult(
             kind = "parse_error",
             url = url,
             statusCode = statusCode,
@@ -1099,8 +1150,33 @@ object FluxaCoreNative {
         )
     }
 
-    fun normalizeAddonSubtitles(subtitlesJson: String, resourceUrl: String): String = call {
-        normalizeAddonSubtitlesJsonNative(subtitlesJson, resourceUrl)
+    fun parseAddonStreamResult(
+        url: String,
+        statusCode: Int,
+        body: String?,
+        addonName: String
+    ): NativeAddonResourceParseResult {
+        val args = JsonObject().apply {
+            addProperty("url", url)
+            addProperty("statusCode", statusCode)
+            body?.let { addProperty("body", it) }
+            addProperty("addonName", addonName)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("parseAddonStreamResult", args.toString())
+        return gson.fromJson(value, NativeAddonResourceParseResult::class.java) ?: NativeAddonResourceParseResult(
+            kind = "parse_error",
+            url = url,
+            statusCode = statusCode,
+            error = "empty native response"
+        )
+    }
+
+    fun normalizeAddonSubtitles(subtitlesJson: String, resourceUrl: String): String {
+        val args = JsonObject().apply {
+            addProperty("subtitles", subtitlesJson)
+            addProperty("resourceUrl", resourceUrl)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("normalizeAddonSubtitles", args.toString()).toString()
     }
 
     fun torrentRuntimeInfo(
@@ -1114,7 +1190,7 @@ object FluxaCoreNative {
         baseUrl: String,
         play: Boolean,
         stat: Boolean
-    ): NativeTorrentRuntimeInfo = call {
+    ): NativeTorrentRuntimeInfo {
         val request = NativeTorrentRuntimeRequest(
             link = link,
             title = title,
@@ -1127,41 +1203,55 @@ object FluxaCoreNative {
             play = play,
             stat = stat
         )
-        val json = torrentRuntimeInfoJsonNative(gson.toJson(request))
-        gson.fromJson(json, NativeTorrentRuntimeInfo::class.java) ?: NativeTorrentRuntimeInfo()
+        val value = FluxaCoreUniFfi.coreInvokeValue("torrentRuntimeInfo", gson.toJson(request))
+        return gson.fromJson(value, NativeTorrentRuntimeInfo::class.java) ?: NativeTorrentRuntimeInfo()
     }
 
-    fun torrentStatusInfo(status: TorrentStatus): NativeTorrentStatusInfo = call {
-        val json = torrentStatusInfoJsonNative(gson.toJson(status))
-        gson.fromJson(json, NativeTorrentStatusInfo::class.java) ?: NativeTorrentStatusInfo()
+    fun torrentStatusInfo(status: TorrentStatus): NativeTorrentStatusInfo {
+        val value = FluxaCoreUniFfi.coreInvokeValue("torrentStatusInfo", gson.toJson(status))
+        return gson.fromJson(value, NativeTorrentStatusInfo::class.java) ?: NativeTorrentStatusInfo()
     }
 
-    fun stableFeedPart(value: String): String = call {
-        stableFeedPartNative(value)
+    fun stableFeedPart(value: String): String {
+        val args = JsonObject().apply { addProperty("value", value) }
+        return FluxaCoreUniFfi.coreInvokeValue("stableFeedPart", args.toString()).asString
     }
 
-    fun normalizeContentType(value: String): String? = call {
-        normalizeContentTypeNative(value).takeIf { it.isNotBlank() }
+    fun normalizeContentType(value: String): String? {
+        val args = JsonObject().apply { addProperty("value", value) }
+        val result = FluxaCoreUniFfi.coreInvokeValue("normalizeContentType", args.toString())
+        return result.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
-    fun parseExtraArgs(extra: String): Map<String, String> = call {
-        val json = parseExtraArgsJsonNative(extra)
-        gson.fromJson<Map<String, String>>(json, object : TypeToken<Map<String, String>>() {}.type) ?: emptyMap()
+    fun parseExtraArgs(extra: String): Map<String, String> {
+        val args = JsonObject().apply { addProperty("extra", extra) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("parseExtraArgs", args.toString())
+        return gson.fromJson(value, object : TypeToken<Map<String, String>>() {}.type) ?: emptyMap()
     }
 
-    fun providerSearchTerms(provider: String): List<String> = call {
-        val json = providerSearchTermsJsonNative(provider)
-        gson.fromJson<List<String>>(json, stringListType) ?: emptyList()
+    fun providerSearchTerms(provider: String): List<String> {
+        val args = JsonObject().apply { addProperty("provider", provider) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("providerSearchTerms", args.toString())
+        return gson.fromJson(value, stringListType) ?: emptyList()
     }
 
-    fun effectiveMetadataFeedSelection(selectedKeys: List<String>?, availableKeys: List<String>): List<String>? = call {
-        val json = effectiveMetadataFeedSelectionJsonNative(gson.toJson(selectedKeys), gson.toJson(availableKeys))
-        json?.takeIf { it.isNotBlank() }?.let { gson.fromJson<List<String>>(it, stringListType) }
+    fun effectiveMetadataFeedSelection(selectedKeys: List<String>?, availableKeys: List<String>): List<String>? {
+        val args = JsonObject().apply {
+            addProperty("selectedKeys", gson.toJson(selectedKeys))
+            addProperty("availableKeys", gson.toJson(availableKeys))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("effectiveMetadataFeedSelection", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<String>>(it, stringListType) }
     }
 
-    fun toggleMetadataFeed(selectedKeys: List<String>?, availableKeys: List<String>, key: String): List<String> = call {
-        val json = toggleMetadataFeedJsonNative(gson.toJson(selectedKeys), gson.toJson(availableKeys), key)
-        gson.fromJson<List<String>>(json, stringListType) ?: emptyList()
+    fun toggleMetadataFeed(selectedKeys: List<String>?, availableKeys: List<String>, key: String): List<String> {
+        val args = JsonObject().apply {
+            addProperty("selectedKeys", gson.toJson(selectedKeys))
+            addProperty("availableKeys", gson.toJson(availableKeys))
+            addProperty("key", key)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("toggleMetadataFeed", args.toString())
+        return gson.fromJson(value, stringListType) ?: emptyList()
     }
 
     fun toggleMetadataFeed(
@@ -1169,14 +1259,15 @@ object FluxaCoreNative {
         availableKeys: List<String>,
         key: String,
         maxEnabled: Int
-    ): List<String> = call {
-        val json = toggleMetadataFeedLimitedJsonNative(
-            gson.toJson(selectedKeys),
-            gson.toJson(availableKeys),
-            key,
-            maxEnabled
-        )
-        gson.fromJson<List<String>>(json, stringListType) ?: emptyList()
+    ): List<String> {
+        val args = JsonObject().apply {
+            addProperty("selectedKeys", gson.toJson(selectedKeys))
+            addProperty("availableKeys", gson.toJson(availableKeys))
+            addProperty("key", key)
+            addProperty("maxEnabled", maxEnabled)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("toggleMetadataFeedLimited", args.toString())
+        return gson.fromJson(value, stringListType) ?: emptyList()
     }
 
     fun setMetadataFeedGroupEnabled(
@@ -1184,51 +1275,66 @@ object FluxaCoreNative {
         availableKeys: List<String>,
         groupKeys: List<String>,
         enabled: Boolean
-    ): List<String> = call {
-        val json = setMetadataFeedGroupEnabledJsonNative(
-            gson.toJson(selectedKeys),
-            gson.toJson(availableKeys),
-            gson.toJson(groupKeys),
-            enabled
-        )
-        gson.fromJson<List<String>>(json, stringListType) ?: emptyList()
-    }
-
-    fun orderedMetadataFeedKeys(optionKeys: List<String>, order: List<String>?): List<String> = call {
-        val json = orderedMetadataFeedKeysJsonNative(gson.toJson(optionKeys), gson.toJson(order))
-        gson.fromJson<List<String>>(json, stringListType) ?: optionKeys
-    }
-
-    fun moveMetadataFeedOrder(optionKeys: List<String>, currentOrder: List<String>?, key: String, delta: Int): List<String> = call {
-        val json = moveMetadataFeedOrderJsonNative(gson.toJson(optionKeys), gson.toJson(currentOrder), key, delta)
-        gson.fromJson<List<String>>(json, stringListType) ?: optionKeys
-    }
-
-    fun contentTraktKey(meta: Meta): String = call {
-        contentTraktKeysBatchJsonNative(gson.toJson(listOf(meta))).let { json ->
-            (gson.fromJson<List<String>>(json, stringListType) ?: emptyList()).first()
+    ): List<String> {
+        val args = JsonObject().apply {
+            addProperty("selectedKeys", gson.toJson(selectedKeys))
+            addProperty("availableKeys", gson.toJson(availableKeys))
+            addProperty("groupKeys", gson.toJson(groupKeys))
+            addProperty("enabled", enabled)
         }
+        val value = FluxaCoreUniFfi.coreInvokeValue("setMetadataFeedGroupEnabled", args.toString())
+        return gson.fromJson(value, stringListType) ?: emptyList()
     }
 
-    fun contentTraktKeysBatch(metas: List<Meta>): List<String> = call {
-        if (metas.isEmpty()) return@call emptyList()
-        val json = contentTraktKeysBatchJsonNative(gson.toJson(metas))
-        gson.fromJson<List<String>>(json, stringListType) ?: emptyList()
+    fun orderedMetadataFeedKeys(optionKeys: List<String>, order: List<String>?): List<String> {
+        val args = JsonObject().apply {
+            addProperty("optionKeys", gson.toJson(optionKeys))
+            addProperty("order", gson.toJson(order))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("orderedMetadataFeedKeys", args.toString())
+        return gson.fromJson(value, stringListType) ?: optionKeys
     }
 
-    fun contentMergeKeys(meta: Meta): Set<String> = call {
-        val json = contentMergeKeysJsonNative(gson.toJson(meta))
-        (gson.fromJson<List<String>>(json, stringListType) ?: emptyList()).toSet()
+    fun moveMetadataFeedOrder(optionKeys: List<String>, currentOrder: List<String>?, key: String, delta: Int): List<String> {
+        val args = JsonObject().apply {
+            addProperty("optionKeys", gson.toJson(optionKeys))
+            addProperty("currentOrder", gson.toJson(currentOrder))
+            addProperty("key", key)
+            addProperty("delta", delta)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("moveMetadataFeedOrder", args.toString())
+        return gson.fromJson(value, stringListType) ?: optionKeys
     }
 
-    fun contentWatchedKeysBatch(metas: List<Meta>): List<Set<String>> = call {
-        if (metas.isEmpty()) return@call emptyList()
-        val json = contentWatchedKeysBatchJsonNative(gson.toJson(metas))
-        (gson.fromJson<List<List<String>>>(json, stringListListType) ?: emptyList()).map { it.toSet() }
+    fun contentTraktKey(meta: Meta): String = contentTraktKeysBatch(listOf(meta)).first()
+
+    fun contentTraktKeysBatch(metas: List<Meta>): List<String> {
+        if (metas.isEmpty()) return emptyList()
+        val args = JsonObject().apply { addProperty("metasJson", gson.toJson(metas)) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("contentTraktKeysBatch", args.toString())
+        return gson.fromJson(value, stringListType) ?: emptyList()
     }
 
-    fun episodeFilenameCandidate(stream: Stream, videoId: String?): String? = call {
-        episodeFilenameCandidateNative(gson.toJson(stream), videoId.orEmpty()).takeIf { it.isNotBlank() }
+    fun contentMergeKeys(meta: Meta): Set<String> {
+        val args = JsonObject().apply { addProperty("metaJson", gson.toJson(meta)) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("contentMergeKeys", args.toString())
+        return (gson.fromJson<List<String>>(value, stringListType) ?: emptyList()).toSet()
+    }
+
+    fun contentWatchedKeysBatch(metas: List<Meta>): List<Set<String>> {
+        if (metas.isEmpty()) return emptyList()
+        val args = JsonObject().apply { addProperty("metasJson", gson.toJson(metas)) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("contentWatchedKeysBatch", args.toString())
+        return (gson.fromJson<List<List<String>>>(value, stringListListType) ?: emptyList()).map { it.toSet() }
+    }
+
+    fun episodeFilenameCandidate(stream: Stream, videoId: String?): String? {
+        val args = JsonObject().apply {
+            addProperty("streamJson", gson.toJson(stream))
+            addProperty("videoId", videoId.orEmpty())
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("episodeFilenameCandidate", args.toString())
+        return value.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
     fun streamDiscoveryCacheKey(
@@ -1240,21 +1346,18 @@ object FluxaCoreNative {
         cs3OriginalName: String?,
         addonSignatures: List<String>,
         cs3PluginNames: List<String>
-    ): String = call {
-        streamDiscoveryCacheKeyNative(
-            gson.toJson(
-                NativeStreamDiscoveryCacheKeyRequest(
-                    type = type,
-                    id = id,
-                    language = language,
-                    cs3SearchQuery = cs3SearchQuery,
-                    cs3Year = cs3Year,
-                    cs3OriginalName = cs3OriginalName,
-                    addonSignatures = addonSignatures,
-                    cs3PluginNames = cs3PluginNames
-                )
-            )
+    ): String {
+        val request = NativeStreamDiscoveryCacheKeyRequest(
+            type = type,
+            id = id,
+            language = language,
+            cs3SearchQuery = cs3SearchQuery,
+            cs3Year = cs3Year,
+            cs3OriginalName = cs3OriginalName,
+            addonSignatures = addonSignatures,
+            cs3PluginNames = cs3PluginNames
         )
+        return FluxaCoreUniFfi.coreInvokeValue("streamDiscoveryCacheKey", gson.toJson(request)).asString
     }
 
     fun streamDiscoveryPlan(
@@ -1270,7 +1373,7 @@ object FluxaCoreNative {
         cs3SearchQuery: String?,
         cs3OriginalName: String?,
         cs3Year: Int?
-    ): NativeStreamDiscoveryPlan = call {
+    ): NativeStreamDiscoveryPlan {
         val request = NativeStreamDiscoveryPlanRequest(
             type = type,
             id = id,
@@ -1285,9 +1388,8 @@ object FluxaCoreNative {
             cs3OriginalName = cs3OriginalName,
             cs3Year = cs3Year
         )
-        streamDiscoveryPlanJsonNative(gson.toJson(request))
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, NativeStreamDiscoveryPlan::class.java) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("streamDiscoveryPlan", gson.toJson(request))
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeStreamDiscoveryPlan::class.java) }
             ?: NativeStreamDiscoveryPlan()
     }
 
@@ -1304,7 +1406,7 @@ object FluxaCoreNative {
         cs3SearchQuery: String?,
         cs3OriginalName: String?,
         cs3Year: Int?
-    ): NativeStreamDiscoveryExecutionPolicy = call {
+    ): NativeStreamDiscoveryExecutionPolicy {
         val request = NativeStreamDiscoveryPlanRequest(
             type = type,
             id = id,
@@ -1319,14 +1421,19 @@ object FluxaCoreNative {
             cs3OriginalName = cs3OriginalName,
             cs3Year = cs3Year
         )
-        streamDiscoveryExecutionPolicyJsonNative(gson.toJson(request))
-            ?.takeIf { it.isNotBlank() }
+        val value = FluxaCoreUniFfi.coreInvokeValue("streamDiscoveryExecutionPolicy", gson.toJson(request))
+        return value.takeUnless { it.isJsonNull }
             ?.let { gson.fromJson(it, NativeStreamDiscoveryExecutionPolicy::class.java) }
             ?: NativeStreamDiscoveryExecutionPolicy()
     }
 
-    fun streamDiscoveryCachePrefix(type: String, id: String, language: String): String = call {
-        streamDiscoveryCachePrefixNative(type, id, language)
+    fun streamDiscoveryCachePrefix(type: String, id: String, language: String): String {
+        val args = JsonObject().apply {
+            addProperty("contentType", type)
+            addProperty("id", id)
+            addProperty("language", language)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("streamDiscoveryCachePrefix", args.toString()).asString
     }
 
     fun discoverCatalogCacheKey(
@@ -1338,29 +1445,31 @@ object FluxaCoreNative {
         provider: String?,
         region: String?,
         catalogSignatures: List<String>
-    ): String = call {
-        discoverCatalogCacheKeyNative(
-            gson.toJson(
-                NativeDiscoverCatalogCacheKeyRequest(
-                    type = type,
-                    catalogKey = catalogKey,
-                    genre = genre,
-                    year = year,
-                    rating = rating,
-                    provider = provider,
-                    region = region,
-                    catalogSignatures = catalogSignatures
-                )
-            )
+    ): String {
+        val request = NativeDiscoverCatalogCacheKeyRequest(
+            type = type,
+            catalogKey = catalogKey,
+            genre = genre,
+            year = year,
+            rating = rating,
+            provider = provider,
+            region = region,
+            catalogSignatures = catalogSignatures
         )
+        return FluxaCoreUniFfi.coreInvokeValue("discoverCatalogCacheKey", gson.toJson(request)).asString
     }
 
-    fun curateHomeItemsJson(categoryJson: String): String = call {
-        curateHomeItemsJsonNative(categoryJson)
+    fun curateHomeItemsJson(categoryJson: String): String {
+        val args = JsonObject().apply { addProperty("categoryJson", categoryJson) }
+        return FluxaCoreUniFfi.coreInvokeValue("curateHomeItems", args.toString()).toString()
     }
 
-    fun homeOverlapRatioJson(firstCategoryJson: String, secondCategoryJson: String): Float = call {
-        homeOverlapRatioNative(firstCategoryJson, secondCategoryJson)
+    fun homeOverlapRatioJson(firstCategoryJson: String, secondCategoryJson: String): Float {
+        val args = JsonObject().apply {
+            addProperty("firstJson", firstCategoryJson)
+            addProperty("secondJson", secondCategoryJson)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("homeOverlapRatio", args.toString()).asFloat
     }
 
     fun homePersonalizationScoreJson(
@@ -1368,13 +1477,14 @@ object FluxaCoreNative {
         preferredGenresJson: String,
         preferredTypesJson: String,
         priorityLabelsJson: String
-    ): Int = call {
-        homePersonalizationScoreNative(
-            categoryJson,
-            preferredGenresJson,
-            preferredTypesJson,
-            priorityLabelsJson
-        )
+    ): Int {
+        val args = JsonObject().apply {
+            addProperty("categoryJson", categoryJson)
+            addProperty("preferredGenresJson", preferredGenresJson)
+            addProperty("preferredTypesJson", preferredTypesJson)
+            addProperty("priorityLabelsJson", priorityLabelsJson)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("homePersonalizationScore", args.toString()).asInt
     }
 
     fun prioritizeHomeRowsJson(
@@ -1383,38 +1493,47 @@ object FluxaCoreNative {
         preferredGenresJson: String,
         preferredTypesJson: String,
         priorityLabelsJson: String
-    ): String = call {
-        prioritizeHomeRowsJsonNative(
-            categoriesJson,
-            preferredOrderLabelsJson,
-            preferredGenresJson,
-            preferredTypesJson,
-            priorityLabelsJson
-        )
+    ): String {
+        val args = JsonObject().apply {
+            addProperty("categoriesJson", categoriesJson)
+            addProperty("preferredOrderLabelsJson", preferredOrderLabelsJson)
+            addProperty("preferredGenresJson", preferredGenresJson)
+            addProperty("preferredTypesJson", preferredTypesJson)
+            addProperty("priorityLabelsJson", priorityLabelsJson)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("prioritizeHomeRows", args.toString()).toString()
     }
 
-    fun optimizeHomeRowsJson(requestJson: String): String = call {
-        optimizeHomeRowsJsonNative(requestJson)
+    fun optimizeHomeRowsJson(requestJson: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("optimizeHomeRows", requestJson).toString()
+
+    fun buildBillboardPool(enriched: List<Meta>, candidates: List<Meta>): List<Meta> {
+        val args = JsonObject().apply {
+            addProperty("enrichedJson", gson.toJson(enriched))
+            addProperty("candidatesJson", gson.toJson(candidates))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("buildBillboardPool", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<Meta>>(it, metaListType) } ?: emptyList()
     }
 
-    fun buildBillboardPool(enriched: List<Meta>, candidates: List<Meta>): List<Meta> = call {
-        val json = buildBillboardPoolJsonNative(gson.toJson(enriched), gson.toJson(candidates))
-        if (json != null) gson.fromJson<List<Meta>>(json, metaListType) ?: emptyList() else emptyList()
-    }
-
-    fun normalizeHomeCatalogItems(items: List<Meta>, catalogId: String, genre: String?): List<Meta> = call {
+    fun normalizeHomeCatalogItems(items: List<Meta>, catalogId: String, genre: String?): List<Meta> {
         val todayIso = java.time.LocalDate.now(java.time.ZoneId.systemDefault()).toString()
-        val json = normalizeHomeCatalogItemsJsonNative(
-            gson.toJson(items),
-            catalogId,
-            genre.orEmpty(),
-            todayIso
-        )
-        if (json != null) gson.fromJson<List<Meta>>(json, metaListType) ?: emptyList() else emptyList()
+        val args = JsonObject().apply {
+            addProperty("itemsJson", gson.toJson(items))
+            addProperty("catalogId", catalogId)
+            genre?.takeIf { it.isNotEmpty() }?.let { addProperty("genre", it) }
+            addProperty("todayIso", todayIso)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("normalizeHomeCatalogItems", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<Meta>>(it, metaListType) } ?: emptyList()
     }
 
-    fun playerProgressPercent(positionMs: Long, durationMs: Long): Float = call {
-        playerProgressPercentNative(positionMs, durationMs)
+    fun playerProgressPercent(positionMs: Long, durationMs: Long): Float {
+        val args = JsonObject().apply {
+            addProperty("positionMs", positionMs)
+            addProperty("durationMs", durationMs)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("playerProgressPercent", args.toString()).asFloat
     }
 
     fun playerShouldSendScrobbleStart(
@@ -1422,12 +1541,22 @@ object FluxaCoreNative {
         isPlaying: Boolean,
         hasScrobbledStart: Boolean,
         progress: Float
-    ): Boolean = call {
-        playerShouldSendScrobbleStartNative(token.orEmpty(), isPlaying, hasScrobbledStart, progress)
+    ): Boolean {
+        val args = JsonObject().apply {
+            token?.let { addProperty("token", it) }
+            addProperty("isPlaying", isPlaying)
+            addProperty("hasScrobbledStart", hasScrobbledStart)
+            addProperty("progress", progress)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("playerShouldSendScrobbleStart", args.toString()).asBoolean
     }
 
-    fun playerShouldMarkScrobbleStopped(hasScrobbledStop: Boolean, progress: Float): Boolean = call {
-        playerShouldMarkScrobbleStoppedNative(hasScrobbledStop, progress)
+    fun playerShouldMarkScrobbleStopped(hasScrobbledStop: Boolean, progress: Float): Boolean {
+        val args = JsonObject().apply {
+            addProperty("hasScrobbledStop", hasScrobbledStop)
+            addProperty("progress", progress)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("playerShouldMarkScrobbleStopped", args.toString()).asBoolean
     }
 
     fun playerShouldQueueScrobblePause(
@@ -1435,93 +1564,132 @@ object FluxaCoreNative {
         wasPlayWhenReady: Boolean,
         hasScrobbledStart: Boolean,
         hasScrobbledStop: Boolean
-    ): Boolean = call {
-        playerShouldQueueScrobblePauseNative(
-            token.orEmpty(),
-            wasPlayWhenReady,
-            hasScrobbledStart,
-            hasScrobbledStop
-        )
+    ): Boolean {
+        val args = JsonObject().apply {
+            token?.let { addProperty("token", it) }
+            addProperty("wasPlayWhenReady", wasPlayWhenReady)
+            addProperty("hasScrobbledStart", hasScrobbledStart)
+            addProperty("hasScrobbledStop", hasScrobbledStop)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("playerShouldQueueScrobblePause", args.toString()).asBoolean
     }
 
-    fun playerShouldEnqueueDurableScrobble(action: String, token: String?, progress: Float): Boolean = call {
-        playerShouldEnqueueDurableScrobbleNative(action, token.orEmpty(), progress)
+    fun playerShouldEnqueueDurableScrobble(action: String, token: String?, progress: Float): Boolean {
+        val args = JsonObject().apply {
+            addProperty("action", action)
+            token?.let { addProperty("token", it) }
+            addProperty("progress", progress)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("playerShouldEnqueueDurableScrobble", args.toString()).asBoolean
     }
 
-    fun playerShouldSavePeriodicProgress(isPlaying: Boolean, nowMs: Long, lastSavedAtMs: Long): Boolean = call {
-        playerShouldSavePeriodicProgressNative(isPlaying, nowMs, lastSavedAtMs)
+    fun playerShouldSavePeriodicProgress(isPlaying: Boolean, nowMs: Long, lastSavedAtMs: Long): Boolean {
+        val args = JsonObject().apply {
+            addProperty("isPlaying", isPlaying)
+            addProperty("nowMs", nowMs)
+            addProperty("lastSavedAtMs", lastSavedAtMs)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("playerShouldSavePeriodicProgress", args.toString()).asBoolean
     }
 
-    fun playerShouldSaveOnDispose(positionMs: Long): Boolean = call {
-        playerShouldSaveOnDisposeNative(positionMs)
+    fun playerShouldSaveOnDispose(positionMs: Long): Boolean {
+        val args = JsonObject().apply { addProperty("positionMs", positionMs) }
+        return FluxaCoreUniFfi.coreInvokeValue("playerShouldSaveOnDispose", args.toString()).asBoolean
     }
 
-    fun safePlayerBufferCacheMb(value: Int?): Int = call {
-        safePlayerBufferCacheMbNative(value ?: 0, value != null)
+    fun safePlayerBufferCacheMb(value: Int?): Int {
+        val args = JsonObject().apply { value?.let { addProperty("value", it) } }
+        return FluxaCoreUniFfi.coreInvokeValue("safePlayerBufferCacheMb", args.toString()).asInt
     }
 
-    fun safeStreamSourceSelectionMode(mode: String?): String = call {
-        safeStreamSourceSelectionModeNative(mode.orEmpty())
+    fun safeStreamSourceSelectionMode(mode: String?): String {
+        val args = JsonObject().apply { mode?.takeIf { it.isNotEmpty() }?.let { addProperty("mode", it) } }
+        return FluxaCoreUniFfi.coreInvokeValue("safeStreamSourceSelectionMode", args.toString()).asString
     }
 
-    fun playerFlowDispatch(state: Any, action: Any): NativePlayerFlowResult = call {
-        val json = playerFlowDispatchJsonNative(gson.toJson(state), gson.toJson(action))
-        json?.takeIf { it.isNotBlank() }?.let { gson.fromJson(it, NativePlayerFlowResult::class.java) }
+    fun playerFlowDispatch(state: Any, action: Any): NativePlayerFlowResult {
+        val args = JsonObject().apply {
+            addProperty("state", gson.toJson(state))
+            addProperty("action", gson.toJson(action))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("playerFlowDispatch", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativePlayerFlowResult::class.java) }
             ?: NativePlayerFlowResult()
     }
 
-    fun traktHasClient(apiKey: String): Boolean = call {
-        traktHasClientNative(apiKey)
+    fun traktHasClient(apiKey: String): Boolean {
+        val args = JsonObject().apply { addProperty("apiKey", apiKey) }
+        return FluxaCoreUniFfi.coreInvokeValue("traktHasClient", args.toString()).asBoolean
     }
 
-    fun traktBearer(token: String): String = call {
-        traktBearerNative(token)
+    fun traktBearer(token: String): String {
+        val args = JsonObject().apply { addProperty("token", token) }
+        return FluxaCoreUniFfi.coreInvokeValue("traktBearer", args.toString()).asString
     }
 
-    fun traktScrobbleUrl(action: String): String = call {
-        traktScrobbleUrlNative(action)
+    fun traktScrobbleUrl(action: String): String {
+        val args = JsonObject().apply { addProperty("action", action) }
+        return FluxaCoreUniFfi.coreInvokeValue("traktScrobbleUrl", args.toString()).asString
     }
 
-    fun traktPlaybackUrl(type: String?): String = call {
-        traktPlaybackUrlNative(type.orEmpty())
+    fun traktPlaybackUrl(type: String?): String {
+        val args = JsonObject().apply { type?.takeIf { it.isNotBlank() }?.let { addProperty("contentType", it) } }
+        return FluxaCoreUniFfi.coreInvokeValue("traktPlaybackUrl", args.toString()).asString
     }
 
-    fun traktTokenExpiresAt(createdAtSeconds: Long, expiresInSeconds: Long): Long = call {
-        traktTokenExpiresAtNative(createdAtSeconds, expiresInSeconds)
+    fun traktTokenExpiresAt(createdAtSeconds: Long, expiresInSeconds: Long): Long {
+        val args = JsonObject().apply {
+            addProperty("createdAtSeconds", createdAtSeconds)
+            addProperty("expiresInSeconds", expiresInSeconds)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("traktTokenExpiresAt", args.toString()).asLong
     }
 
-    fun traktContentIdFrom(ids: TraktIds): String? = call {
-        traktContentIdFromIdsNative(gson.toJson(ids)).takeIf { it.isNotBlank() }
+    fun traktContentIdFrom(ids: TraktIds): String? {
+        val args = JsonObject().apply { addProperty("idsJson", gson.toJson(ids)) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("traktContentIdFromIds", args.toString())
+        return value.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
-    fun traktIdsFromContentId(rawId: String): TraktIds? = call {
-        traktIdsFromContentIdJsonNative(rawId)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, TraktIds::class.java) }
+    fun traktIdsFromContentId(rawId: String): TraktIds? {
+        val args = JsonObject().apply { addProperty("rawId", rawId) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("traktIdsFromContentId", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, TraktIds::class.java) }
     }
 
-    fun traktEpisodeLocator(videoId: String): NativeTraktEpisodeLocator? = call {
-        traktEpisodeLocatorJsonNative(videoId)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, NativeTraktEpisodeLocator::class.java) }
+    fun traktEpisodeLocator(videoId: String): NativeTraktEpisodeLocator? {
+        val args = JsonObject().apply { addProperty("videoId", videoId) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("traktEpisodeLocator", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeTraktEpisodeLocator::class.java) }
     }
 
-    fun traktShowIdFromEpisodeId(videoId: String): String = call {
-        traktShowIdFromEpisodeIdNative(videoId)
+    fun traktShowIdFromEpisodeId(videoId: String): String {
+        val args = JsonObject().apply { addProperty("videoId", videoId) }
+        return FluxaCoreUniFfi.coreInvokeValue("traktShowIdFromEpisodeId", args.toString()).asString
     }
 
-    fun traktScrobbleMediaId(parentId: String, videoId: String?, mediaType: String): String = call {
-        traktScrobbleMediaIdNative(parentId, videoId.orEmpty(), mediaType)
+    fun traktScrobbleMediaId(parentId: String, videoId: String?, mediaType: String): String {
+        val args = JsonObject().apply {
+            addProperty("parentId", parentId)
+            videoId?.takeIf { it.isNotEmpty() }?.let { addProperty("videoId", it) }
+            addProperty("mediaType", mediaType)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("traktScrobbleMediaId", args.toString()).asString
     }
 
-    fun traktOAuthErrorCode(body: String): String? = call {
-        traktOAuthErrorCodeNative(body).takeIf { it.isNotBlank() }
+    fun traktOAuthErrorCode(body: String): String? {
+        val args = JsonObject().apply { addProperty("body", body) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("traktOAuthErrorCode", args.toString())
+        return value.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
-    fun traktHistoryRequest(meta: Meta, episodes: List<Video>): TraktHistorySyncRequest? = call {
-        traktHistoryRequestJsonNative(gson.toJson(meta), gson.toJson(episodes))
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, TraktHistorySyncRequest::class.java) }
+    fun traktHistoryRequest(meta: Meta, episodes: List<Video>): TraktHistorySyncRequest? {
+        val args = JsonObject().apply {
+            addProperty("metaJson", gson.toJson(meta))
+            addProperty("episodesJson", gson.toJson(episodes))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("traktHistoryRequest", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, TraktHistorySyncRequest::class.java) }
     }
 
     fun simklScrobbleBody(
@@ -1531,60 +1699,104 @@ object FluxaCoreNative {
         epNumber: Long,
         timePosSec: Double,
         durationSec: Double
-    ): String? = call {
-        simklScrobbleBodyJsonNative(idsJson, isEpisode, season, epNumber, timePosSec, durationSec)
-            ?.takeIf { it.isNotBlank() }
+    ): String? {
+        val args = JsonObject().apply {
+            addProperty("idsJson", idsJson)
+            addProperty("isEpisode", isEpisode)
+            addProperty("season", season)
+            addProperty("epNumber", epNumber)
+            addProperty("timePosSec", timePosSec)
+            addProperty("durationSec", durationSec)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("simklScrobbleBody", args.toString())
+        return value.takeUnless { it.isJsonNull }?.toString()?.takeIf { it.isNotBlank() }
     }
 
-    fun simklMatchEpisode(episodesJson: String, targetJson: String): NativeSimklEpisodeMatch? = call {
-        simklMatchEpisodeJsonNative(episodesJson, targetJson)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, NativeSimklEpisodeMatch::class.java) }
+    fun simklMatchEpisode(episodesJson: String, targetJson: String): NativeSimklEpisodeMatch? {
+        val args = JsonObject().apply {
+            addProperty("episodesJson", episodesJson)
+            addProperty("targetJson", targetJson)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("simklMatchEpisode", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeSimklEpisodeMatch::class.java) }
     }
 
-    fun simklWatchingToItems(showsJson: String, moviesJson: String): String? = call {
-        simklWatchingToItemsJsonNative(showsJson, moviesJson)?.takeIf { it.isNotBlank() }
+    fun simklWatchingToItems(showsJson: String, moviesJson: String): String? {
+        val args = JsonObject().apply {
+            addProperty("showsJson", showsJson)
+            addProperty("moviesJson", moviesJson)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("simklWatchingToItems", args.toString())
+        return value.takeUnless { it.isJsonNull }?.toString()?.takeIf { it.isNotBlank() }
     }
 
-    fun simklWatchlistToItems(showsJson: String, moviesJson: String): String? = call {
-        simklWatchlistToItemsJsonNative(showsJson, moviesJson)?.takeIf { it.isNotBlank() }
+    fun simklWatchlistToItems(showsJson: String, moviesJson: String): String? {
+        val args = JsonObject().apply {
+            addProperty("showsJson", showsJson)
+            addProperty("moviesJson", moviesJson)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("simklWatchlistToItems", args.toString())
+        return value.takeUnless { it.isJsonNull }?.toString()?.takeIf { it.isNotBlank() }
     }
 
-    fun simklWatchedToIds(showsJson: String, moviesJson: String): String? = call {
-        simklWatchedToIdsJsonNative(showsJson, moviesJson)?.takeIf { it.isNotBlank() }
+    fun simklWatchedToIds(showsJson: String, moviesJson: String): String? {
+        val args = JsonObject().apply {
+            addProperty("showsJson", showsJson)
+            addProperty("moviesJson", moviesJson)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("simklWatchedToIds", args.toString())
+        return value.takeUnless { it.isJsonNull }?.toString()?.takeIf { it.isNotBlank() }
     }
 
-    fun playbackProgressItem(meta: Meta, timeOffset: Long, duration: Long, nowUtc: String): LibraryItem? = call {
-        playbackProgressItemJsonNative(gson.toJson(meta), timeOffset, duration, nowUtc)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, LibraryItem::class.java) }
+    fun playbackProgressItem(meta: Meta, timeOffset: Long, duration: Long, nowUtc: String): LibraryItem? {
+        val args = JsonObject().apply {
+            addProperty("metaJson", gson.toJson(meta))
+            addProperty("timeOffset", timeOffset)
+            addProperty("duration", duration)
+            addProperty("nowUtc", nowUtc)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("playbackProgressItem", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, LibraryItem::class.java) }
     }
 
-    fun clearPlaybackProgressItem(meta: Meta): LibraryItem? = call {
-        clearPlaybackProgressItemJsonNative(gson.toJson(meta))
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, LibraryItem::class.java) }
+    fun clearPlaybackProgressItem(meta: Meta): LibraryItem? {
+        val args = JsonObject().apply { addProperty("metaJson", gson.toJson(meta)) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("clearPlaybackProgressItem", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, LibraryItem::class.java) }
     }
 
-    fun watchedStateItems(meta: Meta, episodes: List<Video>, watched: Boolean, watchedAt: String?): List<LibraryItem> = call {
-        val json = watchedStateItemsJsonNative(gson.toJson(meta), gson.toJson(episodes), watched, watchedAt.orEmpty())
-        gson.fromJson<List<LibraryItem>>(json, libraryItemListType) ?: emptyList()
+    fun watchedStateItems(meta: Meta, episodes: List<Video>, watched: Boolean, watchedAt: String?): List<LibraryItem> {
+        val args = JsonObject().apply {
+            addProperty("metaJson", gson.toJson(meta))
+            addProperty("episodesJson", gson.toJson(episodes))
+            addProperty("watched", watched)
+            watchedAt?.takeIf { it.isNotEmpty() }?.let { addProperty("watchedAt", it) }
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("watchedStateItems", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<LibraryItem>>(it, libraryItemListType) } ?: emptyList()
     }
 
-    fun libraryContinueWatchingItems(items: List<LibraryItem>): List<Meta> = call {
-        val json = libraryContinueWatchingItemsJsonNative(gson.toJson(items))
-        gson.fromJson<List<Meta>>(json, metaListType) ?: emptyList()
+    fun libraryContinueWatchingItems(items: List<LibraryItem>): List<Meta> {
+        val value = FluxaCoreUniFfi.coreInvokeValue("libraryContinueWatchingItems", gson.toJson(items))
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<Meta>>(it, metaListType) } ?: emptyList()
     }
 
-    fun filterHomeContinueWatching(items: List<Meta>, traktWatchedState: TraktWatchedState): List<Meta> = call {
-        val traktJson = gson.toJson(traktWatchedState)
-        val json = filterHomeContinueWatchingJsonNative(gson.toJson(items), traktJson)
-        gson.fromJson<List<Meta>>(json, metaListType) ?: emptyList()
+    fun filterHomeContinueWatching(items: List<Meta>, traktWatchedState: TraktWatchedState): List<Meta> {
+        val args = JsonObject().apply {
+            addProperty("itemsJson", gson.toJson(items))
+            addProperty("traktWatchedJson", gson.toJson(traktWatchedState))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("filterHomeContinueWatching", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<Meta>>(it, metaListType) } ?: emptyList()
     }
 
-    fun watchedVideoIds(items: List<LibraryItem>, imdbId: String): List<String> = call {
-        val json = watchedVideoIdsJsonNative(gson.toJson(items), imdbId)
-        gson.fromJson<List<String>>(json, stringListType) ?: emptyList()
+    fun watchedVideoIds(items: List<LibraryItem>, imdbId: String): List<String> {
+        val args = JsonObject().apply {
+            addProperty("itemsJson", gson.toJson(items))
+            addProperty("imdbId", imdbId)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("watchedVideoIds", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<String>>(it, stringListType) } ?: emptyList()
     }
 
     fun offlineDownloadPlan(
@@ -1594,7 +1806,7 @@ object FluxaCoreNative {
         stream: Stream,
         subtitleUrl: String?,
         downloadId: String
-    ): NativeOfflineDownloadPlan = call {
+    ): NativeOfflineDownloadPlan {
         val request = NativeOfflineDownloadPlanRequest(
             meta = meta,
             video = video,
@@ -1603,13 +1815,14 @@ object FluxaCoreNative {
             subtitleUrl = subtitleUrl,
             downloadId = downloadId
         )
-        gson.fromJson(offlineDownloadPlanJsonNative(gson.toJson(request)), NativeOfflineDownloadPlan::class.java)
+        val value = FluxaCoreUniFfi.coreInvokeValue("offlineDownloadPlan", gson.toJson(request))
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeOfflineDownloadPlan::class.java) }
             ?: NativeOfflineDownloadPlan(reason = "unsupported_source")
     }
 
-    fun profileSafePrefs(profile: Any): NativeProfileSafePrefs = call {
-        gson.fromJson(profileSafePrefsJsonNative(gson.toJson(profile)), NativeProfileSafePrefs::class.java)
-            ?: NativeProfileSafePrefs()
+    fun profileSafePrefs(profile: Any): NativeProfileSafePrefs {
+        val value = FluxaCoreUniFfi.coreInvokeValue("profileSafePrefs", gson.toJson(profile))
+        return gson.fromJson(value, NativeProfileSafePrefs::class.java) ?: NativeProfileSafePrefs()
     }
 
     fun <T> sanitizeProfile(
@@ -1617,29 +1830,33 @@ object FluxaCoreNative {
         mirroredAddons: Collection<String>,
         mergeMirroredAddons: Boolean,
         type: Class<T>
-    ): T? = call {
-        sanitizeProfileJsonNative(gson.toJson(profile), gson.toJson(mirroredAddons), mergeMirroredAddons)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, type) }
+    ): T? {
+        val args = JsonObject().apply {
+            addProperty("profile", gson.toJson(profile))
+            addProperty("mirroredAddons", gson.toJson(mirroredAddons))
+            addProperty("mergeMirroredAddons", mergeMirroredAddons)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("sanitizeProfile", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, type) }
     }
 
-    fun profileLocalAddonsKey(profile: Any): String = call {
-        profileLocalAddonsKeyNative(gson.toJson(profile))
-    }
+    fun profileLocalAddonsKey(profile: Any): String =
+        FluxaCoreUniFfi.coreInvokeValue("profileLocalAddonsKey", gson.toJson(profile)).asString
 
     fun cacheEntryPolicy(
         key: String,
         storedAtMillis: Long,
         ttlMillis: Long,
         nowMillis: Long
-    ): NativeCacheEntryPolicy = call {
+    ): NativeCacheEntryPolicy {
         val request = NativeCacheEntryPolicyRequest(
             key = key,
             storedAtMillis = storedAtMillis,
             ttlMillis = ttlMillis,
             nowMillis = nowMillis
         )
-        gson.fromJson(cacheEntryPolicyJsonNative(gson.toJson(request)), NativeCacheEntryPolicy::class.java)
+        val value = FluxaCoreUniFfi.coreInvokeValue("cacheEntryPolicy", gson.toJson(request))
+        return gson.fromJson(value, NativeCacheEntryPolicy::class.java)
             ?: NativeCacheEntryPolicy(key = key, storedAtMillis = storedAtMillis)
     }
 
@@ -1647,7 +1864,7 @@ object FluxaCoreNative {
         entries: List<Triple<String, Long, Long>>,
         maxEntries: Int,
         nowMillis: Long
-    ): NativeCacheTrimPolicy = call {
+    ): NativeCacheTrimPolicy {
         val request = NativeCacheTrimPolicyRequest(
             entries = entries.map { (key, expiresAtMillis, storedAtMillis) ->
                 NativeCacheTrimPolicyEntry(
@@ -1659,8 +1876,8 @@ object FluxaCoreNative {
             maxEntries = maxEntries,
             nowMillis = nowMillis
         )
-        gson.fromJson(cacheTrimPolicyJsonNative(gson.toJson(request)), NativeCacheTrimPolicy::class.java)
-            ?: NativeCacheTrimPolicy()
+        val value = FluxaCoreUniFfi.coreInvokeValue("cacheTrimPolicy", gson.toJson(request))
+        return gson.fromJson(value, NativeCacheTrimPolicy::class.java) ?: NativeCacheTrimPolicy()
     }
 
     fun dataFailurePolicy(
@@ -1670,7 +1887,7 @@ object FluxaCoreNative {
         throwableClass: String? = null,
         reason: String? = null,
         statusCode: Long? = null
-    ): NativeDataFailurePolicy = call {
+    ): NativeDataFailurePolicy {
         val request = NativeDataFailurePolicyRequest(
             operation = operation,
             kind = kind,
@@ -1679,127 +1896,102 @@ object FluxaCoreNative {
             reason = reason,
             statusCode = statusCode
         )
-        gson.fromJson(dataFailurePolicyJsonNative(gson.toJson(request)), NativeDataFailurePolicy::class.java)
+        val value = FluxaCoreUniFfi.coreInvokeValue("dataFailurePolicy", gson.toJson(request))
+        return gson.fromJson(value, NativeDataFailurePolicy::class.java)
             ?: NativeDataFailurePolicy(operation = operation, kind = kind, message = message ?: reason.orEmpty())
     }
 
-    // ── calendar_plan ─────────────────────────────────────────────────────────
-    fun calendarContentPlanJson(requestJson: String): String = call {
-        calendarContentPlanJsonNative(requestJson)
-    }
-
-    fun calendarSeasonCandidatesJson(requestJson: String): List<Int> = call {
-        val json = calendarSeasonCandidatesJsonNative(requestJson)
-        gson.fromJson<List<Int>>(json, object : TypeToken<List<Int>>() {}.type) ?: emptyList()
-    }
-
-    fun calendarWidgetRowsJson(requestJson: String): String = call {
-        calendarWidgetRowsJsonNative(requestJson)
-    }
-
-    fun calendarNotificationContent(requestJson: String): NativeCalendarNotificationContent = call {
-        gson.fromJson(calendarNotificationContentJsonNative(requestJson), NativeCalendarNotificationContent::class.java)
-            ?: NativeCalendarNotificationContent()
-    }
-
-    fun calendarReleaseDetectionJson(requestJson: String): String = call {
-        calendarReleaseDetectionJsonNative(requestJson)
-    }
-
     // ── profile_contract ──────────────────────────────────────────────────────
-    fun activeProfilePlanJson(requestJson: String): NativeActiveProfilePlan = call {
-        gson.fromJson(activeProfilePlanJsonNative(requestJson), NativeActiveProfilePlan::class.java)
-            ?: NativeActiveProfilePlan()
+    fun activeProfilePlanJson(requestJson: String): NativeActiveProfilePlan {
+        val value = FluxaCoreUniFfi.coreInvokeValue("activeProfilePlan", requestJson)
+        return gson.fromJson(value, NativeActiveProfilePlan::class.java) ?: NativeActiveProfilePlan()
     }
 
-    fun tokenMergePlanJson(requestJson: String): String = call {
-        tokenMergePlanJsonNative(requestJson)
+    fun tokenMergePlanJson(requestJson: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("tokenMergePlan", requestJson).toString()
+
+    fun profileDefaultSeedJson(requestJson: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("profileDefaultSeed", requestJson).toString()
+
+    fun profileSettingsMigrationPlan(requestJson: String): NativeProfileSettingsMigration {
+        val value = FluxaCoreUniFfi.coreInvokeValue("profileSettingsMigrationPlan", requestJson)
+        return gson.fromJson(value, NativeProfileSettingsMigration::class.java) ?: NativeProfileSettingsMigration()
     }
 
-    fun profileDefaultSeedJson(requestJson: String): String = call {
-        profileDefaultSeedJsonNative(requestJson)
-    }
-
-    fun profileSettingsMigrationPlan(requestJson: String): NativeProfileSettingsMigration = call {
-        gson.fromJson(profileSettingsMigrationPlanJsonNative(requestJson), NativeProfileSettingsMigration::class.java)
-            ?: NativeProfileSettingsMigration()
-    }
-
-    fun profileAvatarDefault(requestJson: String): NativeProfileAvatarDefault = call {
-        gson.fromJson(profileAvatarDefaultJsonNative(requestJson), NativeProfileAvatarDefault::class.java)
-            ?: NativeProfileAvatarDefault()
+    fun profileAvatarDefault(requestJson: String): NativeProfileAvatarDefault {
+        val value = FluxaCoreUniFfi.coreInvokeValue("profileAvatarDefault", requestJson)
+        return gson.fromJson(value, NativeProfileAvatarDefault::class.java) ?: NativeProfileAvatarDefault()
     }
 
     // ── watchlist_plan ────────────────────────────────────────────────────────
-    fun watchlistTogglePlan(requestJson: String): NativeWatchlistTogglePlan = call {
-        gson.fromJson(watchlistTogglePlanJsonNative(requestJson), NativeWatchlistTogglePlan::class.java)
-            ?: NativeWatchlistTogglePlan()
+    fun watchlistTogglePlan(requestJson: String): NativeWatchlistTogglePlan {
+        val value = FluxaCoreUniFfi.coreInvokeValue("watchlistTogglePlan", requestJson)
+        return gson.fromJson(value, NativeWatchlistTogglePlan::class.java) ?: NativeWatchlistTogglePlan()
     }
 
-    fun libraryExternalMergePlanJson(requestJson: String): String = call {
-        libraryExternalMergePlanJsonNative(requestJson)
-    }
+    fun libraryExternalMergePlanJson(requestJson: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("libraryExternalMergePlan", requestJson).toString()
 
-    fun libraryCollectionImportValidation(requestJson: String): NativeLibraryCollectionImportValidation = call {
-        gson.fromJson(libraryCollectionImportValidationJsonNative(requestJson), NativeLibraryCollectionImportValidation::class.java)
+    fun libraryCollectionImportValidation(requestJson: String): NativeLibraryCollectionImportValidation {
+        val value = FluxaCoreUniFfi.coreInvokeValue("libraryCollectionImportValidation", requestJson)
+        return gson.fromJson(value, NativeLibraryCollectionImportValidation::class.java)
             ?: NativeLibraryCollectionImportValidation()
     }
 
-    fun libraryOfflineGrouping(requestJson: String): NativeLibraryOfflineGrouping = call {
-        gson.fromJson(libraryOfflineGroupingJsonNative(requestJson), NativeLibraryOfflineGrouping::class.java)
+    fun libraryOfflineGrouping(requestJson: String): NativeLibraryOfflineGrouping {
+        val value = FluxaCoreUniFfi.coreInvokeValue("libraryOfflineGrouping", requestJson)
+        return gson.fromJson(value, NativeLibraryOfflineGrouping::class.java)
             ?: NativeLibraryOfflineGrouping()
     }
 
-    fun playbackProgressMergePlanJson(requestJson: String): String = call {
-        playbackProgressMergePlanJsonNative(requestJson)
-    }
+    fun playbackProgressMergePlanJson(requestJson: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("playbackProgressMergePlan", requestJson).toString()
 
     // ── player_policy ─────────────────────────────────────────────────────────
-    fun playerBackendSelection(requestJson: String): NativePlayerBackendSelection = call {
-        gson.fromJson(playerBackendSelectionJsonNative(requestJson), NativePlayerBackendSelection::class.java)
-            ?: NativePlayerBackendSelection()
+    fun playerBackendSelection(requestJson: String): NativePlayerBackendSelection {
+        val value = FluxaCoreUniFfi.coreInvokeValue("playerBackendSelection", requestJson)
+        return gson.fromJson(value, NativePlayerBackendSelection::class.java) ?: NativePlayerBackendSelection()
     }
 
-    fun torrentFallbackFilePolicy(requestJson: String): NativeTorrentFallbackFilePolicy = call {
-        gson.fromJson(torrentFallbackFilePolicyJsonNative(requestJson), NativeTorrentFallbackFilePolicy::class.java)
+    fun torrentFallbackFilePolicy(requestJson: String): NativeTorrentFallbackFilePolicy {
+        val value = FluxaCoreUniFfi.coreInvokeValue("torrentFallbackFilePolicy", requestJson)
+        return gson.fromJson(value, NativeTorrentFallbackFilePolicy::class.java)
             ?: NativeTorrentFallbackFilePolicy()
     }
 
-    fun playerBufferTargets(requestJson: String): NativePlayerBufferTargets = call {
-        gson.fromJson(playerBufferTargetsJsonNative(requestJson), NativePlayerBufferTargets::class.java)
-            ?: NativePlayerBufferTargets()
+    fun playerBufferTargets(requestJson: String): NativePlayerBufferTargets {
+        val value = FluxaCoreUniFfi.coreInvokeValue("playerBufferTargets", requestJson)
+        return gson.fromJson(value, NativePlayerBufferTargets::class.java) ?: NativePlayerBufferTargets()
     }
 
-    fun playerRetryPolicy(requestJson: String): NativePlayerRetryPolicy = call {
-        gson.fromJson(playerRetryPolicyJsonNative(requestJson), NativePlayerRetryPolicy::class.java)
-            ?: NativePlayerRetryPolicy()
+    fun playerRetryPolicy(requestJson: String): NativePlayerRetryPolicy {
+        val value = FluxaCoreUniFfi.coreInvokeValue("playerRetryPolicy", requestJson)
+        return gson.fromJson(value, NativePlayerRetryPolicy::class.java) ?: NativePlayerRetryPolicy()
     }
 
-    fun playerSourceSidebarPlanJson(requestJson: String): String = call {
-        playerSourceSidebarPlanJsonNative(requestJson)
-    }
+    fun playerSourceSidebarPlanJson(requestJson: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("playerSourceSidebarPlan", requestJson).toString()
 
     // ── search_plan ───────────────────────────────────────────────────────────
-    fun searchResultGrouping(requestJson: String): NativeSearchResultGrouping = call {
-        gson.fromJson(searchResultGroupingJsonNative(requestJson), NativeSearchResultGrouping::class.java)
-            ?: NativeSearchResultGrouping()
+    fun searchResultGrouping(requestJson: String): NativeSearchResultGrouping {
+        val value = FluxaCoreUniFfi.coreInvokeValue("searchResultGrouping", requestJson)
+        return gson.fromJson(value, NativeSearchResultGrouping::class.java) ?: NativeSearchResultGrouping()
     }
 
-    fun discoverSortPlanJson(requestJson: String): String = call {
-        discoverSortPlanJsonNative(requestJson)
+    fun discoverSortPlanJson(requestJson: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("discoverSortPlan", requestJson).toString()
+
+    fun librarySortPlanJson(requestJson: String): String =
+        FluxaCoreUniFfi.coreInvokeValue("librarySortPlan", requestJson).toString()
+
+    fun detailSeriesLookupId(rawId: String): String {
+        val args = JsonObject().apply { addProperty("id", rawId) }
+        return FluxaCoreUniFfi.coreInvokeValue("detailSeriesLookupId", args.toString()).asString
     }
 
-    fun librarySortPlanJson(requestJson: String): String = call {
-        librarySortPlanJsonNative(requestJson)
-    }
-
-    fun detailSeriesLookupId(rawId: String): String = call {
-        detailSeriesLookupIdNative(rawId)
-    }
-
-    fun detailSeasonLoadPlan(requestJson: String): NativeDetailSeasonLoadPlan = call {
-        gson.fromJson(detailSeasonLoadPlanJsonNative(requestJson), NativeDetailSeasonLoadPlan::class.java)
-            ?: NativeDetailSeasonLoadPlan()
+    fun detailSeasonLoadPlan(requestJson: String): NativeDetailSeasonLoadPlan {
+        val value = FluxaCoreUniFfi.coreInvokeValue("detailSeasonLoadPlan", requestJson)
+        return gson.fromJson(value, NativeDetailSeasonLoadPlan::class.java) ?: NativeDetailSeasonLoadPlan()
     }
 
     private inline fun <T> call(block: () -> T): T {
@@ -1818,7 +2010,6 @@ object FluxaCoreNative {
     }
 
     private external fun coreInvokeNative(method: String, argsJson: String): String?
-    private external fun normalizeManifestUrlNative(rawUrl: String): String
     private external fun createAppCoreStateNative(initialJson: String): Long
     private external fun destroyAppCoreStateNative(handle: Long): Boolean
     private external fun appCoreStateJsonNative(handle: Long): String?
@@ -1828,286 +2019,4 @@ object FluxaCoreNative {
     private external fun headlessEngineSnapshotJsonNative(handle: Long): String?
     private external fun headlessEngineDispatchJsonNative(handle: Long, actionJson: String): String?
     private external fun headlessEngineCompleteEffectJsonNative(handle: Long, resultJson: String): String?
-    private external fun coreCapabilitiesJsonNative(portable: Boolean): String
-    private external fun identityNative(rawUrl: String): String
-    private external fun manifestCandidatesJsonNative(rawUrl: String): String
-    private external fun manifestFetchPlanJsonNative(rawUrl: String): String?
-    private external fun baseUrlNative(rawUrl: String): String
-    private external fun preferHttpsAssetUrlNative(rawUrl: String): String
-    private external fun addonStoreInputTypeNative(text: String): String
-    private external fun normalizeCloudstreamRepoUrlNative(rawUrl: String): String
-    private external fun normalizePluginRepositoryUrlNative(rawUrl: String): String
-    private external fun pluginIsSecureRemoteUrlNative(url: String): Boolean
-    private external fun pluginSameRepositoryUrlNative(left: String, right: String): Boolean
-    private external fun extractAddonManifestUrlNative(detailText: String): String
-    private external fun addonStoreSearchPolicyJsonNative(requestJson: String): String
-    private external fun repositoryMetaDetailPlanJsonNative(requestJson: String): String
-    private external fun repositorySeasonVideosJsonNative(metaDetailJson: String, seasonNumber: Int): String
-    private external fun manifestFetchDecisionJsonNative(requestJson: String): String
-    private external fun addonResourceRequestPlanJsonNative(requestJson: String): String
-    private external fun addonStreamsWithProviderJsonNative(streamsJson: String, addonName: String): String
-    private external fun headlessProviderAvailabilityPlanJsonNative(requestJson: String): String
-    private external fun headlessDetailStreamResultPlanJsonNative(requestJson: String): String
-    private external fun headlessPrefetchDetailStreamsPlanJsonNative(requestJson: String): String
-    private external fun headlessDirectPlaybackPolicyJsonNative(): String
-    private external fun offlineDownloadPlanJsonNative(requestJson: String): String
-    private external fun profileSafePrefsJsonNative(profileJson: String): String
-    private external fun sanitizeProfileJsonNative(
-        profileJson: String,
-        mirroredAddonsJson: String,
-        mergeMirroredAddons: Boolean
-    ): String?
-    private external fun profileLocalAddonsKeyNative(profileJson: String): String
-    private external fun cacheEntryPolicyJsonNative(requestJson: String): String
-    private external fun cacheTrimPolicyJsonNative(requestJson: String): String
-    private external fun dataFailurePolicyJsonNative(requestJson: String): String
-    private external fun buildResourceUrlNative(
-        transportUrl: String,
-        resource: String,
-        type: String,
-        id: String,
-        extraJson: String
-    ): String
-    private external fun parseManifestJsonNative(body: String, transportUrl: String, unknownName: String): String
-    private external fun resolveManifestAssetsJsonNative(descriptorJson: String): String
-    private external fun mergeLiveManifestJsonNative(
-        descriptorJson: String,
-        liveJson: String,
-        unknownName: String
-    ): String
-    private external fun supportsResourceNative(manifestJson: String, resourceName: String, type: String, id: String): Boolean
-    private external fun catalogSupportsExtraNative(catalogJson: String, extraName: String): Boolean
-    private external fun catalogRequiresExtraNative(catalogJson: String, extraName: String): Boolean
-    private external fun catalogHasRequiredExtraExceptNative(catalogJson: String, allowedNamesJson: String): Boolean
-    private external fun parseEpisodeLocatorJsonNative(raw: String): String?
-    private external fun streamRequestIdsJsonNative(
-        type: String,
-        id: String,
-        detailId: String,
-        currentSeriesLookupId: String,
-        canonicalBaseId: String
-    ): String
-    private external fun playbackStreamRequestIdsJsonNative(type: String, id: String, detailId: String): String
-    private external fun streamDiscoveryEpisodeContextJsonNative(
-        type: String,
-        requestId: String,
-        detailJson: String,
-        seasonEpisodesJson: String
-    ): String
-    private external fun playbackIntroLookupContentIdNative(id: String): String
-    private external fun directPlaybackPlanJsonNative(metaJson: String, detailJson: String, todayIso: String): String
-    private external fun streamPlaybackInfoJsonNative(streamJson: String): String
-    private external fun dvProxyPlanJsonNative(requestJson: String): String
-    private external fun dolbyVisionRpuInfoJsonNative(requestJson: String): String
-    private external fun dolbyVisionConvertRpuJsonNative(requestJson: String): String
-    private external fun streamRequestHeadersJsonNative(headersJson: String): String
-    private external fun streamRequestRefererNative(url: String): String
-    private external fun episodeTextMatchesNative(text: String, season: Int, episode: Int): Boolean
-    private external fun streamMatchesEpisodeNative(
-        videoId: String,
-        title: String,
-        name: String,
-        description: String,
-        filename: String,
-        effectiveFilename: String
-    ): Boolean
-    private external fun selectStreamIndexNative(
-        streamsJson: String,
-        currentVideoId: String,
-        initialStreamIndex: Int,
-        savedUrl: String,
-        savedTitle: String,
-        sourceSelectionMode: String,
-        regexPattern: String,
-        preferredBingeGroup: String
-    ): Int
-    private external fun mergeContinueWatchingDuplicatesJsonNative(itemsJson: String): String
-    private external fun filterDiscoverResultsJsonNative(
-        itemsJson: String,
-        year: String,
-        rating: Float,
-        hasRating: Boolean,
-        region: String
-    ): String
-    private external fun resolvePreferredAudioLanguageNative(
-        lastAudioLanguage: String,
-        preferredAudioLanguage: String,
-        originalLanguage: String
-    ): String
-    private external fun subtitleLanguageMatchesNative(
-        label: String,
-        language: String,
-        preferredLanguage: String
-    ): Boolean
-    private external fun findPreferredSubtitleIndexNative(
-        tracksJson: String,
-        lastSubtitleLanguage: String,
-        preferredSubtitleLanguage: String,
-        secondarySubtitleLanguage: String
-    ): Int
-    private external fun playerTrackStateJsonNative(requestJson: String): String
-    private external fun parseAddonResourceResultJsonNative(
-        resource: String,
-        url: String,
-        statusCode: Int,
-        body: String
-    ): String
-    private external fun normalizeAddonSubtitlesJsonNative(subtitlesJson: String, resourceUrl: String): String
-    private external fun torrentRuntimeInfoJsonNative(requestJson: String): String
-    private external fun torrentStatusInfoJsonNative(statusJson: String): String
-    private external fun stableFeedPartNative(value: String): String
-    private external fun normalizeContentTypeNative(value: String): String
-    private external fun parseExtraArgsJsonNative(extra: String): String
-    private external fun providerSearchTermsJsonNative(provider: String): String
-    private external fun effectiveMetadataFeedSelectionJsonNative(selectedKeysJson: String, availableKeysJson: String): String?
-    private external fun toggleMetadataFeedJsonNative(selectedKeysJson: String, availableKeysJson: String, key: String): String
-    private external fun toggleMetadataFeedLimitedJsonNative(
-        selectedKeysJson: String,
-        availableKeysJson: String,
-        key: String,
-        maxEnabled: Int
-    ): String
-    private external fun setMetadataFeedGroupEnabledJsonNative(
-        selectedKeysJson: String,
-        availableKeysJson: String,
-        groupKeysJson: String,
-        enabled: Boolean
-    ): String
-    private external fun orderedMetadataFeedKeysJsonNative(optionKeysJson: String, orderJson: String): String
-    private external fun moveMetadataFeedOrderJsonNative(
-        optionKeysJson: String,
-        currentOrderJson: String,
-        key: String,
-        delta: Int
-    ): String
-    private external fun contentTraktKeysBatchJsonNative(metasJson: String): String
-    private external fun contentMergeKeysJsonNative(metaJson: String): String
-    private external fun contentWatchedKeysBatchJsonNative(metasJson: String): String
-    private external fun episodeFilenameCandidateNative(streamJson: String, videoId: String): String
-    private external fun streamDiscoveryCacheKeyNative(requestJson: String): String
-    private external fun discoverCatalogCacheKeyNative(requestJson: String): String
-    private external fun streamDiscoveryPlanJsonNative(requestJson: String): String?
-    private external fun streamDiscoveryExecutionPolicyJsonNative(requestJson: String): String?
-    private external fun streamDiscoveryCachePrefixNative(type: String, id: String, language: String): String
-    private external fun buildBillboardPoolJsonNative(enrichedJson: String, candidatesJson: String): String?
-    private external fun normalizeHomeCatalogItemsJsonNative(
-        itemsJson: String,
-        catalogId: String,
-        genre: String,
-        todayIso: String
-    ): String?
-    private external fun curateHomeItemsJsonNative(categoryJson: String): String
-    private external fun homeOverlapRatioNative(firstCategoryJson: String, secondCategoryJson: String): Float
-    private external fun homePersonalizationScoreNative(
-        categoryJson: String,
-        preferredGenresJson: String,
-        preferredTypesJson: String,
-        priorityLabelsJson: String
-    ): Int
-    private external fun prioritizeHomeRowsJsonNative(
-        categoriesJson: String,
-        preferredOrderLabelsJson: String,
-        preferredGenresJson: String,
-        preferredTypesJson: String,
-        priorityLabelsJson: String
-    ): String
-    private external fun optimizeHomeRowsJsonNative(requestJson: String): String
-    private external fun playerProgressPercentNative(positionMs: Long, durationMs: Long): Float
-    private external fun playerShouldSendScrobbleStartNative(
-        token: String,
-        isPlaying: Boolean,
-        hasScrobbledStart: Boolean,
-        progress: Float
-    ): Boolean
-    private external fun playerShouldMarkScrobbleStoppedNative(hasScrobbledStop: Boolean, progress: Float): Boolean
-    private external fun playerShouldQueueScrobblePauseNative(
-        token: String,
-        wasPlayWhenReady: Boolean,
-        hasScrobbledStart: Boolean,
-        hasScrobbledStop: Boolean
-    ): Boolean
-    private external fun playerShouldEnqueueDurableScrobbleNative(
-        action: String,
-        token: String,
-        progress: Float
-    ): Boolean
-    private external fun playerShouldSavePeriodicProgressNative(
-        isPlaying: Boolean,
-        nowMs: Long,
-        lastSavedAtMs: Long
-    ): Boolean
-    private external fun playerShouldSaveOnDisposeNative(positionMs: Long): Boolean
-    private external fun safePlayerBufferCacheMbNative(value: Int, hasValue: Boolean): Int
-    private external fun safeStreamSourceSelectionModeNative(mode: String): String
-    private external fun playerFlowDispatchJsonNative(stateJson: String, actionJson: String): String?
-    private external fun traktHasClientNative(apiKey: String): Boolean
-    private external fun traktBearerNative(token: String): String
-    private external fun traktScrobbleUrlNative(action: String): String
-    private external fun traktPlaybackUrlNative(type: String): String
-    private external fun traktTokenExpiresAtNative(createdAtSeconds: Long, expiresInSeconds: Long): Long
-    private external fun traktContentIdFromIdsNative(idsJson: String): String
-    private external fun traktIdsFromContentIdJsonNative(rawId: String): String?
-    private external fun traktEpisodeLocatorJsonNative(videoId: String): String?
-    private external fun traktShowIdFromEpisodeIdNative(videoId: String): String
-    private external fun traktScrobbleMediaIdNative(parentId: String, videoId: String, mediaType: String): String
-    private external fun traktOAuthErrorCodeNative(body: String): String
-    private external fun traktHistoryRequestJsonNative(metaJson: String, episodesJson: String): String?
-    private external fun simklScrobbleBodyJsonNative(
-        idsJson: String,
-        isEpisode: Boolean,
-        season: Long,
-        epNumber: Long,
-        timePosSec: Double,
-        durationSec: Double
-    ): String?
-    private external fun simklMatchEpisodeJsonNative(episodesJson: String, targetJson: String): String?
-    private external fun simklWatchingToItemsJsonNative(showsJson: String, moviesJson: String): String?
-    private external fun simklWatchlistToItemsJsonNative(showsJson: String, moviesJson: String): String?
-    private external fun simklWatchedToIdsJsonNative(showsJson: String, moviesJson: String): String?
-    private external fun playbackProgressItemJsonNative(metaJson: String, timeOffset: Long, duration: Long, nowUtc: String): String?
-    private external fun clearPlaybackProgressItemJsonNative(metaJson: String): String?
-    private external fun watchedStateItemsJsonNative(
-        metaJson: String,
-        episodesJson: String,
-        watched: Boolean,
-        watchedAt: String
-    ): String
-    private external fun libraryContinueWatchingItemsJsonNative(itemsJson: String): String
-    private external fun filterHomeContinueWatchingJsonNative(itemsJson: String, traktWatchedJson: String): String
-    private external fun watchedVideoIdsJsonNative(itemsJson: String, imdbId: String): String
-
-    // ── calendar_plan ─────────────────────────────────────────────────────────
-    private external fun calendarContentPlanJsonNative(requestJson: String): String
-    private external fun calendarSeasonCandidatesJsonNative(requestJson: String): String
-    private external fun calendarWidgetRowsJsonNative(requestJson: String): String
-    private external fun calendarNotificationContentJsonNative(requestJson: String): String
-    private external fun calendarReleaseDetectionJsonNative(requestJson: String): String
-
-    // ── profile_contract ──────────────────────────────────────────────────────
-    private external fun activeProfilePlanJsonNative(requestJson: String): String
-    private external fun tokenMergePlanJsonNative(requestJson: String): String
-    private external fun profileDefaultSeedJsonNative(requestJson: String): String
-    private external fun profileSettingsMigrationPlanJsonNative(requestJson: String): String
-    private external fun profileAvatarDefaultJsonNative(requestJson: String): String
-
-    // ── watchlist_plan ────────────────────────────────────────────────────────
-    private external fun watchlistTogglePlanJsonNative(requestJson: String): String
-    private external fun libraryExternalMergePlanJsonNative(requestJson: String): String
-    private external fun libraryCollectionImportValidationJsonNative(requestJson: String): String
-    private external fun libraryOfflineGroupingJsonNative(requestJson: String): String
-    private external fun playbackProgressMergePlanJsonNative(requestJson: String): String
-
-    // ── player_policy ─────────────────────────────────────────────────────────
-    private external fun playerBackendSelectionJsonNative(requestJson: String): String
-    private external fun torrentFallbackFilePolicyJsonNative(requestJson: String): String
-    private external fun playerBufferTargetsJsonNative(requestJson: String): String
-    private external fun playerRetryPolicyJsonNative(requestJson: String): String
-    private external fun playerSourceSidebarPlanJsonNative(requestJson: String): String
-
-    // ── search_plan ───────────────────────────────────────────────────────────
-    private external fun searchResultGroupingJsonNative(requestJson: String): String
-    private external fun discoverSortPlanJsonNative(requestJson: String): String
-    private external fun librarySortPlanJsonNative(requestJson: String): String
-    private external fun detailSeriesLookupIdNative(rawId: String): String
-    private external fun detailSeasonLoadPlanJsonNative(requestJson: String): String
 }

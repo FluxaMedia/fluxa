@@ -407,11 +407,11 @@ class FluxaCoreBenchmarkTest {
                 !name.contains("cacheTrimPolicy", ignoreCase = true)
         }
         assertTrue(nativeCacheStorageFunctions.isEmpty())
-        assertTrue(nativeFunctionNames.any { it == "cacheEntryPolicyJsonNative" })
-        assertTrue(nativeFunctionNames.any { it == "cacheTrimPolicyJsonNative" })
+        assertTrue(nativeFunctionNames.any { it == "cacheEntryPolicy" })
+        assertTrue(nativeFunctionNames.any { it == "cacheTrimPolicy" })
         assertFalse(nativeFunctionNames.any { it == "startLocalStreamServerNative" })
         assertFalse(nativeFunctionNames.any { it == "stopLocalStreamServerNative" })
-        assertTrue(nativeFunctionNames.any { it == "parseManifestJsonNative" })
+        assertTrue(nativeFunctionNames.any { it == "coreInvokeNative" })
     }
 
     private fun startStaticServer(payload: ByteArray, requestCount: AtomicInteger): StaticByteServer {
