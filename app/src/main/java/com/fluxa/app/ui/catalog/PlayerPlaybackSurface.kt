@@ -175,7 +175,8 @@ internal fun BoxScope.PlayerPlaybackSurface(
             val relayRendererActive by (libassRelay?.activeRenderer?.let { it.map { r -> r != null } }
                 ?: MutableStateFlow(false)).collectAsStateWithLifecycle(false)
 
-            val nativeAssActive = relayRendererActive && currentSubtitle != null ||
+            val currentSubtitleIsAss = currentSubtitle?.sampleMimeType?.contains("ssa", ignoreCase = true) == true
+            val nativeAssActive = relayRendererActive && currentSubtitleIsAss ||
                 selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles) != null ||
                 selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks) != null
             LaunchedEffect(
@@ -457,7 +458,6 @@ internal fun PlayerSettingsPanel(
     onSubtitleTextOpacityChange: (Float) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleOutlineOpacityChange: (Float) -> Unit,
-    onInlineDelayAdjust: (Int) -> Unit = {},
     currentPositionMs: Long = 0L,
     markSegmentType: String? = null,
     markSegmentStartMs: Long? = null,
@@ -548,7 +548,6 @@ internal fun PlayerSettingsPanel(
             onSubtitleTextOpacityChange = onSubtitleTextOpacityChange,
             onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
             onSubtitleOutlineOpacityChange = onSubtitleOutlineOpacityChange,
-            onInlineDelayAdjust = onInlineDelayAdjust,
             deviceType = deviceType,
             lang = lang,
             languageDisplayName = ::nativeLanguageName,

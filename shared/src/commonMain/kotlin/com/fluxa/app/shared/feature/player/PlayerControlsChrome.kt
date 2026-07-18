@@ -656,7 +656,7 @@ fun MobilePlayerSeekbar(
 
             Column(
                 modifier = Modifier
-                    .overlayAboveBottom(gap = 14.dp)
+                    .overlayAboveBottom(gap = 6.dp)
                     .offset(x = clampedLeft)
                     .width(cardWidth),
                 horizontalAlignment = Alignment.CenterHorizontally

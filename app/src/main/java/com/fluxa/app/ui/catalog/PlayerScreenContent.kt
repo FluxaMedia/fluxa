@@ -56,7 +56,6 @@ import com.fluxa.app.player.MediaTrack
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.TorrentStreamStatus
-import com.fluxa.app.shared.feature.player.DelayAdjustPill
 import com.fluxa.app.shared.feature.player.PlayerTopIconButton
 import com.fluxa.app.shared.feature.player.dismissKey
 import com.fluxa.app.shared.feature.player.playerInputControls
@@ -405,10 +404,6 @@ internal fun PlayerScreenContent(
                 },
                 onAudioDelayChange = { state.audioDelayMs = it.coerceIn(-5_000L, 5_000L) },
                 onSubtitleDelayChange = { state.subtitleDelayMs = it.coerceIn(-5_000L, 5_000L) },
-                onInlineDelayAdjust = { target ->
-                    state.inlineDelayTarget = target
-                    state.showSettings = false
-                },
                 onSubtitleTextOpacityChange = { value ->
                     activeProfile?.let { onUpdateProfile(it.copy(subtitleTextOpacity = value.coerceIn(0f, 1f))) }
                 },
@@ -462,28 +457,6 @@ internal fun PlayerScreenContent(
                         }
                     }
                 }
-            )
-        }
-
-        state.inlineDelayTarget?.let { target ->
-            DelayAdjustPill(
-                label = AppStrings.t(lang, if (target == 0) "player.audio_delay" else "player.subtitle_delay"),
-                valueMs = if (target == 0) state.audioDelayMs else state.subtitleDelayMs,
-                onDecrease = {
-                    if (target == 0) {
-                        state.audioDelayMs = (state.audioDelayMs - 250L).coerceIn(-5_000L, 5_000L)
-                    } else {
-                        state.subtitleDelayMs = (state.subtitleDelayMs - 250L).coerceIn(-5_000L, 5_000L)
-                    }
-                },
-                onIncrease = {
-                    if (target == 0) {
-                        state.audioDelayMs = (state.audioDelayMs + 250L).coerceIn(-5_000L, 5_000L)
-                    } else {
-                        state.subtitleDelayMs = (state.subtitleDelayMs + 250L).coerceIn(-5_000L, 5_000L)
-                    }
-                },
-                onDone = { state.inlineDelayTarget = null }
             )
         }
 

@@ -47,11 +47,10 @@ internal fun selectedEmbeddedNativeAssTrack(
     embeddedTracks: List<NativeAssTrack>
 ): NativeAssTrack? {
     if (currentSubtitle == null) return null
-    return embeddedTracks.firstOrNull { track ->
-        track.id == currentSubtitle.id ||
-            track.label == currentSubtitle.label ||
-            track.language == currentSubtitle.language
-    }
+    val containerId = currentSubtitle.containerTrackId?.let { "embedded_ass_$it" }
+    return embeddedTracks.firstOrNull { it.id == containerId }
+        ?: embeddedTracks.firstOrNull { it.label != null && it.label == currentSubtitle.label }
+        ?: embeddedTracks.firstOrNull { it.language != null && it.language == currentSubtitle.language }
 }
 
 @Composable

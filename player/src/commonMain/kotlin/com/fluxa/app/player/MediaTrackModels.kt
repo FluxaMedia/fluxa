@@ -10,7 +10,8 @@ data class MediaTrack(
     val isSelected: Boolean,
     val isSupported: Boolean = true,
     val channelCount: Int? = null,
-    val sampleMimeType: String? = null
+    val sampleMimeType: String? = null,
+    val containerTrackId: String? = null
 ) {
     val audioChannelLabel: String
         get() {
@@ -27,6 +28,19 @@ data class MediaTrack(
                 null -> ""
                 else -> "$channelCount ch"
             }
+        }
+
+    val subtitleFormatLabel: String
+        get() = when {
+            sampleMimeType == null -> ""
+            sampleMimeType.contains("subrip") || sampleMimeType.contains("srt") -> "SRT"
+            sampleMimeType.contains("ssa") || sampleMimeType == "ass" || sampleMimeType.contains("x-ass") -> "ASS"
+            sampleMimeType.contains("vtt") -> "VTT"
+            sampleMimeType.contains("ttml") || sampleMimeType.contains("mov_text") -> "TTML"
+            sampleMimeType.contains("pgs") -> "PGS"
+            sampleMimeType.contains("dvbsubs") || sampleMimeType.contains("dvb_subtitle") -> "DVB"
+            sampleMimeType.contains("dvd_subtitle") || sampleMimeType.contains("vobsub") -> "VOBSUB"
+            else -> ""
         }
 
     private companion object {

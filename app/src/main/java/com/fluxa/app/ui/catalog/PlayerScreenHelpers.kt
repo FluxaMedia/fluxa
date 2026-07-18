@@ -158,15 +158,15 @@ internal suspend fun fetchExternalSubtitleTracks(
     LibassDebugLog.d(
         "fetch external subtitles type=$type id=$id subtitleAddons=${subAddons.size} inline=${inlineSubtitles.size} subtitleExtra=${subtitleExtra.isNotBlank()}"
     )
-    val subtitles = withTimeoutOrNull(2500L) {
-        kotlinx.coroutines.supervisorScope {
-            subAddons.map { addon ->
-                async {
+    val subtitles = kotlinx.coroutines.supervisorScope {
+        subAddons.map { addon ->
+            async {
+                withTimeoutOrNull(2500L) {
                     viewModel.getSubtitlesFromAddon(addon.transportUrl, type, id, subtitleExtra).map { addon.manifest.name to it }
-                }
-            }.awaitAll().flatten()
-        }
-    }.orEmpty()
+                }.orEmpty()
+            }
+        }.awaitAll().flatten()
+    }
     LibassDebugLog.d("external subtitle fetch completed addonSubtitles=${subtitles.size}")
 
     val result = (inlineSubtitles + subtitles)

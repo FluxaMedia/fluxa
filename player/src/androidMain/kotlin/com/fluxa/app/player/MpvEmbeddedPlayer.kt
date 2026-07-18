@@ -806,6 +806,7 @@ class MpvEmbeddedPlayer(context: Context, private val customOptions: String = ""
             val selected = mpv.getPropertyBoolean("track-list/$index/selected") ?: false
             val language = mpv.getPropertyString("track-list/$index/lang")?.takeIf { it.isNotBlank() }
             val title = mpv.getPropertyString("track-list/$index/title")?.takeIf { it.isNotBlank() }
+            val codec = mpv.getPropertyString("track-list/$index/codec")?.takeIf { it.isNotBlank() }
             when (type) {
                 "audio" -> audios.add(
                     MediaTrack(
@@ -815,7 +816,8 @@ class MpvEmbeddedPlayer(context: Context, private val customOptions: String = ""
                         type = C.TRACK_TYPE_AUDIO,
                         groupIndex = mpvId,
                         trackIndex = index,
-                        isSelected = selected
+                        isSelected = selected,
+                        sampleMimeType = codec
                     )
                 )
                 "sub" -> subtitles.add(
@@ -826,7 +828,8 @@ class MpvEmbeddedPlayer(context: Context, private val customOptions: String = ""
                         type = C.TRACK_TYPE_TEXT,
                         groupIndex = mpvId,
                         trackIndex = index,
-                        isSelected = selected
+                        isSelected = selected,
+                        sampleMimeType = codec
                     )
                 )
             }

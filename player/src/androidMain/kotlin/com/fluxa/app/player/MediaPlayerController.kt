@@ -638,7 +638,8 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                         trackIndex = i,
                         isSelected = group.isTrackSelected(i),
                         isSupported = group.isTrackSupported(i),
-                        sampleMimeType = format.sampleMimeType
+                        sampleMimeType = format.sampleMimeType,
+                        containerTrackId = format.id
                     ))
                 }
             }
