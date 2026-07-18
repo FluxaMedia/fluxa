@@ -445,7 +445,6 @@ fun FluxaAppHost(
                 SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
                 SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
                 SettingsAction.CheckForUpdateRequested -> onCheckForUpdateRequested()
-                SettingsAction.ManageDownloadsRequested -> appState.openLibraryDownloads()
                 else -> scope.launch { settingsStore?.dispatch(action) }
             }
         },

@@ -64,7 +64,6 @@ private val SETTINGS_SEARCH_KEYS: List<Pair<String, SettingsCategory>> = listOf(
     "settings.top_10_catalogs" to SettingsCategory.Content,
     "settings.download_source_selection" to SettingsCategory.Downloads,
     "settings.download_subtitle" to SettingsCategory.Downloads,
-    "settings.manage_downloads" to SettingsCategory.Downloads,
     "settings.automatic_updates" to SettingsCategory.Hub,
     "settings.check_for_updates" to SettingsCategory.Hub,
     "settings.developer" to SettingsCategory.Developer

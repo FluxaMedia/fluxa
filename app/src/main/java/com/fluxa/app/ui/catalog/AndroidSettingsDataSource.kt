@@ -173,9 +173,12 @@ class AndroidSettingsDataSource(
             appearance = SettingsAppearanceUiModel(
                 accentColorArgb = profile.safeAccentColorArgb.toLong() and 0xffffffffL,
                 amoledMode = profile.safeAmoledMode,
-                animationsEnabled = profile.safeAnimationsEnabled
+                animationsEnabled = profile.safeAnimationsEnabled,
+                floatingBottomBar = profile.floatingBottomBar ?: false,
+                bottomBarLabels = profile.bottomBarLabels ?: false
             ),
             appearanceHome = SettingsAppearanceHomeUiModel(
+                topBarEnabled = profile.homeTopBarEnabled ?: true,
                 cardCornerPreset = profile.safeCardCornerPreset,
                 interfaceDensity = profile.safeInterfaceDensity,
                 posterWidthPreset = profile.safePosterWidthPreset,
@@ -290,12 +293,15 @@ class AndroidSettingsDataSource(
             accentColorArgb = value.accentColorArgb.toInt(),
             amoledMode = value.amoledMode,
             appTheme = if (value.amoledMode) "dark" else it.appTheme,
-            animationsEnabled = value.animationsEnabled
+            animationsEnabled = value.animationsEnabled,
+            floatingBottomBar = value.floatingBottomBar,
+            bottomBarLabels = value.bottomBarLabels
         )
     }
 
     override suspend fun updateAppearanceHome(value: SettingsAppearanceHomeUiModel) = update {
         it.copy(
+            homeTopBarEnabled = value.topBarEnabled,
             cardCornerPreset = value.cardCornerPreset,
             interfaceDensity = value.interfaceDensity,
             posterWidthPreset = value.posterWidthPreset,

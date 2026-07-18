@@ -19,6 +19,10 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,6 +36,7 @@ import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import com.fluxa.app.shared.skeletonShimmer
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.PosterActionSheet
 
 @Composable
 fun SearchScreen(
@@ -39,9 +44,11 @@ fun SearchScreen(
     language: String?,
     onQueryChanged: (String) -> Unit,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    onAddToLibrary: (CatalogItemUiModel) -> Unit = {},
     onClearHistory: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var actionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -61,11 +68,13 @@ fun SearchScreen(
             state.resultRows.isNotEmpty() -> SearchResultRows(
                 rows = state.resultRows,
                 onItemSelected = onItemSelected,
+                onItemLongPressed = { actionItem = it },
                 modifier = Modifier.weight(1f)
             )
             state.results.isNotEmpty() -> SearchResults(
                 items = state.results,
                 onItemSelected = onItemSelected,
+                onItemLongPressed = { actionItem = it },
                 modifier = Modifier.weight(1f)
             )
             state.isLoading -> SearchSkeletonGrid(modifier = Modifier.weight(1f))
@@ -74,6 +83,7 @@ fun SearchScreen(
                 language = language,
                 recentItems = state.recentItems,
                 onItemSelected = onItemSelected,
+                onItemLongPressed = { actionItem = it },
                 modifier = Modifier.weight(1f)
             )
             state.recentItems.isNotEmpty() -> SearchHistory(
@@ -81,6 +91,7 @@ fun SearchScreen(
                 clearLabel = AppStrings.t(language, "auto.clear_search"),
                 items = state.recentItems,
                 onItemSelected = onItemSelected,
+                onItemLongPressed = { actionItem = it },
                 onClearHistory = onClearHistory,
                 modifier = Modifier.weight(1f)
             )
@@ -90,6 +101,17 @@ fun SearchScreen(
             )
         }
     }
+    actionItem?.let { item ->
+        PosterActionSheet(
+            item = item,
+            language = language,
+            onDismiss = { actionItem = null },
+            onAddToLibrary = {
+                actionItem = null
+                onAddToLibrary(item)
+            }
+        )
+    }
 }
 
 @Composable
@@ -98,6 +120,7 @@ private fun SearchNoResultsForQuery(
     language: String?,
     recentItems: List<CatalogItemUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    onItemLongPressed: (CatalogItemUiModel) -> Unit = {},
     modifier: Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -111,6 +134,7 @@ private fun SearchNoResultsForQuery(
             SearchResults(
                 items = recentItems.take(5),
                 onItemSelected = onItemSelected,
+                onItemLongPressed = onItemLongPressed,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -123,6 +147,7 @@ private fun SearchHistory(
     clearLabel: String,
     items: List<CatalogItemUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    onItemLongPressed: (CatalogItemUiModel) -> Unit = {},
     onClearHistory: () -> Unit,
     modifier: Modifier
 ) {
@@ -143,6 +168,7 @@ private fun SearchHistory(
         SearchResults(
             items = items,
             onItemSelected = onItemSelected,
+            onItemLongPressed = onItemLongPressed,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -152,6 +178,7 @@ private fun SearchHistory(
 internal fun SearchResultRows(
     rows: List<CatalogRowUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    onItemLongPressed: (CatalogItemUiModel) -> Unit = {},
     modifier: Modifier
 ) {
     LazyColumn(
@@ -170,7 +197,7 @@ internal fun SearchResultRows(
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(row.items, key = { it.id }) { item ->
-                        CatalogCard(model = item.card, onClick = { onItemSelected(item) })
+                        CatalogCard(model = item.card, onClick = { onItemSelected(item) }, onLongClick = { onItemLongPressed(item) })
                     }
                 }
             }
@@ -182,6 +209,7 @@ internal fun SearchResultRows(
 internal fun SearchResults(
     items: List<CatalogItemUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    onItemLongPressed: (CatalogItemUiModel) -> Unit = {},
     modifier: Modifier
 ) {
     LazyVerticalGrid(
@@ -192,7 +220,7 @@ internal fun SearchResults(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         gridItems(items, key = { it.id }) { item ->
-            CatalogCard(model = item.card, onClick = { onItemSelected(item) })
+            CatalogCard(model = item.card, onClick = { onItemSelected(item) }, onLongClick = { onItemLongPressed(item) })
         }
     }
 }

@@ -66,6 +66,7 @@ sealed interface CatalogAction {
     data class FilterChanged(val filter: String) : CatalogAction
     data class MarkWatchedRequested(val item: CatalogItemUiModel) : CatalogAction
     data class DropRequested(val item: CatalogItemUiModel) : CatalogAction
+    data class AddToLibraryRequested(val item: CatalogItemUiModel) : CatalogAction
 }
 
 interface CatalogHomeDataSource {

@@ -485,6 +485,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun addToWatchlist(meta: Meta) {
+        viewModelScope.launch {
+            if (!watchlistManager.isInWatchlist(meta.id)) toggleWatchlist(meta)
+        }
+    }
+
     fun toggleBillboardWatchlist() {
         val movie = billboardState.movieValue ?: return
         viewModelScope.launch {

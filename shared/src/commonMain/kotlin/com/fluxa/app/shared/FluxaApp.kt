@@ -2,16 +2,14 @@ package com.fluxa.app.shared
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +40,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,7 +59,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -121,6 +119,7 @@ import com.fluxa.app.shared.feature.player.PlayerRenderAction
 import com.fluxa.app.shared.feature.player.PlayerRenderState
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.PosterActionSheet
 
 private val FluxaColorScheme = darkColorScheme(
     background = FluxaColors.background,
@@ -318,6 +317,7 @@ fun FluxaApp(
                     language = state.language,
                     onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
                     onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
+                    onAddToLibrary = { item -> onCatalogAction(CatalogAction.AddToLibraryRequested(item)) },
                     onClearHistory = { onSearchAction(SearchAction.ClearHistory) },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -326,6 +326,7 @@ fun FluxaApp(
                     language = state.language,
                     onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
                     onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
+                    onAddToLibrary = { item -> onCatalogAction(CatalogAction.AddToLibraryRequested(item)) },
                     onClearHistory = { onSearchAction(SearchAction.ClearHistory) },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -438,6 +439,7 @@ fun FluxaApp(
                     onAvatarClick = { onDestinationSelected(FluxaDestination.Settings) },
                     onCategorySelected = onCategorySelected,
                     profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
+                    topBarEnabled = settingsState?.appearanceHome?.topBarEnabled != false,
                     modifier = Modifier.fillMaxSize()
                 )
                 else -> FluxaDestinationPlaceholder(
@@ -452,6 +454,10 @@ fun FluxaApp(
                 FluxaNavigationBar(
                     destination = state.destination,
                     accentColorArgb = profileState?.activeProfile?.accentColorArgb,
+                    floating = settingsState?.appearance?.floatingBottomBar == true,
+                    showLabels = settingsState?.appearance?.bottomBarLabels == true,
+                    showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
+                    profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                     language = state.language,
                     calendarState = calendarState,
                     onDestinationSelected = onDestinationSelected,
@@ -491,6 +497,10 @@ private fun CalendarUiState.hasUnseenReleases(): Boolean {
 private fun FluxaNavigationBar(
     destination: FluxaDestination,
     accentColorArgb: Long?,
+    floating: Boolean,
+    showLabels: Boolean,
+    showProfile: Boolean,
+    profileAvatarUrl: String?,
     language: String?,
     calendarState: CalendarUiState?,
     onDestinationSelected: (FluxaDestination) -> Unit,
@@ -499,62 +509,70 @@ private fun FluxaNavigationBar(
     val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
     val inactiveColor = Color(0xFFA0A5AD)
     val hasCalendarBadge = calendarState?.hasUnseenReleases() == true
-    Column(
+    val barShape = RoundedCornerShape(if (floating) 28.dp else 0.dp)
+    val items = if (showProfile) {
+        FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
+    } else {
+        FluxaBottomNavItems
+    }
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to FluxaColors.background.copy(alpha = 0f),
-                        0.4f to FluxaColors.background
-                    )
-                )
-            )
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+            .padding(horizontal = if (floating) 12.dp else 0.dp)
+            .padding(bottom = if (floating) 10.dp else 0.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(Color.White.copy(alpha = 0.08f))
-        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                .clip(barShape)
+                .background(if (floating) Color(0xF2222222) else Color(0xFF111111))
                 .padding(horizontal = 12.dp)
-                .padding(top = 10.dp, bottom = 10.dp),
+                .height(if (showLabels) 68.dp else 64.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            FluxaBottomNavItems.forEach { item ->
+            items.forEach { item ->
                 val isSelected = item.destination == destination
                 val tint by animateColorAsState(
                     targetValue = if (isSelected) selectedColor else inactiveColor,
                     label = "nav-item-tint"
                 )
-                val scale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.1f else 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                    label = "nav-item-scale"
-                )
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(18.dp))
                         .clickable { onDestinationSelected(item.destination) }
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Box {
-                        Icon(
-                            if (isSelected) item.selectedIcon else item.icon,
-                            contentDescription = null,
-                            tint = tint,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .graphicsLayer(scaleX = scale, scaleY = scale)
-                        )
+                        if (item.destination == FluxaDestination.Settings && !profileAvatarUrl.isNullOrBlank()) {
+                            FluxaRemoteImage(
+                                imageUrl = profileAvatarUrl,
+                                cacheKey = "bottom-profile:$profileAvatarUrl",
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .then(
+                                        if (isSelected) {
+                                            Modifier.border(2.dp, tint, CircleShape).padding(2.dp)
+                                        } else {
+                                            Modifier
+                                        }
+                                    )
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                if (isSelected) item.selectedIcon else item.icon,
+                                contentDescription = null,
+                                tint = tint,
+                                modifier = Modifier.size(29.dp)
+                            )
+                        }
                         if (item.showsCalendarBadge && hasCalendarBadge) {
                             Box(
                                 modifier = Modifier
@@ -566,13 +584,15 @@ private fun FluxaNavigationBar(
                             )
                         }
                     }
-                    Text(
-                        text = AppStrings.t(language, item.destination.titleKey),
-                        color = tint,
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (showLabels) {
+                        Text(
+                            text = AppStrings.t(language, item.destination.titleKey),
+                            color = tint,
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -668,6 +688,7 @@ private fun FluxaHomeContent(
     onAvatarClick: () -> Unit,
     onCategorySelected: (id: String, title: String) -> Unit,
     profileAvatarUrl: String?,
+    topBarEnabled: Boolean,
     modifier: Modifier
 ) {
     if (state.catalogHome.isLoading && state.catalogHome.rows.isEmpty()) {
@@ -688,7 +709,7 @@ private fun FluxaHomeContent(
     val showHero = state.catalogHome.showHeroSection && heroItems.isNotEmpty()
     val listState = rememberLazyListState()
     var heroHeightPx by remember { mutableIntStateOf(0) }
-    var continueWatchingActionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
+    var posterActionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
     val scrimAlpha by remember {
         androidx.compose.runtime.derivedStateOf {
             when {
@@ -777,18 +798,14 @@ private fun FluxaHomeContent(
                             CatalogCard(
                                 model = item.card,
                                 onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) },
-                                onLongClick = if (row.categoryType == "continue_watching") {
-                                    { continueWatchingActionItem = item }
-                                } else {
-                                    null
-                                }
+                                onLongClick = { posterActionItem = item }
                             )
                         }
                     }
                 }
             }
         }
-        if (showHero) {
+        if (showHero && topBarEnabled) {
             FluxaHomeOverlayBar(
                 activeFilter = state.catalogHome.activeFilter,
                 language = state.language,
@@ -802,68 +819,15 @@ private fun FluxaHomeContent(
         }
     }
 
-    continueWatchingActionItem?.let { item ->
-        ContinueWatchingActionSheet(
+    posterActionItem?.let { item ->
+        PosterActionSheet(
+            item = item,
             language = state.language,
-            onDismiss = { continueWatchingActionItem = null },
-            onPlayManually = {
-                continueWatchingActionItem = null
-                onCatalogAction(CatalogAction.PlayRequested(item))
-            },
-            onDetails = {
-                continueWatchingActionItem = null
-                onCatalogAction(CatalogAction.ItemSelected(item))
-            },
-            onMarkWatched = {
-                continueWatchingActionItem = null
-                onCatalogAction(CatalogAction.MarkWatchedRequested(item))
-            },
-            onDrop = {
-                continueWatchingActionItem = null
-                onCatalogAction(CatalogAction.DropRequested(item))
+            onDismiss = { posterActionItem = null },
+            onAddToLibrary = {
+                posterActionItem = null
+                onCatalogAction(CatalogAction.AddToLibraryRequested(item))
             }
-        )
-    }
-}
-
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-private fun ContinueWatchingActionSheet(
-    language: String?,
-    onDismiss: () -> Unit,
-    onPlayManually: () -> Unit,
-    onDetails: () -> Unit,
-    onMarkWatched: () -> Unit,
-    onDrop: () -> Unit
-) {
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    androidx.compose.material3.ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = FluxaColors.surfaceRaised
-    ) {
-        Column(modifier = Modifier.padding(bottom = 24.dp)) {
-            ContinueWatchingActionRow(AppStrings.t(language, "home.play_manually"), onPlayManually)
-            ContinueWatchingActionRow(AppStrings.t(language, "home.view_details"), onDetails)
-            ContinueWatchingActionRow(AppStrings.t(language, "detail.mark_watched"), onMarkWatched)
-            ContinueWatchingActionRow(AppStrings.t(language, "home.forget_progress"), onDrop)
-        }
-    }
-}
-
-@Composable
-private fun ContinueWatchingActionRow(label: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            color = Color.White,
-            fontSize = 15.sp
         )
     }
 }
@@ -1053,26 +1017,27 @@ private fun FluxaHomeHeroSlide(
             }
             Row(
                 modifier = Modifier
-                    .padding(top = 4.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .padding(top = 6.dp)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(Color.White)
                     .clickable { onCatalogAction(CatalogAction.PlayRequested(item)) }
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                    .padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = FluxaIcons.PlayArrow,
+                    imageVector = Icons.Rounded.PlayArrow,
                     contentDescription = null,
                     tint = Color.Black,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(26.dp)
                 )
                 Text(
                     text = AppStrings.t(language, "common.play"),
                     color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(start = 6.dp)
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(start = 7.dp)
                 )
             }
         }

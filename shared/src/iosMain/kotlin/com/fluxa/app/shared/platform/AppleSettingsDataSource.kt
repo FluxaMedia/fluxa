@@ -42,10 +42,13 @@ class AppleSettingsDataSource : SettingsDataSource {
         defaults.setDouble(value.accentColorArgb.toDouble(), K.accentColorArgb)
         defaults.setBool(value.amoledMode, K.amoledMode)
         defaults.setBool(value.animationsEnabled, K.animationsEnabled)
+        defaults.setBool(value.floatingBottomBar, K.floatingBottomBar)
+        defaults.setBool(value.bottomBarLabels, K.bottomBarLabels)
         state.value = state.value.copy(appearance = value)
     }
 
     override suspend fun updateAppearanceHome(value: SettingsAppearanceHomeUiModel) {
+        defaults.setBool(value.topBarEnabled, K.homeTopBarEnabled)
         defaults.setObject(value.cardCornerPreset, K.cardCornerPreset)
         defaults.setObject(value.interfaceDensity, K.interfaceDensity)
         defaults.setObject(value.posterWidthPreset, K.posterWidthPreset)
@@ -221,9 +224,12 @@ class AppleSettingsDataSource : SettingsDataSource {
         appearance = SettingsAppearanceUiModel(
             accentColorArgb = defaults.objectForKey(K.accentColorArgb)?.let { defaults.doubleForKey(K.accentColorArgb).toLong() } ?: 0xFFFFFFFFL,
             amoledMode = defaults.boolOrDefault(K.amoledMode, false),
-            animationsEnabled = defaults.boolOrDefault(K.animationsEnabled, true)
+            animationsEnabled = defaults.boolOrDefault(K.animationsEnabled, true),
+            floatingBottomBar = defaults.boolOrDefault(K.floatingBottomBar, false),
+            bottomBarLabels = defaults.boolOrDefault(K.bottomBarLabels, false)
         ),
         appearanceHome = SettingsAppearanceHomeUiModel(
+            topBarEnabled = defaults.boolOrDefault(K.homeTopBarEnabled, true),
             cardCornerPreset = defaults.stringForKey(K.cardCornerPreset) ?: "medium",
             interfaceDensity = defaults.stringForKey(K.interfaceDensity) ?: "normal",
             posterWidthPreset = defaults.stringForKey(K.posterWidthPreset) ?: "medium",
@@ -318,6 +324,9 @@ class AppleSettingsDataSource : SettingsDataSource {
         const val accentColorArgb = "fluxa.apple.settings.accentColorArgb"
         const val amoledMode = "fluxa.apple.settings.amoledMode"
         const val animationsEnabled = "fluxa.apple.settings.animationsEnabled"
+        const val homeTopBarEnabled = "fluxa.apple.settings.homeTopBarEnabled"
+        const val floatingBottomBar = "fluxa.apple.settings.floatingBottomBar"
+        const val bottomBarLabels = "fluxa.apple.settings.bottomBarLabels"
         const val cardCornerPreset = "fluxa.apple.settings.cardCornerPreset"
         const val interfaceDensity = "fluxa.apple.settings.interfaceDensity"
         const val posterWidthPreset = "fluxa.apple.settings.posterWidthPreset"

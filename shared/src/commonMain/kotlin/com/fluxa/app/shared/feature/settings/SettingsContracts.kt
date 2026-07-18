@@ -58,10 +58,13 @@ data class SettingsGeneralUiModel(
 data class SettingsAppearanceUiModel(
     val accentColorArgb: Long = 0xFFFFFFFFL,
     val amoledMode: Boolean = false,
-    val animationsEnabled: Boolean = true
+    val animationsEnabled: Boolean = true,
+    val floatingBottomBar: Boolean = false,
+    val bottomBarLabels: Boolean = false
 )
 
 data class SettingsAppearanceHomeUiModel(
+    val topBarEnabled: Boolean = true,
     val cardCornerPreset: String = "medium",
     val interfaceDensity: String = "normal",
     val posterWidthPreset: String = "medium",
@@ -220,7 +223,6 @@ sealed interface SettingsAction {
     data object DisconnectSyncRequested : SettingsAction
     data object SwitchProfilesRequested : SettingsAction
     data object CheckForUpdateRequested : SettingsAction
-    data object ManageDownloadsRequested : SettingsAction
 }
 
 interface SettingsDataSource {

@@ -1091,5 +1091,12 @@
   "settings.season_posters_on_hero": "Season Posters on Hero",
   "settings.detail_season_posters_on_hero_desc": "Use season posters in the detail page hero.",
   "settings.home_season_posters_on_hero_desc": "Use season posters in the home hero banner.",
-  "format.season_short": "S%s"
+  "format.season_short": "S%s",
+  "settings.floating_bottom_bar": "Floating bottom bar",
+  "settings.floating_bottom_bar_desc": "Lift the navigation bar above the bottom edge.",
+  "settings.bottom_bar_labels": "Show bottom bar labels",
+  "settings.bottom_bar_labels_desc": "Display destination names below navigation icons.",
+  "settings.home_top_bar": "Home top bar",
+  "settings.home_top_bar_desc": "Show Home, Series, Movies, notifications, and profile above the hero.",
+  "common.add_to_library": "Add to Library"
 }

@@ -12,8 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,8 +33,8 @@ object FluxaIcons {
     val BookmarkBorder: ImageVector = Icons.Filled.Bookmark
     val BottomCalendar: ImageVector = Icons.Filled.DateRange
     val BottomCalendarOutline: ImageVector = Icons.Outlined.DateRange
-    val BottomDiscover: ImageVector = Icons.Filled.Explore
-    val BottomDiscoverOutline: ImageVector = Icons.Outlined.Explore
+    val BottomDiscover: ImageVector = Icons.Filled.Search
+    val BottomDiscoverOutline: ImageVector = Icons.Outlined.Search
     val BottomHome: ImageVector = Icons.Filled.Home
     val BottomHomeOutline: ImageVector = Icons.Outlined.Home
     val BottomLibrary: ImageVector = Icons.Filled.VideoLibrary

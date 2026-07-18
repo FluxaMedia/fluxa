@@ -649,6 +649,12 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
         SettingsToggleRow(AppStrings.t(lang, "auto.disable_animations"), value = !model.animationsEnabled) {
             onAction(SettingsAction.AppearanceChanged(model.copy(animationsEnabled = !it)))
         }
+        SettingsToggleRow(AppStrings.t(lang, "settings.floating_bottom_bar"), description = AppStrings.t(lang, "settings.floating_bottom_bar_desc"), value = model.floatingBottomBar) {
+            onAction(SettingsAction.AppearanceChanged(model.copy(floatingBottomBar = it)))
+        }
+        SettingsToggleRow(AppStrings.t(lang, "settings.bottom_bar_labels"), description = AppStrings.t(lang, "settings.bottom_bar_labels_desc"), value = model.bottomBarLabels) {
+            onAction(SettingsAction.AppearanceChanged(model.copy(bottomBarLabels = it)))
+        }
     }
     Spacer(Modifier.height(20.dp))
     SettingsGroupCard {
@@ -688,6 +694,9 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
     )
     SettingsSectionHeader(AppStrings.t(lang, "settings.layout"))
     SettingsGroupCard {
+    SettingsToggleRow(AppStrings.t(lang, "settings.home_top_bar"), description = AppStrings.t(lang, "settings.home_top_bar_desc"), value = model.topBarEnabled) {
+        onAction(SettingsAction.AppearanceHomeChanged(model.copy(topBarEnabled = it)))
+    }
     SettingsChoiceRow(AppStrings.t(lang, "auto.card_corners"), model.cardCornerPreset, cornerOptions) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(cardCornerPreset = it))) }
     SettingsChoiceRow(AppStrings.t(lang, "auto.interface_density"), model.interfaceDensity, densityOptions) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(interfaceDensity = it))) }
     SettingsChoiceRow(AppStrings.t(lang, "auto.poster_width"), model.posterWidthPreset, posterWidthOptions) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(posterWidthPreset = it))) }
@@ -1024,10 +1033,6 @@ private fun SettingsDownloadsContent(model: SettingsDownloadsUiModel, lang: Stri
         }
     }
 
-    SettingsSectionHeader(AppStrings.t(lang, "auto.downloads"))
-    SettingsGroupCard {
-        SettingsActionRow(AppStrings.t(lang, "settings.manage_downloads")) { onAction(SettingsAction.ManageDownloadsRequested) }
-    }
 }
 
 @Composable

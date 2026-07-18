@@ -133,6 +133,11 @@ internal fun AppRoutesHost(
                         .resolveMeta(action.item.id, action.item.type)
                         ?.let(homeViewModel::forgetPlaybackProgress)
                 }
+                is com.fluxa.app.shared.feature.catalog.CatalogAction.AddToLibraryRequested -> {
+                    androidFluxaPlatformServices!!.catalogHomeDataSource
+                        .resolveMeta(action.item.id, action.item.type)
+                        ?.let(homeViewModel::addToWatchlist)
+                }
                 else -> Unit
             }
         },

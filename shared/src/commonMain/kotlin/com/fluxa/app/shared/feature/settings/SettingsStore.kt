@@ -43,7 +43,6 @@ class SettingsStore(
             SettingsAction.DisconnectSyncRequested -> dataSource.disconnectSync()
             SettingsAction.SwitchProfilesRequested -> Unit
             SettingsAction.CheckForUpdateRequested -> Unit
-            SettingsAction.ManageDownloadsRequested -> Unit
         }
     }
 }

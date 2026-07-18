@@ -22,7 +22,8 @@ class CatalogHomeStore(
             is CatalogAction.ResumeRequested,
             is CatalogAction.ItemFocused,
             is CatalogAction.MarkWatchedRequested,
-            is CatalogAction.DropRequested -> Unit
+            is CatalogAction.DropRequested,
+            is CatalogAction.AddToLibraryRequested -> Unit
         }
     }
 }

@@ -1091,5 +1091,12 @@
   "settings.season_posters_on_hero": "Hero'da Sezon Afişleri",
   "settings.detail_season_posters_on_hero_desc": "Detay sayfası hero alanında sezon afişlerini kullanır.",
   "settings.home_season_posters_on_hero_desc": "Ana sayfa hero bannerında sezon afişlerini kullanır.",
-  "format.season_short": "S%s"
+  "format.season_short": "S%s",
+  "settings.floating_bottom_bar": "Yüzen alt çubuk",
+  "settings.floating_bottom_bar_desc": "Gezinme çubuğunu alt kenarın üzerinde gösterir.",
+  "settings.bottom_bar_labels": "Alt çubuk etiketlerini göster",
+  "settings.bottom_bar_labels_desc": "Gezinme simgelerinin altında hedef adlarını gösterir.",
+  "settings.home_top_bar": "Ana sayfa üst çubuğu",
+  "settings.home_top_bar_desc": "Hero alanının üzerinde Ana Sayfa, Diziler, Filmler, bildirimler ve profili gösterir.",
+  "common.add_to_library": "Kitaplığa ekle"
 }
