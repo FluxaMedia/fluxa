@@ -164,6 +164,7 @@ class HomeViewModel @Inject constructor(
     val billboardWatchlist: StateFlow<Boolean> = billboardState.watchlist
     val billboardNextEpisode: StateFlow<String?> = billboardState.nextEpisode
     val billboardTrailerUrl: StateFlow<String?> = billboardState.trailerUrl
+    val billboardTrailerSubtitleCues: StateFlow<List<com.fluxa.app.player.TrailerCue>> = billboardState.trailerSubtitleCues
     val billboardSeasonPosterUrl: StateFlow<String?> = billboardState.seasonPosterUrl
 
     private val _isDirectLoading = MutableStateFlow(false)
@@ -324,6 +325,7 @@ class HomeViewModel @Inject constructor(
             watchlistValue = { billboardState.watchlistValue },
             setWatchlist = { billboardState.watchlistValue = it },
             setTrailerUrl = { billboardState.trailerUrlValue = it },
+            setTrailerSubtitleCues = { billboardState.trailerSubtitleCuesValue = it },
             setNextEpisode = { billboardState.nextEpisodeValue = it },
             setSeasonPosterUrl = { billboardState.seasonPosterUrlValue = it },
             getMetaDetail = { type, id ->
@@ -333,7 +335,8 @@ class HomeViewModel @Inject constructor(
             parseSeasonEpisode = ::formatSeasonEpisode,
             prefetchDirectPlayback = ::prefetchDirectPlayback,
             activeProfile = { currentActiveProfile },
-            getTrailers = { type, id, lang -> getConfiguredMetaDetailResult(type, id, lang).trailers }
+            getTrailers = { type, id, lang -> getConfiguredMetaDetailResult(type, id, lang).trailers },
+            dispatchHeadless = headlessRuntime::dispatch
         )
     }
 
@@ -844,7 +847,7 @@ class HomeViewModel @Inject constructor(
     suspend fun resolveExpandedPosterTrailer(meta: Meta): String? {
         val lang = currentActiveProfile?.safeLanguage ?: "en"
         val trailers = runCatching { getConfiguredMetaDetailResult(meta.type, meta.id, lang).trailers }.getOrElse { emptyList() }
-        return resolvePlayableTrailerUrl(trailers)
+        return resolvePlayableTrailerUrl(trailers, headlessRuntime::dispatch)
     }
 
     fun search(query: String) {

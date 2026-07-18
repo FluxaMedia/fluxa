@@ -1,5 +1,6 @@
 package com.fluxa.app.shared.feature.catalog
 
+import com.fluxa.app.player.TrailerCue
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import kotlinx.coroutines.flow.Flow
 
@@ -44,7 +45,8 @@ data class CatalogRowUiModel(
 data class CatalogBillboardUiModel(
     val item: CatalogItemUiModel,
     val logoUrl: String? = null,
-    val trailerUrl: String? = null
+    val trailerUrl: String? = null,
+    val trailerSubtitleCues: List<TrailerCue> = emptyList()
 )
 
 data class CatalogHomeUiState(
@@ -63,6 +65,7 @@ sealed interface CatalogAction {
     data class PlayRequested(val item: CatalogItemUiModel) : CatalogAction
     data class ResumeRequested(val item: CatalogItemUiModel) : CatalogAction
     data class ItemFocused(val item: CatalogItemUiModel, val rowId: String) : CatalogAction
+    data class HeroPageChanged(val item: CatalogItemUiModel) : CatalogAction
     data class FilterChanged(val filter: String) : CatalogAction
     data class MarkWatchedRequested(val item: CatalogItemUiModel) : CatalogAction
     data class DropRequested(val item: CatalogItemUiModel) : CatalogAction

@@ -21,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -42,6 +43,7 @@ class DetailViewModel @Inject constructor(
     private var currentSeriesLookupId: String? = null
     private var detailLoadGeneration = 0L
     private var detailLoadJob: Job? = null
+    private var trailerJob: Job? = null
     private var streamsFetchJob: Job? = null
     private var activeStreamsRequestIds: Set<String> = emptySet()
 
@@ -70,6 +72,7 @@ class DetailViewModel @Inject constructor(
     fun loadDetail(type: String, id: String, profile: UserProfile? = null, sourceAddonTransportUrl: String? = null, sourceAddonCatalogType: String? = null, initialMeta: Meta? = null) {
         val generation = ++detailLoadGeneration
         detailLoadJob?.cancel()
+        trailerJob?.cancel()
         currentProfile = profile
         currentSeriesLookupId = normalizeSeriesLookupId(id)
         val lang = profile?.language ?: "en"
@@ -83,6 +86,7 @@ class DetailViewModel @Inject constructor(
                     savedPlayback = null,
                     similarItems = emptyList(),
                     trailers = emptyList(),
+                    trailerUrl = null,
                     hasStreamProviders = true,
                     isLoading = true
                 )
@@ -160,6 +164,7 @@ class DetailViewModel @Inject constructor(
                             trailers = if (it.trailers.isEmpty()) gson.fromStateList(secondary?.get("trailers")) else it.trailers
                         )
                     }
+                    maybeAutoPlayDetailTrailer(generation, profile)
                 }
 
                 launch {
@@ -191,6 +196,19 @@ class DetailViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false) }
                 }
             }
+        }
+    }
+
+    private fun maybeAutoPlayDetailTrailer(generation: Long, profile: UserProfile?) {
+        if (profile?.safeTrailerOnDetailHeroEnabled != true) return
+        trailerJob?.cancel()
+        val delaySeconds = profile.safeTrailerOnDetailHeroDelaySeconds
+        trailerJob = viewModelScope.launch {
+            if (delaySeconds > 0) delay(delaySeconds * 1000L)
+            if (generation != detailLoadGeneration) return@launch
+            val resolved = resolvePlayableTrailerUrl(_uiState.value.trailers, headlessRuntime::dispatch) ?: return@launch
+            if (generation != detailLoadGeneration) return@launch
+            _uiState.update { it.copy(trailerUrl = resolved) }
         }
     }
 

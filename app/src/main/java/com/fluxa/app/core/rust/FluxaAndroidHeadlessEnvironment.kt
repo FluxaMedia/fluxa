@@ -88,6 +88,9 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
 
 data class StreamProgressUpdate(
     val requestId: String,
@@ -133,6 +136,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
 
     private val offlineEffectHandler = AndroidOfflineEffectHandler(context, gson)
     private val cloudStreamRuntime = AndroidCloudStreamRuntime(pluginManager)
+    private val trailerHttpClient = OkHttpClient.Builder().build()
 
     override suspend fun execute(effect: NativeHeadlessEffect): HeadlessEffectCompletion = withContext(Dispatchers.IO) {
         runCatching {
@@ -180,6 +184,8 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 "updateCalendarWidget",
                 "notifyReleasedEpisodes" -> calendarEffectHandler.execute(effect)
                 "enqueueOfflineDownload" -> offlineEffectHandler.enqueue(effect)
+                "fetchYoutubeTrailerWatchConfig",
+                "fetchYoutubeTrailerPlayer" -> executeTrailerHttpEffect(effect)
                 else -> error(effect, "unsupported_effect")
             }
         }.getOrElse { throwable ->
@@ -1107,6 +1113,23 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 "value" to effect.payload["value"]
             )
         )
+    }
+
+    private fun executeTrailerHttpEffect(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
+        val payload = effect.payload
+        val requestBuilder = okhttp3.Request.Builder().url(payload.string("url"))
+        payload.objectValue("headers")?.forEach { (key, value) ->
+            requestBuilder.header(key, value.toString())
+        }
+        val method = payload.string("method", "GET")
+        val body = payload["body"]?.let {
+            gson.toJson(it).toRequestBody("application/json".toMediaType())
+        }
+        requestBuilder.method(method, body)
+        trailerHttpClient.newCall(requestBuilder.build()).execute().use { response ->
+            if (!response.isSuccessful) return error(effect, "http_${response.code}")
+            return ok(effect, mapOf("body" to response.body.string()))
+        }
     }
 
     internal fun ok(effect: NativeHeadlessEffect, value: Any?): HeadlessEffectCompletion =

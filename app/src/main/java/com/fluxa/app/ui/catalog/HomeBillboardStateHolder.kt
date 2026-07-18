@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.player.TrailerCue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,8 @@ class HomeBillboardStateHolder {
     val nextEpisode: StateFlow<String?> = _nextEpisode.asStateFlow()
     private val _trailerUrl = MutableStateFlow<String?>(null)
     val trailerUrl: StateFlow<String?> = _trailerUrl.asStateFlow()
+    private val _trailerSubtitleCues = MutableStateFlow<List<TrailerCue>>(emptyList())
+    val trailerSubtitleCues: StateFlow<List<TrailerCue>> = _trailerSubtitleCues.asStateFlow()
     private val _seasonPosterUrl = MutableStateFlow<String?>(null)
     val seasonPosterUrl: StateFlow<String?> = _seasonPosterUrl.asStateFlow()
 
@@ -49,6 +52,9 @@ class HomeBillboardStateHolder {
     var trailerUrlValue: String?
         get() = _trailerUrl.value
         set(value) { _trailerUrl.value = value }
+    var trailerSubtitleCuesValue: List<TrailerCue>
+        get() = _trailerSubtitleCues.value
+        set(value) { _trailerSubtitleCues.value = value }
     var seasonPosterUrlValue: String?
         get() = _seasonPosterUrl.value
         set(value) { _seasonPosterUrl.value = value }

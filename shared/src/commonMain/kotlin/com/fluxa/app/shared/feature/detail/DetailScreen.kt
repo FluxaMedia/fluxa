@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.shared.LocalHeroTrailerSurface
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.CatalogCard
@@ -189,6 +192,11 @@ private fun Hero(content: DetailUiModel, language: String?) {
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
+        val trailerSurface = LocalHeroTrailerSurface.current
+        if (content.trailerUrl != null && trailerSurface != null) {
+            val trailerAlpha by animateFloatAsState(targetValue = 1f, label = "detail-hero-trailer-fade")
+            trailerSurface(content.trailerUrl, emptyList(), {}, Modifier.fillMaxSize().alpha(trailerAlpha))
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()

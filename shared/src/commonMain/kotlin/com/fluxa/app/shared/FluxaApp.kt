@@ -68,8 +68,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.alpha
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
+import com.fluxa.app.shared.feature.catalog.CatalogBillboardUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CategoryResultsScreen
@@ -112,6 +115,7 @@ import com.fluxa.app.shared.feature.search.SearchUiState
 import com.fluxa.app.shared.feature.player.PlayerControlsSurface
 import com.fluxa.app.shared.feature.player.PlayerRenderAction
 import com.fluxa.app.shared.feature.player.PlayerRenderState
+import com.fluxa.app.player.TrailerCue
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.PosterActionSheet
@@ -704,6 +708,7 @@ private fun FluxaHomeContent(
                 item(key = "hero") {
                     FluxaHomeHero(
                         items = heroItems,
+                        billboard = state.catalogHome.billboard,
                         language = state.language,
                         onCatalogAction = onCatalogAction,
                         modifier = Modifier.onGloballyPositioned { heroHeightPx = it.size.height }
@@ -850,6 +855,7 @@ private const val HERO_AUTO_SWIPE_DELAY_MS = 5000L
 @Composable
 private fun FluxaHomeHero(
     items: List<CatalogItemUiModel>,
+    billboard: CatalogBillboardUiModel?,
     language: String?,
     onCatalogAction: (CatalogAction) -> Unit,
     modifier: Modifier = Modifier
@@ -859,9 +865,10 @@ private fun FluxaHomeHero(
     val startPage = if (loop) (Int.MAX_VALUE / 2) - (Int.MAX_VALUE / 2) % items.size else 0
     val pagerState = rememberPagerState(initialPage = startPage, pageCount = { virtualPageCount })
 
-    if (loop) {
-        LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
-            if (!pagerState.isScrollInProgress) {
+    LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+        if (!pagerState.isScrollInProgress) {
+            onCatalogAction(CatalogAction.HeroPageChanged(items[pagerState.currentPage % items.size]))
+            if (loop) {
                 delay(HERO_AUTO_SWIPE_DELAY_MS)
                 if (!pagerState.isScrollInProgress) {
                     pagerState.animateScrollToPage(pagerState.currentPage + 1)
@@ -879,7 +886,14 @@ private fun FluxaHomeHero(
                 .heightIn(max = 560.dp)
         ) { page ->
             val item = items[page % items.size]
-            FluxaHomeHeroSlide(item = item, language = language, onCatalogAction = onCatalogAction)
+            val activeBillboard = billboard?.takeIf { it.item.id == item.id && it.item.type == item.type }
+            FluxaHomeHeroSlide(
+                item = item,
+                trailerUrl = activeBillboard?.trailerUrl,
+                trailerSubtitleCues = activeBillboard?.trailerSubtitleCues.orEmpty(),
+                language = language,
+                onCatalogAction = onCatalogAction
+            )
         }
         if (items.size > 1) {
             val current = pagerState.currentPage % items.size
@@ -908,6 +922,8 @@ private fun FluxaHomeHero(
 @Composable
 private fun FluxaHomeHeroSlide(
     item: CatalogItemUiModel,
+    trailerUrl: String?,
+    trailerSubtitleCues: List<TrailerCue>,
     language: String?,
     onCatalogAction: (CatalogAction) -> Unit
 ) {
@@ -924,22 +940,32 @@ private fun FluxaHomeHeroSlide(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
+        val trailerSurface = LocalHeroTrailerSurface.current
+        val trailerActive = trailerUrl != null && trailerSurface != null
+        var activeSubtitle by remember(item.id, item.type) { mutableStateOf("") }
+        if (trailerUrl != null && trailerSurface != null) {
+            val trailerAlpha by animateFloatAsState(targetValue = 1f, label = "hero-trailer-fade")
+            trailerSurface(trailerUrl, trailerSubtitleCues, { activeSubtitle = it }, Modifier.fillMaxSize().alpha(trailerAlpha))
+        }
+        val gradientStartY by animateFloatAsState(targetValue = if (trailerActive) 0.94f else 0.35f, label = "hero-gradient-start")
+        val gradientMaxAlpha by animateFloatAsState(targetValue = if (trailerActive) 0.55f else 1f, label = "hero-gradient-alpha")
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, FluxaColors.background),
-                        startY = 0.35f
+                        colors = listOf(Color.Transparent, FluxaColors.background.copy(alpha = gradientMaxAlpha)),
+                        startY = gradientStartY
                     )
                 )
         )
+        val logoMaxHeight by animateDpAsState(targetValue = if (trailerActive) 34.dp else 64.dp, label = "hero-logo-height")
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 44.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = if (trailerActive) 24.dp else 44.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (item.card.logoUrl != null) {
@@ -947,10 +973,10 @@ private fun FluxaHomeHeroSlide(
                     imageUrl = item.card.logoUrl,
                     cacheKey = "home-hero-logo:${item.card.logoUrl}",
                     contentDescription = item.card.title,
-                    modifier = Modifier.heightIn(max = 64.dp).fillMaxWidth(0.65f),
+                    modifier = Modifier.heightIn(max = logoMaxHeight).fillMaxWidth(0.65f),
                     contentScale = ContentScale.Fit
                 )
-            } else {
+            } else if (!trailerActive) {
                 Text(
                     text = item.card.title,
                     color = Color.White,
@@ -969,49 +995,66 @@ private fun FluxaHomeHeroSlide(
                     item.runtimeLabel?.takeIf { it.isNotBlank() }?.let { add(it) }
                 }
             }
-            if (badgeParts.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    badgeParts.forEach { part ->
-                        Text(text = part, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+            if (!trailerActive) {
+                if (badgeParts.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        badgeParts.forEach { part ->
+                            Text(text = part, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+                        }
                     }
                 }
+                item.description?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = it,
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 13.sp,
+                        lineHeight = 15.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White)
+                        .clickable { onCatalogAction(CatalogAction.PlayRequested(item)) }
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Text(
+                        text = AppStrings.t(language, "common.play"),
+                        color = Color.Black,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 15.sp,
+                        modifier = Modifier.padding(start = 7.dp)
+                    )
+                }
             }
-            item.description?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 13.sp,
-                    lineHeight = 15.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-            Row(
+        }
+        if (trailerActive && activeSubtitle.isNotBlank()) {
+            Text(
+                text = activeSubtitle,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
-                    .padding(top = 6.dp)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White)
-                    .clickable { onCatalogAction(CatalogAction.PlayRequested(item)) }
-                    .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.Black,
-                    modifier = Modifier.size(26.dp)
-                )
-                Text(
-                    text = AppStrings.t(language, "common.play"),
-                    color = Color.Black,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 15.sp,
-                    modifier = Modifier.padding(start = 7.dp)
-                )
-            }
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 82.dp, start = 32.dp, end = 32.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.58f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            )
         }
     }
 }

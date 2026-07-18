@@ -1,20 +1,31 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.player.TrailerCue
 import com.fluxa.app.player.TrailerResolveResult
+import com.fluxa.app.player.TrailerResult
+import com.fluxa.app.player.TrailerSubtitle
 
 import android.util.LruCache
+import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.core.rust.NativeHeadlessEngineResult
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
+import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.remote.DetailTrailer
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 internal class HomeBillboardRuntime(
     private val scope: CoroutineScope,
@@ -30,13 +41,15 @@ internal class HomeBillboardRuntime(
     private val watchlistValue: () -> Boolean,
     private val setWatchlist: (Boolean) -> Unit,
     private val setTrailerUrl: (String?) -> Unit,
+    private val setTrailerSubtitleCues: (List<TrailerCue>) -> Unit,
     private val setNextEpisode: (String?) -> Unit,
     private val setSeasonPosterUrl: (String?) -> Unit,
     private val getMetaDetail: suspend (String, String) -> MetaDetail?,
     private val parseSeasonEpisode: (String, String) -> String?,
     private val prefetchDirectPlayback: (Meta, MetaDetail?) -> Unit,
     private val activeProfile: () -> UserProfile? = { null },
-    private val getTrailers: suspend (String, String, String) -> List<DetailTrailer> = { _, _, _ -> emptyList() }
+    private val getTrailers: suspend (String, String, String) -> List<DetailTrailer> = { _, _, _ -> emptyList() },
+    private val dispatchHeadless: suspend (Any) -> NativeHeadlessEngineResult
 ) {
     private var rotationJob: Job? = null
     private var prefetchJob: Job? = null
@@ -52,6 +65,7 @@ internal class HomeBillboardRuntime(
         setMovie(null)
         setLogo(null)
         setTrailerUrl(null)
+        setTrailerSubtitleCues(emptyList())
         setNextEpisode(null)
         setSeasonPosterUrl(null)
     }
@@ -180,6 +194,7 @@ internal class HomeBillboardRuntime(
     suspend fun updateContent(item: Meta) {
         trailerJob?.cancel()
         setTrailerUrl(null)
+        setTrailerSubtitleCues(emptyList())
         val cacheKey = HomeBillboardRanking.contentIdentityKey(item)
         val cached = enrichedCache.get(cacheKey)
         if (cached != null) {
@@ -205,9 +220,14 @@ internal class HomeBillboardRuntime(
             if (delaySeconds > 0) delay(delaySeconds * 1000L)
             val isStillActive = HomeBillboardRanking.contentIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
             if (!isStillActive) return@launch
-            val resolved = resolvePlayableTrailerUrl(getTrailers(item.type, item.id, language())) ?: return@launch
+            val videoId = getTrailers(item.type, item.id, language())
+                .firstOrNull { it.url.extractYoutubeVideoId() != null }
+                ?.url?.extractYoutubeVideoId() ?: return@launch
+            val resolution = resolveYoutubeTrailerViaCore(videoId, dispatchHeadless) as? TrailerResolveResult.Ok ?: return@launch
             val stillActive = HomeBillboardRanking.contentIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
-            if (stillActive) setTrailerUrl(resolved)
+            if (!stillActive) return@launch
+            setTrailerUrl(resolution.data.streamUrl)
+            setTrailerSubtitleCues(resolveTrailerSubtitleCues(resolution.data.subtitles, activeProfile()?.safeLanguage))
         }
     }
 
@@ -286,10 +306,73 @@ internal class HomeBillboardRuntime(
     }
 }
 
-internal suspend fun resolvePlayableTrailerUrl(trailers: List<DetailTrailer>): String? {
-    val youtubeUrl = trailers.firstOrNull { it.url.extractYoutubeVideoId() != null }?.url
-    if (youtubeUrl != null) {
-        return (TrailerResolver.resolve(youtubeUrl) as? TrailerResolveResult.Ok)?.data?.streamUrl
+internal suspend fun resolvePlayableTrailerUrl(
+    trailers: List<DetailTrailer>,
+    dispatchHeadless: suspend (Any) -> NativeHeadlessEngineResult
+): String? {
+    val videoId = trailers.firstOrNull { it.url.extractYoutubeVideoId() != null }?.url?.extractYoutubeVideoId()
+    if (videoId != null) {
+        return (resolveYoutubeTrailerViaCore(videoId, dispatchHeadless) as? TrailerResolveResult.Ok)?.data?.streamUrl
     }
     return trailers.firstOrNull { it.url.isDirectVideoPreviewUrl() }?.url
+}
+
+private suspend fun resolveYoutubeTrailerViaCore(
+    videoId: String,
+    dispatchHeadless: suspend (Any) -> NativeHeadlessEngineResult
+): TrailerResolveResult {
+    val requestId = java.util.UUID.randomUUID().toString()
+    val result = dispatchHeadless(mapOf("type" to "trailerResolveRequested", "requestId" to requestId, "videoId" to videoId))
+    val resolution = (result.state["trailer"] as? Map<*, *>)
+        ?.get("resolutions") as? Map<*, *>
+        ?: return TrailerResolveResult.Failed
+    val entry = resolution[requestId] as? Map<*, *> ?: return TrailerResolveResult.Failed
+    if (entry["status"] != "ok") return TrailerResolveResult.Failed
+    val streamUrl = entry["streamUrl"] as? String ?: return TrailerResolveResult.Failed
+    val subtitles = (entry["subtitles"] as? List<*>).orEmpty().mapNotNull { raw ->
+        val track = raw as? Map<*, *> ?: return@mapNotNull null
+        TrailerSubtitle(
+            languageTag = track["languageTag"] as? String ?: "und",
+            label = track["label"] as? String ?: "",
+            url = track["url"] as? String ?: return@mapNotNull null,
+            mimeType = track["mimeType"] as? String ?: "text/vtt",
+            isAuto = track["isAuto"] as? Boolean ?: false
+        )
+    }
+    return TrailerResolveResult.Ok(
+        TrailerResult(
+            streamUrl = streamUrl,
+            audioUrl = entry["audioUrl"] as? String,
+            subtitles = subtitles,
+            streamMimeType = null
+        )
+    )
+}
+
+private val subtitleHttpClient = OkHttpClient()
+private val subtitleGson = Gson()
+
+internal suspend fun resolveTrailerSubtitleCues(
+    subtitles: List<TrailerSubtitle>,
+    preferredLanguage: String?
+): List<TrailerCue> {
+    if (subtitles.isEmpty()) return emptyList()
+    return withContext(Dispatchers.IO) {
+        runCatching {
+            val selectedJson = FluxaCoreNative.trailerSubtitleSelectionPlan(
+                tracksJson = subtitleGson.toJson(subtitles),
+                preferred = preferredLanguage,
+                secondary = null,
+                systemLanguage = java.util.Locale.getDefault().toLanguageTag()
+            ) ?: return@withContext emptyList()
+            val selected = subtitleGson.fromJson(selectedJson, TrailerSubtitle::class.java) ?: return@withContext emptyList()
+            val normalizedUrl = FluxaCoreNative.normalizeTrailerSubtitleUrl(selected.url)
+            val body = subtitleHttpClient.newCall(Request.Builder().url(normalizedUrl).build()).execute().use { response ->
+                if (!response.isSuccessful) return@withContext emptyList()
+                response.body.string()
+            }
+            val cuesJson = FluxaCoreNative.parseTrailerSubtitleCues(body)
+            subtitleGson.fromJson<List<TrailerCue>>(cuesJson, object : TypeToken<List<TrailerCue>>() {}.type).orEmpty()
+        }.getOrDefault(emptyList())
+    }
 }

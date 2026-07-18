@@ -994,6 +994,33 @@ object FluxaCoreNative {
         return value.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
+    fun trailerSubtitleSelectionPlan(
+        tracksJson: String,
+        preferred: String?,
+        secondary: String?,
+        systemLanguage: String?
+    ): String? {
+        val args = JsonObject().apply {
+            add("tracks", com.google.gson.JsonParser.parseString(tracksJson))
+            preferred?.let { addProperty("preferred", it) }
+            secondary?.let { addProperty("secondary", it) }
+            systemLanguage?.let { addProperty("systemLanguage", it) }
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("trailerSubtitleSelectionPlan", args.toString())
+        return value.takeUnless { it.isJsonNull }?.toString()
+    }
+
+    fun normalizeTrailerSubtitleUrl(url: String): String {
+        val value = FluxaCoreUniFfi.coreInvokeValue("normalizeTrailerSubtitleUrl", urlArgs(url))
+        return value.takeUnless { it.isJsonNull }?.asString ?: url
+    }
+
+    fun parseTrailerSubtitleCues(body: String): String {
+        val args = JsonObject().apply { addProperty("body", body) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("parseTrailerSubtitleCues", args.toString())
+        return value.takeUnless { it.isJsonNull }?.toString() ?: "[]"
+    }
+
     fun isTorrentPlaybackUrl(url: String?): Boolean {
         val stream = Stream(name = null, title = null, url = url)
         return streamPlaybackInfo(stream).isTorrentPlaybackUrl

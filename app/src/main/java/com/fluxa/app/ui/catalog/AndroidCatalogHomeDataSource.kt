@@ -37,6 +37,7 @@ class AndroidCatalogHomeDataSource(
             billboardPool = homeViewModel.billboardPool.value,
             billboardLogo = homeViewModel.billboardLogo.value,
             billboardTrailerUrl = homeViewModel.billboardTrailerUrl.value,
+            billboardTrailerSubtitleCues = homeViewModel.billboardTrailerSubtitleCues.value,
             filter = homeViewModel.currentFilter.value
         )
     )
@@ -60,7 +61,8 @@ class AndroidCatalogHomeDataSource(
                         profile = profile
                     ),
                     logoUrl = billboardResolution.logoUrl,
-                    trailerUrl = billboardResolution.trailerUrl
+                    trailerUrl = billboardResolution.trailerUrl,
+                    trailerSubtitleCues = billboardResolution.trailerSubtitleCues
                 )
             },
             heroItems = billboardResolution.items.map { movie ->
@@ -78,7 +80,8 @@ class AndroidCatalogHomeDataSource(
         val movie: com.fluxa.app.data.remote.Meta?,
         val items: List<com.fluxa.app.data.remote.Meta>,
         val logoUrl: String?,
-        val trailerUrl: String?
+        val trailerUrl: String?,
+        val trailerSubtitleCues: List<com.fluxa.app.player.TrailerCue>
     )
 
     private fun billboardResolution(): Flow<BillboardResolution> = combine(
@@ -88,24 +91,40 @@ class AndroidCatalogHomeDataSource(
         homeViewModel.billboardTrailerUrl,
         homeViewModel.currentFilter
     ) { billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, filter ->
-        resolveBillboardResolution(billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, filter)
+        BillboardBase(billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, filter)
+    }.combine(homeViewModel.billboardTrailerSubtitleCues) { base, cues ->
+        resolveBillboardResolution(base.movie, base.pool, base.logo, base.trailerUrl, cues, base.filter)
     }
+
+    private data class BillboardBase(
+        val movie: com.fluxa.app.data.remote.Meta?,
+        val pool: List<com.fluxa.app.data.remote.Meta>,
+        val logo: String?,
+        val trailerUrl: String?,
+        val filter: String
+    )
 
     private fun resolveBillboardResolution(
         billboardMovie: com.fluxa.app.data.remote.Meta?,
         billboardPool: List<com.fluxa.app.data.remote.Meta>,
         billboardLogo: String?,
         billboardTrailerUrl: String?,
+        billboardTrailerSubtitleCues: List<com.fluxa.app.player.TrailerCue>,
         filter: String
     ): BillboardResolution {
         val filteredPool = billboardPool.filter { it.matchesFilter(filter) }
         val effectiveMovie = billboardMovie?.takeIf { it.matchesFilter(filter) }
             ?: filteredPool.firstOrNull()
             ?: billboardMovie
-        val heroItems = listOfNotNull(effectiveMovie) + filteredPool.filterNot { candidate ->
-            candidate.id == effectiveMovie?.id && candidate.type == effectiveMovie?.type
+        val effectiveMovieInPool = effectiveMovie != null && filteredPool.any { candidate ->
+            candidate.id == effectiveMovie.id && candidate.type == effectiveMovie.type
         }
-        return BillboardResolution(effectiveMovie, heroItems, billboardLogo, billboardTrailerUrl)
+        val heroItems = if (effectiveMovieInPool) {
+            filteredPool
+        } else {
+            listOfNotNull(effectiveMovie) + filteredPool
+        }
+        return BillboardResolution(effectiveMovie, heroItems, billboardLogo, billboardTrailerUrl, billboardTrailerSubtitleCues)
     }
 
     private fun List<HomeCategory>.categoryFor(meta: Meta): HomeCategory? = firstOrNull { category ->

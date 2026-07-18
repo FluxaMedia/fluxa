@@ -12,12 +12,15 @@ import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.media3.exoplayer.ExoPlayer
+import com.fluxa.app.shared.LocalHeroTrailerSurface
+import com.fluxa.app.ui.catalog.HeroTrailerVideoSurface
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
@@ -85,6 +88,11 @@ internal fun AppRoutesHost(
         }
     }
 
+    CompositionLocalProvider(
+        LocalHeroTrailerSurface provides { url, cues, onActiveSubtitleChanged, trailerModifier ->
+            HeroTrailerVideoSurface(url, cues, onActiveSubtitleChanged, trailerModifier)
+        }
+    ) {
     com.fluxa.app.shared.FluxaAppHost(
         platformServices = androidFluxaPlatformServices!!,
         deviceType = deviceType,
@@ -137,6 +145,12 @@ internal fun AppRoutesHost(
                     androidFluxaPlatformServices!!.catalogHomeDataSource
                         .resolveMeta(action.item.id, action.item.type)
                         ?.let(homeViewModel::addToWatchlist)
+                }
+                is com.fluxa.app.shared.feature.catalog.CatalogAction.HeroPageChanged -> {
+                    val poolIndex = homeViewModel.billboardPool.value.indexOfFirst {
+                        it.id == action.item.id && it.type == action.item.type
+                    }
+                    if (poolIndex >= 0) homeViewModel.syncBillboardIndex(poolIndex)
                 }
                 else -> Unit
             }
@@ -288,4 +302,5 @@ internal fun AppRoutesHost(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
     )
+    }
 }

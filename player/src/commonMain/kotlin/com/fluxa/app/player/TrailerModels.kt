@@ -15,6 +15,12 @@ data class TrailerResult(
     val streamMimeType: String?
 )
 
+data class TrailerCue(
+    val start: Double,
+    val end: Double,
+    val text: String
+)
+
 sealed interface TrailerResolveResult {
     data class Ok(val data: TrailerResult) : TrailerResolveResult
     data object GeoBlocked : TrailerResolveResult
