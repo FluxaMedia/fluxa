@@ -119,6 +119,13 @@ internal class HomeLibraryCoordinator(
                             .onFailure { Log.w("HomeLibrary", "Trakt watched reconcile failed", it) }
                     }
                 }
+                if (profile != null && !simklToken.isNullOrBlank()) {
+                    scope.launch(Dispatchers.IO) {
+                        val remotePlanned = simklPlanned?.await().orEmpty()
+                        runCatching { remotePlanned.forEach { watchlistManager.applyRemoteWatchlistAdd(it) } }
+                            .onFailure { Log.w("HomeLibrary", "Simkl watchlist reconcile failed", it) }
+                    }
+                }
             } catch (e: Exception) {
                 Log.w("HomeLibrary", "Failed to load library data", e)
                 setLibraryState(_state.value.copy(
