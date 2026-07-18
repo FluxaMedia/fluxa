@@ -220,17 +220,19 @@ class StremioRepository @Inject constructor(
         return profileManager.getProfiles().firstOrNull { it.authKey == authKey }?.id
     }
 
-    suspend fun savePlaybackProgress(authKey: String, meta: Meta, timeOffset: Long, duration: Long) = withContext(Dispatchers.IO) {
+    suspend fun savePlaybackProgress(authKey: String, meta: Meta, timeOffset: Long, duration: Long): Boolean = withContext(Dispatchers.IO) {
         val profileId = profileIdForAuthKey(authKey)
         try {
             FluxaCoreNative.playbackProgressItem(meta, timeOffset, duration, utcNow())?.let { item ->
                 authService.datastorePut(DatastorePutRequest(authKey, "library", listOf(item)))
             }
             profileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
+            true
         } catch (e: Exception) {
             failureReporter.report("stremio.library.savePlaybackProgress", e)
             Log.w("StremioRepository", "Failed to save playback progress for ${meta.id}", e)
             profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
+            false
         }
     }
 

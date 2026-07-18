@@ -64,6 +64,7 @@ import com.fluxa.app.ui.catalog.DirectPlaybackTarget
 import com.fluxa.app.ui.catalog.TraktScrobbleWorker
 import com.fluxa.app.ui.catalog.SimklScrobbleWorker
 import com.fluxa.app.ui.catalog.NuvioPlaybackProgressPushWorker
+import com.fluxa.app.ui.catalog.StremioPlaybackProgressPushWorker
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
@@ -751,7 +752,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val timeOffset = progress.number("timeOffset")?.toLong() ?: 0L
         val duration = progress.number("duration")?.toLong() ?: 0L
         if (profile?.isGuest == false) {
-            repository.savePlaybackProgress(profile.authKey, meta, timeOffset, duration)
+            StremioPlaybackProgressPushWorker.enqueue(context, gson, profile.id, meta, timeOffset, duration)
         }
         watchlistManager.savePlaybackProgress(
             meta = meta,

@@ -8,6 +8,7 @@ import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.core.StremioId
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -21,6 +22,7 @@ internal class HomePlaybackController(
     private val repository: StremioRepository,
     private val watchlistManager: WatchlistManager,
     private val forgottenStore: ForgottenContinueWatchingStore,
+    private val gson: Gson,
     private val scope: CoroutineScope,
     private val activeProfile: () -> UserProfile?,
     private val localContinueWatching: () -> List<Meta>,
@@ -59,7 +61,7 @@ internal class HomePlaybackController(
             forgottenKeys.remove(ContinueWatchingListMerger.identityKey(meta))
             forgottenStore.save(profile, forgottenKeys.toSet())
             if (profile?.isGuest == false) {
-                repository.savePlaybackProgress(profile.authKey, meta, timeOffset, duration)
+                StremioPlaybackProgressPushWorker.enqueue(context, gson, profile.id, meta, timeOffset, duration)
             }
             watchlistManager.savePlaybackProgress(
                 meta,

@@ -276,6 +276,7 @@ class HomeViewModel @Inject constructor(
             repository = repository,
             watchlistManager = watchlistManager,
             forgottenStore = forgottenContinueWatchingStore,
+            gson = gson,
             scope = viewModelScope,
             activeProfile = { currentActiveProfile },
             localContinueWatching = { currentWatchlist },
