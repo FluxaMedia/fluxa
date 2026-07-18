@@ -93,6 +93,9 @@ internal class HomeLibraryCoordinator(
                 val simklCompleted = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "completed") } else null
                 val simklWatchedEpisodesWithTimestamps = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklWatchedEpisodesWithTimestamps(simklToken) } else null
 
+                val anilistToken = profile?.anilistAccessToken
+                val anilistWatchlistWithTimestamps = if (!anilistToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getAnilistWatchlistWithTimestamps(anilistToken) } else null
+
                 val traktPlannedWithTimestamps = traktPlannedWithListedAt?.await().orEmpty()
 
                 setLibraryState(LibraryUiState(
@@ -111,7 +114,7 @@ internal class HomeLibraryCoordinator(
 
                 if (profile != null && !traktToken.isNullOrBlank()) {
                     scope.launch(Dispatchers.IO) {
-                        runCatching { reconcileTraktWatchlist(profile, traktPlannedWithTimestamps) }
+                        runCatching { reconcileWatchlist(profile, traktPlannedWithTimestamps) }
                             .onFailure { Log.w("HomeLibrary", "Trakt watchlist reconcile failed", it) }
                     }
                     scope.launch(Dispatchers.IO) {
@@ -132,6 +135,13 @@ internal class HomeLibraryCoordinator(
                             .onFailure { Log.w("HomeLibrary", "Simkl watched reconcile failed", it) }
                     }
                 }
+                if (profile != null && !anilistToken.isNullOrBlank()) {
+                    scope.launch(Dispatchers.IO) {
+                        val remotePlanned = anilistWatchlistWithTimestamps?.await().orEmpty()
+                        runCatching { reconcileWatchlist(profile, remotePlanned) }
+                            .onFailure { Log.w("HomeLibrary", "AniList watchlist reconcile failed", it) }
+                    }
+                }
             } catch (e: Exception) {
                 Log.w("HomeLibrary", "Failed to load library data", e)
                 setLibraryState(_state.value.copy(
@@ -143,7 +153,7 @@ internal class HomeLibraryCoordinator(
         }
     }
 
-    private suspend fun reconcileTraktWatchlist(profile: UserProfile, remoteEntries: List<Pair<Meta, Long>>) {
+    private suspend fun reconcileWatchlist(profile: UserProfile, remoteEntries: List<Pair<Meta, Long>>) {
         val localSnapshot = watchlistManager.getWatchlistMembershipSnapshot()
         val remoteMembership = remoteEntries.map { (meta, listedAtMs) ->
             ExternalSyncMergeBridge.RemoteMembershipItem(meta.id, listedAtMs)

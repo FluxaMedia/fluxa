@@ -28,9 +28,9 @@ import javax.inject.Singleton
 
 private const val EPISODE_PROGRESS_UNIT_MS = 45 * 60_000L
 
-private const val ANILIST_CURRENT_LIST_QUERY = """
+private const val ANILIST_LIST_QUERY = """
 query (${'$'}userId: Int) {
-  MediaListCollection(userId: ${'$'}userId, type: ANIME, status: CURRENT) {
+  MediaListCollection(userId: ${'$'}userId, type: ANIME) {
     lists {
       entries {
         status
@@ -322,8 +322,8 @@ class ExternalLibraryClient @Inject constructor(
         )
     }
 
-    private suspend fun getAnilistContinueWatchingItems(token: String?): List<Meta> {
-        if (token.isNullOrBlank()) return emptyList()
+    private suspend fun anilistSyncValue(token: String?): com.google.gson.JsonObject? {
+        if (token.isNullOrBlank()) return null
         val authorization = "Bearer $token"
         return try {
             val viewerResponse = traktApi.anilistGraphQl(
@@ -335,12 +335,12 @@ class ExternalLibraryClient @Inject constructor(
                 ?.getAsJsonObject("Viewer")
                 ?.get("id")
                 ?.takeUnless { it.isJsonNull }
-                ?.asInt ?: return emptyList()
+                ?.asInt ?: return null
 
             val listResponse = traktApi.anilistGraphQl(
                 authorization,
                 AnilistGraphQlRequest(
-                    query = ANILIST_CURRENT_LIST_QUERY,
+                    query = ANILIST_LIST_QUERY,
                     variables = mapOf("userId" to viewerId)
                 )
             )
@@ -353,7 +353,7 @@ class ExternalLibraryClient @Inject constructor(
             lists.forEach { list ->
                 list.asJsonObject.getAsJsonArray("entries")?.forEach(entries::add)
             }
-            if (entries.size() == 0) return emptyList()
+            if (entries.size() == 0) return null
 
             val args = com.google.gson.JsonObject().apply {
                 add("entries", entries)
@@ -362,13 +362,36 @@ class ExternalLibraryClient @Inject constructor(
             val envelope = JsonParser.parseString(
                 FluxaCoreUniFfi.coreInvoke("anilistEntriesToSync", args.toString())
             ).asJsonObject
-            if (envelope.get("ok")?.asBoolean != true) return emptyList()
-            val progress = envelope.getAsJsonObject("value")?.getAsJsonObject("progress") ?: return emptyList()
-            progress.entrySet().mapNotNull { (_, value) -> anilistProgressEntryToMeta(value.asJsonObject) }
+            if (envelope.get("ok")?.asBoolean != true) return null
+            envelope.getAsJsonObject("value")
         } catch (e: Exception) {
-            Log.w("ExternalLibraryClient", "Failed to load AniList continue watching items", e)
-            emptyList()
+            Log.w("ExternalLibraryClient", "Failed to load AniList sync data", e)
+            null
         }
+    }
+
+    private suspend fun getAnilistContinueWatchingItems(token: String?): List<Meta> {
+        val progress = anilistSyncValue(token)?.getAsJsonObject("progress") ?: return emptyList()
+        return progress.entrySet().mapNotNull { (_, value) -> anilistProgressEntryToMeta(value.asJsonObject) }
+    }
+
+    suspend fun getAnilistWatchlistWithTimestamps(token: String?): List<Pair<Meta, Long>> {
+        val watchlist = anilistSyncValue(token)?.getAsJsonArray("watchlist") ?: return emptyList()
+        return watchlist.mapNotNull { entry -> anilistWatchlistEntryToMeta(entry.asJsonObject) }
+    }
+
+    private fun anilistWatchlistEntryToMeta(item: com.google.gson.JsonObject): Pair<Meta, Long>? {
+        val id = item.get("id")?.takeUnless { it.isJsonNull }?.asString ?: return null
+        val updatedAtMs = item.get("updatedAtMs")?.takeUnless { it.isJsonNull }?.asLong ?: return null
+        val meta = Meta(
+            id = id,
+            name = item.get("name")?.takeUnless { it.isJsonNull }?.asString ?: id,
+            type = item.get("type")?.takeUnless { it.isJsonNull }?.asString ?: "series",
+            poster = item.get("poster")?.takeUnless { it.isJsonNull }?.asString,
+            background = item.get("background")?.takeUnless { it.isJsonNull }?.asString,
+            reason = "AniList"
+        )
+        return meta to updatedAtMs
     }
 
     private fun anilistProgressEntryToMeta(entry: com.google.gson.JsonObject): Meta? {

@@ -195,6 +195,9 @@ class StremioRepository @Inject constructor(
     suspend fun getSimklWatchedEpisodesWithTimestamps(token: String?): Map<String, Long> =
         externalLibraryClient.getSimklWatchedEpisodesWithTimestamps(token)
 
+    suspend fun getAnilistWatchlistWithTimestamps(token: String?): List<Pair<Meta, Long>> =
+        externalLibraryClient.getAnilistWatchlistWithTimestamps(token)
+
     suspend fun clearTraktPlaybackProgress(token: String?, meta: Meta) =
         traktRepository.clearPlaybackProgress(token, meta)
 
