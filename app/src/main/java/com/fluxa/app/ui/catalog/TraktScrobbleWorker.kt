@@ -7,29 +7,23 @@ import com.fluxa.app.domain.discovery.*
 
 import android.content.Context
 import android.util.Log
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
-import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.fluxa.app.BuildConfig
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import java.util.concurrent.TimeUnit
 
 @HiltWorker
 class TraktScrobbleWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
-    private val profileManager: ProfileManager,
+    profileManager: ProfileManager,
     private val api: TraktApi
-) : CoroutineWorker(appContext, params) {
+) : ProviderSyncPushWorker(appContext, params, profileManager) {
+
+    override val providerName = "trakt"
 
     override suspend fun doWork(): Result {
         if (!TraktIntegration.hasClient(BuildConfig.TRAKT_CLIENT_ID)) return Result.success()
@@ -40,7 +34,7 @@ class TraktScrobbleWorker @AssistedInject constructor(
         val action = inputData.getString(KEY_ACTION)?.takeIf { it in setOf("start", "pause", "stop") } ?: return Result.failure()
         val progress = inputData.getFloat(KEY_PROGRESS, -1f).takeIf { it >= 0f }?.coerceIn(0f, 100f) ?: return Result.failure()
 
-        val profile = profileManager.getProfiles().firstOrNull { it.id == profileId } ?: return Result.failure()
+        val profile = requireProfile(profileId) ?: return Result.failure()
         val token = resolveAccessToken(profileManager, profile, api) ?: return Result.failure()
         val request = buildRequest(mediaType, mediaId, progress) ?: return Result.failure()
 
@@ -60,7 +54,7 @@ class TraktScrobbleWorker @AssistedInject constructor(
             onSuccess = { response ->
                 when {
                     response == null -> {
-                        profileManager.recordExternalSyncFailure(profileId, "trakt")
+                        onSyncFailure(profileId)
                         Result.failure()
                     }
                     response.isSuccessful -> {
@@ -68,31 +62,31 @@ class TraktScrobbleWorker @AssistedInject constructor(
                             "TraktScrobbleWorker",
                             "Scrobble response action=$action media_id=$mediaId success=true http=${response.code()}"
                         )
-                        profileManager.clearExternalSyncFailure(profileId, "trakt")
+                        onSyncSuccess(profileId)
                         Result.success()
                     }
                     response.code() == 409 -> {
                         val body = runCatching { response.errorBody()?.string()?.take(1000) }.getOrNull()
                         Log.w("TraktScrobbleWorker", "Scrobble response action=$action media_id=$mediaId success=true duplicate=true http=409 error_body=${body.orEmpty()}")
-                        profileManager.clearExternalSyncFailure(profileId, "trakt")
+                        onSyncSuccess(profileId)
                         Result.success()
                     }
                     response.code() == 429 || response.code() >= 500 -> {
-                        profileManager.recordExternalSyncFailure(profileId, "trakt")
+                        onSyncFailure(profileId)
                         Result.retry()
                     }
                     response.code() == 401 && runAttemptCount == 0 -> Result.retry()
                     else -> {
                         val body = runCatching { response.errorBody()?.string()?.take(1000) }.getOrNull()
                         Log.w("TraktScrobbleWorker", "Scrobble response action=$action media_id=$mediaId success=false http=${response.code()} error_body=${body.orEmpty()}")
-                        profileManager.recordExternalSyncFailure(profileId, "trakt")
+                        onSyncFailure(profileId)
                         Result.failure()
                     }
                 }
             },
             onFailure = { error ->
                 Log.w("TraktScrobbleWorker", "Scrobble $action failed for $mediaId", error)
-                profileManager.recordExternalSyncFailure(profileId, "trakt")
+                onSyncFailure(profileId)
                 Result.retry()
             }
         )
@@ -171,28 +165,19 @@ class TraktScrobbleWorker @AssistedInject constructor(
             action: String
         ) {
             if (profileId.isBlank() || mediaId.isBlank() || action !in setOf("start", "pause", "stop")) return
-            val work = OneTimeWorkRequestBuilder<TraktScrobbleWorker>()
-                .setInputData(
-                    workDataOf(
-                        KEY_PROFILE_ID to profileId,
-                        KEY_MEDIA_TYPE to mediaType,
-                        KEY_MEDIA_ID to mediaId,
-                        KEY_PROGRESS to progress.coerceIn(0f, 100f),
-                        KEY_ACTION to action
-                    )
-                )
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                )
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .build()
-
-            val uniqueName = "trakt_scrobble_${profileId}_${mediaType}_${mediaId}"
-            WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(uniqueName, ExistingWorkPolicy.REPLACE, work)
+            val inputData = workDataOf(
+                KEY_PROFILE_ID to profileId,
+                KEY_MEDIA_TYPE to mediaType,
+                KEY_MEDIA_ID to mediaId,
+                KEY_PROGRESS to progress.coerceIn(0f, 100f),
+                KEY_ACTION to action
+            )
+            ProviderSyncPushWorker.enqueueUnique<TraktScrobbleWorker>(
+                context,
+                "trakt_scrobble_${profileId}_${mediaType}_${mediaId}",
+                inputData,
+                expedited = true
+            )
         }
     }
 }

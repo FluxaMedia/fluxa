@@ -7,14 +7,7 @@ import com.fluxa.app.domain.discovery.*
 
 import android.content.Context
 import android.util.Log
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
-import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.fluxa.app.BuildConfig
@@ -23,15 +16,16 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.concurrent.TimeUnit
 
 @HiltWorker
 class SimklScrobbleWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
-    private val profileManager: ProfileManager,
+    profileManager: ProfileManager,
     private val api: TraktApi
-) : CoroutineWorker(appContext, params) {
+) : ProviderSyncPushWorker(appContext, params, profileManager) {
+
+    override val providerName = "simkl"
 
     override suspend fun doWork(): Result {
         val clientId = BuildConfig.SIMKL_CLIENT_ID
@@ -44,7 +38,7 @@ class SimklScrobbleWorker @AssistedInject constructor(
         val positionMs = inputData.getLong(KEY_POSITION_MS, -1L).takeIf { it >= 0L } ?: return Result.failure()
         val durationMs = inputData.getLong(KEY_DURATION_MS, -1L).takeIf { it > 0L } ?: return Result.failure()
 
-        val profile = profileManager.getProfiles().firstOrNull { it.id == profileId } ?: return Result.failure()
+        val profile = requireProfile(profileId) ?: return Result.failure()
         val token = profile.simklAccessToken?.takeIf { it.isNotBlank() } ?: return Result.success()
 
         val imdbId = SimklIntegration.imdbIdFrom(mediaId)
@@ -85,7 +79,7 @@ class SimklScrobbleWorker @AssistedInject constructor(
                     response == null -> Result.success()
                     response.isSuccessful -> {
                         profileManager.saveProfile(profile.copy(simklLastSyncAt = System.currentTimeMillis()))
-                        profileManager.clearExternalSyncFailure(profileId, "simkl")
+                        onSyncSuccess(profileId)
                         Result.success()
                     }
                     response.code() == 401 -> {
@@ -94,19 +88,19 @@ class SimklScrobbleWorker @AssistedInject constructor(
                         Result.failure()
                     }
                     response.code() == 429 || response.code() >= 500 -> {
-                        profileManager.recordExternalSyncFailure(profileId, "simkl")
+                        onSyncFailure(profileId)
                         Result.retry()
                     }
                     else -> {
                         Log.w("SimklScrobbleWorker", "Scrobble $action failed media_id=$mediaId http=${response.code()}")
-                        profileManager.recordExternalSyncFailure(profileId, "simkl")
+                        onSyncFailure(profileId)
                         Result.failure()
                     }
                 }
             },
             onFailure = { error ->
                 Log.w("SimklScrobbleWorker", "Scrobble $action failed for $mediaId", error)
-                profileManager.recordExternalSyncFailure(profileId, "simkl")
+                onSyncFailure(profileId)
                 Result.retry()
             }
         )
@@ -130,29 +124,20 @@ class SimklScrobbleWorker @AssistedInject constructor(
             durationMs: Long
         ) {
             if (profileId.isBlank() || mediaId.isBlank() || durationMs <= 0L || action !in setOf("start", "pause", "stop")) return
-            val work = OneTimeWorkRequestBuilder<SimklScrobbleWorker>()
-                .setInputData(
-                    workDataOf(
-                        KEY_PROFILE_ID to profileId,
-                        KEY_MEDIA_TYPE to mediaType,
-                        KEY_MEDIA_ID to mediaId,
-                        KEY_ACTION to action,
-                        KEY_POSITION_MS to positionMs,
-                        KEY_DURATION_MS to durationMs
-                    )
-                )
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                )
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .build()
-
-            val uniqueName = "simkl_scrobble_${profileId}_${mediaType}_${mediaId}"
-            WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(uniqueName, ExistingWorkPolicy.REPLACE, work)
+            val inputData = workDataOf(
+                KEY_PROFILE_ID to profileId,
+                KEY_MEDIA_TYPE to mediaType,
+                KEY_MEDIA_ID to mediaId,
+                KEY_ACTION to action,
+                KEY_POSITION_MS to positionMs,
+                KEY_DURATION_MS to durationMs
+            )
+            ProviderSyncPushWorker.enqueueUnique<SimklScrobbleWorker>(
+                context,
+                "simkl_scrobble_${profileId}_${mediaType}_${mediaId}",
+                inputData,
+                expedited = true
+            )
         }
     }
 }
