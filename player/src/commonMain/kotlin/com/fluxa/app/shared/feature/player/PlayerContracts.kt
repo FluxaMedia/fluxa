@@ -11,7 +11,8 @@ data class PlayerContentUiModel(
     val backgroundUrl: String? = null,
     val streamLabel: String = "",
     val releaseInfo: String? = null,
-    val runtime: String? = null
+    val runtime: String? = null,
+    val seasonsCount: Int? = null
 ) {
     val logo: String get() = logoUrl.orEmpty()
     val background: String get() = backgroundUrl.orEmpty()

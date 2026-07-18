@@ -5,8 +5,8 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeAccentColorArgb
 import com.fluxa.app.data.local.safeLanguage
-import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
+import com.fluxa.app.shared.feature.player.PlayerContentUiModel
 import com.fluxa.app.shared.feature.player.PlayerSidebarShell
 import com.fluxa.app.shared.feature.player.TrackItem
 
@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun EpisodeSidebar(
-    meta: Meta,
+    content: PlayerContentUiModel,
     currentId: String,
     deviceType: DeviceType,
     viewModel: HomeViewModel,
@@ -50,29 +50,29 @@ fun EpisodeSidebar(
     var episodes by remember { mutableStateOf<List<Video>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var showSeasonMenu by remember { mutableStateOf(false) }
-    var hasExtras by remember(meta.id) { mutableStateOf(false) }
+    var hasExtras by remember(content.id) { mutableStateOf(false) }
     val currentSeasonFromId = remember(currentId) {
         val parts = currentId.split(":")
         if (parts.size >= 3) parts[parts.size - 2].toIntOrNull() ?: 1 else 1
     }
     var selectedSeason by remember(currentId) { mutableIntStateOf(currentSeasonFromId) }
-    val availableSeasons = remember(meta.seasonsCount, hasExtras, currentSeasonFromId) {
+    val availableSeasons = remember(content.seasonsCount, hasExtras, currentSeasonFromId) {
         buildList {
-            val count = maxOf(meta.seasonsCount ?: 1, currentSeasonFromId + 2)
+            val count = maxOf(content.seasonsCount ?: 1, currentSeasonFromId + 2)
             addAll(1..count.coerceAtLeast(1))
             if (hasExtras || currentSeasonFromId == 0) add(0)
         }.distinct().sortedWith(compareBy<Int> { if (it == 0) 1 else 0 }.thenBy { it })
     }
 
-    LaunchedEffect(meta.id) {
+    LaunchedEffect(content.id) {
         hasExtras = runCatching {
-            viewModel.getSeasonEpisodes(meta.id, 0, activeProfile?.safeLanguage ?: "en").isNotEmpty()
+            viewModel.getSeasonEpisodes(content.id, 0, activeProfile?.safeLanguage ?: "en").isNotEmpty()
         }.getOrDefault(false)
     }
 
     LaunchedEffect(currentId, selectedSeason) {
         isLoading = true
-        episodes = viewModel.getSeasonEpisodes(meta.id, selectedSeason, activeProfile?.safeLanguage ?: "en")
+        episodes = viewModel.getSeasonEpisodes(content.id, selectedSeason, activeProfile?.safeLanguage ?: "en")
         isLoading = false
     }
 

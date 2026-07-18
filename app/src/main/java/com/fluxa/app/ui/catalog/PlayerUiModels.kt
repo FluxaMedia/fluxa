@@ -11,5 +11,6 @@ internal fun Meta.toPlayerContentUiModel(): PlayerContentUiModel =
         logoUrl = logo,
         backgroundUrl = background,
         releaseInfo = releaseInfo,
-        runtime = runtime
+        runtime = runtime,
+        seasonsCount = seasonsCount
     )

@@ -363,7 +363,7 @@ internal fun PlayerScreenContent(
 
         if (state.showSettings) {
             PlayerSettingsPanel(
-                meta = meta,
+                content = playerContent,
                 currentVideoId = state.currentVideoId,
                 deviceType = deviceType,
                 viewModel = viewModel,

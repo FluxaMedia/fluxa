@@ -37,7 +37,6 @@ import com.fluxa.app.R
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.IntroTimestamps
-import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.player.MediaTrack
@@ -429,7 +428,7 @@ private fun MpvAndroidSurfaceView.applyMpvSurfaceConfig(config: MpvSurfaceConfig
 
 @Composable
 internal fun PlayerSettingsPanel(
-    meta: Meta,
+    content: PlayerContentUiModel,
     currentVideoId: String?,
     deviceType: DeviceType,
     viewModel: HomeViewModel,
@@ -491,10 +490,10 @@ internal fun PlayerSettingsPanel(
             onSubmit = onSubmitMarkSegment,
             onClose = onCloseSettings
         )
-    } else if (activeSettingsTab == 3 && meta.type == "series") {
+    } else if (activeSettingsTab == 3 && content.type == "series") {
         EpisodeSidebar(
-            meta = meta,
-            currentId = currentVideoId ?: meta.id,
+            content = content,
+            currentId = currentVideoId ?: content.id,
             deviceType = deviceType,
             viewModel = viewModel,
             activeProfile = activeProfile,
