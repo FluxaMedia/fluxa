@@ -105,6 +105,7 @@ retrofit            = { group = "com.squareup.retrofit2", name = "retrofit",    
 retrofit-gson       = { group = "com.squareup.retrofit2", name = "converter-gson",     version.ref = "retrofit" }
 okhttp-logging      = { group = "com.squareup.okhttp3",   name = "logging-interceptor",version.ref = "okhttp" }
 okhttp-doh          = { group = "com.squareup.okhttp3",   name = "okhttp-dnsoverhttps",version.ref = "okhttp" }
+okhttp-mockwebserver= { group = "com.squareup.okhttp3",   name = "mockwebserver",      version.ref = "okhttp" }
 
 # Coil
 coil3               = { group = "io.coil-kt.coil3", name = "coil",               version.ref = "coil3" }

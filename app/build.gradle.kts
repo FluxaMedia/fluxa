@@ -307,6 +307,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation("net.java.dev.jna:jna:${libs.versions.jna.get()}@aar")
     testImplementation(libs.jna)
+    testImplementation(libs.okhttp.mockwebserver)
     implementation(libs.androidx.activity.compose)
     implementation(libs.bundles.coroutines)
     implementation(libs.bundles.lifecycle)

@@ -24,10 +24,14 @@ object MkvChapterFetcher {
             val requestBuilder = Request.Builder()
                 .url(url)
                 .header("Range", "bytes=0-${PREFIX_BYTES - 1}")
-            headers.forEach { (key, value) -> requestBuilder.header(key, value) }
+            StreamRequestPolicy.headersFor(url, headers).forEach { (key, value) -> requestBuilder.header(key, value) }
+            StreamRequestPolicy.refererFor(url)?.let { requestBuilder.header("Referer", it) }
 
             val bytes = client.newCall(requestBuilder.build()).execute().use { response ->
                 if (!response.isSuccessful) return@use null
+                if (response.code != 206 && (response.body.contentLength() < 0 || response.body.contentLength() > PREFIX_BYTES)) {
+                    return@use null
+                }
                 response.body.bytes()
             } ?: return@runCatching emptyList()
 
