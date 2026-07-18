@@ -1,5 +1,6 @@
 package com.fluxa.app.data.repository
 
+import android.util.Log
 import com.fluxa.app.data.BuildConfig
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
@@ -20,7 +21,14 @@ class ExternalSyncPushCoordinator @Inject constructor(
 ) {
     suspend fun pushMarkWatched(profile: UserProfile, meta: Meta, episodes: List<Video>, watched: Boolean) = coroutineScope {
         profile.traktAccessToken?.takeIf(String::isNotBlank)?.let { token ->
-            launch { runCatching { pushTraktMarkWatched(token, meta, episodes, watched) } }
+            launch {
+                runCatching { pushTraktMarkWatched(token, meta, episodes, watched) }
+                    .onSuccess { profileManager.clearExternalSyncFailure(profile.id, "trakt") }
+                    .onFailure {
+                        Log.w("ExternalSyncPush", "Trakt pushMarkWatched failed for ${meta.id}", it)
+                        profileManager.recordExternalSyncFailure(profile.id, "trakt")
+                    }
+            }
         }
         if (!profile.simklAccessToken.isNullOrBlank()) {
             launch { pushSimklWithTokenHandling(profile) { token -> pushSimklMarkWatched(token, meta, episodes, watched) } }
@@ -29,13 +37,27 @@ class ExternalSyncPushCoordinator @Inject constructor(
             launch { pushMalWithTokenHandling(profile) { token -> pushMalMarkWatched(token, meta, episodes) } }
         }
         if (!profile.nuvioAccessToken.isNullOrBlank()) {
-            launch { runCatching { nuvioSyncCoordinator.pushWatched(profile, meta, episodes, watched) } }
+            launch {
+                runCatching { nuvioSyncCoordinator.pushWatched(profile, meta, episodes, watched) }
+                    .onSuccess { profileManager.clearExternalSyncFailure(profile.id, "nuvio") }
+                    .onFailure {
+                        Log.w("ExternalSyncPush", "Nuvio pushWatched failed for ${meta.id}", it)
+                        profileManager.recordExternalSyncFailure(profile.id, "nuvio")
+                    }
+            }
         }
     }
 
     suspend fun pushWatchlist(profile: UserProfile, meta: Meta, isInWatchlist: Boolean) = coroutineScope {
         profile.traktAccessToken?.takeIf(String::isNotBlank)?.let { token ->
-            launch { runCatching { pushTraktWatchlist(token, meta, isInWatchlist) } }
+            launch {
+                runCatching { pushTraktWatchlist(token, meta, isInWatchlist) }
+                    .onSuccess { profileManager.clearExternalSyncFailure(profile.id, "trakt") }
+                    .onFailure {
+                        Log.w("ExternalSyncPush", "Trakt pushWatchlist failed for ${meta.id}", it)
+                        profileManager.recordExternalSyncFailure(profile.id, "trakt")
+                    }
+            }
         }
         if (isInWatchlist && !profile.simklAccessToken.isNullOrBlank()) {
             launch { pushSimklWithTokenHandling(profile) { token -> pushSimklWatchlist(token, meta) } }
@@ -44,23 +66,35 @@ class ExternalSyncPushCoordinator @Inject constructor(
             launch { pushMalWithTokenHandling(profile) { token -> pushMalWatchlist(token, meta) } }
         }
         if (!profile.nuvioAccessToken.isNullOrBlank()) {
-            launch { runCatching { nuvioSyncCoordinator.pushWatchlist(profile, meta, isInWatchlist) } }
-        }
-    }
-
-    suspend fun pushPlaybackProgress(profile: UserProfile, meta: Meta, videoId: String?, position: Long, duration: Long) {
-        if (!profile.nuvioAccessToken.isNullOrBlank()) {
-            runCatching { nuvioSyncCoordinator.pushPlaybackProgress(profile, meta, videoId, position, duration) }
+            launch {
+                runCatching { nuvioSyncCoordinator.pushWatchlist(profile, meta, isInWatchlist) }
+                    .onSuccess { profileManager.clearExternalSyncFailure(profile.id, "nuvio") }
+                    .onFailure {
+                        Log.w("ExternalSyncPush", "Nuvio pushWatchlist failed for ${meta.id}", it)
+                        profileManager.recordExternalSyncFailure(profile.id, "nuvio")
+                    }
+            }
         }
     }
 
     private suspend fun pushSimklWithTokenHandling(profile: UserProfile, call: suspend (String) -> Response<Unit>?) {
         val token = profile.simklAccessToken?.takeIf { it.isNotBlank() } ?: return
-        val response = runCatching { call(token) }.getOrNull() ?: return
+        val response = runCatching { call(token) }.getOrNull()
+        if (response == null) {
+            Log.w("ExternalSyncPush", "Simkl push failed for profile ${profile.id}")
+            profileManager.recordExternalSyncFailure(profile.id, "simkl")
+            return
+        }
         when (ExternalSyncPolicy.afterResponse(ExternalSyncProvider.SIMKL, response.code())) {
-            ExternalSyncAction.STAMP_SUCCESS -> profileManager.saveProfile(profile.copy(simklLastSyncAt = System.currentTimeMillis()))
+            ExternalSyncAction.STAMP_SUCCESS -> {
+                profileManager.saveProfile(profile.copy(simklLastSyncAt = System.currentTimeMillis()))
+                profileManager.clearExternalSyncFailure(profile.id, "simkl")
+            }
             ExternalSyncAction.CLEAR_CREDENTIALS -> profileManager.saveProfile(profile.copy(simklAccessToken = null))
-            else -> Unit
+            else -> {
+                Log.w("ExternalSyncPush", "Simkl push failed for profile ${profile.id} http=${response.code()}")
+                profileManager.recordExternalSyncFailure(profile.id, "simkl")
+            }
         }
     }
 

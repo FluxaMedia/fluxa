@@ -55,6 +55,22 @@ class ProfileManager @Inject constructor(
         }
     }
 
+    @WorkerThread
+    fun recordExternalSyncFailure(profileId: String, provider: String) {
+        val profile = getProfiles().firstOrNull { it.id == profileId } ?: return
+        val current = profile.externalSyncFailedProviders.orEmpty()
+        if (provider in current) return
+        saveProfile(profile.copy(externalSyncFailedProviders = current + provider))
+    }
+
+    @WorkerThread
+    fun clearExternalSyncFailure(profileId: String, provider: String) {
+        val profile = getProfiles().firstOrNull { it.id == profileId } ?: return
+        val current = profile.externalSyncFailedProviders.orEmpty()
+        if (provider !in current) return
+        saveProfile(profile.copy(externalSyncFailedProviders = current - provider))
+    }
+
     fun getProfiles(): List<UserProfile> {
         cachedProfiles?.let { return it }
         return synchronized(profilesLock) {

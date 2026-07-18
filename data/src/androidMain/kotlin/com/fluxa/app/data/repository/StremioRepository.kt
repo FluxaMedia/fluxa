@@ -31,7 +31,8 @@ class StremioRepository @Inject constructor(
     private val addonRepository: AddonRepository,
     private val tmdbRepository: TmdbRepository,
     private val traktRepository: TraktRepository,
-    private val failureReporter: DataFailureReporter
+    private val failureReporter: DataFailureReporter,
+    private val profileManager: ProfileManager
 ) {
     private val introRepository = IntroRepository(introService, aniSkipService)
 
@@ -214,25 +215,36 @@ class StremioRepository @Inject constructor(
         }
     }
 
+    private fun profileIdForAuthKey(authKey: String?): String? {
+        if (authKey.isNullOrBlank()) return null
+        return profileManager.getProfiles().firstOrNull { it.authKey == authKey }?.id
+    }
+
     suspend fun savePlaybackProgress(authKey: String, meta: Meta, timeOffset: Long, duration: Long) = withContext(Dispatchers.IO) {
+        val profileId = profileIdForAuthKey(authKey)
         try {
             FluxaCoreNative.playbackProgressItem(meta, timeOffset, duration, utcNow())?.let { item ->
                 authService.datastorePut(DatastorePutRequest(authKey, "library", listOf(item)))
             }
+            profileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
         } catch (e: Exception) {
             failureReporter.report("stremio.library.savePlaybackProgress", e)
             Log.w("StremioRepository", "Failed to save playback progress for ${meta.id}", e)
+            profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
         }
     }
 
     suspend fun clearPlaybackProgress(authKey: String, meta: Meta) = withContext(Dispatchers.IO) {
+        val profileId = profileIdForAuthKey(authKey)
         try {
             FluxaCoreNative.clearPlaybackProgressItem(meta)?.let { item ->
                 authService.datastorePut(DatastorePutRequest(authKey, "library", listOf(item)))
             }
+            profileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
         } catch (e: Exception) {
             failureReporter.report("stremio.library.clearPlaybackProgress", e)
             Log.w("StremioRepository", "Failed to clear playback progress for ${meta.id}", e)
+            profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
         }
     }
 
@@ -244,10 +256,16 @@ class StremioRepository @Inject constructor(
         watched: Boolean = true
     ) = withContext(Dispatchers.IO) {
         val watchedAt = if (watched) utcNow() else null
+        val stremioProfileId = profileIdForAuthKey(authKey)
         if (!authKey.isNullOrBlank()) {
             runCatching {
                 val items = FluxaCoreNative.watchedStateItems(meta, episodes, watched, watchedAt)
                 if (items.isNotEmpty()) authService.datastorePut(DatastorePutRequest(authKey, "library", items))
+            }.onSuccess {
+                stremioProfileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
+            }.onFailure { e ->
+                Log.w("StremioRepository", "Failed to sync watched state for ${meta.id}", e)
+                stremioProfileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
             }
         }
 

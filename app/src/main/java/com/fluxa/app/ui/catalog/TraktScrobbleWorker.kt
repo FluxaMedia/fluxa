@@ -59,30 +59,40 @@ class TraktScrobbleWorker @AssistedInject constructor(
         }.fold(
             onSuccess = { response ->
                 when {
-                    response == null -> Result.failure()
+                    response == null -> {
+                        profileManager.recordExternalSyncFailure(profileId, "trakt")
+                        Result.failure()
+                    }
                     response.isSuccessful -> {
                         Log.d(
                             "TraktScrobbleWorker",
                             "Scrobble response action=$action media_id=$mediaId success=true http=${response.code()}"
                         )
+                        profileManager.clearExternalSyncFailure(profileId, "trakt")
                         Result.success()
                     }
                     response.code() == 409 -> {
                         val body = runCatching { response.errorBody()?.string()?.take(1000) }.getOrNull()
                         Log.w("TraktScrobbleWorker", "Scrobble response action=$action media_id=$mediaId success=true duplicate=true http=409 error_body=${body.orEmpty()}")
+                        profileManager.clearExternalSyncFailure(profileId, "trakt")
                         Result.success()
                     }
-                    response.code() == 429 || response.code() >= 500 -> Result.retry()
+                    response.code() == 429 || response.code() >= 500 -> {
+                        profileManager.recordExternalSyncFailure(profileId, "trakt")
+                        Result.retry()
+                    }
                     response.code() == 401 && runAttemptCount == 0 -> Result.retry()
                     else -> {
                         val body = runCatching { response.errorBody()?.string()?.take(1000) }.getOrNull()
                         Log.w("TraktScrobbleWorker", "Scrobble response action=$action media_id=$mediaId success=false http=${response.code()} error_body=${body.orEmpty()}")
+                        profileManager.recordExternalSyncFailure(profileId, "trakt")
                         Result.failure()
                     }
                 }
             },
             onFailure = { error ->
                 Log.w("TraktScrobbleWorker", "Scrobble $action failed for $mediaId", error)
+                profileManager.recordExternalSyncFailure(profileId, "trakt")
                 Result.retry()
             }
         )

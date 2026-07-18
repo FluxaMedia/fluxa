@@ -85,6 +85,7 @@ class SimklScrobbleWorker @AssistedInject constructor(
                     response == null -> Result.success()
                     response.isSuccessful -> {
                         profileManager.saveProfile(profile.copy(simklLastSyncAt = System.currentTimeMillis()))
+                        profileManager.clearExternalSyncFailure(profileId, "simkl")
                         Result.success()
                     }
                     response.code() == 401 -> {
@@ -92,15 +93,20 @@ class SimklScrobbleWorker @AssistedInject constructor(
                         profileManager.saveProfile(profile.copy(simklAccessToken = null))
                         Result.failure()
                     }
-                    response.code() == 429 || response.code() >= 500 -> Result.retry()
+                    response.code() == 429 || response.code() >= 500 -> {
+                        profileManager.recordExternalSyncFailure(profileId, "simkl")
+                        Result.retry()
+                    }
                     else -> {
                         Log.w("SimklScrobbleWorker", "Scrobble $action failed media_id=$mediaId http=${response.code()}")
+                        profileManager.recordExternalSyncFailure(profileId, "simkl")
                         Result.failure()
                     }
                 }
             },
             onFailure = { error ->
                 Log.w("SimklScrobbleWorker", "Scrobble $action failed for $mediaId", error)
+                profileManager.recordExternalSyncFailure(profileId, "simkl")
                 Result.retry()
             }
         )

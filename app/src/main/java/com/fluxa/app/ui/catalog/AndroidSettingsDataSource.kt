@@ -33,8 +33,10 @@ import com.fluxa.app.shared.feature.settings.SettingsSystemUiModel
 import com.fluxa.app.shared.feature.settings.SettingsUiState
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 private const val HERO_FEED_LIMIT = 2
 
@@ -47,16 +49,19 @@ class AndroidSettingsDataSource(
     private val language: () -> String
 ) : SettingsDataSource {
 
+    private val profileState = MutableStateFlow(activeProfile())
+
     override fun observeSettings(): Flow<SettingsUiState> = combine(
         profileFlow(),
         homeViewModel.userAddons,
         homeViewModel.loadedCs3CatalogFeedOptions,
-        LastMediaDebugInfoStore.state
-    ) { profile, addons, cs3Options, debugInfo ->
+        LastMediaDebugInfoStore.state,
+        homeViewModel.syncingProviders
+    ) { profile, addons, cs3Options, debugInfo, syncingProviders ->
         if (profile == null) {
             SettingsUiState(isLoading = true)
         } else {
-            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo)
+            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo, syncingProviders)
         }
     }
 
@@ -65,17 +70,20 @@ class AndroidSettingsDataSource(
     }
 
     private fun profileFlow(): Flow<UserProfile?> = callbackFlow {
-        fun emit() { trySend(activeProfile()) }
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> emit() }
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> profileState.value = activeProfile() }
         profileManager.registerOnChangeListener(listener)
-        emit()
-        awaitClose { profileManager.unregisterOnChangeListener(listener) }
+        val forwardingJob = launch { profileState.collect { trySend(it) } }
+        awaitClose {
+            forwardingJob.cancel()
+            profileManager.unregisterOnChangeListener(listener)
+        }
     }
 
     private fun buildState(
         profile: UserProfile,
         metadataOptions: List<MetadataFeedOption>,
-        debugInfo: com.fluxa.app.player.LastMediaDebugInfo
+        debugInfo: com.fluxa.app.player.LastMediaDebugInfo,
+        syncingProviders: Set<String> = emptySet()
     ): SettingsUiState {
         val heroOptions = orderedMetadataFeeds(metadataOptions, profile.heroFeedOrder)
         val heroSelection = effectiveHomeMetadataFeedSelection(profile.heroFeedToggles, heroOptions.map { it.key })
@@ -129,6 +137,8 @@ class AndroidSettingsDataSource(
                 hasAnySync = !profile.traktAccessToken.isNullOrBlank() ||
                     !profile.simklAccessToken.isNullOrBlank() ||
                     !profile.anilistAccessToken.isNullOrBlank(),
+                syncFailedProviders = profile.externalSyncFailedProviders.orEmpty(),
+                syncingProviders = syncingProviders,
                 nuvioLastSyncAt = profile.nuvioLastSyncAt ?: 0L,
                 traktLastSyncAt = profile.safeTraktLastSyncAt,
                 simklLastSyncAt = profile.safeSimklLastSyncAt,
@@ -176,7 +186,8 @@ class AndroidSettingsDataSource(
                 trailerOnHomeHeroDelaySeconds = profile.safeTrailerOnHomeHeroDelaySeconds,
                 continueWatchingHorizontal = profile.safeContinueWatchingLayout != "vertical",
                 continueWatchingEnabled = profile.safeContinueWatchingEnabled,
-                continueWatchingHideTitles = profile.safeContinueWatchingHideTitles
+                continueWatchingHideTitles = profile.safeContinueWatchingHideTitles,
+                continueWatchingSource = profile.safeContinueWatchingSource
             ),
             appearanceDetail = SettingsAppearanceDetailUiModel(
                 trailerOnHero = profile.safeTrailerOnHero,
@@ -266,6 +277,7 @@ class AndroidSettingsDataSource(
         val profile = activeProfile() ?: return
         val updated = block(profile)
         profileManager.saveProfile(updated)
+        profileState.value = updated
         onProfileChanged(updated)
     }
 
@@ -293,9 +305,9 @@ class AndroidSettingsDataSource(
             trailerOnHomeHeroEnabled = value.trailerOnHomeHeroEnabled,
             trailerOnHomeHeroDelaySeconds = value.trailerOnHomeHeroDelaySeconds,
             continueWatchingLayout = if (value.continueWatchingHorizontal) "horizontal" else "vertical",
-            continueWatchingArtwork = "background",
             continueWatchingEnabled = value.continueWatchingEnabled,
-            continueWatchingHideTitles = value.continueWatchingHideTitles
+            continueWatchingHideTitles = value.continueWatchingHideTitles,
+            continueWatchingSource = value.continueWatchingSource
         )
     }
 

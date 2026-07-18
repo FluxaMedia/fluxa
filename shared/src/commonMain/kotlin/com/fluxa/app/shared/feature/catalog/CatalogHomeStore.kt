@@ -20,7 +20,9 @@ class CatalogHomeStore(
             is CatalogAction.ItemSelected,
             is CatalogAction.PlayRequested,
             is CatalogAction.ResumeRequested,
-            is CatalogAction.ItemFocused -> Unit
+            is CatalogAction.ItemFocused,
+            is CatalogAction.MarkWatchedRequested,
+            is CatalogAction.DropRequested -> Unit
         }
     }
 }

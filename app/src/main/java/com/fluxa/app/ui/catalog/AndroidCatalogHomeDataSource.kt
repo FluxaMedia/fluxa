@@ -136,7 +136,7 @@ class AndroidCatalogHomeDataSource(
         canLoadMore = canLoadMore,
         categoryType = type,
         cardLayout = resolveHomeCardLayout(this, profile),
-        artworkPreference = resolveContinueWatchingArtworkPreference(this, profile),
+        artworkPreference = null,
         isActionRow = isContinueWatchingCategory() || id == "library",
         topTenEnabled = id in profile?.safeTopTenFeedToggles.orEmpty(),
         items = items.map { meta -> meta.toCatalogItemUiModel(category = this, profile = profile) }
@@ -145,7 +145,7 @@ class AndroidCatalogHomeDataSource(
     private fun Meta.toCatalogItemUiModel(category: HomeCategory?, profile: UserProfile?): CatalogItemUiModel {
         val card = toCatalogCardUiModel(
             cardLayout = category?.let { resolveHomeCardLayout(it, profile) } ?: "poster",
-            artworkPreference = category?.let { resolveContinueWatchingArtworkPreference(it, profile) },
+            artworkPreference = null,
             profile = profile,
             cardScale = 1f,
             showHorizontalLogo = true,

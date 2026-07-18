@@ -51,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -686,6 +687,7 @@ private fun FluxaHomeContent(
     val showHero = state.catalogHome.showHeroSection && heroItems.isNotEmpty()
     val listState = rememberLazyListState()
     var heroHeightPx by remember { mutableIntStateOf(0) }
+    var continueWatchingActionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
     val scrimAlpha by remember {
         androidx.compose.runtime.derivedStateOf {
             when {
@@ -760,7 +762,12 @@ private fun FluxaHomeContent(
                         items(row.items, key = { it.id }) { item ->
                             CatalogCard(
                                 model = item.card,
-                                onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) }
+                                onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) },
+                                onLongClick = if (row.categoryType == "continue_watching") {
+                                    { continueWatchingActionItem = item }
+                                } else {
+                                    null
+                                }
                             )
                         }
                     }
@@ -779,6 +786,71 @@ private fun FluxaHomeContent(
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
+    }
+
+    continueWatchingActionItem?.let { item ->
+        ContinueWatchingActionSheet(
+            language = state.language,
+            onDismiss = { continueWatchingActionItem = null },
+            onPlayManually = {
+                continueWatchingActionItem = null
+                onCatalogAction(CatalogAction.PlayRequested(item))
+            },
+            onDetails = {
+                continueWatchingActionItem = null
+                onCatalogAction(CatalogAction.ItemSelected(item))
+            },
+            onMarkWatched = {
+                continueWatchingActionItem = null
+                onCatalogAction(CatalogAction.MarkWatchedRequested(item))
+            },
+            onDrop = {
+                continueWatchingActionItem = null
+                onCatalogAction(CatalogAction.DropRequested(item))
+            }
+        )
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun ContinueWatchingActionSheet(
+    language: String?,
+    onDismiss: () -> Unit,
+    onPlayManually: () -> Unit,
+    onDetails: () -> Unit,
+    onMarkWatched: () -> Unit,
+    onDrop: () -> Unit
+) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = FluxaColors.surfaceRaised
+    ) {
+        Column(modifier = Modifier.padding(bottom = 24.dp)) {
+            ContinueWatchingActionRow(AppStrings.t(language, "home.play_manually"), onPlayManually)
+            ContinueWatchingActionRow(AppStrings.t(language, "home.view_details"), onDetails)
+            ContinueWatchingActionRow(AppStrings.t(language, "detail.mark_watched"), onMarkWatched)
+            ContinueWatchingActionRow(AppStrings.t(language, "home.forget_progress"), onDrop)
+        }
+    }
+}
+
+@Composable
+private fun ContinueWatchingActionRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 15.sp
+        )
     }
 }
 

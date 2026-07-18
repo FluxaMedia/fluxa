@@ -34,6 +34,20 @@ internal class HomeContinueWatchingCoordinator(
     private val artworkCache = LruCache<String, Pair<String?, String?>>(80)
 
     fun buildItems(lang: String, playbackController: HomePlaybackController): List<Meta> {
+        val source = activeProfile()?.safeContinueWatchingSource ?: "fluxa"
+        if (source != "fluxa") {
+            val providerItems = when (source) {
+                "stremio" -> localItems()
+                "trakt" -> externalItems().filter { it.reason.equals("Trakt.tv", ignoreCase = true) }
+                "simkl" -> externalItems().filter { it.reason.equals("Simkl", ignoreCase = true) }
+                "nuvio" -> externalItems().filter { it.reason.equals("Nuvio", ignoreCase = true) }
+                "anilist" -> externalItems().filter { it.reason.equals("AniList", ignoreCase = true) }
+                else -> externalItems() + localItems()
+            }
+            val filteredProviderItems = providerItems.filterNot(playbackController::isForgotten)
+            val ranked = FluxaCoreNative.filterHomeContinueWatching(filteredProviderItems, watchedState())
+            return ranked.map { assignHomeBadge(it, lang) }
+        }
         val sourceItems = externalItems() + localItems()
         val merged = ContinueWatchingListMerger.mergeDuplicates(sourceItems)
             .filterNot(playbackController::isForgotten)
@@ -50,7 +64,7 @@ internal class HomeContinueWatchingCoordinator(
             setTraktUpdatedAt(System.currentTimeMillis())
         }
         if (items != null) {
-            watchlistManager.replaceExternalContinueWatching(items)
+            watchlistManager.replaceExternalContinueWatching(setOf("trakt", "mal", "simkl", "anilist"), items)
         }
         return items ?: externalItems()
     }

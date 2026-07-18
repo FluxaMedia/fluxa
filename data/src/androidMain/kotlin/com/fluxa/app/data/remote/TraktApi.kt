@@ -183,6 +183,13 @@ interface TraktApi {
         @Query("episode_watched_at") episodeWatchedAt: String = "yes"
     ): SimklAllItemsResponse
 
+    @Headers("Content-Type: application/json")
+    @POST("https://graphql.anilist.co")
+    suspend fun anilistGraphQl(
+        @Header("Authorization") token: String,
+        @Body request: AnilistGraphQlRequest
+    ): com.google.gson.JsonObject
+
     @GET("https://api.simkl.com/search/id")
     suspend fun simklSearchById(
         @Query("imdb") imdb: String,

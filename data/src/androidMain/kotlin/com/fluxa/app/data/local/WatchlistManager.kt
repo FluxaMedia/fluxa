@@ -47,6 +47,12 @@ class WatchlistManager @Inject constructor(
         }
     }
 
+    fun getExternalContinueWatchingFlowByProvider(provider: String): Flow<List<Meta>> {
+        return _activeProfileId.flatMapLatest { profileId ->
+            dao.observeExternalContinueWatchingByProvider(profileId, provider).map { rows -> rows.map { it.toMeta() } }
+        }
+    }
+
     fun getLikedFlow(): Flow<List<Meta>> {
         return _activeProfileId.flatMapLatest { profileId ->
             dao.observeLiked(profileId).map { rows -> rows.map { it.toMeta() } }
@@ -167,7 +173,8 @@ class WatchlistManager @Inject constructor(
                 lastStreamUrl = existing.lastStreamUrl,
                 lastStreamTitle = existing.lastStreamTitle,
                 continueWatchingPoster = poster,
-                continueWatchingBackground = background
+                continueWatchingBackground = background,
+                updatedAt = existing.sortAt
             )
         )
     }
@@ -260,14 +267,15 @@ class WatchlistManager @Inject constructor(
     }
 
     suspend fun replaceExternalContinueWatching(items: List<Meta>) {
+        replaceExternalContinueWatching(items.map { it.externalProviderKey() }.toSet(), items)
+    }
+
+    suspend fun replaceExternalContinueWatching(providers: Set<String>, items: List<Meta>) {
         val profileId = pid()
-        dao.deleteExternalPlaybackProgress(profileId)
+        providers.forEach { dao.deleteExternalPlaybackProgressByProvider(profileId, it) }
         val now = System.currentTimeMillis()
-        dao.upsertExternalPlaybackProgress(
-            items
-                .filter { it.id.isNotBlank() && (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L }
-                .map { it.toExternalPlaybackProgressEntity(profileId, now) }
-        )
+        val kept = items.filter { it.id.isNotBlank() && (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L }
+        dao.upsertExternalPlaybackProgress(kept.map { it.toExternalPlaybackProgressEntity(profileId, now) })
     }
 
     suspend fun replaceExternalWatchedEpisodes(provider: String, episodesBySeries: Map<String, Set<String>>) {
@@ -313,6 +321,7 @@ class WatchlistManager @Inject constructor(
         lastBingeGroup = lastBingeGroup,
         lastAudioLanguage = lastAudioLanguage,
         lastSubtitleLanguage = lastSubtitleLanguage,
+        lastWatchedAt = sortAt,
         continueWatchingPoster = continueWatchingPoster,
         continueWatchingBackground = continueWatchingBackground
     )
@@ -345,11 +354,12 @@ class WatchlistManager @Inject constructor(
         lastVideoId = videoId,
         lastEpisodeName = lastEpisodeName,
         reason = reason,
+        lastWatchedAt = syncedAt,
         continueWatchingPoster = continueWatchingPoster,
         continueWatchingBackground = continueWatchingBackground
     )
 
-    private fun Meta.toExternalPlaybackProgressEntity(profileId: String, syncedAt: Long) = ExternalPlaybackProgressEntity(
+    private fun Meta.toExternalPlaybackProgressEntity(profileId: String, fallbackSyncedAt: Long) = ExternalPlaybackProgressEntity(
         profileId = profileId,
         provider = externalProviderKey(),
         contentId = id,
@@ -368,7 +378,7 @@ class WatchlistManager @Inject constructor(
         reason = reason,
         continueWatchingPoster = continueWatchingPoster,
         continueWatchingBackground = continueWatchingBackground,
-        syncedAt = syncedAt
+        syncedAt = lastWatchedAt ?: fallbackSyncedAt
     )
 
     private fun Meta.externalProviderKey(): String {
@@ -376,9 +386,12 @@ class WatchlistManager @Inject constructor(
             reason.equals("Trakt.tv", ignoreCase = true) -> "trakt"
             reason.equals("MyAnimeList", ignoreCase = true) -> "mal"
             reason.equals("Simkl", ignoreCase = true) -> "simkl"
+            reason.equals("Nuvio", ignoreCase = true) -> "nuvio"
+            reason.equals("AniList", ignoreCase = true) -> "anilist"
             id.startsWith("mal:", ignoreCase = true) -> "mal"
             id.startsWith("simkl:", ignoreCase = true) -> "simkl"
-            else -> "external"
+            id.startsWith("anilist:", ignoreCase = true) -> "anilist"
+            else -> "nuvio"
         }
     }
 }

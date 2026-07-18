@@ -208,25 +208,29 @@ class MainActivity : FragmentActivity() {
                     val offlineDownloadManager = remember(context) { OfflineDownloadManager.getInstance(context) }
 
                     LaunchedEffect(activeProfile?.id, activeProfile?.nuvioAccessToken) {
-                        val profile = activeProfile ?: return@LaunchedEffect
-                        if (profile.nuvioAccessToken.isNullOrBlank()) return@LaunchedEffect
+                        if (activeProfile?.nuvioAccessToken.isNullOrBlank()) return@LaunchedEffect
                         var wasHealthy: Boolean? = null
                         while (isActive) {
-                            val isHealthy = homeViewModel.isNuvioHealthy()
-                            if (isHealthy && wasHealthy != true) {
-                                homeViewModel.syncNuvioIntegration(
-                                    profile = profile,
-                                    onProfileUpdated = { updated ->
-                                        activeProfile = updated
-                                        profileManager.saveProfile(updated)
-                                        profileManager.setLastActiveProfile(updated)
-                                        homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
-                                    },
-                                    onComplete = {}
-                                )
+                            val profile = activeProfile
+                            if (profile != null && !profile.nuvioAccessToken.isNullOrBlank()) {
+                                val isHealthy = homeViewModel.isNuvioHealthy()
+                                if (isHealthy && wasHealthy != true) {
+                                    homeViewModel.syncNuvioIntegration(
+                                        profile = profile,
+                                        onProfileUpdated = { updated ->
+                                            activeProfile = updated
+                                            profileManager.saveProfile(updated)
+                                            profileManager.setLastActiveProfile(updated)
+                                            homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                                        },
+                                        onComplete = {}
+                                    )
+                                }
+                                wasHealthy = isHealthy
+                                delay(if (isHealthy) 60_000L else 30_000L)
+                            } else {
+                                delay(30_000L)
                             }
-                            wasHealthy = isHealthy
-                            delay(if (isHealthy) 60_000L else 30_000L)
                         }
                     }
                     val isDirectLoading by homeViewModel.isDirectLoading.collectAsState()

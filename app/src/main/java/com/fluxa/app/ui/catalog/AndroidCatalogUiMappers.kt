@@ -23,10 +23,6 @@ fun resolveHomeCardLayout(category: HomeCategory, profile: UserProfile?): String
     }
 }
 
-fun resolveContinueWatchingArtworkPreference(category: HomeCategory, profile: UserProfile?): String? {
-    return if (category.isContinueWatchingCategory()) profile?.safeContinueWatchingArtwork ?: "episode" else null
-}
-
 private fun preferredHorizontalArtwork(meta: Meta): String? {
     return meta.background
         ?.takeIf { it.isNotBlank() && it != meta.poster && !it.contains("/poster/", ignoreCase = true) }
@@ -85,11 +81,7 @@ internal fun Meta.toCatalogCardUiModel(
             "background" -> background
             else -> continueWatchingBackground
         } ?: background
-        isContinueWatchingCard -> when (artworkPreference) {
-            "poster" -> poster ?: continueWatchingBackground ?: background
-            "background" -> background ?: continueWatchingBackground ?: poster
-            else -> continueWatchingBackground ?: background ?: poster
-        }
+        isContinueWatchingCard -> continueWatchingBackground ?: background ?: poster
         horizontal -> preferredHorizontalArtwork(this) ?: poster
         else -> poster
     }

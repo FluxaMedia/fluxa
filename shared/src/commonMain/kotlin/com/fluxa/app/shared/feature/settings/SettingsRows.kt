@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Remove
@@ -115,7 +116,10 @@ fun SettingsChoiceRow(
             title = label,
             options = options,
             selected = value,
-            onSelected = { onValueChanged(it); showDialog = false },
+            onSelected = {
+                onValueChanged(it)
+                showDialog = false
+            },
             onDismiss = { showDialog = false }
         )
     }
@@ -348,6 +352,8 @@ fun SettingsConnectionRow(
     connected: Boolean,
     connectedLabel: String,
     icon: (@Composable () -> Unit)? = null,
+    hasSyncFailure: Boolean = false,
+    syncFailedLabel: String? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -370,7 +376,17 @@ fun SettingsConnectionRow(
             }
             Text(label, color = Color.White, fontWeight = FontWeight.Medium)
         }
-        if (connected) {
+        if (connected && hasSyncFailure) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = FluxaColors.errorRed,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(syncFailedLabel.orEmpty(), color = FluxaColors.errorRed, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            }
+        } else if (connected) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,

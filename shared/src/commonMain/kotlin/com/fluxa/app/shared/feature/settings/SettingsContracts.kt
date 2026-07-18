@@ -19,6 +19,8 @@ data class SettingsAccountUiModel(
     val hasSimkl: Boolean = false,
     val hasAnilist: Boolean = false,
     val hasAnySync: Boolean = false,
+    val syncFailedProviders: Set<String> = emptySet(),
+    val syncingProviders: Set<String> = emptySet(),
     val nuvioLastSyncAt: Long = 0L,
     val traktLastSyncAt: Long = 0L,
     val simklLastSyncAt: Long = 0L,
@@ -70,7 +72,8 @@ data class SettingsAppearanceHomeUiModel(
     val trailerOnHomeHeroDelaySeconds: Int = 3,
     val continueWatchingHorizontal: Boolean = true,
     val continueWatchingEnabled: Boolean = true,
-    val continueWatchingHideTitles: Boolean = false
+    val continueWatchingHideTitles: Boolean = false,
+    val continueWatchingSource: String = "fluxa"
 )
 
 data class SettingsAppearanceDetailUiModel(

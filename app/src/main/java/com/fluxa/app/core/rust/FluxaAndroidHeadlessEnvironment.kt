@@ -63,6 +63,7 @@ import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.ui.catalog.DirectPlaybackTarget
 import com.fluxa.app.ui.catalog.TraktScrobbleWorker
 import com.fluxa.app.ui.catalog.SimklScrobbleWorker
+import com.fluxa.app.ui.catalog.NuvioPlaybackProgressPushWorker
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
@@ -88,6 +89,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class StreamProgressUpdate(
+    val requestId: String,
     val streams: List<Stream>,
     val completedAddonNames: List<String>,
     val loadingAddonNames: List<String>
@@ -345,7 +347,6 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         }
         val attempts = mutableListOf<Pair<String, List<Stream>>>()
         for ((index, requestId) in requestIds.withIndex()) {
-            streamDiscovery.invalidate(type, requestId, language)
             val episodeContext = FluxaCoreNative.streamDiscoveryEpisodeContext(type, requestId, detail, seasonEpisodes)
             val request = StreamDiscoveryRequest(
                 addons = addons,
@@ -364,7 +365,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             val streams = if (index == 0) {
                 streamDiscovery.discoverProgressive(request) { streams, completedAddons, loadingAddons ->
                     primeScope.launch {
-                        _streamProgressFlow.emit(StreamProgressUpdate(streams, completedAddons, loadingAddons))
+                        _streamProgressFlow.emit(StreamProgressUpdate(requestId, streams, completedAddons, loadingAddons))
                     }
                 }
             } else {
@@ -691,8 +692,10 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             }
             "markWatched" -> {
                 val watched = command.boolean("watched", true)
+                val seriesId = command.string("seriesId")
+                val previouslyWatchedVideoIds = watchlistManager.getLocalWatchedVideoIds(seriesId)
                 val localWatched = watchlistManager.markEpisodesWatched(
-                seriesId = command.string("seriesId"),
+                seriesId = seriesId,
                 videoIds = command.list("videoIds").mapNotNull { it?.toString() },
                 watched = watched
                 )
@@ -701,9 +704,15 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                     val episodes = command.list("episodes").mapNotNull {
                         runCatching { gson.fromJson(gson.toJsonTree(it), Video::class.java) }.getOrNull()
                     }
-                    if (meta != null) {
+                    val episodesToPush = if (watched && meta?.type != "movie") {
+                        episodes.filter { it.id != null && it.id !in previouslyWatchedVideoIds }
+                    } else {
+                        episodes
+                    }
+                    val shouldPush = meta?.type == "movie" || episodesToPush.isNotEmpty()
+                    if (meta != null && shouldPush) {
                         primeScope.launch {
-                            runCatching { externalSyncPushCoordinator.pushMarkWatched(profile, meta, episodes, watched) }
+                            runCatching { externalSyncPushCoordinator.pushMarkWatched(profile, meta, episodesToPush, watched) }
                         }
                     }
                 }
@@ -756,16 +765,16 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             lastAudioLanguage = progress.stringOrNull("lastAudioLanguage"),
             lastSubtitleLanguage = progress.stringOrNull("lastSubtitleLanguage")
         )
-        if (profile != null) {
-            runCatching {
-                externalSyncPushCoordinator.pushPlaybackProgress(
-                    profile = profile,
-                    meta = meta,
-                    videoId = progress.stringOrNull("lastVideoId"),
-                    position = timeOffset,
-                    duration = duration
-                )
-            }
+        if (profile != null && !profile.nuvioAccessToken.isNullOrBlank()) {
+            NuvioPlaybackProgressPushWorker.enqueue(
+                context = context,
+                profileId = profile.id,
+                contentId = meta.id,
+                contentType = meta.type,
+                videoId = progress.stringOrNull("lastVideoId"),
+                position = timeOffset,
+                duration = duration
+            )
         }
         val token = profile?.traktAccessToken
         if (effect.payload.boolean("scrobbleTraktPause", true) && !token.isNullOrBlank() && duration > 0L && timeOffset > 5_000L) {

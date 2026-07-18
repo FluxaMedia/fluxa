@@ -42,13 +42,15 @@ class DetailViewModel @Inject constructor(
     private var currentSeriesLookupId: String? = null
     private var detailLoadGeneration = 0L
     private var detailLoadJob: Job? = null
+    private var streamsFetchJob: Job? = null
+    private var activeStreamsRequestIds: Set<String> = emptySet()
 
     private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
 
     init {
         viewModelScope.launch {
             headlessEnvironment.streamProgressFlow.collect { progress ->
-                if (_uiState.value.isLoadingStreams) {
+                if (_uiState.value.isLoadingStreams && progress.requestId in activeStreamsRequestIds) {
                     val sel = _uiState.value.selectedAddon
                     _uiState.update {
                         it.copy(
@@ -410,10 +412,12 @@ class DetailViewModel @Inject constructor(
     }
 
     fun fetchStreamsForSelection(type: String, id: String, context: android.content.Context? = null) {
-        viewModelScope.launch {
+        streamsFetchJob?.cancel()
+        streamsFetchJob = viewModelScope.launch {
             try {
                 val language = currentProfile?.language ?: "en"
                 val requestIds = buildStreamRequestIds(type, id, language)
+                activeStreamsRequestIds = requestIds.toSet()
                 android.util.Log.d("Detail", " FETCHING STREAMS: type=$type, id=$id, requestIds=$requestIds")
                 _uiState.update {
                     it.copy(
@@ -444,6 +448,7 @@ class DetailViewModel @Inject constructor(
                         "profile" to currentProfile
                     )
                 )
+                if (activeStreamsRequestIds != requestIds.toSet()) return@launch
                 val detail = result.state["detail"] as? Map<*, *>
                 applyDetailStreamState(detail)
                 val fetchedStreams: List<Stream> = gson.fromStateList(detail?.get("streams"))

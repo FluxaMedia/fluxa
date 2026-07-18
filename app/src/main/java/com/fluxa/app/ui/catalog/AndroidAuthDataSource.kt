@@ -208,7 +208,7 @@ class AndroidAuthDataSource(
             val imported = nuvioCoordinator.import(baseProfile, session) { step ->
                 NUVIO_STEP_MAP[step]?.let { mapped -> state.update { it.copy(importSteps = it.importSteps + mapped) } }
             }
-            pendingImportedProfile = imported
+            pendingImportedProfile = imported.profile
             state.update { it.copy(importDone = true) }
         } catch (e: Exception) {
             state.update { it.copy(stage = AuthStage.Nuvio, globalError = AppStrings.t(lang, "auth.error.network")) }

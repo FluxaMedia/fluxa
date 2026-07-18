@@ -3,6 +3,7 @@ package com.fluxa.app.data.repository
 import android.util.Log
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.NativeAddonFetchResult
+import com.fluxa.app.core.rust.models.NativeAddonResourceParseResult
 import okhttp3.Request
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.AuthRequest
@@ -166,19 +167,21 @@ class StremioAddonResourceClient @Inject constructor(
         type: String,
         id: String
     ): AddonResourceResult<List<Stream>> = withContext(Dispatchers.IO) {
-        val parsed = fetchAddonResourcePayload(
+        val cacheKey = "stream_v1_${addonTransportUrl}_${type}_$id"
+        cache.get<List<Stream>>(cacheKey)?.let { return@withContext AddonResourceResult.Success(it, cacheKey) }
+        val parsed = fetchAddonStreamPayload(
             transportUrl = addonTransportUrl,
-            resource = "stream",
             type = type,
             id = id,
+            addonName = addonName,
             fallbackUrl = addonManifestClient.buildAddonResourceUrl(addonTransportUrl, "stream", type, id)
         )
         val success = parsed as? AddonResourceResult.Success ?: return@withContext parsed.toTypedEmpty()
-        decodeResourceList(
-            result = success,
-            type = streamListType,
-            transformJson = { valueJson, _ -> FluxaCoreNative.addonStreamsWithProvider(valueJson, addonName) }
-        )
+        val result = decodeResourceList<Stream>(result = success, type = streamListType)
+        if (result is AddonResourceResult.Success) {
+            cache.put(cacheKey, result.value)
+        }
+        result
     }
 
     suspend fun getMetaDetailFromAddon(
@@ -420,24 +423,68 @@ class StremioAddonResourceClient @Inject constructor(
             statusCode = response.statusCode ?: 0,
             body = response.body
         )
-        return when (parsed.kind) {
-            "success" -> parsed.valueJson
-                ?.let { AddonResourceResult.Success(it, parsed.url.ifBlank { url }) }
-                ?: AddonResourceResult.Empty(parsed.url.ifBlank { url })
-            "empty" -> AddonResourceResult.Empty(parsed.url.ifBlank { url })
-            "network_error" -> AddonResourceResult.NetworkError(
-                parsed.url.ifBlank { url },
-                statusCode = parsed.statusCode
-            )
-            "parse_error" -> AddonResourceResult.ParseError(
-                parsed.url.ifBlank { url },
-                JsonParseException(parsed.error ?: "Invalid addon resource response")
-            )
-            else -> AddonResourceResult.ParseError(
-                parsed.url.ifBlank { url },
-                JsonParseException("Unknown addon resource result: ${parsed.kind}")
-            )
+        return parsed.toAddonResourceResult(url)
+    }
+
+    private fun fetchAddonStreamPayload(
+        transportUrl: String,
+        type: String,
+        id: String,
+        addonName: String,
+        fallbackUrl: String
+    ): AddonResourceResult<String> {
+        val candidates = FluxaCoreNative.addonResourceRequestPlan(
+            transportUrl = transportUrl,
+            resource = "stream",
+            type = type,
+            id = id
+        ).urls.ifEmpty { listOf(fallbackUrl) }
+        var lastEmpty: AddonResourceResult.Empty? = null
+        for (url in candidates) {
+            when (val parsed = fetchAndParseAddonStreamResource(url, addonName)) {
+                is AddonResourceResult.Success -> return parsed
+                is AddonResourceResult.Empty -> lastEmpty = parsed
+                is AddonResourceResult.NetworkError -> return parsed
+                is AddonResourceResult.ParseError -> return parsed
+                is AddonResourceResult.AddonUnsupported -> return parsed
+            }
         }
+        return lastEmpty ?: AddonResourceResult.Empty(fallbackUrl)
+    }
+
+    private fun fetchAndParseAddonStreamResource(url: String, addonName: String): AddonResourceResult<String> {
+        val response = fetchAddonBodyResult(url)
+        response.error?.let { error ->
+            return AddonResourceResult.NetworkError(url, IOException(error), response.statusCode)
+        }
+        val parsed = FluxaCoreNative.parseAddonStreamResult(
+            url = url,
+            statusCode = response.statusCode ?: 0,
+            body = response.body,
+            addonName = addonName
+        )
+        return parsed.toAddonResourceResult(url)
+    }
+
+    private fun NativeAddonResourceParseResult.toAddonResourceResult(
+        requestUrl: String
+    ): AddonResourceResult<String> = when (kind) {
+        "success" -> valueJson
+            ?.let { AddonResourceResult.Success(it, url.ifBlank { requestUrl }) }
+            ?: AddonResourceResult.Empty(url.ifBlank { requestUrl })
+        "empty" -> AddonResourceResult.Empty(url.ifBlank { requestUrl })
+        "network_error" -> AddonResourceResult.NetworkError(
+            url.ifBlank { requestUrl },
+            statusCode = statusCode
+        )
+        "parse_error" -> AddonResourceResult.ParseError(
+            url.ifBlank { requestUrl },
+            JsonParseException(error ?: "Invalid addon resource response")
+        )
+        else -> AddonResourceResult.ParseError(
+            url.ifBlank { requestUrl },
+            JsonParseException("Unknown addon resource result: $kind")
+        )
     }
 
     @Suppress("UNCHECKED_CAST")

@@ -40,11 +40,13 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -368,35 +370,46 @@ private fun SettingsAccountContent(
     var confirmingDisconnect by remember { mutableStateOf(false) }
     SettingsSectionHeader(AppStrings.t(lang, "auto.account_sync"))
     SettingsGroupCard {
+        val syncFailedLabel = AppStrings.t(lang, "integration.sync_failed")
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.stremio"),
             connected = model.hasStremio,
             connectedLabel = AppStrings.t(lang, "auto.connected"),
-            icon = brandIcons.stremio
+            icon = brandIcons.stremio,
+            hasSyncFailure = "stremio" in model.syncFailedProviders,
+            syncFailedLabel = syncFailedLabel
         ) { selectedProvider = SettingsAccountProvider.Stremio }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.nuvio"),
             connected = model.hasNuvio,
             connectedLabel = AppStrings.t(lang, "auto.connected"),
-            icon = brandIcons.nuvio
+            icon = brandIcons.nuvio,
+            hasSyncFailure = "nuvio" in model.syncFailedProviders,
+            syncFailedLabel = syncFailedLabel
         ) { selectedProvider = SettingsAccountProvider.Nuvio }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.trakt"),
             connected = model.hasTrakt,
             connectedLabel = AppStrings.t(lang, "auto.connected"),
-            icon = brandIcons.trakt
+            icon = brandIcons.trakt,
+            hasSyncFailure = "trakt" in model.syncFailedProviders,
+            syncFailedLabel = syncFailedLabel
         ) { selectedProvider = SettingsAccountProvider.Trakt }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.simkl"),
             connected = model.hasSimkl,
             connectedLabel = AppStrings.t(lang, "auto.connected"),
-            icon = brandIcons.simkl
+            icon = brandIcons.simkl,
+            hasSyncFailure = "simkl" in model.syncFailedProviders,
+            syncFailedLabel = syncFailedLabel
         ) { selectedProvider = SettingsAccountProvider.Simkl }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.anilist"),
             connected = model.hasAnilist,
             connectedLabel = AppStrings.t(lang, "auto.connected"),
-            icon = brandIcons.anilist
+            icon = brandIcons.anilist,
+            hasSyncFailure = "anilist" in model.syncFailedProviders,
+            syncFailedLabel = syncFailedLabel
         ) { selectedProvider = SettingsAccountProvider.Anilist }
         if (model.hasAnySync) {
             SettingsActionRow(AppStrings.t(lang, "auto.disconnect"), destructive = true) { confirmingDisconnect = true }
@@ -500,6 +513,25 @@ private fun SettingsAccountSheet(
         SettingsAccountProvider.Stremio, SettingsAccountProvider.Anilist -> 0L
     }
     val email = if (provider == SettingsAccountProvider.Nuvio) model.nuvioEmail.orEmpty().ifBlank { model.email } else model.email
+    val providerKey = when (provider) {
+        SettingsAccountProvider.Stremio -> "stremio"
+        SettingsAccountProvider.Nuvio -> "nuvio"
+        SettingsAccountProvider.Trakt -> "trakt"
+        SettingsAccountProvider.Simkl -> "simkl"
+        SettingsAccountProvider.Anilist -> "anilist"
+    }
+    val hasSyncFailure = providerKey in model.syncFailedProviders
+    val isSyncing = providerKey in model.syncingProviders
+    var justSynced by remember { mutableStateOf(false) }
+    LaunchedEffect(isSyncing) {
+        if (isSyncing) {
+            justSynced = false
+        } else {
+            justSynced = true
+            delay(2_000L)
+            justSynced = false
+        }
+    }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
@@ -511,6 +543,9 @@ private fun SettingsAccountSheet(
                 AppStrings.t(lang, "integration.sync_status"),
                 when {
                     !connected -> AppStrings.t(lang, "auto.not_connected")
+                    isSyncing -> AppStrings.t(lang, "integration.syncing")
+                    justSynced -> AppStrings.t(lang, "integration.synced")
+                    hasSyncFailure -> AppStrings.t(lang, "integration.sync_failed")
                     lastSyncAt <= 0L -> AppStrings.format(lang, "integration.status_ok", AppStrings.t(lang, "integration.never_synced"))
                     else -> AppStrings.format(lang, "integration.status_ok", AppStrings.t(lang, "integration.just_now"))
                 }
@@ -521,10 +556,18 @@ private fun SettingsAccountSheet(
             SettingsAccountStat(AppStrings.t(lang, "integration.addons"), AppStrings.format(lang, "integration.item_count", model.addonCount))
             Button(
                 onClick = onSync,
+                enabled = !isSyncing,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
             ) {
-                Text(AppStrings.t(lang, if (connected) "integration.sync_now" else "integration.connect"))
+                Text(
+                    when {
+                        isSyncing -> AppStrings.t(lang, "integration.syncing")
+                        justSynced -> AppStrings.t(lang, "integration.synced")
+                        connected -> AppStrings.t(lang, "integration.sync_now")
+                        else -> AppStrings.t(lang, "integration.connect")
+                    }
+                )
             }
         }
     }
@@ -635,6 +678,14 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
         SettingsChoiceOption("large", AppStrings.t(lang, "auto.large")),
         SettingsChoiceOption("xlarge", AppStrings.t(lang, "auto.very_large"))
     )
+    val continueWatchingSourceOptions = listOf(
+        SettingsChoiceOption("fluxa", AppStrings.t(lang, "settings.continue_watching_source_fluxa")),
+        SettingsChoiceOption("stremio", "Stremio"),
+        SettingsChoiceOption("nuvio", "Nuvio"),
+        SettingsChoiceOption("trakt", "Trakt"),
+        SettingsChoiceOption("simkl", "Simkl"),
+        SettingsChoiceOption("anilist", "AniList")
+    )
     SettingsSectionHeader(AppStrings.t(lang, "settings.layout"))
     SettingsGroupCard {
     SettingsChoiceRow(AppStrings.t(lang, "auto.card_corners"), model.cardCornerPreset, cornerOptions) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(cardCornerPreset = it))) }
@@ -668,6 +719,9 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
     }
     SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_hide_titles"), value = model.continueWatchingHideTitles) {
         onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHideTitles = it)))
+    }
+    SettingsChoiceRow(AppStrings.t(lang, "settings.continue_watching_source"), model.continueWatchingSource, continueWatchingSourceOptions) {
+        onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingSource = it)))
     }
     }
 }

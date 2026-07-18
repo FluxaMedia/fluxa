@@ -121,7 +121,21 @@ internal fun AppRoutesHost(
         },
         onDetailBackRequested = navigateBackSafely,
         showNavigationBar = true,
-        onCatalogAction = { },
+        onCatalogAction = { action ->
+            when (action) {
+                is com.fluxa.app.shared.feature.catalog.CatalogAction.MarkWatchedRequested -> {
+                    androidFluxaPlatformServices!!.catalogHomeDataSource
+                        .resolveMeta(action.item.id, action.item.type)
+                        ?.let(homeViewModel::markWatchedFromPlayback)
+                }
+                is com.fluxa.app.shared.feature.catalog.CatalogAction.DropRequested -> {
+                    androidFluxaPlatformServices!!.catalogHomeDataSource
+                        .resolveMeta(action.item.id, action.item.type)
+                        ?.let(homeViewModel::forgetPlaybackProgress)
+                }
+                else -> Unit
+            }
+        },
         onOpenUrlRequested = { url ->
             context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
         },
@@ -198,6 +212,7 @@ internal fun AppRoutesHost(
             if (profile?.authKey.isNullOrBlank()) {
                 onNavigateToDestination(FluxaDestination.Auth)
             } else {
+                homeViewModel.setProviderSyncing("stremio", true)
                 homeViewModel.syncStremioIntegration(
                     profile = profile!!,
                     onProfileUpdated = { updated ->
@@ -206,7 +221,7 @@ internal fun AppRoutesHost(
                         profileManager.setLastActiveProfile(updated)
                         homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
                     },
-                    onComplete = { }
+                    onComplete = { homeViewModel.setProviderSyncing("stremio", false) }
                 )
             }
         },
@@ -215,6 +230,7 @@ internal fun AppRoutesHost(
             if (profile?.nuvioAccessToken.isNullOrBlank()) {
                 onNavigateToDestination(FluxaDestination.Auth)
             } else {
+                homeViewModel.setProviderSyncing("nuvio", true)
                 homeViewModel.syncNuvioIntegration(
                     profile = profile!!,
                     onProfileUpdated = { updated ->
@@ -223,7 +239,7 @@ internal fun AppRoutesHost(
                         profileManager.setLastActiveProfile(updated)
                         homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
                     },
-                    onComplete = { }
+                    onComplete = { homeViewModel.setProviderSyncing("nuvio", false) }
                 )
             }
         },

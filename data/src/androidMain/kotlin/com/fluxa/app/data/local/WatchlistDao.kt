@@ -338,6 +338,18 @@ interface WatchlistDao {
     @Query("DELETE FROM external_playback_progress WHERE profileId = :profileId")
     suspend fun deleteExternalPlaybackProgress(profileId: String)
 
+    @Query("DELETE FROM external_playback_progress WHERE profileId = :profileId AND provider = :provider")
+    suspend fun deleteExternalPlaybackProgressByProvider(profileId: String, provider: String)
+
+    @Query(
+        """
+        SELECT * FROM external_playback_progress
+        WHERE profileId = :profileId AND provider = :provider AND timeOffset > 0 AND duration > 0
+        ORDER BY syncedAt DESC
+        """
+    )
+    fun observeExternalContinueWatchingByProvider(profileId: String, provider: String): Flow<List<ExternalPlaybackProgressEntity>>
+
     @Query("DELETE FROM external_watched_episodes WHERE profileId = :profileId AND provider = :provider")
     suspend fun deleteExternalWatchedEpisodes(profileId: String, provider: String)
 

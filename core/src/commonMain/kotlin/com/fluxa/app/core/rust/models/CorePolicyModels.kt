@@ -123,6 +123,7 @@ data class NativeProfileSafePrefs(
     val ambientLight: Boolean = true,
     val forceSoftwareAudio: Boolean = false,
     val preferredPlayer: String = "exoplayer",
+    val continueWatchingSource: String = "fluxa",
     val cardLayout: String = "vertical",
     val detailEpisodeViewMode: String = "modern",
     val continueWatchingLayout: String = "horizontal",

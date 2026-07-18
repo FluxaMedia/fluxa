@@ -63,6 +63,19 @@ class ForgottenContinueWatchingStore @Inject constructor(@ApplicationContext con
     }
 }
 
+internal fun mergeSyncedProfile(gson: Gson, base: UserProfile, updated: UserProfile, current: UserProfile?): UserProfile {
+    if (current == null || current.id != base.id || updated.id != base.id) return updated
+    val baseJson = gson.toJsonTree(base).asJsonObject
+    val updatedJson = gson.toJsonTree(updated).asJsonObject
+    val mergedJson = gson.toJsonTree(current).asJsonObject
+    for ((key, updatedValue) in updatedJson.entrySet()) {
+        if (updatedValue != baseJson.get(key)) {
+            mergedJson.add(key, updatedValue)
+        }
+    }
+    return runCatching { gson.fromJson(mergedJson, UserProfile::class.java) }.getOrDefault(updated)
+}
+
 @Singleton
 class HomeCategoryCache @Inject constructor(
     @ApplicationContext context: Context,

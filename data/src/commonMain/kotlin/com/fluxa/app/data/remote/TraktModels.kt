@@ -217,6 +217,11 @@ data class AnilistTokenRequest(
     val code: String
 )
 
+data class AnilistGraphQlRequest(
+    val query: String,
+    val variables: Map<String, @JvmSuppressWildcards Any?> = emptyMap()
+)
+
 @Serializable
 data class MalMainPicture(val medium: String? = null, val large: String? = null)
 

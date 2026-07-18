@@ -27,10 +27,6 @@ internal class AndroidAuthEffectHandler(
 
     private suspend fun runExternalSync(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val profile = effect.payload.parseProfile() ?: return success(effect, emptyMap<String, Any?>())
-        if (effect.payload.string("provider") == "nuvio") {
-            val updatedProfile = nuvioAccountImportCoordinator.sync(profile) {}
-            return success(effect, mapOf("profile" to updatedProfile))
-        }
         return success(
             effect,
             mapOf(
@@ -158,6 +154,18 @@ internal class AndroidAuthEffectHandler(
     private suspend fun syncExternalIntegration(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val payload = effect.payload
         val profile = payload.parseProfile() ?: return failure(effect, "missing_profile")
+        if (payload.string("provider") == "nuvio") {
+            if (profile.nuvioAccessToken.isNullOrBlank()) return failure(effect, "missing_nuvio_token")
+            val imported = nuvioAccountImportCoordinator.sync(profile) {}
+            return success(
+                effect,
+                mapOf(
+                    "profile" to imported.profile,
+                    "snapshot" to mapOf("profile" to imported.profile),
+                    "externalContinueWatching" to imported.externalContinueWatching
+                )
+            )
+        }
         if (payload.string("provider") == "stremio") {
             if (profile.authKey.isBlank()) return failure(effect, "missing_stremio_token")
             val addons = repository.getUserAddons(profile.authKey, forceRefresh = true)

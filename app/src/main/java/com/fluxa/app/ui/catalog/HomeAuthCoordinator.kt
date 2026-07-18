@@ -30,7 +30,7 @@ internal class HomeAuthCoordinator(
                 )
             )
             updatedProfile(result)?.takeIf { it != profile }?.let { updated ->
-                accept(updated, onProfileUpdated)
+                accept(profile, updated, onProfileUpdated)
             }
         }
     }
@@ -62,7 +62,7 @@ internal class HomeAuthCoordinator(
                 onComplete(false)
                 return@launch
             }
-            accept(updated, onProfileUpdated)
+            accept(profile, updated, onProfileUpdated)
             onComplete(true)
         }
     }
@@ -109,7 +109,7 @@ internal class HomeAuthCoordinator(
                 val authResult = (tokenResult.state["auth"] as? Map<*, *>)?.get("result") as? Map<*, *>
                 val updated = decode<UserProfile>(authResult?.get("profile"))
                 if (updated != null) {
-                    accept(updated, onProfileUpdated)
+                    accept(activeProfile() ?: profile, updated, onProfileUpdated)
                     onComplete(true, null)
                     return@launch
                 }
@@ -135,9 +135,10 @@ internal class HomeAuthCoordinator(
         }
     }
 
-    private fun accept(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
-        updateActiveProfile(profile)
-        onProfileUpdated(profile)
+    private fun accept(base: UserProfile, updated: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
+        val merged = mergeSyncedProfile(gson, base, updated, activeProfile())
+        updateActiveProfile(merged)
+        onProfileUpdated(merged)
         invalidateHome()
     }
 

@@ -136,7 +136,8 @@ class NuvioSyncCoordinator @Inject constructor(
         val expiresAt = profile.nuvioTokenExpiresAt ?: 0L
         if (expiresAt > System.currentTimeMillis() + 60_000L) return profile
         val refreshToken = profile.nuvioRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
-        val session = nuvioService.refreshToken(request = NuvioRefreshRequest(refreshToken).toDto()).bodyOrNull()?.toDomain() ?: return null
+        val session = nuvioService.refreshToken(request = NuvioRefreshRequest(refreshToken).toDto()).bodyOrNull()?.toDomain()
+            ?: throw IllegalStateException("Nuvio token refresh failed")
         return profile.copy(
             nuvioAccessToken = session.accessToken.ifBlank { accessToken },
             nuvioRefreshToken = session.refreshToken.ifBlank { refreshToken },

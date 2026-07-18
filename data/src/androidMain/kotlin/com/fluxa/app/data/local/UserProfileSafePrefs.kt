@@ -42,6 +42,7 @@ val UserProfile.safeSecondaryAudioLanguage: String get() = safePrefs.secondaryAu
 val UserProfile.safeAmbientLight: Boolean get() = safePrefs.ambientLight
 val UserProfile.safeForceSoftwareAudio: Boolean get() = safePrefs.forceSoftwareAudio
 val UserProfile.safePreferredPlayer: String get() = safePrefs.preferredPlayer
+val UserProfile.safeContinueWatchingSource: String get() = safePrefs.continueWatchingSource
 val UserProfile.safeCardLayout: String get() = safePrefs.cardLayout
 val UserProfile.safeContinueWatchingLayout: String get() = safePrefs.continueWatchingLayout
 val UserProfile.safeContinueWatchingArtwork: String get() = safePrefs.continueWatchingArtwork

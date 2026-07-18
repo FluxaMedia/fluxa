@@ -141,6 +141,7 @@ data class Meta(
     val lastBingeGroup: String? = null,
     val lastAudioLanguage: String? = null,
     val lastSubtitleLanguage: String? = null,
+    val lastWatchedAt: Long? = null,
     val awards: String? = null,
     val rank: Int? = null,
     val reason: String? = null,
