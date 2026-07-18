@@ -192,6 +192,9 @@ class StremioRepository @Inject constructor(
     suspend fun getSimklLibraryItems(token: String?, status: String): List<Meta> =
         externalLibraryClient.getSimklLibraryItems(token, status)
 
+    suspend fun getSimklWatchedEpisodesWithTimestamps(token: String?): Map<String, Long> =
+        externalLibraryClient.getSimklWatchedEpisodesWithTimestamps(token)
+
     suspend fun clearTraktPlaybackProgress(token: String?, meta: Meta) =
         traktRepository.clearPlaybackProgress(token, meta)
 

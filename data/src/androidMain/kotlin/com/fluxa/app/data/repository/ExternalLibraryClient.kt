@@ -134,6 +134,43 @@ class ExternalLibraryClient @Inject constructor(
         }
     }
 
+    suspend fun getSimklWatchedEpisodesWithTimestamps(token: String?): Map<String, Long> = withContext(Dispatchers.IO) {
+        if (token.isNullOrBlank() || BuildConfig.SIMKL_CLIENT_ID.isBlank()) return@withContext emptyMap()
+        val statuses = listOf("watching", "completed")
+        supervisorScope {
+            statuses.flatMap { status ->
+                listOf("shows", "anime").map { apiType ->
+                    async {
+                        runCatching {
+                            val response = traktApi.getSimklAllItems(
+                                type = apiType,
+                                status = status,
+                                token = "Bearer $token",
+                                apiKey = BuildConfig.SIMKL_CLIENT_ID
+                            )
+                            val items = if (apiType == "anime") response.anime else response.shows
+                            items.flatMap { it.watchedEpisodeTimestamps() }
+                        }.getOrDefault(emptyList())
+                    }
+                }
+            }.awaitAll().flatten().toMap()
+        }
+    }
+
+    private fun SimklItem.watchedEpisodeTimestamps(): List<Pair<String, Long>> {
+        val seriesId = ids?.imdb ?: ids?.tmdb ?: ids?.slug?.let { "simkl:$it" } ?: ids?.simkl?.let { "simkl:$it" } ?: return emptyList()
+        return seasons.orEmpty().flatMap { season ->
+            val seasonNumber = season.number ?: return@flatMap emptyList()
+            season.episodes.orEmpty().mapNotNull { episode ->
+                val episodeNumber = episode.number ?: return@mapNotNull null
+                val watchedAtMs = episode.watchedAt
+                    ?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
+                    ?: return@mapNotNull null
+                "$seriesId:$seasonNumber:$episodeNumber" to watchedAtMs
+            }
+        }
+    }
+
     private fun distinctByIdentityKey(items: List<Meta>): List<Meta> {
         if (items.isEmpty()) return items
         val keys = ContentIdentity.traktKeysBatch(items)

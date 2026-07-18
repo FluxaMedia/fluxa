@@ -91,6 +91,7 @@ internal class HomeLibraryCoordinator(
                 val simklWatching = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "watching") } else null
                 val simklPlanned = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "plantowatch") } else null
                 val simklCompleted = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "completed") } else null
+                val simklWatchedEpisodesWithTimestamps = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklWatchedEpisodesWithTimestamps(simklToken) } else null
 
                 val traktPlannedWithTimestamps = traktPlannedWithListedAt?.await().orEmpty()
 
@@ -115,7 +116,7 @@ internal class HomeLibraryCoordinator(
                     }
                     scope.launch(Dispatchers.IO) {
                         val remoteWatched = traktWatchedEpisodesWithTimestamps?.await().orEmpty()
-                        runCatching { reconcileTraktWatched(profile, remoteWatched) }
+                        runCatching { reconcileWatchedEpisodes(profile, remoteWatched) }
                             .onFailure { Log.w("HomeLibrary", "Trakt watched reconcile failed", it) }
                     }
                 }
@@ -124,6 +125,11 @@ internal class HomeLibraryCoordinator(
                         val remotePlanned = simklPlanned?.await().orEmpty()
                         runCatching { remotePlanned.forEach { watchlistManager.applyRemoteWatchlistAdd(it) } }
                             .onFailure { Log.w("HomeLibrary", "Simkl watchlist reconcile failed", it) }
+                    }
+                    scope.launch(Dispatchers.IO) {
+                        val remoteWatched = simklWatchedEpisodesWithTimestamps?.await().orEmpty()
+                        runCatching { reconcileWatchedEpisodes(profile, remoteWatched) }
+                            .onFailure { Log.w("HomeLibrary", "Simkl watched reconcile failed", it) }
                     }
                 }
             } catch (e: Exception) {
@@ -158,7 +164,7 @@ internal class HomeLibraryCoordinator(
         }
     }
 
-    private suspend fun reconcileTraktWatched(profile: UserProfile, remoteWatched: Map<String, Long>) {
+    private suspend fun reconcileWatchedEpisodes(profile: UserProfile, remoteWatched: Map<String, Long>) {
         val localSnapshot = watchlistManager.getWatchedEpisodeMembershipSnapshot()
         val remoteMembership = remoteWatched.map { (videoId, watchedAtMs) ->
             ExternalSyncMergeBridge.RemoteMembershipItem(videoId, watchedAtMs)
