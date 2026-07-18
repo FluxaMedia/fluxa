@@ -12,7 +12,10 @@ import android.widget.RemoteViews
 import com.fluxa.app.R
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.common.locale
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.ui.MainActivity
+import com.google.gson.JsonArray as GsonArray
+import com.google.gson.JsonObject as GsonObject
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -67,12 +70,12 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             accentColorArgb: Int = 0xFFFFFFFF.toInt()
         ) {
             val rows = JSONArray().apply {
-                items.take(MAX_ROWS).forEach { item ->
+                fetchWidgetRows(items).forEach { row ->
                     put(JSONObject().apply {
-                        put("date", formatWidgetDate(item.dateIso, language))
-                        put("title", item.title)
-                        put("subtitle", item.episodeTitle ?: item.subtitle.orEmpty())
-                        put("episode", widgetEpisodeText(item))
+                        put("date", formatWidgetDate(row.get("dateIso").asString, language))
+                        put("title", row.get("title").asString)
+                        put("subtitle", row.get("subtitle")?.asString.orEmpty())
+                        put("episode", row.get("episodeText")?.asString.orEmpty())
                     })
                 }
             }
@@ -160,10 +163,25 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        private fun widgetEpisodeText(item: CalendarUpcomingItem): String {
-            val season = item.seasonNumber
-            val episode = item.episodeNumber
-            return if (season != null && episode != null) "S$season:E$episode" else ""
+        private fun fetchWidgetRows(items: List<CalendarUpcomingItem>): List<com.google.gson.JsonObject> {
+            val requestItems = GsonArray().apply {
+                items.forEach { item ->
+                    add(GsonObject().apply {
+                        addProperty("dateIso", item.dateIso)
+                        addProperty("title", item.title)
+                        item.subtitle?.let { addProperty("subtitle", it) }
+                        item.episodeTitle?.let { addProperty("episodeTitle", it) }
+                        item.seasonNumber?.let { addProperty("seasonNumber", it) }
+                        item.episodeNumber?.let { addProperty("episodeNumber", it) }
+                    })
+                }
+            }
+            val request = GsonObject().apply {
+                add("items", requestItems)
+                addProperty("maxRows", MAX_ROWS)
+            }
+            val value = FluxaCoreUniFfi.coreInvokeValue("calendarWidgetRows", request.toString())
+            return value.asJsonArray.map { it.asJsonObject }
         }
 
         private fun formatWidgetDate(dateIso: String, language: String): String {

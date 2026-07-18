@@ -2,6 +2,7 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.common.ReleaseDateUtils
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
@@ -9,6 +10,9 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.StremioRepository
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -27,6 +31,8 @@ internal class EpisodeCalendarLoader(
     private val repository: StremioRepository,
     private val watchlistManager: WatchlistManager
 ) {
+    private val gson = Gson()
+
     suspend fun loadMonth(
         profile: UserProfile?,
         year: Int,
@@ -154,18 +160,12 @@ internal class EpisodeCalendarLoader(
     }
 
     private fun calendarSeasonCandidates(meta: Meta, detail: MetaDetail): List<Int> {
-        val seasonsCount = detail.seasonsCount ?: meta.seasonsCount ?: 1
-        val watchedSeason = meta.lastVideoId
-            ?.split(":")
-            ?.getOrNull(1)
-            ?.toIntOrNull()
-        val focused = listOfNotNull(
-            watchedSeason,
-            watchedSeason?.plus(1),
-            seasonsCount
-        ).filter { it > 0 && it <= seasonsCount }
-        val full = if (seasonsCount <= 8) (1..seasonsCount).toList() else focused
-        return (focused + full).distinct().take(12)
+        val request = JsonObject().apply {
+            addProperty("seasonsCount", detail.seasonsCount ?: meta.seasonsCount ?: 1)
+            meta.lastVideoId?.let { addProperty("lastVideoId", it) }
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("calendarSeasonCandidates", request.toString())
+        return gson.fromJson(value, object : TypeToken<List<Int>>() {}.type)
     }
 
     private fun UserProfile.hasExternalContinueProvider(): Boolean {

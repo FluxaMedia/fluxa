@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -20,6 +21,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.fluxa.app.R
 import com.fluxa.app.data.remote.StremioService
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -30,15 +33,16 @@ object EpisodeNotificationHelper {
     private const val NOTIFIED_KEYS = "notified_keys"
 
     suspend fun notifyReleasedEpisodes(context: Context, profile: UserProfile?, items: List<CalendarUpcomingItem>, todayIso: String) {
-        if (profile?.safeNotificationsEnabled == false || profile?.safeAlertNewEpisodes == false) return
-        val releasedToday = items.filter { it.dateIso == todayIso && it.meta.type == "series" }
-        if (releasedToday.isEmpty()) return
-
         val appContext = context.applicationContext
+        val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val alreadyNotified = prefs.getStringSet(NOTIFIED_KEYS, emptySet()).orEmpty()
+
+        val content = fetchNotificationContent(items, todayIso, alreadyNotified, profile)
+        val releasedItems = content.getAsJsonArray("items")
+        if (releasedItems.isEmpty) return
+
         if (!canPostNotifications(appContext)) return
         ensureChannel(appContext)
-        val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val notified = prefs.getStringSet(NOTIFIED_KEYS, emptySet()).orEmpty().toMutableSet()
         val launchIntent = appContext.packageManager.getLaunchIntentForPackage(appContext.packageName)
         val pendingIntent = launchIntent?.let {
             PendingIntent.getActivity(
@@ -49,15 +53,18 @@ object EpisodeNotificationHelper {
             )
         }
 
-        releasedToday.forEach { item ->
-            val key = "${profile?.id.orEmpty()}:${item.dateIso}:${item.meta.id}:${item.subtitle.orEmpty()}"
-            if (!notified.add(key)) return@forEach
-            val image = loadBitmap(item.artworkUrl())
-            val notificationTitle = AppStrings.t(
-                profile?.safeLanguage,
-                if (item.episodeNumber == 1) "notification.new_season_released" else "notification.new_episode_released"
-            )
-            val text = releaseNotificationText(item, profile?.safeLanguage)
+        releasedItems.forEach { element ->
+            val row = element.asJsonObject
+            val key = row.get("key").asString
+            val original = items.firstOrNull {
+                it.meta.id == row.get("metaId").asString &&
+                    it.dateIso == row.get("dateIso").asString &&
+                    it.seasonNumber == row.get("seasonNumber")?.takeIf { v -> !v.isJsonNull }?.asInt &&
+                    it.episodeNumber == row.get("episodeNumber")?.takeIf { v -> !v.isJsonNull }?.asInt
+            } ?: return@forEach
+            val image = loadBitmap(original.artworkUrl())
+            val notificationTitle = AppStrings.t(profile?.safeLanguage, row.get("titleKey").asString)
+            val text = releaseNotificationText(original, profile?.safeLanguage)
             val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle(notificationTitle)
@@ -79,7 +86,41 @@ object EpisodeNotificationHelper {
                 .build()
             postNotification(appContext, key.hashCode(), notification)
         }
-        prefs.edit().putStringSet(NOTIFIED_KEYS, notified).apply()
+
+        val newKeys = content.getAsJsonArray("keys").map { it.asString }
+        prefs.edit().putStringSet(NOTIFIED_KEYS, alreadyNotified + newKeys).apply()
+    }
+
+    private fun fetchNotificationContent(
+        items: List<CalendarUpcomingItem>,
+        todayIso: String,
+        alreadyNotified: Set<String>,
+        profile: UserProfile?
+    ): JsonObject {
+        val requestItems = JsonArray().apply {
+            items.forEach { item ->
+                add(JsonObject().apply {
+                    addProperty("dateIso", item.dateIso)
+                    addProperty("metaId", item.meta.id)
+                    addProperty("metaType", item.meta.type)
+                    addProperty("title", item.title)
+                    item.subtitle?.let { addProperty("subtitle", it) }
+                    item.seasonNumber?.let { addProperty("seasonNumber", it) }
+                    item.episodeNumber?.let { addProperty("episodeNumber", it) }
+                    item.episodeTitle?.let { addProperty("episodeTitle", it) }
+                    item.artworkUrl()?.let { addProperty("artworkUrl", it) }
+                })
+            }
+        }
+        val request = JsonObject().apply {
+            add("items", requestItems)
+            addProperty("todayIso", todayIso)
+            add("alreadyNotifiedKeys", JsonArray().apply { alreadyNotified.forEach { add(it) } })
+            profile?.id?.let { addProperty("profileId", it) }
+            addProperty("notificationsEnabled", profile?.safeNotificationsEnabled != false)
+            addProperty("alertNewEpisodes", profile?.safeAlertNewEpisodes != false)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("calendarNotificationContent", request.toString()).asJsonObject
     }
 
     private fun releaseNotificationText(item: CalendarUpcomingItem, language: String?): String {
