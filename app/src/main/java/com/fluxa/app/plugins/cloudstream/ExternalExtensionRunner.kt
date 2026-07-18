@@ -481,12 +481,18 @@ class ExternalExtensionRunner(
                     Log.w(TAG, "extractEpisodeData: Match found but data is invalid: '${exactMatch.data}'")
                 }
                 exactMatch
+            } else if (epList.any { it.season == season }) {
+                // The provider does list this season, just not this episode — an
+                // episode-only match here would silently grab a different season's
+                // episode with the same number, so treat it as no match instead.
+                val seasonCounts = epList.groupBy { it.season }.mapValues { it.value.size }
+                Log.w(TAG, "extractEpisodeData: No match found for S${season}E${episode}. Season distribution: $seasonCounts")
+                null
             } else {
                 val episodeOnlyMatch = epList.firstOrNull { it.episode == episode }
                 if (episodeOnlyMatch != null) {
                     logDebug { "extractEpisodeData: Found episode-only match E${episode} (season was ${episodeOnlyMatch.season})" }
                 } else {
-                    // Check if maybe the episodes are numbered differently (e.g., all in season 0 or 1)
                     val seasonCounts = epList.groupBy { it.season }.mapValues { it.value.size }
                     Log.w(TAG, "extractEpisodeData: No match found for S${season}E${episode}. Season distribution: $seasonCounts")
                 }
