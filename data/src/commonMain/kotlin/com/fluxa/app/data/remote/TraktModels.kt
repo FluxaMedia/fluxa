@@ -35,8 +35,11 @@ data class TraktSyncItem(
     val id: Long? = null,
     val movie: TraktSummary? = null,
     val show: TraktSummary? = null,
-    val seasons: List<TraktWatchedSeason>? = null
-)
+    val seasons: List<TraktWatchedSeason>? = null,
+    val listed_at: String? = null
+) {
+    val listedAt: String? get() = listed_at
+}
 
 @Serializable
 data class TraktWatchedSeason(

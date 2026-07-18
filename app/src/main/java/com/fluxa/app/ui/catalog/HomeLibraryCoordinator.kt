@@ -5,6 +5,8 @@ import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.repository.ExternalSyncMergeBridge
+import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktRepository
 import com.google.gson.Gson
@@ -35,6 +37,8 @@ data class LibraryUiState(
 internal class HomeLibraryCoordinator(
     private val repository: StremioRepository,
     private val traktRepository: TraktRepository,
+    private val watchlistManager: WatchlistManager,
+    private val pushCoordinator: ExternalSyncPushCoordinator,
     private val scope: CoroutineScope,
     private val coreState: FluxaUniFfiCoreStateHandle,
     private val gson: Gson
@@ -71,7 +75,7 @@ internal class HomeLibraryCoordinator(
                 }
 
                 val traktToken = profile?.traktAccessToken
-                val traktPlanned = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktWatchlist(traktToken) } else null
+                val traktPlannedWithListedAt = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktWatchlistWithListedAt(traktToken) } else null
                 val traktWatched = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktRecentlyWatched(traktToken, language, profile) } else null
                 val traktCollection = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktCollection(traktToken) } else null
 
@@ -85,9 +89,11 @@ internal class HomeLibraryCoordinator(
                 val simklPlanned = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "plantowatch") } else null
                 val simklCompleted = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "completed") } else null
 
+                val traktPlannedWithTimestamps = traktPlannedWithListedAt?.await().orEmpty()
+
                 setLibraryState(LibraryUiState(
                     continueItems = (stremioContinue.await() + externalContinue.await()).distinctBy { it.id },
-                    traktPlanned = traktPlanned?.await().orEmpty(),
+                    traktPlanned = traktPlannedWithTimestamps.map { it.first },
                     traktWatched = traktWatched?.await().orEmpty(),
                     traktCollection = traktCollection?.await().orEmpty(),
                     malWatching = malWatching?.await().orEmpty(),
@@ -98,6 +104,13 @@ internal class HomeLibraryCoordinator(
                     simklCompleted = simklCompleted?.await().orEmpty(),
                     lastLoadedProfileKey = profileKey
                 ))
+
+                if (profile != null && !traktToken.isNullOrBlank()) {
+                    scope.launch(Dispatchers.IO) {
+                        runCatching { reconcileTraktWatchlist(profile, traktPlannedWithTimestamps) }
+                            .onFailure { Log.w("HomeLibrary", "Trakt watchlist reconcile failed", it) }
+                    }
+                }
             } catch (e: Exception) {
                 Log.w("HomeLibrary", "Failed to load library data", e)
                 setLibraryState(_state.value.copy(
@@ -106,6 +119,27 @@ internal class HomeLibraryCoordinator(
                     lastLoadedProfileKey = profileKey
                 ))
             }
+        }
+    }
+
+    private suspend fun reconcileTraktWatchlist(profile: UserProfile, remoteEntries: List<Pair<Meta, Long>>) {
+        val localSnapshot = watchlistManager.getWatchlistMembershipSnapshot()
+        val remoteMembership = remoteEntries.map { (meta, listedAtMs) ->
+            ExternalSyncMergeBridge.RemoteMembershipItem(meta.id, listedAtMs)
+        }
+        val plan = ExternalSyncMergeBridge.mergeWatchlist(localSnapshot, remoteMembership)
+        val remoteById = remoteEntries.associateBy { it.first.id }
+
+        plan.applyLocalAdd.forEach { id ->
+            remoteById[id]?.first?.let { watchlistManager.applyRemoteWatchlistAdd(it) }
+        }
+        plan.pushRemoteAdd.forEach { id ->
+            val meta = watchlistManager.getContentMeta(id) ?: return@forEach
+            pushCoordinator.pushWatchlist(profile, meta, isInWatchlist = true)
+        }
+        plan.pushRemoteRemove.forEach { id ->
+            val meta = watchlistManager.getContentMeta(id) ?: return@forEach
+            pushCoordinator.pushWatchlist(profile, meta, isInWatchlist = false)
         }
     }
 

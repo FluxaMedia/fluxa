@@ -6,6 +6,7 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktRepository
 import com.fluxa.app.data.repository.TraktWatchedState
@@ -18,11 +19,13 @@ class HomeViewModelCoordinatorFactory @Inject constructor() {
     internal fun library(
         repository: StremioRepository,
         traktRepository: TraktRepository,
+        watchlistManager: WatchlistManager,
+        pushCoordinator: ExternalSyncPushCoordinator,
         scope: CoroutineScope,
         coreState: FluxaUniFfiCoreStateHandle,
         gson: Gson
     ): HomeLibraryCoordinator {
-        return HomeLibraryCoordinator(repository, traktRepository, scope, coreState, gson)
+        return HomeLibraryCoordinator(repository, traktRepository, watchlistManager, pushCoordinator, scope, coreState, gson)
     }
 
     internal fun playback(

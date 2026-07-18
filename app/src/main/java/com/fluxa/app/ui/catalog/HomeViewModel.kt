@@ -53,6 +53,7 @@ class HomeViewModel @Inject constructor(
     private val homeCategoryCache: HomeCategoryCache,
     private val forgottenContinueWatchingStore: ForgottenContinueWatchingStore,
     private val coordinatorFactory: HomeViewModelCoordinatorFactory,
+    private val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
     private val nuvioSyncCoordinator: NuvioSyncCoordinator,
     private val platformContentGateway: HomePlatformContentGateway,
@@ -214,7 +215,7 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
     private val libraryCoordinator by lazy {
-        coordinatorFactory.library(repository, traktRepository, viewModelScope, coreState, gson)
+        coordinatorFactory.library(repository, traktRepository, watchlistManager, externalSyncPushCoordinator, viewModelScope, coreState, gson)
     }
     val libraryUiState: StateFlow<LibraryUiState> get() = libraryCoordinator.state
 

@@ -105,6 +105,26 @@ class WatchlistManager @Inject constructor(
         return dao.isInWatchlist(pid(), id)
     }
 
+    data class WatchlistMembershipEntry(val id: String, val active: Boolean, val updatedAt: Long)
+
+    suspend fun getWatchlistMembershipSnapshot(): List<WatchlistMembershipEntry> {
+        val profileId = pid()
+        val active = dao.getWatchlistEntries(profileId).map { WatchlistMembershipEntry(it.contentId, true, it.updatedAt) }
+        val removed = dao.getWatchlistRemovals(profileId).map { WatchlistMembershipEntry(it.contentId, false, it.removedAt) }
+        return active + removed
+    }
+
+    suspend fun applyRemoteWatchlistAdd(item: Meta) {
+        val profileId = pid()
+        dao.upsertContent(item.toContentItemEntity(profileId))
+        dao.clearWatchlistRemoval(profileId, item.id)
+        dao.upsertWatchlistEntry(WatchlistEntryEntity(profileId, item.id))
+    }
+
+    suspend fun getContentMeta(id: String): Meta? {
+        return dao.getContentState(pid(), id)?.toMeta()
+    }
+
     suspend fun setFeedback(id: String, isLike: Boolean?, metaIfNew: Meta? = null) {
         val profileId = pid()
         metaIfNew?.let { dao.upsertContent(it.toContentItemEntity(profileId)) }

@@ -45,6 +45,10 @@ class TraktRepository @Inject constructor(
         traktSyncClient.getWatchlist(token)
     }
 
+    suspend fun getWatchlistWithListedAt(token: String): List<Pair<Meta, Long>> = withContext(Dispatchers.IO) {
+        traktSyncClient.getWatchlistWithListedAt(token)
+    }
+
     suspend fun getRecentlyWatched(token: String, language: String = "en", profile: UserProfile? = null): List<Meta> = withContext(Dispatchers.IO) {
         if (!TraktIntegration.hasClient(TRAKT_KEY)) return@withContext emptyList()
         try {
@@ -152,6 +156,8 @@ class TraktRepository @Inject constructor(
     )
 
     suspend fun getTraktWatchlist(token: String): List<Meta> = getWatchlist(token)
+
+    suspend fun getTraktWatchlistWithListedAt(token: String): List<Pair<Meta, Long>> = getWatchlistWithListedAt(token)
 
     suspend fun getTraktRecentlyWatched(token: String, language: String = "en", profile: UserProfile? = null): List<Meta> =
         getRecentlyWatched(token, language, profile)

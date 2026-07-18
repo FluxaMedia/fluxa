@@ -37,6 +37,23 @@ class TraktSyncClient @Inject constructor(
         }
     }
 
+    suspend fun getWatchlistWithListedAt(token: String): List<Pair<Meta, Long>> = withContext(Dispatchers.IO) {
+        if (!TraktIntegration.hasClient(traktKey)) return@withContext emptyList()
+        try {
+            val auth = TraktIntegration.bearer(token)
+            fetchTraktSyncPages { page, limit -> traktApi.getWatchlist(auth, traktKey, page, limit) }
+                .mapNotNull { item ->
+                    val listedAtMs = item.listedAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
+                        ?: return@mapNotNull null
+                    val type = if (item.movie != null) "movie" else "series"
+                    val meta = item.toMeta(type) { AppStrings.t(null, "auto.unknown") } ?: return@mapNotNull null
+                    meta to listedAtMs
+                }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     suspend fun getRecentlyWatched(token: String): List<Meta> = withContext(Dispatchers.IO) {
         getRecentlyWatchedResult(token).getOrReport(emptyList())
     }
