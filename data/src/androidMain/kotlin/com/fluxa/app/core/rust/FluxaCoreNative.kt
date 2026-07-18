@@ -1781,6 +1781,10 @@ object FluxaCoreNative {
         return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<Meta>>(it, metaListType) } ?: emptyList()
     }
 
+    fun libraryWatchlistItems(items: List<LibraryItem>): com.google.gson.JsonElement {
+        return FluxaCoreUniFfi.coreInvokeValue("libraryWatchlistItems", gson.toJson(items))
+    }
+
     fun filterHomeContinueWatching(items: List<Meta>, traktWatchedState: TraktWatchedState): List<Meta> {
         val args = JsonObject().apply {
             addProperty("itemsJson", gson.toJson(items))

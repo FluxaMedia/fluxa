@@ -75,6 +75,10 @@ internal class HomeLibraryCoordinator(
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 }
+                val stremioAuthKey = profile?.authKey?.takeIf { !profile.isGuest }
+                val stremioWatchlistWithTimestamps = stremioAuthKey?.let { authKey ->
+                    async(Dispatchers.IO) { repository.getLibraryWatchlistWithTimestamps(authKey) }
+                }
 
                 val traktToken = profile?.traktAccessToken
                 val traktPlannedWithListedAt = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktWatchlistWithListedAt(traktToken) } else null
@@ -142,6 +146,13 @@ internal class HomeLibraryCoordinator(
                             .onFailure { Log.w("HomeLibrary", "AniList watchlist reconcile failed", it) }
                     }
                 }
+                if (stremioAuthKey != null) {
+                    scope.launch(Dispatchers.IO) {
+                        val remoteWatchlist = stremioWatchlistWithTimestamps?.await().orEmpty()
+                        runCatching { reconcileWatchlistPullOnly(remoteWatchlist) }
+                            .onFailure { Log.w("HomeLibrary", "Stremio watchlist reconcile failed", it) }
+                    }
+                }
             } catch (e: Exception) {
                 Log.w("HomeLibrary", "Failed to load library data", e)
                 setLibraryState(_state.value.copy(
@@ -171,6 +182,18 @@ internal class HomeLibraryCoordinator(
         plan.pushRemoteRemove.forEach { id ->
             val meta = watchlistManager.getContentMeta(id) ?: return@forEach
             pushCoordinator.pushWatchlist(profile, meta, isInWatchlist = false)
+        }
+    }
+
+    private suspend fun reconcileWatchlistPullOnly(remoteEntries: List<Pair<Meta, Long>>) {
+        val localSnapshot = watchlistManager.getWatchlistMembershipSnapshot()
+        val remoteMembership = remoteEntries.map { (meta, updatedAtMs) ->
+            ExternalSyncMergeBridge.RemoteMembershipItem(meta.id, updatedAtMs)
+        }
+        val plan = ExternalSyncMergeBridge.mergeWatchlist(localSnapshot, remoteMembership)
+        val remoteById = remoteEntries.associateBy { it.first.id }
+        plan.applyLocalAdd.forEach { id ->
+            remoteById[id]?.first?.let { watchlistManager.applyRemoteWatchlistAdd(it) }
         }
     }
 

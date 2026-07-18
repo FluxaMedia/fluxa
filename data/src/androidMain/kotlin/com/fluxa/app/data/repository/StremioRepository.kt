@@ -211,6 +211,31 @@ class StremioRepository @Inject constructor(
         }
     }
 
+    suspend fun getLibraryWatchlistWithTimestamps(authKey: String): List<Pair<Meta, Long>> = withContext(Dispatchers.IO) {
+        try {
+            val response = authService.getDatastore(DatastoreRequest(authKey, "library"))
+            val value = FluxaCoreNative.libraryWatchlistItems(response.body()?.result.orEmpty())
+            if (value.isJsonNull) return@withContext emptyList()
+            value.asJsonArray.mapNotNull { entry ->
+                val item = entry.asJsonObject
+                val id = item.get("id")?.takeUnless { it.isJsonNull }?.asString ?: return@mapNotNull null
+                val updatedAtMs = item.get("updatedAtMs")?.takeUnless { it.isJsonNull }?.asLong ?: return@mapNotNull null
+                val meta = Meta(
+                    id = id,
+                    name = item.get("name")?.takeUnless { it.isJsonNull }?.asString ?: id,
+                    type = item.get("type")?.takeUnless { it.isJsonNull }?.asString ?: "",
+                    poster = item.get("poster")?.takeUnless { it.isJsonNull }?.asString,
+                    background = item.get("background")?.takeUnless { it.isJsonNull }?.asString,
+                    reason = "Stremio"
+                )
+                meta to updatedAtMs
+            }
+        } catch (e: Exception) {
+            failureReporter.report("stremio.library.getWatchlist", e)
+            emptyList()
+        }
+    }
+
     suspend fun getWatchedVideoIds(authKey: String, imdbId: String): List<String> = withContext(Dispatchers.IO) {
         try {
             val response = authService.getDatastore(DatastoreRequest(authKey, "library"))

@@ -20,7 +20,9 @@ data class LibraryItem(
     val background: String? = null,
     val logo: String? = null,
     val state: LibraryItemState? = null,
-    val lastWatched: String? = null
+    val lastWatched: String? = null,
+    val removed: Boolean? = null,
+    val _mtime: String? = null
 ) {
     val id: String get() = _id
 }
