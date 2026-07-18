@@ -24,6 +24,18 @@ private const val ANILIST_SAVE_MEDIA_LIST_ENTRY_MUTATION = """
     }
 """
 
+private const val ANILIST_MEDIA_LIST_ENTRY_LOOKUP_QUERY = """
+    query (${'$'}mediaId: Int) {
+        Media(id: ${'$'}mediaId) { mediaListEntry { id } }
+    }
+"""
+
+private const val ANILIST_DELETE_MEDIA_LIST_ENTRY_MUTATION = """
+    mutation (${'$'}id: Int) {
+        DeleteMediaListEntry(id: ${'$'}id) { deleted }
+    }
+"""
+
 class ExternalSyncPushCoordinator @Inject constructor(
     private val api: TraktApi,
     private val repository: StremioRepository,
@@ -95,10 +107,13 @@ class ExternalSyncPushCoordinator @Inject constructor(
         if (isInWatchlist && !profile.malAccessToken.isNullOrBlank()) {
             launch { pushMalWithTokenHandling(profile) { token -> pushMalWatchlist(token, meta) } }
         }
-        if (isInWatchlist && !profile.anilistAccessToken.isNullOrBlank()) {
+        if (!profile.anilistAccessToken.isNullOrBlank()) {
             launch {
                 val token = profile.anilistAccessToken
-                runCatching { pushAnilistListEntry(token, meta, "PLANNING", progress = null) }
+                runCatching {
+                    if (isInWatchlist) pushAnilistListEntry(token, meta, "PLANNING", progress = null)
+                    else pushAnilistWatchlistRemoval(token, meta)
+                }
                     .onSuccess { success ->
                         if (success) profileManager.clearExternalSyncFailure(profile.id, "anilist")
                         else profileManager.recordExternalSyncFailure(profile.id, "anilist")
@@ -236,6 +251,26 @@ class ExternalSyncPushCoordinator @Inject constructor(
             AnilistGraphQlRequest(query = ANILIST_SAVE_MEDIA_LIST_ENTRY_MUTATION, variables = variables)
         )
         return response.get("errors") == null
+    }
+
+    private suspend fun pushAnilistWatchlistRemoval(token: String, meta: Meta): Boolean {
+        val mediaId = meta.id.removePrefix("anilist:").toIntOrNull() ?: return false
+        val lookupResponse = api.anilistGraphQl(
+            "Bearer $token",
+            AnilistGraphQlRequest(query = ANILIST_MEDIA_LIST_ENTRY_LOOKUP_QUERY, variables = mapOf("mediaId" to mediaId))
+        )
+        val entryId = lookupResponse.getAsJsonObject("data")
+            ?.getAsJsonObject("Media")
+            ?.getAsJsonObject("mediaListEntry")
+            ?.get("id")
+            ?.takeUnless { it.isJsonNull }
+            ?.asInt ?: return true
+
+        val deleteResponse = api.anilistGraphQl(
+            "Bearer $token",
+            AnilistGraphQlRequest(query = ANILIST_DELETE_MEDIA_LIST_ENTRY_MUTATION, variables = mapOf("id" to entryId))
+        )
+        return deleteResponse.get("errors") == null
     }
 
     private suspend fun pushSimklWatchlistRemoval(token: String, meta: Meta): Response<Unit>? {
