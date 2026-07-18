@@ -127,7 +127,6 @@ android {
     sourceSets {
         getByName("main") {
             jniLibs.srcDir(layout.buildDirectory.dir("generated/rustJniLibs"))
-            java.srcDir(layout.buildDirectory.dir("generated/source/uniffi/main/kotlin"))
         }
     }
 }
@@ -264,45 +263,14 @@ tasks.register("buildFluxaStreamingEngine") {
 }
 
 
-val generateFluxaCoreUniFfiBindings by tasks.registering(Exec::class) {
-    group = "build"
-    description = "Generates Kotlin UniFFI bindings for the Fluxa Rust core."
-    workingDir = rustCrateDir
-    dependsOn(rootProject.tasks.named("buildFluxaCoreHost"))
-    val outDir = layout.buildDirectory.dir("generated/source/uniffi/main/kotlin")
-    commandLine(
-        "cargo",
-        "run",
-        "--features",
-        "uniffi-cli",
-        "--bin",
-        "uniffi-bindgen",
-        "generate",
-        "--library",
-        "target/debug/$rustHostLibraryName",
-        "--language",
-        "kotlin",
-        "--config",
-        "uniffi.toml",
-        "--out-dir",
-        outDir.get().asFile.absolutePath
-    )
-    inputs.files(fileTree(rustCrateDir) {
-        exclude("target/**", ".git/**", ".agents/**", ".codex/**", "fluxa-streaming-engine/target/**")
-    })
-    outputs.dir(outDir)
-}
-
 tasks.matching { it.name == "preBuild" }.configureEach {
     dependsOn("buildFluxaCore")
     dependsOn("buildFluxaStreamingEngine")
-    dependsOn(generateFluxaCoreUniFfiBindings)
 }
 
 tasks.withType<Test>().configureEach {
     dependsOn(rootProject.tasks.named("buildFluxaCoreHost"))
     dependsOn(rootProject.tasks.named("buildFluxaStreamingEngineHost"))
-    dependsOn(generateFluxaCoreUniFfiBindings)
     jvmArgs("-Djava.library.path=${rustCrateDir.resolve("target/debug").absolutePath}")
     systemProperty(
         "jna.library.path",

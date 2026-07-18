@@ -2,6 +2,7 @@ package com.fluxa.app.core.rust
 
 import com.fluxa.core.uniffi.appCoreDispatchJson
 import com.fluxa.core.uniffi.appCoreStateJson
+import com.fluxa.core.uniffi.coreInvoke as coreInvokeUniFfi
 import com.fluxa.core.uniffi.createAppCoreStateJson
 import com.fluxa.core.uniffi.createHeadlessEngineJson
 import com.fluxa.core.uniffi.destroyAppCoreStateJson
@@ -11,6 +12,8 @@ import com.fluxa.core.uniffi.headlessEngineCompleteEffectJson
 import com.fluxa.core.uniffi.headlessEngineDispatchJson
 import com.fluxa.core.uniffi.headlessEngineSnapshotJson
 import com.google.gson.Gson
+import com.google.gson.JsonElement
+import com.google.gson.JsonParser
 import java.io.Closeable
 
 class FluxaUniFfiHeadlessEngineHandle internal constructor(
@@ -70,5 +73,16 @@ object FluxaCoreUniFfi {
 
     fun createAppCoreState(initialState: Any = emptyMap<String, Any?>()): FluxaUniFfiCoreStateHandle {
         return FluxaUniFfiCoreStateHandle(createAppCoreStateJson(gson.toJson(initialState)), gson)
+    }
+
+    fun coreInvoke(method: String, argsJson: String): String = coreInvokeUniFfi(method, argsJson)
+
+    fun coreInvokeValue(method: String, argsJson: String): JsonElement {
+        val envelope = JsonParser.parseString(coreInvoke(method, argsJson)).asJsonObject
+        if (envelope.get("ok")?.asBoolean != true) {
+            val error = envelope.getAsJsonObject("error")
+            throw IllegalStateException("Fluxa core call '$method' failed: ${error?.get("message")?.asString}")
+        }
+        return envelope.get("value")
     }
 }
