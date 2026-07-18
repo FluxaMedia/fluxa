@@ -43,6 +43,9 @@ internal class HomeHeadlessBrowseCoordinator(
     private val calendarItems = MutableStateFlow<List<CalendarUpcomingItem>>(emptyList())
     private val calendarLoading = MutableStateFlow(false)
     private var discoverJob: Job? = null
+    private var calendarJob: Job? = null
+    private var calendarGeneration = 0L
+    private var calendarRequestKey: String? = null
 
     val discoverUiState: StateFlow<DiscoverUiState> = combine(
         combine(results, resultSources, loading) { items, sources, pending -> Triple(items, sources, pending) },
@@ -134,7 +137,15 @@ internal class HomeHeadlessBrowseCoordinator(
     }
 
     fun loadCalendar(profile: UserProfile?, year: Int, month: Int, plannedItems: List<Meta>) {
-        scope.launch {
+        val requestKey = "${profile?.id.orEmpty()}:$year:$month"
+        if (calendarRequestKey == requestKey && calendarJob?.isActive == true) return
+        calendarJob?.cancel()
+        val generation = ++calendarGeneration
+        if (calendarRequestKey != requestKey) {
+            calendarItems.value = emptyList()
+        }
+        calendarRequestKey = requestKey
+        calendarJob = scope.launch {
             calendarLoading.value = true
             try {
                 val result = dispatch(
@@ -147,9 +158,13 @@ internal class HomeHeadlessBrowseCoordinator(
                     )
                 )
                 val state = result.state["calendar"] as? Map<*, *>
-                calendarItems.value = decodeList(state?.get("items"), calendarItemListType)
+                if (generation == calendarGeneration) {
+                    calendarItems.value = decodeList(state?.get("items"), calendarItemListType)
+                }
             } finally {
-                calendarLoading.value = false
+                if (generation == calendarGeneration) {
+                    calendarLoading.value = false
+                }
             }
         }
     }

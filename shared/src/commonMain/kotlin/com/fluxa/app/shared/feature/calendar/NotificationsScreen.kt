@@ -98,8 +98,8 @@ fun NotificationsScreen(
                                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp)
                                 )
                             }
-                            items(bucketItems, key = { it.id + it.dateIso }) { release ->
-                                NotificationRow(release = release, onClick = { onItemSelected(release) })
+                            items(bucketItems, key = { notificationItemKey(it.id, it.dateIso, it.subtitle) }) { release ->
+                                NotificationRow(release = release, language = language, onClick = { onItemSelected(release) })
                             }
                         }
                     }
@@ -110,7 +110,7 @@ fun NotificationsScreen(
 }
 
 @Composable
-private fun NotificationRow(release: CalendarReleaseUiModel, onClick: () -> Unit) {
+private fun NotificationRow(release: CalendarReleaseUiModel, language: String?, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -153,13 +153,35 @@ private fun NotificationRow(release: CalendarReleaseUiModel, onClick: () -> Unit
                 )
             }
             Text(
-                text = release.dateIso,
+                text = notificationDisplayDate(release.dateIso, language),
                 color = Color.White.copy(alpha = 0.45f),
                 fontSize = 11.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
     }
+}
+
+internal fun notificationItemKey(id: String, dateIso: String, subtitle: String): String =
+    "$id:$dateIso:$subtitle"
+
+internal fun notificationDisplayDate(dateIso: String, language: String?): String {
+    val date = runCatching { LocalDate.parse(dateIso) }.getOrNull() ?: return dateIso
+    val monthKeys = listOf(
+        "calendar.month_january",
+        "calendar.month_february",
+        "calendar.month_march",
+        "calendar.month_april",
+        "calendar.month_may",
+        "calendar.month_june",
+        "calendar.month_july",
+        "calendar.month_august",
+        "calendar.month_september",
+        "calendar.month_october",
+        "calendar.month_november",
+        "calendar.month_december"
+    )
+    return "${date.day} ${AppStrings.t(language, monthKeys[date.month.ordinal])} ${date.year}"
 }
 
 private fun CalendarReleaseUiModel.bucket(today: LocalDate): NotificationBucket {

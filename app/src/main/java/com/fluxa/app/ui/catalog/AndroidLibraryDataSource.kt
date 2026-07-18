@@ -20,6 +20,12 @@ import com.fluxa.app.shared.feature.library.toCatalogCardUiModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
+private data class AndroidLibrarySources(
+    val watchlist: List<com.fluxa.app.data.remote.Meta>,
+    val likedItems: List<com.fluxa.app.data.remote.Meta>,
+    val remoteLibrary: com.fluxa.app.ui.catalog.LibraryUiState
+)
+
 class AndroidLibraryDataSource(
     private val homeViewModel: HomeViewModel,
     private val profileManager: ProfileManager,
@@ -30,13 +36,22 @@ class AndroidLibraryDataSource(
     private val language: () -> String
 ) : LibraryDataSource {
 
-    override fun observeLibrary(): Flow<LibraryUiState> = combine(
+    private val librarySources = combine(
         watchlistStore.observeWatchlist(),
         watchlistStore.observeLiked(),
-        homeViewModel.libraryUiState,
+        homeViewModel.libraryUiState
+    ) { watchlist, likedItems, remoteLibrary ->
+        AndroidLibrarySources(watchlist, likedItems, remoteLibrary)
+    }
+
+    override fun observeLibrary(): Flow<LibraryUiState> = combine(
+        librarySources,
         homeViewModel.isLoading,
         offlineDownloadManager.items
-    ) { watchlist, likedItems, libraryUiState, isLoading, downloads ->
+    ) { sources, isLoading, downloads ->
+        val watchlist = sources.watchlist
+        val likedItems = sources.likedItems
+        val libraryUiState = sources.remoteLibrary
         val profile = activeProfile()
         val lang = language()
 
@@ -74,12 +89,12 @@ class AndroidLibraryDataSource(
         }
 
         val profileDownloads = downloads.filter { it.profileId == null || it.profileId == profile?.id }
-        val downloadGroups = profileDownloads.toOfflineDownloadGroups(String::toFileImageModel).map { group ->
+        val downloadGroups = OfflineDownloadGrouping.group(profileDownloads, String::toFileImageModel).map { group ->
             LibraryDownloadGroupUiModel(
                 key = group.key,
                 title = group.title,
                 posterUrl = group.poster,
-                totalSizeLabel = group.totalBytes.formatDownloadBytes(),
+                totalSizeLabel = OfflineDownloadGrouping.formatBytes(group.totalBytes),
                 episodes = group.episodes.map { item ->
                     LibraryDownloadEpisodeUiModel(
                         id = item.id,
@@ -91,7 +106,7 @@ class AndroidLibraryDataSource(
                             "downloading" -> AppStrings.format(lang, "downloads.status_downloading", item.progress)
                             else -> AppStrings.t(lang, "downloads.status_queued")
                         },
-                        sizeLabel = item.effectiveSizeLabel().orEmpty(),
+                        sizeLabel = OfflineDownloadGrouping.sizeLabel(item).orEmpty(),
                         progressPercent = item.progress.coerceIn(0, 100),
                         isDownloaded = item.status == "downloaded",
                         isPlayable = item.isPlayable
@@ -101,7 +116,12 @@ class AndroidLibraryDataSource(
         }
 
         LibraryUiState(
-            isLoading = isLoading,
+            isLoading = (isLoading || libraryUiState.isLoading) &&
+                planned.isEmpty() &&
+                completed.isEmpty() &&
+                favorites.isEmpty() &&
+                collections.isEmpty() &&
+                downloadGroups.isEmpty(),
             planned = planned.toCatalogItems(profile),
             completed = completed.toCatalogItems(profile),
             favorites = favorites.toCatalogItems(profile),

@@ -672,6 +672,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     private suspend fun writeLibraryCommand(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val command = effect.payload.objectValue("command").orEmpty()
         val profileId = effect.payload.stringOrNull("profileId")
+        profileId?.let(watchlistManager::setActiveProfile)
         val profile = profileId?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
         val value = when (command.string("type")) {
             "toggleWatchlist" -> {

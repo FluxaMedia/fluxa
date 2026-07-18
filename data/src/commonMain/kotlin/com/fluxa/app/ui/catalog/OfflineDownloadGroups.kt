@@ -4,8 +4,15 @@ import com.fluxa.app.data.local.OfflineDownloadItem
 
 fun List<OfflineDownloadItem>.toOfflineDownloadGroups(
     resolveLocalImage: (String) -> String = { it }
-): List<OfflineDownloadGroup> {
-    return groupBy { item -> item.metaId.ifBlank { item.title } }
+): List<OfflineDownloadGroup> = OfflineDownloadGrouping.group(this, resolveLocalImage)
+
+fun OfflineDownloadItem.effectiveSizeLabel(): String? = OfflineDownloadGrouping.sizeLabel(this)
+
+object OfflineDownloadGrouping {
+    fun group(
+        items: List<OfflineDownloadItem>,
+        resolveLocalImage: (String) -> String = { it }
+    ): List<OfflineDownloadGroup> = items.groupBy { item -> item.metaId.ifBlank { item.title } }
         .values
         .map { episodes ->
             val sorted = episodes.sortedWith(compareBy<OfflineDownloadItem> { it.videoId.orEmpty() }.thenByDescending { it.createdAt })
@@ -23,11 +30,15 @@ fun List<OfflineDownloadItem>.toOfflineDownloadGroups(
             )
         }
         .sortedBy { it.title.lowercase() }
-}
 
-fun OfflineDownloadItem.effectiveSizeLabel(): String? {
-    val size = totalBytes.takeIf { it > 0L } ?: downloadedBytes.takeIf { it > 0L } ?: return null
-    return size.formatDownloadBytes()
+    fun sizeLabel(item: OfflineDownloadItem): String? {
+        val size = item.totalBytes.takeIf { it > 0L }
+            ?: item.downloadedBytes.takeIf { it > 0L }
+            ?: return null
+        return size.formatDownloadBytes()
+    }
+
+    fun formatBytes(value: Long): String = value.formatDownloadBytes()
 }
 
 fun Long.formatDownloadBytes(): String = when {

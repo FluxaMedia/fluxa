@@ -47,6 +47,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.shared.feature.discover.DiscoverDropdownFilter
+import com.fluxa.app.shared.feature.discover.DiscoverFilterOptionUiModel
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
@@ -138,7 +140,7 @@ fun LibraryScreen(
                                     LibrarySection.Favorites -> state.favorites
                                     else -> emptyList()
                                 }
-                                LibraryTypeFilterRow(typeFilter, language) { typeFilter = it }
+                                LibraryTypeDropdown(typeFilter, language) { typeFilter = it }
                                 LibraryItemGrid(filterItems(items, typeFilter), language, onItemSelected)
                             }
                         }
@@ -223,30 +225,27 @@ private fun LibrarySectionChips(
 }
 
 @Composable
-private fun LibraryTypeFilterRow(current: LibraryTypeFilter, language: String?, onSelected: (LibraryTypeFilter) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 8.dp)
-    ) {
-        items(LibraryTypeFilter.entries.toList()) { entry ->
-            val selected = entry == current
-            val label = when (entry) {
+private fun LibraryTypeDropdown(current: LibraryTypeFilter, language: String?, onSelected: (LibraryTypeFilter) -> Unit) {
+    val options = LibraryTypeFilter.entries.map { entry ->
+        DiscoverFilterOptionUiModel(
+            id = entry.name,
+            label = when (entry) {
                 LibraryTypeFilter.All -> AppStrings.t(language, "auto.all")
                 LibraryTypeFilter.Movie -> AppStrings.t(language, "auto.movie")
                 LibraryTypeFilter.Series -> AppStrings.t(language, "auto.series")
                 LibraryTypeFilter.Anime -> AppStrings.t(language, "auto.anime")
             }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(if (selected) Color.White.copy(alpha = 0.14f) else Color.Transparent)
-                    .clickable { onSelected(entry) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(label, color = if (selected) Color.White else Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+        )
+    }
+    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        DiscoverDropdownFilter(
+            label = AppStrings.t(language, "auto.type"),
+            options = options,
+            selectedId = current.name,
+            onSelected = { selected ->
+                LibraryTypeFilter.entries.firstOrNull { it.name == selected }?.let(onSelected)
             }
-        }
+        )
     }
 }
 
@@ -263,14 +262,14 @@ private fun LibraryItemGrid(
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 128.dp),
+        columns = GridCells.Fixed(3),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize()
     ) {
         items(items, key = { "${it.type}:${it.id}" }) { item ->
-            CatalogCard(model = item.card, onClick = { onItemSelected(item) })
+            CatalogCard(model = item.card.copy(showTitleBar = true), onClick = { onItemSelected(item) })
         }
     }
 }

@@ -274,6 +274,9 @@ fun FluxaAppHost(
     LaunchedEffect(catalogHomeStore) {
         catalogHomeStore.dispatch(CatalogAction.Refresh)
     }
+    LaunchedEffect(calendarStore) {
+        calendarStore?.dispatch(CalendarAction.Refresh)
+    }
     LaunchedEffect(detailStore) {
         detailStore?.load()
     }

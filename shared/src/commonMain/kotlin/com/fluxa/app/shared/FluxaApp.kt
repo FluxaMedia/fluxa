@@ -49,6 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -720,6 +721,18 @@ private fun FluxaHomeContent(
                 state.catalogHome.rows.filterNot { it.categoryType == "collection_folder" },
                 key = { it.id }
             ) { row ->
+                val rowState = rememberLazyListState()
+                val shouldLoadMore by remember(row.id, row.canLoadMore) {
+                    derivedStateOf {
+                        val lastVisible = rowState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        row.canLoadMore && row.items.isNotEmpty() && lastVisible >= row.items.lastIndex - 4
+                    }
+                }
+                LaunchedEffect(shouldLoadMore, row.items.size) {
+                    if (shouldLoadMore) {
+                        onCatalogAction(CatalogAction.LoadMore(row.id))
+                    }
+                }
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier
@@ -756,6 +769,7 @@ private fun FluxaHomeContent(
                         }
                     }
                     LazyRow(
+                        state = rowState,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {

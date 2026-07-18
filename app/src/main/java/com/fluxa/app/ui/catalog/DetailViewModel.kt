@@ -46,6 +46,7 @@ class DetailViewModel @Inject constructor(
     private var activeStreamsRequestIds: Set<String> = emptySet()
 
     private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
+    private val libraryCommandRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
 
     init {
         viewModelScope.launch {
@@ -354,14 +355,16 @@ class DetailViewModel @Inject constructor(
         _uiState.update { it.copy(isInWatchlist = !previous) }
         viewModelScope.launch {
             try {
-                headlessRuntime.dispatch(
+                val result = libraryCommandRuntime.dispatch(
                     mapOf(
                         "type" to "toggleWatchlistRequested",
-                        "item" to meta
+                        "item" to meta,
+                        "profile" to currentProfile
                     )
                 )
-                val detail = headlessRuntime.state.value["detail"] as? Map<*, *>
-                (detail?.get("isInWatchlist") as? Boolean)?.let { confirmed ->
+                val library = result.state["library"] as? Map<*, *>
+                val write = library?.get("lastWrite") as? Map<*, *>
+                (write?.get("isInWatchlist") as? Boolean)?.let { confirmed ->
                     _uiState.update { it.copy(isInWatchlist = confirmed) }
                 }
             } catch (e: Exception) {
@@ -649,6 +652,7 @@ class DetailViewModel @Inject constructor(
 
     override fun onCleared() {
         headlessRuntime.close()
+        libraryCommandRuntime.close()
         super.onCleared()
     }
 }

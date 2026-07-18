@@ -266,7 +266,7 @@ private fun DiscoverFilters(
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun DiscoverDropdownFilter(
+internal fun DiscoverDropdownFilter(
     label: String,
     options: List<DiscoverFilterOptionUiModel>,
     selectedId: String?,

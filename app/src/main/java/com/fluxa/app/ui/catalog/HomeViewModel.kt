@@ -477,7 +477,7 @@ class HomeViewModel @Inject constructor(
 
     fun toggleWatchlist(meta: Meta) {
         viewModelScope.launch {
-            val result = dispatchHeadless(mapOf("type" to "toggleWatchlistRequested", "item" to meta))
+            val result = dispatchHeadless(mapOf("type" to "toggleWatchlistRequested", "item" to meta, "profile" to currentActiveProfile))
             val library = result.state["library"] as? Map<*, *>
             val write = library?.get("lastWrite") as? Map<*, *>
             setWatchlistState(fromStateList(write?.get("watchlist"), metaListType))
@@ -488,7 +488,7 @@ class HomeViewModel @Inject constructor(
     fun toggleBillboardWatchlist() {
         val movie = billboardState.movieValue ?: return
         viewModelScope.launch {
-            val result = dispatchHeadless(mapOf("type" to "toggleWatchlistRequested", "item" to movie))
+            val result = dispatchHeadless(mapOf("type" to "toggleWatchlistRequested", "item" to movie, "profile" to currentActiveProfile))
             val library = result.state["library"] as? Map<*, *>
             val write = library?.get("lastWrite") as? Map<*, *>
             setWatchlistState(fromStateList(write?.get("watchlist"), metaListType))
