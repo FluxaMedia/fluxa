@@ -5,6 +5,8 @@ import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.remote.Video
+import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.data.repository.ExternalSyncMergeBridge
 import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
 import com.fluxa.app.data.repository.StremioRepository
@@ -77,6 +79,7 @@ internal class HomeLibraryCoordinator(
                 val traktToken = profile?.traktAccessToken
                 val traktPlannedWithListedAt = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktWatchlistWithListedAt(traktToken) } else null
                 val traktWatched = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktRecentlyWatched(traktToken, language, profile) } else null
+                val traktWatchedEpisodesWithTimestamps = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktWatchedEpisodesWithTimestamps(traktToken) } else null
                 val traktCollection = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktCollection(traktToken) } else null
 
                 val malToken = profile?.malAccessToken
@@ -110,6 +113,11 @@ internal class HomeLibraryCoordinator(
                         runCatching { reconcileTraktWatchlist(profile, traktPlannedWithTimestamps) }
                             .onFailure { Log.w("HomeLibrary", "Trakt watchlist reconcile failed", it) }
                     }
+                    scope.launch(Dispatchers.IO) {
+                        val remoteWatched = traktWatchedEpisodesWithTimestamps?.await().orEmpty()
+                        runCatching { reconcileTraktWatched(profile, remoteWatched) }
+                            .onFailure { Log.w("HomeLibrary", "Trakt watched reconcile failed", it) }
+                    }
                 }
             } catch (e: Exception) {
                 Log.w("HomeLibrary", "Failed to load library data", e)
@@ -140,6 +148,29 @@ internal class HomeLibraryCoordinator(
         plan.pushRemoteRemove.forEach { id ->
             val meta = watchlistManager.getContentMeta(id) ?: return@forEach
             pushCoordinator.pushWatchlist(profile, meta, isInWatchlist = false)
+        }
+    }
+
+    private suspend fun reconcileTraktWatched(profile: UserProfile, remoteWatched: Map<String, Long>) {
+        val localSnapshot = watchlistManager.getWatchedEpisodeMembershipSnapshot()
+        val remoteMembership = remoteWatched.map { (videoId, watchedAtMs) ->
+            ExternalSyncMergeBridge.RemoteMembershipItem(videoId, watchedAtMs)
+        }
+        val plan = ExternalSyncMergeBridge.mergeWatched(localSnapshot, remoteMembership)
+
+        plan.applyLocalAdd.forEach { videoId ->
+            val seriesId = TraktIntegration.showIdFromEpisodeId(videoId)
+            watchlistManager.markEpisodesWatched(seriesId, listOf(videoId), watched = true)
+        }
+        plan.pushRemoteAdd.forEach { videoId ->
+            val seriesId = TraktIntegration.showIdFromEpisodeId(videoId)
+            val meta = watchlistManager.getContentMeta(seriesId) ?: return@forEach
+            pushCoordinator.pushMarkWatched(profile, meta, listOf(Video(id = videoId)), watched = true)
+        }
+        plan.pushRemoteRemove.forEach { videoId ->
+            val seriesId = TraktIntegration.showIdFromEpisodeId(videoId)
+            val meta = watchlistManager.getContentMeta(seriesId) ?: return@forEach
+            pushCoordinator.pushMarkWatched(profile, meta, listOf(Video(id = videoId)), watched = false)
         }
     }
 

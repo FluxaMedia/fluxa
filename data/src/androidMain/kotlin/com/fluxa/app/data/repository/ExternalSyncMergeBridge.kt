@@ -17,6 +17,9 @@ object ExternalSyncMergeBridge {
     fun mergeWatchlist(local: List<WatchlistMembershipEntry>, remote: List<RemoteMembershipItem>): MembershipMergePlan =
         merge("mergeWatchlistTimestamped", local, remote)
 
+    fun mergeWatched(local: List<WatchlistMembershipEntry>, remote: List<RemoteMembershipItem>): MembershipMergePlan =
+        merge("mergeWatchedTimestamped", local, remote)
+
     private fun merge(
         method: String,
         local: List<WatchlistMembershipEntry>,

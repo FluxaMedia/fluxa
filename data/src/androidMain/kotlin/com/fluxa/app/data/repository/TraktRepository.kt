@@ -79,6 +79,10 @@ class TraktRepository @Inject constructor(
         traktSyncClient.getWatchedEpisodeIds(token)
     }
 
+    suspend fun getWatchedEpisodesWithTimestamps(token: String): Map<String, Long> = withContext(Dispatchers.IO) {
+        traktSyncClient.getWatchedEpisodesWithTimestamps(token)
+    }
+
     suspend fun getWatchedState(token: String): TraktWatchedState = withContext(Dispatchers.IO) {
         traktSyncClient.getWatchedState(token)
     }
@@ -165,6 +169,8 @@ class TraktRepository @Inject constructor(
     suspend fun getTraktCollection(token: String): List<Meta> = getCollection(token)
 
     suspend fun getTraktWatchedState(token: String): TraktWatchedState = getWatchedState(token)
+
+    suspend fun getTraktWatchedEpisodesWithTimestamps(token: String): Map<String, Long> = getWatchedEpisodesWithTimestamps(token)
 
     suspend fun getTraktSyncSnapshot(profile: UserProfile, language: String = profile.safeLanguage): TraktSyncSnapshot =
         getSyncSnapshot(profile, language)

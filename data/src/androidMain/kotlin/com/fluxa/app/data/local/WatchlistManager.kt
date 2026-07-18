@@ -125,6 +125,13 @@ class WatchlistManager @Inject constructor(
         return dao.getContentState(pid(), id)?.toMeta()
     }
 
+    suspend fun getWatchedEpisodeMembershipSnapshot(): List<WatchlistMembershipEntry> {
+        val profileId = pid()
+        val active = dao.getAllWatchedEpisodeEntries(profileId).map { WatchlistMembershipEntry(it.videoId, true, it.updatedAt) }
+        val removed = dao.getAllWatchedEpisodeRemovals(profileId).map { WatchlistMembershipEntry(it.videoId, false, it.removedAt) }
+        return active + removed
+    }
+
     suspend fun setFeedback(id: String, isLike: Boolean?, metaIfNew: Meta? = null) {
         val profileId = pid()
         metaIfNew?.let { dao.upsertContent(it.toContentItemEntity(profileId)) }

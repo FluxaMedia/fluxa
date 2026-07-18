@@ -100,6 +100,31 @@ class TraktSyncClient @Inject constructor(
         }
     }
 
+    suspend fun getWatchedEpisodesWithTimestamps(token: String): Map<String, Long> = withContext(Dispatchers.IO) {
+        if (!TraktIntegration.hasClient(traktKey)) return@withContext emptyMap()
+        try {
+            val auth = TraktIntegration.bearer(token)
+            fetchTraktSyncPages { page, limit -> traktApi.getWatchedShows(auth, traktKey, page, limit) }
+                .flatMap { item ->
+                    val show = item.show ?: return@flatMap emptyList()
+                    val seriesId = TraktIntegration.contentIdFrom(show.ids) ?: return@flatMap emptyList()
+                    item.seasons.orEmpty().flatMap { season ->
+                        val seasonNumber = season.number ?: return@flatMap emptyList()
+                        season.episodes.orEmpty().mapNotNull { episode ->
+                            val episodeNumber = episode.number ?: return@mapNotNull null
+                            val watchedAtMs = episode.lastWatchedAt
+                                ?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
+                                ?: return@mapNotNull null
+                            "$seriesId:$seasonNumber:$episodeNumber" to watchedAtMs
+                        }
+                    }
+                }
+                .toMap()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
     suspend fun getWatchedState(token: String): TraktWatchedState = withContext(Dispatchers.IO) {
         getWatchedStateResult(token).getOrReport(TraktWatchedState())
     }

@@ -248,6 +248,12 @@ interface WatchlistDao {
     @Query("SELECT * FROM watched_episodes WHERE profileId = :profileId AND seriesId = :seriesId")
     suspend fun getWatchedEpisodeEntries(profileId: String, seriesId: String): List<WatchedEpisodeEntity>
 
+    @Query("SELECT * FROM watched_episodes WHERE profileId = :profileId")
+    suspend fun getAllWatchedEpisodeEntries(profileId: String): List<WatchedEpisodeEntity>
+
+    @Query("SELECT * FROM watched_episode_removals WHERE profileId = :profileId")
+    suspend fun getAllWatchedEpisodeRemovals(profileId: String): List<WatchedEpisodeRemovalEntity>
+
     @Query("SELECT EXISTS(SELECT 1 FROM watchlist_entries WHERE profileId = :profileId AND contentId = :contentId)")
     suspend fun isInWatchlist(profileId: String, contentId: String): Boolean
 
