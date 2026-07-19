@@ -378,20 +378,16 @@ class MainActivity : FragmentActivity() {
                     }
 
                     val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager) {
-                        if (deviceType == DeviceType.Mobile) {
-                            AndroidFluxaPlatformServices(
-                                homeViewModel = homeViewModel,
-                                detailViewModel = sharedDetailViewModel,
-                                profileManager = profileManager,
-                                activeProfile = { activeProfile },
-                                onActiveProfileChanged = { updated -> activeProfile = updated },
-                                offlineDownloadManager = offlineDownloadManager,
-                                watchlistStore = watchlistStore,
-                                appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}"
-                            )
-                        } else {
-                            null
-                        }
+                        AndroidFluxaPlatformServices(
+                            homeViewModel = homeViewModel,
+                            detailViewModel = sharedDetailViewModel,
+                            profileManager = profileManager,
+                            activeProfile = { activeProfile },
+                            onActiveProfileChanged = { updated -> activeProfile = updated },
+                            offlineDownloadManager = offlineDownloadManager,
+                            watchlistStore = watchlistStore,
+                            appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}"
+                        )
                     }
 
                     PlayerLifecycleEffect(

@@ -45,7 +45,7 @@ internal fun AppRoutesHost(
     authStartOnNuvio: Boolean,
     playerRequest: PlayerLaunchRequest?,
     deviceType: DeviceType,
-    androidFluxaPlatformServices: com.fluxa.app.ui.AndroidFluxaPlatformServices?,
+    androidFluxaPlatformServices: com.fluxa.app.ui.AndroidFluxaPlatformServices,
     activeProfile: UserProfile?,
     onActiveProfileChanged: (UserProfile?) -> Unit,
     onNavigateToDestination: (FluxaDestination) -> Unit,
@@ -94,7 +94,7 @@ internal fun AppRoutesHost(
         }
     ) {
     com.fluxa.app.shared.FluxaAppHost(
-        platformServices = androidFluxaPlatformServices!!,
+        platformServices = androidFluxaPlatformServices,
         deviceType = deviceType,
         language = activeProfile?.language,
         destination = currentDestination,
@@ -132,17 +132,17 @@ internal fun AppRoutesHost(
         onCatalogAction = { action ->
             when (action) {
                 is com.fluxa.app.shared.feature.catalog.CatalogAction.MarkWatchedRequested -> {
-                    androidFluxaPlatformServices!!.catalogHomeDataSource
+                    androidFluxaPlatformServices.catalogHomeDataSource
                         .resolveMeta(action.item.id, action.item.type)
                         ?.let(homeViewModel::markWatchedFromPlayback)
                 }
                 is com.fluxa.app.shared.feature.catalog.CatalogAction.DropRequested -> {
-                    androidFluxaPlatformServices!!.catalogHomeDataSource
+                    androidFluxaPlatformServices.catalogHomeDataSource
                         .resolveMeta(action.item.id, action.item.type)
                         ?.let(homeViewModel::forgetPlaybackProgress)
                 }
                 is com.fluxa.app.shared.feature.catalog.CatalogAction.AddToLibraryRequested -> {
-                    androidFluxaPlatformServices!!.catalogHomeDataSource
+                    androidFluxaPlatformServices.catalogHomeDataSource
                         .resolveMeta(action.item.id, action.item.type)
                         ?.let(homeViewModel::addToWatchlist)
                 }
