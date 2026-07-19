@@ -4,7 +4,6 @@ import android.util.Log
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.NativeAddonFetchResult
 import com.fluxa.app.core.rust.models.NativeAddonResourceParseResult
-import okhttp3.Request
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.AuthRequest
 import com.fluxa.app.data.remote.Meta
@@ -45,6 +44,7 @@ class StremioAddonResourceClient @Inject constructor(
     private val cache: RepositoryMemoryCache,
     private val persistentCache: AddonPersistentCache,
     private val addonManifestClient: StremioAddonManifestClient,
+    private val httpEffectExecutor: HttpEffectExecutor,
     @param:Named("AddonResourceClient") private val httpClient: OkHttpClient
 ) {
     private val stremioGson = GsonBuilder().create()
@@ -369,18 +369,8 @@ class StremioAddonResourceClient @Inject constructor(
         }
     }
 
-    private fun fetchAddonBodyResult(url: String): NativeAddonFetchResult {
-        return try {
-            val httpRequest = Request.Builder().url(url).build()
-            val httpResponse = httpClient.newCall(httpRequest).execute()
-            val status = httpResponse.code
-            val body = httpResponse.body.string().also { httpResponse.close() }
-            NativeAddonFetchResult(url = url, statusCode = status, body = body)
-        } catch (e: Exception) {
-            Log.w("StremioAddonResourceClient", "Addon resource HTTP failed: $url", e)
-            NativeAddonFetchResult(url = url, error = e.message)
-        }
-    }
+    private fun fetchAddonBodyResult(url: String): NativeAddonFetchResult =
+        httpEffectExecutor.execute(httpClient, url)
 
     private fun fetchAddonResourcePayload(
         transportUrl: String,

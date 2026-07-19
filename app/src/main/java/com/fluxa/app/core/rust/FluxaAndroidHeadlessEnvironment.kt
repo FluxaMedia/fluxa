@@ -36,6 +36,7 @@ import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.player.TorrentStreamManager
 import com.fluxa.app.player.TorrentStreamResult
 import com.fluxa.app.data.repository.CloudStreamCatalogClient
+import com.fluxa.app.data.repository.HttpEffectExecutor
 import com.fluxa.app.data.repository.toStremioType
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
@@ -111,7 +112,8 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal val gson: Gson,
     internal val profileManager: ProfileManager,
     internal val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
-    internal val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator
+    internal val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,
+    internal val httpEffectExecutor: HttpEffectExecutor
 ) : HeadlessPlatformEnvironment {
 
     internal val primeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -1117,19 +1119,17 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
 
     private fun executeTrailerHttpEffect(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
         val payload = effect.payload
-        val requestBuilder = okhttp3.Request.Builder().url(payload.string("url"))
-        payload.objectValue("headers")?.forEach { (key, value) ->
-            requestBuilder.header(key, value.toString())
-        }
+        val headers = payload.objectValue("headers")?.mapValues { it.value.toString() }.orEmpty()
         val method = payload.string("method", "GET")
         val body = payload["body"]?.let {
             gson.toJson(it).toRequestBody("application/json".toMediaType())
         }
-        requestBuilder.method(method, body)
-        trailerHttpClient.newCall(requestBuilder.build()).execute().use { response ->
-            if (!response.isSuccessful) return error(effect, "http_${response.code}")
-            return ok(effect, mapOf("body" to response.body.string()))
+        val result = httpEffectExecutor.execute(trailerHttpClient, payload.string("url"), method, headers, body)
+        val statusCode = result.statusCode
+        if (result.error != null || statusCode == null || statusCode !in 200..299) {
+            return error(effect, "http_${statusCode ?: 0}")
         }
+        return ok(effect, mapOf("body" to result.body))
     }
 
     internal fun ok(effect: NativeHeadlessEffect, value: Any?): HeadlessEffectCompletion =

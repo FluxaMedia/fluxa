@@ -7,7 +7,6 @@ import com.fluxa.app.common.AppStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.net.URLEncoder
 
 import javax.inject.Inject
@@ -16,6 +15,7 @@ import javax.inject.Named
 class StremioAddonManifestClient @Inject constructor(
     internal val cache: RepositoryMemoryCache,
     internal val persistentCache: AddonPersistentCache,
+    internal val httpEffectExecutor: HttpEffectExecutor,
     @param:Named("StremioClient") private val manifestClient: OkHttpClient
 ) {
     private val unknownName: (String?) -> String = { AppStrings.t(it, "auto.unknown") }
@@ -80,18 +80,13 @@ class StremioAddonManifestClient @Inject constructor(
             }
         }
         fetchPlan.candidateUrls.forEach { candidateUrl ->
-            try {
-                val httpRequest = Request.Builder().url(candidateUrl).build()
-                val httpResponse = manifestClient.newCall(httpRequest).execute()
-                val statusCode = httpResponse.code
-                val body = httpResponse.body.string().also { httpResponse.close() }
-                if (statusCode !in 200..299) return@forEach
-                val descriptor = parseAddonManifest(body, candidateUrl) ?: return@forEach
-                putCache(cacheKey, descriptor)
-                persistentCache.putManifest(cacheKey, descriptor)
-                return@withContext descriptor
-            } catch (_: Exception) {
-            }
+            val result = httpEffectExecutor.execute(manifestClient, candidateUrl)
+            val body = result.body
+            if (result.error != null || (result.statusCode ?: 0) !in 200..299 || body == null) return@forEach
+            val descriptor = parseAddonManifest(body, candidateUrl) ?: return@forEach
+            putCache(cacheKey, descriptor)
+            persistentCache.putManifest(cacheKey, descriptor)
+            return@withContext descriptor
         }
         if (decision.allowStaleFallback) persistentCache.getManifest(cacheKey)?.let {
             putCache(cacheKey, it)
