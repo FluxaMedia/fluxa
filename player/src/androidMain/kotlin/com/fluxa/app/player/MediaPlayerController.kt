@@ -196,6 +196,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             if (!shouldUsePlayerDiskCache(uri)) return
             val okHttp = OkHttpClient.Builder()
                 .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .apply { cronetTransportInterceptor(context)?.let { addInterceptor(it) } }
                 .build()
             val upstream = OkHttpDataSource.Factory(okHttp)
                 .setUserAgent(StreamRequestPolicy.DEFAULT_USER_AGENT)
@@ -266,6 +267,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                         chain.proceed(chain.request())
                     }
                 }
+                .apply { cronetTransportInterceptor(context)?.let { addInterceptor(it) } }
                 .build()
 
             val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)

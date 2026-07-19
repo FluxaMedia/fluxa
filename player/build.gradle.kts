@@ -51,6 +51,8 @@ kotlin {
                 implementation(libs.mpv)
                 implementation(libs.bundles.retrofit)
                 implementation(libs.okhttp.logging)
+                implementation(libs.cronet.embedded)
+                implementation(libs.cronet.okhttp)
             }
         }
     }

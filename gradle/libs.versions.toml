@@ -22,6 +22,8 @@ jellyfinMedia3        = "1.9.0+1"
 mpv                   = "1.0.0"
 retrofit              = "3.0.0"
 okhttp                = "5.4.0"
+cronetEmbedded        = "143.7445.0"
+cronetOkhttp          = "0.1.1"
 coil3                 = "3.4.0"
 room                  = "2.8.4"
 jna                   = "5.17.0"
@@ -106,6 +108,8 @@ retrofit-gson       = { group = "com.squareup.retrofit2", name = "converter-gson
 okhttp-logging      = { group = "com.squareup.okhttp3",   name = "logging-interceptor",version.ref = "okhttp" }
 okhttp-doh          = { group = "com.squareup.okhttp3",   name = "okhttp-dnsoverhttps",version.ref = "okhttp" }
 okhttp-mockwebserver= { group = "com.squareup.okhttp3",   name = "mockwebserver",      version.ref = "okhttp" }
+cronet-embedded     = { group = "org.chromium.net",       name = "cronet-embedded",    version.ref = "cronetEmbedded" }
+cronet-okhttp       = { group = "com.google.net.cronet",  name = "cronet-okhttp",      version.ref = "cronetOkhttp" }
 
 # Coil
 coil3               = { group = "io.coil-kt.coil3", name = "coil",               version.ref = "coil3" }
