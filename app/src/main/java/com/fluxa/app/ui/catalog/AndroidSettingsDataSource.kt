@@ -193,7 +193,8 @@ class AndroidSettingsDataSource(
                 continueWatchingSource = profile.safeContinueWatchingSource
             ),
             appearanceDetail = SettingsAppearanceDetailUiModel(
-                trailerOnHero = profile.safeTrailerOnHero,
+                trailerOnDetailHeroEnabled = profile.safeTrailerOnDetailHeroEnabled,
+                trailerOnDetailHeroDelaySeconds = profile.safeTrailerOnDetailHeroDelaySeconds,
                 blurUnwatchedEpisodes = profile.safeBlurUnwatchedEpisodes,
                 detailSeasonSelectorMode = profile.safeDetailSeasonSelectorMode,
                 detailSeasonPostersOnHero = profile.safeDetailSeasonPostersOnHero,
@@ -319,7 +320,8 @@ class AndroidSettingsDataSource(
 
     override suspend fun updateAppearanceDetail(value: SettingsAppearanceDetailUiModel) = update {
         it.copy(
-            trailerOnHero = value.trailerOnHero,
+            trailerOnDetailHeroEnabled = value.trailerOnDetailHeroEnabled,
+            trailerOnDetailHeroDelaySeconds = value.trailerOnDetailHeroDelaySeconds,
             blurUnwatchedEpisodes = value.blurUnwatchedEpisodes,
             detailSeasonSelectorMode = value.detailSeasonSelectorMode,
             detailSeasonPostersOnHero = value.detailSeasonPostersOnHero,

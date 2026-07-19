@@ -64,7 +64,6 @@ class AppleSettingsDataSource : SettingsDataSource {
     }
 
     override suspend fun updateAppearanceDetail(value: SettingsAppearanceDetailUiModel) {
-        defaults.setBool(value.trailerOnHero, K.trailerOnHero)
         defaults.setBool(value.blurUnwatchedEpisodes, K.blurUnwatchedEpisodes)
         defaults.setObject(value.detailSeasonSelectorMode, K.detailSeasonSelectorMode)
         defaults.setBool(value.detailSeasonPostersOnHero, K.detailSeasonPostersOnHero)
@@ -243,7 +242,6 @@ class AppleSettingsDataSource : SettingsDataSource {
             continueWatchingHideTitles = defaults.boolOrDefault(K.continueWatchingHideTitles, false)
         ),
         appearanceDetail = SettingsAppearanceDetailUiModel(
-            trailerOnHero = defaults.boolOrDefault(K.trailerOnHero, false),
             blurUnwatchedEpisodes = defaults.boolOrDefault(K.blurUnwatchedEpisodes, false),
             detailSeasonSelectorMode = defaults.stringForKey(K.detailSeasonSelectorMode) ?: "dropdown",
             detailSeasonPostersOnHero = defaults.boolOrDefault(K.detailSeasonPostersOnHero, false),
@@ -338,7 +336,6 @@ class AppleSettingsDataSource : SettingsDataSource {
         const val continueWatchingHorizontal = "fluxa.apple.settings.continueWatchingHorizontal"
         const val continueWatchingEnabled = "fluxa.apple.settings.continueWatchingEnabled"
         const val continueWatchingHideTitles = "fluxa.apple.settings.continueWatchingHideTitles"
-        const val trailerOnHero = "fluxa.apple.settings.trailerOnHero"
         const val blurUnwatchedEpisodes = "fluxa.apple.settings.blurUnwatchedEpisodes"
         const val detailSeasonSelectorMode = "fluxa.apple.settings.detailSeasonSelectorMode"
         const val detailSeasonPostersOnHero = "fluxa.apple.settings.detailSeasonPostersOnHero"

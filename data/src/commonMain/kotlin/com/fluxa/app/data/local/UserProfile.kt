@@ -76,7 +76,6 @@ data class UserProfile(
     val continueWatchingArtwork: String? = "episode",
     val continueWatchingEnabled: Boolean? = true,
     val continueWatchingHideTitles: Boolean? = false,
-    val trailerOnHero: Boolean? = true,
     val heroFollowsFocusedItem: Boolean? = false,
     val blurUnwatchedEpisodes: Boolean? = false,
     val episodeCardsLayout: String? = "list",
@@ -84,6 +83,8 @@ data class UserProfile(
     val expandedPostersDelaySeconds: Int? = 2,
     val trailerOnHomeHeroEnabled: Boolean? = false,
     val trailerOnHomeHeroDelaySeconds: Int? = 4,
+    val trailerOnDetailHeroEnabled: Boolean? = false,
+    val trailerOnDetailHeroDelaySeconds: Int? = 4,
     val trailerOnExpandedPostersEnabled: Boolean? = false,
     val trailerOnExpandedPostersDelaySeconds: Int? = 3,
     val tvNavLayout: String? = "left",
@@ -179,7 +180,6 @@ data class UserProfile(
         return if (forceSoftwareAudio == true) "sw_only" else "hw_prefer"
     }
     val safeContinueWatchingHideTitles: Boolean get() = continueWatchingHideTitles ?: appearanceSettings?.continueWatchingHideTitles ?: false
-    val safeTrailerOnHero: Boolean get() = trailerOnHero ?: true
     val safeHeroFollowsFocusedItem: Boolean get() = heroFollowsFocusedItem ?: false
     val safeBlurUnwatchedEpisodes: Boolean get() = blurUnwatchedEpisodes ?: false
     val safeEpisodeCardsLayout: String get() = episodeCardsLayout ?: "list"
@@ -187,6 +187,8 @@ data class UserProfile(
     val safeExpandedPostersDelaySeconds: Int get() = (expandedPostersDelaySeconds ?: 2).coerceIn(0, 10)
     val safeTrailerOnHomeHeroEnabled: Boolean get() = trailerOnHomeHeroEnabled ?: false
     val safeTrailerOnHomeHeroDelaySeconds: Int get() = (trailerOnHomeHeroDelaySeconds ?: 4).coerceIn(0, 15)
+    val safeTrailerOnDetailHeroEnabled: Boolean get() = trailerOnDetailHeroEnabled ?: false
+    val safeTrailerOnDetailHeroDelaySeconds: Int get() = (trailerOnDetailHeroDelaySeconds ?: 4).coerceIn(0, 15)
     val safeTrailerOnExpandedPostersEnabled: Boolean get() = trailerOnExpandedPostersEnabled ?: false
     val safeTrailerOnExpandedPostersDelaySeconds: Int get() = (trailerOnExpandedPostersDelaySeconds ?: 3).coerceIn(0, 15)
     val safeTvNavLayout: String get() = if (tvNavLayout == "top") "top" else "left"

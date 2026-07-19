@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.Flow
 
 enum class SettingsCategory {
     Hub, Account, TmdbFeatures, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
+    AppearanceHomeHero, AppearanceHomeContinueWatching, AppearanceHomeNavigation,
+    AppearanceDetailHero, AppearanceDetailEpisodes,
     Playback, Subtitles, Advanced, Content, Downloads, Developer
 }
 
@@ -80,7 +82,8 @@ data class SettingsAppearanceHomeUiModel(
 )
 
 data class SettingsAppearanceDetailUiModel(
-    val trailerOnHero: Boolean = false,
+    val trailerOnDetailHeroEnabled: Boolean = false,
+    val trailerOnDetailHeroDelaySeconds: Int = 4,
     val blurUnwatchedEpisodes: Boolean = false,
     val detailSeasonSelectorMode: String = "dropdown",
     val detailSeasonPostersOnHero: Boolean = false,
