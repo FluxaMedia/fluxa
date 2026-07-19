@@ -41,6 +41,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -273,17 +277,20 @@ internal fun DiscoverDropdownFilter(
     onSelected: (String?) -> Unit
 ) {
     var showSheet by remember { mutableStateOf(false) }
+    var triggerFocused by remember { mutableStateOf(false) }
     val selectedLabel = options.firstOrNull { it.id == selectedId }?.label ?: label
     Row(
         modifier = Modifier
-            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(999.dp))
+            .clip(RoundedCornerShape(999.dp))
+            .onFocusChanged { triggerFocused = it.isFocused }
+            .background(if (triggerFocused) Color.White else Color.White.copy(alpha = 0.08f), RoundedCornerShape(999.dp))
             .clickable { showSheet = true }
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = selectedLabel,
-            color = Color.White,
+            color = if (triggerFocused) Color.Black else Color.White,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
             maxLines = 1,
@@ -294,13 +301,17 @@ internal fun DiscoverDropdownFilter(
         Icon(
             imageVector = Icons.Filled.KeyboardArrowDown,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.6f),
+            tint = if (triggerFocused) Color.Black else Color.White.copy(alpha = 0.6f),
             modifier = Modifier.width(18.dp)
         )
     }
 
     if (showSheet) {
         val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val selectedRowFocusRequester = remember { FocusRequester() }
+        LaunchedEffect(showSheet) {
+            if (showSheet) runCatching { selectedRowFocusRequester.requestFocus() }
+        }
         androidx.compose.material3.ModalBottomSheet(
             onDismissRequest = { showSheet = false },
             sheetState = sheetState,
@@ -320,9 +331,13 @@ internal fun DiscoverDropdownFilter(
             ) {
                 columnItems(options, key = { it.id ?: it.label }) { option ->
                     val selected = option.id == selectedId
+                    var rowFocused by remember { mutableStateOf(false) }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .let { if (selected) it.focusRequester(selectedRowFocusRequester) else it }
+                            .onFocusChanged { rowFocused = it.isFocused }
+                            .background(if (rowFocused) Color.White.copy(alpha = 0.12f) else Color.Transparent)
                             .clickable {
                                 onSelected(option.id)
                                 showSheet = false

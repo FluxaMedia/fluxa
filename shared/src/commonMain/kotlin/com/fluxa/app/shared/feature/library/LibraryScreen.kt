@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -356,11 +359,18 @@ private fun LibraryCollectionNameDialog(
     onDismiss: () -> Unit
 ) {
     var text by remember { mutableStateOf(initialTitle) }
+    val fieldFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { fieldFocusRequester.requestFocus() } }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(AppStrings.t(language, "auto.collection_name"), color = Color.White) },
         text = {
-            OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true)
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                singleLine = true,
+                modifier = Modifier.focusRequester(fieldFocusRequester)
+            )
         },
         confirmButton = {
             TextButton(onClick = { if (text.isNotBlank()) onConfirm(text.trim()) }, enabled = text.isNotBlank()) {

@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +43,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -471,29 +475,35 @@ private fun DetailTabLabel(text: String, selected: Boolean, onClick: () -> Unit)
 @Composable
 private fun SeasonSelector(content: DetailUiModel, language: String?, onAction: (DetailAction) -> Unit) {
     var sheetOpen by remember(content.id) { mutableStateOf(false) }
+    var triggerFocused by remember { mutableStateOf(false) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .padding(horizontal = 20.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(FluxaColors.surfaceRaised)
+            .onFocusChanged { triggerFocused = it.isFocused }
+            .background(if (triggerFocused) Color.White.copy(alpha = 0.9f) else FluxaColors.surfaceRaised)
             .clickable { sheetOpen = true }
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Text(
             text = "${AppStrings.t(language, "auto.season")} ${content.selectedSeason}",
-            color = Color.White,
+            color = if (triggerFocused) Color.Black else Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp
         )
         Icon(
             imageVector = Icons.Filled.ArrowDropDown,
             contentDescription = null,
-            tint = Color.White,
+            tint = if (triggerFocused) Color.Black else Color.White,
             modifier = Modifier.padding(start = 4.dp).size(20.dp)
         )
     }
     if (sheetOpen) {
+        val selectedRowFocusRequester = remember(content.id) { FocusRequester() }
+        LaunchedEffect(sheetOpen) {
+            if (sheetOpen) runCatching { selectedRowFocusRequester.requestFocus() }
+        }
         androidx.compose.material3.ModalBottomSheet(
             onDismissRequest = { sheetOpen = false },
             containerColor = FluxaColors.surfaceRaised
@@ -501,12 +511,16 @@ private fun SeasonSelector(content: DetailUiModel, language: String?, onAction: 
             Column(modifier = Modifier.padding(bottom = 24.dp)) {
                 content.availableSeasons.forEach { season ->
                     val selected = season == content.selectedSeason
+                    var rowFocused by remember { mutableStateOf(false) }
                     Text(
                         text = "${AppStrings.t(language, "auto.season")} $season",
-                        color = if (selected) FluxaColors.accent else Color.White,
+                        color = if (rowFocused) Color.Black else if (selected) FluxaColors.accent else Color.White,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         fontSize = 16.sp,
                         modifier = Modifier
+                            .let { if (selected) it.focusRequester(selectedRowFocusRequester) else it }
+                            .onFocusChanged { rowFocused = it.isFocused }
+                            .background(if (rowFocused) Color.White else Color.Transparent)
                             .clickable {
                                 sheetOpen = false
                                 onAction(DetailAction.SeasonSelected(season))
