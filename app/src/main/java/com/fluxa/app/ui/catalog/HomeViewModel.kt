@@ -51,6 +51,7 @@ class HomeViewModel @Inject constructor(
     private val watchlistStore: WatchlistStore,
     private val searchHistoryStore: SearchHistoryStore,
     private val homeCategoryCache: HomeCategoryCache,
+    private val homeBillboardCache: HomeBillboardCache,
     private val forgottenContinueWatchingStore: ForgottenContinueWatchingStore,
     private val coordinatorFactory: HomeViewModelCoordinatorFactory,
     private val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
@@ -254,6 +255,7 @@ class HomeViewModel @Inject constructor(
     private var externalContinueWatching: List<Meta> = emptyList()
     private var traktWatchedState: TraktWatchedState = TraktWatchedState()
     private var currentActiveProfile: UserProfile? = null
+    private var hasFetchedFreshBillboard = false
     private var searchJob: Job? = null
     private val _isSearchLoading = MutableStateFlow(false)
     val isSearchLoading: StateFlow<Boolean> = _isSearchLoading.asStateFlow()
@@ -349,7 +351,10 @@ class HomeViewModel @Inject constructor(
             fetchCs3FeedItems = { feed ->
                 platformContentGateway.cloudFeedItems(feed.key)
             },
-            setPool = { billboardState.poolValue = it },
+            setPool = { pool ->
+                billboardState.poolValue = pool
+                homeBillboardCache.save(currentActiveProfile, pool)
+            },
             updateContent = billboardRuntime::updateContent,
             normalizePool = { items -> items.distinctBy(HomeBillboardRanking::contentIdentityKey) },
             startRotation = billboardRuntime::startRotation
@@ -1018,9 +1023,20 @@ class HomeViewModel @Inject constructor(
             }
             scheduleCs3Refresh()
         }
-        if (force || billboardState.poolValue.isEmpty()) {
+        if (billboardState.poolValue.isEmpty()) {
+            val cachedPool = homeBillboardCache.load(activeProfile)
+            if (cachedPool.isNotEmpty()) {
+                billboardState.poolValue = cachedPool
+                viewModelScope.launch {
+                    billboardRuntime.updateContent(cachedPool[0])
+                    billboardRuntime.startRotation()
+                }
+            }
+        }
+        if (force || !hasFetchedFreshBillboard) {
             viewModelScope.launch {
                 billboardLoader.load(activeProfile)
+                hasFetchedFreshBillboard = true
             }
         }
     }

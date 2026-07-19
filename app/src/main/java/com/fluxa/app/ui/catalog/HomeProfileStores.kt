@@ -99,3 +99,27 @@ class HomeCategoryCache @Inject constructor(
         return if (profile?.isGuest == true || profile == null) "home_cache_guest" else "home_cache_${profile.id}"
     }
 }
+
+@Singleton
+class HomeBillboardCache @Inject constructor(
+    @ApplicationContext context: Context,
+    private val gson: Gson
+) {
+    private val prefs = context.getSharedPreferences("fluxa_home_billboard_cache", Context.MODE_PRIVATE)
+
+    fun load(profile: UserProfile?): List<Meta> {
+        val saved = prefs.getString(key(profile), null) ?: return emptyList()
+        return runCatching {
+            val listType = object : TypeToken<List<Meta>>() {}.type
+            gson.fromJson<List<Meta>>(saved, listType).orEmpty()
+        }.getOrElse { emptyList() }
+    }
+
+    fun save(profile: UserProfile?, pool: List<Meta>) {
+        prefs.edit().putString(key(profile), gson.toJson(pool)).apply()
+    }
+
+    private fun key(profile: UserProfile?): String {
+        return if (profile?.isGuest == true || profile == null) "billboard_cache_guest" else "billboard_cache_${profile.id}"
+    }
+}
