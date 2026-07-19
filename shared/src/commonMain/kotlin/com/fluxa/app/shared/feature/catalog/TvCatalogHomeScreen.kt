@@ -17,13 +17,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,11 +41,6 @@ fun TvCatalogHomeScreen(
     state: CatalogHomeUiState,
     onAction: (CatalogAction) -> Unit,
     language: String? = null,
-    onHomeRequested: () -> Unit = {},
-    onSearchRequested: () -> Unit = {},
-    onLibraryRequested: () -> Unit = {},
-    onDiscoverRequested: () -> Unit = {},
-    onSettingsRequested: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -60,7 +49,7 @@ fun TvCatalogHomeScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 96.dp, bottom = 64.dp),
+                contentPadding = PaddingValues(top = 44.dp, bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(30.dp)
             ) {
                 items(state.rows, key = { it.id }) { row ->
@@ -115,36 +104,6 @@ fun TvCatalogHomeScreen(
                 }
             }
         }
-
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .fillMaxWidth()
-                .padding(horizontal = 46.dp, vertical = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TvHomeAction(Icons.Filled.Home, AppStrings.t(language, "nav.home"), onHomeRequested)
-            TvHomeAction(Icons.Filled.Search, AppStrings.t(language, "auto.search"), onSearchRequested)
-            TvHomeAction(Icons.AutoMirrored.Filled.LibraryBooks, AppStrings.t(language, "nav.library"), onLibraryRequested)
-            TvHomeAction(Icons.Filled.Explore, AppStrings.t(language, "nav.discover"), onDiscoverRequested)
-            TvHomeAction(Icons.Filled.Settings, AppStrings.t(language, "nav.settings"), onSettingsRequested)
-        }
-    }
-}
-
-@Composable
-private fun TvHomeAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    IconButton(onClick = onClick) {
-        androidx.compose.material3.Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = Color.White
-        )
     }
 }
 

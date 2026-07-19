@@ -241,11 +241,13 @@ fun FluxaApp(
                 state.showNotifications -> "notifications"
                 else -> "dest:${state.destination}"
             }
-            val isHomeActive = screenKey == "dest:${FluxaDestination.Home}" &&
-                deviceType != com.fluxa.app.ui.catalog.DeviceType.TV
+            val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
+            val isHomeActive = screenKey == "dest:${FluxaDestination.Home}" && !isTv
             var navBarHeightPx by remember { mutableIntStateOf(0) }
+            var tvSidebarWidthPx by remember { mutableIntStateOf(0) }
             val density = LocalDensity.current
             val navBarHeightDp = with(density) { navBarHeightPx.toDp() }
+            val tvSidebarWidthDp = with(density) { tvSidebarWidthPx.toDp() }
             val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
             AnimatedContent(
                 targetState = screenKey,
@@ -255,7 +257,11 @@ fun FluxaApp(
                 },
                 label = "fluxa-screen-transition",
                 modifier = (
-                    if (isHomeActive || !showNavigationBar) {
+                    if (!showNavigationBar) {
+                        Modifier.fillMaxSize()
+                    } else if (isTv) {
+                        Modifier.fillMaxSize().padding(start = tvSidebarWidthDp)
+                    } else if (isHomeActive) {
                         Modifier.fillMaxSize()
                     } else {
                         Modifier.fillMaxSize().padding(bottom = navBarHeightDp)
@@ -436,10 +442,6 @@ fun FluxaApp(
                     state = state.catalogHome,
                     onAction = onCatalogAction,
                     language = state.language,
-                    onSearchRequested = { onDestinationSelected(FluxaDestination.Search) },
-                    onLibraryRequested = { onDestinationSelected(FluxaDestination.Library) },
-                    onDiscoverRequested = { onDestinationSelected(FluxaDestination.Discover) },
-                    onSettingsRequested = { onDestinationSelected(FluxaDestination.Settings) },
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
@@ -462,21 +464,32 @@ fun FluxaApp(
             }
             }
             if (showNavigationBar) {
-                FluxaNavigationBar(
-                    destination = state.destination,
-                    accentColorArgb = profileState?.activeProfile?.accentColorArgb,
-                    floating = settingsState?.appearance?.floatingBottomBar == true,
-                    liquidGlass = liquidGlassMode,
-                    hazeState = hazeState,
-                    showLabels = settingsState?.appearance?.bottomBarLabels == true,
-                    showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
-                    profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
-                    language = state.language,
-                    onDestinationSelected = onDestinationSelected,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .onGloballyPositioned { navBarHeightPx = it.size.height }
-                )
+                if (isTv) {
+                    TvSidebarNav(
+                        destination = state.destination,
+                        language = state.language,
+                        onDestinationSelected = onDestinationSelected,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .onGloballyPositioned { tvSidebarWidthPx = it.size.width }
+                    )
+                } else {
+                    FluxaNavigationBar(
+                        destination = state.destination,
+                        accentColorArgb = profileState?.activeProfile?.accentColorArgb,
+                        floating = settingsState?.appearance?.floatingBottomBar == true,
+                        liquidGlass = liquidGlassMode,
+                        hazeState = hazeState,
+                        showLabels = settingsState?.appearance?.bottomBarLabels == true,
+                        showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
+                        profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
+                        language = state.language,
+                        onDestinationSelected = onDestinationSelected,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .onGloballyPositioned { navBarHeightPx = it.size.height }
+                    )
+                }
             }
         }
     }
