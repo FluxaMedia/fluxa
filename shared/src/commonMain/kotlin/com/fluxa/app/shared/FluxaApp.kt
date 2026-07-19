@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -509,7 +510,7 @@ private fun FluxaNavigationBar(
     modifier: Modifier = Modifier
 ) {
     val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
-    val inactiveColor = if (liquidGlass) Color.White.copy(alpha = 0.68f) else Color(0xFFA0A5AD)
+    val inactiveColor = if (liquidGlass) Color.White.copy(alpha = 0.78f) else Color(0xFFA0A5AD)
     val barShape = RoundedCornerShape(if (floating) 28.dp else 0.dp)
     val items = if (showProfile) {
         FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
@@ -553,7 +554,12 @@ private fun FluxaNavigationBar(
                                     blurRadius = 26.dp,
                                     noiseFactor = 0.1f
                                 )
-                            )
+                            ) {
+                                progressive = dev.chrisbanes.haze.HazeProgressive.RadialGradient(
+                                    centerIntensity = 1f,
+                                    radiusIntensity = 0.55f
+                                )
+                            }
                             .border(
                                 width = 1.dp,
                                 brush = Brush.verticalGradient(
@@ -561,6 +567,17 @@ private fun FluxaNavigationBar(
                                 ),
                                 shape = barShape
                             )
+                            .drawWithContent {
+                                drawRect(
+                                    Brush.verticalGradient(
+                                        0f to Color.White.copy(alpha = 0.10f),
+                                        0.22f to Color.Transparent,
+                                        0.78f to Color.Transparent,
+                                        1f to Color.Black.copy(alpha = 0.16f)
+                                    )
+                                )
+                                drawContent()
+                            }
                     } else {
                         Modifier.background(if (floating) Color(0xF2222222) else Color(0xFF111111))
                     }
