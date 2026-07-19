@@ -50,11 +50,23 @@ internal class HomeBillboardLoader(
                 .awaitAll()
                 .flatten()
 
-            val pool = spotlightCandidates
+            val scoredCandidates = spotlightCandidates
                 .distinctBy(HomeBillboardRanking::contentIdentityKey)
                 .map { assignHomeBadge(it, lang) }
-                .sortedByDescending { HomeBillboardRanking.scoreCandidate(it) }
-                .take(8)
+
+            val reserved = scoredCandidates
+                .groupBy { it.billboardTypeGroup() }
+                .values
+                .flatMap { group -> group.sortedByDescending(HomeBillboardRanking::scoreCandidate).take(POOL_QUOTA_PER_TYPE) }
+
+            val remainingSlots = (POOL_SIZE - reserved.size).coerceAtLeast(0)
+            val remainder = scoredCandidates
+                .minus(reserved.toSet())
+                .sortedByDescending(HomeBillboardRanking::scoreCandidate)
+                .take(remainingSlots)
+
+            val pool = (reserved + remainder)
+                .sortedByDescending(HomeBillboardRanking::scoreCandidate)
                 .let(normalizePool)
 
             if (pool.isNotEmpty()) {
@@ -65,5 +77,16 @@ internal class HomeBillboardLoader(
         } catch (e: Exception) {
             Log.e("HomeBillboard", "Billboard load failed: ${e.message}")
         }
+    }
+
+    private fun Meta.billboardTypeGroup(): String = when (type) {
+        "movie" -> "movie"
+        "series", "tv", "anime" -> "series"
+        else -> "other"
+    }
+
+    private companion object {
+        const val POOL_SIZE = 8
+        const val POOL_QUOTA_PER_TYPE = 4
     }
 }
