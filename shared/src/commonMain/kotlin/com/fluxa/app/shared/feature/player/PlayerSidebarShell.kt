@@ -31,9 +31,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.border
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -203,15 +205,22 @@ fun PlayerSidebarShell(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (onBack != null) {
+                        var backFocused by remember { mutableStateOf(false) }
                         Box(
                             modifier = Modifier
                                 .size(if (deviceType == DeviceType.TV) 34.dp else 30.dp)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.06f))
+                                .then(if (deviceType == DeviceType.TV) Modifier.onFocusChanged { backFocused = it.isFocused } else Modifier)
+                                .background(if (backFocused) Color.White else Color.White.copy(alpha = 0.06f))
                                 .clickable { onBack() },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(FluxaIcons.ChevronLeft, null, tint = Color.White, modifier = Modifier.size(if (deviceType == DeviceType.TV) 20.dp else 16.dp))
+                            Icon(
+                                FluxaIcons.ChevronLeft,
+                                null,
+                                tint = if (backFocused) Color.Black else Color.White,
+                                modifier = Modifier.size(if (deviceType == DeviceType.TV) 20.dp else 16.dp)
+                            )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                     }
@@ -242,7 +251,8 @@ fun TrackItem(
     trailingIcon: ImageVector? = null
 ) {
     val resolvedDeviceType = deviceType ?: LocalDeviceType.current
-    val contentAlpha = if (isSelected) 1f else 0.7f
+    var focused by remember { mutableStateOf(false) }
+    val contentAlpha = if (isSelected || focused) 1f else 0.7f
     val secondaryLine = listOfNotNull(subtitle?.takeIf { it.isNotBlank() }, badge?.takeIf { it.isNotBlank() })
         .joinToString(" · ")
 
@@ -251,7 +261,11 @@ fun TrackItem(
             .fillMaxWidth()
             .heightIn(min = if (resolvedDeviceType == DeviceType.TV) 52.dp else 46.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
+            .then(if (resolvedDeviceType == DeviceType.TV) Modifier.onFocusChanged { focused = it.isFocused } else Modifier)
+            .background(if (focused) Color.White.copy(alpha = 0.16f) else if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
+            .then(
+                if (focused) Modifier.border(2.dp, Color.White, RoundedCornerShape(12.dp)) else Modifier
+            )
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

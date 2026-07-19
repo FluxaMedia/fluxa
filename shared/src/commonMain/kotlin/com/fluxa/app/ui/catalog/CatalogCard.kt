@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -41,6 +44,7 @@ fun CatalogCard(
 ) {
     val density = LocalDensity.current
     var failed by remember(model.artworkUrl) { mutableStateOf(model.artworkUrl.isNullOrBlank()) }
+    var focused by remember { mutableStateOf(false) }
 
     val rankFontSize = remember(model.topTenRank, model.imageHeight, model.rankFontSizeRatio, density) {
         if (model.topTenRank != null) {
@@ -62,6 +66,16 @@ fun CatalogCard(
                     }
                 } else {
                     0.dp
+                }
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .then(
+                if (focused) {
+                    Modifier
+                        .scale(1.05f)
+                        .border(2.dp, Color.White, RoundedCornerShape(8.dp))
+                } else {
+                    Modifier
                 }
             )
             .combinedClickable(

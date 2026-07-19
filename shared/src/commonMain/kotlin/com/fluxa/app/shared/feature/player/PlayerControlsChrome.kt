@@ -266,31 +266,35 @@ fun TVSeekbar(
 
 @Composable
 fun PlayerControlBtn(icon: ImageVector, deviceType: DeviceType, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .size(42.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.04f))
+            .then(if (deviceType == DeviceType.TV) Modifier.onFocusChanged { focused = it.isFocused } else Modifier)
+            .background(if (focused) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.04f))
             .clickable { onClick() }
             .then(if (deviceType == DeviceType.TV) Modifier.focusable() else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, modifier = Modifier.size(20.dp), tint = Color.White)
+        Icon(icon, null, modifier = Modifier.size(20.dp), tint = if (focused) Color.Black else Color.White)
     }
 }
 
 @Composable
 fun SeekIconButton(icon: ImageVector, deviceType: DeviceType, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .size(52.dp)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.06f))
+            .then(if (deviceType == DeviceType.TV) Modifier.onFocusChanged { focused = it.isFocused } else Modifier)
+            .background(if (focused) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.06f))
             .clickable { onClick() }
             .then(if (deviceType == DeviceType.TV) Modifier.focusable() else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, modifier = Modifier.size(24.dp), tint = Color.White)
+        Icon(icon, null, modifier = Modifier.size(24.dp), tint = if (focused) Color.Black else Color.White)
     }
 }
 
@@ -389,17 +393,24 @@ fun TvPlayerUIContent(
                 SeekIconButton(FluxaIcons.SkipPrevious, deviceType) {
                     if (hasPreviousEpisode) onPlayPrevious()
                 }
+                var playPauseFocused by remember { mutableStateOf(false) }
                 Box(
                     modifier = Modifier
                         .size(if (deviceType == DeviceType.TV) 78.dp else 60.dp)
                         .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.46f))
-                        .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
+                        .then(if (deviceType == DeviceType.TV) Modifier.onFocusChanged { playPauseFocused = it.isFocused } else Modifier)
+                        .background(if (playPauseFocused) Color.White else Color.Black.copy(alpha = 0.46f))
+                        .border(if (playPauseFocused) 0.dp else 1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
                         .clickable { onPlayPause() }
                         .then(if (deviceType == DeviceType.TV) Modifier.focusRequester(playPauseFocusRequester).focusProperties { down = seekbarFocusRequester }.focusable() else Modifier),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(if (isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow, null, tint = Color.White, modifier = Modifier.size(if (deviceType == DeviceType.TV) 38.dp else 28.dp))
+                    Icon(
+                        if (isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow,
+                        null,
+                        tint = if (playPauseFocused) Color.Black else Color.White,
+                        modifier = Modifier.size(if (deviceType == DeviceType.TV) 38.dp else 28.dp)
+                    )
                 }
                 SeekIconButton(FluxaIcons.SkipNext, deviceType) {
                     if (hasNextEpisode) onPlayNext()

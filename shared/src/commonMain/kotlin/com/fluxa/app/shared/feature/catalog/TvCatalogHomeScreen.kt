@@ -19,14 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,15 +63,10 @@ fun TvCatalogHomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
                             items(row.items, key = { it.id }) { item ->
-                                var focused by remember(item.id) { mutableStateOf(false) }
                                 CatalogCard(
                                     model = item.card,
                                     onClick = { onAction(CatalogAction.ItemSelected(item)) },
-                                    modifier = Modifier
-                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                                        .background(if (focused) Color.White.copy(alpha = 0.18f) else Color.Transparent)
-                                        .onFocusChanged { focused = it.isFocused }
-                                        .padding(4.dp)
+                                    modifier = Modifier.padding(4.dp)
                                 )
                             }
                             if (row.canLoadMore) {
