@@ -52,6 +52,7 @@ class AndroidDetailDataSource(
                         posterUrl = detail.poster,
                         backgroundUrl = detail.background,
                         logoUrl = detail.logo,
+                        trailerUrl = state.trailerUrl,
                         releaseLabel = detail.releaseInfo.orEmpty(),
                         ratingLabel = detail.imdbRating.orEmpty(),
                         runtimeLabel = detail.runtime,

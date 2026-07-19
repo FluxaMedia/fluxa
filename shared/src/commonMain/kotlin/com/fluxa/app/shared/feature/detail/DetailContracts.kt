@@ -48,6 +48,7 @@ data class DetailUiModel(
     val posterUrl: String?,
     val backgroundUrl: String?,
     val logoUrl: String?,
+    val trailerUrl: String? = null,
     val releaseLabel: String,
     val ratingLabel: String,
     val runtimeLabel: String?,

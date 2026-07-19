@@ -26,5 +26,6 @@ data class DetailUiState(
     val savedPlayback: Meta? = null,
     val similarItems: List<Meta> = emptyList(),
     val trailers: List<DetailTrailer> = emptyList(),
+    val trailerUrl: String? = null,
     val userAddons: List<AddonDescriptor> = emptyList()
 )
