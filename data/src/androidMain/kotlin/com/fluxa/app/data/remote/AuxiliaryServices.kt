@@ -259,17 +259,6 @@ data class TmdbCollectionResponse(
 interface ImdbApiService {
     @GET("titles/{titleId}/parentsGuide")
     suspend fun getParentsGuide(@Path("titleId") titleId: String): ParentsGuideResponse
-
-    companion object {
-        fun create(): ImdbApiService {
-            return Retrofit.Builder()
-                .baseUrl("https://api.imdbapi.dev/")
-                .callFactory { request -> StremioService.sharedClient.newCall(request) }
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(ImdbApiService::class.java)
-        }
-    }
 }
 
 data class ParentsGuideResponse(val parentsGuide: List<ParentsGuideCategory> = emptyList())

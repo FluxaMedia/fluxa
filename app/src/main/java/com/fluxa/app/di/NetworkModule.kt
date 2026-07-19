@@ -185,7 +185,7 @@ object NetworkModule {
     @Singleton
     fun provideImdbApiService(@Named("StremioClient") client: OkHttpClient): ImdbApiService {
         return Retrofit.Builder()
-            .baseUrl("https://api.imdbapi.dev/")
+            .baseUrl("https://tiffara.com/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
