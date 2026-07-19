@@ -90,9 +90,9 @@ class AppleSettingsDataSource : SettingsDataSource {
         defaults.setBool(value.tryBingeGroup, K.tryBingeGroup)
         defaults.setDouble(value.nextEpisodeThresholdPercent.toDouble(), K.nextEpisodeThresholdPercent)
         defaults.setDouble(value.watchedThresholdPercent.toDouble(), K.watchedThresholdPercent)
-        defaults.setBool(value.useIntroDb, K.useIntroDb)
+        defaults.setBool(value.useSkipSegments, K.useIntroDb)
         defaults.setObject(value.introDbApiKey, K.introDbApiKey)
-        defaults.setBool(value.useAniSkip, K.useAniSkip)
+        defaults.setBool(value.useSkipSegments, K.useAniSkip)
         defaults.setBool(value.useChapterSkip, K.useChapterSkip)
         defaults.setBool(value.autoSkipIntro, K.autoSkipIntro)
         state.value = state.value.copy(playback = value)
@@ -266,9 +266,8 @@ class AppleSettingsDataSource : SettingsDataSource {
             tryBingeGroup = defaults.boolOrDefault(K.tryBingeGroup, true),
             nextEpisodeThresholdPercent = defaults.objectForKey(K.nextEpisodeThresholdPercent)?.let { defaults.doubleForKey(K.nextEpisodeThresholdPercent).toFloat() } ?: 90f,
             watchedThresholdPercent = defaults.objectForKey(K.watchedThresholdPercent)?.let { defaults.doubleForKey(K.watchedThresholdPercent).toFloat() } ?: 90f,
-            useIntroDb = defaults.boolOrDefault(K.useIntroDb, false),
+            useSkipSegments = defaults.boolOrDefault(K.useIntroDb, false) || defaults.boolOrDefault(K.useAniSkip, false),
             introDbApiKey = defaults.stringForKey(K.introDbApiKey) ?: "",
-            useAniSkip = defaults.boolOrDefault(K.useAniSkip, false),
             useChapterSkip = defaults.boolOrDefault(K.useChapterSkip, false),
             autoSkipIntro = defaults.boolOrDefault(K.autoSkipIntro, false)
         ),

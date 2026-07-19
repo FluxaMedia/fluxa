@@ -219,9 +219,8 @@ class AndroidSettingsDataSource(
                 tryBingeGroup = profile.safeTryBingeGroup,
                 nextEpisodeThresholdPercent = profile.safeNextEpisodeThresholdPercent,
                 watchedThresholdPercent = profile.safeWatchedThresholdPercent,
-                useIntroDb = profile.safeUseIntroDb,
+                useSkipSegments = profile.safeUseIntroDb || profile.safeUseAniSkip,
                 introDbApiKey = profile.introDbApiKey.orEmpty(),
-                useAniSkip = profile.safeUseAniSkip,
                 useChapterSkip = profile.safeUseChapterSkip,
                 autoSkipIntro = profile.safeAutoSkipIntro,
                 contentWarningsEnabled = profile.safeContentWarningsEnabled
@@ -350,9 +349,9 @@ class AndroidSettingsDataSource(
             tryBingeGroup = value.tryBingeGroup,
             nextEpisodeThresholdPercent = value.nextEpisodeThresholdPercent,
             watchedThresholdPercent = value.watchedThresholdPercent,
-            useIntroDb = value.useIntroDb,
+            useIntroDb = value.useSkipSegments,
             introDbApiKey = value.introDbApiKey.takeIf { key -> key.isNotBlank() },
-            useAniSkip = value.useAniSkip,
+            useAniSkip = value.useSkipSegments,
             useChapterSkip = value.useChapterSkip,
             autoSkipIntro = value.autoSkipIntro,
             contentWarningsEnabled = value.contentWarningsEnabled

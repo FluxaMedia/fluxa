@@ -890,13 +890,12 @@ private fun SettingsPlaybackContent(model: SettingsPlaybackUiModel, lang: String
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.skip_segments"))
     SettingsGroupCard {
-        SettingsToggleRow(AppStrings.t(lang, "settings.use_introdb"), value = model.useIntroDb) { onAction(SettingsAction.PlaybackChanged(model.copy(useIntroDb = it))) }
-        if (model.useIntroDb) {
+        SettingsToggleRow(AppStrings.t(lang, "settings.use_skip_segments"), value = model.useSkipSegments) { onAction(SettingsAction.PlaybackChanged(model.copy(useSkipSegments = it))) }
+        if (model.useSkipSegments) {
             SettingsTextFieldRow(AppStrings.t(lang, "settings.introdb_api_key"), model.introDbApiKey) { onAction(SettingsAction.PlaybackChanged(model.copy(introDbApiKey = it))) }
         }
-        SettingsToggleRow(AppStrings.t(lang, "settings.use_aniskip"), value = model.useAniSkip) { onAction(SettingsAction.PlaybackChanged(model.copy(useAniSkip = it))) }
         SettingsToggleRow(AppStrings.t(lang, "settings.use_chapter_skip"), value = model.useChapterSkip) { onAction(SettingsAction.PlaybackChanged(model.copy(useChapterSkip = it))) }
-        if (model.useIntroDb || model.useAniSkip) {
+        if (model.useSkipSegments) {
             SettingsToggleRow(AppStrings.t(lang, "settings.auto_skip"), value = model.autoSkipIntro) { onAction(SettingsAction.PlaybackChanged(model.copy(autoSkipIntro = it))) }
         }
         SettingsToggleRow(AppStrings.t(lang, "settings.content_warnings_enabled"), value = model.contentWarningsEnabled) { onAction(SettingsAction.PlaybackChanged(model.copy(contentWarningsEnabled = it))) }

@@ -109,9 +109,8 @@ data class SettingsPlaybackUiModel(
     val tryBingeGroup: Boolean = true,
     val nextEpisodeThresholdPercent: Float = 90f,
     val watchedThresholdPercent: Float = 90f,
-    val useIntroDb: Boolean = false,
+    val useSkipSegments: Boolean = false,
     val introDbApiKey: String = "",
-    val useAniSkip: Boolean = false,
     val useChapterSkip: Boolean = false,
     val autoSkipIntro: Boolean = false,
     val contentWarningsEnabled: Boolean = true
