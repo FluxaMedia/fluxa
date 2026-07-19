@@ -1,6 +1,7 @@
 package com.fluxa.app.shared.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,8 +43,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -52,6 +56,14 @@ import androidx.compose.ui.unit.sp
 import com.fluxa.app.ui.catalog.FluxaColors
 
 data class SettingsChoiceOption(val value: String, val label: String)
+
+fun Modifier.settingsFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier = composed {
+    var focused by remember { mutableStateOf(false) }
+    this
+        .clip(shape)
+        .onFocusChanged { focused = it.isFocused }
+        .background(if (focused) Color.White.copy(alpha = 0.14f) else Color.Transparent)
+}
 
 @Composable
 fun SettingsSectionHeader(title: String) {
@@ -104,7 +116,7 @@ fun SettingsChoiceRow(
     var showDialog by remember { mutableStateOf(false) }
     val currentLabel = options.firstOrNull { it.value == value }?.label ?: value
     Row(
-        modifier = Modifier.fillMaxWidth().clickable { showDialog = true }.padding(vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().settingsFocusRing().clickable { showDialog = true }.padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -155,6 +167,7 @@ fun SettingsChoiceDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .settingsFocusRing(shape = RoundedCornerShape(0.dp))
                             .clickable { onSelected(option.value) }
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -202,18 +215,26 @@ private fun SettingsIconButton(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    var focused by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .size(28.dp)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = if (enabled) 0.1f else 0.04f))
+            .onFocusChanged { focused = it.isFocused }
+            .background(
+                when {
+                    focused -> Color.White
+                    enabled -> Color.White.copy(alpha = 0.1f)
+                    else -> Color.White.copy(alpha = 0.04f)
+                }
+            )
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White.copy(alpha = if (enabled) 0.85f else 0.25f),
+            tint = if (focused) Color.Black else Color.White.copy(alpha = if (enabled) 0.85f else 0.25f),
             modifier = Modifier.size(16.dp)
         )
     }
@@ -252,13 +273,18 @@ fun SettingsColorOpacityRow(
             Text(label, color = Color.White, modifier = Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SETTINGS_COLOR_SWATCHES.forEach { swatch ->
+                    var swatchFocused by remember { mutableStateOf(false) }
                     Box(
                         modifier = Modifier
                             .size(22.dp)
                             .clip(CircleShape)
+                            .onFocusChanged { swatchFocused = it.isFocused }
                             .background(Color(swatch.toInt()))
                             .then(
                                 if (swatch == colorArgb) Modifier.padding(1.dp) else Modifier
+                            )
+                            .then(
+                                if (swatchFocused) Modifier.border(2.dp, Color.White, CircleShape) else Modifier
                             )
                             .clickable { onColorChanged(swatch) }
                     )
@@ -289,11 +315,16 @@ fun SettingsOrderedToggleRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        var checkboxFocused by remember { mutableStateOf(false) }
         Box(
             modifier = Modifier
                 .size(22.dp)
                 .clip(RoundedCornerShape(6.dp))
+                .onFocusChanged { checkboxFocused = it.isFocused }
                 .background(if (selected) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.08f))
+                .then(
+                    if (checkboxFocused) Modifier.border(2.dp, Color.White, RoundedCornerShape(6.dp)) else Modifier
+                )
                 .clickable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {
@@ -321,7 +352,7 @@ fun SettingsActionRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -357,7 +388,7 @@ fun SettingsConnectionRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -441,7 +472,7 @@ fun SettingsSecretFieldRow(
 @Composable
 private fun IconButtonToggle(revealed: Boolean, onClick: () -> Unit) {
     Box(
-        modifier = Modifier.size(24.dp).clickable(onClick = onClick),
+        modifier = Modifier.size(24.dp).settingsFocusRing(shape = CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -472,7 +503,7 @@ fun SettingsNavRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

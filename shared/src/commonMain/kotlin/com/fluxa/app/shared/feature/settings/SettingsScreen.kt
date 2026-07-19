@@ -2,6 +2,7 @@ package com.fluxa.app.shared.feature.settings
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -178,17 +180,25 @@ private fun SettingsCategoryContent(
 
 @Composable
 private fun SettingsTvRailRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
-            .background(if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent)
+            .onFocusChanged { focused = it.isFocused }
+            .background(
+                when {
+                    focused -> Color.White
+                    selected -> Color.White.copy(alpha = 0.12f)
+                    else -> Color.Transparent
+                }
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Text(
             label,
-            color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
+            color = if (focused) Color.Black else if (selected) Color.White else Color.White.copy(alpha = 0.6f),
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
         )
     }
@@ -641,11 +651,16 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
             Text(AppStrings.t(lang, "auto.accent_color"), color = Color.White, modifier = Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SETTINGS_COLOR_SWATCHES.forEach { swatch ->
+                    var swatchFocused by remember { mutableStateOf(false) }
                     Box(
                         modifier = Modifier
                             .size(24.dp)
                             .clip(CircleShape)
+                            .onFocusChanged { swatchFocused = it.isFocused }
                             .background(Color(swatch.toInt()))
+                            .then(
+                                if (swatchFocused) Modifier.border(2.dp, Color.White, CircleShape) else Modifier
+                            )
                             .clickable { onAction(SettingsAction.AppearanceChanged(model.copy(accentColorArgb = swatch))) }
                     )
                 }
