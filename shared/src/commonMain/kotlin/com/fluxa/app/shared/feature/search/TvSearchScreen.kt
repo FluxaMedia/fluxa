@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.ui.catalog.DeviceType
 
 @Composable
 fun TvSearchScreen(
@@ -23,6 +24,7 @@ fun TvSearchScreen(
         onItemSelected = onItemSelected,
         onAddToLibrary = onAddToLibrary,
         onClearHistory = onClearHistory,
+        deviceType = DeviceType.TV,
         modifier = modifier.padding(start = 38.dp, top = 56.dp, end = 38.dp, bottom = 24.dp)
     )
 }

@@ -3,6 +3,7 @@ package com.fluxa.app.shared.feature.search
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,12 +11,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -35,6 +43,7 @@ import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import com.fluxa.app.shared.skeletonShimmer
 import com.fluxa.app.ui.catalog.CatalogCard
+import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.PosterActionSheet
 
@@ -46,6 +55,7 @@ fun SearchScreen(
     onItemSelected: (CatalogItemUiModel) -> Unit,
     onAddToLibrary: (CatalogItemUiModel) -> Unit = {},
     onClearHistory: () -> Unit = {},
+    deviceType: DeviceType = DeviceType.Mobile,
     modifier: Modifier = Modifier
 ) {
     var actionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
@@ -69,12 +79,14 @@ fun SearchScreen(
                 rows = state.resultRows,
                 onItemSelected = onItemSelected,
                 onItemLongPressed = { actionItem = it },
+                deviceType = deviceType,
                 modifier = Modifier.weight(1f)
             )
             state.results.isNotEmpty() -> SearchResults(
                 items = state.results,
                 onItemSelected = onItemSelected,
                 onItemLongPressed = { actionItem = it },
+                deviceType = deviceType,
                 modifier = Modifier.weight(1f)
             )
             state.isLoading -> SearchSkeletonGrid(modifier = Modifier.weight(1f))
@@ -84,6 +96,7 @@ fun SearchScreen(
                 recentItems = state.recentItems,
                 onItemSelected = onItemSelected,
                 onItemLongPressed = { actionItem = it },
+                deviceType = deviceType,
                 modifier = Modifier.weight(1f)
             )
             state.recentItems.isNotEmpty() -> SearchHistory(
@@ -93,6 +106,7 @@ fun SearchScreen(
                 onItemSelected = onItemSelected,
                 onItemLongPressed = { actionItem = it },
                 onClearHistory = onClearHistory,
+                deviceType = deviceType,
                 modifier = Modifier.weight(1f)
             )
             else -> SearchEmpty(
@@ -121,6 +135,7 @@ private fun SearchNoResultsForQuery(
     recentItems: List<CatalogItemUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
     onItemLongPressed: (CatalogItemUiModel) -> Unit = {},
+    deviceType: DeviceType = DeviceType.Mobile,
     modifier: Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -135,6 +150,7 @@ private fun SearchNoResultsForQuery(
                 items = recentItems.take(5),
                 onItemSelected = onItemSelected,
                 onItemLongPressed = onItemLongPressed,
+                deviceType = deviceType,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -149,6 +165,7 @@ private fun SearchHistory(
     onItemSelected: (CatalogItemUiModel) -> Unit,
     onItemLongPressed: (CatalogItemUiModel) -> Unit = {},
     onClearHistory: () -> Unit,
+    deviceType: DeviceType = DeviceType.Mobile,
     modifier: Modifier
 ) {
     Column(modifier = modifier) {
@@ -169,6 +186,7 @@ private fun SearchHistory(
             items = items,
             onItemSelected = onItemSelected,
             onItemLongPressed = onItemLongPressed,
+            deviceType = deviceType,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -179,6 +197,7 @@ internal fun SearchResultRows(
     rows: List<CatalogRowUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
     onItemLongPressed: (CatalogItemUiModel) -> Unit = {},
+    deviceType: DeviceType = DeviceType.Mobile,
     modifier: Modifier
 ) {
     LazyColumn(
@@ -197,7 +216,12 @@ internal fun SearchResultRows(
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(row.items, key = { it.id }) { item ->
-                        CatalogCard(model = item.card, onClick = { onItemSelected(item) }, onLongClick = { onItemLongPressed(item) })
+                        SearchResultCard(
+                            item = item,
+                            onClick = { onItemSelected(item) },
+                            onAction = { onItemLongPressed(item) },
+                            deviceType = deviceType
+                        )
                     }
                 }
             }
@@ -210,6 +234,7 @@ internal fun SearchResults(
     items: List<CatalogItemUiModel>,
     onItemSelected: (CatalogItemUiModel) -> Unit,
     onItemLongPressed: (CatalogItemUiModel) -> Unit = {},
+    deviceType: DeviceType = DeviceType.Mobile,
     modifier: Modifier
 ) {
     LazyVerticalGrid(
@@ -220,7 +245,45 @@ internal fun SearchResults(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         gridItems(items, key = { it.id }) { item ->
-            CatalogCard(model = item.card, onClick = { onItemSelected(item) }, onLongClick = { onItemLongPressed(item) })
+            SearchResultCard(
+                item = item,
+                onClick = { onItemSelected(item) },
+                onAction = { onItemLongPressed(item) },
+                deviceType = deviceType
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchResultCard(
+    item: CatalogItemUiModel,
+    onClick: () -> Unit,
+    onAction: () -> Unit,
+    deviceType: DeviceType
+) {
+    Box {
+        CatalogCard(model = item.card, onClick = onClick, onLongClick = onAction)
+        if (deviceType == DeviceType.TV) {
+            var focused by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .onFocusChanged { focused = it.isFocused }
+                    .background(if (focused) Color.White else Color.Black.copy(alpha = 0.55f))
+                    .clickable(onClick = onAction),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = null,
+                    tint = if (focused) Color.Black else Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
