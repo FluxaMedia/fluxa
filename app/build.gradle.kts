@@ -194,12 +194,30 @@ val rustTargetTasks = rustAndroidTargets.map { (abi, target, envName) ->
             if (ndkDir.isBlank() || !file(ndkDir).exists()) {
                 throw GradleException("Android NDK is required to build ../fluxa-core.")
             }
-            val toolchainBin = file("$ndkDir/toolchains/llvm/prebuilt/$rustHostTag/bin")
+            val toolchainRoot = file("$ndkDir/toolchains/llvm/prebuilt/$rustHostTag")
+            val toolchainBin = toolchainRoot.resolve("bin")
             val clang = file(toolchainBin.resolve(linkerName)).absolutePath
             environment("CARGO_TARGET_${envName}_LINKER", clang)
             environment("CC_$target", clang)
             environment("CC_${target.replace("-", "_")}", clang)
             environment("AR_${envName}", file(toolchainBin.resolve("llvm-ar")).absolutePath)
+
+            val clangTargetTriple = linkerName.removeSuffix("-clang")
+            val sysroot = toolchainRoot.resolve("sysroot")
+            val clangVersionDir = toolchainRoot.resolve("lib/clang").listFiles()
+                ?.filter { it.isDirectory }
+                ?.maxByOrNull { it.name.toIntOrNull() ?: -1 }
+            environment("LIBCLANG_PATH", toolchainRoot.resolve("lib").absolutePath)
+            environment(
+                "BINDGEN_EXTRA_CLANG_ARGS",
+                buildString {
+                    append("--target=$clangTargetTriple")
+                    append(" --sysroot=${sysroot.absolutePath}")
+                    if (clangVersionDir != null) {
+                        append(" -resource-dir=${clangVersionDir.absolutePath}")
+                    }
+                }
+            )
         }
         doLast {
             val builtLibrary = file("$rustCrateDir/target/$target/$rustProfile/libfluxa_core.so")
