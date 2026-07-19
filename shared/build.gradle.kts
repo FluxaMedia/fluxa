@@ -32,6 +32,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.coil3)
             implementation(libs.coil3.compose)
+            implementation(libs.haze)
         }
         androidMain.dependencies {
             implementation(libs.coil3.network.okhttp)

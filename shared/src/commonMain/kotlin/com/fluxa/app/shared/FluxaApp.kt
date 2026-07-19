@@ -67,6 +67,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.alpha
@@ -217,6 +222,8 @@ fun FluxaApp(
     modifier: Modifier = Modifier
 ) {
     MaterialTheme(colorScheme = FluxaColorScheme) {
+        val liquidGlassMode = settingsState?.appearance?.liquidGlassMode == true
+        val hazeState = rememberHazeState()
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -245,11 +252,13 @@ fun FluxaApp(
                         .togetherWith(fadeOut(tween(120)))
                 },
                 label = "fluxa-screen-transition",
-                modifier = if (isHomeActive || !showNavigationBar) {
-                    Modifier.fillMaxSize()
-                } else {
-                    Modifier.fillMaxSize().padding(bottom = navBarHeightDp)
-                }
+                modifier = (
+                    if (isHomeActive || !showNavigationBar) {
+                        Modifier.fillMaxSize()
+                    } else {
+                        Modifier.fillMaxSize().padding(bottom = navBarHeightDp)
+                    }
+                    ).then(if (liquidGlassMode) Modifier.hazeSource(hazeState) else Modifier)
             ) { key ->
             saveableStateHolder.SaveableStateProvider(key) {
             when {
@@ -454,7 +463,8 @@ fun FluxaApp(
                     destination = state.destination,
                     accentColorArgb = profileState?.activeProfile?.accentColorArgb,
                     floating = settingsState?.appearance?.floatingBottomBar == true,
-                    liquidGlass = settingsState?.appearance?.liquidGlassMode == true,
+                    liquidGlass = liquidGlassMode,
+                    hazeState = hazeState,
                     showLabels = settingsState?.appearance?.bottomBarLabels == true,
                     showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
                     profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
@@ -488,6 +498,7 @@ private fun FluxaNavigationBar(
     accentColorArgb: Long?,
     floating: Boolean,
     liquidGlass: Boolean,
+    hazeState: dev.chrisbanes.haze.HazeState,
     showLabels: Boolean,
     showProfile: Boolean,
     profileAvatarUrl: String?,
@@ -517,12 +528,15 @@ private fun FluxaNavigationBar(
                 .then(
                     if (liquidGlass) {
                         Modifier
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color(0x33FFFFFF), Color(0x1AFFFFFF))
+                            .hazeEffect(
+                                state = hazeState,
+                                style = HazeDefaults.style(
+                                    backgroundColor = if (floating) Color(0xFF222222) else Color(0xFF111111),
+                                    tint = HazeTint(Color.White.copy(alpha = 0.08f)),
+                                    blurRadius = 24.dp,
+                                    noiseFactor = 0.12f
                                 )
                             )
-                            .background(if (floating) Color(0x99222222) else Color(0x99111111))
                             .border(1.dp, Color(0x26FFFFFF), barShape)
                     } else {
                         Modifier.background(if (floating) Color(0xF2222222) else Color(0xFF111111))
