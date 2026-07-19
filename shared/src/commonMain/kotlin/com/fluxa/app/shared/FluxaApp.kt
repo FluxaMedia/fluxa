@@ -243,6 +243,9 @@ fun FluxaApp(
             }
             val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
             val isHomeActive = screenKey == "dest:${FluxaDestination.Home}" && !isTv
+            val isPreAuthDestination = state.destination == FluxaDestination.Auth ||
+                state.destination == FluxaDestination.ProfileList
+            val navChromeVisible = showNavigationBar && !isPreAuthDestination
             var navBarHeightPx by remember { mutableIntStateOf(0) }
             var tvSidebarWidthPx by remember { mutableIntStateOf(0) }
             val density = LocalDensity.current
@@ -257,7 +260,7 @@ fun FluxaApp(
                 },
                 label = "fluxa-screen-transition",
                 modifier = (
-                    if (!showNavigationBar) {
+                    if (!navChromeVisible) {
                         Modifier.fillMaxSize()
                     } else if (isTv) {
                         Modifier.fillMaxSize().padding(start = tvSidebarWidthDp)
@@ -460,7 +463,7 @@ fun FluxaApp(
                     onCategorySelected = onCategorySelected,
                     profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                     topBarEnabled = settingsState?.appearanceHome?.topBarEnabled != false,
-                    bottomContentInset = if (liquidGlassMode && showNavigationBar) navBarHeightDp + 20.dp else 24.dp,
+                    bottomContentInset = if (liquidGlassMode && navChromeVisible) navBarHeightDp + 20.dp else 24.dp,
                     modifier = Modifier.fillMaxSize()
                 )
                 else -> FluxaDestinationPlaceholder(
@@ -471,7 +474,7 @@ fun FluxaApp(
             }
             }
             }
-            if (showNavigationBar) {
+            if (navChromeVisible) {
                 if (isTv) {
                     TvSidebarNav(
                         destination = state.destination,
