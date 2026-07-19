@@ -507,7 +507,7 @@ private fun FluxaNavigationBar(
     modifier: Modifier = Modifier
 ) {
     val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
-    val inactiveColor = Color(0xFFA0A5AD)
+    val inactiveColor = if (liquidGlass) Color.White.copy(alpha = 0.68f) else Color(0xFFA0A5AD)
     val barShape = RoundedCornerShape(if (floating) 28.dp else 0.dp)
     val items = if (showProfile) {
         FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
@@ -532,12 +532,20 @@ private fun FluxaNavigationBar(
                                 state = hazeState,
                                 style = HazeDefaults.style(
                                     backgroundColor = if (floating) Color(0xFF222222) else Color(0xFF111111),
-                                    tint = HazeTint(Color.White.copy(alpha = 0.08f)),
-                                    blurRadius = 24.dp,
-                                    noiseFactor = 0.12f
+                                    tint = HazeTint(Color.White.copy(alpha = 0.05f)),
+                                    blurRadius = 26.dp,
+                                    noiseFactor = 0.1f
                                 )
+                            ) {
+                                alpha = 0.72f
+                            }
+                            .border(
+                                width = 1.dp,
+                                brush = Brush.verticalGradient(
+                                    listOf(Color(0x66FFFFFF), Color.Transparent, Color(0x4D000000))
+                                ),
+                                shape = barShape
                             )
-                            .border(1.dp, Color(0x26FFFFFF), barShape)
                     } else {
                         Modifier.background(if (floating) Color(0xF2222222) else Color(0xFF111111))
                     }
@@ -562,7 +570,19 @@ private fun FluxaNavigationBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Box {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (liquidGlass && isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .background(
+                                        Brush.radialGradient(
+                                            listOf(Color.White.copy(alpha = 0.22f), Color.Transparent)
+                                        ),
+                                        CircleShape
+                                    )
+                            )
+                        }
                         if (item.destination == FluxaDestination.Settings && !profileAvatarUrl.isNullOrBlank()) {
                             FluxaRemoteImage(
                                 imageUrl = profileAvatarUrl,
