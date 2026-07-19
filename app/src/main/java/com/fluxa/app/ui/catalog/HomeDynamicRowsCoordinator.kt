@@ -16,6 +16,7 @@ internal class HomeDynamicRowsCoordinator(
     private val activeProfile: () -> UserProfile?,
     private val buildUserCollectionHomeCategories: (UserProfile?, Boolean?) -> List<HomeCategory>,
     private val buildContinueWatchingItems: (String) -> List<Meta>,
+    private val isUpcoming: (Meta) -> Boolean,
     private val optimizeHomeCategories: (List<HomeCategory>, String) -> List<HomeCategory>
 ) {
     private var refreshJob: Job? = null
@@ -32,6 +33,7 @@ internal class HomeDynamicRowsCoordinator(
                     it.id == "watchlist" ||
                         it.id == "library" ||
                         it.id == "continue_watching" ||
+                        it.id == "upcoming" ||
                         it.type == "collection" ||
                         it.type == "collection_folder"
                 }
@@ -45,7 +47,7 @@ internal class HomeDynamicRowsCoordinator(
                 ?.mapIndexed { index, meta -> ContinueWatchingListMerger.identityKey(meta) to index }
                 ?.toMap()
                 .orEmpty()
-            val continueWatching = if (profile?.safeContinueWatchingEnabled != false) {
+            val allContinueWatching = if (profile?.safeContinueWatchingEnabled != false) {
                 buildContinueWatchingItems(lang)
                     .mapIndexed { index, meta -> index to meta }
                     .sortedWith(
@@ -57,6 +59,9 @@ internal class HomeDynamicRowsCoordinator(
             } else {
                 emptyList()
             }
+            val upcomingEnabled = profile?.safeUpcomingRowEnabled == true
+            val upcoming = if (upcomingEnabled) allContinueWatching.filter(isUpcoming) else emptyList()
+            val continueWatching = if (upcomingEnabled) allContinueWatching.filterNot(isUpcoming) else allContinueWatching
             var insertIndex = 0
             staticCategories.addAll(insertIndex, aboveContinueWatching)
             insertIndex += aboveContinueWatching.size
@@ -68,6 +73,19 @@ internal class HomeDynamicRowsCoordinator(
                         items = continueWatching,
                         id = "continue_watching",
                         type = "continue_watching",
+                        canLoadMore = false
+                    )
+                )
+                insertIndex += 1
+            }
+            if (upcoming.isNotEmpty()) {
+                staticCategories.add(
+                    insertIndex,
+                    HomeCategory(
+                        name = AppStrings.t(lang, "settings.upcoming_row"),
+                        items = upcoming,
+                        id = "upcoming",
+                        type = "upcoming",
                         canLoadMore = false
                     )
                 )

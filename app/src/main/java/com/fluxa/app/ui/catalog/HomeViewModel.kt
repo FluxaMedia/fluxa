@@ -373,6 +373,7 @@ class HomeViewModel @Inject constructor(
             userAddons = { _userAddons.value },
             setUserAddons = ::setUserAddonsState,
             continueWatchingItems = ::buildContinueWatchingItems,
+            isUpcoming = continueWatchingCoordinator::isUpcoming,
             normalizeCatalogItems = ::normalizeCatalogItems,
             setCategories = ::setCategoriesState,
             currentCategories = categoryState::currentCategories
@@ -399,6 +400,7 @@ class HomeViewModel @Inject constructor(
             activeProfile = { currentActiveProfile },
             buildUserCollectionHomeCategories = ::buildUserCollectionHomeCategories,
             buildContinueWatchingItems = ::buildContinueWatchingItems,
+            isUpcoming = continueWatchingCoordinator::isUpcoming,
             optimizeHomeCategories = ::optimizeHomeCategories
         )
     }

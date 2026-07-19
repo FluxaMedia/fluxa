@@ -238,6 +238,8 @@
   "settings.landscape_mode": "Landscape Mode",
   "auto.continue_watching_layout": "Continue Watching Layout",
   "settings.continue_watching_horizontal": "Continue Watching Horizontal",
+  "settings.upcoming_row": "Upcoming",
+  "settings.upcoming_row_desc": "Move shows waiting on an unreleased next episode or season out of Continue Watching into their own Upcoming row.",
   "settings.continue_watching_hide_titles": "Hide Labels",
   "settings.continue_watching_source": "Continue Watching Source",
   "settings.continue_watching_source_fluxa": "Fluxa",

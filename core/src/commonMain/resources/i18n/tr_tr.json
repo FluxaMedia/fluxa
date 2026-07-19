@@ -238,6 +238,8 @@
   "settings.landscape_mode": "Yatay Mod",
   "auto.continue_watching_layout": "İzlemeye Devam Et Düzeni",
   "settings.continue_watching_horizontal": "İzlemeye Devam Et Yatay",
+  "settings.upcoming_row": "Yakında",
+  "settings.upcoming_row_desc": "Sonraki bölümü veya sezonu henüz yayınlanmamış dizileri İzlemeye Devam Et satırından ayırıp kendi Yakında satırında göster.",
   "settings.continue_watching_hide_titles": "Etiketleri Gizle",
   "settings.continue_watching_source": "İzlemeye Devam Et Kaynağı",
   "settings.continue_watching_source_fluxa": "Fluxa",

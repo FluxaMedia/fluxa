@@ -75,6 +75,7 @@ data class UserProfile(
     val continueWatchingLayout: String? = "horizontal",
     val continueWatchingArtwork: String? = "episode",
     val continueWatchingEnabled: Boolean? = true,
+    val upcomingRowEnabled: Boolean? = false,
     val continueWatchingHideTitles: Boolean? = false,
     val heroFollowsFocusedItem: Boolean? = false,
     val blurUnwatchedEpisodes: Boolean? = false,

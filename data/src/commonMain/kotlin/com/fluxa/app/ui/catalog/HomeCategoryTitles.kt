@@ -3,7 +3,7 @@ package com.fluxa.app.ui.catalog
 import com.fluxa.app.common.AppStrings
 
 fun homeCategoryTitleParts(category: HomeCategory, language: String?): Pair<String, String?> {
-    if (category.isContinueWatchingCategory() || category.id == "library" || category.id == "watchlist" || category.id.startsWith("cs3_")) {
+    if (category.isContinueWatchingOrUpcomingCategory() || category.id == "library" || category.id == "watchlist" || category.id.startsWith("cs3_")) {
         return category.name to null
     }
 

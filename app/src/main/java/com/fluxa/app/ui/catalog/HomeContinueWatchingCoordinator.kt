@@ -32,6 +32,37 @@ internal class HomeContinueWatchingCoordinator(
     private val getSeasonEpisodes: suspend (String, Int, String) -> List<Video>
 ) {
     private val artworkCache = LruCache<String, Pair<String?, String?>>(80)
+    private val upcomingCache = mutableMapOf<String, Boolean>()
+
+    fun isUpcoming(meta: Meta): Boolean = upcomingCache[upcomingCacheKey(meta)] == true
+
+    fun classifyUpcoming(items: List<Meta>) {
+        if (activeProfile()?.safeUpcomingRowEnabled != true) return
+        val lang = activeProfile()?.safeLanguage ?: "en"
+        val candidates = items.filter { meta ->
+            val isSeries = meta.type == "series" || meta.type == "tv" || meta.type == "anime"
+            val isUpNext = isSeries && !meta.lastVideoId.isNullOrBlank() &&
+                (meta.timeOffset ?: 0L) <= 0L && (meta.duration ?: 0L) <= 0L
+            isUpNext && upcomingCacheKey(meta) !in upcomingCache
+        }
+        if (candidates.isEmpty()) return
+
+        scope.launch(Dispatchers.IO) {
+            var changed = false
+            candidates.forEach { meta ->
+                val locator = meta.lastVideoId?.let(::parseEpisodeLocator) ?: return@forEach
+                val video = runCatching {
+                    getSeasonEpisodes(meta.id, locator.first, lang).firstOrNull { it.number == locator.second }
+                }.getOrNull() ?: return@forEach
+                val released = FluxaCoreNative.isEpisodeReleased(video, System.currentTimeMillis())
+                upcomingCache[upcomingCacheKey(meta)] = !released
+                changed = true
+            }
+            if (changed) refreshDynamicRows()
+        }
+    }
+
+    private fun upcomingCacheKey(meta: Meta): String = "${meta.id}:${meta.lastVideoId}"
 
     fun buildItems(lang: String, playbackController: HomePlaybackController): List<Meta> {
         val source = activeProfile()?.safeContinueWatchingSource ?: "fluxa"
@@ -46,12 +77,14 @@ internal class HomeContinueWatchingCoordinator(
             }
             val filteredProviderItems = providerItems.filterNot(playbackController::isForgotten)
             val ranked = FluxaCoreNative.filterHomeContinueWatching(filteredProviderItems, watchedState())
+            classifyUpcoming(ranked)
             return ranked.map { assignHomeBadge(it, lang) }
         }
         val sourceItems = externalItems() + localItems()
         val merged = ContinueWatchingListMerger.mergeDuplicates(sourceItems)
             .filterNot(playbackController::isForgotten)
         val filtered = FluxaCoreNative.filterHomeContinueWatching(merged, watchedState())
+        classifyUpcoming(filtered)
         return filtered.map { assignHomeBadge(it, lang) }
     }
 

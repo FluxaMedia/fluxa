@@ -79,7 +79,8 @@ data class SettingsAppearanceHomeUiModel(
     val continueWatchingHorizontal: Boolean = true,
     val continueWatchingEnabled: Boolean = true,
     val continueWatchingHideTitles: Boolean = false,
-    val continueWatchingSource: String = "fluxa"
+    val continueWatchingSource: String = "fluxa",
+    val upcomingRowEnabled: Boolean = false
 )
 
 data class SettingsAppearanceDetailUiModel(

@@ -191,7 +191,8 @@ class AndroidSettingsDataSource(
                 continueWatchingHorizontal = profile.safeContinueWatchingLayout != "vertical",
                 continueWatchingEnabled = profile.safeContinueWatchingEnabled,
                 continueWatchingHideTitles = profile.safeContinueWatchingHideTitles,
-                continueWatchingSource = profile.safeContinueWatchingSource
+                continueWatchingSource = profile.safeContinueWatchingSource,
+                upcomingRowEnabled = profile.safeUpcomingRowEnabled
             ),
             appearanceDetail = SettingsAppearanceDetailUiModel(
                 trailerOnDetailHeroEnabled = profile.safeTrailerOnDetailHeroEnabled,
@@ -316,7 +317,8 @@ class AndroidSettingsDataSource(
             continueWatchingLayout = if (value.continueWatchingHorizontal) "horizontal" else "vertical",
             continueWatchingEnabled = value.continueWatchingEnabled,
             continueWatchingHideTitles = value.continueWatchingHideTitles,
-            continueWatchingSource = value.continueWatchingSource
+            continueWatchingSource = value.continueWatchingSource,
+            upcomingRowEnabled = value.upcomingRowEnabled
         )
     }
 

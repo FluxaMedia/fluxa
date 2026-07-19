@@ -3,8 +3,12 @@ package com.fluxa.app.ui.catalog
 import com.fluxa.app.data.remote.Meta
 
 const val CONTINUE_WATCHING_CATEGORY_ID = "continue_watching"
+const val UPCOMING_CATEGORY_ID = "upcoming"
 
 fun HomeCategory.isContinueWatchingCategory(): Boolean = id == CONTINUE_WATCHING_CATEGORY_ID
+fun HomeCategory.isUpcomingCategory(): Boolean = id == UPCOMING_CATEGORY_ID
+fun HomeCategory.isContinueWatchingOrUpcomingCategory(): Boolean =
+    isContinueWatchingCategory() || isUpcomingCategory()
 
 fun Meta.matchesFilter(filter: String): Boolean = when (filter) {
     "movie" -> type == "movie"
@@ -15,7 +19,7 @@ fun Meta.matchesFilter(filter: String): Boolean = when (filter) {
 fun orderHomeCategories(categories: List<HomeCategory>, filter: String = "all"): List<HomeCategory> {
     return categories.mapNotNull { category ->
         val items = when {
-            category.isContinueWatchingCategory() || category.id == "library" -> {
+            category.isContinueWatchingOrUpcomingCategory() || category.id == "library" -> {
                 if (filter == "all") category.items else category.items.filter { it.matchesFilter(filter) }.ifEmpty { category.items }
             }
             filter == "all" -> category.items

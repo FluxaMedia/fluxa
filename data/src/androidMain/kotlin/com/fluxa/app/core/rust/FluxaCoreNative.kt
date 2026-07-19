@@ -1830,6 +1830,14 @@ object FluxaCoreNative {
         return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<String>>(it, stringListType) } ?: emptyList()
     }
 
+    fun isEpisodeReleased(video: Video, nowMs: Long): Boolean {
+        val args = JsonObject().apply {
+            addProperty("videoJson", gson.toJson(video))
+            addProperty("nowMs", nowMs)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("isEpisodeReleased", args.toString()).asBoolean
+    }
+
     fun offlineDownloadPlan(
         meta: Meta,
         video: Video?,

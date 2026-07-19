@@ -47,6 +47,7 @@ val UserProfile.safeCardLayout: String get() = safePrefs.cardLayout
 val UserProfile.safeContinueWatchingLayout: String get() = safePrefs.continueWatchingLayout
 val UserProfile.safeContinueWatchingArtwork: String get() = safePrefs.continueWatchingArtwork
 val UserProfile.safeContinueWatchingEnabled: Boolean get() = safePrefs.continueWatchingEnabled
+val UserProfile.safeUpcomingRowEnabled: Boolean get() = safePrefs.upcomingRowEnabled
 val UserProfile.resolvedContinueWatchingLayout: String get() = safePrefs.resolvedContinueWatchingLayout
 val UserProfile.safeSubtitleShadow: Boolean get() = safePrefs.subtitleShadow
 val UserProfile.safeAutoEnableSubtitles: Boolean get() = safePrefs.autoEnableSubtitles

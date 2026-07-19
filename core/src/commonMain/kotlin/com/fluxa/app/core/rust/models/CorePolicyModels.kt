@@ -129,6 +129,7 @@ data class NativeProfileSafePrefs(
     val continueWatchingLayout: String = "horizontal",
     val continueWatchingArtwork: String = "episode",
     val continueWatchingEnabled: Boolean = true,
+    val upcomingRowEnabled: Boolean = false,
     val resolvedContinueWatchingLayout: String = "horizontal",
     val subtitleShadow: Boolean = false,
     val autoEnableSubtitles: Boolean = true,

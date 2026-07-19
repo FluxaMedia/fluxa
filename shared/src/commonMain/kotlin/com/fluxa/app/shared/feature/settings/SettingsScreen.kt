@@ -759,6 +759,13 @@ private fun SettingsAppearanceHomeContinueWatchingContent(model: SettingsAppeara
         SettingsToggleRow(AppStrings.t(lang, "auto.continue_watching"), value = model.continueWatchingEnabled) {
             onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingEnabled = it)))
         }
+        SettingsToggleRow(
+            AppStrings.t(lang, "settings.upcoming_row"),
+            description = AppStrings.t(lang, "settings.upcoming_row_desc"),
+            value = model.upcomingRowEnabled
+        ) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(upcomingRowEnabled = it)))
+        }
         SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_horizontal"), value = model.continueWatchingHorizontal) {
             onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHorizontal = it)))
         }

@@ -14,7 +14,7 @@ import com.fluxa.app.ui.catalog.posterCardHeight
 import com.fluxa.app.ui.catalog.posterCardWidth
 
 fun resolveHomeCardLayout(category: HomeCategory, profile: UserProfile?): String {
-    return if (category.isContinueWatchingCategory()) {
+    return if (category.isContinueWatchingOrUpcomingCategory()) {
         profile?.resolvedContinueWatchingLayout ?: "horizontal"
     } else if (profile?.safePosterLandscapeMode == true) {
         "horizontal"

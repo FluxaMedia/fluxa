@@ -156,7 +156,7 @@ class AndroidCatalogHomeDataSource(
         categoryType = type,
         cardLayout = resolveHomeCardLayout(this, profile),
         artworkPreference = null,
-        isActionRow = isContinueWatchingCategory() || id == "library",
+        isActionRow = isContinueWatchingOrUpcomingCategory() || id == "library",
         topTenEnabled = id in profile?.safeTopTenFeedToggles.orEmpty(),
         items = items.map { meta -> meta.toCatalogItemUiModel(category = this, profile = profile) }
     )
@@ -169,7 +169,7 @@ class AndroidCatalogHomeDataSource(
             cardScale = 1f,
             showHorizontalLogo = true,
             topTenRank = null,
-            isContinueWatchingCard = category?.isContinueWatchingCategory() == true,
+            isContinueWatchingCard = category?.isContinueWatchingOrUpcomingCategory() == true,
             loadArtwork = true
         )
         return CatalogItemUiModel(

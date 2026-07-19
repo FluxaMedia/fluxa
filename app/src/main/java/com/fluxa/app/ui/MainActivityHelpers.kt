@@ -30,6 +30,7 @@ internal fun UserProfile?.requiresHomeReload(next: UserProfile): Boolean {
         previous.homeFeedToggles != next.homeFeedToggles ||
         previous.homeFeedOrder != next.homeFeedOrder ||
         previous.safeContinueWatchingEnabled != next.safeContinueWatchingEnabled ||
+        previous.safeUpcomingRowEnabled != next.safeUpcomingRowEnabled ||
         previous.safeContinueWatchingSource != next.safeContinueWatchingSource ||
         previous.safeShowHeroSection != next.safeShowHeroSection
 }

@@ -28,6 +28,7 @@ internal class HomeCatalogFeedCoordinator(
     private val userAddons: () -> List<AddonDescriptor>,
     private val setUserAddons: (List<AddonDescriptor>) -> Unit,
     private val continueWatchingItems: (String) -> List<Meta>,
+    private val isUpcoming: (Meta) -> Boolean,
     private val normalizeCatalogItems: suspend (List<Meta>, String, String, String?) -> List<Meta>,
     private val setCategories: (List<HomeCategory>) -> Unit,
     private val currentCategories: () -> List<HomeCategory>
@@ -38,7 +39,10 @@ internal class HomeCatalogFeedCoordinator(
 
         categories.addAll(buildUserCollectionHomeCategories(profile, showAboveContinueWatching = true))
 
-        val continueWatching = if (profile?.safeContinueWatchingEnabled != false) continueWatchingItems(lang) else emptyList()
+        val allContinueWatching = if (profile?.safeContinueWatchingEnabled != false) continueWatchingItems(lang) else emptyList()
+        val upcomingEnabled = profile?.safeUpcomingRowEnabled == true
+        val upcoming = if (upcomingEnabled) allContinueWatching.filter(isUpcoming) else emptyList()
+        val continueWatching = if (upcomingEnabled) allContinueWatching.filterNot(isUpcoming) else allContinueWatching
         if (continueWatching.isNotEmpty()) {
             categories.add(
                 HomeCategory(
@@ -46,6 +50,17 @@ internal class HomeCatalogFeedCoordinator(
                     continueWatching,
                     "continue_watching",
                     "continue_watching",
+                    canLoadMore = false
+                )
+            )
+        }
+        if (upcoming.isNotEmpty()) {
+            categories.add(
+                HomeCategory(
+                    AppStrings.t(lang, "settings.upcoming_row"),
+                    upcoming,
+                    "upcoming",
+                    "upcoming",
                     canLoadMore = false
                 )
             )
