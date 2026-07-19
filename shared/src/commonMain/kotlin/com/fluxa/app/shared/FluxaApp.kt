@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -67,7 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -448,6 +449,7 @@ fun FluxaApp(
                     onCategorySelected = onCategorySelected,
                     profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                     topBarEnabled = settingsState?.appearanceHome?.topBarEnabled != false,
+                    bottomContentInset = if (liquidGlassMode && showNavigationBar) navBarHeightDp + 20.dp else 24.dp,
                     modifier = Modifier.fillMaxSize()
                 )
                 else -> FluxaDestinationPlaceholder(
@@ -524,25 +526,38 @@ private fun FluxaNavigationBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (liquidGlass) {
+                        Modifier.shadow(
+                            elevation = 18.dp,
+                            shape = barShape,
+                            ambientColor = Color.Black.copy(alpha = 0.35f),
+                            spotColor = Color.Black.copy(alpha = 0.45f)
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
                 .clip(barShape)
                 .then(
                     if (liquidGlass) {
                         Modifier
                             .hazeEffect(
                                 state = hazeState,
-                                style = HazeDefaults.style(
-                                    backgroundColor = if (floating) Color(0xFF222222) else Color(0xFF111111),
-                                    tint = HazeTint(Color.White.copy(alpha = 0.05f)),
+                                style = HazeStyle(
+                                    backgroundColor = if (floating) Color(0xFF1C1C1E) else Color(0xFF101012),
+                                    tints = listOf(
+                                        HazeTint(Color.Black.copy(alpha = 0.4f)),
+                                        HazeTint(Color.White.copy(alpha = 0.05f))
+                                    ),
                                     blurRadius = 26.dp,
                                     noiseFactor = 0.1f
                                 )
-                            ) {
-                                alpha = 0.72f
-                            }
+                            )
                             .border(
                                 width = 1.dp,
                                 brush = Brush.verticalGradient(
-                                    listOf(Color(0x66FFFFFF), Color.Transparent, Color(0x4D000000))
+                                    listOf(Color(0x73FFFFFF), Color.Transparent, Color(0x59000000))
                                 ),
                                 shape = barShape
                             )
@@ -574,13 +589,19 @@ private fun FluxaNavigationBar(
                         if (liquidGlass && isSelected) {
                             Box(
                                 modifier = Modifier
-                                    .size(46.dp)
+                                    .size(50.dp)
                                     .background(
                                         Brush.radialGradient(
-                                            listOf(Color.White.copy(alpha = 0.22f), Color.Transparent)
+                                            listOf(selectedColor.copy(alpha = 0.28f), Color.Transparent)
                                         ),
                                         CircleShape
                                     )
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .background(Color.White.copy(alpha = 0.1f), CircleShape)
+                                    .border(1.dp, selectedColor.copy(alpha = 0.4f), CircleShape)
                             )
                         }
                         if (item.destination == FluxaDestination.Settings && !profileAvatarUrl.isNullOrBlank()) {
@@ -714,6 +735,7 @@ private fun FluxaHomeContent(
     onCategorySelected: (id: String, title: String) -> Unit,
     profileAvatarUrl: String?,
     topBarEnabled: Boolean,
+    bottomContentInset: androidx.compose.ui.unit.Dp = 24.dp,
     modifier: Modifier
 ) {
     if (state.catalogHome.isLoading && state.catalogHome.rows.isEmpty()) {
@@ -750,7 +772,7 @@ private fun FluxaHomeContent(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = bottomContentInset),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             if (showHero) {
