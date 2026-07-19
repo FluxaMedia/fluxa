@@ -241,15 +241,18 @@ fun PlayerScreen(
         setEpisodeArtwork = { state.currentEpisodeArtwork = it }
     )
 
-    LaunchedEffect(meta.id) { viewModel.loadParentsGuide(meta.id) }
+    val contentWarningsEnabled = activeProfile?.safeContentWarningsEnabled != false
+    LaunchedEffect(meta.id, contentWarningsEnabled) {
+        if (contentWarningsEnabled) viewModel.loadParentsGuide(meta.id)
+    }
     val parentsGuide by viewModel.parentsGuide.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.currentVideoId) {
         state.showParentsGuide = false
         state.parentsGuideShown = false
     }
-    LaunchedEffect(state.engine.playback.hasStartedPlaying, parentsGuide) {
-        if (state.engine.playback.hasStartedPlaying && parentsGuide.isNotEmpty() && !state.parentsGuideShown) {
+    LaunchedEffect(state.engine.playback.hasStartedPlaying, parentsGuide, contentWarningsEnabled) {
+        if (contentWarningsEnabled && state.engine.playback.hasStartedPlaying && parentsGuide.isNotEmpty() && !state.parentsGuideShown) {
             state.parentsGuideShown = true
             state.showParentsGuide = true
         }

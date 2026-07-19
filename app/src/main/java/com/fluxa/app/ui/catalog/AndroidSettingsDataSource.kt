@@ -223,7 +223,8 @@ class AndroidSettingsDataSource(
                 introDbApiKey = profile.introDbApiKey.orEmpty(),
                 useAniSkip = profile.safeUseAniSkip,
                 useChapterSkip = profile.safeUseChapterSkip,
-                autoSkipIntro = profile.safeAutoSkipIntro
+                autoSkipIntro = profile.safeAutoSkipIntro,
+                contentWarningsEnabled = profile.safeContentWarningsEnabled
             ),
             subtitles = SettingsSubtitlesUiModel(
                 preferredAudioLanguage = profile.safePreferredAudioLanguage,
@@ -353,7 +354,8 @@ class AndroidSettingsDataSource(
             introDbApiKey = value.introDbApiKey.takeIf { key -> key.isNotBlank() },
             useAniSkip = value.useAniSkip,
             useChapterSkip = value.useChapterSkip,
-            autoSkipIntro = value.autoSkipIntro
+            autoSkipIntro = value.autoSkipIntro,
+            contentWarningsEnabled = value.contentWarningsEnabled
         )
     }
 

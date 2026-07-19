@@ -737,6 +737,8 @@
   "settings.use_aniskip": "AniSkip kullan",
   "settings.use_chapter_skip": "Atlama İçin Bölümleri Kullan",
   "settings.use_chapter_skip_desc": "Dosyanın kendi bölüm işaretlerinden intro/outro/özet segmentlerini türetir.",
+  "settings.content_warnings_enabled": "İçerik Uyarıları",
+  "settings.content_warnings_enabled_desc": "Oynatma başladığında şiddet, dil ve diğer içerik uyarıları için bir ebeveyn rehberi katmanı gösterir.",
   "settings.use_aniskip_desc": "Anime opening, ending ve recap zamanlarını AniSkip'ten alır.",
   "settings.auto_skip": "Otomatik atla",
   "settings.auto_skip_desc": "Atlanabilir segmentleri kart göstermeden otomatik geçer.",

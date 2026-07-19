@@ -144,6 +144,7 @@ data class UserProfile(
     val useIntroDb: Boolean? = true,
     val useAniSkip: Boolean? = true,
     val useChapterSkip: Boolean? = true,
+    val contentWarningsEnabled: Boolean? = true,
     val defaultQuality: String? = "1080p",
     val mobileDataUsage: String? = "medium",
     val hdrPlayback: Boolean? = true,
@@ -216,6 +217,7 @@ data class UserProfile(
         else -> "auto"
     }
     val safeUseChapterSkip: Boolean get() = useChapterSkip ?: true
+    val safeContentWarningsEnabled: Boolean get() = contentWarningsEnabled ?: true
     val safeDownloadSourceRegexPattern: String get() = downloadSourceRegexPattern.orEmpty()
     val safeDownloadSubtitleLanguage: String get() = downloadSubtitleLanguage?.takeIf { it in setOf("off", "preferred", "tr", "en", "ja", "es", "fr", "de") } ?: "preferred"
     val safeMpvCustomOptions: String get() = mpvCustomOptions.orEmpty()

@@ -50,6 +50,7 @@ private val SETTINGS_SEARCH_KEYS: List<Pair<String, SettingsCategory>> = listOf(
     "settings.use_introdb" to SettingsCategory.Playback,
     "settings.use_aniskip" to SettingsCategory.Playback,
     "settings.use_chapter_skip" to SettingsCategory.Playback,
+    "settings.content_warnings_enabled" to SettingsCategory.Playback,
     "settings.preferred_audio_language" to SettingsCategory.Subtitles,
     "settings.preferred_subtitle_language" to SettingsCategory.Subtitles,
     "settings.subtitle_shadow" to SettingsCategory.Subtitles,

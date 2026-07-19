@@ -899,6 +899,7 @@ private fun SettingsPlaybackContent(model: SettingsPlaybackUiModel, lang: String
         if (model.useIntroDb || model.useAniSkip) {
             SettingsToggleRow(AppStrings.t(lang, "settings.auto_skip"), value = model.autoSkipIntro) { onAction(SettingsAction.PlaybackChanged(model.copy(autoSkipIntro = it))) }
         }
+        SettingsToggleRow(AppStrings.t(lang, "settings.content_warnings_enabled"), value = model.contentWarningsEnabled) { onAction(SettingsAction.PlaybackChanged(model.copy(contentWarningsEnabled = it))) }
     }
 
     Spacer(Modifier.height(20.dp))

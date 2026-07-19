@@ -113,7 +113,8 @@ data class SettingsPlaybackUiModel(
     val introDbApiKey: String = "",
     val useAniSkip: Boolean = false,
     val useChapterSkip: Boolean = false,
-    val autoSkipIntro: Boolean = false
+    val autoSkipIntro: Boolean = false,
+    val contentWarningsEnabled: Boolean = true
 )
 
 data class SettingsSubtitlesUiModel(

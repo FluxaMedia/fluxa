@@ -738,6 +738,8 @@
   "settings.use_aniskip_desc": "Fetches anime opening, ending, and recap timestamps from AniSkip.",
   "settings.use_chapter_skip": "Use Chapters for Skipping",
   "settings.use_chapter_skip_desc": "Derives intro/outro/recap segments from the file's own chapter markers.",
+  "settings.content_warnings_enabled": "Content Warnings",
+  "settings.content_warnings_enabled_desc": "Shows a parental guide overlay for violence, language, and other content warnings when playback starts.",
   "settings.auto_skip": "Auto-skip",
   "settings.auto_skip_desc": "Skips available segments automatically without showing the skip card.",
   "settings.preferences": "PREFERENCES",
