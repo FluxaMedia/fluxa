@@ -10,6 +10,7 @@ import com.fluxa.core.uniffi.destroyAppCoreStateJson
 import com.fluxa.core.uniffi.destroyHeadlessEngineJson
 import com.fluxa.core.uniffi.executePluginScraper as executePluginScraperUniFfi
 import com.fluxa.core.uniffi.fluxaCoreVersion
+import com.fluxa.core.uniffi.getPluginScraperSettingsLayout as getPluginScraperSettingsLayoutUniFfi
 import com.fluxa.core.uniffi.headlessEngineCompleteEffectJson
 import com.fluxa.core.uniffi.headlessEngineDispatchJson
 import com.fluxa.core.uniffi.headlessEngineSnapshotJson
@@ -91,9 +92,23 @@ object FluxaCoreUniFfi {
     fun executePluginScraper(
         client: PluginHttpClient,
         code: String,
+        scraperId: String,
+        scraperSettingsJson: String,
         tmdbId: String,
         mediaType: String,
         season: Int?,
         episode: Int?
-    ): String = executePluginScraperUniFfi(client, code, tmdbId, mediaType, season, episode)
+    ): String = executePluginScraperUniFfi(
+        client,
+        code,
+        scraperId,
+        scraperSettingsJson,
+        tmdbId,
+        mediaType,
+        season,
+        episode
+    )
+
+    fun getPluginScraperSettingsLayout(code: String, scraperId: String): String =
+        getPluginScraperSettingsLayoutUniFfi(code, scraperId)
 }

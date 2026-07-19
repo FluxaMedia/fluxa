@@ -38,6 +38,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Icon
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.plugins.PluginRepositoryUiModel
 import com.fluxa.app.plugins.PluginScraperUiModel
@@ -57,8 +60,22 @@ fun PluginsSettingsRoute(
         onAddRepository = viewModel::addRepository,
         onRemoveRepository = viewModel::removeRepository,
         onToggleScraper = viewModel::toggleScraper,
+        onOpenScraperSettings = viewModel::openScraperSettings,
         onBackRequested = onBackRequested
     )
+
+    val settingsSheet = viewModel.settingsSheet
+    if (settingsSheet != null) {
+        PluginScraperSettingsSheet(
+            scraperName = settingsSheet.scraper.name,
+            language = language,
+            loading = settingsSheet.loading,
+            fields = settingsSheet.fields,
+            initialValues = settingsSheet.scraper.settings,
+            onDismiss = viewModel::dismissScraperSettings,
+            onSave = { values -> viewModel.saveScraperSettings(settingsSheet.scraper.id, values) }
+        )
+    }
 }
 
 @Composable
@@ -68,6 +85,7 @@ fun PluginsSettingsScreen(
     onAddRepository: (String) -> Unit,
     onRemoveRepository: (String) -> Unit,
     onToggleScraper: (String, Boolean) -> Unit,
+    onOpenScraperSettings: (PluginScraperUiModel) -> Unit,
     onBackRequested: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -123,7 +141,12 @@ fun PluginsSettingsScreen(
                     )
                 } else {
                     state.scrapers.forEach { scraper ->
-                        PluginScraperRow(scraper = scraper, onToggle = { enabled -> onToggleScraper(scraper.id, enabled) })
+                        PluginScraperRow(
+                            scraper = scraper,
+                            language = language,
+                            onToggle = { enabled -> onToggleScraper(scraper.id, enabled) },
+                            onOpenSettings = { onOpenScraperSettings(scraper) }
+                        )
                     }
                 }
                 Spacer(Modifier.height(120.dp))
@@ -214,7 +237,12 @@ private fun PluginRepositoryRow(
 }
 
 @Composable
-private fun PluginScraperRow(scraper: PluginScraperUiModel, onToggle: (Boolean) -> Unit) {
+private fun PluginScraperRow(
+    scraper: PluginScraperUiModel,
+    language: String?,
+    onToggle: (Boolean) -> Unit,
+    onOpenSettings: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -223,6 +251,24 @@ private fun PluginScraperRow(scraper: PluginScraperUiModel, onToggle: (Boolean) 
         Column(modifier = Modifier.weight(1f)) {
             Text(scraper.name, color = Color.White)
             Text(scraper.supportedTypes.joinToString(", "), color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
+        }
+        if (scraper.hasSettings) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .clickable(onClick = onOpenSettings),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Settings,
+                    contentDescription = AppStrings.t(language, "settings.plugins.settings"),
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(Modifier.width(8.dp))
         }
         Switch(
             checked = scraper.enabled,

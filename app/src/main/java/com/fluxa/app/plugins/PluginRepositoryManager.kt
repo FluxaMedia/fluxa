@@ -54,6 +54,23 @@ data class PluginsUiState(
     val error: String? = null
 )
 
+data class PluginSettingsOptionUiModel(
+    val label: String,
+    val value: String
+)
+
+data class PluginSettingsFieldUiModel(
+    val key: String,
+    val type: String,
+    val label: String,
+    val description: String? = null,
+    val placeholder: String? = null,
+    val isPassword: Boolean = false,
+    val defaultValue: String? = null,
+    val defaultBoolean: Boolean = false,
+    val options: List<PluginSettingsOptionUiModel> = emptyList()
+)
+
 private data class PersistedScraperOverride(
     val enabled: Boolean = true,
     val settings: Map<String, Any?> = emptyMap()
@@ -156,13 +173,70 @@ class PluginRepositoryManager @Inject constructor(
     ): List<Stream> = withContext(Dispatchers.IO) {
         val code = fetchScraperCode(scraper) ?: return@withContext emptyList()
         try {
-            val rawJson = FluxaCoreUniFfi.executePluginScraper(pluginHttpClient, code, tmdbId, mediaType, season, episode)
+            val rawJson = FluxaCoreUniFfi.executePluginScraper(
+                pluginHttpClient,
+                code,
+                scraper.id,
+                gson.toJson(scraper.settings),
+                tmdbId,
+                mediaType,
+                season,
+                episode
+            )
             val normalized = FluxaCoreUniFfi.coreInvokeValue("pluginStreamResultsToStreams", rawJson)
             val streams: List<Stream> = gson.fromJson(normalized, streamListType) ?: emptyList()
             streams.map { it.copy(addonName = scraper.name) }
         } catch (e: Exception) {
             Log.w("PluginRepositoryManager", "scraper ${scraper.id} failed", e)
             emptyList()
+        }
+    }
+
+    suspend fun getSettingsLayout(scraper: PluginScraperUiModel): List<PluginSettingsFieldUiModel> =
+        withContext(Dispatchers.IO) {
+            val code = fetchScraperCode(scraper) ?: return@withContext emptyList()
+            try {
+                val layoutJson = FluxaCoreUniFfi.getPluginScraperSettingsLayout(code, scraper.id)
+                parseSettingsLayout(layoutJson)
+            } catch (e: Exception) {
+                Log.w("PluginRepositoryManager", "settings layout for ${scraper.id} failed", e)
+                emptyList()
+            }
+        }
+
+    private fun parseSettingsLayout(layoutJson: String): List<PluginSettingsFieldUiModel> {
+        val elements = try {
+            com.google.gson.JsonParser.parseString(layoutJson).asJsonArray
+        } catch (e: Exception) {
+            return emptyList()
+        }
+        return elements.mapNotNull { element ->
+            val field = element.asJsonObject
+            val type = field.get("type")?.asString ?: return@mapNotNull null
+            val key = field.get("key")?.asString ?: ""
+            val label = field.get("label")?.asString ?: ""
+            val optionsArray = field.get("options")?.takeIf { it.isJsonArray }?.asJsonArray
+            val options = optionsArray?.map { option ->
+                val optionObject = option.asJsonObject
+                PluginSettingsOptionUiModel(
+                    label = optionObject.get("label")?.asString ?: "",
+                    value = optionObject.get("value")?.asString ?: ""
+                )
+            } ?: emptyList()
+            val defaultValueElement = field.get("defaultValue")
+            val defaultIsBoolean = defaultValueElement?.isJsonPrimitive == true &&
+                defaultValueElement.asJsonPrimitive.isBoolean
+            PluginSettingsFieldUiModel(
+                key = key,
+                type = type,
+                label = label,
+                description = field.get("description")?.asString,
+                placeholder = field.get("placeholder")?.asString,
+                isPassword = field.get("isPassword")?.asBoolean ?: false,
+                defaultValue = if (!defaultIsBoolean) defaultValueElement?.takeIf { !it.isJsonNull }?.asString else null,
+                defaultBoolean = if (defaultIsBoolean) defaultValueElement.asBoolean else false,
+                options = options
+            )
         }
     }
 
