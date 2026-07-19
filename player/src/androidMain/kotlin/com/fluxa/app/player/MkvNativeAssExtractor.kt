@@ -114,15 +114,37 @@ object MkvNativeAssExtractor {
     private fun fetchAttachmentsViaSeekHead(url: String, headers: Map<String, String>): List<NativeAssFont>? {
         val head = openStream(url, headers, range = 0L until HEAD_SCAN_BYTES, httpClient = playbackFontClient).use { it.readBytes() }
         val position = EbmlAttachmentScanner.findAttachmentsPosition(head) ?: return null
-        val header = openStream(url, headers, range = position until position + 16L, httpClient = playbackFontClient).use { it.readBytes() }
+        val blob = openStream(url, headers, range = position until position + MAX_ATTACHMENTS_BYTES, httpClient = playbackFontClient)
+            .use(::readAttachmentsElement)
+            ?: return null
+        return EbmlAttachmentScanner.scanFonts(blob)
+    }
+
+    private fun readAttachmentsElement(stream: InputStream): ByteArray? {
+        val header = ByteArray(16)
+        var headerRead = 0
+        while (headerRead < header.size) {
+            val n = stream.read(header, headerRead, header.size - headerRead)
+            if (n <= 0) return null
+            headerRead += n
+        }
         val length = EbmlAttachmentScanner.attachmentsElementLength(header) ?: return null
         if (length > MAX_ATTACHMENTS_BYTES) {
-            LibassDebugLog.w("attachments element too large position=$position length=$length")
+            LibassDebugLog.w("attachments element too large length=$length")
             return null
         }
-        LibassDebugLog.d("attachments element located position=$position length=$length")
-        val blob = openStream(url, headers, range = position until position + length, httpClient = playbackFontClient).use { it.readBytes() }
-        return EbmlAttachmentScanner.scanFonts(blob)
+        val out = ByteArrayOutputStream(length.toInt())
+        out.write(header)
+        var remaining = length - header.size
+        val chunk = ByteArray(64 * 1024)
+        while (remaining > 0) {
+            val n = stream.read(chunk, 0, minOf(chunk.size.toLong(), remaining).toInt())
+            if (n <= 0) break
+            out.write(chunk, 0, n)
+            remaining -= n
+        }
+        if (remaining > 0) return null
+        return out.toByteArray()
     }
 
     fun scanFontAttachments(bytes: ByteArray): List<NativeAssFont> {
