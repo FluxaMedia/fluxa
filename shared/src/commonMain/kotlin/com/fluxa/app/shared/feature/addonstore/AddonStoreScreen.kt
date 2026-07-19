@@ -34,7 +34,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
@@ -42,9 +41,14 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,15 +77,22 @@ fun AddonStoreScreen(
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    var backFocused by remember { mutableStateOf(false) }
                     Box(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.05f))
+                            .onFocusChanged { backFocused = it.isFocused }
+                            .background(if (backFocused) Color.White else Color.White.copy(alpha = 0.05f))
                             .clickable(onClick = onBackRequested),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null,
+                            tint = if (backFocused) Color.Black else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                     Text(
                         text = AppStrings.t(language, "auto.addons"),
@@ -254,12 +265,14 @@ private fun CloudstreamRepoItem(
     onRemove: () -> Unit,
     onClick: () -> Unit
 ) {
+    var focused by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .background(if (focused) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.04f))
+            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
@@ -283,9 +296,7 @@ private fun CloudstreamRepoItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
-            }
+            AddonIconButton(icon = Icons.Filled.Close, tint = Color.White.copy(alpha = 0.5f), onClick = onRemove)
         }
     }
 }
@@ -326,28 +337,30 @@ private fun InstalledAddonItem(
                 )
                 if (addon.canRemove) {
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (onConfigure != null) {
-                            IconButton(onClick = onConfigure) {
-                                Icon(Icons.Filled.Settings, contentDescription = null, tint = Color.White.copy(alpha = 0.68f), modifier = Modifier.size(18.dp))
-                            }
+                            AddonIconButton(icon = Icons.Filled.Settings, onClick = onConfigure)
                         }
-                        IconButton(onClick = onRefresh, enabled = !addon.isRefreshing) {
-                            if (addon.isRefreshing) {
+                        if (addon.isRefreshing) {
+                            Box(modifier = Modifier.size(36.dp), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(color = Color.White.copy(alpha = 0.68f), strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                            } else {
-                                Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White.copy(alpha = 0.68f), modifier = Modifier.size(18.dp))
                             }
+                        } else {
+                            AddonIconButton(icon = Icons.Filled.Refresh, onClick = onRefresh)
                         }
-                        IconButton(onClick = onMoveUp, enabled = addon.canMoveUp) {
-                            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = null, tint = Color.White.copy(alpha = if (addon.canMoveUp) 0.68f else 0.22f))
-                        }
-                        IconButton(onClick = onMoveDown, enabled = addon.canMoveDown) {
-                            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Color.White.copy(alpha = if (addon.canMoveDown) 0.68f else 0.22f))
-                        }
-                        IconButton(onClick = onRemove) {
-                            Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.62f), modifier = Modifier.size(18.dp))
-                        }
+                        AddonIconButton(
+                            icon = Icons.Filled.KeyboardArrowUp,
+                            enabled = addon.canMoveUp,
+                            tint = Color.White.copy(alpha = if (addon.canMoveUp) 0.68f else 0.22f),
+                            onClick = onMoveUp
+                        )
+                        AddonIconButton(
+                            icon = Icons.Filled.KeyboardArrowDown,
+                            enabled = addon.canMoveDown,
+                            tint = Color.White.copy(alpha = if (addon.canMoveDown) 0.68f else 0.22f),
+                            onClick = onMoveDown
+                        )
+                        AddonIconButton(icon = Icons.Filled.Close, tint = Color.White.copy(alpha = 0.62f), onClick = onRemove)
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -448,9 +461,13 @@ private fun CloudstreamPluginItem(
     onClick: () -> Unit
 ) {
     val accentColor = if (plugin.isInstalled) FluxaColors.successGreen else Color.White.copy(alpha = 0.6f)
+    var focused by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .background(if (focused) Color.White.copy(alpha = 0.14f) else Color.Transparent)
             .clickable(enabled = !isInstalling, onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -488,6 +505,27 @@ private fun CloudstreamPluginItem(
                 modifier = Modifier.size(20.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun AddonIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean = true,
+    tint: Color = Color.White.copy(alpha = 0.68f),
+    onClick: () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .onFocusChanged { focused = it.isFocused }
+            .background(if (focused) Color.White else Color.Transparent)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = if (focused) Color.Black else tint, modifier = Modifier.size(18.dp))
     }
 }
 
