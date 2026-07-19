@@ -969,6 +969,8 @@
   "player.exoplayer": "ExoPlayer",
   "player.mpv": "MPV",
   "settings.amoled": "AMOLED",
+  "settings.liquid_glass": "Sıvı Cam",
+  "settings.liquid_glass_desc": "Gezinme çubuğuna buzlu, yarı saydam bir cam görünümü verir.",
   "preview.sample_title": "The Last of Us",
   "integration.connected_accounts": "Trakt.tv, MAL, Simkl",
   "integration.login_page_title": "%s TV - Giriş Yap",

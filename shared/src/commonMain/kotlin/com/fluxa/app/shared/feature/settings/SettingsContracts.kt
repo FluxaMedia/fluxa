@@ -60,6 +60,7 @@ data class SettingsGeneralUiModel(
 data class SettingsAppearanceUiModel(
     val accentColorArgb: Long = 0xFFFFFFFFL,
     val amoledMode: Boolean = false,
+    val liquidGlassMode: Boolean = false,
     val animationsEnabled: Boolean = true,
     val floatingBottomBar: Boolean = false,
     val bottomBarLabels: Boolean = false

@@ -21,6 +21,7 @@ private val SETTINGS_SEARCH_KEYS: List<Pair<String, SettingsCategory>> = listOf(
     "auto.background_playback" to SettingsCategory.General,
     "auto.accent_color" to SettingsCategory.Appearance,
     "settings.amoled" to SettingsCategory.Appearance,
+    "settings.liquid_glass" to SettingsCategory.Appearance,
     "auto.disable_animations" to SettingsCategory.Appearance,
     "settings.appearance_home_screen" to SettingsCategory.AppearanceHome,
     "auto.card_corners" to SettingsCategory.AppearanceHome,

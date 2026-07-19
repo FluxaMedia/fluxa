@@ -454,6 +454,7 @@ fun FluxaApp(
                     destination = state.destination,
                     accentColorArgb = profileState?.activeProfile?.accentColorArgb,
                     floating = settingsState?.appearance?.floatingBottomBar == true,
+                    liquidGlass = settingsState?.appearance?.liquidGlassMode == true,
                     showLabels = settingsState?.appearance?.bottomBarLabels == true,
                     showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
                     profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
@@ -486,6 +487,7 @@ private fun FluxaNavigationBar(
     destination: FluxaDestination,
     accentColorArgb: Long?,
     floating: Boolean,
+    liquidGlass: Boolean,
     showLabels: Boolean,
     showProfile: Boolean,
     profileAvatarUrl: String?,
@@ -512,7 +514,20 @@ private fun FluxaNavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(barShape)
-                .background(if (floating) Color(0xF2222222) else Color(0xFF111111))
+                .then(
+                    if (liquidGlass) {
+                        Modifier
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color(0x33FFFFFF), Color(0x1AFFFFFF))
+                                )
+                            )
+                            .background(if (floating) Color(0x99222222) else Color(0x99111111))
+                            .border(1.dp, Color(0x26FFFFFF), barShape)
+                    } else {
+                        Modifier.background(if (floating) Color(0xF2222222) else Color(0xFF111111))
+                    }
+                )
                 .padding(horizontal = 12.dp)
                 .height(if (showLabels) 68.dp else 64.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,

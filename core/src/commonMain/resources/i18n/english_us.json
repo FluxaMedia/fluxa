@@ -969,6 +969,8 @@
   "player.exoplayer": "ExoPlayer",
   "player.mpv": "MPV",
   "settings.amoled": "AMOLED",
+  "settings.liquid_glass": "Liquid Glass",
+  "settings.liquid_glass_desc": "Gives the navigation bar a frosted, translucent glass look.",
   "preview.sample_title": "The Last of Us",
   "integration.connected_accounts": "Trakt.tv, MAL, Simkl",
   "integration.login_page_title": "%s TV - Sign In",

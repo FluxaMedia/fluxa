@@ -41,6 +41,7 @@ class AppleSettingsDataSource : SettingsDataSource {
     override suspend fun updateAppearance(value: SettingsAppearanceUiModel) {
         defaults.setDouble(value.accentColorArgb.toDouble(), K.accentColorArgb)
         defaults.setBool(value.amoledMode, K.amoledMode)
+        defaults.setBool(value.liquidGlassMode, K.liquidGlassMode)
         defaults.setBool(value.animationsEnabled, K.animationsEnabled)
         defaults.setBool(value.floatingBottomBar, K.floatingBottomBar)
         defaults.setBool(value.bottomBarLabels, K.bottomBarLabels)
@@ -223,6 +224,7 @@ class AppleSettingsDataSource : SettingsDataSource {
         appearance = SettingsAppearanceUiModel(
             accentColorArgb = defaults.objectForKey(K.accentColorArgb)?.let { defaults.doubleForKey(K.accentColorArgb).toLong() } ?: 0xFFFFFFFFL,
             amoledMode = defaults.boolOrDefault(K.amoledMode, false),
+            liquidGlassMode = defaults.boolOrDefault(K.liquidGlassMode, false),
             animationsEnabled = defaults.boolOrDefault(K.animationsEnabled, true),
             floatingBottomBar = defaults.boolOrDefault(K.floatingBottomBar, false),
             bottomBarLabels = defaults.boolOrDefault(K.bottomBarLabels, false)
@@ -320,6 +322,7 @@ class AppleSettingsDataSource : SettingsDataSource {
         const val backgroundPlayback = "fluxa.apple.settings.backgroundPlayback"
         const val accentColorArgb = "fluxa.apple.settings.accentColorArgb"
         const val amoledMode = "fluxa.apple.settings.amoledMode"
+        const val liquidGlassMode = "fluxa.apple.settings.liquidGlassMode"
         const val animationsEnabled = "fluxa.apple.settings.animationsEnabled"
         const val homeTopBarEnabled = "fluxa.apple.settings.homeTopBarEnabled"
         const val floatingBottomBar = "fluxa.apple.settings.floatingBottomBar"

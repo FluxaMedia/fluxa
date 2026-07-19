@@ -114,6 +114,7 @@ data class UserProfile(
     val cardCornerPreset: String? = "medium",
     val interfaceDensity: String? = "medium",
     val amoledMode: Boolean? = false,
+    val liquidGlassMode: Boolean? = false,
     val posterWidthPreset: String? = "medium",
     val posterLandscapeMode: Boolean? = false,
     val posterHideTitles: Boolean? = false,
@@ -218,6 +219,7 @@ data class UserProfile(
     }
     val safeUseChapterSkip: Boolean get() = useChapterSkip ?: true
     val safeContentWarningsEnabled: Boolean get() = contentWarningsEnabled ?: true
+    val safeLiquidGlassMode: Boolean get() = liquidGlassMode ?: false
     val safeDownloadSourceRegexPattern: String get() = downloadSourceRegexPattern.orEmpty()
     val safeDownloadSubtitleLanguage: String get() = downloadSubtitleLanguage?.takeIf { it in setOf("off", "preferred", "tr", "en", "ja", "es", "fr", "de") } ?: "preferred"
     val safeMpvCustomOptions: String get() = mpvCustomOptions.orEmpty()

@@ -652,6 +652,9 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
             }
         }
         SettingsToggleRow(AppStrings.t(lang, "settings.amoled"), value = model.amoledMode) { onAction(SettingsAction.AppearanceChanged(model.copy(amoledMode = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.liquid_glass"), description = AppStrings.t(lang, "settings.liquid_glass_desc"), value = model.liquidGlassMode) {
+            onAction(SettingsAction.AppearanceChanged(model.copy(liquidGlassMode = it)))
+        }
         SettingsToggleRow(AppStrings.t(lang, "auto.disable_animations"), value = !model.animationsEnabled) {
             onAction(SettingsAction.AppearanceChanged(model.copy(animationsEnabled = !it)))
         }

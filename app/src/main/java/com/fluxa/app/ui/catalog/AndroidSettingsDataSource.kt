@@ -173,6 +173,7 @@ class AndroidSettingsDataSource(
             appearance = SettingsAppearanceUiModel(
                 accentColorArgb = profile.safeAccentColorArgb.toLong() and 0xffffffffL,
                 amoledMode = profile.safeAmoledMode,
+                liquidGlassMode = profile.safeLiquidGlassMode,
                 animationsEnabled = profile.safeAnimationsEnabled,
                 floatingBottomBar = profile.floatingBottomBar ?: false,
                 bottomBarLabels = profile.bottomBarLabels ?: false
@@ -294,6 +295,7 @@ class AndroidSettingsDataSource(
             accentColorArgb = value.accentColorArgb.toInt(),
             amoledMode = value.amoledMode,
             appTheme = if (value.amoledMode) "dark" else it.appTheme,
+            liquidGlassMode = value.liquidGlassMode,
             animationsEnabled = value.animationsEnabled,
             floatingBottomBar = value.floatingBottomBar,
             bottomBarLabels = value.bottomBarLabels
