@@ -422,6 +422,14 @@ fun FluxaApp(
                     onBackRequested = onAddonStoreBackRequested,
                     modifier = Modifier.fillMaxSize()
                 )
+                state.destination == FluxaDestination.Auth && authState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.auth.TvAuthScreen(
+                    state = authState,
+                    language = state.language,
+                    onAction = onAuthAction,
+                    nuvioIcon = nuvioIcon,
+                    stremioIcon = stremioIcon,
+                    modifier = Modifier.fillMaxSize()
+                )
                 state.destination == FluxaDestination.Auth && authState != null -> AuthScreen(
                     state = authState,
                     language = state.language,
