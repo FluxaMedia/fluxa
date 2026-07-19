@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -349,6 +350,7 @@ private fun SettingsHubContent(
     SettingsGroupCard {
         SettingsNavRow(AppStrings.t(lang, "auto.catalogs"), icon = Icons.AutoMirrored.Filled.LibraryBooks) { onNavigate(SettingsCategory.Content) }
         SettingsNavRow(AppStrings.t(lang, "auto.add_ons"), icon = Icons.Filled.Extension) { onAction(SettingsAction.ManageAddonsRequested) }
+        SettingsNavRow(AppStrings.t(lang, "settings.plugins.manage"), icon = Icons.Filled.Widgets) { onAction(SettingsAction.ManagePluginsRequested) }
         SettingsNavRow(AppStrings.t(lang, "auto.downloads"), icon = Icons.Filled.Download) { onNavigate(SettingsCategory.Downloads) }
     }
 

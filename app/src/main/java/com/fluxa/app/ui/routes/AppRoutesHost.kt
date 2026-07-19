@@ -88,6 +88,16 @@ internal fun AppRoutesHost(
         }
     }
 
+    var showPluginsSettings by remember { mutableStateOf(false) }
+
+    if (showPluginsSettings) {
+        com.fluxa.app.ui.settings.PluginsSettingsRoute(
+            language = activeProfile?.language,
+            onBackRequested = { showPluginsSettings = false }
+        )
+        return
+    }
+
     CompositionLocalProvider(
         LocalHeroTrailerSurface provides { url, cues, onActiveSubtitleChanged, trailerModifier ->
             HeroTrailerVideoSurface(url, cues, onActiveSubtitleChanged, trailerModifier)
@@ -226,6 +236,7 @@ internal fun AppRoutesHost(
         settingsPopRequestId = settingsPopRequestId,
         onSettingsCanPopChanged = onSettingsCanPopChanged,
         onManageAddonsRequested = { onNavigateToDestination(FluxaDestination.AddonStore) },
+        onManagePluginsRequested = { showPluginsSettings = true },
         onConnectStremioRequested = {
             val profile = activeProfile
             if (profile?.authKey.isNullOrBlank()) {

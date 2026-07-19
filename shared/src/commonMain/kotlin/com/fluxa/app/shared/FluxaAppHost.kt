@@ -82,6 +82,7 @@ fun FluxaAppHost(
     onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
     onProfileSelectionCompleted: (String) -> Unit = {},
     onManageAddonsRequested: () -> Unit = {},
+    onManagePluginsRequested: () -> Unit = {},
     onConnectStremioRequested: () -> Unit = {},
     onConnectNuvioRequested: () -> Unit = {},
     onConnectTraktRequested: () -> Unit = {},
@@ -128,6 +129,7 @@ fun FluxaAppHost(
         onBiometricAuthRequested = onBiometricAuthRequested,
         onProfileSelectionCompleted = onProfileSelectionCompleted,
         onManageAddonsRequested = onManageAddonsRequested,
+        onManagePluginsRequested = onManagePluginsRequested,
         onConnectStremioRequested = onConnectStremioRequested,
         onConnectNuvioRequested = onConnectNuvioRequested,
         onConnectTraktRequested = onConnectTraktRequested,
@@ -177,6 +179,7 @@ fun FluxaAppHost(
     onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
     onProfileSelectionCompleted: (String) -> Unit = {},
     onManageAddonsRequested: () -> Unit = {},
+    onManagePluginsRequested: () -> Unit = {},
     onConnectStremioRequested: () -> Unit = {},
     onConnectNuvioRequested: () -> Unit = {},
     onConnectTraktRequested: () -> Unit = {},
@@ -439,6 +442,7 @@ fun FluxaAppHost(
             when (action) {
                 SettingsAction.SwitchProfilesRequested -> appState.selectDestination(FluxaDestination.ProfileList)
                 SettingsAction.ManageAddonsRequested -> onManageAddonsRequested()
+                SettingsAction.ManagePluginsRequested -> onManagePluginsRequested()
                 SettingsAction.ConnectStremioRequested -> onConnectStremioRequested()
                 SettingsAction.ConnectNuvioRequested -> onConnectNuvioRequested()
                 SettingsAction.ConnectTraktRequested -> onConnectTraktRequested()

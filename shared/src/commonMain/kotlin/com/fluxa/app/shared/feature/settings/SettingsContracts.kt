@@ -220,6 +220,7 @@ sealed interface SettingsAction {
     data class HomeFeedMoved(val key: String, val direction: Int) : SettingsAction
     data class TopTenFeedToggled(val key: String) : SettingsAction
     data object ManageAddonsRequested : SettingsAction
+    data object ManagePluginsRequested : SettingsAction
     data object ConnectStremioRequested : SettingsAction
     data object ConnectNuvioRequested : SettingsAction
     data object ConnectTraktRequested : SettingsAction

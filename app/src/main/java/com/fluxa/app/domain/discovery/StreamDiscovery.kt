@@ -4,12 +4,15 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.NativeStreamDiscoveryExecutionPolicy
+import com.fluxa.app.plugins.PluginRepositoryManager
+import com.fluxa.app.plugins.PluginScraperUiModel
 
 import com.fluxa.app.BuildConfig
 import com.fluxa.app.common.Constants
 import android.util.Log
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -37,7 +40,11 @@ data class StreamDiscoveryRequest(
     val cs3PluginApis: List<com.lagradost.cloudstream3.MainAPI> = emptyList(),
     val cs3SearchQuery: String? = null,
     val cs3OriginalName: String? = null,
-    val cs3Year: Int? = null
+    val cs3Year: Int? = null,
+    val pluginScrapers: List<PluginScraperUiModel> = emptyList(),
+    val pluginTmdbId: String? = null,
+    val pluginSeason: Int? = null,
+    val pluginEpisode: Int? = null
 )
 
 object StreamSourceOrderPolicy {
@@ -50,8 +57,32 @@ object StreamSourceOrderPolicy {
 class StreamDiscoveryUseCase @Inject constructor(
     private val repository: StremioRepository,
     private val cloudStreamDiscoveryClient: CloudStreamDiscoveryClient,
-    private val cache: StreamDiscoveryMemoryCache
+    private val cache: StreamDiscoveryMemoryCache,
+    private val pluginRepositoryManager: PluginRepositoryManager
 ) {
+    private suspend fun runPluginScrapers(request: StreamDiscoveryRequest, timeoutMs: Long): List<Stream> = coroutineScope {
+        val scrapers = request.pluginScrapers.filter { it.enabled }
+        if (scrapers.isEmpty()) return@coroutineScope emptyList()
+        scrapers.map { scraper ->
+            async {
+                try {
+                    withTimeoutOrNull(timeoutMs) {
+                        pluginRepositoryManager.executeScraper(
+                            scraper = scraper,
+                            tmdbId = request.pluginTmdbId.orEmpty(),
+                            mediaType = request.type,
+                            season = request.pluginSeason,
+                            episode = request.pluginEpisode
+                        )
+                    } ?: emptyList()
+                } catch (e: Exception) {
+                    Log.w("StreamDiscovery", "plugin scraper ${scraper.id} failed", e)
+                    emptyList()
+                }
+            }
+        }.awaitAll().flatten()
+    }
+
     suspend fun discover(request: StreamDiscoveryRequest): List<Stream> = supervisorScope {
         val policy = executionPolicy(request)
         cache.get(policy.cacheKey)?.let { return@supervisorScope it }
@@ -109,6 +140,8 @@ class StreamDiscoveryUseCase @Inject constructor(
             }
         }
 
+        val pluginDeferred = async { runPluginScrapers(request, Constants.Timeouts.PLUGIN_SEARCH) }
+
         val allStreams = mutableListOf<Stream>()
 
         val remoteResults = remoteDeferred.awaitAll().flatten()
@@ -117,8 +150,11 @@ class StreamDiscoveryUseCase @Inject constructor(
         val cs3Results = cs3Deferred.await()
         allStreams.addAll(cs3Results)
 
+        val pluginResults = pluginDeferred.await()
+        allStreams.addAll(pluginResults)
+
         logDebug("StreamDiscovery") {
-            "discover id=${request.id} remote=${remoteResults.size} cs3=${cs3Results.size} addons=${policy.addonRequests.size}"
+            "discover id=${request.id} remote=${remoteResults.size} cs3=${cs3Results.size} plugins=${pluginResults.size} addons=${policy.addonRequests.size}"
         }
 
         val ranked = finalizeStreams(allStreams, request)
@@ -154,6 +190,8 @@ class StreamDiscoveryUseCase @Inject constructor(
             .toMutableMap()
         val hasCs3 = policy.cloudstreamRequest != null
         if (hasCs3) pendingPerAddon["CloudStream"] = 1
+        val hasPlugins = request.pluginScrapers.any { it.enabled }
+        if (hasPlugins) pendingPerAddon["PluginScrapers"] = 1
 
         val initialLoading = pendingPerAddon.keys.toList()
         if (initialLoading.isNotEmpty()) {
@@ -228,11 +266,14 @@ class StreamDiscoveryUseCase @Inject constructor(
             }
         }
 
+        val pluginDeferred = async { runPluginScrapers(request, Constants.Timeouts.PLUGIN_SEARCH) }
+
         val progressJobs = buildList {
             remoteDeferred.forEach { (addonRequest, deferred) ->
                 add(launch { onRequestDone(addonRequest.addonName, deferred.await()) })
             }
             if (hasCs3) add(launch { onRequestDone("CloudStream", cs3Deferred.await()) })
+            if (hasPlugins) add(launch { onRequestDone("PluginScrapers", pluginDeferred.await()) })
         }
         progressJobs.joinAll()
 

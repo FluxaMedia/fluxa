@@ -127,6 +127,26 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("PluginScraperClient")
+    fun providePluginScraperOkHttpClient(connectionPool: okhttp3.ConnectionPool): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectionPool(connectionPool)
+            .addInterceptor { chain ->
+                chain.proceed(
+                    chain.request().newBuilder()
+                        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                        .build()
+                )
+            }
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    @Provides
+    @Singleton
     @Named("ImageClient")
     fun provideImageOkHttpClient(connectionPool: okhttp3.ConnectionPool): OkHttpClient {
         val imageDispatcher = okhttp3.Dispatcher().apply {

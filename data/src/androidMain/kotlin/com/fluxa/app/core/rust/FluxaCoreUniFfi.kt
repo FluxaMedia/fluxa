@@ -1,5 +1,6 @@
 package com.fluxa.app.core.rust
 
+import com.fluxa.core.uniffi.PluginHttpClient
 import com.fluxa.core.uniffi.appCoreDispatchJson
 import com.fluxa.core.uniffi.appCoreStateJson
 import com.fluxa.core.uniffi.coreInvoke as coreInvokeUniFfi
@@ -7,6 +8,7 @@ import com.fluxa.core.uniffi.createAppCoreStateJson
 import com.fluxa.core.uniffi.createHeadlessEngineJson
 import com.fluxa.core.uniffi.destroyAppCoreStateJson
 import com.fluxa.core.uniffi.destroyHeadlessEngineJson
+import com.fluxa.core.uniffi.executePluginScraper as executePluginScraperUniFfi
 import com.fluxa.core.uniffi.fluxaCoreVersion
 import com.fluxa.core.uniffi.headlessEngineCompleteEffectJson
 import com.fluxa.core.uniffi.headlessEngineDispatchJson
@@ -85,4 +87,13 @@ object FluxaCoreUniFfi {
         }
         return envelope.get("value")
     }
+
+    fun executePluginScraper(
+        client: PluginHttpClient,
+        code: String,
+        tmdbId: String,
+        mediaType: String,
+        season: Int?,
+        episode: Int?
+    ): String = executePluginScraperUniFfi(client, code, tmdbId, mediaType, season, episode)
 }

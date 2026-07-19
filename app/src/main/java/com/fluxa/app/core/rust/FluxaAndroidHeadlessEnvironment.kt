@@ -92,6 +92,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
+import javax.inject.Named
 
 data class StreamProgressUpdate(
     val requestId: String,
@@ -113,7 +114,8 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal val profileManager: ProfileManager,
     internal val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
     internal val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,
-    internal val httpEffectExecutor: HttpEffectExecutor
+    internal val httpEffectExecutor: HttpEffectExecutor,
+    @param:Named("PluginScraperClient") internal val pluginScraperHttpClient: OkHttpClient
 ) : HeadlessPlatformEnvironment {
 
     internal val primeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -159,6 +161,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 "startTorrentStream" -> startTorrentStream(effect)
                 "stopTorrent" -> stopTorrent(effect)
                 "fetchAddonManifest" -> fetchAddonManifest(effect)
+                "fetchPluginManifest" -> fetchPluginManifest(effect)
                 "refreshInstalledAddons" -> refreshInstalledAddons(effect)
                 "fetchAddonResource" -> fetchAddonResource(effect)
                 "readHomeBootstrap" -> readHomeBootstrap(effect)
@@ -570,6 +573,18 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             forceRefresh = effect.payload.boolean("forceRefresh")
         )
         return ok(effect, manifest)
+    }
+
+    private fun fetchPluginManifest(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
+        val manifestUrl = effect.payload.string("manifestUrl")
+        val result = httpEffectExecutor.execute(pluginScraperHttpClient, manifestUrl)
+        val body = result.body
+        val statusCode = result.statusCode
+        if (result.error != null || statusCode == null || statusCode !in 200..299 || body == null) {
+            return error(effect, result.error ?: "http_${statusCode ?: 0}")
+        }
+        val manifest = FluxaCoreUniFfi.coreInvokeValue("pluginManifestParse", body)
+        return ok(effect, mapOf("manifestUrl" to manifestUrl, "manifest" to manifest))
     }
 
     private suspend fun refreshInstalledAddons(effect: NativeHeadlessEffect): HeadlessEffectCompletion {

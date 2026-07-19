@@ -35,6 +35,7 @@ class SettingsStore(
             is SettingsAction.HomeFeedMoved -> dataSource.moveHomeFeed(action.key, action.direction)
             is SettingsAction.TopTenFeedToggled -> dataSource.toggleTopTenFeed(action.key)
             SettingsAction.ManageAddonsRequested -> Unit
+            SettingsAction.ManagePluginsRequested -> Unit
             SettingsAction.ConnectStremioRequested -> Unit
             SettingsAction.ConnectNuvioRequested -> Unit
             SettingsAction.ConnectTraktRequested -> Unit
