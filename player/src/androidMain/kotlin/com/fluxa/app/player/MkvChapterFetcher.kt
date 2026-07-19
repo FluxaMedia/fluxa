@@ -7,48 +7,63 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-/**
- * ExoPlayer's MatroskaExtractor doesn't surface the Chapters element, so we read a
- * prefix of the file ourselves over HTTP and hand the bytes to the Rust EBML parser.
- * Chapters always precede Cluster (frame) data in mkvmerge/ffmpeg output, so a few
- * megabytes is normally enough — if Chapters isn't found in that prefix, there's
- * either none or the file was muxed unusually and we just report no chapters.
- */
 object MkvChapterFetcher {
-    private const val PREFIX_BYTES = 4L * 1024 * 1024
+    private const val HEAD_BYTES = 64L * 1024
+    private const val SEEK_HINT_BYTES = 256L * 1024
     private val gson = Gson()
     private val client = OkHttpClient.Builder().build()
 
     suspend fun fetch(url: String, headers: Map<String, String> = emptyMap()): List<Chapter> = withContext(Dispatchers.IO) {
         runCatching {
-            val requestBuilder = Request.Builder()
-                .url(url)
-                .header("Range", "bytes=0-${PREFIX_BYTES - 1}")
-            StreamRequestPolicy.headersFor(url, headers).forEach { (key, value) -> requestBuilder.header(key, value) }
-            StreamRequestPolicy.refererFor(url)?.let { requestBuilder.header("Referer", it) }
+            val requestHeaders = StreamRequestPolicy.headersFor(url, headers)
+            val referer = StreamRequestPolicy.refererFor(url)
 
-            val bytes = client.newCall(requestBuilder.build()).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                if (response.code != 206 && (response.body.contentLength() < 0 || response.body.contentLength() > PREFIX_BYTES)) {
-                    return@use null
-                }
-                response.body.bytes()
-            } ?: return@runCatching emptyList()
+            val headBytes = fetchRange(url, requestHeaders, referer, 0, HEAD_BYTES) ?: return@runCatching emptyList()
+            val scan = parseScanJson(FluxaStreamingNative.parseMkvChapters(headBytes))
+            if (scan.chapters.isNotEmpty()) return@runCatching scan.chapters
 
-            val json = FluxaStreamingNative.parseMkvChapters(bytes)
-            parseChaptersJson(json)
+            val seekOffset = scan.seekOffset ?: return@runCatching emptyList()
+            val hintBytes = fetchRange(url, requestHeaders, referer, seekOffset, SEEK_HINT_BYTES) ?: return@runCatching emptyList()
+            parseChaptersJson(FluxaStreamingNative.parseMkvChaptersAtOffset(hintBytes))
         }.getOrDefault(emptyList())
     }
 
+    private fun fetchRange(url: String, headers: Map<String, String>, referer: String?, start: Long, length: Long): ByteArray? {
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .header("Range", "bytes=$start-${start + length - 1}")
+        headers.forEach { (key, value) -> requestBuilder.header(key, value) }
+        referer?.let { requestBuilder.header("Referer", it) }
+
+        return client.newCall(requestBuilder.build()).execute().use { response ->
+            if (!response.isSuccessful) return@use null
+            if (response.code != 206 && (response.body.contentLength() < 0 || response.body.contentLength() > length)) {
+                return@use null
+            }
+            response.body.bytes()
+        }
+    }
+
     private data class ChapterEntry(val title: String?, val startMs: Long?)
+    private data class ChapterScanResponse(val chapters: List<ChapterEntry>?, val seekOffset: Long?)
+
+    private data class ChapterScan(val chapters: List<Chapter>, val seekOffset: Long?)
+
+    private fun parseScanJson(json: String): ChapterScan {
+        val response = runCatching { gson.fromJson(json, ChapterScanResponse::class.java) }.getOrNull()
+            ?: return ChapterScan(emptyList(), null)
+        return ChapterScan(response.chapters.orEmpty().toChapters(), response.seekOffset)
+    }
 
     private fun parseChaptersJson(json: String): List<Chapter> {
         val entries = runCatching {
             gson.fromJson(json, Array<ChapterEntry>::class.java)
         }.getOrNull() ?: return emptyList()
-        return entries.mapNotNull { entry ->
-            val startMs = entry.startMs ?: return@mapNotNull null
-            Chapter(title = entry.title.orEmpty(), startMs = startMs)
-        }
+        return entries.toList().toChapters()
+    }
+
+    private fun List<ChapterEntry>.toChapters(): List<Chapter> = mapNotNull { entry ->
+        val startMs = entry.startMs ?: return@mapNotNull null
+        Chapter(title = entry.title.orEmpty(), startMs = startMs)
     }
 }

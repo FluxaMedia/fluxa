@@ -49,6 +49,10 @@ android {
 
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     splits {
         abi {
             isEnable = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }

@@ -48,6 +48,8 @@ object FluxaStreamingNative {
 
     fun parseMkvChapters(data: ByteArray): String = call { parseMkvChaptersNative(data) }
 
+    fun parseMkvChaptersAtOffset(data: ByteArray): String = call { parseMkvChaptersAtOffsetNative(data) }
+
     private inline fun <T> call(block: () -> T): T {
         check(loaded) { "Fluxa streaming engine native library is not loaded." }
         return block()
@@ -64,4 +66,5 @@ object FluxaStreamingNative {
     private external fun dvGetStreamStatsJsonNative(): String
     private external fun dvGetCurrentL1JsonNative(): String
     private external fun parseMkvChaptersNative(data: ByteArray): String
+    private external fun parseMkvChaptersAtOffsetNative(data: ByteArray): String
 }

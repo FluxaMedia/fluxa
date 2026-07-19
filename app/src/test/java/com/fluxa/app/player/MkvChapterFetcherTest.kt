@@ -38,7 +38,7 @@ class MkvChapterFetcherTest {
         assertEquals(listOf(Chapter("OP", 0), Chapter("Episode", 90_000)), chapters)
 
         val recorded = server.takeRequest()
-        assertEquals("bytes=0-4194303", recorded.getHeader("Range"))
+        assertEquals("bytes=0-65535", recorded.getHeader("Range"))
         assertTrue(recorded.getHeader("User-Agent").orEmpty().isNotBlank())
     }
 
@@ -63,6 +63,43 @@ class MkvChapterFetcherTest {
         val chapters = MkvChapterFetcher.fetch(server.url("/video.mkv").toString())
 
         assertEquals(emptyList<Chapter>(), chapters)
+    }
+
+    @Test
+    fun followsSeekHeadHintWhenChaptersIsPastFirstCluster() = runBlocking {
+        val seekIdBytes = idBytes(0x1043A770)
+        val seekEntry = ebmlElement(0x4DBB, ebmlElement(0x53AB, seekIdBytes) + ebmlElement(0x53AC, uint64Be(500_000)))
+        val seekHead = ebmlElement(0x114D9B74, seekEntry)
+        val cluster = ebmlElement(0x1F43B675, byteArrayOf(0x00))
+        val segmentContent = seekHead + cluster
+        val segmentHeaderBytes = idBytes(0x18538067) + ebmlVint(segmentContent.size.toLong())
+        val prefixBody = segmentHeaderBytes + segmentContent
+        val expectedOffset = segmentHeaderBytes.size + 500_000
+
+        val atom = chapterAtom(0L, "Intro")
+        val editionEntry = ebmlElement(0x45B9, atom)
+        val chaptersElem = ebmlElement(0x1043A770, editionEntry)
+
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(206)
+                .setHeader("Content-Range", "bytes 0-${prefixBody.size - 1}/${prefixBody.size * 100}")
+                .setBody(okio.Buffer().write(prefixBody))
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(206)
+                .setHeader("Content-Range", "bytes $expectedOffset-${expectedOffset + chaptersElem.size - 1}/${prefixBody.size * 100}")
+                .setBody(okio.Buffer().write(chaptersElem))
+        )
+
+        val chapters = MkvChapterFetcher.fetch(server.url("/video.mkv").toString())
+
+        assertEquals(listOf(Chapter("Intro", 0)), chapters)
+        assertEquals(2, server.requestCount)
+        server.takeRequest()
+        val secondRequest = server.takeRequest()
+        assertTrue(secondRequest.getHeader("Range")!!.startsWith("bytes=$expectedOffset-"))
     }
 
     private fun ebmlVint(value: Long): ByteArray = when {
