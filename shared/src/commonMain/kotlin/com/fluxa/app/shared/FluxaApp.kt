@@ -329,6 +329,7 @@ fun FluxaApp(
                     language = state.language,
                     onBack = onCategoryBackRequested,
                     onItemSelected = onCategoryItemSelected,
+                    deviceType = deviceType,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Search && searchState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.search.TvSearchScreen(

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.CatalogCard
+import com.fluxa.app.ui.catalog.DeviceType
 
 @Composable
 fun CategoryResultsScreen(
@@ -28,11 +29,15 @@ fun CategoryResultsScreen(
     language: String?,
     onBack: () -> Unit,
     onItemSelected: (CatalogItemUiModel) -> Unit,
+    deviceType: DeviceType = DeviceType.Mobile,
     modifier: Modifier = Modifier
 ) {
+    val isTv = deviceType == DeviceType.TV
     Column(modifier = modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 28.dp else 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -42,16 +47,16 @@ fun CategoryResultsScreen(
             Text(
                 text = title,
                 color = Color.White,
-                fontSize = 24.sp,
+                fontSize = if (isTv) 28.sp else 24.sp,
                 fontWeight = FontWeight.Bold
             )
         }
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(150.dp),
+            columns = GridCells.Adaptive(if (isTv) 170.dp else 150.dp),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = if (isTv) 48.dp else 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTv) 24.dp else 16.dp)
         ) {
             items(items, key = { "${it.type}:${it.id}" }) { item ->
                 CatalogCard(model = item.card, onClick = { onItemSelected(item) })
