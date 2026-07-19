@@ -326,7 +326,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             }
             ?.let { stream ->
                 val url = stream.playableUrl!!
-                val headers = stream.getHeaders()
+                val headers = stream.resolveHeaders()
                 primeScope.launch { MediaPlayerController.primeHttpStream(context, url, headers) }
             }
         return ok(effect, mapOf("count" to plan.count, "prewarmedUrl" to prewarmUrl))

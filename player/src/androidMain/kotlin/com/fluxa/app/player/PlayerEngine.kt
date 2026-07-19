@@ -103,7 +103,7 @@ class ExoPlayerEngine(
         _chapters.value = emptyList()
         chapterFetchJob?.cancel()
         chapterFetchJob = engineScope.launch {
-            val result = MkvChapterFetcher.fetch(url, stream?.getHeaders().orEmpty())
+            val result = MkvChapterFetcher.fetch(url, stream?.resolveHeaders().orEmpty())
             if (result.isNotEmpty()) {
                 _chapters.value = result
             }
@@ -185,7 +185,7 @@ class ExoPlayerEngine(
         dvHdr10PlusMode: String = "auto"
     ): ResolvedPlaybackUrl {
         stopLocalStreamServer()
-        val headers = stream?.getHeaders().orEmpty()
+        val headers = stream?.resolveHeaders().orEmpty()
         val caps = AndroidDolbyVisionCapabilities.detect(controller.context)
         val fallbackModeStr = dvMode.toRustString()
 
@@ -363,7 +363,7 @@ class MpvPlayerEngine(
 
     private fun resolveLocalStream(url: String, stream: Stream?): ResolvedPlaybackUrl {
         stopLocalStreamServer()
-        val headers = stream?.getHeaders().orEmpty()
+        val headers = stream?.resolveHeaders().orEmpty()
         if (!shouldUseLocalStreamServer(url, headers)) return ResolvedPlaybackUrl(url, headers)
         val session = FluxaLocalStreamServer.start(
             targetUrl = url,

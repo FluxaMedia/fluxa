@@ -227,7 +227,7 @@ internal object MediaSourceInfoBuilder {
             lines += "Debrid: ${value.isDebrid}"
             lines += "Sources: ${value.sources?.joinToString(", ") ?: "none"}"
             lines += "Behavior Hints: ${value.behaviorHints?.keys?.joinToString(", ") ?: "none"}"
-            val headerKeys = value.getHeaders().keys.joinToString(", ").ifBlank { "none" }
+            val headerKeys = value.resolveHeaders().keys.joinToString(", ").ifBlank { "none" }
             lines += "Request Headers: $headerKeys"
             value.subtitles.orEmpty().forEachIndexed { index, subtitle ->
                 lines += "Stream Subtitle[${index + 1}]: ${subtitle.lang ?: "unknown"} / ${subtitle.url.extensionOrUnknown()}"

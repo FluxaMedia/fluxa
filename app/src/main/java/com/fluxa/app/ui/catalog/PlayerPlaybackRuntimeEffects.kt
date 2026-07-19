@@ -369,7 +369,7 @@ internal fun PlayerPreparePlaybackEffect(
                     LibassDebugLog.d("starting local embedded ASS extraction url=${LibassDebugLog.urlSummary(playbackUrl)}")
                     val embeddedNativeAss = MkvNativeAssExtractor.extract(
                         url = playbackUrl,
-                        headers = chosenStream?.getHeaders().orEmpty()
+                        headers = chosenStream?.resolveHeaders().orEmpty()
                     )
                     LibassDebugLog.d("local embedded ASS extraction result tracks=${embeddedNativeAss.size}")
                     if (embeddedNativeAss.isNotEmpty()) {

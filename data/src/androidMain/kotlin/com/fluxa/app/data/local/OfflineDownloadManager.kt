@@ -70,7 +70,7 @@ class OfflineDownloadManager private constructor(private val context: Context) {
         val localBackground = downloadArtwork(video?.thumbnail ?: meta.background, File(folder, plan.backgroundFileName))
         val localLogo = downloadArtwork(meta.logo, File(folder, plan.logoFileName))
 
-        val headers = FluxaCoreNative.streamRequestHeaders(stream.getHeaders())
+        val headers = FluxaCoreNative.streamRequestHeaders(stream.resolveHeaders())
 
         val downloadedSubtitle = subtitle?.let { option ->
             subtitleFile?.let { file ->

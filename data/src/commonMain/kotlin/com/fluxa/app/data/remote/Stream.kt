@@ -19,27 +19,34 @@ data class Stream(
     val subtitles: List<SubtitleData>? = null,
     val sources: List<String>? = null,
     val behaviorHints: Map<String, Any>? = null,
+    val headers: Map<String, String>? = null,
+    val quality: String? = null,
+    val size: String? = null,
+    val provider: String? = null,
+    val seeders: Int? = null,
+    val peers: Int? = null,
     var addonName: String? = null,
     var isAutoSelected: Boolean = false
 ) {
     val legacyYtId: String? get() = yt_ID
 
-    fun getHeaders(): Map<String, String> {
-        val headers = mutableMapOf<String, String>()
+    fun resolveHeaders(): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        headers?.forEach { (key, value) -> result[key] = value }
         behaviorHints?.let { hints ->
             (hints["requestHeaders"] as? Map<*, *>)?.forEach { (key, value) ->
-                headers[key.toString()] = value.toString()
+                result[key.toString()] = value.toString()
             }
             (hints["proxyHeaders"] as? Map<*, *>)?.let { proxy ->
                 (proxy["request"] as? Map<*, *>)?.forEach { (key, value) ->
-                    headers[key.toString()] = value.toString()
+                    result[key.toString()] = value.toString()
                 }
             }
             (hints["referer"] as? String)
                 ?.takeIf { it.isNotBlank() }
-                ?.let { headers["referer"] = it }
+                ?.let { result["referer"] = it }
         }
-        return headers
+        return result
     }
 
     private fun metadataText(): String = listOfNotNull(name, title, description)

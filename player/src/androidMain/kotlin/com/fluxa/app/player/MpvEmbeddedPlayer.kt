@@ -453,7 +453,7 @@ class MpvEmbeddedPlayer(context: Context, private val customOptions: String = ""
     }
 
     private fun applyStreamOptions(url: String, stream: Stream?, preferredAudioLanguage: String?, preferredSubtitleLanguage: String?) {
-        val headers = StreamRequestPolicy.headersFor(url, stream?.getHeaders().orEmpty())
+        val headers = StreamRequestPolicy.headersFor(url, stream?.resolveHeaders().orEmpty())
         runCatching { mpv.setOptionString("user-agent", StreamRequestPolicy.DEFAULT_USER_AGENT) }
         runCatching { mpv.setOptionString("referrer", StreamRequestPolicy.refererFor(url).orEmpty()) }
         runCatching {
