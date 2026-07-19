@@ -63,7 +63,9 @@ class ExternalSyncPushCoordinator @Inject constructor(
         if (watched && !profile.anilistAccessToken.isNullOrBlank()) {
             launch {
                 val token = profile.anilistAccessToken
-                runCatching { pushAnilistListEntry(token, meta, "COMPLETED", episodes.size.takeIf { it > 0 }) }
+                val progress = episodes.mapNotNull { it.id?.let { id -> TraktIntegration.episodeLocator(id)?.episode } }.maxOrNull()
+                    ?: episodes.size.takeIf { it > 0 }
+                runCatching { pushAnilistListEntry(token, meta, "COMPLETED", progress) }
                     .onSuccess { success ->
                         if (success) profileManager.clearExternalSyncFailure(profile.id, "anilist")
                         else profileManager.recordExternalSyncFailure(profile.id, "anilist")
