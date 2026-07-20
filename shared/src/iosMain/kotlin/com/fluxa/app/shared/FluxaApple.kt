@@ -16,7 +16,9 @@ import com.fluxa.app.shared.platform.AppleDetailSnapshot
 import com.fluxa.app.shared.platform.AppleDetailStreamSnapshot
 import com.fluxa.app.shared.platform.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
+import com.fluxa.app.shared.platform.ApplePluginsActionSnapshot
 import com.fluxa.app.shared.platform.ApplePluginsDataSource
+import com.fluxa.app.shared.platform.ApplePluginsSnapshot
 import com.fluxa.app.shared.platform.AppleAuthDataSource
 import com.fluxa.app.shared.platform.AppleCatalogHomeDataSource
 import com.fluxa.app.shared.platform.AppleCalendarDataSource
@@ -113,6 +115,14 @@ object FluxaApple {
 
     fun updateLibrary(snapshot: AppleLibrarySnapshot) {
         libraryDataSource.update(snapshot)
+    }
+
+    fun setPluginsActionHandler(handler: (ApplePluginsActionSnapshot) -> Unit) {
+        pluginsDataSource.setOnActionRequested(handler)
+    }
+
+    fun updatePlugins(snapshot: ApplePluginsSnapshot) {
+        pluginsDataSource.update(snapshot)
     }
 
     fun parseAddonManifest(body: String): AppleAddonManifestSnapshot? = AppleStremioBridge.parseManifest(body)
