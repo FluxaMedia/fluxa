@@ -15,7 +15,9 @@ import com.fluxa.app.shared.platform.AppleDetailRequestSnapshot
 import com.fluxa.app.shared.platform.AppleDetailSnapshot
 import com.fluxa.app.shared.platform.AppleDetailStreamSnapshot
 import com.fluxa.app.shared.platform.ApplePlaybackRequestSnapshot
+import com.fluxa.app.shared.platform.AppleAddonStoreActionSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
+import com.fluxa.app.shared.platform.AppleAddonStoreSnapshot
 import com.fluxa.app.shared.platform.ApplePluginsActionSnapshot
 import com.fluxa.app.shared.platform.ApplePluginsDataSource
 import com.fluxa.app.shared.platform.ApplePluginsSnapshot
@@ -115,6 +117,14 @@ object FluxaApple {
 
     fun updateLibrary(snapshot: AppleLibrarySnapshot) {
         libraryDataSource.update(snapshot)
+    }
+
+    fun setAddonStoreActionHandler(handler: (AppleAddonStoreActionSnapshot) -> Unit) {
+        addonStoreDataSource.setOnActionRequested(handler)
+    }
+
+    fun updateAddonStore(snapshot: AppleAddonStoreSnapshot) {
+        addonStoreDataSource.update(snapshot)
     }
 
     fun setPluginsActionHandler(handler: (ApplePluginsActionSnapshot) -> Unit) {

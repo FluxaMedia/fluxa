@@ -1,8 +1,10 @@
 package com.fluxa.app.shared.platform
 
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
 import com.fluxa.app.shared.feature.addonstore.AddonStoreInputType
 import com.fluxa.app.shared.feature.addonstore.AddonStoreUiState
+import com.fluxa.app.shared.feature.addonstore.InstalledAddonUiModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,6 +15,43 @@ data class AppleAddonStoreActionSnapshot(
     val text: String? = null,
     val enabled: Boolean? = null,
     val direction: Int? = null
+)
+
+data class AppleInstalledAddonSnapshot(
+    val name: String,
+    val description: String,
+    val url: String,
+    val logoUrl: String?,
+    val version: String?,
+    val configurable: Boolean,
+    val isEnabled: Boolean,
+    val canMoveUp: Boolean,
+    val canMoveDown: Boolean,
+    val isRefreshing: Boolean
+)
+
+data class AppleAddonStoreSnapshot(
+    val installedAddons: List<AppleInstalledAddonSnapshot> = emptyList(),
+    val isLoading: Boolean = false,
+    val isSubmittingInput: Boolean = false,
+    val inputFailed: Boolean = false,
+    val addedAddonName: String? = null,
+    val clearInputOnSuccess: Boolean = false
+)
+
+private fun AppleInstalledAddonSnapshot.toUiModel(): InstalledAddonUiModel = InstalledAddonUiModel(
+    name = name,
+    description = description,
+    url = url,
+    logoUrl = logoUrl,
+    version = version,
+    configUrl = null,
+    configurable = configurable,
+    isEnabled = isEnabled,
+    canRemove = true,
+    canMoveUp = canMoveUp,
+    canMoveDown = canMoveDown,
+    isRefreshing = isRefreshing
 )
 
 class AppleAddonStoreDataSource : AddonStoreDataSource {
@@ -67,6 +106,18 @@ class AppleAddonStoreDataSource : AddonStoreDataSource {
 
     fun setOnActionRequested(handler: (AppleAddonStoreActionSnapshot) -> Unit) {
         onActionRequested = handler
+    }
+
+    fun update(snapshot: AppleAddonStoreSnapshot) {
+        state.value = state.value.copy(
+            installedAddons = snapshot.installedAddons.map { it.toUiModel() },
+            isLoading = snapshot.isLoading,
+            isSubmittingInput = snapshot.isSubmittingInput,
+            inputError = if (snapshot.inputFailed) AppStrings.t("en", "addons.manifest_unreachable") else null,
+            addedAddonName = snapshot.addedAddonName,
+            inputText = if (snapshot.clearInputOnSuccess) "" else state.value.inputText,
+            inputDetectedType = if (snapshot.clearInputOnSuccess) AddonStoreInputType.UNKNOWN else state.value.inputDetectedType
+        )
     }
 
     private fun postAction(action: AppleAddonStoreActionSnapshot) {
