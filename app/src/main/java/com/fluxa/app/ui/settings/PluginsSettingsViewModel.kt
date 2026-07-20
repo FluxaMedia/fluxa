@@ -43,6 +43,10 @@ class PluginsSettingsViewModel @Inject constructor(
         viewModelScope.launch { manager.removeRepository(manifestUrl) }
     }
 
+    fun refreshRepository(manifestUrl: String) {
+        viewModelScope.launch { manager.refreshRepository(manifestUrl) }
+    }
+
     fun toggleScraper(scraperId: String, enabled: Boolean) {
         viewModelScope.launch { manager.toggleScraper(scraperId, enabled) }
     }

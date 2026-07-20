@@ -133,6 +133,11 @@ class PluginRepositoryManager @Inject constructor(
         persistCurrentState()
     }
 
+    suspend fun refreshRepository(manifestUrl: String) {
+        runtime.dispatch(mapOf("type" to "pluginRepositoryAddRequested", "manifestUrl" to manifestUrl))
+        persistCurrentState()
+    }
+
     suspend fun toggleScraper(scraperId: String, enabled: Boolean) {
         runtime.dispatch(mapOf("type" to "pluginScraperToggled", "scraperId" to scraperId, "enabled" to enabled))
         persistCurrentState()

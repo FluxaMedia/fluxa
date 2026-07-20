@@ -282,9 +282,8 @@
   "settings.torrent_speed_default": "Varsayılan",
   "settings.torrent_speed_fast": "Hızlı",
   "settings.torrent_speed_ultra_fast": "Ultra Hızlı",
-  "settings.plugins.manage": "Kazıyıcı Eklentiler",
-  "settings.plugins.title": "Kazıyıcı Eklentiler",
-  "settings.plugins.repositories": "Depolar",
+  "settings.plugins.manage": "Eklentiler",
+  "settings.plugins.title": "Eklentiler",
   "settings.plugins.add_repository": "Depo Ekle",
   "settings.plugins.repository_url": "Depo manifest URL'si",
   "settings.plugins.repository_url_placeholder": "https://example.com/repo.json",
@@ -292,11 +291,8 @@
   "settings.plugins.cancel": "İptal",
   "settings.plugins.remove": "Kaldır",
   "settings.plugins.refresh": "Yenile",
-  "settings.plugins.scrapers": "Kazıyıcılar",
   "settings.plugins.no_repositories": "Henüz depo eklenmedi.",
-  "settings.plugins.no_scrapers": "Kullanılabilir kazıyıcı yok.",
   "settings.plugins.scraper_count": "%s kazıyıcı",
-  "settings.plugins.adding": "Depo ekleniyor…",
   "settings.plugins.error": "Depo eklenemedi: %s",
   "settings.plugins.settings": "Ayarlar",
   "settings.plugins.settings_title": "%s Ayarları",
@@ -1128,5 +1124,7 @@
   "settings.bottom_bar_labels_desc": "Gezinme simgelerinin altında hedef adlarını gösterir.",
   "settings.home_top_bar": "Ana sayfa üst çubuğu",
   "settings.home_top_bar_desc": "Hero alanının üzerinde Ana Sayfa, Diziler, Filmler, bildirimler ve profili gösterir.",
-  "common.add_to_library": "Kitaplığa ekle"
+  "common.add_to_library": "Kitaplığa ekle",
+  "settings.plugins.installed_repositories": "Eklenti Depoları",
+  "settings.plugins.adding": "Depo ekleniyor…"
 }

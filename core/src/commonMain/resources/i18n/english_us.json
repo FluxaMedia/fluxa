@@ -282,9 +282,8 @@
   "settings.torrent_speed_default": "Default",
   "settings.torrent_speed_fast": "Fast",
   "settings.torrent_speed_ultra_fast": "Ultra Fast",
-  "settings.plugins.manage": "Scraper Plugins",
-  "settings.plugins.title": "Scraper Plugins",
-  "settings.plugins.repositories": "Repositories",
+  "settings.plugins.manage": "Plugins",
+  "settings.plugins.title": "Plugins",
   "settings.plugins.add_repository": "Add Repository",
   "settings.plugins.repository_url": "Repository manifest URL",
   "settings.plugins.repository_url_placeholder": "https://example.com/repo.json",
@@ -292,11 +291,8 @@
   "settings.plugins.cancel": "Cancel",
   "settings.plugins.remove": "Remove",
   "settings.plugins.refresh": "Refresh",
-  "settings.plugins.scrapers": "Scrapers",
   "settings.plugins.no_repositories": "No repositories added yet.",
-  "settings.plugins.no_scrapers": "No scrapers available.",
   "settings.plugins.scraper_count": "%s scrapers",
-  "settings.plugins.adding": "Adding repository…",
   "settings.plugins.error": "Failed to add repository: %s",
   "settings.plugins.settings": "Settings",
   "settings.plugins.settings_title": "%s Settings",
@@ -1128,5 +1124,7 @@
   "settings.bottom_bar_labels_desc": "Display destination names below navigation icons.",
   "settings.home_top_bar": "Home top bar",
   "settings.home_top_bar_desc": "Show Home, Series, Movies, notifications, and profile above the hero.",
-  "common.add_to_library": "Add to Library"
+  "common.add_to_library": "Add to Library",
+  "settings.plugins.installed_repositories": "Plugin Repositories",
+  "settings.plugins.adding": "Adding repository…"
 }
