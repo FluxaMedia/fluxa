@@ -47,6 +47,7 @@ build_rust_core() {
 
     local bindgen_env=()
     local deployment_env=()
+    local sdkroot_env=()
     if [[ -n "$rust_target" ]]; then
         local sdk clang_triple sdk_path
         sdk="$(apple_sdk_for_rust_target "$rust_target")"
@@ -57,6 +58,7 @@ build_rust_core() {
                 "LIBCLANG_PATH=$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib"
                 "BINDGEN_EXTRA_CLANG_ARGS=--target=$clang_triple --sysroot=$sdk_path -isysroot $sdk_path"
             )
+            sdkroot_env=("SDKROOT=$sdk_path")
         fi
         case "$sdk" in
             iphoneos | iphonesimulator)
@@ -74,6 +76,7 @@ build_rust_core() {
     local env_args=()
     [[ ${#bindgen_env[@]} -gt 0 ]] && env_args+=("${bindgen_env[@]}")
     [[ ${#deployment_env[@]} -gt 0 ]] && env_args+=("${deployment_env[@]}")
+    [[ ${#sdkroot_env[@]} -gt 0 ]] && env_args+=("${sdkroot_env[@]}")
     if [[ ${#env_args[@]} -gt 0 ]]; then
         env "${env_args[@]}" "${cargo_cmd[@]}"
     else
