@@ -9,6 +9,8 @@ struct FluxaIosApp: App {
     private let catalogStartup: FluxaAppleCatalogStartup
     private let pluginsManager: FluxaApplePluginRepositoryManager
     private let pluginsStartup: FluxaApplePluginsStartup
+    private let addonStoreManager: FluxaAppleAddonStoreManager
+    private let addonStoreStartup: FluxaAppleAddonStoreStartup
 
     init() {
         let runtime = requireFluxaAppleHeadlessRuntime()
@@ -28,6 +30,10 @@ struct FluxaIosApp: App {
         self.pluginsManager = pluginsManager
         let pluginsStartup = FluxaApplePluginsStartup(manager: pluginsManager)
         self.pluginsStartup = pluginsStartup
+        let addonStoreManager = FluxaAppleAddonStoreManager()
+        self.addonStoreManager = addonStoreManager
+        let addonStoreStartup = FluxaAppleAddonStoreStartup(manager: addonStoreManager)
+        self.addonStoreStartup = addonStoreStartup
         FluxaApple.shared.setCatalogHomeRefreshHandler {
             Task { @MainActor in
                 await catalogStartup.refresh()
@@ -82,6 +88,14 @@ struct FluxaIosApp: App {
         }
         Task { @MainActor in
             await pluginsStartup.start()
+        }
+        FluxaApple.shared.setAddonStoreActionHandler { action in
+            Task { @MainActor in
+                await addonStoreStartup.handle(action)
+            }
+        }
+        Task { @MainActor in
+            await addonStoreStartup.start()
         }
     }
 
