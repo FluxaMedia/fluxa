@@ -33,6 +33,11 @@ data class AppleAddonCatalogSnapshot(
 
 data class AppleAddonManifestSnapshot(
     val id: String,
+    val name: String,
+    val description: String?,
+    val logo: String?,
+    val version: String?,
+    val configurable: Boolean,
     val supportsCatalog: Boolean,
     val catalogs: List<AppleAddonCatalogSnapshot>? = null
 )
@@ -80,8 +85,15 @@ object AppleStremioBridge {
                 else -> false
             }
         }
+        val id = root["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val name = root["name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: id
         AppleAddonManifestSnapshot(
-            id = root["id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            id = id,
+            name = name,
+            description = root["description"]?.jsonPrimitive?.contentOrNull,
+            logo = root["logo"]?.jsonPrimitive?.contentOrNull,
+            version = root["version"]?.jsonPrimitive?.contentOrNull,
+            configurable = (root["behaviorHints"] as? JsonObject)?.get("configurable")?.jsonPrimitive?.booleanOrNull ?: false,
             supportsCatalog = supportsCatalog,
             catalogs = (root["catalogs"] as? JsonArray)?.mapNotNull(::parseCatalog)
         )
