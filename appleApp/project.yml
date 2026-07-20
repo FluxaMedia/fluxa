@@ -43,6 +43,7 @@ targets:
         excludes:
           - FluxaAppleAddonCatalogResolver.swift
           - FluxaAppleAddonResourceLoader.swift
+          - FluxaAppleAddonStoreManager.swift
           - FluxaAppleCatalogBootstrap.swift
           - FluxaAppleCatalogLoader.swift
       - path: tvOS
