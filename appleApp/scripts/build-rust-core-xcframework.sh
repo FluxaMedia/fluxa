@@ -60,9 +60,9 @@ build_rust_core() {
     fi
 
     if [[ "$profile" == "Release" ]]; then
-        env "${bindgen_env[@]}" cargo build --no-default-features --features ios "$@" --release
+        env "${bindgen_env[@]:-}" cargo build --no-default-features --features ios "$@" --release
     else
-        env "${bindgen_env[@]}" cargo build --no-default-features --features ios "$@"
+        env "${bindgen_env[@]:-}" cargo build --no-default-features --features ios "$@"
     fi
 }
 
