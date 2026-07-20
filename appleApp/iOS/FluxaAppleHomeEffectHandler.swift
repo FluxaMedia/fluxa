@@ -26,7 +26,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         switch effect.type {
         case "readHomeBootstrap":
             let rows = try await catalogBootstrap.loadRows(
-                localAddonUrls: configurationStore.localAddonUrls()
+                localAddonUrls: configurationStore.enabledAddonUrls()
             )
             return .object([
                 "categories": .array(rows.map(homeCategory)),
@@ -106,7 +106,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             throw URLError(.cannotParseResponse)
         }
         let transportUrl = string(payload["sourceAddonTransportUrl"])
-            ?? configurationStore.localAddonUrls().first
+            ?? configurationStore.enabledAddonUrls().first
         guard let transportUrl else {
             throw URLError(.fileDoesNotExist)
         }
@@ -123,7 +123,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             throw URLError(.cannotParseResponse)
         }
         let items = try await catalogBootstrap.loadSearchItems(
-            localAddonUrls: configurationStore.localAddonUrls(),
+            localAddonUrls: configurationStore.enabledAddonUrls(),
             query: query
         )
         return .object(["results": .array(items.map(homeMeta))])
@@ -143,7 +143,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         let selectedCatalogKey = string(filters["catalogKey"])
         let genre = string(filters["genre"])
         let catalogs = try await addonCatalogResolver.resolveDiscoverCatalogs(
-            localAddonUrls: configurationStore.localAddonUrls(),
+            localAddonUrls: configurationStore.enabledAddonUrls(),
             contentType: contentType
         )
         let selectedCatalogs = selectedCatalogKey.map { key in catalogs.filter { $0.key == key } } ?? []
@@ -181,7 +181,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         }
         let selectedCatalogKey = string(payload["selectedCatalogKey"])
         let catalogs = try await addonCatalogResolver.resolveDiscoverCatalogs(
-            localAddonUrls: configurationStore.localAddonUrls(),
+            localAddonUrls: configurationStore.enabledAddonUrls(),
             contentType: contentType
         )
         let selectedCatalog = catalogs.first { $0.key == selectedCatalogKey }

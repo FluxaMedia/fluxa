@@ -75,7 +75,7 @@ final class FluxaAppleDetailStartup {
         contentType: String,
         id: String
     ) async -> [AppleDetailStreamSnapshot] {
-        let addons = ([request.addonTransportUrl].compactMap { $0 } + configurationStore.localAddonUrls())
+        let addons = ([request.addonTransportUrl].compactMap { $0 } + configurationStore.enabledAddonUrls())
             .reduce(into: [String]()) { result, addon in
                 if !result.contains(addon) {
                     result.append(addon)
