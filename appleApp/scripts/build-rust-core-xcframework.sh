@@ -13,11 +13,56 @@ else
     cargo_profile="debug"
 fi
 
+apple_sdk_for_rust_target() {
+    case "$1" in
+        aarch64-apple-ios) echo "iphoneos" ;;
+        aarch64-apple-ios-sim | x86_64-apple-ios) echo "iphonesimulator" ;;
+        aarch64-apple-tvos) echo "appletvos" ;;
+        aarch64-apple-tvos-sim) echo "appletvsimulator" ;;
+        *) echo "" ;;
+    esac
+}
+
+apple_clang_triple_for_rust_target() {
+    case "$1" in
+        aarch64-apple-ios) echo "arm64-apple-ios" ;;
+        aarch64-apple-ios-sim) echo "arm64-apple-ios-simulator" ;;
+        x86_64-apple-ios) echo "x86_64-apple-ios-simulator" ;;
+        aarch64-apple-tvos) echo "arm64-apple-tvos" ;;
+        aarch64-apple-tvos-sim) echo "arm64-apple-tvos-simulator" ;;
+        *) echo "" ;;
+    esac
+}
+
 build_rust_core() {
+    local rust_target=""
+    local prev_was_target_flag=0
+    for arg in "$@"; do
+        if [[ "$prev_was_target_flag" == "1" ]]; then
+            rust_target="$arg"
+            break
+        fi
+        [[ "$arg" == "--target" ]] && prev_was_target_flag=1 || prev_was_target_flag=0
+    done
+
+    local bindgen_env=()
+    if [[ -n "$rust_target" ]]; then
+        local sdk clang_triple sdk_path
+        sdk="$(apple_sdk_for_rust_target "$rust_target")"
+        clang_triple="$(apple_clang_triple_for_rust_target "$rust_target")"
+        if [[ -n "$sdk" && -n "$clang_triple" ]]; then
+            sdk_path="$(xcrun --sdk "$sdk" --show-sdk-path)"
+            bindgen_env=(
+                "LIBCLANG_PATH=$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib"
+                "BINDGEN_EXTRA_CLANG_ARGS=--target=$clang_triple --sysroot=$sdk_path -isysroot $sdk_path"
+            )
+        fi
+    fi
+
     if [[ "$profile" == "Release" ]]; then
-        cargo build --no-default-features --features ios "$@" --release
+        env "${bindgen_env[@]}" cargo build --no-default-features --features ios "$@" --release
     else
-        cargo build --no-default-features --features ios "$@"
+        env "${bindgen_env[@]}" cargo build --no-default-features --features ios "$@"
     fi
 }
 
