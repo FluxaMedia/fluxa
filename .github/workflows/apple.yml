@@ -73,6 +73,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: fluxa-core
+          cache-on-failure: true
 
       - name: Set up XcodeGen
         run: |
@@ -147,6 +148,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: fluxa-core
+          cache-on-failure: true
 
       - name: Set up XcodeGen
         run: |

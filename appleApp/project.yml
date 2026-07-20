@@ -46,6 +46,7 @@ targets:
           - FluxaAppleAddonStoreManager.swift
           - FluxaAppleCatalogBootstrap.swift
           - FluxaAppleCatalogLoader.swift
+          - FluxaApplePluginRepositoryManager.swift
       - path: tvOS
       - path: Generated/FluxaRustCore.swift
     resources:
