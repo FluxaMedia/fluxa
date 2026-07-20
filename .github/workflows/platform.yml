@@ -27,6 +27,12 @@ on:
       - "settings.gradle.kts"
       - "build.gradle.kts"
   workflow_dispatch:
+    inputs:
+      fluxa_core_ref:
+        description: Fluxa Rust core ref to build
+        required: false
+        default: master
+        type: string
 
 permissions:
   contents: read
@@ -38,6 +44,15 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: FluxaMedia/fluxa-core
+          path: fluxa-core
+          ref: ${{ inputs.fluxa_core_ref || 'master' }}
+
+      - name: Link sibling Rust core
+        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
 
       - uses: actions/setup-java@v4
         with:
