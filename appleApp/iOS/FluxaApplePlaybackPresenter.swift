@@ -54,7 +54,8 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                     backgroundUrl: nil,
                     streamLabel: title,
                     releaseInfo: nil,
-                    runtime: nil
+                    runtime: nil,
+                    seasonsCount: nil
                 )
             )
             self.observe(player)
