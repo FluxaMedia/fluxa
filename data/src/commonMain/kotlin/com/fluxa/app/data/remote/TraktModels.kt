@@ -222,7 +222,7 @@ data class AnilistTokenRequest(
 
 data class AnilistGraphQlRequest(
     val query: String,
-    val variables: Map<String, @JvmSuppressWildcards Any?> = emptyMap()
+    val variables: Map<String, Any?> = emptyMap()
 )
 
 @Serializable

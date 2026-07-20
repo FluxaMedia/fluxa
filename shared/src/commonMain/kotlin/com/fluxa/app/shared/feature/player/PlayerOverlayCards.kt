@@ -53,7 +53,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import java.util.Locale
 
 fun playerText(lang: String?, key: String): String {
     return AppStrings.t(lang, "player.$key")
@@ -178,8 +177,8 @@ private fun NextEpisodeSkipCard(
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = remainingSeconds?.let { "${AppStrings.t(lang, "auto.next_episode").uppercase(Locale.ROOT)} · ${it}s" }
-                    ?: AppStrings.t(lang, "auto.next_episode").uppercase(Locale.ROOT),
+                text = remainingSeconds?.let { "${AppStrings.t(lang, "auto.next_episode").uppercase()} · ${it}s" }
+                    ?: AppStrings.t(lang, "auto.next_episode").uppercase(),
                 color = Color.White,
                 fontWeight = FontWeight.Black,
                 fontSize = if (deviceType == DeviceType.Mobile) 10.sp else 14.sp,
