@@ -46,6 +46,7 @@ build_rust_core() {
     done
 
     local bindgen_env=()
+    local deployment_env=()
     if [[ -n "$rust_target" ]]; then
         local sdk clang_triple sdk_path
         sdk="$(apple_sdk_for_rust_target "$rust_target")"
@@ -57,13 +58,24 @@ build_rust_core() {
                 "BINDGEN_EXTRA_CLANG_ARGS=--target=$clang_triple --sysroot=$sdk_path -isysroot $sdk_path"
             )
         fi
+        case "$sdk" in
+            iphoneos | iphonesimulator)
+                deployment_env=("IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET:-18.5}")
+                ;;
+            appletvos | appletvsimulator)
+                deployment_env=("TVOS_DEPLOYMENT_TARGET=${TVOS_DEPLOYMENT_TARGET:-18.5}")
+                ;;
+        esac
     fi
 
     local cargo_cmd=(cargo build --no-default-features --features ios "$@")
     [[ "$profile" == "Release" ]] && cargo_cmd+=(--release)
 
-    if [[ ${#bindgen_env[@]} -gt 0 ]]; then
-        env "${bindgen_env[@]}" "${cargo_cmd[@]}"
+    local env_args=()
+    [[ ${#bindgen_env[@]} -gt 0 ]] && env_args+=("${bindgen_env[@]}")
+    [[ ${#deployment_env[@]} -gt 0 ]] && env_args+=("${deployment_env[@]}")
+    if [[ ${#env_args[@]} -gt 0 ]]; then
+        env "${env_args[@]}" "${cargo_cmd[@]}"
     else
         "${cargo_cmd[@]}"
     fi
