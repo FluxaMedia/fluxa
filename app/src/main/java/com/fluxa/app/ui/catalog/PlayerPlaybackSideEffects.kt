@@ -17,7 +17,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.TraktIntegration
-import com.fluxa.app.shared.feature.player.withCurrentEpisodeArtwork
+import com.fluxa.app.data.remote.withCurrentEpisodeArtwork
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

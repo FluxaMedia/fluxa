@@ -475,3 +475,9 @@ object MetaDetailSerializer : KSerializer<MetaDetail> {
         return metaDetailFromJson(json.decodeJsonElement())
     }
 }
+
+fun Meta.withCurrentEpisodeArtwork(artwork: String?): Meta {
+    val episodeArtwork = artwork?.takeIf { it.isNotBlank() } ?: return this
+    if (type != "series") return this
+    return copy(continueWatchingPoster = episodeArtwork, continueWatchingBackground = episodeArtwork)
+}

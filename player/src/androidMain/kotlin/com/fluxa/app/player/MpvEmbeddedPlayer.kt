@@ -1,5 +1,8 @@
 package com.fluxa.app.player
 
+import com.fluxa.app.shared.feature.player.Chapter
+import com.fluxa.app.shared.feature.player.MediaTrack
+
 import android.content.Context
 import android.graphics.Color
 import android.media.AudioFormat

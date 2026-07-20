@@ -165,7 +165,7 @@ class HomeViewModel @Inject constructor(
     val billboardWatchlist: StateFlow<Boolean> = billboardState.watchlist
     val billboardNextEpisode: StateFlow<String?> = billboardState.nextEpisode
     val billboardTrailerUrl: StateFlow<String?> = billboardState.trailerUrl
-    val billboardTrailerSubtitleCues: StateFlow<List<com.fluxa.app.player.TrailerCue>> = billboardState.trailerSubtitleCues
+    val billboardTrailerSubtitleCues: StateFlow<List<com.fluxa.app.shared.feature.player.TrailerCue>> = billboardState.trailerSubtitleCues
     val billboardSeasonPosterUrl: StateFlow<String?> = billboardState.seasonPosterUrl
 
     private val _isDirectLoading = MutableStateFlow(false)

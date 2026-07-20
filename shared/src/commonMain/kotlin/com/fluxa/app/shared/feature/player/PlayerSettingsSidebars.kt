@@ -1,7 +1,6 @@
 package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
-import com.fluxa.app.player.MediaTrack
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaIcons
 

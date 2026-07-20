@@ -1,5 +1,6 @@
 package com.fluxa.app.player
 
+import com.fluxa.app.shared.feature.player.Chapter
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer

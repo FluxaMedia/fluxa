@@ -1,13 +1,10 @@
 package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
-import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalDeviceType
-import com.fluxa.app.ui.catalog.streamRawBody
-import com.fluxa.app.ui.catalog.streamSourceHeader
+import com.fluxa.app.ui.catalog.StreamSourceUiModel
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -50,7 +47,7 @@ import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 
 @Composable
-fun SourceSidebar(streams: List<Stream>, currentUrl: String, deviceType: DeviceType, lang: String = "en", onSelect: (String) -> Unit, onClose: (() -> Unit)? = null) {
+fun SourceSidebar(streams: List<StreamSourceUiModel>, currentUrl: String, deviceType: DeviceType, lang: String = "en", onSelect: (String) -> Unit, onClose: (() -> Unit)? = null) {
     PlayerSidebarShell(
         title = AppStrings.t(lang, "player.source_selection_title"),
         deviceType = deviceType,
@@ -58,14 +55,14 @@ fun SourceSidebar(streams: List<Stream>, currentUrl: String, deviceType: DeviceT
         cardWidth = 420.dp
     ) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            items(streams, key = { it.playableUrl ?: (it.title.orEmpty() + it.name.orEmpty()) }) { stream ->
+            items(streams, key = { it.playableUrl ?: it.header }) { stream ->
                 val playableUrl = stream.playableUrl
                 TrackItem(
                     modifier = Modifier.animateItem(),
-                    title = stream.streamSourceHeader(),
+                    title = stream.header,
                     isSelected = stream.playableUrl == currentUrl,
                     onClick = { playableUrl?.let(onSelect) },
-                    subtitle = stream.streamRawBody(),
+                    subtitle = stream.body,
                     deviceType = deviceType,
                     leadingIcon = FluxaIcons.PlayArrow
                 )
@@ -313,10 +310,4 @@ fun TrackItem(
             trailingIcon != null -> Icon(trailingIcon, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
         }
     }
-}
-
-fun Meta.withCurrentEpisodeArtwork(artwork: String?): Meta {
-    val episodeArtwork = artwork?.takeIf { it.isNotBlank() } ?: return this
-    if (type != "series") return this
-    return copy(continueWatchingPoster = episodeArtwork, continueWatchingBackground = episodeArtwork)
 }

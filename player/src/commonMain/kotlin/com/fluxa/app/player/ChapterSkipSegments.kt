@@ -1,5 +1,7 @@
 package com.fluxa.app.player
 
+import com.fluxa.app.shared.feature.player.Chapter
+
 import com.fluxa.app.data.remote.IntroTimestamps
 
 private fun classifyChapterSkipType(title: String): String? {

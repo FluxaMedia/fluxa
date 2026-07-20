@@ -1,5 +1,7 @@
 package com.fluxa.app.player
 
+import com.fluxa.app.shared.feature.player.TorrentStreamStatus
+
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities

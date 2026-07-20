@@ -2,7 +2,6 @@
 package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
-import com.fluxa.app.player.Chapter
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions

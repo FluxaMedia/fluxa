@@ -52,12 +52,11 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.repository.IntroDbSubmitResult
-import com.fluxa.app.player.MediaTrack
+import com.fluxa.app.shared.feature.player.MediaTrack
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
-import com.fluxa.app.player.TorrentStreamStatus
+import com.fluxa.app.shared.feature.player.TorrentStreamStatus
 import com.fluxa.app.shared.feature.player.PlayerTopIconButton
-import com.fluxa.app.shared.feature.player.dismissKey
 import com.fluxa.app.shared.feature.player.playerInputControls
 import com.fluxa.app.shared.feature.player.playerText
 
@@ -288,7 +287,7 @@ internal fun PlayerScreenContent(
             seekBackwardMs = seekBackwardMs,
             hasPreviousEpisode = state.previousEpisodePending != null,
             hasNextEpisode = state.nextEpisodePending != null,
-            nextEpisode = state.nextEpisodePending,
+            nextEpisode = state.nextEpisodePending?.toNextEpisodePreviewUiModel(),
             onPlayPrevious = playPrevious,
             onPlayNext = playNext,
             onCast = smartCast,
@@ -310,11 +309,11 @@ internal fun PlayerScreenContent(
                 state.nextEpisodePending?.let { viewModel.onNextEpisodeCardShown(meta, it.id, activeProfile) }
             },
             timelinePosition = { if (useMpvBackend) state.engine.timeline.position else state.timelinePosition },
-            skipSegments = state.skipSegments,
+            skipSegments = state.skipSegments.map { it.toSkipSegmentUiModel() },
             chapters = state.chapters,
             dismissedSkipSegments = state.dismissedSkipSegments,
             onSkipSegment = { segment ->
-                if (segment.type == "outro") playNext() else seekSafely(segment.endTime)
+                if (segment.type == "outro") playNext() else seekSafely(segment.endMs)
                 state.dismissedSkipSegments = state.dismissedSkipSegments + segment.dismissKey()
                 state.introAutoSkipped = true
                 state.segmentSkipFeedbackVersion += 1

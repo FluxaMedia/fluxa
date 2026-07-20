@@ -36,16 +36,14 @@ import androidx.media3.ui.PlayerView
 import com.fluxa.app.R
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.Stream
-import com.fluxa.app.data.remote.Video
-import com.fluxa.app.player.MediaTrack
+import com.fluxa.app.shared.feature.player.MediaTrack
 import com.fluxa.app.player.ExternalSubtitleTrack
 import com.fluxa.app.player.NativeAssTrack
 import com.fluxa.app.player.MpvAndroidSurfaceView
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
-import com.fluxa.app.player.TorrentStreamStatus
+import com.fluxa.app.shared.feature.player.TorrentStreamStatus
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.shared.feature.player.ArtisticLoadingOverlay
 import com.fluxa.app.shared.feature.player.MarkSegmentSidebar
@@ -118,7 +116,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
     seekBackwardMs: Long,
     hasPreviousEpisode: Boolean,
     hasNextEpisode: Boolean,
-    nextEpisode: Video?,
+    nextEpisode: NextEpisodePreviewUiModel?,
     onPlayPrevious: () -> Unit,
     onPlayNext: () -> Unit,
     onCast: () -> Unit,
@@ -128,11 +126,11 @@ internal fun BoxScope.PlayerPlaybackSurface(
     onClose: () -> Unit,
     onNextEpisodeCardShown: () -> Unit,
     timelinePosition: () -> Long,
-    skipSegments: List<IntroTimestamps>,
-    chapters: List<com.fluxa.app.player.Chapter> = emptyList(),
+    skipSegments: List<SkipSegmentUiModel>,
+    chapters: List<com.fluxa.app.shared.feature.player.Chapter> = emptyList(),
     dismissedSkipSegments: Set<String>,
-    onSkipSegment: (IntroTimestamps) -> Unit,
-    onDismissSegment: (IntroTimestamps) -> Unit,
+    onSkipSegment: (SkipSegmentUiModel) -> Unit,
+    onDismissSegment: (SkipSegmentUiModel) -> Unit,
     showSegmentSkipFeedback: Boolean,
     holdSpeedVisible: Boolean,
     showVolumeBar: Boolean,
@@ -502,7 +500,7 @@ internal fun PlayerSettingsPanel(
         )
     } else if (activeSettingsTab == 4) {
         SourceSidebar(
-            streams = currentStreams,
+            streams = currentStreams.map { it.toSourceUiModel() },
             currentUrl = currentUrl.orEmpty(),
             deviceType = deviceType,
             lang = lang,

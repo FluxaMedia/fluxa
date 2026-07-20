@@ -1,10 +1,10 @@
 package com.fluxa.app.shared.feature.player
 
-import com.fluxa.app.data.remote.IntroTimestamps
-import com.fluxa.app.data.remote.Video
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.NextEpisodePreviewUiModel
+import com.fluxa.app.ui.catalog.SkipSegmentUiModel
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -51,26 +51,26 @@ import androidx.compose.ui.zIndex
 @Composable
 fun PlayerSkipSegmentOverlay(
     currentPosition: Long,
-    skipSegments: List<IntroTimestamps>,
+    skipSegments: List<SkipSegmentUiModel>,
     dismissedSkipSegments: Set<String>,
     hasStartedPlaying: Boolean,
     showControls: Boolean,
     deviceType: DeviceType,
-    nextEpisode: Video?,
+    nextEpisode: NextEpisodePreviewUiModel?,
     nextEpisodeThresholdReached: Boolean,
     autoSkipSegments: Boolean,
     autoPlayCountdownSeconds: Int? = null,
     lang: String,
-    onSkipSegment: (IntroTimestamps) -> Unit,
+    onSkipSegment: (SkipSegmentUiModel) -> Unit,
     onPlayNextEpisode: () -> Unit,
-    onDismissSegment: (IntroTimestamps) -> Unit,
+    onDismissSegment: (SkipSegmentUiModel) -> Unit,
     onNextEpisodeCardShown: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val activeSkipSegment = remember(currentPosition, skipSegments, dismissedSkipSegments, hasStartedPlaying, autoSkipSegments) {
         if (!hasStartedPlaying || autoSkipSegments) null
         else skipSegments.find { segment ->
-            currentPosition in segment.startTime until segment.endTime &&
+            currentPosition in segment.startMs until segment.endMs &&
                 segment.dismissKey() !in dismissedSkipSegments
         }
     }
@@ -306,8 +306,4 @@ fun BoxScope.PlayerTransientOverlays(
             PlayerSeekFeedback(seekDirection, seekFeedbackMs.takeIf { it > 0L } ?: if (seekDirection > 0) seekForwardMs else seekBackwardMs)
         }
     }
-}
-
-fun IntroTimestamps.dismissKey(): String {
-    return "$type:$startTime:$endTime"
 }

@@ -1,5 +1,7 @@
 package com.fluxa.app.player
 
+import com.fluxa.app.shared.feature.player.Chapter
+
 import com.fluxa.app.core.rust.FluxaStreamingNative
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers

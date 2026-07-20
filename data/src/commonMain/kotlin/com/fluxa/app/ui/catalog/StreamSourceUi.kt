@@ -2,6 +2,18 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.remote.Stream
 
+data class StreamSourceUiModel(
+    val playableUrl: String?,
+    val header: String,
+    val body: String?
+)
+
+fun Stream.toSourceUiModel(): StreamSourceUiModel = StreamSourceUiModel(
+    playableUrl = playableUrl,
+    header = streamSourceHeader(),
+    body = streamRawBody()
+)
+
 fun Stream.streamSourceHeader(): String {
     return name
         ?.takeIf { it.isNotBlank() }

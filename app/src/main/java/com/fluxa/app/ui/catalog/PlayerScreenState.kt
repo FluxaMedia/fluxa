@@ -78,7 +78,7 @@ internal class PlayerScreenState(
     var currentEpisodeMetaLine by mutableStateOf<String?>(null)
     var currentEpisodeArtwork by mutableStateOf<String?>(null)
     var skipSegments by mutableStateOf<List<IntroTimestamps>>(emptyList())
-    var chapters by mutableStateOf<List<com.fluxa.app.player.Chapter>>(emptyList())
+    var chapters by mutableStateOf<List<com.fluxa.app.shared.feature.player.Chapter>>(emptyList())
     var dismissedSkipSegments by mutableStateOf<Set<String>>(emptySet())
     var introAutoSkipped by mutableStateOf(false)
     var preferredBingeGroupForNextEpisode by mutableStateOf<String?>(null)

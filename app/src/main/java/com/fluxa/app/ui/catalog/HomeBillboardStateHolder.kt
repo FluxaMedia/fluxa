@@ -1,7 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.player.TrailerCue
+import com.fluxa.app.shared.feature.player.TrailerCue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

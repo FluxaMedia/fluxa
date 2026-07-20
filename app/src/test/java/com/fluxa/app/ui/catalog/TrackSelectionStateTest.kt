@@ -6,7 +6,7 @@ import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 
 import androidx.media3.common.C
-import com.fluxa.app.player.MediaTrack
+import com.fluxa.app.shared.feature.player.MediaTrack
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue

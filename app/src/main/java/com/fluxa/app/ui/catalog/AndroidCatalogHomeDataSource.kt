@@ -81,7 +81,7 @@ class AndroidCatalogHomeDataSource(
         val items: List<com.fluxa.app.data.remote.Meta>,
         val logoUrl: String?,
         val trailerUrl: String?,
-        val trailerSubtitleCues: List<com.fluxa.app.player.TrailerCue>
+        val trailerSubtitleCues: List<com.fluxa.app.shared.feature.player.TrailerCue>
     )
 
     private fun billboardResolution(): Flow<BillboardResolution> = combine(
@@ -109,7 +109,7 @@ class AndroidCatalogHomeDataSource(
         billboardPool: List<com.fluxa.app.data.remote.Meta>,
         billboardLogo: String?,
         billboardTrailerUrl: String?,
-        billboardTrailerSubtitleCues: List<com.fluxa.app.player.TrailerCue>,
+        billboardTrailerSubtitleCues: List<com.fluxa.app.shared.feature.player.TrailerCue>,
         filter: String
     ): BillboardResolution {
         val filteredPool = billboardPool.filter { it.matchesFilter(filter) }

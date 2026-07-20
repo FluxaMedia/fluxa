@@ -1,5 +1,7 @@
 package com.fluxa.app.player
 
+import com.fluxa.app.shared.feature.player.TrailerPolicy
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

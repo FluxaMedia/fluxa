@@ -2,6 +2,9 @@
 
 package com.fluxa.app.player
 
+import com.fluxa.app.shared.feature.player.Chapter
+import com.fluxa.app.shared.feature.player.MediaTrack
+
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.common.C

@@ -1,13 +1,12 @@
 package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
-import com.fluxa.app.data.remote.Video
-import com.fluxa.app.player.TorrentStreamStatus
 import com.fluxa.app.ui.catalog.BufferSnapshot
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.NextEpisodePreviewUiModel
 import com.fluxa.app.ui.catalog.PlaybackSnapshot
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -66,7 +65,7 @@ fun playerStatusText(lang: String?, value: String): String {
 fun SkipSegmentCard(
     deviceType: DeviceType,
     type: String,
-    nextEpisode: Video? = null,
+    nextEpisode: NextEpisodePreviewUiModel? = null,
     lang: String? = "en",
     autoAdvanceSeconds: Int? = null,
     onSkip: () -> Unit,
@@ -126,7 +125,7 @@ fun SkipSegmentCard(
 @Composable
 private fun NextEpisodeSkipCard(
     deviceType: DeviceType,
-    episode: Video,
+    episode: NextEpisodePreviewUiModel,
     lang: String?,
     autoAdvanceSeconds: Int? = null,
     onSkip: () -> Unit
@@ -203,7 +202,7 @@ private fun NextEpisodeSkipCard(
     }
 }
 
-private fun nextEpisodeSubtitle(lang: String?, episode: Video): String {
+private fun nextEpisodeSubtitle(lang: String?, episode: NextEpisodePreviewUiModel): String {
     val season = episode.season ?: 1
     val number = episode.number ?: 0
     val name = episode.name.orEmpty().trim()

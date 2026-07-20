@@ -27,7 +27,7 @@ import com.fluxa.app.player.NativeAssTrack
 import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.PlayerEngineRequest
 import com.fluxa.app.player.TorrentStreamManager
-import com.fluxa.app.player.TorrentStreamStatus
+import com.fluxa.app.shared.feature.player.TorrentStreamStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

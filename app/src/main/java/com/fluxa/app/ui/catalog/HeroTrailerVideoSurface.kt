@@ -14,7 +14,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import com.fluxa.app.player.TrailerCue
+import com.fluxa.app.shared.feature.player.TrailerCue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 

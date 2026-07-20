@@ -1,6 +1,6 @@
 package com.fluxa.app.shared.feature.catalog
 
-import com.fluxa.app.player.TrailerCue
+import com.fluxa.app.shared.feature.player.TrailerCue
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import kotlinx.coroutines.flow.Flow
 

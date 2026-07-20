@@ -125,7 +125,7 @@ import com.fluxa.app.shared.feature.search.SearchUiState
 import com.fluxa.app.shared.feature.player.PlayerControlsSurface
 import com.fluxa.app.shared.feature.player.PlayerRenderAction
 import com.fluxa.app.shared.feature.player.PlayerRenderState
-import com.fluxa.app.player.TrailerCue
+import com.fluxa.app.shared.feature.player.TrailerCue
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.PosterActionSheet

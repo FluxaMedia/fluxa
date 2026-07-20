@@ -1,8 +1,6 @@
 package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
-import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.player.MediaTrack
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaIcons
@@ -52,33 +50,6 @@ fun TrackSidebar(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun QuickSettingsSidebar(profile: UserProfile?, onUpdateProfile: (UserProfile) -> Unit, currentOffset: Long, onOffsetChange: (Long) -> Unit, deviceType: DeviceType, lang: String = "en", onClose: () -> Unit) {
-    PlayerSidebarShell(
-        title = AppStrings.t(lang, "player.quick_settings_title"),
-        deviceType = deviceType,
-        onClose = onClose
-    ) {
-        Text(AppStrings.t(lang, "player.subtitle_sync_title"), color = Color.White.copy(alpha = 0.62f), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color.White.copy(alpha = 0.04f))
-                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
-                .padding(18.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SeekIconButton(FluxaIcons.Remove, deviceType) { onOffsetChange(currentOffset - 500) }
-                Text(text = "${if (currentOffset >= 0) "+" else ""}${currentOffset / 1000.0}s", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                SeekIconButton(FluxaIcons.Add, deviceType) { onOffsetChange(currentOffset + 500) }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
     }
 }
 

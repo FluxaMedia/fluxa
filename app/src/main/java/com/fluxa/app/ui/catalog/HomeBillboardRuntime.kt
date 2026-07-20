@@ -1,9 +1,9 @@
 package com.fluxa.app.ui.catalog
 
-import com.fluxa.app.player.TrailerCue
-import com.fluxa.app.player.TrailerResolveResult
-import com.fluxa.app.player.TrailerResult
-import com.fluxa.app.player.TrailerSubtitle
+import com.fluxa.app.shared.feature.player.TrailerCue
+import com.fluxa.app.shared.feature.player.TrailerResolveResult
+import com.fluxa.app.shared.feature.player.TrailerResult
+import com.fluxa.app.shared.feature.player.TrailerSubtitle
 
 import android.util.LruCache
 import com.fluxa.app.core.rust.FluxaCoreNative

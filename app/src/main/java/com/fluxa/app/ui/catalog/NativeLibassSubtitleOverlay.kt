@@ -19,7 +19,7 @@ import com.fluxa.app.player.LibassDebugLog
 import com.fluxa.app.player.LibassRenderThread
 import com.fluxa.app.player.LibassVideoFrame
 import com.fluxa.app.player.MediaPlayerController
-import com.fluxa.app.player.MediaTrack
+import com.fluxa.app.shared.feature.player.MediaTrack
 import com.fluxa.app.player.MkvNativeAssExtractor
 import com.fluxa.app.player.NativeAssTrack
 import com.fluxa.app.player.NativeLibassRenderer

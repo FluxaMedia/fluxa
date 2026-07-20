@@ -22,7 +22,7 @@ import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.PlayerEngineRequest
 import com.fluxa.app.player.TorrentStreamManager
 import com.fluxa.app.player.TorrentStreamResult
-import com.fluxa.app.player.TorrentStreamStatus
+import com.fluxa.app.shared.feature.player.TorrentStreamStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

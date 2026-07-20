@@ -7,7 +7,7 @@ import com.fluxa.app.domain.discovery.*
 
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.SubtitleTrackRef
-import com.fluxa.app.player.MediaTrack
+import com.fluxa.app.shared.feature.player.MediaTrack
 import com.fluxa.app.player.resolveAudioLanguagePreference
 import java.util.Locale
 

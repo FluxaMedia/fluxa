@@ -1,4 +1,4 @@
-package com.fluxa.app.player
+package com.fluxa.app.shared.feature.player
 
 data class TorrentStreamStatus(
     val bufferProgress: Int = 0,

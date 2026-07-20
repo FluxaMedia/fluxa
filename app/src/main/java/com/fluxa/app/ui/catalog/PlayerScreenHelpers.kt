@@ -79,7 +79,7 @@ import coil3.compose.AsyncImage
 import com.fluxa.app.R
 import com.fluxa.app.player.*
 import com.fluxa.app.player.MediaPlayerController
-import com.fluxa.app.player.MediaTrack
+import com.fluxa.app.shared.feature.player.MediaTrack
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
