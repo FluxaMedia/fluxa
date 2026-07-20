@@ -7,6 +7,8 @@ struct FluxaIosApp: App {
     private let headlessRuntime: FluxaAppleHeadlessRuntime
     private let appRuntime: FluxaAppleAppRuntime
     private let catalogStartup: FluxaAppleCatalogStartup
+    private let pluginsManager: FluxaApplePluginRepositoryManager
+    private let pluginsStartup: FluxaApplePluginsStartup
 
     init() {
         let runtime = requireFluxaAppleHeadlessRuntime()
@@ -22,6 +24,10 @@ struct FluxaIosApp: App {
         let calendarStartup = FluxaAppleCalendarStartup(coordinator: runtimeApp.coordinator)
         let libraryStartup = FluxaAppleLibraryStartup(coordinator: runtimeApp.coordinator)
         let authStartup = FluxaAppleAuthStartup()
+        let pluginsManager = FluxaApplePluginRepositoryManager()
+        self.pluginsManager = pluginsManager
+        let pluginsStartup = FluxaApplePluginsStartup(manager: pluginsManager)
+        self.pluginsStartup = pluginsStartup
         FluxaApple.shared.setCatalogHomeRefreshHandler {
             Task { @MainActor in
                 await catalogStartup.refresh()
@@ -68,6 +74,14 @@ struct FluxaIosApp: App {
             Task { @MainActor in
                 FluxaApplePlaybackPresenter.shared.present(request: request)
             }
+        }
+        FluxaApple.shared.setPluginsActionHandler { action in
+            Task { @MainActor in
+                await pluginsStartup.handle(action)
+            }
+        }
+        Task { @MainActor in
+            await pluginsStartup.start()
         }
     }
 
