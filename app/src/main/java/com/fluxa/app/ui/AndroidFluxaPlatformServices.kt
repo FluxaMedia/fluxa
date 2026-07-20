@@ -18,6 +18,7 @@ import com.fluxa.app.ui.catalog.AppContainer
 import com.fluxa.app.ui.catalog.DetailViewModel
 import com.fluxa.app.ui.catalog.HomeViewModel
 import com.fluxa.app.ui.profile.AndroidProfileDataSource
+import com.fluxa.app.ui.settings.AndroidPluginsDataSource
 
 class AndroidFluxaPlatformServices(
     homeViewModel: HomeViewModel,
@@ -45,12 +46,16 @@ class AndroidFluxaPlatformServices(
     override val detailDataSource = AndroidDetailDataSource(detailViewModel, activeProfile)
     override val profileDataSource = AndroidProfileDataSource(profileManager)
     override val addonStoreDataSource = AndroidAddonStoreDataSource(
-        pluginManager = AppContainer.pluginManager,
         repository = AppContainer.repository,
         profileManager = profileManager,
         homeViewModel = homeViewModel,
         activeProfile = activeProfile,
         onProfileChanged = onActiveProfileChanged
+    )
+    override val pluginsDataSource = AndroidPluginsDataSource(
+        pluginRepositoryManager = AppContainer.pluginRepositoryManager,
+        pluginManager = AppContainer.pluginManager,
+        language = { activeProfile()?.language ?: "en" }
     )
     override val authDataSource = AndroidAuthDataSource(
         authService = AppContainer.authService,

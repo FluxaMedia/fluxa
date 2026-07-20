@@ -10,6 +10,8 @@ class AppleFluxaPlatformServices(
     override val profileDataSource: AppleProfileDataSource,
     override val settingsDataSource: AppleSettingsDataSource,
     override val addonStoreDataSource: AppleAddonStoreDataSource,
+    override val pluginsDataSource: ApplePluginsDataSource,
     override val authDataSource: AppleAuthDataSource
 ) : FluxaPlatformServices, FluxaDetailServices, FluxaSearchServices, FluxaDiscoverServices, FluxaCalendarServices,
-    FluxaLibraryServices, FluxaProfileServices, FluxaSettingsServices, FluxaAddonStoreServices, FluxaAuthServices
+    FluxaLibraryServices, FluxaProfileServices, FluxaSettingsServices, FluxaAddonStoreServices, FluxaPluginsServices,
+    FluxaAuthServices

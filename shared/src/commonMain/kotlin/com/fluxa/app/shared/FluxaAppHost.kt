@@ -12,6 +12,9 @@ import androidx.compose.ui.Modifier
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
 import com.fluxa.app.shared.feature.addonstore.AddonStoreStore
+import com.fluxa.app.shared.feature.plugins.PluginsAction
+import com.fluxa.app.shared.feature.plugins.PluginsDataSource
+import com.fluxa.app.shared.feature.plugins.PluginsStore
 import com.fluxa.app.shared.feature.auth.AuthAction
 import com.fluxa.app.shared.feature.auth.AuthDataSource
 import com.fluxa.app.shared.feature.auth.AuthStore
@@ -45,6 +48,7 @@ import com.fluxa.app.shared.feature.settings.SettingsAction
 import com.fluxa.app.shared.feature.settings.SettingsDataSource
 import com.fluxa.app.shared.feature.settings.SettingsStore
 import com.fluxa.app.shared.platform.FluxaAddonStoreServices
+import com.fluxa.app.shared.platform.FluxaPluginsServices
 import com.fluxa.app.shared.platform.FluxaAuthServices
 import com.fluxa.app.shared.platform.FluxaDetailServices
 import com.fluxa.app.shared.platform.FluxaCalendarServices
@@ -69,6 +73,7 @@ fun FluxaAppHost(
     showNavigationBar: Boolean = true,
     onOpenUrlRequested: (String) -> Unit = {},
     onAddonStoreBackRequested: () -> Unit = {},
+    onPluginsBackRequested: () -> Unit = {},
     onAuthBackRequested: () -> Unit = {},
     onAuthCompleted: () -> Unit = {},
     authStartOnNuvio: Boolean = false,
@@ -104,6 +109,7 @@ fun FluxaAppHost(
         searchDataSource = (platformServices as? FluxaSearchServices)?.searchDataSource,
         profileDataSource = (platformServices as? FluxaProfileServices)?.profileDataSource,
         addonStoreDataSource = (platformServices as? FluxaAddonStoreServices)?.addonStoreDataSource,
+        pluginsDataSource = (platformServices as? FluxaPluginsServices)?.pluginsDataSource,
         authDataSource = (platformServices as? FluxaAuthServices)?.authDataSource,
         settingsDataSource = (platformServices as? FluxaSettingsServices)?.settingsDataSource,
         deviceType = deviceType,
@@ -116,6 +122,7 @@ fun FluxaAppHost(
         showNavigationBar = showNavigationBar,
         onOpenUrlRequested = onOpenUrlRequested,
         onAddonStoreBackRequested = onAddonStoreBackRequested,
+        onPluginsBackRequested = onPluginsBackRequested,
         onAuthBackRequested = onAuthBackRequested,
         onAuthCompleted = onAuthCompleted,
         authStartOnNuvio = authStartOnNuvio,
@@ -154,6 +161,7 @@ fun FluxaAppHost(
     searchDataSource: SearchDataSource? = null,
     profileDataSource: ProfileDataSource? = null,
     addonStoreDataSource: AddonStoreDataSource? = null,
+    pluginsDataSource: PluginsDataSource? = null,
     authDataSource: AuthDataSource? = null,
     settingsDataSource: SettingsDataSource? = null,
     deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
@@ -166,6 +174,7 @@ fun FluxaAppHost(
     showNavigationBar: Boolean = true,
     onOpenUrlRequested: (String) -> Unit = {},
     onAddonStoreBackRequested: () -> Unit = {},
+    onPluginsBackRequested: () -> Unit = {},
     onAuthBackRequested: () -> Unit = {},
     onAuthCompleted: () -> Unit = {},
     authStartOnNuvio: Boolean = false,
@@ -225,6 +234,10 @@ fun FluxaAppHost(
         remember(source) { AddonStoreStore(source, scope) }
     }
     val addonStoreState = addonStoreStore?.state?.collectAsState()?.value
+    val pluginsStore = pluginsDataSource?.let { source ->
+        remember(source) { PluginsStore(source, scope) }
+    }
+    val pluginsState = pluginsStore?.state?.collectAsState()?.value
     val authStore = authDataSource?.let { source ->
         remember(source) { AuthStore(source, scope) }
     }
@@ -317,6 +330,11 @@ fun FluxaAppHost(
     LaunchedEffect(appState.uiState.destination, addonStoreStore) {
         if (appState.uiState.destination == FluxaDestination.AddonStore) {
             addonStoreStore?.dispatch(AddonStoreAction.Refresh)
+        }
+    }
+    LaunchedEffect(appState.uiState.destination, pluginsStore) {
+        if (appState.uiState.destination == FluxaDestination.Plugins) {
+            pluginsStore?.dispatch(PluginsAction.Refresh)
         }
     }
     LaunchedEffect(authStartOnNuvio, authStore) {
@@ -472,6 +490,13 @@ fun FluxaAppHost(
         },
         onOpenUrlRequested = onOpenUrlRequested,
         onAddonStoreBackRequested = onAddonStoreBackRequested,
+        pluginsState = pluginsState,
+        onPluginsAction = { action ->
+            scope.launch {
+                pluginsStore?.dispatch(action)
+            }
+        },
+        onPluginsBackRequested = onPluginsBackRequested,
         authState = authState,
         onAuthAction = { action ->
             when (action) {

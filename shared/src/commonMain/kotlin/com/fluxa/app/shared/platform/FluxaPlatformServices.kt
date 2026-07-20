@@ -7,6 +7,7 @@ import com.fluxa.app.shared.feature.calendar.CalendarDataSource
 import com.fluxa.app.shared.feature.detail.DetailDataSource
 import com.fluxa.app.shared.feature.discover.DiscoverDataSource
 import com.fluxa.app.shared.feature.library.LibraryDataSource
+import com.fluxa.app.shared.feature.plugins.PluginsDataSource
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.settings.SettingsDataSource
@@ -43,6 +44,10 @@ interface FluxaAddonStoreServices {
     val addonStoreDataSource: AddonStoreDataSource
 }
 
+interface FluxaPluginsServices {
+    val pluginsDataSource: PluginsDataSource
+}
+
 interface FluxaAuthServices {
     val authDataSource: AuthDataSource
 }
@@ -60,5 +65,6 @@ interface FluxaMobilePlatformServices :
     FluxaDetailServices,
     FluxaProfileServices,
     FluxaAddonStoreServices,
+    FluxaPluginsServices,
     FluxaAuthServices,
     FluxaSettingsServices

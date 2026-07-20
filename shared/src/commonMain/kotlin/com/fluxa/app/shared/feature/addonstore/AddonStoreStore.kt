@@ -22,10 +22,6 @@ class AddonStoreStore(
             is AddonStoreAction.AddonMoved -> dataSource.moveAddon(action.url, action.direction)
             is AddonStoreAction.AddonRefreshed -> dataSource.refreshAddon(action.url)
             is AddonStoreAction.ConfigureRequested -> Unit
-            is AddonStoreAction.RepoOpened -> dataSource.openRepo(action.url)
-            AddonStoreAction.RepoDialogDismissed -> dataSource.dismissRepoDialog()
-            is AddonStoreAction.RepoRemoved -> dataSource.removeRepo(action.url)
-            is AddonStoreAction.RepoPluginToggled -> dataSource.toggleRepoPlugin(action.repoUrl, action.internalName)
             AddonStoreAction.AddedAddonDialogDismissed -> dataSource.dismissAddedAddonDialog()
         }
     }

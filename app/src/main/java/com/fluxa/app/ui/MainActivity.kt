@@ -78,6 +78,7 @@ class MainActivity : FragmentActivity() {
 
     @Inject lateinit var profileManager: ProfileManager
     @Inject lateinit var pluginManager: PluginManager
+    @Inject lateinit var pluginRepositoryManager: com.fluxa.app.plugins.PluginRepositoryManager
     @Inject lateinit var stremioRepository: StremioRepository
     @Inject lateinit var authService: StremioService
     @Inject lateinit var nuvioImportCoordinator: com.fluxa.app.data.repository.NuvioAccountImportCoordinator
@@ -145,7 +146,7 @@ class MainActivity : FragmentActivity() {
         
         handleIntent(intent)
 
-        AppContainer.initialize(profileManager, pluginManager, stremioRepository, authService, nuvioImportCoordinator)
+        AppContainer.initialize(profileManager, pluginManager, pluginRepositoryManager, stremioRepository, authService, nuvioImportCoordinator)
 
         setContent {
             AppTheme {

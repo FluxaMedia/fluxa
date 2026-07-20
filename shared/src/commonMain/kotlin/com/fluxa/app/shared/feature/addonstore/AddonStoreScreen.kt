@@ -12,12 +12,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,21 +23,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -112,25 +107,6 @@ fun AddonStoreScreen(
                 )
             }
 
-            if (state.cloudstreamRepos.isNotEmpty()) {
-                item {
-                    Text(
-                        text = AppStrings.t(language, "auto.cloudstream3_repositories"),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
-                items(state.cloudstreamRepos, key = { "repo:${it.url}" }) { repo ->
-                    CloudstreamRepoItem(
-                        repo = repo,
-                        language = language,
-                        onRemove = { onAction(AddonStoreAction.RepoRemoved(repo.url)) },
-                        onClick = { onAction(AddonStoreAction.RepoOpened(repo.url)) }
-                    )
-                }
-            }
-
             if (state.installedAddons.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(4.dp))
@@ -158,17 +134,6 @@ fun AddonStoreScreen(
                     )
                 }
             }
-        }
-
-        if (state.openRepoUrl != null) {
-            AddonRepoPluginsDialog(
-                state = state,
-                language = language,
-                onDismiss = { onAction(AddonStoreAction.RepoDialogDismissed) },
-                onTogglePlugin = { internalName ->
-                    onAction(AddonStoreAction.RepoPluginToggled(state.openRepoUrl, internalName))
-                }
-            )
         }
 
         val addedAddonName = state.addedAddonName
@@ -259,49 +224,6 @@ private fun AddonSmartInput(
 }
 
 @Composable
-private fun CloudstreamRepoItem(
-    repo: CloudstreamRepoUiModel,
-    language: String?,
-    onRemove: () -> Unit,
-    onClick: () -> Unit
-) {
-    var focused by remember { mutableStateOf(false) }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .background(if (focused) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.04f))
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            AddonLogo(url = repo.iconUrl, size = 36.dp, contentDescription = repo.name)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = repo.name.ifBlank { AppStrings.t(language, "addons.cloudstream_repo") },
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = repo.url,
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            AddonIconButton(icon = Icons.Filled.Close, tint = Color.White.copy(alpha = 0.5f), onClick = onRemove)
-        }
-    }
-}
-
-@Composable
 private fun InstalledAddonItem(
     addon: InstalledAddonUiModel,
     language: String?,
@@ -383,126 +305,6 @@ private fun InstalledAddonItem(
                     uncheckedThumbColor = Color.White.copy(alpha = 0.72f),
                     uncheckedTrackColor = Color.White.copy(alpha = 0.18f)
                 )
-            )
-        }
-    }
-}
-
-@Composable
-private fun AddonRepoPluginsDialog(
-    state: AddonStoreUiState,
-    language: String?,
-    onDismiss: () -> Unit,
-    onTogglePlugin: (String) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = state.openRepoName ?: AppStrings.t(language, "auto.repository_plugins"),
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            LazyColumn(modifier = Modifier.height(400.dp)) {
-                if (state.isLoadingRepoPlugins) {
-                    item {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp))
-                        }
-                    }
-                } else if (state.openRepoPlugins.isEmpty()) {
-                    item {
-                        Text(
-                            text = AppStrings.t(language, "auto.no_plugins_found_in_this_repository"),
-                            color = Color.White.copy(alpha = 0.6f)
-                        )
-                    }
-                } else {
-                    val error = state.repoDialogError
-                    if (error != null) {
-                        item {
-                            Text(
-                                text = error,
-                                color = FluxaColors.errorRed,
-                                fontSize = 13.sp,
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                            )
-                        }
-                    }
-                    itemsIndexed(state.openRepoPlugins, key = { _, p -> p.internalName }) { index, plugin ->
-                        val installing = plugin.internalName in state.installingPluginKeys
-                        CloudstreamPluginItem(
-                            plugin = plugin,
-                            isInstalling = installing,
-                            onClick = { if (!installing) onTogglePlugin(plugin.internalName) }
-                        )
-                        if (index < state.openRepoPlugins.lastIndex) {
-                            HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = AppStrings.t(language, "auto.close"), color = Color.White.copy(alpha = 0.7f))
-            }
-        },
-        containerColor = Color(0xFF1A1D26)
-    )
-}
-
-@Composable
-private fun CloudstreamPluginItem(
-    plugin: CloudstreamPluginUiModel,
-    isInstalling: Boolean,
-    onClick: () -> Unit
-) {
-    val accentColor = if (plugin.isInstalled) FluxaColors.successGreen else Color.White.copy(alpha = 0.6f)
-    var focused by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .background(if (focused) Color.White.copy(alpha = 0.14f) else Color.Transparent)
-            .clickable(enabled = !isInstalling, onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AddonLogo(url = plugin.iconUrl, size = 42.dp, contentDescription = plugin.name)
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = plugin.name,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            val subtitle = buildString {
-                if (plugin.description.isNotBlank()) append(plugin.description.take(60))
-                if (plugin.typesLabel.isNotBlank()) {
-                    if (isNotEmpty()) append("  ·  ")
-                    append(plugin.typesLabel)
-                }
-            }
-            if (subtitle.isNotBlank()) {
-                Text(text = subtitle, color = Color.White.copy(alpha = 0.45f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Spacer(Modifier.width(10.dp))
-        if (isInstalling) {
-            CircularProgressIndicator(color = accentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
-        } else {
-            Icon(
-                imageVector = if (plugin.isInstalled) Icons.Filled.Close else Icons.Filled.Download,
-                contentDescription = null,
-                tint = if (plugin.isInstalled) FluxaColors.errorRed else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.size(20.dp)
             )
         }
     }

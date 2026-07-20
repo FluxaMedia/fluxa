@@ -3,9 +3,6 @@ package com.fluxa.app.shared.platform
 import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
 import com.fluxa.app.shared.feature.addonstore.AddonStoreInputType
 import com.fluxa.app.shared.feature.addonstore.AddonStoreUiState
-import com.fluxa.app.shared.feature.addonstore.CloudstreamPluginUiModel
-import com.fluxa.app.shared.feature.addonstore.CloudstreamRepoUiModel
-import com.fluxa.app.shared.feature.addonstore.InstalledAddonUiModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,9 +12,7 @@ data class AppleAddonStoreActionSnapshot(
     val url: String? = null,
     val text: String? = null,
     val enabled: Boolean? = null,
-    val direction: Int? = null,
-    val repoUrl: String? = null,
-    val internalName: String? = null
+    val direction: Int? = null
 )
 
 class AppleAddonStoreDataSource : AddonStoreDataSource {
@@ -31,7 +26,6 @@ class AppleAddonStoreDataSource : AddonStoreDataSource {
         return when {
             trimmed.isEmpty() -> AddonStoreInputType.UNKNOWN
             trimmed.endsWith("manifest.json") || trimmed.startsWith("stremio://") -> AddonStoreInputType.STREMIO_MANIFEST
-            trimmed.endsWith(".json") && trimmed.startsWith("http") -> AddonStoreInputType.CLOUDSTREAM_REPO
             trimmed.startsWith("http://") || trimmed.startsWith("https://") -> AddonStoreInputType.STREMIO_MANIFEST
             else -> AddonStoreInputType.SEARCH_QUERY
         }
@@ -65,23 +59,6 @@ class AppleAddonStoreDataSource : AddonStoreDataSource {
 
     override suspend fun refreshAddon(url: String) {
         postAction(AppleAddonStoreActionSnapshot(type = "refreshAddon", url = url))
-    }
-
-    override suspend fun openRepo(url: String) {
-        state.value = state.value.copy(openRepoUrl = url, isLoadingRepoPlugins = true)
-        postAction(AppleAddonStoreActionSnapshot(type = "openRepo", url = url))
-    }
-
-    override suspend fun dismissRepoDialog() {
-        state.value = state.value.copy(openRepoUrl = null, openRepoName = null, openRepoPlugins = emptyList(), repoDialogError = null)
-    }
-
-    override suspend fun removeRepo(url: String) {
-        postAction(AppleAddonStoreActionSnapshot(type = "removeRepo", url = url))
-    }
-
-    override suspend fun toggleRepoPlugin(repoUrl: String, internalName: String) {
-        postAction(AppleAddonStoreActionSnapshot(type = "toggleRepoPlugin", repoUrl = repoUrl, internalName = internalName))
     }
 
     override suspend fun dismissAddedAddonDialog() {

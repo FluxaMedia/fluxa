@@ -16,6 +16,7 @@ import com.fluxa.app.shared.platform.AppleDetailSnapshot
 import com.fluxa.app.shared.platform.AppleDetailStreamSnapshot
 import com.fluxa.app.shared.platform.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
+import com.fluxa.app.shared.platform.ApplePluginsDataSource
 import com.fluxa.app.shared.platform.AppleAuthDataSource
 import com.fluxa.app.shared.platform.AppleCatalogHomeDataSource
 import com.fluxa.app.shared.platform.AppleCalendarDataSource
@@ -45,6 +46,7 @@ object FluxaApple {
     internal val profileDataSource = AppleProfileDataSource(watchlistStore::setActiveProfile)
     internal val settingsDataSource = AppleSettingsDataSource()
     internal val addonStoreDataSource = AppleAddonStoreDataSource()
+    internal val pluginsDataSource = ApplePluginsDataSource()
     internal val authDataSource = AppleAuthDataSource()
     internal val platformServices = AppleFluxaPlatformServices(
         catalogHomeDataSource,
@@ -56,6 +58,7 @@ object FluxaApple {
         profileDataSource,
         settingsDataSource,
         addonStoreDataSource,
+        pluginsDataSource,
         authDataSource
     )
     private var onPlaybackRequested: (ApplePlaybackRequestSnapshot) -> Unit = {}

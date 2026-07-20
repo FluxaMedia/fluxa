@@ -7,15 +7,9 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.repository.StremioRepository
-import com.fluxa.app.plugins.PluginManager
-import com.fluxa.app.plugins.cloudstream.InstalledPlugin
-import com.fluxa.app.plugins.cloudstream.PluginInfo
-import com.fluxa.app.plugins.cloudstream.PluginRepositoryEntry
 import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
 import com.fluxa.app.shared.feature.addonstore.AddonStoreInputType
 import com.fluxa.app.shared.feature.addonstore.AddonStoreUiState
-import com.fluxa.app.shared.feature.addonstore.CloudstreamPluginUiModel
-import com.fluxa.app.shared.feature.addonstore.CloudstreamRepoUiModel
 import com.fluxa.app.shared.feature.addonstore.InstalledAddonUiModel
 import com.fluxa.app.ui.installLocalAddonForProfile
 import com.fluxa.app.ui.moveLocalAddonForProfile
@@ -27,7 +21,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 
 class AndroidAddonStoreDataSource(
-    private val pluginManager: PluginManager,
     private val repository: StremioRepository,
     private val profileManager: ProfileManager,
     private val homeViewModel: HomeViewModel,
@@ -41,12 +34,6 @@ class AndroidAddonStoreDataSource(
         val isSubmittingInput: Boolean = false,
         val inputError: String? = null,
         val refreshingUrl: String? = null,
-        val openRepoUrl: String? = null,
-        val openRepoName: String? = null,
-        val openRepoPlugins: List<PluginInfo> = emptyList(),
-        val isLoadingRepoPlugins: Boolean = false,
-        val installingPluginKeys: Set<String> = emptySet(),
-        val repoDialogError: String? = null,
         val profileRevision: Long = 0L,
         val addedAddonName: String? = null
     )
@@ -56,23 +43,18 @@ class AndroidAddonStoreDataSource(
 
     override fun detectInputType(text: String): AddonStoreInputType = when (FluxaCoreNative.addonStoreInputType(text)) {
         "stremio_manifest" -> AddonStoreInputType.STREMIO_MANIFEST
-        "cloudstream_repo" -> AddonStoreInputType.CLOUDSTREAM_REPO
         "search_query" -> AddonStoreInputType.SEARCH_QUERY
         else -> AddonStoreInputType.UNKNOWN
     }
 
     override fun observeAddonStore(): Flow<AddonStoreUiState> = combine(
-        pluginManager.installedPlugins,
-        pluginManager.repositories,
         installedUserAddons,
         extras
-    ) { installedPlugins, repos, userAddonsAndLoaded, ex ->
-        buildState(installedPlugins, repos, userAddonsAndLoaded.first, userAddonsAndLoaded.second, ex)
+    ) { userAddonsAndLoaded, ex ->
+        buildState(userAddonsAndLoaded.first, userAddonsAndLoaded.second, ex)
     }
 
     private fun buildState(
-        installedPlugins: List<InstalledPlugin>,
-        repos: List<PluginRepositoryEntry>,
         userAddons: List<AddonDescriptor>,
         loaded: Boolean,
         ex: Extras
@@ -131,33 +113,14 @@ class AndroidAddonStoreDataSource(
                 )
             }
 
-        val pluginModels = ex.openRepoPlugins.map { plugin ->
-            val key = pluginManager.pluginInstallKey(ex.openRepoUrl, plugin.internalName)
-            CloudstreamPluginUiModel(
-                internalName = plugin.internalName,
-                name = plugin.name,
-                description = plugin.description,
-                iconUrl = plugin.iconUrl,
-                typesLabel = plugin.getDisplayTypes(),
-                isInstalled = installedPlugins.any { pluginManager.pluginInstallKey(it.repositoryUrl, it.internalName) == key }
-            )
-        }
-
         return AddonStoreUiState(
             installedAddons = merged,
-            cloudstreamRepos = repos.map { CloudstreamRepoUiModel(name = it.name, url = it.url, iconUrl = it.iconUrl) },
             accentColorArgb = profile?.safeAccentColorArgb?.toLong()?.and(0xffffffffL) ?: 0xFF4CAF50L,
             isLoading = profile != null && !loaded,
             inputText = ex.inputText,
             inputDetectedType = ex.detectedType,
             isSubmittingInput = ex.isSubmittingInput,
             inputError = ex.inputError,
-            openRepoUrl = ex.openRepoUrl,
-            openRepoName = ex.openRepoName,
-            openRepoPlugins = pluginModels,
-            isLoadingRepoPlugins = ex.isLoadingRepoPlugins,
-            installingPluginKeys = ex.installingPluginKeys,
-            repoDialogError = ex.repoDialogError,
             addedAddonName = ex.addedAddonName
         )
     }
@@ -212,22 +175,6 @@ class AndroidAddonStoreDataSource(
                     }
                 }
             }
-            AddonStoreInputType.CLOUDSTREAM_REPO -> {
-                extras.update { it.copy(isSubmittingInput = true, inputError = null) }
-                val normalizedUrl = FluxaCoreNative.normalizeCloudstreamRepoUrl(trimmed)
-                val result = pluginManager.addRepository(normalizedUrl)
-                extras.update {
-                    if (result.isSuccess) {
-                        it.copy(inputText = "", isSubmittingInput = false, detectedType = AddonStoreInputType.UNKNOWN)
-                    } else {
-                        it.copy(
-                            isSubmittingInput = false,
-                            inputError = result.exceptionOrNull()?.message
-                                ?: AppStrings.t(activeProfile()?.language ?: "en", "addons.repository_add_failed")
-                        )
-                    }
-                }
-            }
             else -> Unit
         }
     }
@@ -265,43 +212,6 @@ class AndroidAddonStoreDataSource(
             reloaded to loaded
         }
         extras.update { it.copy(refreshingUrl = null) }
-    }
-
-    override suspend fun openRepo(url: String) {
-        val repoName = pluginManager.repositories.value.find { it.url == url }?.name?.takeIf { it.isNotBlank() }
-        extras.update {
-            it.copy(openRepoUrl = url, openRepoName = repoName, isLoadingRepoPlugins = true, openRepoPlugins = emptyList(), repoDialogError = null)
-        }
-        val plugins = pluginManager.getPluginsFromRepository(url)
-        extras.update { it.copy(openRepoPlugins = plugins, isLoadingRepoPlugins = false) }
-    }
-
-    override suspend fun dismissRepoDialog() {
-        extras.update { it.copy(openRepoUrl = null, openRepoName = null, openRepoPlugins = emptyList(), repoDialogError = null) }
-    }
-
-    override suspend fun removeRepo(url: String) {
-        pluginManager.removeRepository(url)
-    }
-
-    override suspend fun toggleRepoPlugin(repoUrl: String, internalName: String) {
-        val key = pluginManager.pluginInstallKey(repoUrl, internalName)
-        val plugin = extras.value.openRepoPlugins.find { it.internalName == internalName } ?: return
-        val isInstalled = pluginManager.installedPlugins.value.any {
-            pluginManager.pluginInstallKey(it.repositoryUrl, it.internalName) == key
-        }
-        extras.update { it.copy(installingPluginKeys = it.installingPluginKeys + key, repoDialogError = null) }
-        if (isInstalled) {
-            pluginManager.uninstallPlugin(repoUrl, internalName)
-        } else {
-            val result = pluginManager.installPlugin(plugin, repoUrl)
-            if (result.isFailure) {
-                extras.update {
-                    it.copy(repoDialogError = result.exceptionOrNull()?.message ?: AppStrings.t(activeProfile()?.language ?: "en", "auto.install_failed"))
-                }
-            }
-        }
-        extras.update { it.copy(installingPluginKeys = it.installingPluginKeys - key) }
     }
 
     override suspend fun dismissAddedAddonDialog() {

@@ -107,6 +107,9 @@ import com.fluxa.app.shared.feature.library.LibraryAction
 import com.fluxa.app.shared.feature.library.LibraryFolderDetailScreen
 import com.fluxa.app.shared.feature.library.LibraryScreen
 import com.fluxa.app.shared.feature.library.LibraryUiState
+import com.fluxa.app.shared.feature.plugins.PluginsAction
+import com.fluxa.app.shared.feature.plugins.PluginsScreen
+import com.fluxa.app.shared.feature.plugins.PluginsUiState
 import com.fluxa.app.shared.feature.profile.ProfileAction
 import com.fluxa.app.shared.feature.profile.ProfileEditScreen
 import com.fluxa.app.shared.feature.profile.ProfileEditTarget
@@ -150,6 +153,7 @@ enum class FluxaDestination(val titleKey: String) {
     Library("nav.library"),
     Settings("nav.settings"),
     AddonStore("auto.addons"),
+    Plugins("settings.plugins.title"),
     Auth("auth.log_in"),
     ProfileList("auto.profile")
 }
@@ -205,6 +209,9 @@ fun FluxaApp(
     onAddonStoreAction: (AddonStoreAction) -> Unit = {},
     onOpenUrlRequested: (String) -> Unit = {},
     onAddonStoreBackRequested: () -> Unit = {},
+    pluginsState: PluginsUiState? = null,
+    onPluginsAction: (PluginsAction) -> Unit = {},
+    onPluginsBackRequested: () -> Unit = {},
     authState: AuthUiState? = null,
     onAuthAction: (AuthAction) -> Unit = {},
     nuvioIcon: @Composable () -> Unit = {},
@@ -424,6 +431,13 @@ fun FluxaApp(
                     onAction = onAddonStoreAction,
                     onConfigureRequested = onOpenUrlRequested,
                     onBackRequested = onAddonStoreBackRequested,
+                    modifier = Modifier.fillMaxSize()
+                )
+                state.destination == FluxaDestination.Plugins && pluginsState != null -> PluginsScreen(
+                    state = pluginsState,
+                    language = state.language,
+                    onAction = onPluginsAction,
+                    onBackRequested = onPluginsBackRequested,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Auth && authState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.auth.TvAuthScreen(

@@ -1,4 +1,4 @@
-package com.fluxa.app.ui.settings
+package com.fluxa.app.shared.feature.plugins
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +50,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
-import com.fluxa.app.plugins.PluginSettingsFieldUiModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
