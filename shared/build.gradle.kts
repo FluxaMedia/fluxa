@@ -36,6 +36,8 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.coil3.network.okhttp)
+            implementation(libs.androidx.tv.foundation)
+            implementation(libs.androidx.tv.material)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

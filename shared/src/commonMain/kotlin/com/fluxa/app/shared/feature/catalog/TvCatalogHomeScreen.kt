@@ -60,6 +60,17 @@ fun TvCatalogHomeScreen(
                 contentPadding = PaddingValues(top = 44.dp, bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(30.dp)
             ) {
+                val heroItems = state.rows.firstOrNull()?.items.orEmpty()
+                if (heroItems.isNotEmpty()) {
+                    item(key = "tv-hero") {
+                        TvHeroRow(
+                            items = heroItems,
+                            language = language,
+                            onItemClick = { onAction(CatalogAction.ItemSelected(it)) },
+                            modifier = Modifier.padding(horizontal = 58.dp)
+                        )
+                    }
+                }
                 items(state.rows, key = { it.id }) { row ->
                     Column(
                         modifier = Modifier.focusGroup(),
