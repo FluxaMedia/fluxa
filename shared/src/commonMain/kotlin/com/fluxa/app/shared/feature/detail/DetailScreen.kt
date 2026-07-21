@@ -59,6 +59,8 @@ import com.fluxa.app.shared.LocalHeroTrailerSurface
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.CatalogCard
+import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.LocalWindowWidthClass
 import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.FluxaColors
@@ -121,7 +123,9 @@ private fun DetailContent(
 ) {
     val isSeries = content.type == "series" && content.availableSeasons.isNotEmpty()
     val hasSecondary = isSeries || content.relatedItems.isNotEmpty()
-    if (LocalWindowWidthClass.current == WindowWidthClass.Expanded && hasSecondary) {
+    val twoPane = LocalWindowWidthClass.current == WindowWidthClass.Expanded &&
+        LocalDeviceType.current != DeviceType.TV
+    if (twoPane && hasSecondary) {
         Row(modifier = Modifier.fillMaxSize()) {
             LazyColumn(modifier = Modifier.width(440.dp).fillMaxHeight()) {
                 item(key = "hero") { Hero(content = content, language = language) }
