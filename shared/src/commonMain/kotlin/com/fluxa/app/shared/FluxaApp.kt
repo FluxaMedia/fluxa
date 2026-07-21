@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
@@ -249,15 +250,19 @@ fun FluxaApp(
                 else -> "dest:${state.destination}"
             }
             val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
+            val useRail = !isTv &&
+                com.fluxa.app.ui.catalog.LocalWindowWidthClass.current == com.fluxa.app.ui.catalog.WindowWidthClass.Expanded
             val isHomeActive = screenKey == "dest:${FluxaDestination.Home}" && !isTv
             val isPreAuthDestination = state.destination == FluxaDestination.Auth ||
                 state.destination == FluxaDestination.ProfileList
             val navChromeVisible = showNavigationBar && !isPreAuthDestination
             var navBarHeightPx by remember { mutableIntStateOf(0) }
             var tvSidebarWidthPx by remember { mutableIntStateOf(0) }
+            var navRailWidthPx by remember { mutableIntStateOf(0) }
             val density = LocalDensity.current
             val navBarHeightDp = with(density) { navBarHeightPx.toDp() }
             val tvSidebarWidthDp = with(density) { tvSidebarWidthPx.toDp() }
+            val navRailWidthDp = with(density) { navRailWidthPx.toDp() }
             val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
             AnimatedContent(
                 targetState = screenKey,
@@ -271,6 +276,8 @@ fun FluxaApp(
                         Modifier.fillMaxSize()
                     } else if (isTv) {
                         Modifier.fillMaxSize().padding(start = tvSidebarWidthDp)
+                    } else if (useRail) {
+                        Modifier.fillMaxSize().padding(start = navRailWidthDp)
                     } else if (isHomeActive) {
                         Modifier.fillMaxSize()
                     } else {
@@ -499,6 +506,18 @@ fun FluxaApp(
                             .align(Alignment.CenterStart)
                             .onGloballyPositioned { tvSidebarWidthPx = it.size.width }
                     )
+                } else if (useRail) {
+                    FluxaNavigationRail(
+                        destination = state.destination,
+                        accentColorArgb = profileState?.activeProfile?.accentColorArgb,
+                        showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
+                        showLabels = settingsState?.appearance?.bottomBarLabels == true,
+                        language = state.language,
+                        onDestinationSelected = onDestinationSelected,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .onGloballyPositioned { navRailWidthPx = it.size.width }
+                    )
                 } else {
                     FluxaNavigationBar(
                         destination = state.destination,
@@ -533,6 +552,69 @@ private val FluxaBottomNavItems = listOf(
     FluxaBottomNavItem(FluxaDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendarOutline),
     FluxaBottomNavItem(FluxaDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline)
 )
+
+@Composable
+private fun FluxaNavigationRail(
+    destination: FluxaDestination,
+    accentColorArgb: Long?,
+    showProfile: Boolean,
+    showLabels: Boolean,
+    language: String?,
+    onDestinationSelected: (FluxaDestination) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
+    val inactiveColor = Color(0xFFA0A5AD)
+    val items = if (showProfile) {
+        FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
+    } else {
+        FluxaBottomNavItems
+    }
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(if (showLabels) 96.dp else 80.dp)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))
+            .background(Color(0xFF101012))
+            .padding(vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        items.forEach { item ->
+            val isSelected = item.destination == destination
+            val tint by animateColorAsState(
+                targetValue = if (isSelected) selectedColor else inactiveColor,
+                label = "rail-item-tint"
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable { onDestinationSelected(item.destination) }
+                    .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
+                    .padding(vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    if (isSelected) item.selectedIcon else item.icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(28.dp)
+                )
+                if (showLabels) {
+                    Text(
+                        text = AppStrings.t(language, item.destination.titleKey),
+                        color = tint,
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun FluxaNavigationBar(
