@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.Flow
 
 enum class SettingsCategory {
     Hub, Account, TmdbFeatures, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
-    AppearanceHomeHero, AppearanceHomeContinueWatching, AppearanceHomeNavigation,
+    AppearanceHomeHero, AppearanceHomeContinueWatching,
     AppearanceDetailHero, AppearanceDetailEpisodes,
     Playback, Subtitles, Advanced, Content, Downloads, Developer
 }
@@ -68,7 +68,6 @@ data class SettingsAppearanceUiModel(
 )
 
 data class SettingsAppearanceHomeUiModel(
-    val topBarEnabled: Boolean = true,
     val cardCornerPreset: String = "medium",
     val interfaceDensity: String = "normal",
     val posterWidthPreset: String = "medium",

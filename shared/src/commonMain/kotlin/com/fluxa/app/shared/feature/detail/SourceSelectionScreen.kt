@@ -156,6 +156,7 @@ private fun Header(content: DetailUiModel, language: String?, onBack: () -> Unit
     val episode = content.selectedEpisodeId?.let { id ->
         content.seasonEpisodes.firstOrNull { it.id == id }
     }
+    var backFocused by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -166,14 +167,15 @@ private fun Header(content: DetailUiModel, language: String?, onBack: () -> Unit
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(if (backFocused) Color.White else Color.White.copy(alpha = 0.08f))
+                .onFocusChanged { backFocused = it.isFocused }
                 .clickable(onClick = onBack),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = FluxaIcons.ArrowBack,
                 contentDescription = AppStrings.t(language, "common.back"),
-                tint = Color.White,
+                tint = if (backFocused) Color.Black else Color.White,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -341,4 +343,3 @@ private fun StreamCard(stream: DetailStreamUiModel, onClick: () -> Unit) {
         )
     }
 }
-

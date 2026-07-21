@@ -1,6 +1,7 @@
 package com.fluxa.app.shared.feature.detail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -346,6 +348,8 @@ private fun ResumeButton(content: DetailUiModel, language: String?, onAction: (D
     } else {
         AppStrings.t(language, "common.play")
     }
+    val isTv = LocalDeviceType.current == DeviceType.TV
+    var focused by remember { mutableStateOf(false) }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -353,6 +357,8 @@ private fun ResumeButton(content: DetailUiModel, language: String?, onAction: (D
             .height(54.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White)
+            .onFocusChanged { focused = it.isFocused }
+            .then(if (isTv && focused) Modifier.scale(1.03f).border(3.dp, Color.White, RoundedCornerShape(14.dp)) else Modifier)
             .clickable { onAction(DetailAction.Play()) }
             .padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.Center
@@ -377,20 +383,24 @@ private fun ResumeButton(content: DetailUiModel, language: String?, onAction: (D
 
 @Composable
 private fun RestartButton(language: String?, onClick: () -> Unit) {
+    val isTv = LocalDeviceType.current == DeviceType.TV
+    var focused by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(46.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(FluxaColors.surfaceRaised)
+            .background(if (isTv && focused) Color.White else FluxaColors.surfaceRaised)
+            .onFocusChanged { focused = it.isFocused }
+            .then(if (isTv && focused) Modifier.scale(1.03f).border(2.dp, Color.White, RoundedCornerShape(6.dp)) else Modifier)
             .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Icon(Icons.Filled.Refresh, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(18.dp))
         Text(
             text = AppStrings.t(language, "auto.restart"),
-            color = Color.White,
+            color = if (isTv && focused) Color.Black else Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
             modifier = Modifier.padding(start = 8.dp)
@@ -401,12 +411,16 @@ private fun RestartButton(language: String?, onClick: () -> Unit) {
 @Composable
 private fun DownloadButton(content: DetailUiModel, language: String?, onAction: (DetailAction) -> Unit) {
     val selectedEpisodeId = content.selectedEpisodeId
+    val isTv = LocalDeviceType.current == DeviceType.TV
+    var focused by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(46.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(FluxaColors.surfaceRaised)
+            .background(if (isTv && focused) Color.White else FluxaColors.surfaceRaised)
+            .onFocusChanged { focused = it.isFocused }
+            .then(if (isTv && focused) Modifier.scale(1.03f).border(2.dp, Color.White, RoundedCornerShape(6.dp)) else Modifier)
             .clickable {
                 if (selectedEpisodeId != null) onAction(DetailAction.DownloadEpisode(selectedEpisodeId))
                 else onAction(DetailAction.DownloadSeason(content.selectedSeason))
@@ -414,10 +428,10 @@ private fun DownloadButton(content: DetailUiModel, language: String?, onAction: 
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Icon(Icons.Filled.Download, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(18.dp))
         Text(
             text = AppStrings.t(language, "auto.download"),
-            color = Color.White,
+            color = if (isTv && focused) Color.Black else Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
             modifier = Modifier.padding(start = 8.dp)
@@ -469,12 +483,19 @@ private fun ActionRow(
 
 @Composable
 private fun ActionItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    val isTv = LocalDeviceType.current == DeviceType.TV
+    var focused by remember { mutableStateOf(false) }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isTv && focused) Color.White else Color.Transparent)
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+        Icon(icon, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(24.dp))
+        Text(text = label, color = if (isTv && focused) Color.Black else Color.White.copy(alpha = 0.8f), fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
     }
 }
 
@@ -590,9 +611,14 @@ private fun SeasonSelector(content: DetailUiModel, language: String?, onAction: 
 @Composable
 private fun EpisodeRow(episode: DetailEpisodeUiModel, content: DetailUiModel, onAction: (DetailAction) -> Unit) {
     val selected = episode.id == content.selectedEpisodeId
+    val isTv = LocalDeviceType.current == DeviceType.TV
+    var focused by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isTv && focused) Color.White.copy(alpha = 0.16f) else Color.Transparent)
+            .onFocusChanged { focused = it.isFocused }
             .clickable(enabled = !episode.isUpcoming) { onAction(DetailAction.EpisodeSelected(episode.id)) }
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {

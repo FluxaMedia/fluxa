@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/platform.yml"
+      - "app/**"
       - "build-logic/**"
       - "core/**"
       - "data/**"
@@ -17,6 +18,7 @@ on:
     branches: [master]
     paths:
       - ".github/workflows/platform.yml"
+      - "app/**"
       - "build-logic/**"
       - "core/**"
       - "data/**"
@@ -61,6 +63,17 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
+
+      - name: Install Android NDK
+        run: |
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
       - name: Compile Android shared modules
         run: >-
           ./gradlew --no-daemon
@@ -71,3 +84,4 @@ jobs:
           :data:compileDebugKotlinAndroid
           :player:compileDebugKotlinAndroid
           :shared:compileDebugKotlinAndroid
+          :app:compileTvDebugKotlin

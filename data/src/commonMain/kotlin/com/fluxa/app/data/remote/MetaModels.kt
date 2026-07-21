@@ -266,6 +266,26 @@ private fun JsonObject.trailerList(): List<DetailTrailer>? {
         .takeIf { it.isNotEmpty() }
 }
 
+private fun JsonObject.linkTrailerList(): List<DetailTrailer>? =
+    objectList("links").mapNotNull { link ->
+        val url = link.text("trailers") ?: return@mapNotNull null
+        val type = link.text("type") ?: "Trailer"
+        val provider = link.text("provider")
+        DetailTrailer(
+            id = url,
+            title = provider ?: link.text("name", "title") ?: type,
+            type = type,
+            url = url,
+            thumbnail = link.text("thumbnail"),
+            source = provider ?: "addon"
+        )
+    }.takeIf { it.isNotEmpty() }
+
+private fun JsonObject.allTrailerList(): List<DetailTrailer>? =
+    (trailerList().orEmpty() + linkTrailerList().orEmpty())
+        .distinctBy { it.url }
+        .takeIf { it.isNotEmpty() }
+
 private fun JsonObject.castMemberName(): String {
     val explicitName = first("name", "fullName", "full_name", "actor", "person")
         ?.castNameValue()
@@ -365,7 +385,7 @@ private fun metaDetailFromJson(json: JsonElement): MetaDetail {
         released = obj.text("released"),
         runtime = obj.text("runtime"),
         videos = obj.videoList("videos", "episodes"),
-        trailers = obj.trailerList(),
+        trailers = obj.allTrailerList(),
         imdbRating = obj.text("imdbRating", "imdb_rating"),
         ageRating = obj.text("ageRating", "age_rating"),
         ratings = obj.ratingList(),

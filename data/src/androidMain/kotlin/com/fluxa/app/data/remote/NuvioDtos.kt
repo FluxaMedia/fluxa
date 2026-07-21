@@ -64,6 +64,22 @@ data class NuvioLibraryItemDto(
     )
 }
 
+/**
+ * A Nuvio account stores plugin repositories separately from Stremio-style
+ * addons. Earlier server revisions used different names for the repository
+ * URL, so accept all published spellings while keeping one local contract.
+ */
+data class NuvioPluginDto(
+    @com.google.gson.annotations.SerializedName(
+        value = "url",
+        alternate = ["manifest_url", "manifestUrl", "repository_url", "repositoryUrl", "plugin_url", "pluginUrl"]
+    )
+    val manifestUrl: String? = null,
+    val enabled: Boolean = true,
+    @com.google.gson.annotations.SerializedName(value = "sort_order", alternate = ["sortOrder"])
+    val sortOrder: Int = 0
+)
+
 data class NuvioWatchProgressDto(
     @SerializedName("content_id") val contentId: String,
     @SerializedName("content_type") val contentType: String,

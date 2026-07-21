@@ -50,7 +50,6 @@ class AppleSettingsDataSource : SettingsDataSource {
     }
 
     override suspend fun updateAppearanceHome(value: SettingsAppearanceHomeUiModel) {
-        defaults.setBool(value.topBarEnabled, K.homeTopBarEnabled)
         defaults.setObject(value.cardCornerPreset, K.cardCornerPreset)
         defaults.setObject(value.interfaceDensity, K.interfaceDensity)
         defaults.setObject(value.posterWidthPreset, K.posterWidthPreset)
@@ -232,7 +231,6 @@ class AppleSettingsDataSource : SettingsDataSource {
             topNavigationBar = defaults.boolOrDefault(K.topNavigationBar, false)
         ),
         appearanceHome = SettingsAppearanceHomeUiModel(
-            topBarEnabled = defaults.boolOrDefault(K.homeTopBarEnabled, true),
             cardCornerPreset = defaults.stringForKey(K.cardCornerPreset) ?: "medium",
             interfaceDensity = defaults.stringForKey(K.interfaceDensity) ?: "normal",
             posterWidthPreset = defaults.stringForKey(K.posterWidthPreset) ?: "medium",
@@ -326,7 +324,6 @@ class AppleSettingsDataSource : SettingsDataSource {
         const val amoledMode = "fluxa.apple.settings.amoledMode"
         const val liquidGlassMode = "fluxa.apple.settings.liquidGlassMode"
         const val animationsEnabled = "fluxa.apple.settings.animationsEnabled"
-        const val homeTopBarEnabled = "fluxa.apple.settings.homeTopBarEnabled"
         const val floatingBottomBar = "fluxa.apple.settings.floatingBottomBar"
         const val bottomBarLabels = "fluxa.apple.settings.bottomBarLabels"
         const val topNavigationBar = "fluxa.apple.settings.topNavigationBar"

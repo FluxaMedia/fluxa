@@ -361,6 +361,7 @@ dependencies {
 
     // Media3 (for ExoPlayer access and @UnstableApi)
     implementation(libs.bundles.media3)
+    implementation(libs.media3.session)
 
     // Serialization / networking
     implementation(libs.retrofit.gson)

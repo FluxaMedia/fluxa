@@ -10,6 +10,7 @@ import com.fluxa.app.data.remote.NuvioAvatarDto
 import com.fluxa.app.data.remote.NuvioCredentials
 import com.fluxa.app.data.remote.NuvioLibraryItemDto
 import com.fluxa.app.data.remote.NuvioProfileDto
+import com.fluxa.app.data.remote.NuvioPluginDto
 import com.fluxa.app.data.remote.NuvioService
 import com.fluxa.app.data.remote.NuvioSession
 import com.fluxa.app.data.remote.NuvioSessionDto
@@ -22,7 +23,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import retrofit2.Response
 
-enum class NuvioImportStep { PROFILE, ADDONS, LIBRARY, PROGRESS, HISTORY, COLLECTIONS }
+enum class NuvioImportStep { PROFILE, ADDONS, PLUGINS, LIBRARY, PROGRESS, HISTORY, COLLECTIONS }
 
 class NuvioAccountImportCoordinator(
     private val nuvioService: NuvioService,
@@ -135,6 +136,14 @@ class NuvioAccountImportCoordinator(
         }
         onStep(NuvioImportStep.ADDONS)
 
+        val plugins = try {
+            nuvioService.pullPlugins(token, profileId = "eq.$primaryIndex").requireBody()
+        } catch (error: Exception) {
+            Log.w("NuvioImport", "Import step ${NuvioImportStep.PLUGINS} failed; continuing without it", error)
+            emptyList<NuvioPluginDto>()
+        }
+        onStep(NuvioImportStep.PLUGINS)
+
         val libraryItems = try {
             pullAllLibraryItems(token, primaryIndex)
         } catch (error: Exception) {
@@ -217,7 +226,11 @@ class NuvioAccountImportCoordinator(
         profileManager.saveProfileReplacingLocalAddons(finalProfile)
         profileManager.setLastActiveProfile(finalProfile)
         profileManager.clearExternalSyncFailure(finalProfile.id, "nuvio")
-        return NuvioImportResult(finalProfile, watchlistManager.getExternalContinueWatchingSnapshot())
+        return NuvioImportResult(
+            profile = finalProfile,
+            externalContinueWatching = watchlistManager.getExternalContinueWatchingSnapshot(),
+            plugins = plugins
+        )
     }
 
     private fun mergeProfiles(
@@ -406,7 +419,11 @@ class NuvioAccountImportCoordinator(
     }
 }
 
-data class NuvioImportResult(val profile: UserProfile, val externalContinueWatching: List<Meta>)
+data class NuvioImportResult(
+    val profile: UserProfile,
+    val externalContinueWatching: List<Meta>,
+    val plugins: List<NuvioPluginDto> = emptyList()
+)
 
 private fun NuvioProfileDto.withResolvedAvatarUrl(avatars: List<NuvioAvatarDto>, supabaseUrl: String): NuvioProfileDto {
     if (!avatarUrl.isNullOrBlank()) return this

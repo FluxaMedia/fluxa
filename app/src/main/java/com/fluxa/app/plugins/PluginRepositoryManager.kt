@@ -7,6 +7,7 @@ import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.core.rust.PluginHttpClientImpl
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.data.remote.NuvioPluginDto
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -125,6 +126,24 @@ class PluginRepositoryManager @Inject constructor(
 
     suspend fun addRepository(manifestUrl: String) {
         runtime.dispatch(mapOf("type" to "pluginRepositoryAddRequested", "manifestUrl" to manifestUrl))
+        persistCurrentState()
+    }
+
+    /** Imports the repository-backed scrapers saved in a Nuvio account.
+     *
+     * Nuvio sync is additive: a user can still keep device-only repositories,
+     * and duplicate URLs are naturally upserted by the headless plugin state.
+     */
+    suspend fun importNuvioPlugins(plugins: List<NuvioPluginDto>) {
+        plugins
+            .asSequence()
+            .filter { it.enabled }
+            .sortedBy { it.sortOrder }
+            .mapNotNull { it.manifestUrl?.trim()?.takeIf(String::isNotEmpty) }
+            .distinct()
+            .forEach { manifestUrl ->
+                runtime.dispatch(mapOf("type" to "pluginRepositoryAddRequested", "manifestUrl" to manifestUrl))
+            }
         persistCurrentState()
     }
 

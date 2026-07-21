@@ -180,7 +180,6 @@ class AndroidSettingsDataSource(
                 topNavigationBar = profile.topNavigationBar ?: false
             ),
             appearanceHome = SettingsAppearanceHomeUiModel(
-                topBarEnabled = profile.homeTopBarEnabled ?: true,
                 cardCornerPreset = profile.safeCardCornerPreset,
                 interfaceDensity = profile.safeInterfaceDensity,
                 posterWidthPreset = profile.safePosterWidthPreset,
@@ -307,7 +306,6 @@ class AndroidSettingsDataSource(
 
     override suspend fun updateAppearanceHome(value: SettingsAppearanceHomeUiModel) = update {
         it.copy(
-            homeTopBarEnabled = value.topBarEnabled,
             cardCornerPreset = value.cardCornerPreset,
             interfaceDensity = value.interfaceDensity,
             posterWidthPreset = value.posterWidthPreset,

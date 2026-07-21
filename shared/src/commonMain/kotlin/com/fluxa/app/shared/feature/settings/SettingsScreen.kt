@@ -1,5 +1,12 @@
 package com.fluxa.app.shared.feature.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,12 +16,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
@@ -39,12 +52,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,9 +71,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.FluxaColors
 
@@ -96,6 +116,18 @@ fun SettingsScreen(
 ) {
     val category = backStack.lastOrNull() ?: SettingsCategory.Hub
     val lang = language
+    val scrollStates = remember { mutableStateMapOf<SettingsCategory, ScrollState>() }
+    var highlightLabel by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(highlightLabel) {
+        if (highlightLabel != null) {
+            delay(2_000L)
+            highlightLabel = null
+        }
+    }
+    val navigateAndHighlight: (SettingsSearchEntry) -> Unit = { entry ->
+        highlightLabel = entry.label
+        onPushCategory(entry.category)
+    }
 
     if (deviceType == com.fluxa.app.ui.catalog.DeviceType.TV) {
         val selectedCategory = if (category == SettingsCategory.Hub) SettingsCategory.Account else category
@@ -114,27 +146,58 @@ fun SettingsScreen(
                     }
                 }
             }
-            Column(
-                modifier = Modifier.weight(1f).fillMaxSize().padding(24.dp).verticalScroll(remember(selectedCategory) { ScrollState(0) })
-            ) {
-                Text(settingsCategoryTitle(selectedCategory, lang), color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                Spacer(Modifier.height(16.dp))
-                SettingsCategoryContent(selectedCategory, state, lang, brandIcons, onAction, onPushCategory, onSwitchProfilesRequested)
-                Spacer(Modifier.height(120.dp))
+            AnimatedContent(
+                targetState = selectedCategory,
+                transitionSpec = { fadeIn(tween(180)).togetherWith(fadeOut(tween(120))) },
+                label = "settings-tv-category-transition",
+                modifier = Modifier.weight(1f).fillMaxSize()
+            ) { animatedCategory ->
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(scrollStates.getOrPut(animatedCategory) { ScrollState(0) })
+                ) {
+                    Text(settingsCategoryTitle(animatedCategory, lang), color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                    Spacer(Modifier.height(16.dp))
+                    CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
+                        SettingsCategoryContent(animatedCategory, state, lang, brandIcons, onAction, onPushCategory, onSwitchProfilesRequested, navigateAndHighlight)
+                    }
+                    Spacer(Modifier.height(120.dp))
+                }
             }
         }
         return
     }
 
+    var previousDepth by remember { mutableStateOf(backStack.size) }
+    val forward = backStack.size >= previousDepth
+    SideEffect { previousDepth = backStack.size }
+
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(horizontal = 20.dp)) {
             SettingsTopBar(
                 title = settingsCategoryTitle(category, lang),
                 onBack = { if (backStack.isEmpty()) onBackRequested() else onPopCategory() }
             )
-            Column(modifier = Modifier.fillMaxSize().verticalScroll(remember(category) { ScrollState(0) })) {
-                SettingsCategoryContent(category, state, lang, brandIcons, onAction, onPushCategory, onSwitchProfilesRequested)
+            AnimatedContent(
+                targetState = category,
+                transitionSpec = {
+                    val direction = if (forward) 1 else -1
+                    (slideInHorizontally(tween(220)) { direction * it } + fadeIn(tween(220)))
+                        .togetherWith(slideOutHorizontally(tween(220)) { -direction * it } + fadeOut(tween(220)))
+                },
+                label = "settings-category-transition",
+                modifier = Modifier.fillMaxSize()
+            ) { animatedCategory ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollStates.getOrPut(animatedCategory) { ScrollState(0) })
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+            ) {
+                CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
+                    SettingsCategoryContent(animatedCategory, state, lang, brandIcons, onAction, onPushCategory, onSwitchProfilesRequested, navigateAndHighlight)
+                }
                 Spacer(Modifier.height(120.dp))
+            }
             }
         }
     }
@@ -148,7 +211,8 @@ private fun SettingsCategoryContent(
     brandIcons: SettingsBrandIcons,
     onAction: (SettingsAction) -> Unit,
     onNavigate: (SettingsCategory) -> Unit,
-    onSwitchProfiles: () -> Unit
+    onSwitchProfiles: () -> Unit,
+    onNavigateSearchResult: (SettingsSearchEntry) -> Unit
 ) {
     when (category) {
         SettingsCategory.Hub -> SettingsHubContent(
@@ -156,7 +220,8 @@ private fun SettingsCategoryContent(
             lang = lang,
             onNavigate = onNavigate,
             onSwitchProfiles = onSwitchProfiles,
-            onAction = onAction
+            onAction = onAction,
+            onNavigateSearchResult = onNavigateSearchResult
         )
         SettingsCategory.Account -> SettingsAccountContent(state.account, lang, brandIcons, onAction, onNavigate = onNavigate)
         SettingsCategory.TmdbFeatures -> SettingsTmdbFeaturesContent(state.account, lang, onAction)
@@ -166,11 +231,10 @@ private fun SettingsCategoryContent(
         SettingsCategory.AppearanceHome -> SettingsAppearanceHomeContent(state.appearanceHome, lang, onAction, onNavigate = onNavigate)
         SettingsCategory.AppearanceHomeHero -> SettingsAppearanceHomeHeroContent(state.appearanceHome, lang, onAction)
         SettingsCategory.AppearanceHomeContinueWatching -> SettingsAppearanceHomeContinueWatchingContent(state.appearanceHome, lang, onAction)
-        SettingsCategory.AppearanceHomeNavigation -> SettingsAppearanceHomeNavigationContent(state.appearanceHome, lang, onAction)
         SettingsCategory.AppearanceDetail -> SettingsAppearanceDetailContent(lang, onNavigate = onNavigate)
         SettingsCategory.AppearanceDetailHero -> SettingsAppearanceDetailHeroContent(state.appearanceDetail, lang, onAction)
         SettingsCategory.AppearanceDetailEpisodes -> SettingsAppearanceDetailEpisodesContent(state.appearanceDetail, lang, onAction)
-        SettingsCategory.Playback -> SettingsPlaybackContent(state.playback, lang, onAction, onNavigate = onNavigate)
+        SettingsCategory.Playback -> SettingsPlaybackContent(state.playback, state.subtitles, lang, onAction, onNavigate = onNavigate)
         SettingsCategory.Subtitles -> SettingsSubtitlesContent(state.subtitles, lang, onAction)
         SettingsCategory.Advanced -> SettingsAdvancedContent(state.advanced, lang, onAction)
         SettingsCategory.Content -> SettingsContentCategoryContent(state.content, lang, onAction)
@@ -215,7 +279,6 @@ private fun settingsCategoryTitle(category: SettingsCategory, lang: String?): St
     SettingsCategory.AppearanceHome -> AppStrings.t(lang, "settings.appearance_home_screen")
     SettingsCategory.AppearanceHomeHero -> AppStrings.t(lang, "settings.hero_banner")
     SettingsCategory.AppearanceHomeContinueWatching -> AppStrings.t(lang, "auto.continue_watching")
-    SettingsCategory.AppearanceHomeNavigation -> AppStrings.t(lang, "settings.navigation")
     SettingsCategory.AppearanceDetail -> AppStrings.t(lang, "settings.appearance_detail_screen")
     SettingsCategory.AppearanceDetailHero -> AppStrings.t(lang, "settings.hero_banner")
     SettingsCategory.AppearanceDetailEpisodes -> AppStrings.t(lang, "settings.episodes")
@@ -252,9 +315,11 @@ private fun SettingsHubContent(
     lang: String?,
     onNavigate: (SettingsCategory) -> Unit,
     onSwitchProfiles: () -> Unit,
-    onAction: (SettingsAction) -> Unit
+    onAction: (SettingsAction) -> Unit,
+    onNavigateSearchResult: (SettingsSearchEntry) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -281,8 +346,23 @@ private fun SettingsHubContent(
                 singleLine = true,
                 textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { keyboardController?.hide() }),
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+        if (searchQuery.isNotEmpty()) {
+            Box(
+                modifier = Modifier.size(24.dp).clip(CircleShape).clickable { searchQuery = "" },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Clear,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.4f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
     if (searchQuery.isNotBlank()) {
@@ -296,7 +376,7 @@ private fun SettingsHubContent(
         } else {
             SettingsGroupCard {
                 results.forEach { entry ->
-                    SettingsNavRow(entry.label, value = settingsCategoryTitle(entry.category, lang)) { onNavigate(entry.category) }
+                    SettingsNavRow(entry.label, value = settingsCategoryTitle(entry.category, lang)) { onNavigateSearchResult(entry) }
                 }
             }
         }
@@ -343,7 +423,11 @@ private fun SettingsHubContent(
     SettingsGroupCard {
         SettingsNavRow(AppStrings.t(lang, "auto.general"), icon = Icons.Filled.Tune) { onNavigate(SettingsCategory.General) }
         SettingsNavRow(AppStrings.t(lang, "auto.appearance"), icon = Icons.Filled.Palette) { onNavigate(SettingsCategory.Appearance) }
-        SettingsNavRow(AppStrings.t(lang, "auto.playback"), icon = Icons.Filled.OndemandVideo) { onNavigate(SettingsCategory.Playback) }
+        SettingsNavRow(
+            AppStrings.t(lang, "auto.playback"),
+            icon = Icons.Filled.OndemandVideo,
+            value = if (state.playback.preferredPlayer == "mpv") "MPV" else "ExoPlayer"
+        ) { onNavigate(SettingsCategory.Playback) }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_content"))
@@ -601,19 +685,47 @@ private fun SettingsAccountStat(label: String, value: String) {
 
 @Composable
 private fun SettingsTmdbFeaturesContent(model: SettingsAccountUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val allEnabled = model.tmdbCastImagesEnabled && model.tmdbSimilarResultsEnabled && model.tmdbTrailersEnabled &&
+        model.tmdbRecommendationsEnabled && model.tmdbCollectionInfoEnabled && model.tmdbEpisodeImagesEnabled &&
+        model.tmdbLogosBackdropsEnabled && model.tmdbRatingsEnabled && model.tmdbBasicInfoEnabled &&
+        model.tmdbDetailsEnabled && model.tmdbProductionsEnabled && model.tmdbNetworksEnabled
     SettingsGroupCard {
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_cast_images"), value = model.tmdbCastImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCastImagesEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_similar_results"), value = model.tmdbSimilarResultsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbSimilarResultsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_trailers"), value = model.tmdbTrailersEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbTrailersEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_recommendations"), value = model.tmdbRecommendationsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRecommendationsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_collection_info"), value = model.tmdbCollectionInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCollectionInfoEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_episode_images"), value = model.tmdbEpisodeImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbEpisodeImagesEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_logos_backdrops"), value = model.tmdbLogosBackdropsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbLogosBackdropsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_ratings"), value = model.tmdbRatingsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRatingsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_basic_info"), value = model.tmdbBasicInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbBasicInfoEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_details"), value = model.tmdbDetailsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbDetailsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_productions"), value = model.tmdbProductionsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbProductionsEnabled = it))) }
-        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_networks"), value = model.tmdbNetworksEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbNetworksEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_enable_all"), value = allEnabled) {
+            onAction(
+                SettingsAction.TmdbAccountChanged(
+                    model.copy(
+                        tmdbCastImagesEnabled = it, tmdbSimilarResultsEnabled = it, tmdbTrailersEnabled = it,
+                        tmdbRecommendationsEnabled = it, tmdbCollectionInfoEnabled = it, tmdbEpisodeImagesEnabled = it,
+                        tmdbLogosBackdropsEnabled = it, tmdbRatingsEnabled = it, tmdbBasicInfoEnabled = it,
+                        tmdbDetailsEnabled = it, tmdbProductionsEnabled = it, tmdbNetworksEnabled = it
+                    )
+                )
+            )
+        }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.tmdb_group_media_info"))
+    SettingsGroupCard {
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_basic_info"), description = AppStrings.t(lang, "settings.tmdb_basic_info_desc"), value = model.tmdbBasicInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbBasicInfoEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_details"), description = AppStrings.t(lang, "settings.tmdb_details_desc"), value = model.tmdbDetailsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbDetailsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_productions"), description = AppStrings.t(lang, "settings.tmdb_productions_desc"), value = model.tmdbProductionsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbProductionsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_networks"), description = AppStrings.t(lang, "settings.tmdb_networks_desc"), value = model.tmdbNetworksEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbNetworksEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_collection_info"), description = AppStrings.t(lang, "settings.tmdb_collection_info_desc"), value = model.tmdbCollectionInfoEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCollectionInfoEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_ratings"), description = AppStrings.t(lang, "settings.tmdb_ratings_desc"), value = model.tmdbRatingsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRatingsEnabled = it))) }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.tmdb_group_images"))
+    SettingsGroupCard {
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_cast_images"), description = AppStrings.t(lang, "settings.tmdb_cast_images_desc"), value = model.tmdbCastImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbCastImagesEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_episode_images"), description = AppStrings.t(lang, "settings.tmdb_episode_images_desc"), value = model.tmdbEpisodeImagesEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbEpisodeImagesEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_logos_backdrops"), description = AppStrings.t(lang, "settings.tmdb_logos_backdrops_desc"), value = model.tmdbLogosBackdropsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbLogosBackdropsEnabled = it))) }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.tmdb_group_discovery"))
+    SettingsGroupCard {
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_similar_results"), description = AppStrings.t(lang, "settings.tmdb_similar_results_desc"), value = model.tmdbSimilarResultsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbSimilarResultsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_recommendations"), description = AppStrings.t(lang, "settings.tmdb_recommendations_desc"), value = model.tmdbRecommendationsEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbRecommendationsEnabled = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_trailers"), description = AppStrings.t(lang, "settings.tmdb_trailers_desc"), value = model.tmdbTrailersEnabled) { onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbTrailersEnabled = it))) }
     }
 }
 
@@ -654,6 +766,7 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SETTINGS_COLOR_SWATCHES.forEach { swatch ->
                     var swatchFocused by remember { mutableStateOf(false) }
+                    val selected = swatch == model.accentColorArgb
                     Box(
                         modifier = Modifier
                             .size(24.dp)
@@ -661,10 +774,21 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
                             .onFocusChanged { swatchFocused = it.isFocused }
                             .background(Color(swatch.toInt()))
                             .then(
-                                if (swatchFocused) Modifier.border(2.dp, Color.White, CircleShape) else Modifier
+                                if (selected || swatchFocused) Modifier.border(2.dp, Color.White, CircleShape) else Modifier
                             )
-                            .clickable { onAction(SettingsAction.AppearanceChanged(model.copy(accentColorArgb = swatch))) }
-                    )
+                            .clickable { onAction(SettingsAction.AppearanceChanged(model.copy(accentColorArgb = swatch))) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected) {
+                            val isLight = Color(swatch.toInt()).luminance() > 0.5f
+                            Icon(
+                                Icons.Filled.CheckCircle,
+                                contentDescription = null,
+                                tint = if (isLight) Color.Black else Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -725,7 +849,6 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
     SettingsGroupCard {
         SettingsNavRow(AppStrings.t(lang, "settings.hero_banner")) { onNavigate(SettingsCategory.AppearanceHomeHero) }
         SettingsNavRow(AppStrings.t(lang, "auto.continue_watching")) { onNavigate(SettingsCategory.AppearanceHomeContinueWatching) }
-        SettingsNavRow(AppStrings.t(lang, "settings.navigation")) { onNavigate(SettingsCategory.AppearanceHomeNavigation) }
     }
 }
 
@@ -779,15 +902,6 @@ private fun SettingsAppearanceHomeContinueWatchingContent(model: SettingsAppeara
         }
         SettingsChoiceRow(AppStrings.t(lang, "settings.continue_watching_source"), model.continueWatchingSource, continueWatchingSourceOptions) {
             onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingSource = it)))
-        }
-    }
-}
-
-@Composable
-private fun SettingsAppearanceHomeNavigationContent(model: SettingsAppearanceHomeUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
-    SettingsGroupCard {
-        SettingsToggleRow(AppStrings.t(lang, "settings.home_top_bar"), description = AppStrings.t(lang, "settings.home_top_bar_desc"), value = model.topBarEnabled) {
-            onAction(SettingsAction.AppearanceHomeChanged(model.copy(topBarEnabled = it)))
         }
     }
 }
@@ -848,7 +962,13 @@ private fun SettingsAppearanceDetailEpisodesContent(model: SettingsAppearanceDet
 }
 
 @Composable
-private fun SettingsPlaybackContent(model: SettingsPlaybackUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit) {
+private fun SettingsPlaybackContent(
+    model: SettingsPlaybackUiModel,
+    subtitles: SettingsSubtitlesUiModel,
+    lang: String?,
+    onAction: (SettingsAction) -> Unit,
+    onNavigate: (SettingsCategory) -> Unit
+) {
     val playerOptions = listOf(SettingsChoiceOption("internal", "ExoPlayer"), SettingsChoiceOption("mpv", "MPV"))
     val playbackSpeedOptions = listOf("0.75", "1.0", "1.25", "1.5").map { SettingsChoiceOption(it, "${it}x") }
     val seekOptions = listOf("10", "15", "30").map { SettingsChoiceOption(it, "${it}s") }
@@ -861,7 +981,10 @@ private fun SettingsPlaybackContent(model: SettingsPlaybackUiModel, lang: String
     val autoplayCountdownOptions = listOf("5", "7", "10", "15").map { SettingsChoiceOption(it, "${it}s") }
 
     SettingsGroupCard {
-        SettingsNavRow(AppStrings.t(lang, "auto.subtitles")) { onNavigate(SettingsCategory.Subtitles) }
+        SettingsNavRow(
+            AppStrings.t(lang, "auto.subtitles"),
+            value = languageOptionLabel(subtitles.preferredSubtitleLanguage, lang)
+        ) { onNavigate(SettingsCategory.Subtitles) }
         SettingsNavRow(AppStrings.t(lang, "settings.advanced_settings")) { onNavigate(SettingsCategory.Advanced) }
     }
 
@@ -932,8 +1055,15 @@ private fun SettingsPlaybackContent(model: SettingsPlaybackUiModel, lang: String
     }
 
     Spacer(Modifier.height(20.dp))
+    var confirmingReset by remember { mutableStateOf(false) }
     SettingsGroupCard {
         SettingsActionRow(AppStrings.t(lang, "settings.reset_to_defaults"), destructive = true) {
+            confirmingReset = true
+        }
+    }
+    if (confirmingReset) {
+        SettingsResetConfirmDialog(lang, onDismiss = { confirmingReset = false }) {
+            confirmingReset = false
             onAction(SettingsAction.PlaybackChanged(SettingsPlaybackUiModel()))
         }
     }
@@ -1032,11 +1162,37 @@ private fun SettingsAdvancedContent(model: SettingsAdvancedUiModel, lang: String
     }
 
     Spacer(Modifier.height(20.dp))
+    var confirmingReset by remember { mutableStateOf(false) }
     SettingsGroupCard {
         SettingsActionRow(AppStrings.t(lang, "settings.reset_to_defaults"), destructive = true) {
+            confirmingReset = true
+        }
+    }
+    if (confirmingReset) {
+        SettingsResetConfirmDialog(lang, onDismiss = { confirmingReset = false }) {
+            confirmingReset = false
             onAction(SettingsAction.AdvancedChanged(SettingsAdvancedUiModel()))
         }
     }
+}
+
+@Composable
+private fun SettingsResetConfirmDialog(lang: String?, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(AppStrings.t(lang, "settings.reset_to_defaults")) },
+        text = { Text(AppStrings.t(lang, "settings.reset_to_defaults_confirm")) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(AppStrings.t(lang, "settings.reset_to_defaults"), color = FluxaColors.errorRed)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(AppStrings.t(lang, "common.cancel"))
+            }
+        }
+    )
 }
 
 @Composable

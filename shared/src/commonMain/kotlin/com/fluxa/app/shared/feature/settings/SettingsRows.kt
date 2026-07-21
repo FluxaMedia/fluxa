@@ -3,6 +3,7 @@ package com.fluxa.app.shared.feature.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -37,7 +43,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,14 +57,31 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.ui.catalog.FluxaColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 data class SettingsChoiceOption(val value: String, val label: String)
+
+val LocalSettingsHighlightLabel = compositionLocalOf<String?> { null }
+
+fun Modifier.settingsHighlight(highlighted: Boolean): Modifier = composed {
+    if (highlighted) {
+        clip(RoundedCornerShape(10.dp)).background(Color.White.copy(alpha = 0.14f))
+    } else {
+        this
+    }
+}
 
 fun Modifier.settingsFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
@@ -91,8 +117,22 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
 
 @Composable
 fun SettingsToggleRow(label: String, description: String? = null, value: Boolean, onValueChanged: (Boolean) -> Unit) {
+    val haptics = LocalHapticFeedback.current
+    val highlighted = LocalSettingsHighlightLabel.current == label
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(highlighted) {
+        if (highlighted) bringIntoViewRequester.bringIntoView()
+    }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .settingsHighlight(highlighted)
+            .clickable {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onValueChanged(!value)
+            }
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -102,7 +142,7 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
                 Text(description, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
             }
         }
-        Switch(checked = value, onCheckedChange = onValueChanged)
+        Switch(checked = value, onCheckedChange = null)
     }
 }
 
@@ -115,13 +155,30 @@ fun SettingsChoiceRow(
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val currentLabel = options.firstOrNull { it.value == value }?.label ?: value
+    val highlighted = LocalSettingsHighlightLabel.current == label
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(highlighted) {
+        if (highlighted) bringIntoViewRequester.bringIntoView()
+    }
     Row(
-        modifier = Modifier.fillMaxWidth().settingsFocusRing().clickable { showDialog = true }.padding(vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .settingsHighlight(highlighted)
+            .settingsFocusRing()
+            .clickable { showDialog = true }
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = Color.White, modifier = Modifier.weight(1f))
-        Text(currentLabel, color = Color.White.copy(alpha = 0.55f))
+        Text(
+            currentLabel,
+            color = Color.White.copy(alpha = 0.55f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 140.dp)
+        )
     }
     if (showDialog) {
         SettingsChoiceDialog(
@@ -195,16 +252,32 @@ fun SettingsStepperRow(
     formatValue: (Int) -> String = { it.toString() },
     onValueChanged: (Int) -> Unit
 ) {
+    val haptics = LocalHapticFeedback.current
+    val highlighted = LocalSettingsHighlightLabel.current == label
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(highlighted) {
+        if (highlighted) bringIntoViewRequester.bringIntoView()
+    }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .settingsHighlight(highlighted)
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = Color.White, modifier = Modifier.weight(1f))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SettingsIconButton(Icons.Filled.Remove) { onValueChanged((value - step).coerceIn(min, max)) }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            SettingsIconButton(Icons.Filled.Remove) {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onValueChanged((value - step).coerceIn(min, max))
+            }
             Text(formatValue(value), color = Color.White, modifier = Modifier.width(48.dp), fontSize = 14.sp)
-            SettingsIconButton(Icons.Filled.Add) { onValueChanged((value + step).coerceIn(min, max)) }
+            SettingsIconButton(Icons.Filled.Add) {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onValueChanged((value + step).coerceIn(min, max))
+            }
         }
     }
 }
@@ -218,38 +291,47 @@ private fun SettingsIconButton(
     var focused by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
-            .size(28.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .onFocusChanged { focused = it.isFocused }
-            .background(
-                when {
-                    focused -> Color.White
-                    enabled -> Color.White.copy(alpha = 0.1f)
-                    else -> Color.White.copy(alpha = 0.04f)
-                }
-            )
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (focused) Color.Black else Color.White.copy(alpha = if (enabled) 0.85f else 0.25f),
-            modifier = Modifier.size(16.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        focused -> Color.White
+                        enabled -> Color.White.copy(alpha = 0.1f)
+                        else -> Color.White.copy(alpha = 0.04f)
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (focused) Color.Black else Color.White.copy(alpha = if (enabled) 0.85f else 0.25f),
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 
 @Composable
 fun SettingsPercentSliderRow(label: String, value: Float, onValueChanged: (Float) -> Unit) {
+    var dragValue by remember(value) { mutableFloatStateOf(value) }
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, color = Color.White)
-            Text("${value.toInt()}%", color = Color.White.copy(alpha = 0.55f))
+            Text("${dragValue.toInt()}%", color = Color.White.copy(alpha = 0.55f))
         }
         Slider(
-            value = value,
-            onValueChange = onValueChanged,
+            value = dragValue,
+            onValueChange = { dragValue = it },
+            onValueChangeFinished = { onValueChanged(dragValue) },
             valueRange = 0f..100f,
             colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White)
         )
@@ -268,12 +350,14 @@ fun SettingsColorOpacityRow(
     onColorChanged: (Long) -> Unit,
     onOpacityChanged: (Float) -> Unit
 ) {
+    var dragOpacity by remember(opacity) { mutableFloatStateOf(opacity) }
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, color = Color.White, modifier = Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SETTINGS_COLOR_SWATCHES.forEach { swatch ->
                     var swatchFocused by remember { mutableStateOf(false) }
+                    val selected = swatch == colorArgb
                     Box(
                         modifier = Modifier
                             .size(22.dp)
@@ -281,19 +365,28 @@ fun SettingsColorOpacityRow(
                             .onFocusChanged { swatchFocused = it.isFocused }
                             .background(Color(swatch.toInt()))
                             .then(
-                                if (swatch == colorArgb) Modifier.padding(1.dp) else Modifier
+                                if (selected || swatchFocused) Modifier.border(2.dp, Color.White, CircleShape) else Modifier
                             )
-                            .then(
-                                if (swatchFocused) Modifier.border(2.dp, Color.White, CircleShape) else Modifier
+                            .clickable { onColorChanged(swatch) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected) {
+                            val isLight = Color(swatch.toInt()).luminance() > 0.5f
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = if (isLight) Color.Black else Color.White,
+                                modifier = Modifier.size(12.dp)
                             )
-                            .clickable { onColorChanged(swatch) }
-                    )
+                        }
+                    }
                 }
             }
         }
         Slider(
-            value = opacity,
-            onValueChange = onOpacityChanged,
+            value = dragOpacity,
+            onValueChange = { dragOpacity = it },
+            onValueChangeFinished = { onOpacityChanged(dragOpacity) },
             valueRange = 0f..1f,
             colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White)
         )
@@ -311,8 +404,15 @@ fun SettingsOrderedToggleRow(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit
 ) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val rowHeightPx = with(density) { 52.dp.toPx() }
+    val dragOffset = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .offset { androidx.compose.ui.unit.IntOffset(0, dragOffset.value.toInt()) },
         verticalAlignment = Alignment.CenterVertically
     ) {
         var checkboxFocused by remember { mutableStateOf(false) }
@@ -336,9 +436,40 @@ fun SettingsOrderedToggleRow(
             if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
         }
         if (selected) {
-            SettingsIconButton(Icons.Filled.KeyboardArrowUp, enabled = canMoveUp) { onMoveUp() }
-            Spacer(Modifier.width(4.dp))
-            SettingsIconButton(Icons.Filled.KeyboardArrowDown, enabled = canMoveDown) { onMoveDown() }
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .pointerInput(canMoveUp, canMoveDown) {
+                        detectDragGestures(
+                            onDragEnd = { scope.launch { dragOffset.animateTo(0f) } },
+                            onDragCancel = { scope.launch { dragOffset.animateTo(0f) } }
+                        ) { change, dragAmount ->
+                            change.consume()
+                            scope.launch {
+                                val next = dragOffset.value + dragAmount.y
+                                when {
+                                    next > rowHeightPx / 2 && canMoveDown -> {
+                                        onMoveDown()
+                                        dragOffset.snapTo(next - rowHeightPx)
+                                    }
+                                    next < -rowHeightPx / 2 && canMoveUp -> {
+                                        onMoveUp()
+                                        dragOffset.snapTo(next + rowHeightPx)
+                                    }
+                                    else -> dragOffset.snapTo(next)
+                                }
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.DragHandle,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.4f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
@@ -351,8 +482,19 @@ fun SettingsActionRow(
     icon: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    val highlighted = LocalSettingsHighlightLabel.current == label
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(highlighted) {
+        if (highlighted) bringIntoViewRequester.bringIntoView()
+    }
     Row(
-        modifier = Modifier.fillMaxWidth().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .settingsHighlight(highlighted)
+            .settingsFocusRing()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -372,7 +514,14 @@ fun SettingsActionRow(
             Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, fontWeight = FontWeight.Medium)
         }
         if (value != null) {
-            Text(value, color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+            Text(
+                value,
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 140.dp)
+            )
         }
     }
 }
@@ -446,9 +595,16 @@ fun SettingsSecretFieldRow(
     onValueChanged: (String) -> Unit
 ) {
     var revealed by remember { mutableStateOf(false) }
+    var text by remember(value) { mutableStateOf(value) }
+    LaunchedEffect(text) {
+        if (text != value) {
+            delay(500)
+            onValueChanged(text)
+        }
+    }
     androidx.compose.material3.OutlinedTextField(
-        value = value,
-        onValueChange = onValueChanged,
+        value = text,
+        onValueChange = { text = it },
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it, color = Color.White.copy(alpha = 0.3f)) } },
         singleLine = true,
@@ -502,8 +658,19 @@ fun SettingsNavRow(
     value: String? = null,
     onClick: () -> Unit
 ) {
+    val highlighted = LocalSettingsHighlightLabel.current == label
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(highlighted) {
+        if (highlighted) bringIntoViewRequester.bringIntoView()
+    }
     Row(
-        modifier = Modifier.fillMaxWidth().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .settingsHighlight(highlighted)
+            .settingsFocusRing()
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -529,7 +696,14 @@ fun SettingsNavRow(
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (value != null) {
-                Text(value, color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+                Text(
+                    value,
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 140.dp)
+                )
                 Spacer(Modifier.width(8.dp))
             }
             Icon(
@@ -548,9 +722,16 @@ fun SettingsTextFieldRow(
     value: String,
     onValueChanged: (String) -> Unit
 ) {
+    var text by remember(value) { mutableStateOf(value) }
+    LaunchedEffect(text) {
+        if (text != value) {
+            delay(500)
+            onValueChanged(text)
+        }
+    }
     androidx.compose.material3.OutlinedTextField(
-        value = value,
-        onValueChange = onValueChanged,
+        value = text,
+        onValueChange = { text = it },
         label = { Text(label) },
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(

@@ -60,6 +60,7 @@ class AndroidFluxaPlatformServices(
     override val authDataSource = AndroidAuthDataSource(
         authService = AppContainer.authService,
         nuvioCoordinator = AppContainer.nuvioImportCoordinator,
+        pluginRepositoryManager = AppContainer.pluginRepositoryManager,
         profileManager = profileManager,
         language = { activeProfile()?.language ?: "en" },
         onAuthenticated = onActiveProfileChanged

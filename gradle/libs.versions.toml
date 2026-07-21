@@ -100,6 +100,7 @@ media3-exoplayer-hls    = { group = "androidx.media3", name = "media3-exoplayer-
 media3-ui               = { group = "androidx.media3", name = "media3-ui",                version.ref = "media3" }
 media3-datasource-okhttp= { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "media3" }
 media3-effect           = { group = "androidx.media3", name = "media3-effect",            version.ref = "media3" }
+media3-session          = { group = "androidx.media3", name = "media3-session",           version.ref = "media3" }
 jellyfin-media3         = { group = "org.jellyfin.media3",  name = "media3-ffmpeg-decoder", version.ref = "jellyfinMedia3" }
 mpv                     = { group = "dev.jdtech.mpv",       name = "libmpv",                version.ref = "mpv" }
 

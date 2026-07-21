@@ -3,6 +3,7 @@
 package com.fluxa.app.shared.feature.catalog
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,13 +24,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -99,12 +104,15 @@ fun TvCatalogHomeScreen(
                             }
                             if (row.canLoadMore) {
                                 item(key = "${row.id}:load-more") {
+                                    var focused by remember { mutableStateOf(false) }
                                     Box(
                                         modifier = Modifier
                                             .width(124.dp)
                                             .height(186.dp)
                                             .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                                            .background(FluxaColors.surfaceRaised)
+                                            .background(if (focused) Color.White else FluxaColors.surfaceRaised)
+                                            .onFocusChanged { focused = it.isFocused }
+                                            .then(if (focused) Modifier.border(3.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)) else Modifier)
                                             .clickable { onAction(CatalogAction.LoadMore(row.id)) }
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center
@@ -112,7 +120,7 @@ fun TvCatalogHomeScreen(
                                         androidx.compose.material3.Icon(
                                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                             contentDescription = AppStrings.t(null, "common.view_all"),
-                                            tint = Color.White
+                                            tint = if (focused) Color.Black else Color.White
                                         )
                                     }
                                 }

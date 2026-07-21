@@ -127,7 +127,6 @@ data class UserProfile(
     val floatingBottomBar: Boolean? = false,
     val bottomBarLabels: Boolean? = false,
     val topNavigationBar: Boolean? = false,
-    val homeTopBarEnabled: Boolean? = true,
     val reduceMotion: Boolean? = false,
     val gifAutoplayEnabled: Boolean? = true,
     val startPage: String? = "home",

@@ -251,6 +251,13 @@ fun FluxaApp(
                 else -> "dest:${state.destination}"
             }
             val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
+            val tvRouteModifier = if (isTv) {
+                Modifier
+                    .padding(horizontal = 40.dp, vertical = 28.dp)
+                    .focusRestorer()
+            } else {
+                Modifier
+            }
             val widthClass = com.fluxa.app.ui.catalog.LocalWindowWidthClass.current
             val topNavEnabled = settingsState?.appearance?.topNavigationBar == true &&
                 (isTv || widthClass != com.fluxa.app.ui.catalog.WindowWidthClass.Compact)
@@ -321,7 +328,7 @@ fun FluxaApp(
                     language = state.language,
                     onBack = onNotificationsBackRequested,
                     onItemSelected = { release -> onCalendarAction(CalendarAction.ItemSelected(release.item)) },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.showSourceSelection && detailState?.content != null -> SourceSelectionScreen(
                     content = detailState.content,
@@ -330,14 +337,14 @@ fun FluxaApp(
                     onStreamSelected = { stream ->
                         onDetailAction(DetailAction.StreamSelected(stream, detailState.content.selectedEpisodeId))
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.selectedDetail != null && detailState != null -> DetailScreen(
                     state = detailState,
                     language = state.language,
                     onAction = onDetailAction,
                     onBack = onDetailBackRequested,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 libraryState?.folderDetail?.folder != null && useRail -> Row(Modifier.fillMaxSize()) {
                     LibraryScreen(
@@ -370,7 +377,7 @@ fun FluxaApp(
                     onBack = onCategoryBackRequested,
                     onItemSelected = onCategoryItemSelected,
                     deviceType = deviceType,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.destination == FluxaDestination.Search && searchState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.search.TvSearchScreen(
                     state = searchState,
@@ -456,7 +463,7 @@ fun FluxaApp(
                     onSelectCategory = onSettingsSelectCategory,
                     deviceType = deviceType,
                     brandIcons = settingsBrandIcons,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.destination == FluxaDestination.AddonStore && addonStoreState != null -> AddonStoreScreen(
                     state = addonStoreState,
@@ -464,14 +471,14 @@ fun FluxaApp(
                     onAction = onAddonStoreAction,
                     onConfigureRequested = onOpenUrlRequested,
                     onBackRequested = onAddonStoreBackRequested,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.destination == FluxaDestination.Plugins && pluginsState != null -> PluginsScreen(
                     state = pluginsState,
                     language = state.language,
                     onAction = onPluginsAction,
                     onBackRequested = onPluginsBackRequested,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.destination == FluxaDestination.Auth && authState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.auth.TvAuthScreen(
                     state = authState,
@@ -506,11 +513,7 @@ fun FluxaApp(
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
                     state = state,
                     onCatalogAction = onCatalogAction,
-                    onNotificationsRequested = onNotificationsRequested,
-                    onAvatarClick = { onDestinationSelected(FluxaDestination.Settings) },
                     onCategorySelected = onCategorySelected,
-                    profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
-                    topBarEnabled = settingsState?.appearanceHome?.topBarEnabled != false,
                     bottomContentInset = if (liquidGlassMode && navChromeVisible) navBarHeightDp + 20.dp else 24.dp,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -527,7 +530,7 @@ fun FluxaApp(
                     FluxaTopNavBar(
                         destination = state.destination,
                         accentColorArgb = profileState?.activeProfile?.accentColorArgb,
-                        showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
+                        showProfile = true,
                         showLabels = settingsState?.appearance?.bottomBarLabels == true,
                         isTv = isTv,
                         language = state.language,
@@ -549,7 +552,7 @@ fun FluxaApp(
                     FluxaNavigationRail(
                         destination = state.destination,
                         accentColorArgb = profileState?.activeProfile?.accentColorArgb,
-                        showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
+                        showProfile = true,
                         showLabels = settingsState?.appearance?.bottomBarLabels == true,
                         language = state.language,
                         onDestinationSelected = onDestinationSelected,
@@ -565,7 +568,7 @@ fun FluxaApp(
                         liquidGlass = liquidGlassMode,
                         hazeState = hazeState,
                         showLabels = settingsState?.appearance?.bottomBarLabels == true,
-                        showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
+                        showProfile = true,
                         profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                         language = state.language,
                         onDestinationSelected = onDestinationSelected,
@@ -887,96 +890,11 @@ private fun FluxaNavigationBar(
     }
 }
 
-private enum class FluxaHomeFilter(val value: String, val titleKey: String) {
-    All("all", "nav.home"),
-    Series("series", "auto.series"),
-    Movies("movie", "auto.movie")
-}
-
-@Composable
-private fun FluxaHomeOverlayBar(
-    activeFilter: String,
-    language: String?,
-    profileAvatarUrl: String?,
-    scrimAlpha: Float,
-    onFilterSelected: (String) -> Unit,
-    onNotificationsRequested: () -> Unit,
-    onAvatarClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val backgroundColor = androidx.compose.ui.graphics.lerp(
-        Color.Black.copy(alpha = 0.4f),
-        FluxaColors.background,
-        scrimAlpha
-    )
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(backgroundColor)
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            FluxaHomeFilter.entries.forEach { filter ->
-                val selected = filter.value == activeFilter || (filter == FluxaHomeFilter.All && activeFilter.isBlank())
-                val underlineWidth by animateDpAsState(if (selected) 20.dp else 0.dp, label = "filter-underline")
-                Column(modifier = Modifier.clickable { onFilterSelected(filter.value) }) {
-                    Text(
-                        text = AppStrings.t(language, filter.titleKey),
-                        color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 15.sp
-                    )
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .height(2.dp)
-                            .width(underlineWidth)
-                            .background(Color.White)
-                    )
-                }
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = FluxaIcons.Notifications,
-                contentDescription = AppStrings.t(language, "auto.notifications"),
-                tint = Color.White,
-                modifier = Modifier.size(24.dp).clickable(onClick = onNotificationsRequested)
-            )
-            Box(
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(FluxaColors.surfaceRaised)
-                    .clickable(onClick = onAvatarClick)
-            ) {
-                if (profileAvatarUrl != null) {
-                    FluxaRemoteImage(
-                        imageUrl = profileAvatarUrl,
-                        cacheKey = "profile-avatar:$profileAvatarUrl",
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun FluxaHomeContent(
     state: FluxaAppUiState,
     onCatalogAction: (CatalogAction) -> Unit,
-    onNotificationsRequested: () -> Unit,
-    onAvatarClick: () -> Unit,
     onCategorySelected: (id: String, title: String) -> Unit,
-    profileAvatarUrl: String?,
-    topBarEnabled: Boolean,
     bottomContentInset: androidx.compose.ui.unit.Dp = 24.dp,
     modifier: Modifier
 ) {
@@ -997,18 +915,7 @@ private fun FluxaHomeContent(
     val heroItems = state.catalogHome.heroItems
     val showHero = state.catalogHome.showHeroSection && heroItems.isNotEmpty()
     val listState = rememberLazyListState()
-    var heroHeightPx by remember { mutableIntStateOf(0) }
     var posterActionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
-    val scrimAlpha by remember {
-        androidx.compose.runtime.derivedStateOf {
-            when {
-                !showHero -> 1f
-                listState.firstVisibleItemIndex > 0 -> 1f
-                heroHeightPx <= 0 -> 0f
-                else -> (listState.firstVisibleItemScrollOffset.toFloat() / heroHeightPx).coerceIn(0f, 1f)
-            }
-        }
-    }
 
     Box(modifier = modifier) {
         LazyColumn(
@@ -1024,7 +931,7 @@ private fun FluxaHomeContent(
                         billboard = state.catalogHome.billboard,
                         language = state.language,
                         onCatalogAction = onCatalogAction,
-                        modifier = Modifier.onGloballyPositioned { heroHeightPx = it.size.height }
+                        modifier = Modifier
                     )
                 }
             }
@@ -1094,18 +1001,6 @@ private fun FluxaHomeContent(
                     }
                 }
             }
-        }
-        if (showHero && topBarEnabled) {
-            FluxaHomeOverlayBar(
-                activeFilter = state.catalogHome.activeFilter,
-                language = state.language,
-                profileAvatarUrl = profileAvatarUrl,
-                scrimAlpha = scrimAlpha,
-                onFilterSelected = { filter -> onCatalogAction(CatalogAction.FilterChanged(filter)) },
-                onNotificationsRequested = onNotificationsRequested,
-                onAvatarClick = onAvatarClick,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
         }
     }
 

@@ -9,6 +9,7 @@ import com.fluxa.app.data.remote.NuvioSession
 import com.fluxa.app.data.remote.StremioService
 import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
 import com.fluxa.app.data.repository.NuvioImportStep
+import com.fluxa.app.plugins.PluginRepositoryManager
 import com.fluxa.app.shared.feature.auth.AuthDataSource
 import com.fluxa.app.shared.feature.auth.AuthImportStep
 import com.fluxa.app.shared.feature.auth.AuthStage
@@ -31,6 +32,7 @@ private val NUVIO_STEP_MAP = mapOf(
 class AndroidAuthDataSource(
     private val authService: StremioService,
     private val nuvioCoordinator: NuvioAccountImportCoordinator,
+    private val pluginRepositoryManager: PluginRepositoryManager,
     private val profileManager: ProfileManager,
     private val language: () -> String,
     private val onAuthenticated: (UserProfile) -> Unit
@@ -208,6 +210,7 @@ class AndroidAuthDataSource(
             val imported = nuvioCoordinator.import(baseProfile, session) { step ->
                 NUVIO_STEP_MAP[step]?.let { mapped -> state.update { it.copy(importSteps = it.importSteps + mapped) } }
             }
+            pluginRepositoryManager.importNuvioPlugins(imported.plugins)
             pendingImportedProfile = imported.profile
             state.update { it.copy(importDone = true) }
         } catch (e: Exception) {

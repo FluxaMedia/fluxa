@@ -312,9 +312,39 @@ internal suspend fun resolvePlayableTrailerUrl(
 ): String? {
     val videoId = trailers.firstOrNull { it.url.extractYoutubeVideoId() != null }?.url?.extractYoutubeVideoId()
     if (videoId != null) {
-        return (resolveYoutubeTrailerViaCore(videoId, dispatchHeadless) as? TrailerResolveResult.Ok)?.data?.streamUrl
+        val youtubeUrl = (resolveYoutubeTrailerViaCore(videoId, dispatchHeadless) as? TrailerResolveResult.Ok)
+            ?.data?.streamUrl
+        if (youtubeUrl != null) return youtubeUrl
     }
-    return trailers.firstOrNull { it.url.isDirectVideoPreviewUrl() }?.url
+    return selectBestDirectTrailerUrl(trailers)
+}
+
+private val trailerResolutionPattern = Regex("""(?i)(?<!\d)(2160|1440|1080|720|576|540|480|360)\s*p(?!\d)""")
+
+internal fun selectBestDirectTrailerUrl(trailers: List<DetailTrailer>): String? {
+    var bestUrl: String? = null
+    var bestQuality = -1
+    for (trailer in trailers) {
+        if (!trailer.url.isDirectVideoPreviewUrl()) continue
+        val quality = directTrailerQuality(trailer)
+        // A strict comparison deliberately preserves addon order when two
+        // sources declare the same quality or no quality at all.
+        if (quality > bestQuality) {
+            bestUrl = trailer.url
+            bestQuality = quality
+        }
+    }
+    return bestUrl
+}
+
+private fun directTrailerQuality(trailer: DetailTrailer): Int {
+    val description = "${trailer.title} ${trailer.source} ${trailer.url}"
+    if (Regex("""(?i)\b(?:4k|uhd)\b""").containsMatchIn(description)) return 2160
+    return trailerResolutionPattern.find(description)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+        ?: 0
 }
 
 private suspend fun resolveYoutubeTrailerViaCore(

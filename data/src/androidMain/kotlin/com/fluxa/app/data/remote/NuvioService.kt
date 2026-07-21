@@ -36,6 +36,14 @@ interface NuvioService {
         @Query("order") order: String = "sort_order"
     ): Response<List<NuvioAddonDto>>
 
+    @GET("rest/v1/plugins")
+    suspend fun pullPlugins(
+        @Header("Authorization") authorization: String,
+        @Query("select") select: String = "*",
+        @Query("profile_id") profileId: String,
+        @Query("order") order: String = "sort_order"
+    ): Response<List<NuvioPluginDto>>
+
     @POST("rest/v1/rpc/sync_push_profiles")
     suspend fun pushProfiles(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
 

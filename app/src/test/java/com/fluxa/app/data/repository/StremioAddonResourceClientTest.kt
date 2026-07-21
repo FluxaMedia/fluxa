@@ -81,4 +81,33 @@ class StremioAddonResourceClientTest {
             detail.cast!!.map { it.name }
         )
     }
+
+    @Test
+    fun metaDetailParsesTrailerioDirectVideoLinksAsTrailers() {
+        val detail = decodeMetaDetailPayload(
+            """
+                {
+                  "meta": {
+                    "id": "tt0944947",
+                    "name": "Game of Thrones",
+                    "type": "series",
+                    "links": [
+                      {
+                        "trailers": "https://video.fandango.com/trailer.mp4",
+                        "provider": "Rotten Tomatoes 1080p"
+                      },
+                      {
+                        "trailers": "https://imdb-video.media-imdb.com/trailer.m3u8",
+                        "provider": "IMDb SD"
+                      }
+                    ]
+                  }
+                }
+            """.trimIndent()
+        )!!
+
+        assertEquals(2, detail.trailers!!.size)
+        assertEquals("Rotten Tomatoes 1080p", detail.trailers!![0].title)
+        assertEquals("https://imdb-video.media-imdb.com/trailer.m3u8", detail.trailers!![1].url)
+    }
 }

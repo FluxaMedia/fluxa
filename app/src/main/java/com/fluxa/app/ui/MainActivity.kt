@@ -64,6 +64,7 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.R
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -377,6 +378,12 @@ class MainActivity : FragmentActivity() {
                         MediaPlayerController(context, player)
                         player
                     }
+                    val mediaSession = remember(mainPlayer) {
+                        MediaSession.Builder(context, mainPlayer).build()
+                    }
+                    DisposableEffect(mediaSession) {
+                        onDispose { mediaSession.release() }
+                    }
 
                     val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager) {
                         AndroidFluxaPlatformServices(
@@ -491,11 +498,13 @@ class MainActivity : FragmentActivity() {
                         } else if (deviceType == DeviceType.Mobile && activeProfile == null && profileManager.getProfiles().isEmpty()) {
                             navigateToDestination(FluxaDestination.Auth, true)
                             authStartOnNuvio = false
-                        } else if (deviceType == DeviceType.Mobile && activeProfile != null && previousDestination == null && currentDestination != FluxaDestination.Home) {
+                        } else if (activeProfile != null && previousDestination == null && currentDestination != FluxaDestination.Home) {
                             navigateToDestination(FluxaDestination.Home, true)
                         } else if (previousDestination != null) {
                             currentDestination = previousDestination!!
                             previousDestination = null
+                        } else if (deviceType == DeviceType.TV) {
+                            this@MainActivity.moveTaskToBack(true)
                         }
                     }
 
