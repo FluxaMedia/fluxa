@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.fluxa.app.shared.feature.catalog
 
 import androidx.compose.foundation.background
@@ -18,10 +20,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,17 +46,25 @@ fun TvCatalogHomeScreen(
     language: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val columnFocus = remember { FocusRequester() }
     Box(modifier = modifier.fillMaxSize()) {
         if (state.rows.isEmpty()) {
             TvCatalogHomeLoading(Modifier.fillMaxSize())
         } else {
+            LaunchedEffect(Unit) { runCatching { columnFocus.requestFocus() } }
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(columnFocus)
+                    .focusRestorer(),
                 contentPadding = PaddingValues(top = 44.dp, bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(30.dp)
             ) {
                 items(state.rows, key = { it.id }) { row ->
-                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column(
+                        modifier = Modifier.focusGroup(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
                         Text(
                             text = row.title,
                             color = Color.White,
@@ -59,6 +75,7 @@ fun TvCatalogHomeScreen(
                             modifier = Modifier.padding(horizontal = 58.dp)
                         )
                         LazyRow(
+                            modifier = Modifier.focusRestorer(),
                             contentPadding = PaddingValues(horizontal = 58.dp),
                             horizontalArrangement = Arrangement.spacedBy(20.dp)
                         ) {

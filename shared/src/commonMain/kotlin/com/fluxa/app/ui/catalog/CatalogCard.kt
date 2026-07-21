@@ -72,8 +72,8 @@ fun CatalogCard(
             .then(
                 if (focused) {
                     Modifier
-                        .scale(1.05f)
-                        .border(2.dp, Color.White, RoundedCornerShape(8.dp))
+                        .scale(1.1f)
+                        .border(3.dp, Color.White, RoundedCornerShape(8.dp))
                 } else {
                     Modifier
                 }

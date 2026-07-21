@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.fluxa.app.shared.feature.library
 
 import androidx.compose.foundation.background
@@ -43,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +58,8 @@ import com.fluxa.app.shared.feature.discover.DiscoverFilterOptionUiModel
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.gridColumns
 
 @Composable
 fun LibraryScreen(
@@ -265,11 +270,11 @@ private fun LibraryItemGrid(
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Fixed(LocalWindowWidthClass.current.gridColumns()),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize().focusRestorer()
     ) {
         items(items, key = { "${it.type}:${it.id}" }) { item ->
             CatalogCard(model = item.card.copy(showTitleBar = true), onClick = { onItemSelected(item) })

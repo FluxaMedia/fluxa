@@ -1,6 +1,9 @@
 package com.fluxa.app.shared
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -356,6 +359,13 @@ fun FluxaAppHost(
         }
     }
 
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val widthClass = if (deviceType == com.fluxa.app.ui.catalog.DeviceType.TV) {
+            com.fluxa.app.ui.catalog.WindowWidthClass.Expanded
+        } else {
+            com.fluxa.app.ui.catalog.widthClassFor(maxWidth)
+        }
+        CompositionLocalProvider(com.fluxa.app.ui.catalog.LocalWindowWidthClass provides widthClass) {
     FluxaApp(
         state = appState.uiState,
         deviceType = deviceType,
@@ -557,4 +567,6 @@ fun FluxaAppHost(
         showNavigationBar = showNavigationBar,
         modifier = modifier
     )
+        }
+    }
 }

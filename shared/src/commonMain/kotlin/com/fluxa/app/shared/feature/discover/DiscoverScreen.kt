@@ -1,8 +1,11 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.fluxa.app.shared.feature.discover
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +62,8 @@ import com.fluxa.app.shared.feature.search.SearchResultRows
 import com.fluxa.app.shared.feature.search.SearchResults
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.gridColumns
 
 @Composable
 fun DiscoverScreen(
@@ -141,8 +146,8 @@ fun DiscoverScreen(
                     }
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = GridCells.Fixed(3),
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        columns = GridCells.Fixed(LocalWindowWidthClass.current.gridColumns()),
+                        modifier = Modifier.weight(1f).fillMaxWidth().focusRestorer(),
                         contentPadding = PaddingValues(bottom = 120.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -201,7 +206,7 @@ private fun DiscoverSearchField(
 @Composable
 private fun DiscoverSkeletonGrid(modifier: Modifier = Modifier) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Fixed(LocalWindowWidthClass.current.gridColumns()),
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 120.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
