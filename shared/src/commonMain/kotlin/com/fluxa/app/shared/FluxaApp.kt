@@ -330,6 +330,23 @@ fun FluxaApp(
                     onBack = onDetailBackRequested,
                     modifier = Modifier.fillMaxSize()
                 )
+                libraryState?.folderDetail?.folder != null && useRail -> Row(Modifier.fillMaxSize()) {
+                    LibraryScreen(
+                        state = libraryState,
+                        language = state.language,
+                        onAction = onLibraryAction,
+                        onItemSelected = onLibraryItemSelected,
+                        initialSection = state.initialLibrarySection ?: com.fluxa.app.shared.feature.library.LibrarySection.Planned,
+                        modifier = Modifier.width(360.dp).fillMaxHeight()
+                    )
+                    LibraryFolderDetailScreen(
+                        state = libraryState.folderDetail,
+                        language = state.language,
+                        onBack = { onLibraryAction(LibraryAction.FolderClosed) },
+                        onItemSelected = onLibraryItemSelected,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                }
                 libraryState?.folderDetail?.folder != null -> LibraryFolderDetailScreen(
                     state = libraryState.folderDetail,
                     language = state.language,

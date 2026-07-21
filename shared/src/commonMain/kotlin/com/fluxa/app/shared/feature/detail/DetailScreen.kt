@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,6 +59,8 @@ import com.fluxa.app.shared.LocalHeroTrailerSurface
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.CatalogCard
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.FluxaColors
 
 private enum class DetailTab { Episodes, MoreLikeThis }
@@ -116,73 +119,119 @@ private fun DetailContent(
     language: String?,
     onAction: (DetailAction) -> Unit
 ) {
-    var activeTab by remember(content.id) { mutableStateOf(DetailTab.Episodes) }
     val isSeries = content.type == "series" && content.availableSeasons.isNotEmpty()
+    val hasSecondary = isSeries || content.relatedItems.isNotEmpty()
+    if (LocalWindowWidthClass.current == WindowWidthClass.Expanded && hasSecondary) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.width(440.dp).fillMaxHeight()) {
+                item(key = "hero") { Hero(content = content, language = language) }
+                item(key = "body") { DetailBody(content = content, language = language, onAction = onAction) }
+                item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
+            }
+            DetailSecondaryPane(
+                content = content,
+                language = language,
+                onAction = onAction,
+                isSeries = isSeries,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
+        }
+    } else {
+        var activeTab by remember(content.id) { mutableStateOf(DetailTab.Episodes) }
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item(key = "hero") { Hero(content = content, language = language) }
+            item(key = "body") { DetailBody(content = content, language = language, onAction = onAction) }
+            detailSecondaryItems(content, language, onAction, isSeries, activeTab) { activeTab = it }
+            item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
+        }
+    }
+}
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item(key = "hero") {
-            Hero(content = content, language = language)
+@Composable
+private fun DetailSecondaryPane(
+    content: DetailUiModel,
+    language: String?,
+    onAction: (DetailAction) -> Unit,
+    isSeries: Boolean,
+    modifier: Modifier = Modifier
+) {
+    var activeTab by remember(content.id) { mutableStateOf(DetailTab.Episodes) }
+    LazyColumn(modifier = modifier) {
+        detailSecondaryItems(content, language, onAction, isSeries, activeTab) { activeTab = it }
+        item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.detailSecondaryItems(
+    content: DetailUiModel,
+    language: String?,
+    onAction: (DetailAction) -> Unit,
+    isSeries: Boolean,
+    activeTab: DetailTab,
+    onTabSelected: (DetailTab) -> Unit
+) {
+    if (isSeries || content.relatedItems.isNotEmpty()) {
+        item(key = "tabs") {
+            TabRow(
+                isSeries = isSeries,
+                hasRelated = content.relatedItems.isNotEmpty(),
+                activeTab = activeTab,
+                language = language,
+                onTabSelected = onTabSelected,
+                modifier = Modifier.padding(top = 24.dp)
+            )
         }
-        item(key = "body") {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 16.dp)) {
-                    ResumeButton(content = content, language = language, onAction = onAction)
-                    if (content.resumeProgress > 0L && content.resumeVideoId != null) {
-                        RestartButton(language = language, onClick = { onAction(DetailAction.Play(fromStart = true)) })
-                    }
-                    DownloadButton(content = content, language = language, onAction = onAction)
-                }
-                if (content.description.isNotBlank()) {
-                    Text(
-                        text = content.description,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        lineHeight = 19.sp,
-                        modifier = Modifier.padding(top = 16.dp)
-                    )
-                }
-                if (content.castNames.isNotEmpty()) {
-                    CastLine(names = content.castNames, language = language, modifier = Modifier.padding(top = 12.dp))
-                }
-                ActionRow(
-                    content = content,
-                    language = language,
-                    onAction = onAction,
-                    modifier = Modifier.padding(top = 20.dp)
-                )
+    }
+    when {
+        isSeries && activeTab == DetailTab.Episodes -> {
+            item(key = "season-selector") {
+                SeasonSelector(content = content, language = language, onAction = onAction)
+            }
+            items(content.seasonEpisodes, key = { it.id }) { episode ->
+                EpisodeRow(episode = episode, content = content, onAction = onAction)
             }
         }
-        if (isSeries || content.relatedItems.isNotEmpty()) {
-            item(key = "tabs") {
-                TabRow(
-                    isSeries = isSeries,
-                    hasRelated = content.relatedItems.isNotEmpty(),
-                    activeTab = activeTab,
-                    language = language,
-                    onTabSelected = { activeTab = it },
-                    modifier = Modifier.padding(top = 24.dp)
-                )
+        content.relatedItems.isNotEmpty() -> {
+            item(key = "related") {
+                RelatedGrid(items = content.relatedItems, onAction = onAction)
             }
         }
-        when {
-            isSeries && activeTab == DetailTab.Episodes -> {
-                item(key = "season-selector") {
-                    SeasonSelector(content = content, language = language, onAction = onAction)
-                }
-                items(content.seasonEpisodes, key = { it.id }) { episode ->
-                    EpisodeRow(episode = episode, content = content, onAction = onAction)
-                }
+        else -> Unit
+    }
+}
+
+@Composable
+private fun DetailBody(
+    content: DetailUiModel,
+    language: String?,
+    onAction: (DetailAction) -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 16.dp)) {
+            ResumeButton(content = content, language = language, onAction = onAction)
+            if (content.resumeProgress > 0L && content.resumeVideoId != null) {
+                RestartButton(language = language, onClick = { onAction(DetailAction.Play(fromStart = true)) })
             }
-            content.relatedItems.isNotEmpty() -> {
-                item(key = "related") {
-                    RelatedGrid(items = content.relatedItems, onAction = onAction)
-                }
-            }
-            else -> Unit
+            DownloadButton(content = content, language = language, onAction = onAction)
         }
-        item(key = "bottom-spacer") {
-            Box(modifier = Modifier.height(32.dp))
+        if (content.description.isNotBlank()) {
+            Text(
+                text = content.description,
+                color = Color.White,
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+                modifier = Modifier.padding(top = 16.dp)
+            )
         }
+        if (content.castNames.isNotEmpty()) {
+            CastLine(names = content.castNames, language = language, modifier = Modifier.padding(top = 12.dp))
+        }
+        ActionRow(
+            content = content,
+            language = language,
+            onAction = onAction,
+            modifier = Modifier.padding(top = 20.dp)
+        )
     }
 }
 
