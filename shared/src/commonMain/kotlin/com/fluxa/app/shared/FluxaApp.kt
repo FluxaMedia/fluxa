@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -250,19 +251,25 @@ fun FluxaApp(
                 else -> "dest:${state.destination}"
             }
             val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
-            val useRail = !isTv &&
-                com.fluxa.app.ui.catalog.LocalWindowWidthClass.current == com.fluxa.app.ui.catalog.WindowWidthClass.Expanded
+            val widthClass = com.fluxa.app.ui.catalog.LocalWindowWidthClass.current
+            val topNavEnabled = settingsState?.appearance?.topNavigationBar == true &&
+                (isTv || widthClass != com.fluxa.app.ui.catalog.WindowWidthClass.Compact)
+            val useRail = !isTv && !topNavEnabled &&
+                widthClass == com.fluxa.app.ui.catalog.WindowWidthClass.Expanded
             val isHomeActive = screenKey == "dest:${FluxaDestination.Home}" && !isTv
             val isPreAuthDestination = state.destination == FluxaDestination.Auth ||
                 state.destination == FluxaDestination.ProfileList
             val navChromeVisible = showNavigationBar && !isPreAuthDestination
+            val useTopNav = navChromeVisible && topNavEnabled
             var navBarHeightPx by remember { mutableIntStateOf(0) }
             var tvSidebarWidthPx by remember { mutableIntStateOf(0) }
             var navRailWidthPx by remember { mutableIntStateOf(0) }
+            var topNavHeightPx by remember { mutableIntStateOf(0) }
             val density = LocalDensity.current
             val navBarHeightDp = with(density) { navBarHeightPx.toDp() }
             val tvSidebarWidthDp = with(density) { tvSidebarWidthPx.toDp() }
             val navRailWidthDp = with(density) { navRailWidthPx.toDp() }
+            val topNavHeightDp = with(density) { topNavHeightPx.toDp() }
             val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
             AnimatedContent(
                 targetState = screenKey,
@@ -274,6 +281,8 @@ fun FluxaApp(
                 modifier = (
                     if (!navChromeVisible) {
                         Modifier.fillMaxSize()
+                    } else if (useTopNav) {
+                        Modifier.fillMaxSize().padding(top = topNavHeightDp)
                     } else if (isTv) {
                         Modifier.fillMaxSize().padding(start = tvSidebarWidthDp)
                     } else if (useRail) {
@@ -514,7 +523,20 @@ fun FluxaApp(
             }
             }
             if (navChromeVisible) {
-                if (isTv) {
+                if (useTopNav) {
+                    FluxaTopNavBar(
+                        destination = state.destination,
+                        accentColorArgb = profileState?.activeProfile?.accentColorArgb,
+                        showProfile = settingsState?.appearanceHome?.topBarEnabled == false,
+                        showLabels = settingsState?.appearance?.bottomBarLabels == true,
+                        isTv = isTv,
+                        language = state.language,
+                        onDestinationSelected = onDestinationSelected,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .onGloballyPositioned { topNavHeightPx = it.size.height }
+                    )
+                } else if (isTv) {
                     TvSidebarNav(
                         destination = state.destination,
                         language = state.language,
@@ -624,6 +646,71 @@ private fun FluxaNavigationRail(
                         text = AppStrings.t(language, item.destination.titleKey),
                         color = tint,
                         fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun FluxaTopNavBar(
+    destination: FluxaDestination,
+    accentColorArgb: Long?,
+    showProfile: Boolean,
+    showLabels: Boolean,
+    isTv: Boolean,
+    language: String?,
+    onDestinationSelected: (FluxaDestination) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
+    val inactiveColor = Color(0xFFA0A5AD)
+    val items = if (showProfile) {
+        FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
+    } else {
+        FluxaBottomNavItems
+    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+            .background(Color(0xFF101012))
+            .padding(horizontal = if (isTv) 48.dp else 20.dp, vertical = if (isTv) 16.dp else 10.dp)
+            .then(if (isTv) Modifier.focusRestorer() else Modifier),
+        horizontalArrangement = Arrangement.spacedBy(if (isTv) 12.dp else 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items.forEach { item ->
+            val isSelected = item.destination == destination
+            val tint by animateColorAsState(
+                targetValue = if (isSelected) selectedColor else inactiveColor,
+                label = "top-nav-item-tint"
+            )
+            val label = AppStrings.t(language, item.destination.titleKey)
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable { onDestinationSelected(item.destination) }
+                    .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    if (isSelected) item.selectedIcon else item.icon,
+                    contentDescription = if (showLabels || isTv) null else label,
+                    tint = tint,
+                    modifier = Modifier.size(if (isTv) 28.dp else 24.dp)
+                )
+                if (showLabels || isTv) {
+                    Text(
+                        text = label,
+                        color = tint,
+                        fontSize = if (isTv) 15.sp else 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

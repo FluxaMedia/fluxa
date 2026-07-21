@@ -45,6 +45,7 @@ class AppleSettingsDataSource : SettingsDataSource {
         defaults.setBool(value.animationsEnabled, K.animationsEnabled)
         defaults.setBool(value.floatingBottomBar, K.floatingBottomBar)
         defaults.setBool(value.bottomBarLabels, K.bottomBarLabels)
+        defaults.setBool(value.topNavigationBar, K.topNavigationBar)
         state.value = state.value.copy(appearance = value)
     }
 
@@ -227,7 +228,8 @@ class AppleSettingsDataSource : SettingsDataSource {
             liquidGlassMode = defaults.boolOrDefault(K.liquidGlassMode, false),
             animationsEnabled = defaults.boolOrDefault(K.animationsEnabled, true),
             floatingBottomBar = defaults.boolOrDefault(K.floatingBottomBar, false),
-            bottomBarLabels = defaults.boolOrDefault(K.bottomBarLabels, false)
+            bottomBarLabels = defaults.boolOrDefault(K.bottomBarLabels, false),
+            topNavigationBar = defaults.boolOrDefault(K.topNavigationBar, false)
         ),
         appearanceHome = SettingsAppearanceHomeUiModel(
             topBarEnabled = defaults.boolOrDefault(K.homeTopBarEnabled, true),
@@ -327,6 +329,7 @@ class AppleSettingsDataSource : SettingsDataSource {
         const val homeTopBarEnabled = "fluxa.apple.settings.homeTopBarEnabled"
         const val floatingBottomBar = "fluxa.apple.settings.floatingBottomBar"
         const val bottomBarLabels = "fluxa.apple.settings.bottomBarLabels"
+        const val topNavigationBar = "fluxa.apple.settings.topNavigationBar"
         const val cardCornerPreset = "fluxa.apple.settings.cardCornerPreset"
         const val interfaceDensity = "fluxa.apple.settings.interfaceDensity"
         const val posterWidthPreset = "fluxa.apple.settings.posterWidthPreset"

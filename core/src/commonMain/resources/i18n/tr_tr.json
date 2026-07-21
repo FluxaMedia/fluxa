@@ -1122,6 +1122,8 @@
   "settings.floating_bottom_bar_desc": "Gezinme çubuğunu alt kenarın üzerinde gösterir.",
   "settings.bottom_bar_labels": "Alt çubuk etiketlerini göster",
   "settings.bottom_bar_labels_desc": "Gezinme simgelerinin altında hedef adlarını gösterir.",
+  "settings.top_navigation_bar": "Üst gezinme çubuğu",
+  "settings.top_navigation_bar_desc": "Tablet ve TV'de gezinme hedeflerini yan çubuk veya alt çubuk yerine üstte yatay bir çubukta gösterir.",
   "settings.home_top_bar": "Ana sayfa üst çubuğu",
   "settings.home_top_bar_desc": "Hero alanının üzerinde Ana Sayfa, Diziler, Filmler, bildirimler ve profili gösterir.",
   "common.add_to_library": "Kitaplığa ekle",

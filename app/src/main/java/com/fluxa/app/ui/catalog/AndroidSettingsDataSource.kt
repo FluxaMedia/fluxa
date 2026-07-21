@@ -176,7 +176,8 @@ class AndroidSettingsDataSource(
                 liquidGlassMode = profile.safeLiquidGlassMode,
                 animationsEnabled = profile.safeAnimationsEnabled,
                 floatingBottomBar = profile.floatingBottomBar ?: false,
-                bottomBarLabels = profile.bottomBarLabels ?: false
+                bottomBarLabels = profile.bottomBarLabels ?: false,
+                topNavigationBar = profile.topNavigationBar ?: false
             ),
             appearanceHome = SettingsAppearanceHomeUiModel(
                 topBarEnabled = profile.homeTopBarEnabled ?: true,
@@ -299,7 +300,8 @@ class AndroidSettingsDataSource(
             liquidGlassMode = value.liquidGlassMode,
             animationsEnabled = value.animationsEnabled,
             floatingBottomBar = value.floatingBottomBar,
-            bottomBarLabels = value.bottomBarLabels
+            bottomBarLabels = value.bottomBarLabels,
+            topNavigationBar = value.topNavigationBar
         )
     }
 

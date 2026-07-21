@@ -63,7 +63,8 @@ data class SettingsAppearanceUiModel(
     val liquidGlassMode: Boolean = false,
     val animationsEnabled: Boolean = true,
     val floatingBottomBar: Boolean = false,
-    val bottomBarLabels: Boolean = false
+    val bottomBarLabels: Boolean = false,
+    val topNavigationBar: Boolean = false
 )
 
 data class SettingsAppearanceHomeUiModel(

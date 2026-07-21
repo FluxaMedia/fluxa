@@ -681,6 +681,9 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
         SettingsToggleRow(AppStrings.t(lang, "settings.bottom_bar_labels"), description = AppStrings.t(lang, "settings.bottom_bar_labels_desc"), value = model.bottomBarLabels) {
             onAction(SettingsAction.AppearanceChanged(model.copy(bottomBarLabels = it)))
         }
+        SettingsToggleRow(AppStrings.t(lang, "settings.top_navigation_bar"), description = AppStrings.t(lang, "settings.top_navigation_bar_desc"), value = model.topNavigationBar) {
+            onAction(SettingsAction.AppearanceChanged(model.copy(topNavigationBar = it)))
+        }
     }
     Spacer(Modifier.height(20.dp))
     SettingsGroupCard {

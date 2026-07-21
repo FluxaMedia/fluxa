@@ -1122,6 +1122,8 @@
   "settings.floating_bottom_bar_desc": "Lift the navigation bar above the bottom edge.",
   "settings.bottom_bar_labels": "Show bottom bar labels",
   "settings.bottom_bar_labels_desc": "Display destination names below navigation icons.",
+  "settings.top_navigation_bar": "Top navigation bar",
+  "settings.top_navigation_bar_desc": "On tablets and TV, show navigation destinations in a bar across the top instead of a side rail or bottom bar.",
   "settings.home_top_bar": "Home top bar",
   "settings.home_top_bar_desc": "Show Home, Series, Movies, notifications, and profile above the hero.",
   "common.add_to_library": "Add to Library",
