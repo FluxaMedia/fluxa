@@ -177,30 +177,10 @@ class HomeViewModel @Inject constructor(
     private val _userAddons = MutableStateFlow<List<AddonDescriptor>>(emptyList())
     val userAddons: StateFlow<List<AddonDescriptor>> = _userAddons
 
-    private val parentsGuideCache = java.util.concurrent.ConcurrentHashMap<String, List<ParentsGuideCategory>>()
-    private val _parentsGuide = MutableStateFlow<List<ParentsGuideCategory>>(emptyList())
-    val parentsGuide: StateFlow<List<ParentsGuideCategory>> = _parentsGuide.asStateFlow()
+    private val parentsGuideCoordinator = HomeParentsGuideCoordinator(viewModelScope, imdbApiService)
+    val parentsGuide: StateFlow<List<ParentsGuideCategory>> = parentsGuideCoordinator.state
 
-    fun loadParentsGuide(metaId: String) {
-        val imdbId = com.fluxa.app.core.StremioId.imdbId(metaId)
-        if (imdbId == null) {
-            _parentsGuide.value = emptyList()
-            return
-        }
-        parentsGuideCache[imdbId]?.let {
-            _parentsGuide.value = it
-            return
-        }
-        viewModelScope.launch {
-            try {
-                val guide = imdbApiService.getParentsGuide(imdbId).parentsGuide
-                parentsGuideCache[imdbId] = guide
-                _parentsGuide.value = guide
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
+    fun loadParentsGuide(metaId: String) = parentsGuideCoordinator.load(metaId)
 
     val searchHistory: StateFlow<List<Meta>> = searchFocusState.searchHistory
     val focusedMovie: StateFlow<Meta?> = searchFocusState.focusedMovie

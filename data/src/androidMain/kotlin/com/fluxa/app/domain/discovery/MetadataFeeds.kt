@@ -22,7 +22,7 @@ fun cs3PluginFeedKey(apiName: String): String =
     "cs3_plugin_${apiName.replace(Regex("[^a-zA-Z0-9]"), "_").lowercase()}"
 
 fun cs3CatalogFeedKey(pluginName: String, catalogName: String, catalogIndex: Int): String =
-    "cs3_catalog_${pluginName.stableFeedPart()}:${catalogIndex}:${catalogName.stableFeedPart()}"
+    "cs3_catalog_${FluxaCoreNative.stableFeedPart(pluginName)}:${catalogIndex}:${FluxaCoreNative.stableFeedPart(catalogName)}"
 
 fun buildCs3MetadataFeedOptions(catalogs: List<Cs3CatalogFeedDescriptor>): List<MetadataFeedOption> =
     catalogs.map { catalog ->
