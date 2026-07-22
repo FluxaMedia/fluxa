@@ -39,6 +39,7 @@ import com.fluxa.app.data.repository.CloudStreamCatalogClient
 import com.fluxa.app.data.repository.HttpEffectExecutor
 import com.fluxa.app.data.repository.toStremioType
 import com.fluxa.app.plugins.PluginManager
+import com.fluxa.app.plugins.PluginRepositoryManager
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
 import com.fluxa.app.plugins.cloudstream.ScraperActor
 import com.fluxa.app.plugins.cloudstream.ScraperLoadResult
@@ -110,6 +111,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal val watchlistManager: WatchlistManager,
     internal val streamDiscovery: StreamDiscoveryUseCase,
     internal val pluginManager: PluginManager,
+    internal val pluginRepositoryManager: PluginRepositoryManager,
     internal val gson: Gson,
     internal val profileManager: ProfileManager,
     internal val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
@@ -128,6 +130,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         traktRepository = traktRepository,
         watchlistManager = watchlistManager,
         nuvioAccountImportCoordinator = nuvioAccountImportCoordinator,
+        pluginRepositoryManager = pluginRepositoryManager,
         gson = gson
     )
 

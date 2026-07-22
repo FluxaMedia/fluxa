@@ -1,9 +1,10 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.remote.TraktSyncItem
+import com.fluxa.app.core.rust.FluxaCoreNative
 
 internal fun TraktSyncItem.toMeta(type: String, unknownName: () -> String) =
-    TraktSyncMapper.toMeta(this, type, unknownName, TraktIntegration::contentIdFrom)
+    FluxaCoreNative.traktSyncItemToMeta(this, type, unknownName())
 
 internal suspend fun fetchTraktSyncPages(
     request: suspend (page: Int, limit: Int) -> retrofit2.Response<List<TraktSyncItem>>

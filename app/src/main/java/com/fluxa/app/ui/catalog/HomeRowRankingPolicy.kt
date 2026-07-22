@@ -94,20 +94,6 @@ object HomeRowRankingPolicy {
         return FluxaCoreNative.homeOverlapRatioJson(gson.toJson(first), gson.toJson(second))
     }
 
-    fun normalizeKey(value: String): String {
-        val sb = StringBuilder()
-        var lastSpace = false
-        for (ch in value.lowercase()) {
-            val n = when (ch) {
-                'ç' -> 'c'; 'ğ' -> 'g'; 'ı' -> 'i'; 'ö' -> 'o'; 'ş' -> 's'; 'ü' -> 'u'
-                else -> if (ch in 'a'..'z' || ch in '0'..'9') ch else ' '
-            }
-            if (n == ' ') { if (!lastSpace) { sb.append(' '); lastSpace = true } }
-            else { sb.append(n); lastSpace = false }
-        }
-        return sb.toString().trim()
-    }
-
     private fun priorityLabels(lang: String): NativeHomePriorityLabels {
         return NativeHomePriorityLabels(
             trendingNow = AppStrings.t(lang, "auto.trending_now"),

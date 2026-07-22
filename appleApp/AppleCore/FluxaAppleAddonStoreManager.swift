@@ -1,4 +1,3 @@
-import FluxaShared
 import Foundation
 
 struct FluxaAppleInstalledAddon {
@@ -102,8 +101,9 @@ final class FluxaAppleAddonStoreManager {
         await currentAddons()
     }
 
-    private func fetchManifest(rawUrl: String) async -> AppleAddonManifestSnapshot? {
-        guard let manifestUrl = URL(string: normalizeManifestUrl(rawUrl)) else {
+    private func fetchManifest(rawUrl: String) async -> FluxaCoreAddonManifest? {
+        let transportUrl = normalizeManifestUrl(rawUrl)
+        guard let manifestUrl = URL(string: transportUrl) else {
             return nil
         }
         do {
@@ -112,14 +112,17 @@ final class FluxaAppleAddonStoreManager {
                   (200..<300).contains(httpResponse.statusCode) else {
                 return nil
             }
-            return FluxaApple.shared.parseAddonManifest(body: String(decoding: data, as: UTF8.self))
+            return FluxaCoreStremio.parseManifest(
+                body: String(decoding: data, as: UTF8.self),
+                transportUrl: transportUrl
+            )
         } catch {
             return nil
         }
     }
 
     private func normalizeManifestUrl(_ raw: String) -> String {
-        FluxaApple.shared.normalizeAddonManifestUrl(rawUrl: raw)
+        FluxaCoreStremio.normalizeManifestUrl(raw)
     }
 
     private func fallbackName(for url: String) -> String {

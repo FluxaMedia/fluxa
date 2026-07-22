@@ -60,27 +60,29 @@ final class FluxaTvosEffectHandler: FluxaApplePlatformEffectHandler {
     }
 
     private func loadCategories(addonUrl: String) async throws -> [FluxaAppleJsonValue] {
-        let transportUrl = AppleStremioBridge.shared.normalizeManifestUrl(rawUrl: addonUrl)
+        let transportUrl = FluxaCoreStremio.normalizeManifestUrl(addonUrl)
         let manifestBody = try await body(urlString: transportUrl)
-        guard let manifest = AppleStremioBridge.shared.parseManifest(body: manifestBody),
+        guard let manifest = FluxaCoreStremio.parseManifest(
+            body: manifestBody,
+            transportUrl: transportUrl
+        ),
               manifest.supportsCatalog else {
             return []
         }
         var categories = [FluxaAppleJsonValue]()
-        for catalog in manifest.catalogs ?? [] where catalog.supportsInitialLoad {
+        for catalog in manifest.catalogs where catalog.supportsInitialLoad {
             guard let type = catalog.type, !type.isEmpty,
                   let id = catalog.id, !id.isEmpty else {
                 continue
             }
-            let catalogUrl = AppleStremioBridge.shared.catalogUrl(
+            let catalogUrl = FluxaCoreStremio.resourceUrl(
                 transportUrl: transportUrl,
+                resource: "catalog",
                 contentType: type,
-                catalogId: id,
-                extraName: nil,
-                extraValue: nil
-            )
+                id: id
+            ) ?? ""
             let catalogBody = try await body(urlString: catalogUrl)
-            let items = AppleStremioBridge.shared.parseCatalogItems(body: catalogBody, fallbackType: type) ?? []
+            let items = FluxaCoreStremio.parseCatalogItems(body: catalogBody, fallbackType: type) ?? []
             let title = catalog.name.flatMap { $0.isEmpty ? nil : $0 } ?? id
             categories.append(.object([
                 "id": .string("\(manifest.id):\(type):\(id)"),

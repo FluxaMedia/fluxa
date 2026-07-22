@@ -32,14 +32,14 @@ object SimklIntegration {
     }
 
     fun historyBody(imdbId: String, isSeries: Boolean, episodesBySeasonNumber: Map<Int, List<Int>>): Map<String, Any> {
-        return SimklSyncRequests.history(imdbId, isSeries, episodesBySeasonNumber)
+        return FluxaCoreNative.simklHistoryRequest(imdbId, isSeries, episodesBySeasonNumber)
     }
 
     fun watchlistBody(imdbId: String, isSeries: Boolean): Map<String, Any> {
-        return SimklSyncRequests.watchlist(imdbId, isSeries)
+        return FluxaCoreNative.simklWatchlistRequest(imdbId, isSeries, remove = false)
     }
 
     fun watchlistRemovalBody(imdbId: String, isSeries: Boolean): Map<String, Any> {
-        return SimklSyncRequests.watchlistRemoval(imdbId, isSeries)
+        return FluxaCoreNative.simklWatchlistRequest(imdbId, isSeries, remove = true)
     }
 }

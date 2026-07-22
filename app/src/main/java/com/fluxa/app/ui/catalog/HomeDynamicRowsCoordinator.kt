@@ -41,21 +41,8 @@ internal class HomeDynamicRowsCoordinator(
             val aboveContinueWatching = buildUserCollectionHomeCategories(profile, true)
             val belowContinueWatching = buildUserCollectionHomeCategories(profile, false)
 
-            val previousContinueWatchingOrder = currentCategories
-                .firstOrNull { it.id == "continue_watching" }
-                ?.items
-                ?.mapIndexed { index, meta -> ContinueWatchingListMerger.identityKey(meta) to index }
-                ?.toMap()
-                .orEmpty()
             val allContinueWatching = if (profile?.safeContinueWatchingEnabled != false) {
                 buildContinueWatchingItems(lang)
-                    .mapIndexed { index, meta -> index to meta }
-                    .sortedWith(
-                        compareBy<Pair<Int, Meta>> {
-                            previousContinueWatchingOrder[ContinueWatchingListMerger.identityKey(it.second)] ?: Int.MAX_VALUE
-                        }.thenBy { it.first }
-                    )
-                    .map { it.second }
             } else {
                 emptyList()
             }

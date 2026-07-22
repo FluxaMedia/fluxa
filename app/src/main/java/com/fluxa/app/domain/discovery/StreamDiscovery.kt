@@ -3,6 +3,7 @@ package com.fluxa.app.domain.discovery
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.core.rust.models.NativeStreamDiscoveryExecutionPolicy
 import com.fluxa.app.plugins.PluginRepositoryManager
 import com.fluxa.app.plugins.PluginScraperUiModel
@@ -10,6 +11,7 @@ import com.fluxa.app.plugins.PluginScraperUiModel
 import com.fluxa.app.BuildConfig
 import com.fluxa.app.common.Constants
 import android.util.Log
+import com.google.gson.Gson
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -58,10 +60,37 @@ class StreamDiscoveryUseCase @Inject constructor(
     private val repository: StremioRepository,
     private val cloudStreamDiscoveryClient: CloudStreamDiscoveryClient,
     private val cache: StreamDiscoveryMemoryCache,
-    private val pluginRepositoryManager: PluginRepositoryManager
+    private val pluginRepositoryManager: PluginRepositoryManager,
+    private val gson: Gson
 ) {
-    private suspend fun runPluginScrapers(request: StreamDiscoveryRequest, timeoutMs: Long): List<Stream> = coroutineScope {
-        val scrapers = request.pluginScrapers.filter { it.enabled }
+    private data class PluginExecutionPlan(
+        val contentId: String,
+        val mediaType: String,
+        val season: Int?,
+        val episode: Int?,
+        val scrapers: List<PluginScraperUiModel>
+    )
+
+    private fun pluginExecutionPlan(request: StreamDiscoveryRequest): PluginExecutionPlan? = runCatching {
+        val scrapers = request.pluginScrapers.ifEmpty { pluginRepositoryManager.state.value.scrapers }
+        val payload = gson.toJson(
+            mapOf(
+                "scrapers" to scrapers,
+                "contentId" to request.id,
+                "mediaType" to request.type,
+                "season" to request.pluginSeason,
+                "episode" to request.pluginEpisode
+            )
+        )
+        val value = FluxaCoreUniFfi.coreInvokeValue("pluginExecutionPlan", payload)
+        gson.fromJson(value, PluginExecutionPlan::class.java)
+    }.getOrNull()
+
+    private suspend fun runPluginScrapers(
+        plan: PluginExecutionPlan?,
+        timeoutMs: Long
+    ): List<Stream> = coroutineScope {
+        val scrapers = plan?.scrapers.orEmpty()
         if (scrapers.isEmpty()) return@coroutineScope emptyList()
         scrapers.map { scraper ->
             async {
@@ -69,10 +98,10 @@ class StreamDiscoveryUseCase @Inject constructor(
                     withTimeoutOrNull(timeoutMs) {
                         pluginRepositoryManager.executeScraper(
                             scraper = scraper,
-                            tmdbId = request.pluginTmdbId.orEmpty(),
-                            mediaType = request.type,
-                            season = request.pluginSeason,
-                            episode = request.pluginEpisode
+                            tmdbId = plan.contentId,
+                            mediaType = plan.mediaType,
+                            season = plan.season,
+                            episode = plan.episode
                         )
                     } ?: emptyList()
                 } catch (e: Exception) {
@@ -85,7 +114,10 @@ class StreamDiscoveryUseCase @Inject constructor(
 
     suspend fun discover(request: StreamDiscoveryRequest): List<Stream> = supervisorScope {
         val policy = executionPolicy(request)
-        cache.get(policy.cacheKey)?.let { return@supervisorScope it }
+        val pluginPlan = pluginExecutionPlan(request)
+        if (pluginPlan?.scrapers.isNullOrEmpty()) {
+            cache.get(policy.cacheKey)?.let { return@supervisorScope it }
+        }
         val addonRequestSemaphore = Semaphore(policy.maxConcurrentAddonRequests.toInt().coerceAtLeast(1))
 
         val remoteDeferred = policy.addonRequests.map { addonRequest ->
@@ -140,7 +172,7 @@ class StreamDiscoveryUseCase @Inject constructor(
             }
         }
 
-        val pluginDeferred = async { runPluginScrapers(request, Constants.Timeouts.PLUGIN_SEARCH) }
+        val pluginDeferred = async { runPluginScrapers(pluginPlan, Constants.Timeouts.PLUGIN_SEARCH) }
 
         val allStreams = mutableListOf<Stream>()
 
@@ -154,7 +186,7 @@ class StreamDiscoveryUseCase @Inject constructor(
         allStreams.addAll(pluginResults)
 
         logDebug("StreamDiscovery") {
-            "discover id=${request.id} remote=${remoteResults.size} cs3=${cs3Results.size} plugins=${pluginResults.size} addons=${policy.addonRequests.size}"
+            "discover id=${request.id} remote=${remoteResults.size} cs3=${cs3Results.size} plugins=${pluginResults.size} pluginScrapers=${pluginPlan?.scrapers?.size ?: 0} addons=${policy.addonRequests.size}"
         }
 
         val ranked = finalizeStreams(allStreams, request)
@@ -170,12 +202,15 @@ class StreamDiscoveryUseCase @Inject constructor(
         onProgress: (streams: List<Stream>, completedAddonNames: List<String>, loadingAddonNames: List<String>) -> Unit
     ): List<Stream> = supervisorScope {
         val policy = executionPolicy(request)
-        cache.get(policy.cacheKey)?.let { cached ->
-            if (policy.emitCachedResult) {
-                val names = cached.mapNotNull { it.addonName?.takeIf(String::isNotBlank) }.distinct()
-                onProgress(cached, names, emptyList())
+        val pluginPlan = pluginExecutionPlan(request)
+        if (pluginPlan?.scrapers.isNullOrEmpty()) {
+            cache.get(policy.cacheKey)?.let { cached ->
+                if (policy.emitCachedResult) {
+                    val names = cached.mapNotNull { it.addonName?.takeIf(String::isNotBlank) }.distinct()
+                    onProgress(cached, names, emptyList())
+                }
+                return@supervisorScope cached
             }
-            return@supervisorScope cached
         }
         val addonRequestSemaphore = Semaphore(policy.maxConcurrentAddonRequests.toInt().coerceAtLeast(1))
 
@@ -190,7 +225,7 @@ class StreamDiscoveryUseCase @Inject constructor(
             .toMutableMap()
         val hasCs3 = policy.cloudstreamRequest != null
         if (hasCs3) pendingPerAddon["CloudStream"] = 1
-        val hasPlugins = request.pluginScrapers.any { it.enabled }
+        val hasPlugins = !pluginPlan?.scrapers.isNullOrEmpty()
         if (hasPlugins) pendingPerAddon["PluginScrapers"] = 1
 
         val initialLoading = pendingPerAddon.keys.toList()
@@ -266,7 +301,7 @@ class StreamDiscoveryUseCase @Inject constructor(
             }
         }
 
-        val pluginDeferred = async { runPluginScrapers(request, Constants.Timeouts.PLUGIN_SEARCH) }
+        val pluginDeferred = async { runPluginScrapers(pluginPlan, Constants.Timeouts.PLUGIN_SEARCH) }
 
         val progressJobs = buildList {
             remoteDeferred.forEach { (addonRequest, deferred) ->

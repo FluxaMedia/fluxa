@@ -1,4 +1,3 @@
-import FluxaShared
 import Foundation
 
 struct FluxaAppleAddonCatalogResolver {
@@ -22,13 +21,16 @@ struct FluxaAppleAddonCatalogResolver {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                guard let manifest = FluxaApple.shared.parseAddonManifest(body: String(decoding: data, as: UTF8.self)) else {
+                guard let manifest = FluxaCoreStremio.parseManifest(
+                    body: String(decoding: data, as: UTF8.self),
+                    transportUrl: transportUrl
+                ) else {
                     throw URLError(.cannotParseResponse)
                 }
                 guard manifest.supportsCatalog else {
                     continue
                 }
-                requests.append(contentsOf: (manifest.catalogs ?? []).compactMap {
+                requests.append(contentsOf: manifest.catalogs.compactMap {
                     makeRequest(catalog: $0, manifest: manifest, transportUrl: transportUrl)
                 })
             } catch {
@@ -62,13 +64,16 @@ struct FluxaAppleAddonCatalogResolver {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                guard let manifest = FluxaApple.shared.parseAddonManifest(body: String(decoding: data, as: UTF8.self)) else {
+                guard let manifest = FluxaCoreStremio.parseManifest(
+                    body: String(decoding: data, as: UTF8.self),
+                    transportUrl: transportUrl
+                ) else {
                     throw URLError(.cannotParseResponse)
                 }
                 guard manifest.supportsCatalog else {
                     continue
                 }
-                requests.append(contentsOf: (manifest.catalogs ?? []).compactMap {
+                requests.append(contentsOf: manifest.catalogs.compactMap {
                     makeSearchRequest(catalog: $0, transportUrl: transportUrl, query: normalizedQuery)
                 })
             } catch {
@@ -99,13 +104,16 @@ struct FluxaAppleAddonCatalogResolver {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                guard let manifest = FluxaApple.shared.parseAddonManifest(body: String(decoding: data, as: UTF8.self)) else {
+                guard let manifest = FluxaCoreStremio.parseManifest(
+                    body: String(decoding: data, as: UTF8.self),
+                    transportUrl: transportUrl
+                ) else {
                     throw URLError(.cannotParseResponse)
                 }
                 guard manifest.supportsCatalog else {
                     continue
                 }
-                catalogs.append(contentsOf: (manifest.catalogs ?? []).compactMap { catalog in
+                catalogs.append(contentsOf: manifest.catalogs.compactMap { catalog in
                     makeDiscoverCatalog(
                         catalog: catalog,
                         manifest: manifest,
@@ -129,13 +137,13 @@ struct FluxaAppleAddonCatalogResolver {
         catalogId: String,
         genre: String?
     ) -> URL? {
-        URL(string: FluxaApple.shared.addonCatalogUrl(
+        URL(string: FluxaCoreStremio.resourceUrl(
             transportUrl: transportUrl,
+            resource: "catalog",
             contentType: contentType,
-            catalogId: catalogId,
-            extraName: genre == nil ? nil : "genre",
-            extraValue: genre
-        ))
+            id: catalogId,
+            extra: genre.map { ["genre": $0] } ?? [:]
+        ) ?? "")
     }
 
     func resourceUrl(
@@ -153,8 +161,8 @@ struct FluxaAppleAddonCatalogResolver {
     }
 
     private func makeRequest(
-        catalog: AppleAddonCatalogSnapshot,
-        manifest: AppleAddonManifestSnapshot,
+        catalog: FluxaCoreAddonCatalog,
+        manifest: FluxaCoreAddonManifest,
         transportUrl: String
     ) -> FluxaAppleCatalogRequest? {
         guard let catalogId = catalog.id?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -183,7 +191,7 @@ struct FluxaAppleAddonCatalogResolver {
     }
 
     private func makeSearchRequest(
-        catalog: AppleAddonCatalogSnapshot,
+        catalog: FluxaCoreAddonCatalog,
         transportUrl: String,
         query: String
     ) -> FluxaAppleSearchRequest? {
@@ -209,8 +217,8 @@ struct FluxaAppleAddonCatalogResolver {
     }
 
     private func makeDiscoverCatalog(
-        catalog: AppleAddonCatalogSnapshot,
-        manifest: AppleAddonManifestSnapshot,
+        catalog: FluxaCoreAddonCatalog,
+        manifest: FluxaCoreAddonManifest,
         transportUrl: String,
         contentType: String
     ) -> FluxaAppleDiscoverCatalog? {
@@ -249,17 +257,17 @@ struct FluxaAppleAddonCatalogResolver {
         catalogId: String,
         query: String
     ) -> URL? {
-        URL(string: FluxaApple.shared.addonCatalogUrl(
+        URL(string: FluxaCoreStremio.resourceUrl(
             transportUrl: transportUrl,
+            resource: "catalog",
             contentType: contentType,
-            catalogId: catalogId,
-            extraName: "search",
-            extraValue: query
-        ))
+            id: catalogId,
+            extra: ["search": query]
+        ) ?? "")
     }
 
     private func normalizeManifestUrl(_ rawUrl: String) -> String {
-        FluxaApple.shared.normalizeAddonManifestUrl(rawUrl: rawUrl)
+        FluxaCoreStremio.normalizeManifestUrl(rawUrl)
     }
 
     private func resourceUrlString(
@@ -268,12 +276,12 @@ struct FluxaAppleAddonCatalogResolver {
         contentType: String,
         id: String
     ) -> String {
-        FluxaApple.shared.addonResourceUrl(
+        FluxaCoreStremio.resourceUrl(
             transportUrl: transportUrl,
             resource: resource,
             contentType: contentType,
             id: id
-        )
+        ) ?? ""
     }
 }
 

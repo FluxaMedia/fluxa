@@ -8,20 +8,19 @@ import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.SubtitleTrackRef
 import com.fluxa.app.shared.feature.player.MediaTrack
-import com.fluxa.app.player.resolveAudioLanguagePreference
 import java.util.Locale
 
 object TrackSelectionState {
-    private fun resolveAudioLanguagePref(profile: UserProfile?, meta: Meta): String? {
-        return resolveAudioLanguagePreference(profile, meta, Locale.getDefault().language)
-    }
-
     fun resolvePreferredAudioLanguage(profile: UserProfile?, meta: Meta): String {
         return FluxaCoreNative.playerTrackState(
             availableSubtitles = emptyList(),
             lastAudioLanguage = meta.lastAudioLanguage,
-            preferredAudioLanguage = resolveAudioLanguagePref(profile, meta),
+            preferredAudioLanguage = null,
             originalLanguage = meta.originalLanguage,
+            contentGenres = meta.genres.orEmpty(),
+            profileAudioLanguage = profile?.preferredAudioLanguage,
+            animePreferJapaneseAudio = profile?.safeAnimePreferJapaneseAudio == true,
+            deviceLanguage = Locale.getDefault().language,
             lastSubtitleLanguage = meta.lastSubtitleLanguage,
             preferredSubtitleLanguage = profile?.preferredSubtitleLanguage,
             secondarySubtitleLanguage = profile?.secondarySubtitleLanguage
@@ -44,8 +43,12 @@ object TrackSelectionState {
         val state = FluxaCoreNative.playerTrackState(
             availableSubtitles = availableSubtitles.map { SubtitleTrackRef(it.id, it.label, it.language) },
             lastAudioLanguage = meta.lastAudioLanguage,
-            preferredAudioLanguage = resolveAudioLanguagePref(profile, meta),
+            preferredAudioLanguage = null,
             originalLanguage = meta.originalLanguage,
+            contentGenres = meta.genres.orEmpty(),
+            profileAudioLanguage = profile?.preferredAudioLanguage,
+            animePreferJapaneseAudio = profile?.safeAnimePreferJapaneseAudio == true,
+            deviceLanguage = Locale.getDefault().language,
             lastSubtitleLanguage = meta.lastSubtitleLanguage,
             preferredSubtitleLanguage = profile?.preferredSubtitleLanguage,
             secondarySubtitleLanguage = profile?.secondarySubtitleLanguage

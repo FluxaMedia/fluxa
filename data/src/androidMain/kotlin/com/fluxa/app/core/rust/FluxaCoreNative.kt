@@ -51,12 +51,15 @@ import com.fluxa.app.data.remote.AddonCatalog
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.AddonManifest
 import com.fluxa.app.data.remote.LibraryItem
+import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.TraktHistorySyncRequest
 import com.fluxa.app.data.remote.TraktIds
+import com.fluxa.app.data.remote.TraktSyncItem
 import com.fluxa.app.data.repository.TraktWatchedState
+import com.fluxa.app.data.repository.MalListUpdate
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.player.NativeTorrentRuntimeInfo
 import com.fluxa.app.player.NativeTorrentStatusInfo
@@ -389,6 +392,10 @@ private data class NativePlayerTrackStateRequest(
     val lastAudioLanguage: String?,
     val preferredAudioLanguage: String?,
     val originalLanguage: String?,
+    val contentGenres: List<String>,
+    val profileAudioLanguage: String?,
+    val animePreferJapaneseAudio: Boolean,
+    val deviceLanguage: String?,
     val lastSubtitleLanguage: String?,
     val preferredSubtitleLanguage: String?,
     val secondarySubtitleLanguage: String?
@@ -521,6 +528,7 @@ object FluxaCoreNative {
     private val stringListType = object : TypeToken<List<String>>() {}.type
     private val stringListListType = object : TypeToken<List<List<String>>>() {}.type
     private val metaListType = object : TypeToken<List<Meta>>() {}.type
+    private val introTimestampListType = object : TypeToken<List<IntroTimestamps>>() {}.type
     private val libraryItemListType = object : TypeToken<List<LibraryItem>>() {}.type
     private val headlessEffectListType = object : TypeToken<List<NativeHeadlessEffect>>() {}.type
     private val headlessStateMapType = object : TypeToken<Map<String, Any?>>() {}.type
@@ -846,7 +854,36 @@ object FluxaCoreNative {
     fun parseEpisodeLocator(raw: String?): NativeEpisodeLocator? {
         val args = JsonObject().apply { addProperty("input", raw.orEmpty()) }
         val value = FluxaCoreUniFfi.coreInvokeValue("parseEpisodeLocator", args.toString())
-        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeEpisodeLocator::class.java) }
+            return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeEpisodeLocator::class.java) }
+    }
+
+    fun contentImdbId(id: String): String? {
+        val args = JsonObject().apply { addProperty("id", id) }
+        return FluxaCoreUniFfi.coreInvokeValue("contentImdbId", args.toString())
+            .takeUnless { it.isJsonNull }
+            ?.asString
+    }
+
+    fun contentBaseId(id: String): String {
+        val args = JsonObject().apply { addProperty("id", id) }
+        return FluxaCoreUniFfi.coreInvokeValue("contentBaseId", args.toString()).asString
+    }
+
+    fun normalizeSeriesLookupId(id: String): String {
+        val args = JsonObject().apply { addProperty("id", id) }
+        return FluxaCoreUniFfi.coreInvokeValue("normalizeSeriesLookupId", args.toString()).asString
+    }
+
+    fun isTmdbLikeContentId(id: String): Boolean {
+        val args = JsonObject().apply { addProperty("id", id) }
+        return FluxaCoreUniFfi.coreInvokeValue("isTmdbLikeContentId", args.toString()).asBoolean
+    }
+
+    fun tmdbNumericId(id: String): String? {
+        val args = JsonObject().apply { addProperty("id", id) }
+        return FluxaCoreUniFfi.coreInvokeValue("tmdbNumericId", args.toString())
+            .takeUnless { it.isJsonNull }
+            ?.asString
     }
 
     fun streamRequestIds(
@@ -1138,6 +1175,10 @@ object FluxaCoreNative {
         lastAudioLanguage: String?,
         preferredAudioLanguage: String?,
         originalLanguage: String?,
+        contentGenres: List<String> = emptyList(),
+        profileAudioLanguage: String? = null,
+        animePreferJapaneseAudio: Boolean = false,
+        deviceLanguage: String? = null,
         lastSubtitleLanguage: String?,
         preferredSubtitleLanguage: String?,
         secondarySubtitleLanguage: String?
@@ -1147,6 +1188,10 @@ object FluxaCoreNative {
             lastAudioLanguage = lastAudioLanguage,
             preferredAudioLanguage = preferredAudioLanguage,
             originalLanguage = originalLanguage,
+            contentGenres = contentGenres,
+            profileAudioLanguage = profileAudioLanguage,
+            animePreferJapaneseAudio = animePreferJapaneseAudio,
+            deviceLanguage = deviceLanguage,
             lastSubtitleLanguage = lastSubtitleLanguage,
             preferredSubtitleLanguage = preferredSubtitleLanguage,
             secondarySubtitleLanguage = secondarySubtitleLanguage
@@ -1244,10 +1289,44 @@ object FluxaCoreNative {
         return FluxaCoreUniFfi.coreInvokeValue("stableFeedPart", args.toString()).asString
     }
 
+    fun buildMetadataFeedOptions(addons: List<AddonDescriptor>): List<MetadataFeedOption> {
+        val value = FluxaCoreUniFfi.coreInvokeValue("buildMetadataFeedOptions", gson.toJson(addons))
+        return gson.fromJson(value, object : TypeToken<List<MetadataFeedOption>>() {}.type) ?: emptyList()
+    }
+
+    fun discoverContentTypes(addons: List<AddonDescriptor>): List<String> {
+        val value = FluxaCoreUniFfi.coreInvokeValue("discoverContentTypes", gson.toJson(addons))
+        return gson.fromJson(value, stringListType) ?: emptyList()
+    }
+
+    fun discoverCatalogOptions(addons: List<AddonDescriptor>, selectedType: String): List<DiscoverCatalogOption> {
+        val args = JsonObject().apply {
+            addProperty("addons", gson.toJson(addons))
+            addProperty("selectedType", selectedType)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("discoverCatalogOptions", args.toString())
+        return gson.fromJson(value, object : TypeToken<List<DiscoverCatalogOption>>() {}.type) ?: emptyList()
+    }
+
     fun normalizeContentType(value: String): String? {
         val args = JsonObject().apply { addProperty("value", value) }
         val result = FluxaCoreUniFfi.coreInvokeValue("normalizeContentType", args.toString())
         return result.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
+    }
+
+    fun tmdbLanguage(language: String?): String {
+        val args = JsonObject().apply { addProperty("language", language.orEmpty()) }
+        return FluxaCoreUniFfi.coreInvokeValue("tmdbLanguage", args.toString()).asString
+    }
+
+    fun nuvioRequest(method: String, arguments: Any): Map<String, Any?> {
+        val value = FluxaCoreUniFfi.coreInvokeValue(method, gson.toJson(arguments))
+        return gson.fromJson(value, headlessStateMapType) ?: emptyMap()
+    }
+
+    fun nuvioRequestList(method: String, arguments: Any): List<Map<String, Any?>> {
+        val value = FluxaCoreUniFfi.coreInvokeValue(method, gson.toJson(arguments))
+        return gson.fromJson(value, object : TypeToken<List<Map<String, Any?>>>() {}.type) ?: emptyList()
     }
 
     fun parseExtraArgs(extra: String): Map<String, String> {
@@ -1543,6 +1622,71 @@ object FluxaCoreNative {
         return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<Meta>>(it, metaListType) } ?: emptyList()
     }
 
+    fun homeBillboardCandidateScore(meta: Meta, daysSinceRelease: Long?): Int {
+        val args = JsonObject().apply {
+            add("meta", gson.toJsonTree(meta))
+            daysSinceRelease?.let { addProperty("daysSinceRelease", it) }
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("homeBillboardCandidateScore", args.toString()).asInt
+    }
+
+    fun homeBillboardVisualScore(meta: Meta): Int {
+        val args = JsonObject().apply { add("meta", gson.toJsonTree(meta)) }
+        return FluxaCoreUniFfi.coreInvokeValue("homeBillboardVisualScore", args.toString()).asInt
+    }
+
+    fun homeBillboardHasBackdrop(meta: Meta): Boolean {
+        val args = JsonObject().apply { add("meta", gson.toJsonTree(meta)) }
+        return FluxaCoreUniFfi.coreInvokeValue("homeBillboardHasBackdrop", args.toString()).asBoolean
+    }
+
+    fun homeBillboardEditorialMatchScore(meta: Meta, minYear: Int): Int {
+        val args = JsonObject().apply {
+            add("meta", gson.toJsonTree(meta))
+            addProperty("minYear", minYear)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("homeBillboardEditorialMatchScore", args.toString()).asInt
+    }
+
+    fun homeBillboardIdentityKey(meta: Meta): String {
+        val args = JsonObject().apply { add("meta", gson.toJsonTree(meta)) }
+        return FluxaCoreUniFfi.coreInvokeValue("homeBillboardIdentityKey", args.toString()).asString
+    }
+
+    fun homeBillboardNormalizedTitle(value: String): String {
+        val args = JsonObject().apply { addProperty("value", value) }
+        return FluxaCoreUniFfi.coreInvokeValue("homeBillboardNormalizedTitle", args.toString()).asString
+    }
+
+    fun chapterSkipSegments(chaptersJson: String): List<IntroTimestamps> {
+        val args = JsonObject().apply { addProperty("chaptersJson", chaptersJson) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("chapterSkipSegments", args.toString())
+        return gson.fromJson(value, introTimestampListType) ?: emptyList()
+    }
+
+    fun externalSyncResponseAction(provider: String, statusCode: Int): String {
+        val args = JsonObject().apply {
+            addProperty("provider", provider)
+            addProperty("statusCode", statusCode)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("externalSyncResponseAction", args.toString()).asString
+    }
+
+    fun externalSyncRefreshRetryAction(statusCode: Int?): String {
+        val args = JsonObject().apply { statusCode?.let { addProperty("statusCode", it) } }
+        return FluxaCoreUniFfi.coreInvokeValue("externalSyncRefreshRetryAction", args.toString()).asString
+    }
+
+    fun malListUpdate(meta: Meta, episodes: List<Video>, watched: Boolean): MalListUpdate? {
+        val args = JsonObject().apply {
+            add("meta", gson.toJsonTree(meta))
+            add("episodes", gson.toJsonTree(episodes))
+        }
+        val method = if (watched) "malWatchedUpdate" else "malWatchlistUpdate"
+        val value = FluxaCoreUniFfi.coreInvokeValue(method, args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, MalListUpdate::class.java) }
+    }
+
     fun normalizeHomeCatalogItems(items: List<Meta>, catalogId: String, genre: String?): List<Meta> {
         val todayIso = java.time.LocalDate.now(java.time.ZoneId.systemDefault()).toString()
         val args = JsonObject().apply {
@@ -1678,6 +1822,16 @@ object FluxaCoreNative {
         return value.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
     }
 
+    fun traktSyncItemToMeta(item: TraktSyncItem, type: String, unknownName: String): Meta? {
+        val args = JsonObject().apply {
+            add("item", gson.toJsonTree(item))
+            addProperty("type", type)
+            addProperty("unknownName", unknownName)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("traktSyncItemToMeta", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, Meta::class.java) }
+    }
+
     fun traktIdsFromContentId(rawId: String): TraktIds? {
         val args = JsonObject().apply { addProperty("rawId", rawId) }
         val value = FluxaCoreUniFfi.coreInvokeValue("traktIdsFromContentId", args.toString())
@@ -1737,6 +1891,30 @@ object FluxaCoreNative {
         }
         val value = FluxaCoreUniFfi.coreInvokeValue("simklScrobbleBody", args.toString())
         return value.takeUnless { it.isJsonNull }?.toString()?.takeIf { it.isNotBlank() }
+    }
+
+    fun simklHistoryRequest(
+        imdbId: String,
+        isSeries: Boolean,
+        episodesBySeasonNumber: Map<Int, List<Int>>
+    ): Map<String, Any> {
+        val args = JsonObject().apply {
+            addProperty("imdbId", imdbId)
+            addProperty("isSeries", isSeries)
+            add("episodesBySeasonNumber", gson.toJsonTree(episodesBySeasonNumber))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("simklHistoryRequest", args.toString())
+        return gson.fromJson(value, object : TypeToken<Map<String, Any>>() {}.type) ?: emptyMap()
+    }
+
+    fun simklWatchlistRequest(imdbId: String, isSeries: Boolean, remove: Boolean): Map<String, Any> {
+        val args = JsonObject().apply {
+            addProperty("imdbId", imdbId)
+            addProperty("isSeries", isSeries)
+        }
+        val method = if (remove) "simklWatchlistRemovalRequest" else "simklWatchlistRequest"
+        val value = FluxaCoreUniFfi.coreInvokeValue(method, args.toString())
+        return gson.fromJson(value, object : TypeToken<Map<String, Any>>() {}.type) ?: emptyMap()
     }
 
     fun simklMatchEpisode(episodesJson: String, targetJson: String): NativeSimklEpisodeMatch? {

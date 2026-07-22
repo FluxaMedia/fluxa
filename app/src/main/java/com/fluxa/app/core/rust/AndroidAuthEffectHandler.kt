@@ -6,6 +6,7 @@ import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.data.repository.TraktRepository
+import com.fluxa.app.plugins.PluginRepositoryManager
 import com.google.gson.Gson
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -14,6 +15,7 @@ internal class AndroidAuthEffectHandler(
     private val traktRepository: TraktRepository,
     private val watchlistManager: WatchlistManager,
     private val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,
+    private val pluginRepositoryManager: PluginRepositoryManager,
     private val gson: Gson
 ) {
     suspend fun execute(effect: NativeHeadlessEffect): HeadlessEffectCompletion = when (effect.type) {
@@ -157,6 +159,7 @@ internal class AndroidAuthEffectHandler(
         if (payload.string("provider") == "nuvio") {
             if (profile.nuvioAccessToken.isNullOrBlank()) return failure(effect, "missing_nuvio_token")
             val imported = nuvioAccountImportCoordinator.sync(profile) {}
+            pluginRepositoryManager.importNuvioPlugins(imported.plugins)
             return success(
                 effect,
                 mapOf(

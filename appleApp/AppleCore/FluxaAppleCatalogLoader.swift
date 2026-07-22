@@ -1,4 +1,3 @@
-import FluxaShared
 import Foundation
 
 struct FluxaAppleCatalogRequest: Sendable {
@@ -27,11 +26,9 @@ final class FluxaAppleCatalogLoader {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                guard let catalogItems = FluxaApple.shared.parseCatalogItems(
+                guard let catalogItems = FluxaCoreStremio.parseCatalogItems(
                     body: String(decoding: data, as: UTF8.self),
-                    fallbackType: request.contentType,
-                    addonTransportUrl: request.addonTransportUrl,
-                    catalogType: request.catalogType
+                    fallbackType: request.contentType
                 ) else {
                     throw URLError(.cannotParseResponse)
                 }
@@ -47,8 +44,8 @@ final class FluxaAppleCatalogLoader {
                                 subtitle: $0.subtitle,
                                 artworkUrl: $0.artworkUrl,
                                 logoUrl: $0.logoUrl,
-                                addonTransportUrl: $0.addonTransportUrl,
-                                catalogType: $0.catalogType,
+                                addonTransportUrl: request.addonTransportUrl,
+                                catalogType: request.catalogType,
                                 progress: nil,
                                 topTenRank: nil
                             )
@@ -76,11 +73,9 @@ final class FluxaAppleCatalogLoader {
                       (200..<300).contains(httpResponse.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                guard let catalogItems = FluxaApple.shared.parseCatalogItems(
+                guard let catalogItems = FluxaCoreStremio.parseCatalogItems(
                     body: String(decoding: data, as: UTF8.self),
-                    fallbackType: request.contentType,
-                    addonTransportUrl: request.addonTransportUrl,
-                    catalogType: request.catalogType
+                    fallbackType: request.contentType
                 ) else {
                     throw URLError(.cannotParseResponse)
                 }
@@ -92,8 +87,8 @@ final class FluxaAppleCatalogLoader {
                         subtitle: $0.subtitle,
                         artworkUrl: $0.artworkUrl,
                         logoUrl: $0.logoUrl,
-                        addonTransportUrl: $0.addonTransportUrl,
-                        catalogType: $0.catalogType,
+                        addonTransportUrl: request.addonTransportUrl,
+                        catalogType: request.catalogType,
                         progress: nil,
                         topTenRank: nil
                     )

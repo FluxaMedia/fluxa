@@ -1,4 +1,3 @@
-import FluxaShared
 import Foundation
 
 final class FluxaAppleAddonResourceLoader {
@@ -57,13 +56,23 @@ final class FluxaAppleAddonResourceLoader {
             throw URLError(.badServerResponse)
         }
         let addonName = URL(string: transportUrl)?.host ?? transportUrl
-        guard let streams = FluxaApple.shared.parseDirectStreams(
-            body: String(decoding: data, as: UTF8.self),
-            addonName: addonName
+        guard let streams = FluxaCoreStremio.parseDirectStreams(
+            body: String(decoding: data, as: UTF8.self)
         ) else {
             throw URLError(.cannotParseResponse)
         }
-        return streams
+        return streams.compactMap { stream in
+            guard let data = try? JSONSerialization.data(withJSONObject: stream.requestHeaders),
+                  let requestHeadersJson = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+            return AppleDetailStreamSnapshot(
+                addonName: addonName,
+                title: stream.title ?? addonName,
+                playableUrl: stream.playableUrl,
+                requestHeadersJson: requestHeadersJson
+            )
+        }
     }
 }
 

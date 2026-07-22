@@ -367,10 +367,9 @@ tasks.register("checkAppleTypedCatalogBridge") {
             ),
             "appleApp/iOS/FluxaIosApp.swift" to listOf("setCatalogHomeRefreshHandler"),
             "appleApp/AppleCore/FluxaAppleAddonCatalogResolver.swift" to listOf(
-                "parseAddonManifest",
-                "normalizeAddonManifestUrl",
-                "addonCatalogUrl",
-                "addonResourceUrl"
+                "FluxaCoreStremio.parseManifest",
+                "FluxaCoreStremio.normalizeManifestUrl",
+                "FluxaCoreStremio.resourceUrl"
             ),
             "appleApp/AppleCore/FluxaAppleCatalogLoader.swift" to listOf("parseCatalogItems"),
             "appleApp/AppleCore/FluxaAppleAddonResourceLoader.swift" to listOf("parseDirectStreams")
@@ -445,9 +444,9 @@ tasks.register("checkAppleTvosKmpBoundary") {
         )
         val requiredHandlerTokens = listOf(
             "import FluxaData",
-            "AppleStremioBridge.shared.parseManifest",
-            "AppleStremioBridge.shared.parseCatalogItems",
-            "AppleStremioBridge.shared.catalogUrl"
+            "FluxaCoreStremio.parseManifest",
+            "FluxaCoreStremio.parseCatalogItems",
+            "FluxaCoreStremio.resourceUrl"
         )
         val violations = requiredProjectTokens.filterNot(projectText::contains).map { token ->
             "appleApp/project.yml must contain $token"
