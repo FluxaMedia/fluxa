@@ -100,7 +100,7 @@ export function streamSourceOptions() {
 
 export function cwSourceOfTruthOptions() {
   return [
-    { value: 'most_recent', label: t('settings.cw_source_of_truth_most_recent') },
+    { value: '', label: t('settings.cw_source_of_truth_none') },
     { value: 'local', label: t('settings.cw_source_of_truth_local') },
     { value: 'nuvio', label: t('settings.cw_source_of_truth_nuvio') },
     { value: 'trakt', label: t('settings.cw_source_of_truth_trakt') },

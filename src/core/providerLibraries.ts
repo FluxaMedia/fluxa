@@ -10,6 +10,8 @@ export type ProviderLibrarySnapshot = {
   dropped: Record<string, unknown>[];
 };
 
+export const PROVIDER_LIBRARIES_CHANGED = 'provider-libraries-changed';
+
 type ProviderLibraries = Partial<Record<LibraryProvider, ProviderLibrarySnapshot>>;
 
 async function storageKey(): Promise<string> {
@@ -31,4 +33,5 @@ export async function loadProviderLibraries(): Promise<ProviderLibraries> {
 export async function saveProviderLibrary(provider: LibraryProvider, snapshot: ProviderLibrarySnapshot): Promise<void> {
   const libraries = await loadProviderLibraries();
   await storageWrite(await storageKey(), { ...libraries, [provider]: snapshot });
+  window.dispatchEvent(new Event(PROVIDER_LIBRARIES_CHANGED));
 }

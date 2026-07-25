@@ -77,7 +77,7 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   const watchedMap = ((await coreSimklWatchedToIds(doneShowsData, doneMoviesData)) ?? {}) as Record<string, boolean>;
   await mergeExternalWatched(watchedMap);
 
-  return { synced: true, provider: 'simkl', continueWatchingCount: items.length, watchlistCount: 0 };
+  return { synced: true, provider: 'simkl', continueWatchingCount: items.length, watchlistCount: watchlistItems.length, watchedCount: Object.keys(watchedMap).length };
 }
 
 export async function fetchSimklCalendarItems(token: string, clientId: string): Promise<Record<string, unknown>[]> {

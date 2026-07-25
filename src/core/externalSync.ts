@@ -22,7 +22,7 @@ import {
   nuvioRefreshToken,
 } from './nuvioApi';
 import { saveProfile } from './profiles';
-import { loadLibrary, saveLibrary, buildContinueWatching, persistProgressMerge } from './libraryOps';
+import { loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistProgressMerge } from './libraryOps';
 import type { UserProfile } from './types';
 
 export { enqueueTraktScrobble } from './traktSync';
@@ -47,6 +47,19 @@ export type WatchProgressInfo = {
   season?: number;
   episode?: number;
 };
+
+async function integrationSettings(): Promise<Record<string, unknown>> {
+  const prefs = await loadPrefs();
+  return (await coreInvoke<Record<string, unknown>>('integrationSettingsPlan', JSON.stringify({
+    settings: {
+      librarySource: prefs.integrationLibrarySource,
+      watchProgressSource: prefs.watchProgressSource,
+      continueWatchingDays: Number(prefs.continueWatchingDays) || 0,
+      similarTitlesSource: prefs.similarTitlesSource,
+      traktCommentsEnabled: prefs.traktCommentsEnabled,
+    },
+  }))) ?? {};
+}
 
 export async function promoteExternalProgress(
   items: Record<string, unknown>[],
@@ -138,6 +151,7 @@ export async function pushMarkWatchedExternal(
 ): Promise<void> {
   if (!profile) return;
   const activeProfile = await refreshTraktProfile(profile).catch(() => profile);
+  const settings = await integrationSettings();
   const tasks: Promise<void>[] = [];
   const plan = await coreInvoke<{
     trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean;
@@ -146,7 +160,7 @@ export async function pushMarkWatchedExternal(
     watchedKeys: Array<{ content_id: string; season?: number; episode?: number }>;
     historyItems: Array<{ content_id: string; content_type: string; title?: string; season?: number; episode?: number; watched_at: number }>;
     progressEntry?: { content_id: string; content_type: string; video_id: string; position: number; duration: number; last_watched: number; season?: number; episode?: number };
-  }>('externalProviderActionPlan', JSON.stringify({ kind: 'markWatched', profile: activeProfile, videoIds, watched, meta, episodeInfo, progressInfo, nowMs: Date.now() }));
+  }>('externalProviderActionPlan', JSON.stringify({ kind: 'markWatched', profile: activeProfile, videoIds, watched, meta, episodeInfo, progressInfo, integrationSettings: settings, nowMs: Date.now() }));
   if (!plan) return;
 
   if (plan.trakt) {

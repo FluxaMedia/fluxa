@@ -16,7 +16,7 @@ import { CollectionEditorScreen } from './CollectionEditorScreen';
 import { CollectionsTab } from '../components/library/CollectionsTab';
 import { loadNuvioCollectionSource } from '../core/collectionSources';
 import { coreInvoke } from '../core/engine';
-import { loadProviderLibraries, type LibraryProvider, type ProviderLibrarySnapshot } from '../core/providerLibraries';
+import { loadProviderLibraries, PROVIDER_LIBRARIES_CHANGED, type LibraryProvider, type ProviderLibrarySnapshot } from '../core/providerLibraries';
 
 type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 'airing' | 'rated' | 'history';
 type LibrarySource = 'local' | LibraryProvider;
@@ -63,9 +63,22 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const changeLibrarySource = (v: LibrarySource) => { setLibrarySource(v); setViewPref('librarySource', v); };
 
   useEffect(() => {
+    if (getViewPrefs().librarySource) return;
+    const source = prefString(appPrefs(state), 'integrationLibrarySource', 'local') as LibrarySource;
+    if (source !== 'local') changeLibrarySource(source);
+  }, [state.settings?.values]);
+
+  useEffect(() => {
     let active = true;
-    void loadProviderLibraries().then((libraries) => { if (active) setProviderLibraries(libraries); });
-    return () => { active = false; };
+    const refreshProviderLibraries = () => {
+      void loadProviderLibraries().then((libraries) => { if (active) setProviderLibraries(libraries); });
+    };
+    refreshProviderLibraries();
+    window.addEventListener(PROVIDER_LIBRARIES_CHANGED, refreshProviderLibraries);
+    return () => {
+      active = false;
+      window.removeEventListener(PROVIDER_LIBRARIES_CHANGED, refreshProviderLibraries);
+    };
   }, [activeProfile?.id]);
 
   useEffect(() => {
@@ -211,6 +224,9 @@ export const LibraryScreen = React.memo(function LibraryScreen({
     : tab === 'rated' ? t('library.subtitle_rated')
     : tab === 'history' ? t('library.subtitle_history')
     : t('library.subtitle_collections');
+  const libraryTitle = librarySource === 'local'
+    ? t('auto.my_library_a6c93797')
+    : t(`library.source_${librarySource}`);
 
   const selectedItems = useMemo(
     () => items.filter((item) => selectedIds.has(item.id)),
@@ -304,7 +320,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
           <ArrowLeft size={24} color="#fff" />
         </CircleBtn>
         <div>
-          <p style={styles.title}>{t('auto.my_library_a6c93797')}</p>
+          <p style={styles.title}>{libraryTitle}</p>
           <p style={styles.subtitle}>{subtitle}</p>
         </div>
       </div>

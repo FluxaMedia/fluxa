@@ -71,6 +71,7 @@ export async function replaceExternalContinueWatching(payload: Record<string, un
     JSON.stringify(items),
     prefString(prefs, 'syncCwSourceOfTruth'),
     prefString(prefs, 'syncCwRanking'),
+    Number(prefs.continueWatchingDays) || 0,
   );
   lib.externalContinueWatching = merged;
   await persistContinueWatchingMerge(existing, merged as Record<string, unknown>[]);

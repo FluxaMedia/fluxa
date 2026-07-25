@@ -58,6 +58,12 @@ export async function coreTraktPlaybackItemsToLibrary(
   return coreInvoke("traktPlaybackItemsToLibrary", itemsJson);
 }
 
+export async function coreTraktWatchedShowsToItems(
+  showsJson: string,
+): Promise<unknown[] | null> {
+  return coreInvoke("traktWatchedShowsToItems", showsJson);
+}
+
 export async function coreTraktWatchlistToItems(
   moviesJson: string,
   showsJson: string,
@@ -158,4 +164,3 @@ export async function coreStremioWatchedToIds(
 ): Promise<Record<string, boolean> | null> {
   return coreInvoke("stremioWatchedToIds", JSON.stringify(items));
 }
-

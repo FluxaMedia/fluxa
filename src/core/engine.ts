@@ -737,6 +737,7 @@ export async function coreReplaceExternalContinueWatching(
   itemsJson: string,
   sourceOfTruth?: string,
   rankingMode?: string,
+  continueWatchingDays?: number,
 ): Promise<unknown[]> {
   return (await coreInvoke<unknown[]>(
     "replaceExternalContinueWatching",
@@ -746,6 +747,7 @@ export async function coreReplaceExternalContinueWatching(
       itemsJson,
       sourceOfTruth,
       rankingMode,
+      continueWatchingDays,
     }),
   )) ?? [];
 }

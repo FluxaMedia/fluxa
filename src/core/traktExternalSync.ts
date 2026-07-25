@@ -6,6 +6,7 @@ import {
   coreTraktMarkWatchedBody,
   coreTraktPlaybackItemsDedup,
   coreTraktPlaybackItemsToLibrary,
+  coreTraktWatchedShowsToItems,
   coreTraktWatchlistToItems,
   coreTraktWatchedToIds,
 } from './engine';
@@ -73,15 +74,10 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   const allItems = Array.isArray(playbackItems)
     ? ((await coreTraktPlaybackItemsToLibrary(JSON.stringify(playbackItems))) ?? []) as Record<string, unknown>[]
     : [];
-
-  const rawItems = ((await coreTraktPlaybackItemsDedup(JSON.stringify(allItems))) ?? []) as Record<string, unknown>[];
-
-  const items = await enrichWithAddonMeta(rawItems);
-  await replaceExternalContinueWatching({ items, provider: 'trakt' });
-  const { promoteExternalProgress } = await import('./externalSync');
-  await promoteExternalProgress(items, 'trakt', refreshedProfile ?? null);
+  let items = await enrichWithAddonMeta(allItems);
 
   let watchlistCount = 0;
+  let watchedCount = 0;
   try {
     const [watchlistMovies, watchlistShows, watchedMovies, watchedShows] = await Promise.all([
       fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies', headers, 250),
@@ -90,6 +86,10 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
       fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=progress', headers, 100),
     ]);
 
+    const watchedShowItems = ((await coreTraktWatchedShowsToItems(JSON.stringify(watchedShows))) ?? []) as Record<string, unknown>[];
+    const rawItems = ((await coreTraktPlaybackItemsDedup(JSON.stringify([...allItems, ...watchedShowItems]))) ?? []) as Record<string, unknown>[];
+    items = await enrichWithAddonMeta(rawItems);
+
     const watchlistItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
     watchlistCount = watchlistItems.length;
     await mergeExternalWatchlist(watchlistItems);
@@ -97,10 +97,15 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] });
 
     const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
+    watchedCount = Object.keys(watchedIds).length;
     await mergeExternalWatched(watchedIds);
   } catch {}
 
-  return { synced: true, provider: 'trakt', continueWatchingCount: items.length, watchlistCount };
+  await replaceExternalContinueWatching({ items, provider: 'trakt' });
+  const { promoteExternalProgress } = await import('./externalSync');
+  await promoteExternalProgress(items, 'trakt', refreshedProfile ?? null);
+
+  return { synced: true, provider: 'trakt', continueWatchingCount: items.length, watchlistCount, watchedCount };
 }
 
 export async function fetchTraktCalendarItems(token: string, clientId: string): Promise<Record<string, unknown>[]> {

@@ -9,7 +9,7 @@ import { profileConnectionState, profileColor, saveProfile } from '../../core/pr
 import { AvatarPreview } from '../../screens/ProfileForm';
 import { syncExternalIntegrationNow } from '../../core/effectRunner';
 import { refreshAnimeTrackingProfile } from '../../core/animeExternalSync';
-import { ChoiceTile, SettingsSection, SyncServicePopover, SyncServiceRow, cwRankingOptions, cwSourceOfTruthOptions, similarTitlesSourceOptions } from './SettingsUI';
+import { ChoiceTile, SettingsDetailHeader, SettingsSection, SyncServicePopover, SyncServiceRow, ToggleTile, cwRankingOptions, cwSourceOfTruthOptions, similarTitlesSourceOptions } from './SettingsUI';
 import type { Prefs, SyncMeta, TraktTokenResponse } from './settingsTypes';
 import { nuvioAuthErrorKind, nuvioSignIn } from '../../core/nuvioApi';
 import { refreshNuvioProfiles } from '../../core/nuvioSync';
@@ -31,6 +31,7 @@ interface OAuthCodePayload {
 }
 
 type OAuthService = 'trakt' | 'anilist' | 'simkl';
+type IntegrationService = OAuthService | 'nuvio' | 'stremio';
 
 function credentialAuthErrorMessage(err: unknown): string {
   switch (nuvioAuthErrorKind(err)) {
@@ -219,6 +220,11 @@ export function AccountSection({
   const [stremioFormOpen, setStremioFormOpen] = useState(false);
   const [stremioAuthKeyMode, setStremioAuthKeyMode] = useState(false);
   const [authUrls, setAuthUrls] = useState<Partial<Record<OAuthService, string>>>({});
+  const [selectedIntegration, setSelectedIntegration] = useState<IntegrationService | null>(null);
+
+  useEffect(() => {
+    if (prefs.syncCwSourceOfTruth === 'most_recent') setPref('syncCwSourceOfTruth', '');
+  }, [prefs.syncCwSourceOfTruth, setPref]);
 
   useEffect(() => {
     storageRead<SyncMeta>('trakt_sync_meta').then((m) => { if (m) setTraktSyncMeta(m); });
@@ -564,11 +570,11 @@ export function AccountSection({
         profile: activeProfile,
         token: activeProfile.traktAccessToken,
         clientId: traktClientId,
-      }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
+      }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
       if (!result.synced) {
         setTraktError(result.error ?? t('toast.trakt_sync_failed'));
       } else {
-        const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: result.continueWatchingCount ?? 0, watchlistCount: result.watchlistCount ?? 0 };
+        const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: result.continueWatchingCount ?? 0, watchlistCount: result.watchlistCount ?? 0, watchedCount: result.watchedCount ?? 0 };
         setTraktSyncMeta(meta);
         await storageWrite('trakt_sync_meta', meta);
       }
@@ -592,11 +598,11 @@ export function AccountSection({
         profile: activeProfile,
         token: activeProfile.simklAccessToken,
         clientId: simklClientId,
-      }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
+      }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
       if (!result.synced) {
         setSimklError(result.error ?? 'Simkl sync failed');
       } else {
-        const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: result.continueWatchingCount ?? 0, watchlistCount: result.watchlistCount ?? 0 };
+        const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: result.continueWatchingCount ?? 0, watchlistCount: result.watchlistCount ?? 0, watchedCount: result.watchedCount ?? 0 };
         setSimklSyncMeta(meta);
         await storageWrite('simkl_sync_meta', meta);
       }
@@ -696,6 +702,47 @@ export function AccountSection({
     onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
   };
 
+  if (selectedIntegration) {
+    const page = selectedIntegration === 'trakt'
+      ? { title: t('brand.trakt'), connected: traktConnected, busy: traktBusy, meta: traktSyncMeta, error: traktError, connect: () => void handleTraktConnect(), sync: () => void handleTraktSyncNow(), disconnect: () => void handleTraktDisconnect() }
+      : selectedIntegration === 'anilist'
+        ? { title: t('brand.anilist'), connected: anilistConnected, busy: anilistBusy, meta: anilistSyncMeta, error: anilistError, connect: () => void handleAnilistConnect(), sync: () => void handleAnilistSyncNow(), disconnect: () => void handleAnilistDisconnect() }
+        : selectedIntegration === 'simkl'
+          ? { title: t('brand.simkl'), connected: simklConnected, busy: simklBusy, meta: simklSyncMeta, error: simklError, connect: () => void handleSimklConnect(), sync: () => void handleSimklSyncNow(), disconnect: () => void handleSimklDisconnect() }
+          : selectedIntegration === 'nuvio'
+            ? { title: t('brand.nuvio'), connected: nuvioConnected, busy: nuvioBusy, meta: nuvioSyncMeta, error: nuvioError, connect: () => setNuvioFormOpen(true), sync: () => void handleNuvioSyncNow(), disconnect: () => void handleNuvioDisconnect() }
+            : { title: t('brand.stremio'), connected: stremioConnected, busy: stremioBusy, meta: stremioSyncMeta, error: stremioError, connect: () => setStremioFormOpen(true), sync: () => void handleStremioSyncNow(), disconnect: () => void handleStremioDisconnect() };
+    const oauthService = selectedIntegration === 'trakt' || selectedIntegration === 'anilist' || selectedIntegration === 'simkl' ? selectedIntegration : null;
+
+    return <>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <button type="button" aria-label={t('common.back')} onClick={() => setSelectedIntegration(null)} style={{ width: '2.25rem', height: '2.25rem', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.78)', cursor: 'pointer' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg></button>
+        <div style={{ flex: 1 }}><SettingsDetailHeader title={page.title} /></div>
+      </div>
+      <SettingsSection title={t('settings.sync_with')} subtitle={t('settings.sync_with_desc')}>
+        <SyncServiceRow icon={null} title={page.title} value={page.connected ? t('sync.device.connected') : t('settings.connect_account')} valueColor={page.connected ? '#54D17A' : undefined} onClick={page.connected ? undefined : page.connect} busy={page.busy} />
+        {!page.connected && oauthService && renderOAuthFallback(oauthService)}
+        {!page.connected && selectedIntegration === 'nuvio' && nuvioFormOpen && <CredentialLoginForm busy={nuvioBusy} onSubmit={(email, password) => void handleNuvioConnect(email, password)} onCancel={() => setNuvioFormOpen(false)} />}
+        {!page.connected && selectedIntegration === 'stremio' && stremioFormOpen && !stremioAuthKeyMode && <CredentialLoginForm busy={stremioBusy} onSubmit={(email, password) => void handleStremioConnect(email, password)} onCancel={() => setStremioFormOpen(false)} />}
+        {!page.connected && selectedIntegration === 'stremio' && stremioFormOpen && stremioAuthKeyMode && <AuthKeyLoginForm busy={stremioBusy} onSubmit={(authKey) => void handleStremioConnectWithAuthKey(authKey)} onCancel={() => setStremioFormOpen(false)} />}
+        {page.error && <div style={{ padding: '0 1.125rem 0.625rem' }}><p style={{ color: '#FF5D5D', fontSize: '0.75rem', margin: 0 }}>{t('common.error')}: {page.error}</p></div>}
+      </SettingsSection>
+      {page.connected && <SettingsSection title={page.title} subtitle={t('settings.sync_with_desc')}>
+        <SyncServiceRow icon={null} title={t('settings.sync_now')} value={page.meta ? new Date(page.meta.lastSyncAt).toLocaleString() : ''} onClick={page.sync} busy={page.busy} />
+        <SyncServiceRow icon={null} title={t('auto.disconnect')} value="" onClick={page.disconnect} destructive />
+      </SettingsSection>}
+      {page.connected && <SettingsSection title={t('settings.provider_library')} subtitle={page.title}>
+        <SyncServiceRow icon={null} title={t('settings.continue_watching_count', page.meta?.continueWatchingCount ?? 0)} value="" />
+        <SyncServiceRow icon={null} title={t('settings.plan_to_watch_count', page.meta?.watchlistCount ?? 0)} value="" />
+        <SyncServiceRow icon={null} title={t('settings.watched_count', page.meta?.watchedCount ?? 0)} value="" />
+      </SettingsSection>}
+      {page.connected && selectedIntegration === 'trakt' && <SettingsSection title={t('brand.trakt')} subtitle={t('settings.sync_with_desc')}>
+        <ChoiceTile title={t('settings.continue_watching_window')} subtitle={t('settings.continue_watching_window_desc')} options={[{ value: '0', label: t('settings.continue_watching_window_all') }, { value: '7', label: '7' }, { value: '30', label: '30' }, { value: '90', label: '90' }, { value: '365', label: '365' }]} selected={prefs.continueWatchingDays} onSelect={(value) => setPref('continueWatchingDays', value)} />
+        <ToggleTile title={t('settings.trakt_comments')} subtitle={t('settings.trakt_comments_desc')} checked={prefs.traktCommentsEnabled} onToggle={(value) => setPref('traktCommentsEnabled', value)} />
+      </SettingsSection>}
+    </>;
+  }
+
   return (
     <>
       {activeProfile && (
@@ -716,7 +763,7 @@ export function AccountSection({
             icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/trakt.svg" alt="Trakt" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
             title="Trakt.tv"
             value={traktBusy ? t('trakt.device.waiting') : t('auto.connect_trakt_tv_account')}
-            onClick={() => void handleTraktConnect()}
+            onClick={() => setSelectedIntegration('trakt')}
             busy={traktBusy}
           />
         )}
@@ -733,7 +780,7 @@ export function AccountSection({
               title="Trakt.tv"
               value={traktBusy ? t('sync.device.syncing') : t('sync.device.connected')}
               valueColor="#54D17A"
-              onClick={() => setTraktPopoverOpen((o) => !o)}
+              onClick={() => setSelectedIntegration('trakt')}
               busy={traktBusy}
               expanded={traktPopoverOpen}
             />
@@ -756,7 +803,7 @@ export function AccountSection({
             icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(2,169,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/anilist.svg" alt="AniList" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
             title="AniList"
             value={anilistBusy ? t('trakt.device.waiting') : t('auto.connect_anilist_account')}
-            onClick={() => void handleAnilistConnect()}
+            onClick={() => setSelectedIntegration('anilist')}
             busy={anilistBusy}
           />
         )}
@@ -773,7 +820,7 @@ export function AccountSection({
               title="AniList"
               value={anilistBusy ? t('sync.device.syncing') : t('settings.anime_tracking_enabled')}
               valueColor="#54D17A"
-              onClick={() => setAnilistPopoverOpen((o) => !o)}
+              onClick={() => setSelectedIntegration('anilist')}
               busy={anilistBusy}
               expanded={anilistPopoverOpen}
             />
@@ -799,7 +846,7 @@ export function AccountSection({
             icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(28,177,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/simkl.svg" alt="Simkl" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
             title="Simkl"
             value={simklBusy ? t('trakt.device.waiting') : t('auto.connect_simkl_account')}
-            onClick={() => void handleSimklConnect()}
+            onClick={() => setSelectedIntegration('simkl')}
             busy={simklBusy}
           />
         )}
@@ -816,7 +863,7 @@ export function AccountSection({
               title="Simkl"
               value={simklBusy ? t('sync.device.syncing') : t('sync.device.connected')}
               valueColor="#54D17A"
-              onClick={() => setSimklPopoverOpen((o) => !o)}
+              onClick={() => setSelectedIntegration('simkl')}
               busy={simklBusy}
               expanded={simklPopoverOpen}
             />
@@ -839,7 +886,7 @@ export function AccountSection({
             icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="https://nuvio.tv//assets/Logo_1080x1080.png" alt="Nuvio" style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} /></div>}
             title="Nuvio"
             value={nuvioBusy ? t('auth.signing_in') : t('settings.connect_nuvio_account')}
-            onClick={() => setNuvioFormOpen((o) => !o)}
+            onClick={() => setSelectedIntegration('nuvio')}
             busy={nuvioBusy}
             expanded={nuvioFormOpen}
           />
@@ -863,7 +910,7 @@ export function AccountSection({
               title="Nuvio"
               value={nuvioBusy ? t('sync.device.syncing') : (activeProfile?.nuvioEmail ?? t('sync.device.connected'))}
               valueColor="#54D17A"
-              onClick={() => setNuvioPopoverOpen((o) => !o)}
+              onClick={() => setSelectedIntegration('nuvio')}
               busy={nuvioBusy}
               expanded={nuvioPopoverOpen}
             />
@@ -886,7 +933,7 @@ export function AccountSection({
             icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(123,91,245,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/stremio.svg" alt="Stremio" style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} /></div>}
             title="Stremio"
             value={stremioBusy ? t('auth.signing_in') : t('settings.connect_stremio_account')}
-            onClick={() => setStremioFormOpen((o) => !o)}
+            onClick={() => setSelectedIntegration('stremio')}
             busy={stremioBusy}
             expanded={stremioFormOpen}
           />
@@ -928,7 +975,7 @@ export function AccountSection({
               title="Stremio"
               value={stremioBusy ? t('sync.device.syncing') : (activeProfile?.stremioEmail ?? t('sync.device.connected'))}
               valueColor="#54D17A"
-              onClick={() => setStremioPopoverOpen((o) => !o)}
+              onClick={() => setSelectedIntegration('stremio')}
               busy={stremioBusy}
               expanded={stremioPopoverOpen}
             />
@@ -947,27 +994,9 @@ export function AccountSection({
       </SettingsSection>
 
       <SettingsSection title={t('settings.cw_conflict_resolution')} subtitle={t('settings.cw_conflict_resolution_desc')}>
-        <ChoiceTile
-          title={t('settings.cw_source_of_truth')}
-          subtitle={t('settings.cw_source_of_truth_desc')}
-          options={cwSourceOfTruthOptions()}
-          selected={prefs.syncCwSourceOfTruth}
-          onSelect={(v) => setPref('syncCwSourceOfTruth', v)}
-        />
-        <ChoiceTile
-          title={t('settings.cw_ranking')}
-          subtitle={t('settings.cw_ranking_desc')}
-          options={cwRankingOptions()}
-          selected={prefs.syncCwRanking}
-          onSelect={(v) => setPref('syncCwRanking', v)}
-        />
-        <ChoiceTile
-          title={t('settings.similar_titles_source')}
-          subtitle={t('settings.similar_titles_source_desc')}
-          options={similarTitlesSourceOptions()}
-          selected={prefs.similarTitlesSource}
-          onSelect={(v) => setPref('similarTitlesSource', v)}
-        />
+        <ChoiceTile title={t('settings.cw_source_of_truth')} subtitle={t('settings.cw_source_of_truth_desc')} options={cwSourceOfTruthOptions()} selected={prefs.syncCwSourceOfTruth} onSelect={(value) => setPref('syncCwSourceOfTruth', value)} />
+        <ChoiceTile title={t('settings.cw_ranking')} subtitle={t('settings.cw_ranking_desc')} options={cwRankingOptions()} selected={prefs.syncCwRanking} onSelect={(value) => setPref('syncCwRanking', value)} />
+        <ChoiceTile title={t('settings.similar_titles_source')} subtitle={t('settings.similar_titles_source_desc')} options={similarTitlesSourceOptions()} selected={prefs.similarTitlesSource} onSelect={(value) => setPref('similarTitlesSource', value)} />
       </SettingsSection>
     </>
   );

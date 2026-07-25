@@ -45,6 +45,7 @@ export function ContinueCard({
   onGoToDetails,
   onStartOver,
   onPlayManually,
+  onShowAbout,
   onMarkWatched,
   onDrop,
   onDismissAnimationEnd,
@@ -62,6 +63,7 @@ export function ContinueCard({
   onGoToDetails: (m: Meta) => void;
   onStartOver: (m: Meta) => void;
   onPlayManually: (m: Meta) => void;
+  onShowAbout?: (m: Meta, artwork: string | null) => void;
   onMarkWatched: (m: Meta) => void;
   onDrop: (m: Meta) => void;
   onDismissAnimationEnd: (m: Meta) => void;
@@ -339,6 +341,11 @@ export function ContinueCard({
             label: t("home.view_details"),
             onSelect: () => onGoToDetails(meta),
           },
+          ...(onShowAbout ? [{
+            icon: <Info size={15} />,
+            label: t("home.continue_watching_about"),
+            onSelect: () => onShowAbout(meta, artwork),
+          }] : []),
           {
             icon: <Play size={15} />,
             label: t("home.play_manually"),

@@ -124,6 +124,10 @@ export interface Prefs {
   syncCwSourceOfTruth: string;
   syncCwRanking: string;
   similarTitlesSource: string;
+  integrationLibrarySource: string;
+  watchProgressSource: string;
+  continueWatchingDays: string;
+  traktCommentsEnabled: boolean;
   searchSuggestionsOpenDetail: boolean;
   renderBackend: string;
   playerEngine: string;
@@ -140,6 +144,7 @@ export interface SyncMeta {
   lastSyncAt: number;
   continueWatchingCount: number;
   watchlistCount: number;
+  watchedCount?: number;
   error?: string;
 }
 
@@ -264,9 +269,13 @@ export const DEFAULT_PREFS: Prefs = {
   rpdbApiKey: '',
   omdbApiKey: '',
   fanartApiKey: '',
-  syncCwSourceOfTruth: 'most_recent',
+  syncCwSourceOfTruth: '',
   syncCwRanking: 'last_watched',
   similarTitlesSource: 'auto',
+  integrationLibrarySource: 'local',
+  watchProgressSource: 'all',
+  continueWatchingDays: '0',
+  traktCommentsEnabled: false,
   searchSuggestionsOpenDetail: false,
   renderBackend: 'opengl',
   playerEngine: 'mpv',

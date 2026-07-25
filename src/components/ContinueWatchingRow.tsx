@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import type { Meta } from '../core/types';
 import { markContinueWatchingItemWatched, dropContinueWatchingItem, continueWatchingCardFields } from '../core/continueWatchingUtils';
 import { ContinueCard } from './ContinueCard';
@@ -74,6 +75,7 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
   const [dismissingIds, setDismissingIds] = React.useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set());
+  const [aboutItem, setAboutItem] = React.useState<{ meta: Meta; artwork: string | null } | null>(null);
   const markWatchedVideoIds = React.useRef<Map<string, string | null>>(new Map());
 
   React.useEffect(() => {
@@ -213,6 +215,7 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
             onGoToDetails={onNavigateDetail}
             onStartOver={onStartOver}
             onPlayManually={onPlayManually}
+            onShowAbout={(item, artwork) => setAboutItem({ meta: item, artwork })}
             onMarkWatched={(item) => {
               markWatchedVideoIds.current.set(item.id, (item as unknown as { lastVideoId?: string | null }).lastVideoId ?? null);
               startDismiss(item, () => void markContinueWatchingItemWatched(item, onDispatch));
@@ -229,6 +232,7 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
           />
         ))}
       </div>
+      {aboutItem && <ContinueWatchingAboutDialog meta={aboutItem.meta} artwork={aboutItem.artwork} onClose={() => setAboutItem(null)} />}
     </div>
   );
 }, (prev, next) => {
@@ -252,10 +256,64 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
   });
 });
 
+function ContinueWatchingAboutDialog({ meta, artwork, onClose }: { meta: Meta; artwork: string | null; onClose: () => void }) {
+  const item = meta as unknown as Record<string, unknown>;
+  const rawSource = typeof item.reason === 'string' ? item.reason : typeof item.source === 'string' ? item.source : '';
+  const source = rawSource === 'trakt'
+    ? t('brand.trakt')
+    : rawSource === 'simkl'
+    ? t('brand.simkl')
+    : rawSource || t('home.continue_watching_about_source_unknown');
+  const rows = [
+    [t('home.continue_watching_about_id'), meta.id],
+    [t('home.continue_watching_about_video_id'), item.lastVideoId],
+    [t('home.continue_watching_about_season'), item.lastEpisodeSeason],
+    [t('home.continue_watching_about_episode'), item.lastEpisodeNumber],
+    [t('home.continue_watching_about_source'), source],
+    [t('home.continue_watching_about_progress'), typeof item.timeOffset === 'number' && typeof item.duration === 'number' ? `${item.timeOffset} / ${item.duration}` : undefined],
+    [t('home.continue_watching_about_artwork'), artwork],
+    [t('home.continue_watching_about_poster'), meta.poster],
+    [t('home.continue_watching_about_background'), meta.background],
+  ].filter(([, value]) => value != null && value !== '') as Array<[string, string | number]>;
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div style={cwStyles.aboutBackdrop} role="presentation" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={t('home.continue_watching_about_title')} style={cwStyles.aboutDialog} onClick={(event) => event.stopPropagation()}>
+        <div style={cwStyles.aboutHeader}>
+          <div style={{ minWidth: 0 }}>
+            <p style={cwStyles.aboutTitle}>{t('home.continue_watching_about_title')}</p>
+            <p style={cwStyles.aboutName}>{meta.name}</p>
+          </div>
+          <button type="button" style={cwStyles.aboutClose} onClick={onClose} aria-label={t('common.close')}><X size={16} /></button>
+        </div>
+        <div style={cwStyles.aboutRows}>
+          {rows.map(([label, value]) => <div key={label} style={cwStyles.aboutRow}><span style={cwStyles.aboutLabel}>{label}</span><span style={cwStyles.aboutValue}>{String(value)}</span></div>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const cwStyles: Record<string, React.CSSProperties> = {
   section: { position: 'relative', zIndex: 1, paddingTop: '0.5rem', marginBottom: 0 },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: ROW_PADDING_LEFT, paddingRight: '2rem', marginBottom: '0.75rem' },
   title: { color: '#FFFFFF', fontSize: '1.125rem', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' },
   arrowBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '1.75rem', height: '1.75rem', borderRadius: '62.4375rem', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.76)', transition: 'opacity 0.15s', padding: 0 },
   scroll: { display: 'flex', gap: '1.125rem', overflowX: 'auto', paddingLeft: ROW_PADDING_LEFT, paddingRight: '2.5rem', paddingBottom: '1rem', paddingTop: '0.25rem', scrollbarWidth: 'none' },
+  aboutBackdrop: { position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(0.25rem)' },
+  aboutDialog: { width: 'min(42rem, 100%)', maxHeight: 'min(38rem, calc(100vh - 3rem))', overflowY: 'auto', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.14)', background: '#16181e', boxShadow: '0 1.5rem 5rem rgba(0,0,0,0.5)', padding: '1.25rem' },
+  aboutHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' },
+  aboutTitle: { margin: 0, color: '#fff', fontSize: '1rem', fontWeight: 700 },
+  aboutName: { margin: '0.25rem 0 0', color: 'rgba(255,255,255,0.58)', fontSize: '0.8125rem', overflowWrap: 'anywhere' },
+  aboutClose: { flex: '0 0 auto', width: '1.875rem', height: '1.875rem', border: 'none', borderRadius: '0.375rem', background: 'rgba(255,255,255,0.09)', color: '#fff', fontSize: '1.25rem', lineHeight: 1, cursor: 'pointer' },
+  aboutRows: { display: 'grid', gap: '0.5rem' },
+  aboutRow: { display: 'grid', gridTemplateColumns: '9.5rem minmax(0, 1fr)', gap: '0.75rem', padding: '0.625rem 0.75rem', borderRadius: '0.375rem', background: 'rgba(255,255,255,0.045)' },
+  aboutLabel: { color: 'rgba(255,255,255,0.52)', fontSize: '0.75rem', fontWeight: 600 },
+  aboutValue: { color: 'rgba(255,255,255,0.9)', fontSize: '0.75rem', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', overflowWrap: 'anywhere' },
 };
