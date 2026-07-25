@@ -5,9 +5,9 @@ import { coreInvoke } from './engine';
 import { saveProfile } from './profiles';
 import type { UserProfile } from './types';
 
-export async function refreshTraktProfile(profile: UserProfile): Promise<UserProfile> {
+export async function refreshTraktProfile(profile: UserProfile, force = false): Promise<UserProfile> {
   const expiresAt = profile.traktTokenExpiresAt ?? 0;
-  if (!profile.traktAccessToken || !profile.traktRefreshToken || expiresAt > Math.floor(Date.now() / 1000) + 60) return profile;
+  if (!profile.traktAccessToken || !profile.traktRefreshToken || (!force && expiresAt > Math.floor(Date.now() / 1000) + 60)) return profile;
   const tokenJson = await invoke<string>('trakt_oauth_refresh', { refreshToken: profile.traktRefreshToken });
   const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; created_at?: number; expires_in?: number };
   const updated: UserProfile = {

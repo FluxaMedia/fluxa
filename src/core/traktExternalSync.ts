@@ -60,13 +60,19 @@ async function mergeExternalWatched(externalWatched: Record<string, boolean>): P
 
 export async function syncTraktNow(payload: Record<string, unknown>): Promise<unknown> {
   const profile = payload.profile as import('./types').UserProfile | undefined;
-  const refreshedProfile = profile ? await refreshTraktProfile(profile).catch(() => profile) : undefined;
-  const token = refreshedProfile?.traktAccessToken ?? (typeof payload.token === 'string' ? payload.token : undefined);
+  let refreshedProfile = profile ? await refreshTraktProfile(profile).catch(() => profile) : undefined;
+  let token = refreshedProfile?.traktAccessToken ?? (typeof payload.token === 'string' ? payload.token : undefined);
   const clientId = typeof payload.clientId === 'string' ? payload.clientId : '';
   if (!token) return { synced: false, error: 'Trakt is not connected' };
 
-  const headers = traktHeaders(token, clientId);
-  const response = await platformFetch('https://api.trakt.tv/sync/playback', { headers });
+  let headers = traktHeaders(token, clientId);
+  let response = await platformFetch('https://api.trakt.tv/sync/playback', { headers });
+  if (!response.ok && profile && (response.status === 401 || response.status === 403)) {
+    refreshedProfile = await refreshTraktProfile(profile, true).catch(() => profile);
+    token = refreshedProfile.traktAccessToken ?? token;
+    headers = traktHeaders(token, clientId);
+    response = await platformFetch('https://api.trakt.tv/sync/playback', { headers });
+  }
   if (!response.ok) {
     return { synced: false, error: `Trakt sync failed: HTTP ${response.status}` };
   }
