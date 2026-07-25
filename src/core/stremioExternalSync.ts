@@ -10,6 +10,7 @@ import { loadLibrary, saveAddons, saveLibrary, persistStatusListMerge, persistWa
 import { stremioPullAddons, stremioPullLibrary, stremioPushLibrary, stremioReplaceAddons } from './stremioApi';
 import { normalizeAddonDescriptor } from './addons';
 import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
+import { saveProviderLibrary } from './providerLibraries';
 import type { AddonDescriptor, UserProfile } from './types';
 
 type WatchedEpisode = {
@@ -111,6 +112,7 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
   try {
     const watchlistItems = ((await coreStremioWatchlistToItems(libraryItems)) ?? []) as Record<string, unknown>[];
     watchlistCount = await mergeExternalWatchlist(watchlistItems);
+    await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] });
   } catch {}
 
   try {

@@ -7,8 +7,9 @@ import {
   coreSimklWatchlistToItems,
 } from './engine';
 import { loadLibrary, saveLibrary, persistStatusListMerge, persistWatchedMerge } from './libraryOps';
-import { platformFetch } from './httpClient';
+import { _appVersion, platformFetch } from './httpClient';
 import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
+import { saveProviderLibrary } from './providerLibraries';
 
 async function mergeExternalWatchlist(externalItems: Record<string, unknown>[]): Promise<void> {
   const lib = await loadLibrary();
@@ -41,38 +42,40 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
     'simkl-api-key': clientId,
     'Content-Type': 'application/json',
   };
+  const query = `client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`;
 
   const syncSignal = () => AbortSignal.timeout(60_000);
   const [showsRes, moviesRes, wlShowsRes, wlMoviesRes, doneShowsRes, doneMoviesRes] = await Promise.all([
-    platformFetch('https://api.simkl.com/sync/all-items/shows/watching?extended=full', { headers, signal: syncSignal() }),
-    platformFetch('https://api.simkl.com/sync/all-items/movies/watching?extended=full', { headers, signal: syncSignal() }),
-    platformFetch('https://api.simkl.com/sync/all-items/shows/plantowatch?extended=full', { headers, signal: syncSignal() }),
-    platformFetch('https://api.simkl.com/sync/all-items/movies/plantowatch?extended=full', { headers, signal: syncSignal() }),
-    platformFetch('https://api.simkl.com/sync/all-items/shows/completed?extended=full', { headers, signal: syncSignal() }),
-    platformFetch('https://api.simkl.com/sync/all-items/movies/completed?extended=full', { headers, signal: syncSignal() }),
+    platformFetch(`https://api.simkl.com/sync/all-items/shows/watching?extended=full&${query}`, { headers, signal: syncSignal() }),
+    platformFetch(`https://api.simkl.com/sync/all-items/movies/watching?extended=full&${query}`, { headers, signal: syncSignal() }),
+    platformFetch(`https://api.simkl.com/sync/all-items/shows/plantowatch?extended=full&${query}`, { headers, signal: syncSignal() }),
+    platformFetch(`https://api.simkl.com/sync/all-items/movies/plantowatch?extended=full&${query}`, { headers, signal: syncSignal() }),
+    platformFetch(`https://api.simkl.com/sync/all-items/shows/completed?extended=full&${query}`, { headers, signal: syncSignal() }),
+    platformFetch(`https://api.simkl.com/sync/all-items/movies/completed?extended=full&${query}`, { headers, signal: syncSignal() }),
   ]);
 
-  const showsData = showsRes.ok ? JSON.stringify(await showsRes.json()) : '[]';
-  const moviesData = moviesRes.ok ? JSON.stringify(await moviesRes.json()) : '[]';
+  const required = [showsRes, moviesRes, wlShowsRes, wlMoviesRes, doneShowsRes, doneMoviesRes];
+  const failed = required.find((response) => !response.ok);
+  if (failed) return { synced: false, error: `Simkl sync failed: HTTP ${failed.status}` };
+
+  const showsData = JSON.stringify(await showsRes.json());
+  const moviesData = JSON.stringify(await moviesRes.json());
   const rawItems = ((await coreSimklWatchingToItems(showsData, moviesData)) ?? []) as Record<string, unknown>[];
   const items = await enrichWithAddonMeta(rawItems);
   await replaceExternalContinueWatching({ items, provider: 'simkl' });
   const { promoteExternalProgress } = await import('./externalSync');
   await promoteExternalProgress(items, 'simkl', payload.profile as import('./types').UserProfile | null);
 
-  try {
-    const wlShowsData = wlShowsRes.ok ? JSON.stringify(await wlShowsRes.json()) : '[]';
-    const wlMoviesData = wlMoviesRes.ok ? JSON.stringify(await wlMoviesRes.json()) : '[]';
-    const watchlistItems = ((await coreSimklWatchlistToItems(wlShowsData, wlMoviesData)) ?? []) as Record<string, unknown>[];
-    await mergeExternalWatchlist(watchlistItems);
-  } catch {}
+  const wlShowsData = JSON.stringify(await wlShowsRes.json());
+  const wlMoviesData = JSON.stringify(await wlMoviesRes.json());
+  const watchlistItems = ((await coreSimklWatchlistToItems(wlShowsData, wlMoviesData)) ?? []) as Record<string, unknown>[];
+  await mergeExternalWatchlist(watchlistItems);
+  await saveProviderLibrary('simkl', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] });
 
-  try {
-    const doneShowsData = doneShowsRes.ok ? JSON.stringify(await doneShowsRes.json()) : '[]';
-    const doneMoviesData = doneMoviesRes.ok ? JSON.stringify(await doneMoviesRes.json()) : '[]';
-    const watchedMap = ((await coreSimklWatchedToIds(doneShowsData, doneMoviesData)) ?? {}) as Record<string, boolean>;
-    await mergeExternalWatched(watchedMap);
-  } catch {}
+  const doneShowsData = JSON.stringify(await doneShowsRes.json());
+  const doneMoviesData = JSON.stringify(await doneMoviesRes.json());
+  const watchedMap = ((await coreSimklWatchedToIds(doneShowsData, doneMoviesData)) ?? {}) as Record<string, boolean>;
+  await mergeExternalWatched(watchedMap);
 
   return { synced: true, provider: 'simkl', continueWatchingCount: items.length, watchlistCount: 0 };
 }
@@ -87,11 +90,12 @@ export async function fetchSimklCalendarItems(token: string, clientId: string): 
   start.setDate(start.getDate() - 14);
   const startIso = start.toISOString().slice(0, 10);
   const days = 90;
+  const query = `client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`;
 
   const [shows, movies] = await Promise.all([
-    platformFetch(`https://api.simkl.com/calendar/shows/${startIso}/${days}?extended=full`, { headers })
+    platformFetch(`https://api.simkl.com/calendar/shows/${startIso}/${days}?extended=full&${query}`, { headers })
       .then((res) => (res.ok ? res.json() : [])).catch(() => []),
-    platformFetch(`https://api.simkl.com/calendar/movies/${startIso}/${days}?extended=full`, { headers })
+    platformFetch(`https://api.simkl.com/calendar/movies/${startIso}/${days}?extended=full&${query}`, { headers })
       .then((res) => (res.ok ? res.json() : [])).catch(() => []),
   ]);
 
@@ -113,7 +117,7 @@ export async function pushMarkWatchedSimkl(
   const endpoint = watched ? '/sync/history' : '/sync/history/remove';
   const body = await coreInvoke<Record<string, unknown>>('simklMarkWatchedBody', JSON.stringify({ videoIds, meta }));
   if (body) {
-    await platformFetch(`https://api.simkl.com${endpoint}?client_id=${encodeURIComponent(clientId)}`, {
+    await platformFetch(`https://api.simkl.com${endpoint}?client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`, {
       method: 'POST', headers: simklHeaders, body: JSON.stringify(body),
     });
   }
@@ -122,6 +126,7 @@ export async function pushMarkWatchedSimkl(
 export async function pushWatchlistSimkl(
   id: string,
   contentType: string,
+  command: 'add' | 'remove',
   token: string,
   clientId: string,
 ): Promise<void> {
@@ -130,9 +135,10 @@ export async function pushWatchlistSimkl(
     'simkl-api-key': clientId,
     'Content-Type': 'application/json',
   };
-  const body = await coreInvoke<Record<string, unknown>>('simklWatchlistBody', JSON.stringify({ id, contentType }));
+  const body = await coreInvoke<Record<string, unknown>>('simklWatchlistBody', JSON.stringify({ id, contentType, command }));
   if (!body) return;
-  await platformFetch(`https://api.simkl.com/sync/add-to-list?client_id=${encodeURIComponent(clientId)}`, {
+  const endpoint = command === 'add' ? '/sync/add-to-list' : '/sync/history/remove';
+  await platformFetch(`https://api.simkl.com${endpoint}?client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`, {
     method: 'POST', headers: simklHeaders, body: JSON.stringify(body),
   });
 }

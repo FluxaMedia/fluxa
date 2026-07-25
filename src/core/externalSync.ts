@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { coreInvoke } from './engine';
-import { dropTraktPlaybackProgress } from './traktSync';
+import { dropTraktPlaybackProgress, refreshTraktProfile } from './traktSync';
 import { syncTraktNow, pushMarkWatchedTrakt, pushWatchlistTrakt } from './traktExternalSync';
 import { syncSimklNow, pushMarkWatchedSimkl, pushWatchlistSimkl } from './simklExternalSync';
 import {
@@ -137,6 +137,7 @@ export async function pushMarkWatchedExternal(
   progressInfo?: WatchProgressInfo,
 ): Promise<void> {
   if (!profile) return;
+  const activeProfile = await refreshTraktProfile(profile).catch(() => profile);
   const tasks: Promise<void>[] = [];
   const plan = await coreInvoke<{
     trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean;
@@ -145,20 +146,20 @@ export async function pushMarkWatchedExternal(
     watchedKeys: Array<{ content_id: string; season?: number; episode?: number }>;
     historyItems: Array<{ content_id: string; content_type: string; title?: string; season?: number; episode?: number; watched_at: number }>;
     progressEntry?: { content_id: string; content_type: string; video_id: string; position: number; duration: number; last_watched: number; season?: number; episode?: number };
-  }>('externalProviderActionPlan', JSON.stringify({ kind: 'markWatched', profile, videoIds, watched, meta, episodeInfo, progressInfo, nowMs: Date.now() }));
+  }>('externalProviderActionPlan', JSON.stringify({ kind: 'markWatched', profile: activeProfile, videoIds, watched, meta, episodeInfo, progressInfo, nowMs: Date.now() }));
   if (!plan) return;
 
   if (plan.trakt) {
     tasks.push((async () => {
       const clientId = await getOAuthClientId('trakt');
-      await pushMarkWatchedTrakt(videoIds, watched, profile.traktAccessToken!, clientId);
+      await pushMarkWatchedTrakt(videoIds, watched, activeProfile.traktAccessToken!, clientId);
     })().catch(() => undefined));
   }
 
   if (plan.simkl) {
     tasks.push((async () => {
       const clientId = await getOAuthClientId('simkl');
-      await pushMarkWatchedSimkl(videoIds, watched, meta, profile.simklAccessToken!, clientId);
+      await pushMarkWatchedSimkl(videoIds, watched, meta, activeProfile.simklAccessToken!, clientId);
     })().catch(() => undefined));
   }
 
@@ -168,15 +169,15 @@ export async function pushMarkWatchedExternal(
       episode: plan.animeEpisode,
       progressEpisode: plan.animeProgressEpisode,
       watched,
-    }, profile).catch(() => undefined));
+    }, activeProfile).catch(() => undefined));
   }
 
   if (plan.stremio) {
-    tasks.push(pushStremioWatched(meta, watched, plan.episodes, profile).catch(() => undefined));
+    tasks.push(pushStremioWatched(meta, watched, plan.episodes, activeProfile).catch(() => undefined));
   }
   if (plan.nuvio) {
     tasks.push((async () => {
-      let nuvioProfile = await validNuvioProfile(profile);
+      let nuvioProfile = await validNuvioProfile(activeProfile);
       const push = async () => {
         const token = nuvioProfile.nuvioAccessToken!;
         const profileIdx = nuvioProfile.nuvioProfileIndex ?? 1;
@@ -213,38 +214,39 @@ export async function pushWatchlistExternal(
   profile: UserProfile | null,
 ): Promise<void> {
   if (!profile) return;
+  const activeProfile = await refreshTraktProfile(profile).catch(() => profile);
   const id = String(item.id ?? '');
   const contentType = String(item.type ?? 'movie');
   const tasks: Promise<void>[] = [];
-  const plan = await coreInvoke<{ trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'watchlist', profile, item, command, nowMs: Date.now() }));
+  const plan = await coreInvoke<{ trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'watchlist', profile: activeProfile, item, command, nowMs: Date.now() }));
   if (!plan) return;
 
   if (plan.trakt) {
     tasks.push((async () => {
       const clientId = await getOAuthClientId('trakt');
-      await pushWatchlistTrakt(id, contentType, command, profile.traktAccessToken!, clientId);
+      await pushWatchlistTrakt(id, contentType, command, activeProfile.traktAccessToken!, clientId);
     })().catch(() => undefined));
   }
 
   if (plan.simkl) {
     tasks.push((async () => {
       const clientId = await getOAuthClientId('simkl');
-      await pushWatchlistSimkl(id, contentType, profile.simklAccessToken!, clientId);
+      await pushWatchlistSimkl(id, contentType, command, activeProfile.simklAccessToken!, clientId);
     })().catch(() => undefined));
   }
 
   if (plan.anilist) {
-    tasks.push(pushWatchlistAniList(id, command, profile.anilistAccessToken!).catch(() => undefined));
+    tasks.push(pushWatchlistAniList(id, command, activeProfile.anilistAccessToken!).catch(() => undefined));
   }
 
   if (plan.stremio) {
-    tasks.push(pushStremioWatchlist(item, command, profile).catch(() => undefined));
+    tasks.push(pushStremioWatchlist(item, command, activeProfile).catch(() => undefined));
   }
 
   if (plan.nuvio) {
-    const queueKey = `${profile.nuvioUserId ?? profile.id}:${profile.nuvioProfileIndex ?? 1}`;
+    const queueKey = `${activeProfile.nuvioUserId ?? activeProfile.id}:${activeProfile.nuvioProfileIndex ?? 1}`;
     tasks.push(queueNuvioLibraryMutation(queueKey, async () => {
-      let nuvioProfile = await validNuvioProfile(profile);
+      let nuvioProfile = await validNuvioProfile(activeProfile);
       const token = nuvioProfile.nuvioAccessToken;
       if (!token) return;
       const profileIdx = nuvioProfile.nuvioProfileIndex ?? 1;

@@ -16,8 +16,10 @@ import { CollectionEditorScreen } from './CollectionEditorScreen';
 import { CollectionsTab } from '../components/library/CollectionsTab';
 import { loadNuvioCollectionSource } from '../core/collectionSources';
 import { coreInvoke } from '../core/engine';
+import { loadProviderLibraries, type LibraryProvider, type ProviderLibrarySnapshot } from '../core/providerLibraries';
 
 type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 'airing' | 'rated' | 'history';
+type LibrarySource = 'local' | LibraryProvider;
 
 const NAV_RAIL_WIDTH = 6.5;
 const PX = 58;
@@ -42,6 +44,8 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const [tab, setTab] = useState<Tab>(() => (getViewPrefs().libraryTab as Tab) ?? 'watchlist');
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'rating'>(() => (getViewPrefs().librarySort as 'recent' | 'title' | 'rating') ?? 'recent');
+  const [librarySource, setLibrarySource] = useState<LibrarySource>(() => (getViewPrefs().librarySource as LibrarySource) ?? 'local');
+  const [providerLibraries, setProviderLibraries] = useState<Partial<Record<LibraryProvider, ProviderLibrarySnapshot>>>({});
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
@@ -50,11 +54,23 @@ export const LibraryScreen = React.memo(function LibraryScreen({
       const v = getViewPrefs();
       if (v.libraryTab) setTab(v.libraryTab as Tab);
       if (v.librarySort) setSortBy(v.librarySort as 'recent' | 'title' | 'rating');
+      if (v.librarySource) setLibrarySource(v.librarySource as LibrarySource);
     });
   }, []);
 
   const changeTab = (v: Tab) => { setTab(v); setViewPref('libraryTab', v); };
   const changeSort = (v: 'recent' | 'title' | 'rating') => { setSortBy(v); setViewPref('librarySort', v); };
+  const changeLibrarySource = (v: LibrarySource) => { setLibrarySource(v); setViewPref('librarySource', v); };
+
+  useEffect(() => {
+    let active = true;
+    void loadProviderLibraries().then((libraries) => { if (active) setProviderLibraries(libraries); });
+    return () => { active = false; };
+  }, [activeProfile?.id]);
+
+  useEffect(() => {
+    if (librarySource !== 'local' && !providerLibraries[librarySource]) changeLibrarySource('local');
+  }, [librarySource, providerLibraries]);
 
   const TAB_ORDER: Tab[] = ['watchlist', 'watching', 'completed', 'dropped', 'collections', 'airing', 'rated', 'history'];
   useEffect(() => {
@@ -86,10 +102,11 @@ export const LibraryScreen = React.memo(function LibraryScreen({
     }
   }, []);
 
-  const watchlist = (library.lastWrite?.watchlist ?? library.watchlist ?? []) as LibraryItem[];
-  const watching = (library.lastWrite?.continueWatching ?? library.continueWatching ?? []) as LibraryItem[];
-  const rawCompleted = (library.lastWrite?.completed ?? library.completed ?? []) as LibraryItem[];
-  const rawDropped = (library.lastWrite?.dropped ?? library.dropped ?? []) as LibraryItem[];
+  const selectedProviderLibrary = librarySource === 'local' ? null : providerLibraries[librarySource];
+  const watchlist = (selectedProviderLibrary?.watchlist ?? library.lastWrite?.watchlist ?? library.watchlist ?? []) as LibraryItem[];
+  const watching = (selectedProviderLibrary?.watching ?? library.lastWrite?.continueWatching ?? library.continueWatching ?? []) as LibraryItem[];
+  const rawCompleted = (selectedProviderLibrary?.completed ?? library.lastWrite?.completed ?? library.completed ?? []) as LibraryItem[];
+  const rawDropped = (selectedProviderLibrary?.dropped ?? library.lastWrite?.dropped ?? library.dropped ?? []) as LibraryItem[];
   const posterPrefs = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);
   const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
   const accent = prefString(prefs, 'accentColorArgb', '#FFFFFF');
@@ -329,13 +346,25 @@ export const LibraryScreen = React.memo(function LibraryScreen({
               />
             </div>
             <FilterDropdown
-              value={sortBy === 'recent' ? t('library.sort_recent') : t('library.sort_title')}
+              value={sortBy === 'recent' ? t('library.sort_recent') : sortBy === 'title' ? t('library.sort_title') : t('library.sort_rating')}
               options={[
                 { value: 'recent', label: t('library.sort_recent') },
                 { value: 'title', label: t('library.sort_title') },
                 { value: 'rating', label: t('library.sort_rating') },
               ]}
               onSelect={(v) => changeSort(v as 'recent' | 'title' | 'rating')}
+            />
+            <FilterDropdown
+              value={t(`library.source_${librarySource}`)}
+              options={[
+                { value: 'local', label: t('library.source_local') },
+                ...(providerLibraries.trakt ? [{ value: 'trakt', label: t('library.source_trakt') }] : []),
+                ...(providerLibraries.simkl ? [{ value: 'simkl', label: t('library.source_simkl') }] : []),
+                ...(providerLibraries.anilist ? [{ value: 'anilist', label: t('library.source_anilist') }] : []),
+                ...(providerLibraries.nuvio ? [{ value: 'nuvio', label: t('library.source_nuvio') }] : []),
+                ...(providerLibraries.stremio ? [{ value: 'stremio', label: t('library.source_stremio') }] : []),
+              ]}
+              onSelect={(v) => changeLibrarySource(v as LibrarySource)}
             />
             <button
               style={{ ...styles.bulkToggle, background: bulkMode ? '#FFFFFF' : 'rgba(255,255,255,0.05)', color: bulkMode ? '#000' : '#fff' }}

@@ -152,6 +152,14 @@ pub async fn trakt_oauth_exchange(code: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+pub async fn trakt_oauth_refresh(refresh_token: String) -> Result<String, String> {
+    let (status, text) = execute_oauth_request("trakt", "refresh", None, Some(&refresh_token)).await?;
+    (FluxaCore::oauth_response_outcome("trakt", "refresh", status) == "success")
+        .then_some(text.clone())
+        .ok_or_else(|| format!("Trakt token refresh failed: HTTP {status}: {text}"))
+}
+
+#[tauri::command]
 pub async fn anilist_oauth_exchange(code: String) -> Result<String, String> {
     let (status, text) = execute_oauth_request("anilist", "exchange", Some(&code), None).await?;
     (FluxaCore::oauth_response_outcome("anilist", "exchange", status) == "success")

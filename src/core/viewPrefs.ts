@@ -3,6 +3,7 @@ import { storageRead, storageWrite } from './engine';
 export interface ViewPrefs {
   libraryTab?: string;
   librarySort?: string;
+  librarySource?: string;
   libraryType?: string;
   homeType?: string;
 }

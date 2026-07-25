@@ -11,8 +11,9 @@ import {
 } from './engine';
 import { loadLibrary, saveLibrary, persistStatusListMerge, persistWatchedMerge } from './libraryOps';
 import { platformFetch } from './httpClient';
-import { traktHeaders } from './traktSync';
+import { refreshTraktProfile, traktHeaders } from './traktSync';
 import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
+import { saveProviderLibrary } from './providerLibraries';
 
 async function fetchAllPages(url: string, headers: HeadersInit, limit: number): Promise<Record<string, unknown>[]> {
   type PaginationPlan = { items: Record<string, unknown>[]; done: boolean; page: number; requestUrl?: string | null };
@@ -57,7 +58,9 @@ async function mergeExternalWatched(externalWatched: Record<string, boolean>): P
 }
 
 export async function syncTraktNow(payload: Record<string, unknown>): Promise<unknown> {
-  const token = typeof payload.token === 'string' ? payload.token : undefined;
+  const profile = payload.profile as import('./types').UserProfile | undefined;
+  const refreshedProfile = profile ? await refreshTraktProfile(profile).catch(() => profile) : undefined;
+  const token = refreshedProfile?.traktAccessToken ?? (typeof payload.token === 'string' ? payload.token : undefined);
   const clientId = typeof payload.clientId === 'string' ? payload.clientId : '';
   if (!token) return { synced: false, error: 'Trakt is not connected' };
 
@@ -76,7 +79,7 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   const items = await enrichWithAddonMeta(rawItems);
   await replaceExternalContinueWatching({ items, provider: 'trakt' });
   const { promoteExternalProgress } = await import('./externalSync');
-  await promoteExternalProgress(items, 'trakt', payload.profile as import('./types').UserProfile | null);
+  await promoteExternalProgress(items, 'trakt', refreshedProfile ?? null);
 
   let watchlistCount = 0;
   try {
@@ -90,6 +93,8 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     const watchlistItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
     watchlistCount = watchlistItems.length;
     await mergeExternalWatchlist(watchlistItems);
+
+    await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] });
 
     const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
     await mergeExternalWatched(watchedIds);

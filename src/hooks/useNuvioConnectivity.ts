@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { nuvioHealthCheck, nuvioPushWatchProgress, nuvioPushLibrary, nuvioPushWatchHistory } from '../core/nuvioApi';
 import { loadLibrary } from '../core/libraryOps';
-import { freshNuvioProfile, importNuvioProfileData, recordNuvioSyncMeta } from '../core/nuvioSync';
+import { freshNuvioProfile, importNuvioProfileData, recordNuvioSyncMeta, refreshNuvioProfiles } from '../core/nuvioSync';
 import type { UserProfile } from '../core/types';
 import { coreInvoke } from '../core/engine';
 
@@ -68,6 +68,7 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
           await importNuvioProfileData(profile)
             .then((report) => recordNuvioSyncMeta(report))
             .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }));
+          await refreshNuvioProfiles(profile).catch(() => profile);
           await pushLocalToNuvio(profile).catch(() => undefined);
           await onSynced?.();
         })();
@@ -77,6 +78,7 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
           await importNuvioProfileData(profile)
             .then((report) => recordNuvioSyncMeta(report))
             .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }));
+          await refreshNuvioProfiles(profile).catch(() => profile);
           await onSynced?.();
         })();
       }

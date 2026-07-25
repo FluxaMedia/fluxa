@@ -989,6 +989,7 @@ pub fn run() {
             trakt_device_start,
             trakt_device_poll,
             trakt_oauth_exchange,
+            trakt_oauth_refresh,
             anilist_oauth_exchange,
             anilist_oauth_refresh,
             simkl_oauth_exchange,

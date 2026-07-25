@@ -3,9 +3,11 @@ import {
   nuvioPullAddons,
   nuvioPullCollections,
   nuvioPullLibrary,
+  nuvioPullProfiles,
   nuvioPullProfileSettings,
   nuvioPullWatchHistory,
   nuvioPullWatchProgress,
+  nuvioListAvatars,
   type NuvioAddon,
   type NuvioAvatar,
   type NuvioProfile,
@@ -25,8 +27,9 @@ import {
   storageWrite,
 } from './engine';
 import type { UserProfile } from './types';
-import { saveProfile } from './profiles';
+import { loadProfiles, saveProfile, saveProfiles } from './profiles';
 import { fetchPlannedResources } from './fetchPlanning';
+import { saveProviderLibrary } from './providerLibraries';
 
 export type NuvioImportStep = 'addons' | 'library' | 'progress' | 'history' | 'collections' | 'settings';
 
@@ -72,6 +75,30 @@ function profileStorageSuffix(profile: UserProfile): string {
   return profile.id.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
+function progressCursorKey(profile: UserProfile): string {
+  return `nuvio_progress_cursor_${profileStorageSuffix(profile)}`;
+}
+
+async function pullAllNuvioLibrary(token: string, profileId: number): Promise<Awaited<ReturnType<typeof nuvioPullLibrary>>> {
+  const items: Awaited<ReturnType<typeof nuvioPullLibrary>> = [];
+  const limit = 500;
+  for (let offset = 0; ; offset += limit) {
+    const page = await nuvioPullLibrary(token, profileId, limit, offset);
+    items.push(...page);
+    if (page.length < limit) return items;
+  }
+}
+
+async function pullAllNuvioWatchHistory(token: string, profileId: number): Promise<NuvioWatchedItem[]> {
+  const items: NuvioWatchedItem[] = [];
+  const pageSize = 500;
+  for (let page = 1; ; page += 1) {
+    const batch = await nuvioPullWatchHistory(token, profileId, pageSize, page);
+    items.push(...batch);
+    if (batch.length < pageSize) return items;
+  }
+}
+
 export async function buildLocalNuvioProfiles(
   sessionProfile: UserProfile,
   nuvioProfiles: NuvioProfile[],
@@ -80,6 +107,22 @@ export async function buildLocalNuvioProfiles(
 ): Promise<UserProfile[]> {
   const result = await coreNuvioBuildLocalProfiles(sessionProfile, nuvioProfiles, avatarCatalog, existingProfiles);
   return (result as UserProfile[] | null) ?? existingProfiles;
+}
+
+export async function refreshNuvioProfiles(profile: UserProfile): Promise<UserProfile> {
+  const freshProfile = await freshNuvioProfile(profile);
+  const token = freshProfile.nuvioAccessToken;
+  if (!token) return freshProfile;
+  const [nuvioProfiles, avatarCatalog, existingProfiles] = await Promise.all([
+    nuvioPullProfiles(token),
+    nuvioListAvatars(),
+    loadProfiles(),
+  ]);
+  const importedProfiles = await buildLocalNuvioProfiles(freshProfile, nuvioProfiles, avatarCatalog, existingProfiles);
+  await saveProfiles(importedProfiles);
+  return importedProfiles.find((candidate) => candidate.id === freshProfile.id)
+    ?? importedProfiles.find((candidate) => candidate.nuvioUserId === freshProfile.nuvioUserId && candidate.nuvioProfileIndex === freshProfile.nuvioProfileIndex)
+    ?? freshProfile;
 }
 
 async function fetchAddonManifests(addons: NuvioAddon[]): Promise<{
@@ -179,7 +222,7 @@ export async function importNuvioProfileData(
 
   let library: unknown[] = [];
   try {
-    library = await nuvioPullLibrary(token, profileIdx);
+    library = await pullAllNuvioLibrary(token, profileIdx);
     libDoc.watchlist = (await coreNuvioLibraryToWatchlist(library)) ?? libDoc.watchlist;
     onStep?.('library', true);
   } catch (err) {
@@ -189,7 +232,8 @@ export async function importNuvioProfileData(
 
   let watchProgress: NuvioWatchProgress[] | null = null;
   try {
-    watchProgress = await nuvioPullWatchProgress(token, profileIdx);
+    const sinceLastWatched = await storageRead<number>(progressCursorKey(profile));
+    watchProgress = await nuvioPullWatchProgress(token, profileIdx, 100_000, sinceLastWatched ?? undefined);
   } catch (err) {
     errors.progress = err instanceof Error ? err.message : String(err);
     onStep?.('progress', false, errors.progress);
@@ -203,7 +247,7 @@ export async function importNuvioProfileData(
 
   let watchHistory: NuvioWatchedItem[] | null = null;
   try {
-    watchHistory = await nuvioPullWatchHistory(token, profileIdx);
+    watchHistory = await pullAllNuvioWatchHistory(token, profileIdx);
   } catch (err) {
     errors.history = err instanceof Error ? err.message : String(err);
     onStep?.('history', false, errors.history);
@@ -221,6 +265,14 @@ export async function importNuvioProfileData(
     libDoc.progress = plan.progress;
     libDoc.watched = plan.watched;
     libDoc.continueWatching = await buildContinueWatching(plan.progress);
+    await saveProviderLibrary('nuvio', {
+      watchlist: (libDoc.watchlist as Record<string, unknown>[]) ?? [],
+      watching: libDoc.continueWatching as Record<string, unknown>[],
+      completed: [],
+      dropped: [],
+    });
+    const latestProgress = watchProgress?.reduce((latest, entry) => Math.max(latest, entry.last_watched), 0) ?? 0;
+    if (latestProgress > 0) await storageWrite(progressCursorKey(profile), latestProgress);
   }
   if (watchProgress) onStep?.('progress', true);
   if (watchHistory) onStep?.('history', true);

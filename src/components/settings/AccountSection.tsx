@@ -12,6 +12,7 @@ import { refreshAnimeTrackingProfile } from '../../core/animeExternalSync';
 import { ChoiceTile, SettingsSection, SyncServicePopover, SyncServiceRow, cwRankingOptions, cwSourceOfTruthOptions, similarTitlesSourceOptions } from './SettingsUI';
 import type { Prefs, SyncMeta, TraktTokenResponse } from './settingsTypes';
 import { nuvioAuthErrorKind, nuvioSignIn } from '../../core/nuvioApi';
+import { refreshNuvioProfiles } from '../../core/nuvioSync';
 import { stremioLogin, stremioLoginWithAuthKey, stremioLogout } from '../../core/stremioApi';
 
 function generateCodeVerifier(): string {
@@ -475,7 +476,8 @@ export function AccountSection({
         nuvioProfileIndex: activeProfile.nuvioProfileIndex ?? 1,
       };
       await saveProfile(updated);
-      onProfileUpdated(updated);
+      const importedProfile = await refreshNuvioProfiles(updated);
+      onProfileUpdated(importedProfile);
       setNuvioFormOpen(false);
     } catch (err) {
       setNuvioError(credentialAuthErrorMessage(err));
@@ -622,6 +624,8 @@ export function AccountSection({
       if (!result.synced) {
         setNuvioError(meta.error!);
       } else {
+        const updatedProfile = await refreshNuvioProfiles(activeProfile);
+        onProfileUpdated(updatedProfile);
         await onNuvioSyncComplete?.();
         await onDispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false, profile: activeProfile }));
       }

@@ -2,6 +2,7 @@ import { platformFetch } from './httpClient';
 import { loadLibrary, saveLibrary, buildContinueWatching, persistStatusListMerge, persistWatchedMerge, persistProgressMerge } from './libraryOps';
 import { replaceExternalContinueWatching } from './externalSyncUtils';
 import { coreAnilistEntriesToSync, coreInvoke, coreMergeLibraryItemsById } from './engine';
+import { saveProviderLibrary } from './providerLibraries';
 
 type AniListEntry = {
   status?: string | null;
@@ -83,6 +84,12 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
   await persistProgressMerge(progressBefore, lib.progress as Record<string, unknown>);
   await saveLibrary(lib);
   await replaceExternalContinueWatching({ provider: 'anilist', items: plan.watching });
+  await saveProviderLibrary('anilist', {
+    watchlist: plan.watchlist,
+    watching: plan.watching,
+    completed: plan.completed,
+    dropped: plan.dropped,
+  });
 
   return {
     synced: true,

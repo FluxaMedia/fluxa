@@ -239,7 +239,9 @@ export async function nuvioGetUser(token: string): Promise<{ id: string; email: 
 }
 
 export async function nuvioPullProfiles(token: string): Promise<NuvioProfile[]> {
-  return post<NuvioProfile[]>('/rest/v1/rpc/sync_pull_profiles', {}, token);
+  const profiles = await post<NuvioProfile[]>('/rest/v1/rpc/sync_pull_profiles', {}, token);
+  if (profiles.length > 0) return profiles;
+  return get<NuvioProfile[]>('/rest/v1/profiles?select=*&order=profile_index', token);
 }
 
 export async function nuvioPushProfiles(
@@ -351,11 +353,18 @@ export async function nuvioPushLibrary(
 export async function nuvioPullWatchProgress(
   token: string,
   profileId: number,
-  limit = 200,
+  limit = 100_000,
+  sinceLastWatched?: number,
 ): Promise<NuvioWatchProgress[]> {
-  return post<NuvioWatchProgress[]>('/rest/v1/rpc/sync_pull_watch_progress', {
+  const body: Record<string, unknown> = {
     p_profile_id: profileId,
     p_limit: limit,
+  };
+  if (typeof sinceLastWatched === 'number' && Number.isFinite(sinceLastWatched) && sinceLastWatched > 0) {
+    body.p_since_last_watched = Math.trunc(sinceLastWatched);
+  }
+  return post<NuvioWatchProgress[]>('/rest/v1/rpc/sync_pull_watch_progress', {
+    ...body,
   }, token);
 }
 
@@ -393,10 +402,11 @@ export async function nuvioPullWatchHistory(
   token: string,
   profileId: number,
   pageSize = 500,
+  page = 1,
 ): Promise<NuvioWatchedItem[]> {
   return post<NuvioWatchedItem[]>('/rest/v1/rpc/sync_pull_watched_items', {
     p_profile_id: profileId,
-    p_page: 1,
+    p_page: page,
     p_page_size: pageSize,
   }, token);
 }
