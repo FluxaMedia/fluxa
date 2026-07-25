@@ -291,11 +291,12 @@ export function AccountSection({
       traktStateRef.current = state;
       const authUrl = `https://trakt.tv/oauth/authorize?response_type=code&client_id=${traktClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/trakt')}&state=${state}`;
       setAuthUrl('trakt', authUrl);
-      await shellOpen(authUrl);
-
-      const unlisten = await listen<OAuthCodePayload>('trakt-oauth-code', async (event) => {
-        unlisten();
-        if (event.payload.state !== traktStateRef.current) {
+      let unlisten: (() => void) | undefined;
+      const consumeCallback = async () => {
+        const payload = await invoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'trakt' });
+        if (!payload) return;
+        unlisten?.();
+        if (payload.state !== traktStateRef.current) {
           setTraktError(t('settings.oauth_state_mismatch'));
           setAuthUrl('trakt');
           setTraktBusy(false);
@@ -304,7 +305,7 @@ export function AccountSection({
         traktStateRef.current = null;
         setAuthUrl('trakt');
         try {
-          const tokenJson = await invoke<string>('trakt_oauth_exchange', { code: event.payload.code });
+          const tokenJson = await invoke<string>('trakt_oauth_exchange', { code: payload.code });
           const tokens = JSON.parse(tokenJson) as TraktTokenResponse;
           const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: tokens.created_at + tokens.expires_in };
           await saveProfile(updated);
@@ -314,7 +315,10 @@ export function AccountSection({
         } finally {
           setTraktBusy(false);
         }
-      });
+      };
+      unlisten = await listen<OAuthCodePayload>('trakt-oauth-code', () => { void consumeCallback(); });
+      await shellOpen(authUrl);
+      void consumeCallback();
     } catch (err) {
       setTraktError(err instanceof Error ? err.message : String(err));
       setAuthUrl('trakt');
@@ -344,11 +348,12 @@ export function AccountSection({
       anilistStateRef.current = state;
       const authUrl = `https://anilist.co/api/v2/oauth/authorize?response_type=code&client_id=${anilistClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/anilist')}&state=${state}`;
       setAuthUrl('anilist', authUrl);
-      await shellOpen(authUrl);
-
-      const unlisten = await listen<OAuthCodePayload>('anilist-oauth-code', async (event) => {
-        unlisten();
-        if (event.payload.state !== anilistStateRef.current) {
+      let unlisten: (() => void) | undefined;
+      const consumeCallback = async () => {
+        const payload = await invoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'anilist' });
+        if (!payload) return;
+        unlisten?.();
+        if (payload.state !== anilistStateRef.current) {
           setAnilistError(t('settings.oauth_state_mismatch'));
           setAuthUrl('anilist');
           setAnilistBusy(false);
@@ -357,7 +362,7 @@ export function AccountSection({
         anilistStateRef.current = null;
         setAuthUrl('anilist');
         try {
-          const tokenJson = await invoke<string>('anilist_oauth_exchange', { code: event.payload.code });
+          const tokenJson = await invoke<string>('anilist_oauth_exchange', { code: payload.code });
           const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; expires_in?: number };
           const updated: UserProfile = {
             ...activeProfile,
@@ -372,7 +377,10 @@ export function AccountSection({
         } finally {
           setAnilistBusy(false);
         }
-      });
+      };
+      unlisten = await listen<OAuthCodePayload>('anilist-oauth-code', () => { void consumeCallback(); });
+      await shellOpen(authUrl);
+      void consumeCallback();
     } catch (err) {
       setAnilistError(err instanceof Error ? err.message : String(err));
       setAuthUrl('anilist');
@@ -408,11 +416,12 @@ export function AccountSection({
       simklStateRef.current = state;
       const authUrl = `https://simkl.com/oauth/authorize?response_type=code&client_id=${simklClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/simkl')}&state=${state}`;
       setAuthUrl('simkl', authUrl);
-      await shellOpen(authUrl);
-
-      const unlisten = await listen<OAuthCodePayload>('simkl-oauth-code', async (event) => {
-        unlisten();
-        if (event.payload.state !== simklStateRef.current) {
+      let unlisten: (() => void) | undefined;
+      const consumeCallback = async () => {
+        const payload = await invoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'simkl' });
+        if (!payload) return;
+        unlisten?.();
+        if (payload.state !== simklStateRef.current) {
           setSimklError(t('settings.oauth_state_mismatch'));
           setAuthUrl('simkl');
           setSimklBusy(false);
@@ -421,7 +430,7 @@ export function AccountSection({
         simklStateRef.current = null;
         setAuthUrl('simkl');
         try {
-          const tokenJson = await invoke<string>('simkl_oauth_exchange', { code: event.payload.code });
+          const tokenJson = await invoke<string>('simkl_oauth_exchange', { code: payload.code });
           const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string };
           const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token };
           await saveProfile(updated);
@@ -431,7 +440,10 @@ export function AccountSection({
         } finally {
           setSimklBusy(false);
         }
-      });
+      };
+      unlisten = await listen<OAuthCodePayload>('simkl-oauth-code', () => { void consumeCallback(); });
+      await shellOpen(authUrl);
+      void consumeCallback();
     } catch (err) {
       setSimklError(err instanceof Error ? err.message : String(err));
       setAuthUrl('simkl');

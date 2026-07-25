@@ -39,7 +39,7 @@ sentry = { version = "0.48", default-features = false, features = ["backtrace", 
 fluxa_core = { path = "../../fluxa-core", default-features = false, features = ["desktop"] }
 fluxa_streaming_engine = { path = "../../fluxa-core/fluxa-streaming-engine" }
 tauri-plugin-deep-link = "2.4.9"
-tauri-plugin-single-instance = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tauri-plugin-dialog = "2"

@@ -52,7 +52,7 @@ use roku::*;
 use storage::*;
 
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -107,6 +107,76 @@ pub struct DesktopState {
     pub torrent_generation: Mutex<Option<u64>>,
     pub close_flush_done: AtomicBool,
     pub sleep_inhibitor: Mutex<sleep_inhibitor::SleepInhibitor>,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct OAuthCodePayload {
+    code: String,
+    state: Option<String>,
+}
+
+struct PendingOAuthCallbacks {
+    state: Mutex<OAuthCallbackState>,
+}
+
+struct OAuthCallbackState {
+    callbacks: HashMap<String, OAuthCodePayload>,
+    consumed: HashSet<String>,
+}
+
+impl Default for PendingOAuthCallbacks {
+    fn default() -> Self {
+        Self {
+            state: Mutex::new(OAuthCallbackState {
+                callbacks: HashMap::new(),
+                consumed: HashSet::new(),
+            }),
+        }
+    }
+}
+
+fn queue_oauth_callback(
+    app: &tauri::AppHandle,
+    service: &str,
+    code: String,
+    state: Option<String>,
+) {
+    let event = match service {
+        "trakt" => "trakt-oauth-code",
+        "anilist" => "anilist-oauth-code",
+        "simkl" => "simkl-oauth-code",
+        _ => return,
+    };
+    let payload = OAuthCodePayload { code, state };
+    let callback_id = format!("{service}:{}", payload.code);
+    if let Ok(mut state) = app.state::<PendingOAuthCallbacks>().state.lock() {
+        if state.consumed.contains(&callback_id) {
+            return;
+        }
+        state.callbacks.insert(service.to_string(), payload.clone());
+    }
+    let _ = app.emit(event, payload);
+}
+
+#[tauri::command]
+fn take_oauth_callback(
+    service: String,
+    callbacks: State<PendingOAuthCallbacks>,
+) -> Result<Option<OAuthCodePayload>, String> {
+    match service.as_str() {
+        "trakt" | "anilist" | "simkl" => {
+            let mut state = callbacks
+                .state
+                .lock()
+                .map_err(|_| "OAuth callback state is unavailable".to_string())?;
+            let payload = state.callbacks.remove(&service);
+            if let Some(payload) = &payload {
+                state.consumed.insert(format!("{service}:{}", payload.code));
+            }
+            Ok(payload)
+        }
+        _ => Err("unsupported OAuth service".to_string()),
+    }
 }
 
 impl Default for DesktopState {
@@ -649,24 +719,29 @@ pub fn run() {
                 if !arg.starts_with("fluxa://") {
                     continue;
                 }
-                let query = arg.split('?').nth(1);
-                let code = query
-                    .and_then(|q| q.split('&').find(|p| p.starts_with("code=")))
-                    .map(|p| p.trim_start_matches("code=").to_string());
-                let state = query
-                    .and_then(|q| q.split('&').find(|p| p.starts_with("state=")))
-                    .map(|p| p.trim_start_matches("state=").to_string());
+                let url = match tauri::Url::parse(arg) {
+                    Ok(url) => url,
+                    Err(_) => continue,
+                };
+                let code = url
+                    .query_pairs()
+                    .find(|(key, _)| key == "code")
+                    .map(|(_, value)| value.into_owned());
+                let state = url
+                    .query_pairs()
+                    .find(|(key, _)| key == "state")
+                    .map(|(_, value)| value.into_owned());
                 if let Some(code) = code {
-                    let evt = if arg.contains("/trakt") {
-                        "trakt-oauth-code"
+                    let service = if arg.contains("/trakt") {
+                        "trakt"
                     } else if arg.contains("/anilist") {
-                        "anilist-oauth-code"
+                        "anilist"
                     } else if arg.contains("/simkl") {
-                        "simkl-oauth-code"
+                        "simkl"
                     } else {
                         continue;
                     };
-                    let _ = app.emit(evt, json!({ "code": code, "state": state }));
+                    queue_oauth_callback(app, service, code, state);
                 }
             }
         }))
@@ -708,6 +783,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_deep_link::init())
         .manage(DesktopState::default())
+        .manage(PendingOAuthCallbacks::default())
         .manage(discord_presence::DiscordPresenceState::default())
         .manage(cast::CastState::default())
         .manage(chromecast::ChromecastState::default())
@@ -716,6 +792,9 @@ pub fn run() {
         .manage(cast_proxy::CastProxyState::default())
         .manage(trailer_proxy::TrailerProxyState::default())
         .setup(|app| {
+            #[cfg(any(target_os = "linux", all(debug_assertions, target_os = "windows")))]
+            app.deep_link().register_all()?;
+
             let data_dir = app
                 .path()
                 .app_data_dir()
@@ -763,16 +842,16 @@ pub fn run() {
                         .find(|(k, _)| k == "state")
                         .map(|(_, v)| v.into_owned());
                     if let Some(code) = code {
-                        let evt = if s.contains("/trakt") {
-                            "trakt-oauth-code"
+                        let service = if s.contains("/trakt") {
+                            "trakt"
                         } else if s.contains("/anilist") {
-                            "anilist-oauth-code"
+                            "anilist"
                         } else if s.contains("/simkl") {
-                            "simkl-oauth-code"
+                            "simkl"
                         } else {
                             continue;
                         };
-                        let _ = handle.emit(evt, json!({ "code": code, "state": state }));
+                        queue_oauth_callback(&handle, service, code, state);
                     } else {
                         let _ = handle.emit("deep-link-opened", json!({ "url": s }));
                     }
@@ -905,6 +984,7 @@ pub fn run() {
             player_set_episodes,
             player_clear_episodes,
             get_oauth_client_id,
+            take_oauth_callback,
             nuvio_request,
             trakt_device_start,
             trakt_device_poll,
