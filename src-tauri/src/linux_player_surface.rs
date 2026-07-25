@@ -173,8 +173,8 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
             match result {
                 Ok(()) => {
                     last_present = Instant::now();
-                    if let Ok(guard) = state.player_renderer.lock() {
-                        if let Some(r) = guard.as_ref() {
+                    if let Ok(mut guard) = state.player_renderer.lock() {
+                        if let Some(r) = guard.as_mut() {
                             r.report_swap();
                         }
                     }

@@ -6,6 +6,7 @@ pub(super) struct MpvApi {
     pub(super) mpv_initialize: MpvInitialize,
     pub(super) mpv_terminate_destroy: MpvTerminateDestroy,
     pub(super) mpv_set_option_string: MpvSetOptionString,
+    pub(super) mpv_command: MpvCommand,
     pub(super) mpv_command_string: MpvCommandString,
     pub(super) mpv_command_async: MpvCommandAsync,
     pub(super) mpv_get_property: MpvGetProperty,
@@ -32,6 +33,7 @@ impl MpvApi {
             let mpv_initialize = *library.get::<MpvInitialize>(b"mpv_initialize\0").map_err(load_error)?;
             let mpv_terminate_destroy = *library.get::<MpvTerminateDestroy>(b"mpv_terminate_destroy\0").map_err(load_error)?;
             let mpv_set_option_string = *library.get::<MpvSetOptionString>(b"mpv_set_option_string\0").map_err(load_error)?;
+            let mpv_command = *library.get::<MpvCommand>(b"mpv_command\0").map_err(load_error)?;
             let mpv_command_string = *library.get::<MpvCommandString>(b"mpv_command_string\0").map_err(load_error)?;
             let mpv_command_async = *library.get::<MpvCommandAsync>(b"mpv_command_async\0").map_err(load_error)?;
             let mpv_get_property = *library.get::<MpvGetProperty>(b"mpv_get_property\0").map_err(load_error)?;
@@ -45,7 +47,7 @@ impl MpvApi {
             let mpv_render_context_free = *library.get::<MpvRenderContextFree>(b"mpv_render_context_free\0").map_err(load_error)?;
             let mpv_wait_event = *library.get::<MpvWaitEvent>(b"mpv_wait_event\0").map_err(load_error)?;
             let mpv_request_log_messages = *library.get::<MpvRequestLogMessages>(b"mpv_request_log_messages\0").map_err(load_error)?;
-            Ok(Self { _library: library, mpv_create, mpv_initialize, mpv_terminate_destroy, mpv_set_option_string, mpv_command_string, mpv_command_async, mpv_get_property, mpv_free, mpv_error_string, mpv_render_context_create, mpv_render_context_render, mpv_render_context_update, mpv_render_context_report_swap, mpv_render_context_set_parameter, mpv_render_context_free, mpv_wait_event, mpv_request_log_messages })
+            Ok(Self { _library: library, mpv_create, mpv_initialize, mpv_terminate_destroy, mpv_set_option_string, mpv_command, mpv_command_string, mpv_command_async, mpv_get_property, mpv_free, mpv_error_string, mpv_render_context_create, mpv_render_context_render, mpv_render_context_update, mpv_render_context_report_swap, mpv_render_context_set_parameter, mpv_render_context_free, mpv_wait_event, mpv_request_log_messages })
         }
     }
 

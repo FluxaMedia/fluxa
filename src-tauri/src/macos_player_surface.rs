@@ -639,7 +639,8 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         }
                         {
                             let state = app.state::<DesktopState>();
-                            if let Some(r) = state.player_renderer.lock().unwrap().as_ref() {
+                            let mut renderer = state.player_renderer.lock().unwrap();
+                            if let Some(r) = renderer.as_mut() {
                                 r.report_swap();
                             };
                         }

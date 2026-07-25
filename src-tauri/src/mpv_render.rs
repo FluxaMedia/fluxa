@@ -168,6 +168,7 @@ type MpvInitialize = unsafe extern "C" fn(*mut MpvHandle) -> c_int;
 type MpvTerminateDestroy = unsafe extern "C" fn(*mut MpvHandle);
 type MpvSetOptionString =
     unsafe extern "C" fn(*mut MpvHandle, *const c_char, *const c_char) -> c_int;
+type MpvCommand = unsafe extern "C" fn(*mut MpvHandle, *const *const c_char) -> c_int;
 type MpvCommandString = unsafe extern "C" fn(*mut MpvHandle, *const c_char) -> c_int;
 type MpvCommandAsync = unsafe extern "C" fn(*mut MpvHandle, u64, *const *const c_char) -> c_int;
 type MpvGetProperty =
@@ -198,6 +199,12 @@ pub struct MpvRenderer {
     frames_rendered: u64,
     pending_unpause: bool,
     pending_seek_seconds: Option<f64>,
+    waiting_for_seek_restart: bool,
+    frame_ready_to_restore_audio: bool,
+    #[cfg(target_os = "windows")]
+    muted_until_first_frame: bool,
+    #[cfg(target_os = "windows")]
+    restore_mute: Option<bool>,
     current_url: Option<String>,
 }
 
@@ -353,6 +360,12 @@ impl MpvRenderer {
             frames_rendered: 0,
             pending_unpause: false,
             pending_seek_seconds: None,
+            waiting_for_seek_restart: false,
+            frame_ready_to_restore_audio: false,
+            #[cfg(target_os = "windows")]
+            muted_until_first_frame: false,
+            #[cfg(target_os = "windows")]
+            restore_mute: None,
             current_url: None,
         };
 
@@ -426,6 +439,12 @@ impl MpvRenderer {
             frames_rendered: 0,
             pending_unpause: false,
             pending_seek_seconds: None,
+            waiting_for_seek_restart: false,
+            frame_ready_to_restore_audio: false,
+            #[cfg(target_os = "windows")]
+            muted_until_first_frame: false,
+            #[cfg(target_os = "windows")]
+            restore_mute: None,
             current_url: None,
         };
 
@@ -459,23 +478,34 @@ impl MpvRenderer {
     }
 
     pub fn load(&mut self, url: &str, start_at: Option<u64>) -> Result<(), String> {
-        let escaped = url.replace('\\', "\\\\").replace('"', "\\\"");
         self.loaded = false;
         self.current_url = Some(url.to_string());
         self.log_ring.clear();
         self.frames_rendered = 0;
         self.pending_unpause = true;
         self.pending_seek_seconds = start_at.filter(|&s| s > 0).map(|s| s as f64);
-        self.command_string(&format!("loadfile \"{escaped}\" replace"))?;
+        self.waiting_for_seek_restart = false;
+        self.frame_ready_to_restore_audio = false;
+        #[cfg(target_os = "windows")]
+        {
+            let restore_mute = if self.muted_until_first_frame {
+                self.restore_mute.unwrap_or(false)
+            } else {
+                self.get_string_property("mute").as_deref() == Some("yes")
+            };
+            self.muted_until_first_frame = true;
+            self.restore_mute = Some(restore_mute);
+            self.command_string("set mute yes")?;
+        }
+        self.command(&["loadfile", url, "replace"])?;
         self.command_string("set pause yes")?;
         self.loaded = true;
         Ok(())
     }
 
     pub fn load_thumbnail(&mut self, url: &str) -> Result<(), String> {
-        let escaped = url.replace('\\', "\\\\").replace('"', "\\\"");
         self.loaded = false;
-        self.command_string(&format!("loadfile \"{escaped}\" replace"))?;
+        self.command(&["loadfile", url, "replace"])?;
         self.loaded = true;
         Ok(())
     }
@@ -596,6 +626,25 @@ impl MpvRenderer {
         }
     }
 
+    pub fn command(&self, args: &[&str]) -> Result<(), String> {
+        let c_args = args
+            .iter()
+            .map(|arg| CString::new(*arg).map_err(|error| error.to_string()))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut raw_args = c_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+        raw_args.push(ptr::null());
+
+        let result = unsafe { (self.api.mpv_command)(self.handle, raw_args.as_ptr()) };
+        if result < 0 {
+            Err(format!(
+                "mpv command failed: {}",
+                self.api.error_string(result)
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn command_args(&self, args: &[&str]) -> Result<(), String> {
         let c_args = args
             .iter()
@@ -670,6 +719,7 @@ impl MpvRenderer {
 
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
             self.frames_rendered = self.frames_rendered.saturating_add(1);
+            self.frame_ready_to_restore_audio = true;
         }
 
         Ok(PlayerFrame {
@@ -687,6 +737,7 @@ impl MpvRenderer {
             (self.api.mpv_render_context_free)(self.render_context);
         }
         self.render_context = ptr::null_mut();
+        self.frame_ready_to_restore_audio = false;
     }
 
     #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
@@ -737,17 +788,62 @@ impl MpvRenderer {
         }
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
             self.frames_rendered = self.frames_rendered.saturating_add(1);
+            self.frame_ready_to_restore_audio = true;
         }
         Ok(())
     }
 
     /// Call right after the buffer swap completes.
-    pub fn report_swap(&self) {
+    pub fn report_swap(&mut self) {
         if self.render_context.is_null() {
             return;
         }
         unsafe {
             (self.api.mpv_render_context_report_swap)(self.render_context);
+        }
+        self.restore_audio_after_first_presented_frame();
+    }
+
+    fn restore_audio_after_first_presented_frame(&mut self) {
+        #[cfg(target_os = "windows")]
+        {
+            if !self.muted_until_first_frame
+                || !self.frame_ready_to_restore_audio
+                || self.pending_seek_seconds.is_some()
+                || self.waiting_for_seek_restart
+            {
+                return;
+            }
+            self.frame_ready_to_restore_audio = false;
+            self.muted_until_first_frame = false;
+            let mute = if self.restore_mute.take().unwrap_or(false) {
+                "yes"
+            } else {
+                "no"
+            };
+            let _ = self.command_string(&format!("set mute {mute}"));
+        }
+    }
+
+    fn restore_audio_only(&mut self) {
+        #[cfg(target_os = "windows")]
+        {
+            if !self.muted_until_first_frame
+                || self.pending_seek_seconds.is_some()
+                || self.waiting_for_seek_restart
+            {
+                return;
+            }
+            let (has_video_track, track_list_ready) = self.track_list_status();
+            if track_list_ready && !has_video_track {
+                self.muted_until_first_frame = false;
+                let mute = if self.restore_mute.take().unwrap_or(false) {
+                    "yes"
+                } else {
+                    "no"
+                };
+                let _ = self.command_string(&format!("set mute {mute}"));
+            }
         }
     }
 
@@ -894,8 +990,14 @@ impl MpvRenderer {
                 }
                 MPV_EVENT_PLAYBACK_RESTART => {
                     if let Some(secs) = self.pending_seek_seconds.take() {
+                        self.waiting_for_seek_restart = true;
+                        self.frame_ready_to_restore_audio = false;
                         let _ = self.command_string(&format!("seek {secs:.3} absolute+exact"));
-                    } else if self.pending_unpause {
+                    } else if self.waiting_for_seek_restart {
+                        self.waiting_for_seek_restart = false;
+                        self.frame_ready_to_restore_audio = false;
+                    }
+                    if self.pending_unpause && !self.waiting_for_seek_restart {
                         self.pending_unpause = false;
                         let _ = self.command_string("set pause no");
                     }
@@ -903,6 +1005,7 @@ impl MpvRenderer {
                 _ => {}
             }
         }
+        self.restore_audio_only();
         events
     }
 
@@ -974,7 +1077,7 @@ impl MpvRenderer {
             frames_rendered: self.frames_rendered,
             has_video_track,
             track_list_ready,
-            resuming: self.pending_seek_seconds.is_some(),
+            resuming: self.pending_seek_seconds.is_some() || self.waiting_for_seek_restart,
         }
     }
 
@@ -1280,6 +1383,7 @@ impl MpvRenderer {
         }
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
             self.frames_rendered = self.frames_rendered.saturating_add(1);
+            self.frame_ready_to_restore_audio = true;
         }
         Ok(())
     }
@@ -1354,6 +1458,7 @@ impl MpvRenderer {
         }
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
             self.frames_rendered = self.frames_rendered.saturating_add(1);
+            self.frame_ready_to_restore_audio = true;
         }
         Ok(())
     }
