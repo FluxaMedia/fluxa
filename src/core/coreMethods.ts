@@ -328,6 +328,7 @@ export const CORE_METHODS = [
   'torrentStatusInfo',
   'trailerSubtitleSelectionPlan',
   'traktBearer',
+  'traktCommentsRequest',
   'traktContentIdFromIds',
   'traktEpisodeLocator',
   'traktHasClient',

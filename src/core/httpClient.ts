@@ -7,7 +7,7 @@ getVersion().then((v) => { _appVersion = v; }).catch(() => {});
 const DEFAULT_TIMEOUT_MS = 12_000;
 
 const NO_CORS_HOSTS = new Set(['api.introdb.app', 'api.aniskip.com', 'api.anime-skip.com']);
-const NATIVE_FETCH_HOSTS = new Set(['api.trakt.tv', 'api.simkl.com', 'data.simkl.in']);
+const NATIVE_FETCH_HOSTS = new Set(['api.trakt.tv', 'media.trakt.tv', 'api.simkl.com', 'data.simkl.in']);
 
 export async function platformFetch(url: string, init?: RequestInit): Promise<Response> {
   const signal = init?.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
