@@ -229,6 +229,7 @@ jobs:
               fi
             done
           done
+          codesign --force --deep --sign - "$APP"
           codesign --verify --deep --strict "$APP"
 
       - name: Upload build artifacts (manual run)
