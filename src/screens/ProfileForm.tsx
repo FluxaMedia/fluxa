@@ -213,23 +213,58 @@ export function ProfileForm({
             {t('profiles.use_initials')}
           </button>
         )}
+        <div style={S.profileControls}>
+          <div>
+            <label style={S.fieldLabel} htmlFor="profile-name">{t('profiles.name')}</label>
+            <input
+              id="profile-name"
+              ref={nameInputRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleSave(); if (e.key === 'Escape') onCancel(); }}
+              placeholder={t('profiles.name_placeholder')}
+              style={S.input}
+            />
+            {duplicateName && <p style={S.fieldNote}>{t('profiles.duplicate_name')}</p>}
+          </div>
+          <div>
+            <label style={S.fieldLabel} htmlFor="profile-pin">{t('profiles.pin_lock')}</label>
+            <input
+              id="profile-pin"
+              value={pin}
+              onChange={(e) => { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setRemovePin(false); }}
+              placeholder={existing?.pinHash && !removePin ? t('profiles.pin_set_placeholder') : t('profiles.pin_placeholder')}
+              inputMode="numeric"
+              maxLength={4}
+              style={S.input}
+            />
+            {!pinValid && <p style={S.fieldNote}>{t('profiles.pin_invalid')}</p>}
+            {existing?.pinHash && !removePin && (
+              <button style={S.clearImageBtn} onClick={() => { setRemovePin(true); setPin(''); }}>
+                {t('profiles.remove_pin')}
+              </button>
+            )}
+            {removePin && <p style={S.fieldNote}>{t('profiles.pin_will_be_removed')}</p>}
+          </div>
+          <div style={S.actions}>
+            <button onClick={onCancel} style={S.btnSecondary}>{t('common.cancel')}</button>
+            <button
+              onClick={() => void handleSave()}
+              disabled={!canSave}
+              style={{
+                ...S.btnPrimary,
+                background: canSave ? '#FFFFFF' : 'rgba(255,255,255,0.10)',
+                color: canSave ? '#000000' : 'rgba(255,255,255,0.30)',
+                cursor: canSave ? 'pointer' : 'default',
+              }}
+            >
+              {busy ? t('common.saving') : existing ? t('profiles.save') : t('profiles.create')}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div style={S.formPanel}>
-        <div>
-          <label style={S.fieldLabel} htmlFor="profile-name">{t('profiles.name')}</label>
-          <input
-            id="profile-name"
-            ref={nameInputRef}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void handleSave(); if (e.key === 'Escape') onCancel(); }}
-            placeholder={t('profiles.name_placeholder')}
-            style={S.input}
-          />
-          {duplicateName && <p style={S.fieldNote}>{t('profiles.duplicate_name')}</p>}
-        </div>
-
         <button style={S.imageButton} onClick={() => fileInputRef.current?.click()}>
           <ImagePlus size={16} />
           {t('profiles.choose_image')}
@@ -246,6 +281,7 @@ export function ProfileForm({
                     {pack.avatars.map((avatar) => (
                       <button key={avatar.url} onClick={() => setAvatarUrl(avatar.url)} style={{ ...S.packAvatarButton, outline: avatarUrl === avatar.url ? '2px solid #FFFFFF' : 'none' }} title={avatar.name}>
                         <img src={avatar.url} alt={avatar.name} style={S.packAvatarImage} />
+                        <span style={S.packAvatarName}>{avatar.name}</span>
                       </button>
                     ))}
                   </div>
@@ -255,41 +291,6 @@ export function ProfileForm({
           </div>
         )}
 
-        <div>
-          <label style={S.fieldLabel} htmlFor="profile-pin">{t('profiles.pin_lock')}</label>
-          <input
-            id="profile-pin"
-            value={pin}
-            onChange={(e) => { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setRemovePin(false); }}
-            placeholder={existing?.pinHash && !removePin ? t('profiles.pin_set_placeholder') : t('profiles.pin_placeholder')}
-            inputMode="numeric"
-            maxLength={4}
-            style={S.input}
-          />
-          {!pinValid && <p style={S.fieldNote}>{t('profiles.pin_invalid')}</p>}
-          {existing?.pinHash && !removePin && (
-            <button style={S.clearImageBtn} onClick={() => { setRemovePin(true); setPin(''); }}>
-              {t('profiles.remove_pin')}
-            </button>
-          )}
-          {removePin && <p style={S.fieldNote}>{t('profiles.pin_will_be_removed')}</p>}
-        </div>
-
-        <div style={S.actions}>
-          <button onClick={onCancel} style={S.btnSecondary}>{t('common.cancel')}</button>
-          <button
-            onClick={() => void handleSave()}
-            disabled={!canSave}
-            style={{
-              ...S.btnPrimary,
-              background: canSave ? '#FFFFFF' : 'rgba(255,255,255,0.10)',
-              color: canSave ? '#000000' : 'rgba(255,255,255,0.30)',
-              cursor: canSave ? 'pointer' : 'default',
-            }}
-          >
-            {busy ? t('common.saving') : existing ? t('profiles.save') : t('profiles.create')}
-          </button>
-        </div>
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
@@ -304,6 +305,7 @@ const S: Record<string, React.CSSProperties> = {
   cameraBadge: { position: 'absolute', right: '-0.5rem', bottom: '-0.5rem', width: '2rem', height: '2rem', borderRadius: '0.5rem', background: '#2C2C2C', border: '0.125rem solid #141414', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.65)' },
   previewName: { margin: '1.25rem 0 0', fontSize: '1.125rem', fontWeight: 600, fontFamily: FONT, letterSpacing: '-0.02em', color: '#FFFFFF' },
   clearImageBtn: { marginTop: '0.625rem', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.38)', fontSize: '0.75rem', fontWeight: 400, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
+  profileControls: { width: '100%', display: 'grid', gap: '0.875rem', marginTop: '1.5rem' },
   formPanel: { borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.08)', background: '#141414', padding: '1.375rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' },
   fieldLabel: { display: 'block', color: 'rgba(255,255,255,0.38)', fontSize: '0.625rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: FONT, marginBottom: '0.5rem' },
   input: { width: '100%', height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', padding: '0 0.8125rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' },
@@ -312,8 +314,9 @@ const S: Record<string, React.CSSProperties> = {
   avatarPackGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(4rem, 1fr))', gap: '0.625rem', marginTop: '0.5rem' },
   avatarPackGroups: { display: 'grid', gap: '1rem' },
   packTitle: { margin: '0.875rem 0 0', color: 'rgba(255,255,255,0.82)', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT },
-  packAvatarButton: { width: '4rem', height: '4rem', padding: 0, border: 0, borderRadius: '0.625rem', background: '#111', overflow: 'hidden', cursor: 'pointer' },
-  packAvatarImage: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  packAvatarButton: { minWidth: 0, padding: 0, border: 0, background: 'transparent', color: 'rgba(255,255,255,0.78)', overflow: 'hidden', cursor: 'pointer', textAlign: 'center', fontFamily: FONT },
+  packAvatarImage: { width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block', borderRadius: '0.625rem', background: '#111' },
+  packAvatarName: { display: 'block', marginTop: '0.375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.6875rem', lineHeight: 1.2 },
   actions: { marginTop: 'auto', display: 'flex', gap: '0.5rem' },
   btnSecondary: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
   btnPrimary: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', border: 'none', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT, transition: 'background 0.15s, color 0.15s' },
