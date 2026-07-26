@@ -6,13 +6,12 @@ import {
   coreTmdbBulkVideosToTrailers,
   dispatchAction,
 } from './engine';
-import { loadAddons, loadActiveProfile, loadPrefs } from './libraryOps';
+import { loadAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
 import { tryFetchJson } from './httpClient';
 import { fetchPluginStreams } from './pluginRuntime';
 import { resolveTmdbId, tmdbContentType, tmdbUrl } from './tmdbShared';
 import { fetchTraktSimilarItems, fetchSimklSimilarItems } from './similarTitles';
-import { profileConnectionState } from './profiles';
 import type { AppState, Video } from './types';
 import { DEFAULT_APP_PREFS, prefBool, prefString } from './appPrefs';
 import { stringValue } from './playerUtils';
@@ -333,31 +332,23 @@ async function fetchSimilarItems({
 
   if (source === 'tmdb') return tmdbFallback();
 
-  const profile = await loadActiveProfile();
-  const connection = await profileConnectionState(profile);
-  const traktAvailable = source !== 'simkl' && connection.trakt;
-  const simklAvailable = source !== 'trakt' && connection.simkl;
-
-  if (source === 'trakt' && !traktAvailable) return tmdbFallback();
-  if (source === 'simkl' && !simklAvailable) return tmdbFallback();
-
-  if (!traktAvailable && !simklAvailable) return tmdbFallback();
-
   const imdbId = await resolveImdbId({ contentType, id, language, apiKey });
   if (!imdbId) return tmdbFallback();
 
-  if (traktAvailable) {
+  if (source === 'trakt') {
     const items = await fetchTraktSimilarItems({ imdbId, contentType });
-    if (items.length) return items;
-    if (simklAvailable) {
-      const simklItems = await fetchSimklSimilarItems({ imdbId, contentType });
-      if (simklItems.length) return simklItems;
-    }
-    return tmdbFallback();
+    return items.length ? items : tmdbFallback();
   }
 
-  const items = await fetchSimklSimilarItems({ imdbId, contentType });
-  if (items.length) return items;
+  if (source === 'simkl') {
+    const items = await fetchSimklSimilarItems({ imdbId, contentType });
+    return items.length ? items : tmdbFallback();
+  }
+
+  const traktItems = await fetchTraktSimilarItems({ imdbId, contentType });
+  if (traktItems.length) return traktItems;
+  const simklItems = await fetchSimklSimilarItems({ imdbId, contentType });
+  if (simklItems.length) return simklItems;
   return tmdbFallback();
 }
 

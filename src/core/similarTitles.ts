@@ -1,14 +1,33 @@
 import { invoke } from '@tauri-apps/api/core';
-import { coreInvoke } from './engine';
-import { _appVersion, platformFetch, tryFetchJson } from './httpClient';
+import { coreInvoke, httpExecuteText } from './engine';
+import { _appVersion, tryFetchJson } from './httpClient';
 import { enrichWithAddonMeta } from './externalSyncUtils';
 import type { Meta } from './types';
 
-async function tryFetchJsonWithHeaders(url: string, headers: HeadersInit): Promise<unknown | null> {
+type TraktLookupItem = {
+  movie?: { ids?: { slug?: string } };
+  show?: { ids?: { slug?: string } };
+};
+
+type TraktRelatedItem = {
+  ids?: { imdb?: string; tmdb?: number };
+  title?: string;
+  year?: number;
+};
+
+async function tryFetchJsonWithHeaders(url: string, headers: Record<string, string>): Promise<unknown | null> {
   try {
-    const res = await platformFetch(url, { headers });
-    if (!res.ok) return null;
-    return await res.json();
+    const response = await httpExecuteText(url, 'GET', headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) return null;
+    return JSON.parse(response.body) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+async function tryCoreMapper<T>(method: 'traktRelatedLookupSlug' | 'traktRelatedItemsToMetas', args: string): Promise<T | null> {
+  try {
+    return await coreInvoke<T>(method, args);
   } catch {
     return null;
   }
@@ -20,7 +39,7 @@ async function tryFetchJsonWithHeaders(url: string, headers: HeadersInit): Promi
 export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: string; contentType: string }): Promise<Meta[]> {
   const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
   if (!clientId) return [];
-  const headers: HeadersInit = {
+  const headers = {
     'trakt-api-version': '2',
     'trakt-api-key': clientId,
   };
@@ -30,10 +49,12 @@ export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: 
     `https://api.trakt.tv/search/imdb/${encodeURIComponent(imdbId)}?type=${wantType}`,
     headers,
   );
-  const slug = await coreInvoke<string | null>('traktRelatedLookupSlug', JSON.stringify({
+  const lookupItems = Array.isArray(lookup) ? lookup as TraktLookupItem[] : [];
+  const slugFromCore = await tryCoreMapper<string>('traktRelatedLookupSlug', JSON.stringify({
     lookupJson: JSON.stringify(lookup ?? []),
     wantType,
   }));
+  const slug = slugFromCore ?? lookupItems.find((item) => item[wantType]?.ids?.slug)?.[wantType]?.ids?.slug;
   if (!slug) return [];
 
   const resource = wantType === 'show' ? 'shows' : 'movies';
@@ -41,10 +62,22 @@ export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: 
     `https://api.trakt.tv/${resource}/${encodeURIComponent(slug)}/related?limit=20`,
     headers,
   );
-  const partial = await coreInvoke<Record<string, unknown>[] | null>('traktRelatedItemsToMetas', JSON.stringify({
+  const relatedItems = Array.isArray(data) ? data as TraktRelatedItem[] : [];
+  const partialFromCore = await tryCoreMapper<Record<string, unknown>[]>('traktRelatedItemsToMetas', JSON.stringify({
     relatedJson: JSON.stringify(Array.isArray(data) ? data : []),
     contentType,
   }));
+  const fallbackPartial = relatedItems.flatMap((item) => {
+    const id = item.ids?.imdb || (typeof item.ids?.tmdb === 'number' ? `tmdb:${item.ids.tmdb}` : '');
+    if (!id || !item.title) return [];
+    return [{
+      id,
+      type: contentType,
+      name: item.title,
+      ...(typeof item.year === 'number' ? { releaseInfo: String(item.year) } : {}),
+    }];
+  });
+  const partial = partialFromCore?.length ? partialFromCore : fallbackPartial;
   if (!partial?.length) return [];
   // Trakt's own images must not be hotlinked ("must be cached... direct linking
   // will be blocked" per their docs), so posters/backgrounds still come from the
