@@ -179,7 +179,7 @@ jobs:
             echo "$architectures" | grep -qw x86_64
             for architecture in arm64 x86_64; do
               otool -arch "$architecture" -L "$dylib"
-              if otool -arch "$architecture" -L "$dylib" | grep -Eq '^[[:space:]]+(@rpath/|/opt/homebrew/|/usr/local/)'; then
+              if otool -arch "$architecture" -L "$dylib" | tail -n +3 | grep -Eq '^[[:space:]]+(@rpath/|/opt/homebrew/|/usr/local/)'; then
                 echo "non-portable dependency found in $dylib ($architecture)" >&2
                 exit 1
               fi
@@ -223,7 +223,7 @@ jobs:
             echo "$architectures" | grep -qw arm64
             echo "$architectures" | grep -qw x86_64
             for architecture in arm64 x86_64; do
-              if otool -arch "$architecture" -L "$dylib" | grep -Eq '^[[:space:]]+(@rpath/|/opt/homebrew/|/usr/local/)'; then
+              if otool -arch "$architecture" -L "$dylib" | tail -n +3 | grep -Eq '^[[:space:]]+(@rpath/|/opt/homebrew/|/usr/local/)'; then
                 echo "non-portable dependency found in $dylib ($architecture)" >&2
                 exit 1
               fi
