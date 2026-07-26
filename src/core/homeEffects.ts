@@ -124,7 +124,11 @@ export async function readHomeBootstrap(
     prefs.syncCwSourceOfTruth as string | undefined,
     prefs.syncCwRanking as string | undefined,
   );
-  const continueWatching = (mergedCWRaw ?? []) as Record<string, unknown>[];
+  const continueWatching = await refreshReleasedContinueWatching(
+    (mergedCWRaw ?? []) as Record<string, unknown>[],
+    library,
+    addons,
+  );
 
   const metadataFeeds = await metadataFeedOptions(addons);
   const selectedKeys = prefs.homeFeedToggles as string[] | undefined;
