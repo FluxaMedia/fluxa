@@ -205,6 +205,7 @@ export const CORE_METHODS = [
   'playerFlowDispatch',
   'playerProgressPercent',
   'playerRetryPolicy',
+  'playerScrobbleLifecycleAction',
   'playerShouldEnqueueDurableScrobble',
   'playerShouldMarkScrobbleStopped',
   'playerShouldQueueScrobblePause',

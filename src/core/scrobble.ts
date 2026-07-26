@@ -1,61 +1,59 @@
 import { invoke } from '@tauri-apps/api/core';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
-import { coreInvoke, coreParseVideoId, coreSimklLookupIdForType, coreSimklMatchEpisode, coreSimklScrobbleAction, coreSimklScrobbleBody, coreTraktScrobblePlan } from './engine';
+import { coreInvoke, coreParseVideoId, coreSimklLookupIdForType, coreSimklMatchEpisode, coreSimklScrobbleBody, coreTraktScrobblePlan } from './engine';
 import { _appVersion } from './httpClient';
 import type { UserProfile, Meta, Video } from './types';
 
-export function traktScrobbleOnClose(
+async function traktScrobble(
   profile: UserProfile | null,
   meta: Meta | null,
   episode: Video | null,
   timePosSec: number,
   durationSec: number,
-): void {
+  action: 'start' | 'pause' | 'stop',
+): Promise<void> {
   if (!profile?.traktAccessToken || !meta) return;
-
-  void (async () => {
-    const context = await coreInvoke<{ videoId: string; isEpisode: boolean; season: number; episode: number; traktEnabled: boolean }>('scrobbleMediaContext', JSON.stringify({ meta, episode, profile, nowSeconds: Math.floor(Date.now() / 1000) }));
-    if (!context?.traktEnabled) return;
-    const plan = await coreTraktScrobblePlan(
-      context.videoId,
-      context.isEpisode,
-      context.isEpisode ? context.season : null,
-      context.isEpisode ? context.episode : null,
-      timePosSec,
-      durationSec,
-    );
-    if (!plan) return;
-
-    const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' });
-    await tauriFetch(`https://api.trakt.tv/scrobble/${plan.action}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${profile.traktAccessToken}`,
-        'trakt-api-version': '2',
-        'trakt-api-key': clientId,
-      },
-      body: JSON.stringify(plan.body),
-    });
-  })().catch(() => undefined);
+  const context = await coreInvoke<{ videoId: string; isEpisode: boolean; season: number; episode: number; traktEnabled: boolean }>('scrobbleMediaContext', JSON.stringify({ meta, episode, profile, nowSeconds: Math.floor(Date.now() / 1000) }));
+  if (!context?.traktEnabled) return;
+  const plan = await coreTraktScrobblePlan(
+    context.videoId,
+    context.isEpisode,
+    context.isEpisode ? context.season : null,
+    context.isEpisode ? context.episode : null,
+    timePosSec,
+    durationSec,
+    action,
+  );
+  if (!plan) return;
+  const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' });
+  await tauriFetch(`https://api.trakt.tv/scrobble/${plan.action}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${profile.traktAccessToken}`,
+      'User-Agent': `Fluxa Desktop/${_appVersion}`,
+      'trakt-api-version': '2',
+      'trakt-api-key': clientId,
+    },
+    body: JSON.stringify(plan.body),
+  });
 }
 
-export function simklScrobbleOnClose(
+async function simklScrobble(
   profile: UserProfile | null,
   meta: Meta | null,
   episode: Video | null,
   timePosSec: number,
   durationSec: number,
+  action: 'start' | 'pause' | 'stop',
   onTokenRevoked?: (profile: UserProfile) => void,
-): void {
+): Promise<void> {
   if (!profile?.simklAccessToken || !meta) return;
 
   const token = profile.simklAccessToken;
 
-  void (async () => {
     const context = await coreInvoke<{ videoId: string; isEpisode: boolean; simklType: string; season: number; episode: number; releaseDate?: string; episodeTitle: string }>('scrobbleMediaContext', JSON.stringify({ meta, episode, profile, nowSeconds: Math.floor(Date.now() / 1000) }));
     if (!context) return;
-    const action = await coreSimklScrobbleAction(timePosSec, durationSec);
     const parsed = await coreParseVideoId(context.videoId);
     const baseId = parsed.imdb;
     if (!baseId) return;
@@ -65,6 +63,7 @@ export function simklScrobbleOnClose(
     const authHeaders = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
+      'User-Agent': `Fluxa Desktop/${_appVersion}`,
     };
 
     const lookupRes = await tauriFetch(
@@ -80,7 +79,7 @@ export function simklScrobbleOnClose(
 
     if (context.isEpisode && simklId != null) {
       const epRes = await tauriFetch(
-        `https://api.simkl.com/tv/${simklId}/episodes?${simklQuery}`,
+        `https://api.simkl.com/tv/episodes/${simklId}?${simklQuery}`,
         { headers: authHeaders },
       );
       if (epRes.ok) {
@@ -114,5 +113,42 @@ export function simklScrobbleOnClose(
     if (res.status === 401 && onTokenRevoked) {
       onTokenRevoked({ ...profile, simklAccessToken: undefined, simklRefreshToken: undefined });
     }
-  })().catch(() => undefined);
+}
+
+export function scrobblePlaybackAction(
+  profile: UserProfile | null,
+  meta: Meta | null,
+  episode: Video | null,
+  timePosSec: number,
+  durationSec: number,
+  action: 'start' | 'pause' | 'stop',
+  onTokenRevoked?: (profile: UserProfile) => void,
+): void {
+  void Promise.allSettled([
+    traktScrobble(profile, meta, episode, timePosSec, durationSec, action),
+    simklScrobble(profile, meta, episode, timePosSec, durationSec, action, onTokenRevoked),
+  ]);
+}
+
+export function traktScrobbleOnClose(
+  profile: UserProfile | null,
+  meta: Meta | null,
+  episode: Video | null,
+  timePosSec: number,
+  durationSec: number,
+): void {
+  const action = durationSec > 0 && timePosSec / durationSec >= 0.8 ? 'stop' : 'pause';
+  void traktScrobble(profile, meta, episode, timePosSec, durationSec, action).catch(() => undefined);
+}
+
+export function simklScrobbleOnClose(
+  profile: UserProfile | null,
+  meta: Meta | null,
+  episode: Video | null,
+  timePosSec: number,
+  durationSec: number,
+  onTokenRevoked?: (profile: UserProfile) => void,
+): void {
+  const action = durationSec > 0 && timePosSec / durationSec >= 0.8 ? 'stop' : 'pause';
+  void simklScrobble(profile, meta, episode, timePosSec, durationSec, action, onTokenRevoked).catch(() => undefined);
 }

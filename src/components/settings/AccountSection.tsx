@@ -25,6 +25,14 @@ function generateCodeVerifier(): string {
     .slice(0, 64);
 }
 
+async function codeChallenge(verifier: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
 interface OAuthCodePayload {
   code: string;
   state: string | null;
@@ -196,6 +204,7 @@ export function AccountSection({
   const traktStateRef = useRef<string | null>(null);
   const anilistStateRef = useRef<string | null>(null);
   const simklStateRef = useRef<string | null>(null);
+  const simklCodeVerifierRef = useRef<string | null>(null);
   const [anilistBusy, setAnilistBusy] = useState(false);
   const [anilistError, setAnilistError] = useState<string | null>(null);
   const [anilistPopoverOpen, setAnilistPopoverOpen] = useState(false);
@@ -370,11 +379,11 @@ export function AccountSection({
         setAuthUrl('anilist');
         try {
           const tokenJson = await invoke<string>('anilist_oauth_exchange', { code: payload.code });
-          const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; expires_in?: number };
+          const tokens = JSON.parse(tokenJson) as { access_token: string; expires_in?: number };
           const updated: UserProfile = {
             ...activeProfile,
             anilistAccessToken: tokens.access_token,
-            anilistRefreshToken: tokens.refresh_token,
+            anilistRefreshToken: undefined,
             anilistTokenExpiresAt: tokens.expires_in ? Math.floor(Date.now() / 1000) + tokens.expires_in : undefined,
           };
           await saveProfile(updated);
@@ -420,8 +429,11 @@ export function AccountSection({
         return;
       }
       const state = generateCodeVerifier();
+      const verifier = generateCodeVerifier();
       simklStateRef.current = state;
-      const authUrl = `https://simkl.com/oauth/authorize?response_type=code&client_id=${simklClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/simkl')}&state=${state}`;
+      simklCodeVerifierRef.current = verifier;
+      const challenge = await codeChallenge(verifier);
+      const authUrl = `https://simkl.com/oauth/authorize?response_type=code&client_id=${simklClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/simkl')}&state=${state}&code_challenge=${challenge}&code_challenge_method=S256&app-name=fluxa&app-version=1`;
       setAuthUrl('simkl', authUrl);
       let unlisten: (() => void) | undefined;
       const consumeCallback = async () => {
@@ -430,6 +442,7 @@ export function AccountSection({
         unlisten?.();
         if (payload.state !== simklStateRef.current) {
           setSimklError(t('settings.oauth_state_mismatch'));
+          simklCodeVerifierRef.current = null;
           setAuthUrl('simkl');
           setSimklBusy(false);
           return;
@@ -437,7 +450,9 @@ export function AccountSection({
         simklStateRef.current = null;
         setAuthUrl('simkl');
         try {
-          const tokenJson = await invoke<string>('simkl_oauth_exchange', { code: payload.code });
+          const codeVerifier = simklCodeVerifierRef.current;
+          if (!codeVerifier) throw new Error(t('settings.oauth_state_mismatch'));
+          const tokenJson = await invoke<string>('simkl_oauth_exchange', { code: payload.code, codeVerifier });
           const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string };
           const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token };
           await saveProfile(updated);
@@ -445,6 +460,7 @@ export function AccountSection({
         } catch (err) {
           setSimklError(err instanceof Error ? err.message : String(err));
         } finally {
+          simklCodeVerifierRef.current = null;
           setSimklBusy(false);
         }
       };

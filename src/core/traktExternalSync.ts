@@ -67,30 +67,34 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   if (!token) return { synced: false, error: 'Trakt is not connected' };
 
   let headers = traktHeaders(token, clientId);
-  let response = await platformFetch('https://api.trakt.tv/sync/playback', { headers });
-  if (!response.ok && profile && (response.status === 401 || response.status === 403)) {
+  const fetchPlayback = async (requestHeaders: HeadersInit) => Promise.all([
+    platformFetch('https://api.trakt.tv/sync/playback/movies', { headers: requestHeaders }),
+    platformFetch('https://api.trakt.tv/sync/playback/episodes', { headers: requestHeaders }),
+  ]);
+  let responses = await fetchPlayback(headers);
+  if (responses.some((response) => response.status === 401 || response.status === 403) && profile) {
     refreshedProfile = await refreshTraktProfile(profile, true).catch(() => profile);
     token = refreshedProfile.traktAccessToken ?? token;
     headers = traktHeaders(token, clientId);
-    response = await platformFetch('https://api.trakt.tv/sync/playback', { headers });
+    responses = await fetchPlayback(headers);
   }
-  if (!response.ok) {
-    return { synced: false, error: `Trakt sync failed: HTTP ${response.status}` };
+  const failedResponse = responses.find((response) => !response.ok);
+  if (failedResponse) {
+    return { synced: false, error: `Trakt sync failed: HTTP ${failedResponse.status}` };
   }
-  const playbackItems = await response.json();
-  const allItems = Array.isArray(playbackItems)
-    ? ((await coreTraktPlaybackItemsToLibrary(JSON.stringify(playbackItems))) ?? []) as Record<string, unknown>[]
-    : [];
+  const playbackPages = await Promise.all(responses.map((response) => response.json().catch(() => [])));
+  const playbackItems = playbackPages.flatMap((page) => Array.isArray(page) ? page : []);
+  const allItems = ((await coreTraktPlaybackItemsToLibrary(JSON.stringify(playbackItems))) ?? []) as Record<string, unknown>[];
   let items = await enrichWithAddonMeta(allItems);
 
   let watchlistCount = 0;
   let watchedCount = 0;
   try {
     const [watchlistMovies, watchlistShows, watchedMovies, watchedShows] = await Promise.all([
-      fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies', headers, 250),
-      fetchAllPages('https://api.trakt.tv/users/me/watchlist/shows', headers, 250),
+      fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies/rank', headers, 250),
+      fetchAllPages('https://api.trakt.tv/users/me/watchlist/shows/rank', headers, 250),
       fetchAllPages('https://api.trakt.tv/users/me/watched/movies', headers, 250),
-      fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=progress', headers, 100),
+      fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=full', headers, 100),
     ]);
 
     const watchedShowItems = ((await coreTraktWatchedShowsToItems(JSON.stringify(watchedShows))) ?? []) as Record<string, unknown>[];
@@ -115,19 +119,24 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   return { synced: true, provider: 'trakt', continueWatchingCount: items.length, watchlistCount, watchedCount };
 }
 
-export async function fetchTraktCalendarItems(token: string, clientId: string): Promise<Record<string, unknown>[]> {
-  const headers = {
-    ...traktHeaders(token, clientId),
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
-  } as Record<string, string>;
-  const start = new Date();
-  start.setDate(start.getDate() - 14);
+export async function fetchTraktCalendarItems(
+  token: string,
+  clientId: string,
+  calendarMonth?: { year: number; month: number },
+): Promise<Record<string, unknown>[]> {
+  const headers = traktHeaders(token, clientId) as Record<string, string>;
+  const start = calendarMonth
+    ? new Date(calendarMonth.year, calendarMonth.month - 1, 1)
+    : new Date();
+  if (!calendarMonth) start.setDate(start.getDate() - 14);
   const startIso = start.toISOString().slice(0, 10);
-  const days = 90;
+  const days = calendarMonth
+    ? new Date(calendarMonth.year, calendarMonth.month, 0).getDate()
+    : 90;
 
   const readCalendar = async (kind: 'shows' | 'movies'): Promise<unknown[]> => {
     const response = await httpExecuteText(
-      `https://api.trakt.tv/calendars/my/${kind}/${startIso}/${days}`,
+      `https://api.trakt.tv/calendars/my/${kind}/${startIso}/${days}?extended=full`,
       'GET',
       headers,
     );

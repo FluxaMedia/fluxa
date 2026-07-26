@@ -1,4 +1,5 @@
 import {
+  coreCalendarItemsFromMeta,
   coreInvoke,
   coreLibraryApplyMarkWatched,
   coreLibraryLocalStatePlan,
@@ -49,6 +50,62 @@ export function invalidateCalendarCache() {
 }
 
 const AIR_DATE_REFRESH_CONCURRENCY = 3;
+
+type CalendarMonthItems = Record<string, Record<string, unknown>[]>;
+
+export async function refreshCalendarMonth(year: number, month: number): Promise<void> {
+  const monthPrefix = `${Math.trunc(year)}-${String(Math.trunc(month)).padStart(2, "0")}`;
+  const library = await loadLibrary();
+  const libraryItems = [
+    ...((library.watchlist as LibraryItem[] | undefined) ?? []),
+    ...((library.continueWatching as LibraryItem[] | undefined) ?? []),
+  ];
+  const series = libraryItems.filter((item) => item.type === "series" && item.id);
+  const addons = await loadAddons();
+  const localItems = (await runWithConcurrency(
+    series,
+    AIR_DATE_REFRESH_CONCURRENCY,
+    async (item) => {
+      const videos = await fetchVideosForSeries(item.id, addons);
+      return coreCalendarItemsFromMeta(
+        JSON.stringify({
+          id: item.id,
+          name: item.name,
+          poster: item.poster,
+          type: item.type,
+          videos,
+        }),
+        monthPrefix,
+      ) as Promise<Record<string, unknown>[]>;
+    },
+  )).flat();
+  const profile = await loadActiveProfile();
+  const contentIds = libraryItems.flatMap((item) => item.id ? [item.id] : []);
+  const providerItems: Record<string, unknown>[] = [];
+  if (profile?.simklAccessToken) {
+    const clientId = await getOAuthClientId("simkl");
+    providerItems.push(...await fetchSimklCalendarItems(
+      profile.simklAccessToken,
+      clientId,
+      contentIds,
+      { year, month },
+    ).catch(() => []));
+  }
+  if (profile?.traktAccessToken) {
+    const clientId = await getOAuthClientId("trakt");
+    providerItems.push(...await fetchTraktCalendarItems(
+      profile.traktAccessToken,
+      clientId,
+      { year, month },
+    ).catch(() => []));
+  }
+  const latestLibrary = await loadLibrary();
+  const calendarMonthItems = (latestLibrary.calendarMonthItems as CalendarMonthItems | undefined) ?? {};
+  calendarMonthItems[monthPrefix] = [...localItems, ...providerItems];
+  latestLibrary.calendarMonthItems = calendarMonthItems;
+  await saveLibrary(latestLibrary);
+  invalidateCalendarCache();
+}
 
 export async function refreshWatchlistAirDates(): Promise<void> {
   const lib = await loadLibrary();
@@ -111,6 +168,11 @@ export async function refreshExternalCalendarItems(): Promise<{ traktError?: str
   const profile = await loadActiveProfile();
   if (!profile) return {};
 
+  const library = await loadLibrary();
+  const calendarContentIds = [
+    ...((library.watchlist as LibraryItem[] | undefined) ?? []),
+    ...((library.continueWatching as LibraryItem[] | undefined) ?? []),
+  ].flatMap((item) => item.id ? [item.id] : []);
   const tasks: Promise<Record<string, unknown>[]>[] = [];
   let traktError: string | undefined;
   const activeProfile = profile.traktAccessToken
@@ -133,7 +195,11 @@ export async function refreshExternalCalendarItems(): Promise<{ traktError?: str
     tasks.push(
       (async () => {
         const clientId = await getOAuthClientId("simkl");
-        return fetchSimklCalendarItems(profile.simklAccessToken!, clientId);
+        return fetchSimklCalendarItems(
+          profile.simklAccessToken!,
+          clientId,
+          calendarContentIds,
+        );
       })().catch(() => []),
     );
   }
@@ -147,9 +213,8 @@ export async function refreshExternalCalendarItems(): Promise<{ traktError?: str
   if (tasks.length === 0) return {};
 
   const results = await Promise.all(tasks);
-  const lib = await loadLibrary();
-  lib.externalCalendarItems = results.flat();
-  await saveLibrary(lib);
+  library.externalCalendarItems = results.flat();
+  await saveLibrary(library);
   invalidateCalendarCache();
   return { traktError };
 }
@@ -411,11 +476,12 @@ export async function readCalendarMonth(
     ...((lib.watchlist as unknown[] | undefined) ?? []),
     ...((lib.continueWatching as unknown[] | undefined) ?? []),
   ];
+  const calendarMonthItems = (lib.calendarMonthItems as CalendarMonthItems | undefined) ?? {};
   const result = (await coreInvoke(
     "desktopCalendarReadPlan",
     JSON.stringify({
       monthPrefix,
-      plannedItems,
+      plannedItems: [...plannedItems, ...(calendarMonthItems[monthPrefix] ?? [])],
       libraryItems,
       externalItems: (lib.externalCalendarItems as unknown[] | undefined) ?? [],
     }),

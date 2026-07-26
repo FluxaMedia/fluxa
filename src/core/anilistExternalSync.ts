@@ -167,12 +167,17 @@ async function deleteAniListEntry(anilistId: number, token: string): Promise<voi
   await anilistGraphql(`mutation ($id: Int) { DeleteMediaListEntry(id: $id) { deleted } }`, { id: entryId }, token);
 }
 
-async function anilistGraphql<T>(query: string, variables: Record<string, unknown>, token: string): Promise<T | null> {
+async function anilistGraphql<T>(query: string, variables: Record<string, unknown>, token: string, attempt = 0): Promise<T | null> {
   const res = await platformFetch('https://graphql.anilist.co', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ query, variables }),
   });
+  if (res.status === 429 && attempt === 0) {
+    const retryAfter = Number(res.headers.get('Retry-After'));
+    await new Promise((resolve) => setTimeout(resolve, Math.min(60_000, Math.max(1_000, (Number.isFinite(retryAfter) ? retryAfter : 1) * 1_000))));
+    return anilistGraphql(query, variables, token, 1);
+  }
   const json = await res.json() as { data?: T; errors?: Array<{ message?: string }> };
   if (!res.ok || json.errors?.length) {
     throw new Error(json.errors?.map((e) => e.message).filter(Boolean).join('; ') || `AniList request failed: HTTP ${res.status}`);

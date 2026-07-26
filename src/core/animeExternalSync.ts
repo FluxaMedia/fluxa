@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import { platformFetch } from './httpClient';
 import {
   coreAnilistMediaListStatus,
@@ -59,14 +58,12 @@ export async function refreshAnimeTrackingProfile(profile: UserProfile): Promise
   let updated = profile;
   const now = Math.floor(Date.now() / 1000);
 
-  if (updated.anilistAccessToken && updated.anilistRefreshToken && (updated.anilistTokenExpiresAt ?? 0) <= now + 60) {
-    const tokenJson = await invoke<string>('anilist_oauth_refresh', { refreshToken: updated.anilistRefreshToken });
-    const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; expires_in?: number };
+  if (updated.anilistAccessToken && (updated.anilistTokenExpiresAt ?? 0) > 0 && (updated.anilistTokenExpiresAt ?? 0) <= now + 60) {
     updated = {
       ...updated,
-      anilistAccessToken: tokens.access_token,
-      anilistRefreshToken: tokens.refresh_token ?? updated.anilistRefreshToken,
-      anilistTokenExpiresAt: tokens.expires_in ? now + tokens.expires_in : updated.anilistTokenExpiresAt,
+      anilistAccessToken: undefined,
+      anilistRefreshToken: undefined,
+      anilistTokenExpiresAt: undefined,
     };
   }
 
@@ -130,15 +127,21 @@ async function searchAniList(meta: Meta): Promise<AnimeIds | null> {
   return coreAnilistSearchBestMatch(meta, candidates);
 }
 
-async function anilistGraphql<T>(query: string, variables: Record<string, unknown>, token?: string): Promise<T | null> {
+async function anilistGraphql<T>(query: string, variables: Record<string, unknown>, token?: string, attempt = 0): Promise<T | null> {
   const res = await platformFetch('https://graphql.anilist.co', {
     method: 'POST',
     headers: {
+      Accept: 'application/json',
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ query, variables }),
   });
+  if (res.status === 429 && attempt === 0) {
+    const retryAfter = Number(res.headers.get('Retry-After'));
+    await new Promise((resolve) => setTimeout(resolve, Math.min(60_000, Math.max(1_000, (Number.isFinite(retryAfter) ? retryAfter : 1) * 1_000))));
+    return anilistGraphql(query, variables, token, 1);
+  }
   const json = await res.json() as { data?: T; errors?: Array<{ message?: string }> };
   if (!res.ok || json.errors?.length) {
     throw new Error(json.errors?.map((e) => e.message).filter(Boolean).join('; ') || `AniList request failed: HTTP ${res.status}`);

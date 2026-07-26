@@ -7,12 +7,18 @@ import {
   nuvioPullProfileSettings,
   nuvioPullWatchHistory,
   nuvioPullWatchProgress,
+  nuvioPullWatchProgressDelta,
+  nuvioGetWatchProgressDeltaCursor,
+  nuvioPullWatchHistoryDelta,
+  nuvioGetWatchHistoryDeltaCursor,
   nuvioListAvatars,
   type NuvioAddon,
   type NuvioAvatar,
   type NuvioProfile,
   type NuvioWatchedItem,
   type NuvioWatchProgress,
+  type NuvioWatchProgressDeltaEvent,
+  type NuvioWatchedItemDeltaEvent,
 } from './nuvioApi';
 import { platformFetch } from './httpClient';
 import { buildContinueWatching, loadLibrary, saveLibrary, persistProgressMerge, persistWatchedMerge, persistContinueWatchingMerge } from './libraryOps';
@@ -75,8 +81,61 @@ function profileStorageSuffix(profile: UserProfile): string {
   return profile.id.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
-function progressCursorKey(profile: UserProfile): string {
-  return `nuvio_progress_cursor_${profileStorageSuffix(profile)}`;
+function deltaCursorKey(profile: UserProfile, resource: 'progress' | 'history'): string {
+  return `nuvio_${resource}_event_cursor_${profileStorageSuffix(profile)}`;
+}
+
+function deltaCacheKey(profile: UserProfile, resource: 'progress' | 'history'): string {
+  return `nuvio_${resource}_remote_cache_${profileStorageSuffix(profile)}`;
+}
+
+function watchedItemKey(item: Pick<NuvioWatchedItem, 'content_id' | 'season' | 'episode'>): string {
+  return `${item.content_id}:${item.season ?? ''}:${item.episode ?? ''}`;
+}
+
+function applyProgressDelta(items: NuvioWatchProgress[], events: NuvioWatchProgressDeltaEvent[]): NuvioWatchProgress[] {
+  const byKey = new Map(items.map((item) => [item.progress_key, item]));
+  for (const event of [...events].sort((a, b) => a.event_id - b.event_id)) {
+    if (event.operation === 'delete') byKey.delete(event.progress_key);
+    else byKey.set(event.progress_key, event);
+  }
+  return [...byKey.values()];
+}
+
+function applyHistoryDelta(items: NuvioWatchedItem[], events: NuvioWatchedItemDeltaEvent[]): NuvioWatchedItem[] {
+  const byKey = new Map(items.map((item) => [watchedItemKey(item), item]));
+  for (const event of [...events].sort((a, b) => a.event_id - b.event_id)) {
+    const key = watchedItemKey(event);
+    if (event.operation === 'delete') byKey.delete(key);
+    else byKey.set(key, event);
+  }
+  return [...byKey.values()];
+}
+
+async function pullAllProgressDelta(token: string, profileId: number, cursor: number): Promise<NuvioWatchProgressDeltaEvent[]> {
+  const events: NuvioWatchProgressDeltaEvent[] = [];
+  let nextCursor = cursor;
+  for (;;) {
+    const batch = await nuvioPullWatchProgressDelta(token, profileId, nextCursor, 1_000);
+    if (batch.length === 0) return events;
+    events.push(...batch);
+    const batchCursor = Math.max(nextCursor, ...batch.map((event) => event.event_id));
+    if (batchCursor === nextCursor || batch.length < 1_000) return events;
+    nextCursor = batchCursor;
+  }
+}
+
+async function pullAllHistoryDelta(token: string, profileId: number, cursor: number): Promise<NuvioWatchedItemDeltaEvent[]> {
+  const events: NuvioWatchedItemDeltaEvent[] = [];
+  let nextCursor = cursor;
+  for (;;) {
+    const batch = await nuvioPullWatchHistoryDelta(token, profileId, nextCursor, 1_000);
+    if (batch.length === 0) return events;
+    events.push(...batch);
+    const batchCursor = Math.max(nextCursor, ...batch.map((event) => event.event_id));
+    if (batchCursor === nextCursor || batch.length < 1_000) return events;
+    nextCursor = batchCursor;
+  }
 }
 
 async function pullAllNuvioLibrary(token: string, profileId: number): Promise<Awaited<ReturnType<typeof nuvioPullLibrary>>> {
@@ -231,9 +290,20 @@ export async function importNuvioProfileData(
   }
 
   let watchProgress: NuvioWatchProgress[] | null = null;
+  let progressCursor: number | null = null;
   try {
-    const sinceLastWatched = await storageRead<number>(progressCursorKey(profile));
-    watchProgress = await nuvioPullWatchProgress(token, profileIdx, 100_000, sinceLastWatched ?? undefined);
+    const cursor = await storageRead<number>(deltaCursorKey(profile, 'progress'));
+    const cached = await storageRead<NuvioWatchProgress[]>(deltaCacheKey(profile, 'progress'));
+    if (typeof cursor === 'number' && Array.isArray(cached)) {
+      const events = await pullAllProgressDelta(token, profileIdx, cursor);
+      watchProgress = applyProgressDelta(cached, events);
+      if (events.length > 0) {
+        progressCursor = Math.max(cursor, ...events.map((event) => event.event_id));
+      }
+    } else {
+      watchProgress = await nuvioPullWatchProgress(token, profileIdx, 1_000);
+      progressCursor = await nuvioGetWatchProgressDeltaCursor(token, profileIdx);
+    }
   } catch (err) {
     errors.progress = err instanceof Error ? err.message : String(err);
     onStep?.('progress', false, errors.progress);
@@ -246,8 +316,20 @@ export async function importNuvioProfileData(
   }
 
   let watchHistory: NuvioWatchedItem[] | null = null;
+  let historyCursor: number | null = null;
   try {
-    watchHistory = await pullAllNuvioWatchHistory(token, profileIdx);
+    const cursor = await storageRead<number>(deltaCursorKey(profile, 'history'));
+    const cached = await storageRead<NuvioWatchedItem[]>(deltaCacheKey(profile, 'history'));
+    if (typeof cursor === 'number' && Array.isArray(cached)) {
+      const events = await pullAllHistoryDelta(token, profileIdx, cursor);
+      watchHistory = applyHistoryDelta(cached, events);
+      if (events.length > 0) {
+        historyCursor = Math.max(cursor, ...events.map((event) => event.event_id));
+      }
+    } else {
+      watchHistory = await pullAllNuvioWatchHistory(token, profileIdx);
+      historyCursor = await nuvioGetWatchHistoryDeltaCursor(token, profileIdx);
+    }
   } catch (err) {
     errors.history = err instanceof Error ? err.message : String(err);
     onStep?.('history', false, errors.history);
@@ -261,6 +343,7 @@ export async function importNuvioProfileData(
     watchProgress,
     watchHistory,
   });
+  let appliedRemoteWatchState = false;
   if (plan) {
     libDoc.progress = plan.progress;
     libDoc.watched = plan.watched;
@@ -271,8 +354,7 @@ export async function importNuvioProfileData(
       completed: [],
       dropped: [],
     });
-    const latestProgress = watchProgress?.reduce((latest, entry) => Math.max(latest, entry.last_watched), 0) ?? 0;
-    if (latestProgress > 0) await storageWrite(progressCursorKey(profile), latestProgress);
+    appliedRemoteWatchState = true;
   }
   if (watchProgress) onStep?.('progress', true);
   if (watchHistory) onStep?.('history', true);
@@ -281,6 +363,14 @@ export async function importNuvioProfileData(
   await persistWatchedMerge(watchedBefore, libDoc.watched as Record<string, boolean>);
   await persistContinueWatchingMerge(continueWatchingBefore, libDoc.continueWatching as Record<string, unknown>[]);
   await saveLibrary(libDoc);
+  if (appliedRemoteWatchState && watchProgress) {
+    await storageWrite(deltaCacheKey(profile, 'progress'), watchProgress);
+    if (progressCursor != null) await storageWrite(deltaCursorKey(profile, 'progress'), progressCursor);
+  }
+  if (appliedRemoteWatchState && watchHistory) {
+    await storageWrite(deltaCacheKey(profile, 'history'), watchHistory);
+    if (historyCursor != null) await storageWrite(deltaCursorKey(profile, 'history'), historyCursor);
+  }
 
   if (options.includeSettings !== false) {
     try {

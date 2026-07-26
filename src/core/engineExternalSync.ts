@@ -7,6 +7,7 @@ export async function coreTraktScrobblePlan(
   epNumber: number | null,
   timePosSec: number,
   durationSec: number,
+  action?: 'start' | 'pause' | 'stop',
 ): Promise<{ action: string; body: unknown } | null> {
   return coreInvoke(
     "traktScrobblePlan",
@@ -17,6 +18,7 @@ export async function coreTraktScrobblePlan(
       epNumber,
       timePosSec,
       durationSec,
+      action,
     }),
   );
 }

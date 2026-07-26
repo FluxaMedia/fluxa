@@ -81,6 +81,7 @@ async fn execute_oauth_request(
     operation: &str,
     code: Option<&str>,
     refresh_token: Option<&str>,
+    code_verifier: Option<&str>,
 ) -> Result<(u16, String), String> {
     let (client_id, client_secret) = match service {
         "trakt" => (TRAKT_CLIENT_ID, TRAKT_CLIENT_SECRET),
@@ -89,11 +90,11 @@ async fn execute_oauth_request(
         _ => return Err("unsupported OAuth service".to_string()),
     };
     if client_id.is_empty()
-        || ((operation == "exchange" || operation == "refresh") && client_secret.is_empty())
+        || ((operation == "refresh" || (service != "simkl" && operation == "exchange")) && client_secret.is_empty())
     {
         return Err(format!("{service} OAuth client is not configured"));
     }
-    let request = json!({"service": service, "operation": operation, "clientId": client_id, "clientSecret": client_secret, "code": code, "refreshToken": refresh_token});
+    let request = json!({"service": service, "operation": operation, "clientId": client_id, "clientSecret": client_secret, "code": code, "refreshToken": refresh_token, "codeVerifier": code_verifier});
     let plan_json = FluxaCore::oauth_request_plan_json(&request.to_string())
         .ok_or_else(|| "invalid OAuth request".to_string())?;
     let plan: serde_json::Value =
@@ -126,7 +127,7 @@ pub fn get_oauth_client_id(service: &str) -> &'static str {
 
 #[tauri::command]
 pub async fn trakt_device_start() -> Result<String, String> {
-    let (status, text) = execute_oauth_request("trakt", "device_start", None, None).await?;
+    let (status, text) = execute_oauth_request("trakt", "device_start", None, None, None).await?;
     (FluxaCore::oauth_response_outcome("trakt", "device_start", status) == "success")
         .then_some(text)
         .ok_or_else(|| format!("Trakt device code request failed: HTTP {status}"))
@@ -135,7 +136,7 @@ pub async fn trakt_device_start() -> Result<String, String> {
 #[tauri::command]
 pub async fn trakt_device_poll(device_code: String) -> Result<String, String> {
     let (status, text) =
-        execute_oauth_request("trakt", "device_poll", Some(&device_code), None).await?;
+        execute_oauth_request("trakt", "device_poll", Some(&device_code), None, None).await?;
     match FluxaCore::oauth_response_outcome("trakt", "device_poll", status) {
         "success" => Ok(text),
         "pending" => Ok("pending".to_string()),
@@ -145,7 +146,7 @@ pub async fn trakt_device_poll(device_code: String) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn trakt_oauth_exchange(code: String) -> Result<String, String> {
-    let (status, text) = execute_oauth_request("trakt", "exchange", Some(&code), None).await?;
+    let (status, text) = execute_oauth_request("trakt", "exchange", Some(&code), None, None).await?;
     (FluxaCore::oauth_response_outcome("trakt", "exchange", status) == "success")
         .then_some(text.clone())
         .ok_or_else(|| format!("Trakt token exchange failed: HTTP {status}: {text}"))
@@ -153,7 +154,7 @@ pub async fn trakt_oauth_exchange(code: String) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn trakt_oauth_refresh(refresh_token: String) -> Result<String, String> {
-    let (status, text) = execute_oauth_request("trakt", "refresh", None, Some(&refresh_token)).await?;
+    let (status, text) = execute_oauth_request("trakt", "refresh", None, Some(&refresh_token), None).await?;
     (FluxaCore::oauth_response_outcome("trakt", "refresh", status) == "success")
         .then_some(text.clone())
         .ok_or_else(|| format!("Trakt token refresh failed: HTTP {status}: {text}"))
@@ -161,24 +162,15 @@ pub async fn trakt_oauth_refresh(refresh_token: String) -> Result<String, String
 
 #[tauri::command]
 pub async fn anilist_oauth_exchange(code: String) -> Result<String, String> {
-    let (status, text) = execute_oauth_request("anilist", "exchange", Some(&code), None).await?;
+    let (status, text) = execute_oauth_request("anilist", "exchange", Some(&code), None, None).await?;
     (FluxaCore::oauth_response_outcome("anilist", "exchange", status) == "success")
         .then_some(text.clone())
         .ok_or_else(|| format!("AniList token exchange failed: HTTP {status}: {text}"))
 }
 
 #[tauri::command]
-pub async fn anilist_oauth_refresh(refresh_token: String) -> Result<String, String> {
-    let (status, text) =
-        execute_oauth_request("anilist", "refresh", None, Some(&refresh_token)).await?;
-    (FluxaCore::oauth_response_outcome("anilist", "refresh", status) == "success")
-        .then_some(text.clone())
-        .ok_or_else(|| format!("AniList token refresh failed: HTTP {status}: {text}"))
-}
-
-#[tauri::command]
-pub async fn simkl_oauth_exchange(code: String) -> Result<String, String> {
-    let (status, text) = execute_oauth_request("simkl", "exchange", Some(&code), None).await?;
+pub async fn simkl_oauth_exchange(code: String, code_verifier: String) -> Result<String, String> {
+    let (status, text) = execute_oauth_request("simkl", "exchange", Some(&code), None, Some(&code_verifier)).await?;
     (FluxaCore::oauth_response_outcome("simkl", "exchange", status) == "success")
         .then_some(text.clone())
         .ok_or_else(|| format!("SIMKL token exchange failed: HTTP {status}: {text}"))
