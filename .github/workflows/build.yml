@@ -167,21 +167,24 @@ jobs:
       - name: Fetch libmpv (KhooLy/mpv gpu-next fork)
         run: ./src-tauri/fetch-libmpv.sh "$LIBMPV_TAG"
 
-      - name: Deduplicate LC_RPATH entries in libmpv.dylib
+      - name: Verify bundled macOS libraries
         run: |
-          DYLIB="$(ls src-tauri/lib/libmpv*.dylib | head -n1)"
-          while true; do
-            DUP="$(otool -l "$DYLIB" | grep -A2 LC_RPATH | grep 'path ' | awk '{print $2}' | sort | uniq -d | head -n1)"
-            [ -z "$DUP" ] && break
-            install_name_tool -delete_rpath "$DUP" "$DYLIB"
+          find src-tauri/lib -maxdepth 1 -type f -name '*.dylib' -print
+          test -f src-tauri/lib/libmpv.dylib
+          test -f src-tauri/lib/libMoltenVK.dylib
+          for dylib in src-tauri/lib/*.dylib; do
+            architectures="$(lipo -archs "$dylib")"
+            echo "$dylib: $architectures"
+            echo "$architectures" | grep -qw arm64
+            echo "$architectures" | grep -qw x86_64
+            for architecture in arm64 x86_64; do
+              otool -arch "$architecture" -L "$dylib"
+              if otool -arch "$architecture" -L "$dylib" | grep -Eq '^[[:space:]]+(@rpath/|/opt/homebrew/|/usr/local/)'; then
+                echo "non-portable dependency found in $dylib ($architecture)" >&2
+                exit 1
+              fi
+            done
           done
-
-      - name: Verify libmpv.dylib is intact
-        run: |
-          DYLIB="$(ls src-tauri/lib/libmpv*.dylib | head -n1)"
-          otool -L "$DYLIB"
-          otool -l "$DYLIB" | grep -A2 LC_RPATH
-          lipo -info "$DYLIB"
 
       - name: npm install
         run: npm ci
@@ -206,6 +209,27 @@ jobs:
           releaseName: ${{ github.event_name == 'push' && format('Fluxa Desktop {0}', github.ref_name) || '' }}
           releaseDraft: true
           args: --target universal-apple-darwin
+
+      - name: Verify bundled macOS application libraries
+        run: |
+          APP="src-tauri/target/universal-apple-darwin/release/bundle/macos/Fluxa Desktop.app"
+          LIB_DIR="$APP/Contents/Resources/lib"
+          test -d "$LIB_DIR"
+          test -f "$LIB_DIR/libmpv.dylib"
+          test -f "$LIB_DIR/libMoltenVK.dylib"
+          for dylib in "$LIB_DIR"/*.dylib; do
+            architectures="$(lipo -archs "$dylib")"
+            echo "$dylib: $architectures"
+            echo "$architectures" | grep -qw arm64
+            echo "$architectures" | grep -qw x86_64
+            for architecture in arm64 x86_64; do
+              if otool -arch "$architecture" -L "$dylib" | grep -Eq '^[[:space:]]+(@rpath/|/opt/homebrew/|/usr/local/)'; then
+                echo "non-portable dependency found in $dylib ($architecture)" >&2
+                exit 1
+              fi
+            done
+          done
+          codesign --verify --deep --strict "$APP"
 
       - name: Upload build artifacts (manual run)
         if: github.event_name != 'push'
