@@ -37,8 +37,7 @@ import { fetchVideosForSeries, runWithConcurrency } from "./fetchPlanning";
 import { fetchTraktCalendarItems } from "./traktExternalSync";
 import { fetchSimklCalendarItems } from "./simklExternalSync";
 import { fetchAniListCalendarItems } from "./anilistExternalSync";
-import { getOAuthClientId } from "./traktSync";
-import { profileConnectionState } from "./profiles";
+import { getOAuthClientId, refreshTraktProfile } from "./traktSync";
 import { notify } from "./notifications";
 import { t } from "../i18n";
 import type { LibraryItem } from "./types";
@@ -108,23 +107,29 @@ export async function refreshWatchlistAirDates(): Promise<void> {
   invalidateCalendarCache();
 }
 
-export async function refreshExternalCalendarItems(): Promise<void> {
+export async function refreshExternalCalendarItems(): Promise<{ traktError?: string }> {
   const profile = await loadActiveProfile();
-  if (!profile) return;
+  if (!profile) return {};
 
   const tasks: Promise<Record<string, unknown>[]>[] = [];
-  const connection = await profileConnectionState(profile);
+  let traktError: string | undefined;
+  const activeProfile = profile.traktAccessToken
+    ? await refreshTraktProfile(profile).catch(() => profile)
+    : profile;
 
-  if (connection.trakt) {
+  if (activeProfile.traktAccessToken) {
     tasks.push(
       (async () => {
         const clientId = await getOAuthClientId("trakt");
-        return fetchTraktCalendarItems(profile.traktAccessToken!, clientId);
-      })().catch(() => []),
+        return fetchTraktCalendarItems(activeProfile.traktAccessToken!, clientId);
+      })().catch((error: unknown) => {
+        traktError = error instanceof Error ? error.message : String(error);
+        return [];
+      }),
     );
   }
 
-  if (connection.simkl) {
+  if (profile.simklAccessToken) {
     tasks.push(
       (async () => {
         const clientId = await getOAuthClientId("simkl");
@@ -139,13 +144,14 @@ export async function refreshExternalCalendarItems(): Promise<void> {
     );
   }
 
-  if (tasks.length === 0) return;
+  if (tasks.length === 0) return {};
 
   const results = await Promise.all(tasks);
   const lib = await loadLibrary();
   lib.externalCalendarItems = results.flat();
   await saveLibrary(lib);
   invalidateCalendarCache();
+  return { traktError };
 }
 
 const NOTIFIED_EPISODES_KEY = "notified_released_episode_ids";

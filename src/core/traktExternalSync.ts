@@ -9,6 +9,7 @@ import {
   coreTraktWatchedShowsToItems,
   coreTraktWatchlistToItems,
   coreTraktWatchedToIds,
+  httpExecuteText,
 } from './engine';
 import { loadLibrary, saveLibrary, persistStatusListMerge, persistWatchedMerge } from './libraryOps';
 import { platformFetch } from './httpClient';
@@ -115,18 +116,30 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
 }
 
 export async function fetchTraktCalendarItems(token: string, clientId: string): Promise<Record<string, unknown>[]> {
-  const headers = traktHeaders(token, clientId);
+  const headers = {
+    ...traktHeaders(token, clientId),
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+  } as Record<string, string>;
   const start = new Date();
   start.setDate(start.getDate() - 14);
   const startIso = start.toISOString().slice(0, 10);
   const days = 90;
 
-  const [shows, movies] = await Promise.all([
-    platformFetch(`https://api.trakt.tv/calendars/my/shows/${startIso}/${days}`, { headers })
-      .then((res) => (res.ok ? res.json() : [])).catch(() => []),
-    platformFetch(`https://api.trakt.tv/calendars/my/movies/${startIso}/${days}`, { headers })
-      .then((res) => (res.ok ? res.json() : [])).catch(() => []),
-  ]);
+  const readCalendar = async (kind: 'shows' | 'movies'): Promise<unknown[]> => {
+    const response = await httpExecuteText(
+      `https://api.trakt.tv/calendars/my/${kind}/${startIso}/${days}`,
+      'GET',
+      headers,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw new Error(`Trakt calendar ${kind}: HTTP ${response.statusCode}`);
+    }
+    const entries: unknown = JSON.parse(response.body);
+    if (!Array.isArray(entries)) throw new Error(`Trakt calendar ${kind}: invalid response`);
+    return entries;
+  };
+
+  const [shows, movies] = await Promise.all([readCalendar('shows'), readCalendar('movies')]);
 
   return (await coreInvoke<Record<string, unknown>[]>('providerCalendarItems', JSON.stringify({ provider: 'trakt', shows, movies }))) ?? [];
 }

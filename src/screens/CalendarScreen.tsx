@@ -9,7 +9,7 @@ import {
   Film,
   X,
 } from "lucide-react";
-import type { AppState, LibraryItem } from "../core/types";
+import type { AppState, LibraryItem, Video } from "../core/types";
 import {
   refreshExternalCalendarItems,
   refreshWatchlistAirDates,
@@ -17,6 +17,7 @@ import {
 import { fetchMetaDetail } from "../core/detailEffects";
 import { coreInvoke } from "../core/engine";
 import { t } from "../i18n";
+import { Toast } from "../components/Toast";
 
 const NAV_RAIL_WIDTH = 6.5;
 const CONTENT_PAD = 2.625;
@@ -59,6 +60,7 @@ export const CalendarScreen = React.memo(
     const [showCompleted, setShowCompleted] = useState(false);
     const [selectedDateIso, setSelectedDateIso] = useState<string | null>(null);
     const [isRefreshingAirDates, setIsRefreshingAirDates] = useState(false);
+    const [traktCalendarError, setTraktCalendarError] = useState<string | null>(null);
     const year = monthStart.getFullYear();
     const month = monthStart.getMonth() + 1;
 
@@ -84,9 +86,11 @@ export const CalendarScreen = React.memo(
       lastAirDatesRefreshAt = Date.now();
       let cancelled = false;
       setIsRefreshingAirDates(true);
-      Promise.all([refreshWatchlistAirDates(), refreshExternalCalendarItems()])
-        .then(() => {
+      refreshWatchlistAirDates()
+        .then(() => refreshExternalCalendarItems())
+        .then((result) => {
           if (!cancelled) {
+            setTraktCalendarError(result.traktError ?? null);
             onDispatch(
               JSON.stringify({ type: "calendarMonthRequested", year, month }),
             );
@@ -129,7 +133,12 @@ export const CalendarScreen = React.memo(
       let active = true;
       void coreInvoke<CalendarItem[]>(
         "calendarVisibilityPlan",
-        JSON.stringify({ items, completedItems, showCompleted }),
+        JSON.stringify({
+          items,
+          completedItems,
+          showCompleted,
+          todayIso: localDateKeyFromIso(new Date().toISOString()),
+        }),
       )
         .then((plan) => {
           if (active) setVisibleItems(plan ?? []);
@@ -139,81 +148,148 @@ export const CalendarScreen = React.memo(
       };
     }, [items, completedItems, showCompleted]);
 
-    const itemsByDate = useMemo(() => groupItemsByDate(visibleItems), [
-      visibleItems,
-    ]);
     const cells = useMemo(() => buildMonthCells(monthStart), [monthStart]);
-    const selectedItems = selectedDateIso
-      ? itemsByDate[selectedDateIso] ?? []
-      : [];
-    const [resolvedSeriesPosters, setResolvedSeriesPosters] = useState<
+    const [resolvedArtwork, setResolvedArtwork] = useState<
       Record<string, string>
+    >({});
+    const [resolvedEpisodes, setResolvedEpisodes] = useState<
+      Record<string, Partial<CalendarItem>>
     >({});
 
     useEffect(() => {
       let active = true;
       const unresolved = visibleItems.filter((item) => {
         const id = item.contentId ?? item.seriesId;
-        return id && !resolvedSeriesPosters[id];
+        return id && !resolvedArtwork[calendarArtworkKey(item)];
       });
       if (unresolved.length === 0) return;
+      const itemsBySeries = new Map<string, CalendarItem[]>();
+      for (const item of unresolved) {
+        const id = item.contentId ?? item.seriesId ?? "";
+        itemsBySeries.set(id, [...(itemsBySeries.get(id) ?? []), item]);
+      }
       void Promise.all(
-        unresolved.map(async (item) => {
-          const id = item.contentId ?? item.seriesId;
-          if (!id) return null;
+        [...itemsBySeries].map(async ([id, seriesItems]) => {
           const meta = await fetchMetaDetail({
             id,
-            contentType: item.metaType ?? "series",
-          }) as { poster?: string; background?: string } | null;
-          const poster = meta?.poster;
-          return poster ? [id, poster] as const : null;
+            contentType: seriesItems[0]?.metaType ?? "series",
+          }) as { poster?: string; videos?: Video[] } | null;
+          return seriesItems.map((item) => {
+            const season = item.seasonNumber ?? item.season;
+            const episode = item.episodeNumber ?? item.episode ?? item.number;
+            const matchedEpisode = meta?.videos?.find((video) =>
+              season != null && episode != null
+                ? video.season === season &&
+                  (video.episode ?? video.number) === episode
+                : !!item.dateIso && !!video.released &&
+                  localDateKeyFromIso(video.released) ===
+                    localDateKeyFromIso(item.dateIso)
+            );
+            const episodePoster = matchedEpisode?.thumbnail;
+            const artwork = episodePoster ?? meta?.poster;
+            return {
+              key: calendarArtworkKey(item),
+              artwork,
+              episode: matchedEpisode
+                ? {
+                  seasonNumber: matchedEpisode.season,
+                  episodeNumber: matchedEpisode.episode ??
+                    matchedEpisode.number,
+                  episodeTitle: matchedEpisode.title ?? matchedEpisode.name,
+                  episodePoster,
+                }
+                : null,
+            };
+          });
         }),
       ).then((entries) => {
         if (!active) return;
-        const posters = entries.filter((
-          entry,
-        ): entry is readonly [string, string] => entry != null);
+        const resolutions = entries.flat();
+        const posters = resolutions.flatMap((entry) =>
+          entry.artwork ? [[entry.key, entry.artwork] as const] : []
+        );
         if (posters.length > 0) {
-          setResolvedSeriesPosters((current) => ({
+          setResolvedArtwork((current) => ({
             ...current,
             ...Object.fromEntries(posters),
+          }));
+        }
+        const episodes = resolutions.flatMap((entry) =>
+          entry.episode ? [[entry.key, entry.episode] as const] : []
+        );
+        if (episodes.length > 0) {
+          setResolvedEpisodes((current) => ({
+            ...current,
+            ...Object.fromEntries(episodes),
           }));
         }
       });
       return () => {
         active = false;
       };
-    }, [visibleItems, resolvedSeriesPosters]);
+    }, [visibleItems, resolvedArtwork]);
+
+    const displayItems = useMemo(
+      () =>
+        visibleItems.map((item) => ({
+          ...item,
+          ...resolvedEpisodes[calendarArtworkKey(item)],
+        })),
+      [visibleItems, resolvedEpisodes],
+    );
+    const itemsByDate = useMemo(() => groupItemsByDate(displayItems), [
+      displayItems,
+    ]);
+    const selectedItems = selectedDateIso
+      ? itemsByDate[selectedDateIso] ?? []
+      : [];
 
     return (
       <div style={styles.screen}>
+        {traktCalendarError && (
+          <div style={{ position: "fixed", top: "1rem", right: "1rem", zIndex: 100 }}>
+            <Toast
+              variant="error"
+              title={t("calendar.trakt_error_title")}
+              message={t("calendar.trakt_error_message")}
+              details={traktCalendarError}
+              detailsLabel={t("player.error_show_details")}
+              detailsHideLabel={t("player.error_hide_details")}
+              onClose={() => setTraktCalendarError(null)}
+            />
+          </div>
+        )}
         <header style={styles.header}>
-          <button
-            style={styles.navBtn}
-            onClick={() => {
-              setMonthStart(shiftMonth(monthStart, -1));
-              setSelectedDateIso(null);
-            }}
-            aria-label={t("calendar.previous_month")}
-          >
-            <ChevronLeft size={21} />
-          </button>
-          <h1 style={styles.title}>{monthTitle(monthStart)}</h1>
-          <div style={styles.actions}>
-            {isRefreshingAirDates && (
-              <span style={styles.refreshingLabel}>
-                {t("calendar.checking_new_episodes")}
-              </span>
-            )}
+          <div />
+          <div style={styles.monthControls}>
             <button
-              style={styles.filterBtn}
-              onClick={() => setShowCompleted((value) => !value)}
-              title={showCompleted
-                ? t("calendar.hide_completed")
-                : t("calendar.show_completed")}
+              style={styles.navBtn}
+              onClick={() => {
+                setMonthStart(shiftMonth(monthStart, -1));
+                setSelectedDateIso(null);
+              }}
+              aria-label={t("calendar.previous_month")}
             >
-              {showCompleted ? <Eye size={16} /> : <EyeOff size={16} />}
+              <ChevronLeft size={21} />
             </button>
+            <label style={styles.monthPicker}>
+              <h1 style={styles.title}>{monthTitle(monthStart)}</h1>
+              <input
+                type="month"
+                value={`${year}-${String(month).padStart(2, "0")}`}
+                aria-label={t("calendar.choose_month")}
+                style={styles.monthInput}
+                onChange={(event) => {
+                  const [nextYear, nextMonth] = event.currentTarget.value
+                    .split("-")
+                    .map(Number);
+                  if (nextYear && nextMonth) {
+                    setMonthStart(new Date(nextYear, nextMonth - 1, 1));
+                    setSelectedDateIso(null);
+                  }
+                }}
+              />
+            </label>
             <button
               style={styles.navBtn}
               onClick={() => {
@@ -223,6 +299,29 @@ export const CalendarScreen = React.memo(
               aria-label={t("calendar.next_month")}
             >
               <ChevronRight size={21} />
+            </button>
+          </div>
+          <div style={styles.actions}>
+            {isRefreshingAirDates && (
+              <span style={styles.refreshingLabel}>
+                {t("calendar.checking_new_episodes")}
+              </span>
+            )}
+            <button
+              style={styles.filterBtn}
+              onClick={() => {
+                const next = !showCompleted;
+                setShowCompleted(next);
+                if (next) setVisibleItems(items);
+              }}
+              title={showCompleted
+                ? t("calendar.hide_completed")
+                : t("calendar.show_completed")}
+              aria-label={showCompleted
+                ? t("calendar.hide_completed")
+                : t("calendar.show_completed")}
+            >
+              {showCompleted ? <Eye size={16} /> : <EyeOff size={16} />}
             </button>
           </div>
         </header>
@@ -269,7 +368,7 @@ export const CalendarScreen = React.memo(
                 }}
               >
                 <CalendarArtwork
-                  src={calendarPoster(dayItems[0], resolvedSeriesPosters)}
+                  src={calendarPoster(dayItems[0], resolvedArtwork)}
                   fallbackSrc={dayItems[0]?.seriesPoster}
                   style={styles.dayBackdrop}
                 />
@@ -365,7 +464,7 @@ export const CalendarScreen = React.memo(
                         style={styles.modalItem}
                       >
                         <CalendarArtwork
-                          src={calendarPoster(item, resolvedSeriesPosters)}
+                          src={calendarPoster(item, resolvedArtwork)}
                           fallbackSrc={item.seriesPoster}
                           style={styles.modalPoster}
                           fallback={
@@ -534,9 +633,13 @@ function calendarPoster(
   resolved: Record<string, string>,
 ): string | undefined {
   if (!item) return undefined;
-  const id = item.contentId ?? item.seriesId;
-  return (id ? resolved[id] : undefined) ?? item.seriesPoster ??
-    item.episodePoster ?? item.poster;
+  return resolved[calendarArtworkKey(item)] ?? item.episodePoster ??
+    item.poster ?? item.seriesPoster;
+}
+
+function calendarArtworkKey(item: CalendarItem): string {
+  const id = item.contentId ?? item.seriesId ?? item.id ?? "";
+  return `${id}:${item.dateIso ?? ""}`;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -558,9 +661,33 @@ const styles: Record<string, React.CSSProperties> = {
   },
   title: {
     margin: 0,
-    fontSize: "1.15rem",
+    fontSize: "1.4rem",
     fontWeight: 800,
     color: "rgba(255,255,255,0.82)",
+    whiteSpace: "nowrap",
+  },
+  monthControls: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.75rem",
+  },
+  monthPicker: {
+    minWidth: "11rem",
+    padding: "0.4rem 0.8rem",
+    position: "relative",
+    display: "grid",
+    placeItems: "center",
+    borderRadius: "0.75rem",
+    cursor: "pointer",
+  },
+  monthInput: {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    opacity: 0,
+    cursor: "pointer",
   },
   actions: {
     justifySelf: "end",
@@ -755,20 +882,24 @@ const styles: Record<string, React.CSSProperties> = {
   modalItem: {
     display: "flex",
     alignItems: "center",
-    gap: "1rem",
-    minHeight: "5.65rem",
+    gap: "1.35rem",
+    minHeight: "6.75rem",
+    padding: "0.75rem",
+    borderRadius: "0.85rem",
+    border: "1px solid rgba(255,255,255,0.055)",
+    background: "rgba(255,255,255,0.025)",
   },
   modalPoster: {
-    width: "4.15rem",
-    height: "5.65rem",
-    borderRadius: "0.35rem",
+    width: "12rem",
+    height: "6.75rem",
+    borderRadius: "0.65rem",
     objectFit: "cover",
     flexShrink: 0,
   },
   modalPosterFallback: {
-    width: "4.15rem",
-    height: "5.65rem",
-    borderRadius: "0.35rem",
+    width: "12rem",
+    height: "6.75rem",
+    borderRadius: "0.65rem",
     background: "rgba(255,255,255,0.06)",
     color: "rgba(255,255,255,0.42)",
     display: "grid",
