@@ -8,7 +8,7 @@ on:
 env:
   NODE_VERSION: "22"
   RUST_VERSION: "stable"
-  LIBMPV_TAG: "latest"
+  LIBMPV_TAG: "v0.41.0-gpu-next.17"
 
 permissions:
   contents: write
