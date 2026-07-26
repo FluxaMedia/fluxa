@@ -103,5 +103,5 @@ export async function dropContinueWatchingItem(
   meta: Meta,
   onDispatch: (actionJson: string) => void | Promise<void>,
 ): Promise<void> {
-  await Promise.resolve(onDispatch(JSON.stringify({ type: 'clearPlaybackProgressRequested', meta })));
+  await Promise.resolve(onDispatch(JSON.stringify({ type: 'clearPlaybackProgressRequested', meta: { ...meta, _dropContinueWatching: true } })));
 }

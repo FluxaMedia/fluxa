@@ -121,19 +121,24 @@ export function ContinueCard({
     if (img?.complete && img.naturalWidth > 0) setImgLoaded(true);
   }, [artworkSrc]);
 
-  const progress = lib.timeOffset && lib.duration
-    ? lib.timeOffset / lib.duration
-    : 0;
-  const isUpNext = meta.type === "series" &&
+  const timeOffset = typeof lib.timeOffset === "number" && Number.isFinite(lib.timeOffset)
+    ? lib.timeOffset
+    : null;
+  const duration = typeof lib.duration === "number" && Number.isFinite(lib.duration) && lib.duration > 0
+    ? lib.duration
+    : null;
+  const hasProgress = timeOffset !== null && duration !== null;
+  const progress = hasProgress ? timeOffset / duration : null;
+  const isUpNext = meta.type === "series" && progress !== null &&
     (progress < 0.005 || progress >= 0.995);
-  const remainingText = !isUpNext && lib.timeOffset && lib.duration
+  const remainingText = !isUpNext && progress !== null
     ? progressDirection === "watched"
       ? remainingFormat === "percent"
         ? t("format.watched_percent", Math.round(progress * 100))
-        : formatWatched(lib.timeOffset)
+        : formatWatched(timeOffset ?? 0)
       : remainingFormat === "percent"
       ? t("format.remaining_percent", Math.round((1 - progress) * 100))
-      : formatRemaining(lib.timeOffset, lib.duration)
+      : formatRemaining(timeOffset ?? 0, duration ?? 0)
     : null;
   const scheduledText = lib.continueWatchingBadge === "scheduledEpisode"
     ? formatReleaseCountdown(lib.newEpisodeReleasedAt)
@@ -225,7 +230,7 @@ export function ContinueCard({
             </div>
           )}
         {isHorizontal && <div style={cwStyles.landscapeShade} />}
-        {!isUpNext && progress > 0 && (
+        {!isUpNext && progress !== null && progress > 0 && (
           <div
             style={isHorizontal
               ? cwStyles.landscapeProgressBg

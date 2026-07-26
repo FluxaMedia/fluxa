@@ -184,6 +184,7 @@ export async function pushMarkWatchedSimkl(
   meta: Record<string, unknown> | undefined,
   token: string,
   clientId: string,
+  watchedAtMs?: number,
 ): Promise<void> {
   const simklHeaders: HeadersInit = {
     'Authorization': `Bearer ${token}`,
@@ -191,7 +192,7 @@ export async function pushMarkWatchedSimkl(
     'User-Agent': `Fluxa Desktop/${_appVersion}`,
   };
   const endpoint = watched ? '/sync/history' : '/sync/history/remove';
-  const body = await coreInvoke<Record<string, unknown>>('simklMarkWatchedBody', JSON.stringify({ videoIds, meta }));
+  const body = await coreInvoke<Record<string, unknown>>('simklMarkWatchedBody', JSON.stringify({ videoIds, meta, watchedAtMs }));
   if (body) {
     await platformFetch(`https://api.simkl.com${endpoint}?client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`, {
       method: 'POST', headers: simklHeaders, body: JSON.stringify(body),

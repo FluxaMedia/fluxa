@@ -16,9 +16,13 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
     while (cursor < items.length) {
       const i = cursor++;
       const item = items[i];
-      if (item.poster || item.background) { results[i] = item; continue; }
       const id = typeof item.id === 'string' ? item.id : '';
       const contentType = typeof item.type === 'string' ? item.type : 'movie';
+      const needsEpisodeMeta = contentType === 'series' &&
+        typeof item.lastEpisodeSeason === 'number' &&
+        typeof item.lastEpisodeNumber === 'number' &&
+        (!item.lastEpisodeName || !item.lastEpisodeThumbnail);
+      if ((item.poster || item.background) && !needsEpisodeMeta) { results[i] = item; continue; }
       if (!id) { results[i] = item; continue; }
       try {
         const meta = await fetchMetaDetail({ id, contentType }) as Record<string, unknown> | null;
@@ -31,7 +35,8 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
           background = tmdbFallback?.background;
         }
         let lastEpisodeThumbnail = typeof item.lastEpisodeThumbnail === 'string' ? item.lastEpisodeThumbnail : undefined;
-        if (!lastEpisodeThumbnail && meta && contentType === 'series' && Array.isArray(meta.videos)) {
+        let lastEpisodeName = typeof item.lastEpisodeName === 'string' ? item.lastEpisodeName : undefined;
+        if (meta && contentType === 'series' && Array.isArray(meta.videos)) {
           const season = typeof item.lastEpisodeSeason === 'number' ? item.lastEpisodeSeason : undefined;
           const epNum = typeof item.lastEpisodeNumber === 'number' ? item.lastEpisodeNumber : undefined;
           if (season != null && epNum != null) {
@@ -39,7 +44,9 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
               (v) => Number(v.season) === season && (Number(v.episode ?? v.number) === epNum),
             );
             const thumb = ep?.thumbnail;
-            if (typeof thumb === 'string') lastEpisodeThumbnail = thumb;
+            if (!lastEpisodeThumbnail && typeof thumb === 'string') lastEpisodeThumbnail = thumb;
+            const name = ep?.name ?? ep?.title;
+            if (!lastEpisodeName && typeof name === 'string' && name.trim()) lastEpisodeName = name;
           }
         }
         results[i] = {
@@ -47,6 +54,7 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
           ...(poster ? { poster } : {}),
           ...(background ? { background } : {}),
           ...(logo ? { logo } : {}),
+          ...(lastEpisodeName ? { lastEpisodeName } : {}),
           ...(lastEpisodeThumbnail ? { lastEpisodeThumbnail } : {}),
         };
       } catch {
@@ -63,7 +71,11 @@ export async function replaceExternalContinueWatching(payload: Record<string, un
   const lib = await loadLibrary();
   const prefs = await loadPrefs();
   const provider = typeof payload.provider === 'string' ? payload.provider : null;
-  const items = Array.isArray(payload.items) ? payload.items : [];
+  const dismissed = (lib.dismissedContinueWatching as Record<string, unknown> | undefined) ?? {};
+  const items = (Array.isArray(payload.items) ? payload.items : []).filter((item) => {
+    const id = item && typeof item === 'object' ? (item as Record<string, unknown>).id : undefined;
+    return typeof id !== 'string' || !dismissed[id];
+  });
   const existing = (lib.externalContinueWatching as Record<string, unknown>[]) ?? [];
   const merged = await coreReplaceExternalContinueWatching(
     JSON.stringify(existing),

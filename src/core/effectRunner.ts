@@ -192,6 +192,7 @@ async function runEffect(
       const metaObj = (p.meta as Record<string, unknown>) ?? {};
       const id = metaObj.id as string | undefined;
       const preserveLastWatched = Boolean(metaObj._preserveLastWatched);
+      const dropContinueWatching = Boolean(metaObj._dropContinueWatching);
       if (id) {
         const progressMap = (lib.progress as Record<string, unknown> | undefined) ?? {};
         delete progressMap[id];
@@ -201,6 +202,9 @@ async function runEffect(
         const extCW = (lib.externalContinueWatching as Record<string, unknown>[] | undefined) ?? [];
         const droppedExternal = extCW.find((item) => item.id === id);
         lib.externalContinueWatching = extCW.filter((item) => item.id !== id);
+        const dismissed = (lib.dismissedContinueWatching as Record<string, string> | undefined) ?? {};
+        if (dropContinueWatching) dismissed[id] = new Date().toISOString();
+        lib.dismissedContinueWatching = dismissed;
         if (droppedExternal) await libraryContinueWatchingDelete(await effectRunnerLibraryKey(), id);
         const lastWatched = (lib.lastWatchedEpisodes as Record<string, unknown> | undefined) ?? {};
         if (preserveLastWatched) {

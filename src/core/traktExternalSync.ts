@@ -158,8 +158,9 @@ export async function pushMarkWatchedTrakt(
   watched: boolean,
   token: string,
   clientId: string,
+  watchedAtMs?: number,
 ): Promise<void> {
-  const body = await coreTraktMarkWatchedBody(JSON.stringify(videoIds));
+  const body = await coreTraktMarkWatchedBody(JSON.stringify({ videoIds, watchedAtMs }));
   if (!body) return;
   const headers = traktHeaders(token, clientId);
   const endpoint = watched ? '/sync/history' : '/sync/history/remove';
