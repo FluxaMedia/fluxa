@@ -77,7 +77,12 @@ export function ProfilePickerSettings({
         <div style={S.packList}>
           {packs.length === 0 ? <p style={S.empty}>{t('profiles.no_avatar_packs')}</p> : packs.map((pack) => (
             <div key={pack.id} style={S.packRow}>
-              <span>{pack.title} · {t('profiles.avatar_pack_count', pack.avatars.length)}</span>
+              <div style={S.packSummary}>
+                <div style={S.packPreview}>
+                  {pack.avatars.slice(0, 6).map((avatar) => <img key={avatar.url} src={avatar.url} alt="" style={S.packPreviewImage} />)}
+                </div>
+                <span>{pack.title} · {t('profiles.avatar_pack_count', pack.avatars.length)}</span>
+              </div>
               <button onClick={() => { const nextPacks = packs.filter((candidate) => candidate.id !== pack.id); setPacks(nextPacks); void save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks }); }} style={S.removeButton} title={t('profiles.remove_pack')}><Trash2 size={16} /></button>
             </div>
           ))}
@@ -100,6 +105,9 @@ const S: Record<string, React.CSSProperties> = {
   secondaryButton: { border: '1px solid rgba(255,255,255,0.12)', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '0.625rem', cursor: 'pointer' },
   packList: { display: 'grid', gap: '0.5rem', marginTop: '1rem' },
   packRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.8)', fontSize: '0.8125rem', padding: '0.625rem 0.75rem', background: 'rgba(255,255,255,0.04)', borderRadius: '0.5rem' },
+  packSummary: { minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' },
+  packPreview: { display: 'flex', overflow: 'hidden', borderRadius: '0.375rem', flexShrink: 0 },
+  packPreviewImage: { width: '2.25rem', height: '2.25rem', objectFit: 'cover', marginLeft: '-0.375rem', border: '1px solid #202020' },
   removeButton: { border: 0, background: 'transparent', color: '#d34a4a', cursor: 'pointer', display: 'flex' },
   empty: { margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem' },
   backButton: { justifySelf: 'start', border: 0, background: 'transparent', color: '#fff', cursor: 'pointer', padding: '0.5rem 0' },

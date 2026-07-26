@@ -238,11 +238,18 @@ export function ProfileForm({
         {avatarPacks.length > 0 && (
           <div>
             <label style={S.fieldLabel}>{t('profiles.avatar_packs')}</label>
-            <div style={S.avatarPackGrid}>
-              {avatarPacks.flatMap((pack) => pack.avatars).map((avatar) => (
-                <button key={avatar.url} onClick={() => setAvatarUrl(avatar.url)} style={{ ...S.packAvatarButton, outline: avatarUrl === avatar.url ? '2px solid #FFFFFF' : 'none' }} title={avatar.name}>
-                  <img src={avatar.url} alt={avatar.name} style={S.packAvatarImage} />
-                </button>
+            <div style={S.avatarPackGroups}>
+              {avatarPacks.map((pack) => (
+                <section key={pack.id}>
+                  <p style={S.packTitle}>{pack.title}</p>
+                  <div style={S.avatarPackGrid}>
+                    {pack.avatars.map((avatar) => (
+                      <button key={avatar.url} onClick={() => setAvatarUrl(avatar.url)} style={{ ...S.packAvatarButton, outline: avatarUrl === avatar.url ? '2px solid #FFFFFF' : 'none' }} title={avatar.name}>
+                        <img src={avatar.url} alt={avatar.name} style={S.packAvatarImage} />
+                      </button>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </div>
@@ -292,7 +299,7 @@ export function ProfileForm({
 
 const S: Record<string, React.CSSProperties> = {
   formShell: { display: 'grid', gridTemplateColumns: 'minmax(13.75rem, 0.75fr) minmax(20rem, 1.25fr)', gap: '0.875rem', alignItems: 'stretch' },
-  previewPanel: { borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.08)', background: '#141414', padding: '2rem 1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 0 },
+  previewPanel: { position: 'sticky', top: '1rem', alignSelf: 'start', height: 'fit-content', boxSizing: 'border-box', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.08)', background: '#141414', padding: '2rem 1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 0 },
   avatarEditButton: { position: 'relative', border: 'none', background: 'transparent', padding: 0, color: '#FFFFFF', cursor: 'pointer', outline: 'none' },
   cameraBadge: { position: 'absolute', right: '-0.5rem', bottom: '-0.5rem', width: '2rem', height: '2rem', borderRadius: '0.5rem', background: '#2C2C2C', border: '0.125rem solid #141414', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.65)' },
   previewName: { margin: '1.25rem 0 0', fontSize: '1.125rem', fontWeight: 600, fontFamily: FONT, letterSpacing: '-0.02em', color: '#FFFFFF' },
@@ -302,8 +309,10 @@ const S: Record<string, React.CSSProperties> = {
   input: { width: '100%', height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', padding: '0 0.8125rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' },
   fieldNote: { margin: '0.375rem 0 0', color: '#FFD280', fontSize: '0.75rem', fontWeight: 400, fontFamily: FONT },
   imageButton: { width: '100%', height: '2.625rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.60)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
-  avatarPackGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(3rem, 1fr))', gap: '0.5rem', marginTop: '0.5rem' },
-  packAvatarButton: { width: '3rem', height: '3rem', padding: 0, border: 0, borderRadius: '0.5rem', background: '#111', overflow: 'hidden', cursor: 'pointer' },
+  avatarPackGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(4rem, 1fr))', gap: '0.625rem', marginTop: '0.5rem' },
+  avatarPackGroups: { display: 'grid', gap: '1rem' },
+  packTitle: { margin: '0.875rem 0 0', color: 'rgba(255,255,255,0.82)', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT },
+  packAvatarButton: { width: '4rem', height: '4rem', padding: 0, border: 0, borderRadius: '0.625rem', background: '#111', overflow: 'hidden', cursor: 'pointer' },
   packAvatarImage: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   actions: { marginTop: 'auto', display: 'flex', gap: '0.5rem' },
   btnSecondary: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
