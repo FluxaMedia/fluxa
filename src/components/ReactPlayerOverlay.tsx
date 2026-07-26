@@ -310,7 +310,6 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
             position > 0.15;
           if (!firstFrameFiredRef.current && onFirstFrame && hasRenderedVideo) {
             firstFrameFiredRef.current = true;
-            sendCmd('set pause no');
             onFirstFrame();
           }
         }
@@ -513,16 +512,22 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
         const hasVideoDimensions =
           (parseFloat(status.width ?? '0') || 0) > 0 &&
           (parseFloat(status.height ?? '0') || 0) > 0;
-        const playbackAdvancing =
+        const renderedVideo =
           status.loaded &&
-          status.pause !== 'yes' &&
+          status.hasVideoTrack &&
+          hasVideoDimensions &&
+          status.voConfigured === 'yes' &&
+          status.framesRendered >= 2 &&
           status.pausedForCache !== 'yes' &&
           pos > 0.15;
-        const renderedVideo = status.hasVideoTrack && hasVideoDimensions && status.voConfigured === 'yes' && status.framesRendered >= 2 && playbackAdvancing;
-        const activeAudioOnlyPlayback = status.trackListReady && !status.hasVideoTrack && playbackAdvancing;
-        if (playbackUrl && status.path === playbackUrl && !status.resuming && (renderedVideo || activeAudioOnlyPlayback)) {
+        const activeAudioOnlyPlayback =
+          status.loaded &&
+          status.trackListReady &&
+          !status.hasVideoTrack &&
+          status.pausedForCache !== 'yes' &&
+          pos > 0.05;
+        if (renderedVideo || activeAudioOnlyPlayback) {
           firstFrameFiredRef.current = true;
-          sendCmd('set pause no');
           onFirstFrame();
         }
       }

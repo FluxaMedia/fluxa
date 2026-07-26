@@ -276,6 +276,8 @@ enum SurfaceCommand {
         total_duration: Option<u64>,
     },
     Hide,
+    PlayerCommand(String),
+    Status(mpsc::Sender<crate::mpv_render::PlayerStatus>),
     SetCursorVisible(bool),
     ShowLoading {
         title: String,
@@ -315,6 +317,20 @@ impl NativePlayerSurface {
     }
     pub fn hide(&self) {
         let _ = self.sender.send(SurfaceCommand::Hide);
+    }
+    pub fn command(&self, command: String) -> Result<(), String> {
+        self.sender
+            .send(SurfaceCommand::PlayerCommand(command))
+            .map_err(|e| format!("surface unavailable: {e}"))
+    }
+    pub fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
+        let (sender, receiver) = mpsc::channel();
+        self.sender
+            .send(SurfaceCommand::Status(sender))
+            .map_err(|e| format!("surface unavailable: {e}"))?;
+        receiver
+            .recv_timeout(Duration::from_millis(250))
+            .map_err(|e| format!("player status unavailable: {e}"))
     }
     pub fn set_cursor_visible(&self, visible: bool) {
         let _ = self.sender.send(SurfaceCommand::SetCursorVisible(visible));
@@ -618,6 +634,22 @@ fn spawn_install_thread(
                             );
                             visible = false;
                             unsafe { ShowWindow(child_hwnd, SW_HIDE) };
+                        }
+                    }
+                    SurfaceCommand::PlayerCommand(command) => {
+                        let state = app.state::<DesktopState>();
+                        let mut renderer = state.player_renderer.lock().unwrap();
+                        if let Some(r) = renderer.as_mut() {
+                            if let Err(error) = r.user_command(&command) {
+                                log::warn!("player surface: command failed ({command}): {error}");
+                            }
+                        }
+                    }
+                    SurfaceCommand::Status(sender) => {
+                        let state = app.state::<DesktopState>();
+                        let renderer = state.player_renderer.lock().unwrap();
+                        if let Some(r) = renderer.as_ref() {
+                            let _ = sender.send(r.status());
                         }
                     }
                     SurfaceCommand::Hide => {

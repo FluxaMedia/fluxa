@@ -2,6 +2,9 @@ use crate::mpv_render::{MpvRenderer, PlayerEvent, PlayerStatus, PlayerTrackOptio
 
 pub trait PlaybackEngine: Send {
     fn load(&mut self, url: &str, start_at: Option<u64>) -> Result<(), String>;
+    fn user_command(&mut self, command: &str) -> Result<(), String> {
+        self.command_string(command)
+    }
     fn command_string(&self, command: &str) -> Result<(), String>;
     fn command_args(&self, args: &[&str]) -> Result<(), String>;
     fn apply_options(&self, options: &[(String, String)]) -> Result<(), String>;
@@ -20,6 +23,9 @@ impl PlaybackEngine for MpvRenderer {
     }
     fn command_string(&self, command: &str) -> Result<(), String> {
         MpvRenderer::command_string(self, command)
+    }
+    fn user_command(&mut self, command: &str) -> Result<(), String> {
+        MpvRenderer::user_command(self, command)
     }
     fn command_args(&self, args: &[&str]) -> Result<(), String> {
         MpvRenderer::command_args(self, args)

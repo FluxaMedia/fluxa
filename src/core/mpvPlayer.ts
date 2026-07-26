@@ -61,6 +61,7 @@ export type EmbeddedMpvStatus = {
   cacheBufferingState?: string | null;
   fileFormat?: string | null;
   framesRendered: number;
+  firstFramePresented: boolean;
   hasVideoTrack: boolean;
   trackListReady: boolean;
   resuming: boolean;

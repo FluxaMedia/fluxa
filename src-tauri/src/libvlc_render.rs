@@ -546,6 +546,7 @@ impl PlaybackEngine for LibvlcPlayer {
             cache_buffering_state: None,
             file_format: None,
             frames_rendered: 0,
+            first_frame_presented: has_video && state == LIBVLC_PLAYING,
             has_video_track: has_video,
             track_list_ready: state == LIBVLC_PLAYING || state == LIBVLC_PAUSED || length_ms > 0,
             resuming: false,

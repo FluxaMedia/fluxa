@@ -197,6 +197,7 @@ pub struct MpvRenderer {
     loaded: bool,
     log_ring: std::collections::VecDeque<(c_int, String)>,
     frames_rendered: u64,
+    first_frame_presented: bool,
     pending_unpause: bool,
     pending_seek_seconds: Option<f64>,
     waiting_for_seek_restart: bool,
@@ -264,6 +265,7 @@ pub struct PlayerStatus {
     pub cache_buffering_state: Option<String>,
     pub file_format: Option<String>,
     pub frames_rendered: u64,
+    pub first_frame_presented: bool,
     pub has_video_track: bool,
     pub track_list_ready: bool,
     pub resuming: bool,
@@ -358,6 +360,7 @@ impl MpvRenderer {
             loaded: false,
             log_ring: std::collections::VecDeque::new(),
             frames_rendered: 0,
+            first_frame_presented: false,
             pending_unpause: false,
             pending_seek_seconds: None,
             waiting_for_seek_restart: false,
@@ -437,6 +440,7 @@ impl MpvRenderer {
             loaded: false,
             log_ring: std::collections::VecDeque::new(),
             frames_rendered: 0,
+            first_frame_presented: false,
             pending_unpause: false,
             pending_seek_seconds: None,
             waiting_for_seek_restart: false,
@@ -482,6 +486,7 @@ impl MpvRenderer {
         self.current_url = Some(url.to_string());
         self.log_ring.clear();
         self.frames_rendered = 0;
+        self.first_frame_presented = false;
         self.pending_unpause = true;
         self.pending_seek_seconds = start_at.filter(|&s| s > 0).map(|s| s as f64);
         self.waiting_for_seek_restart = false;
@@ -510,8 +515,26 @@ impl MpvRenderer {
         Ok(())
     }
 
+    pub fn first_frame_presented(&self) -> bool {
+        self.first_frame_presented
+    }
+
     pub fn seek_to(&self, time_pos: f64) -> Result<(), String> {
         self.command_string(&format!("seek {time_pos:.3} absolute+exact"))
+    }
+
+    /// Dispatch a command originating from the UI. Startup resume/unpause work
+    /// must never run later and overwrite an explicit user action.
+    pub fn user_command(&mut self, command: &str) -> Result<(), String> {
+        let command = command.trim();
+        if command == "cycle pause" || command.starts_with("set pause ") {
+            self.pending_unpause = false;
+        }
+        if command.starts_with("seek ") || command.starts_with("set time-pos ") {
+            self.pending_seek_seconds = None;
+            self.waiting_for_seek_restart = false;
+        }
+        self.command_string(command)
     }
 
     pub fn render_thumbnail(&mut self, width: i32, height: i32) -> Result<Vec<u8>, String> {
@@ -801,6 +824,9 @@ impl MpvRenderer {
         unsafe {
             (self.api.mpv_render_context_report_swap)(self.render_context);
         }
+        if self.frame_ready_to_restore_audio {
+            self.first_frame_presented = true;
+        }
         self.restore_audio_after_first_presented_frame();
     }
 
@@ -1075,6 +1101,7 @@ impl MpvRenderer {
             cache_buffering_state: self.get_string_property("cache-buffering-state"),
             file_format: self.get_string_property("file-format"),
             frames_rendered: self.frames_rendered,
+            first_frame_presented: self.first_frame_presented,
             has_video_track,
             track_list_ready,
             resuming: self.pending_seek_seconds.is_some() || self.waiting_for_seek_restart,

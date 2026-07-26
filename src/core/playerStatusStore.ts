@@ -34,7 +34,7 @@ export function subscribePlayerStatus(listener: Listener): () => void {
   listeners.add(listener);
   if (timer === null) {
     void poll();
-    timer = window.setInterval(() => { void poll(); }, 500);
+    timer = window.setInterval(() => { void poll(); }, 100);
   }
   return () => {
     listeners.delete(listener);

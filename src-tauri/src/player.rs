@@ -119,6 +119,39 @@ where
     Err("player renderer busy".to_string())
 }
 
+fn with_renderer_retry_mut<T, F>(
+    state: &DesktopState,
+    attempts: usize,
+    mut f: F,
+) -> Result<Option<T>, String>
+where
+    F: FnMut(&mut dyn PlaybackEngine) -> Result<T, String>,
+{
+    let engine = *state.active_player_engine.lock().unwrap();
+    for _ in 0..attempts {
+        match engine {
+            PlayerEngine::Mpv => {
+                if let Ok(mut guard) = state.player_renderer.try_lock() {
+                    if let Some(renderer) = guard.as_mut() {
+                        return f(renderer).map(Some);
+                    }
+                    return Ok(None);
+                }
+            }
+            PlayerEngine::Vlc => {
+                if let Ok(mut guard) = state.player_renderer_vlc.try_lock() {
+                    if let Some(renderer) = guard.as_mut() {
+                        return f(renderer).map(Some);
+                    }
+                    return Ok(None);
+                }
+            }
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    Err("player renderer busy".to_string())
+}
+
 #[tauri::command]
 pub async fn player_init(app: AppHandle, state: State<'_, DesktopState>) -> Result<(), String> {
     log::info!("player_init: start");
@@ -546,11 +579,17 @@ pub fn player_get_anime4k_enabled(state: State<DesktopState>) -> bool {
 }
 
 #[tauri::command]
-pub fn player_command(state: State<DesktopState>, command: String) -> Result<(), String> {
+pub fn player_command(_app: AppHandle, state: State<DesktopState>, command: String) -> Result<(), String> {
     if command == "stop" {
         *state.eof_next_fired.lock().unwrap() = true;
     }
-    match with_renderer_retry(&state, 60, |renderer| renderer.command_string(&command)) {
+    #[cfg(target_os = "windows")]
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+            return surface.command(command);
+        }
+    }
+    match with_renderer_retry_mut(&state, 60, |renderer| renderer.user_command(&command)) {
         Ok(Some(())) => Ok(()),
         Ok(None) => Err("player renderer is not initialized".to_string()),
         Err(e) => Err(e),
@@ -672,6 +711,12 @@ pub fn player_status(
                     }
                 }
             }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+            return surface.status();
         }
     }
     match with_renderer_retry(&state, 80, |renderer| Ok(renderer.status())) {
