@@ -42,10 +42,7 @@ const VK_QUEUE_GRAPHICS_BIT: u32 = 0x1;
 const VK_IMAGE_USAGE_TRANSFER_DST_BIT: u32 = 0x2;
 const VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT: u32 = 0x10;
 const VK_FORMAT_B8G8R8A8_UNORM: i32 = 44;
-const VK_FORMAT_B8G8R8A8_SRGB: i32 = 50;
-const VK_FORMAT_R16G16B16A16_SFLOAT: i32 = 97;
 const VK_COLOR_SPACE_SRGB_NONLINEAR_KHR: i32 = 0;
-const VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT: i32 = 1000104002;
 const VK_SHARING_MODE_EXCLUSIVE: i32 = 0;
 const VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR: u32 = 0x1;
 const VK_PRESENT_MODE_MAILBOX_KHR: i32 = 1;
@@ -427,7 +424,6 @@ struct VkFns {
     get_physical_device_surface_present_modes_khr: PfnGetPhysicalDeviceSurfacePresentModesKHR,
     destroy_surface_khr: PfnDestroySurfaceKHR,
     destroy_device: PfnDestroyDevice,
-    get_device_queue: PfnGetDeviceQueue,
     create_swapchain_khr: PfnCreateSwapchainKHR,
     destroy_swapchain_khr: PfnDestroySwapchainKHR,
     get_swapchain_images_khr: PfnGetSwapchainImagesKHR,
@@ -826,7 +822,6 @@ impl VulkanContext {
             get_physical_device_surface_present_modes_khr: get_surface_present_modes_khr,
             destroy_surface_khr,
             destroy_device,
-            get_device_queue,
             create_swapchain_khr,
             destroy_swapchain_khr,
             get_swapchain_images_khr,

@@ -11,6 +11,7 @@ import { saveAddons } from '../core/libraryOps';
 import { nuvioPushProfiles } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
 import type { AddonDescriptor, UserProfile } from '../core/types';
+import type { ProfileAvatarPack } from '../core/profileAvatarPacks';
 import { t } from '../i18n';
 
 const FONT = "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
@@ -93,11 +94,13 @@ export function AvatarPreview({ profile, size, circular }: { profile: UserProfil
 export function ProfileForm({
   existing,
   allProfiles,
+  avatarPacks,
   onSaved,
   onCancel,
 }: {
   existing: UserProfile | null;
   allProfiles: UserProfile[];
+  avatarPacks: ProfileAvatarPack[];
   onSaved: (updated: UserProfile[]) => void;
   onCancel: () => void;
 }) {
@@ -232,6 +235,19 @@ export function ProfileForm({
           {t('profiles.choose_image')}
         </button>
 
+        {avatarPacks.length > 0 && (
+          <div>
+            <label style={S.fieldLabel}>{t('profiles.avatar_packs')}</label>
+            <div style={S.avatarPackGrid}>
+              {avatarPacks.flatMap((pack) => pack.avatars).map((avatar) => (
+                <button key={avatar.url} onClick={() => setAvatarUrl(avatar.url)} style={{ ...S.packAvatarButton, outline: avatarUrl === avatar.url ? '2px solid #FFFFFF' : 'none' }} title={avatar.name}>
+                  <img src={avatar.url} alt={avatar.name} style={S.packAvatarImage} />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <label style={S.fieldLabel} htmlFor="profile-pin">{t('profiles.pin_lock')}</label>
           <input
@@ -286,6 +302,9 @@ const S: Record<string, React.CSSProperties> = {
   input: { width: '100%', height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', padding: '0 0.8125rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' },
   fieldNote: { margin: '0.375rem 0 0', color: '#FFD280', fontSize: '0.75rem', fontWeight: 400, fontFamily: FONT },
   imageButton: { width: '100%', height: '2.625rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.60)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
+  avatarPackGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(3rem, 1fr))', gap: '0.5rem', marginTop: '0.5rem' },
+  packAvatarButton: { width: '3rem', height: '3rem', padding: 0, border: 0, borderRadius: '0.5rem', background: '#111', overflow: 'hidden', cursor: 'pointer' },
+  packAvatarImage: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   actions: { marginTop: 'auto', display: 'flex', gap: '0.5rem' },
   btnSecondary: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
   btnPrimary: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', border: 'none', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT, transition: 'background 0.15s, color 0.15s' },

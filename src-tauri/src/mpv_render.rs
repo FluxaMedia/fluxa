@@ -1508,56 +1508,6 @@ type GlGetIntegerv = unsafe extern "C" fn(pname: c_uint, params: *mut c_int);
 #[cfg(target_os = "linux")]
 const GL_DRAW_FRAMEBUFFER_BINDING: c_uint = 0x8CA6;
 
-/// Read the current OpenGL draw framebuffer as RGBA pixels (bottom-to-top row order).
-/// Must be called while a GL context is current (i.e. inside GLArea's render callback).
-/// Returns width × height × 4 bytes, or None if GL is unavailable.
-#[cfg(target_os = "linux")]
-pub fn read_gl_pixels_rgba(w: i32, h: i32) -> Option<Vec<u8>> {
-    type GlReadPixels = unsafe extern "C" fn(
-        x: c_int,
-        y: c_int,
-        width: c_int,
-        height: c_int,
-        format: c_uint,
-        ty: c_uint,
-        data: *mut c_void,
-    );
-    const GL_RGBA: c_uint = 0x1908;
-    const GL_UNSIGNED_BYTE: c_uint = 0x1401;
-
-    let Ok(name) = CString::new("glReadPixels") else {
-        return None;
-    };
-    let ptr = unsafe { get_gl_proc_address(ptr::null_mut(), name.as_ptr()) };
-    if ptr.is_null() {
-        return None;
-    }
-    let read_pixels: GlReadPixels = unsafe { std::mem::transmute(ptr) };
-    let mut buf = vec![0u8; (w * h * 4) as usize];
-    unsafe {
-        read_pixels(
-            0,
-            0,
-            w,
-            h,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            buf.as_mut_ptr() as *mut c_void,
-        )
-    };
-
-    // OpenGL fills rows bottom-to-top; flip to top-to-bottom for display
-    let stride = (w * 4) as usize;
-    let rows = h as usize;
-    for row in 0..(rows / 2) {
-        let mirror = rows - 1 - row;
-        for col in 0..stride {
-            buf.swap(row * stride + col, mirror * stride + col);
-        }
-    }
-    Some(buf)
-}
-
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 mod platform_gl;
 

@@ -26,7 +26,6 @@ const WL_DISPLAY_GET_REGISTRY: u32 = 1;
 const WL_REGISTRY_BIND: u32 = 0;
 const WL_COMPOSITOR_CREATE_SURFACE: u32 = 0;
 const WL_SUBCOMPOSITOR_GET_SUBSURFACE: u32 = 1;
-const WL_SUBSURFACE_SET_POSITION: u32 = 1;
 const WL_SUBSURFACE_PLACE_BELOW: u32 = 3;
 const WL_SUBSURFACE_SET_DESYNC: u32 = 5;
 const WL_SURFACE_ATTACH: u32 = 1;
@@ -59,8 +58,6 @@ type PfnMarshalBind = unsafe extern "C" fn(
 ) -> *mut c_void;
 type PfnMarshalNoArgs =
     unsafe extern "C" fn(*mut c_void, u32, *const c_void, u32, u32) -> *mut c_void;
-type PfnMarshalTwoI32Args =
-    unsafe extern "C" fn(*mut c_void, u32, *const c_void, u32, u32, i32, i32) -> *mut c_void;
 type PfnMarshalOneObjArg =
     unsafe extern "C" fn(*mut c_void, u32, *const c_void, u32, u32, *mut c_void) -> *mut c_void;
 type PfnMarshalAttach = unsafe extern "C" fn(
@@ -117,7 +114,6 @@ struct WaylandFns {
     marshal_new_two_obj_args: PfnMarshalNewTwoObjArgs,
     marshal_bind: PfnMarshalBind,
     marshal_no_args: PfnMarshalNoArgs,
-    marshal_two_i32_args: PfnMarshalTwoI32Args,
     marshal_one_obj_arg: PfnMarshalOneObjArg,
     marshal_attach: PfnMarshalAttach,
     proxy_add_listener: PfnProxyAddListener,
@@ -143,7 +139,6 @@ impl WaylandFns {
             marshal_new_two_obj_args: sym!("wl_proxy_marshal_flags"),
             marshal_bind: sym!("wl_proxy_marshal_flags"),
             marshal_no_args: sym!("wl_proxy_marshal_flags"),
-            marshal_two_i32_args: sym!("wl_proxy_marshal_flags"),
             marshal_one_obj_arg: sym!("wl_proxy_marshal_flags"),
             marshal_attach: sym!("wl_proxy_marshal_flags"),
             proxy_add_listener: sym!("wl_proxy_add_listener"),
@@ -193,7 +188,7 @@ impl VideoSubsurface {
                 wl_display,
                 WL_DISPLAY_GET_REGISTRY,
                 registry_iface,
-                unsafe { (fns.proxy_get_version)(wl_display) },
+                (fns.proxy_get_version)(wl_display),
                 0,
                 ptr::null(),
             )
@@ -334,32 +329,6 @@ impl VideoSubsurface {
 
     pub fn wl_surface(&self) -> *mut c_void {
         self.surface
-    }
-
-    pub fn set_position(&self, x: i32, y: i32) {
-        unsafe {
-            (self.fns.marshal_two_i32_args)(
-                self.subsurface,
-                WL_SUBSURFACE_SET_POSITION,
-                ptr::null(),
-                (self.fns.proxy_get_version)(self.subsurface),
-                0,
-                x,
-                y,
-            );
-        }
-    }
-
-    pub fn commit(&self) {
-        unsafe {
-            (self.fns.marshal_no_args)(
-                self.surface,
-                WL_SURFACE_COMMIT,
-                ptr::null(),
-                (self.fns.proxy_get_version)(self.surface),
-                0,
-            );
-        }
     }
 
     pub fn hide(&self) {

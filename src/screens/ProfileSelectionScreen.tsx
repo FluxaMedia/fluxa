@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2, UserRound, X } from 'lucide-react';
+import { Pencil, Plus, Settings, Trash2, UserRound, X } from 'lucide-react';
 import { deleteProfile, loadProfiles, profileColor, profileInitials, setActiveProfileId } from '../core/profiles';
 import { nuvioDeleteProfileData, nuvioPushProfiles } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
@@ -8,6 +8,8 @@ import { colors } from '../theme';
 import { t } from '../i18n';
 import { ProfileForm, AvatarPreview } from './ProfileForm';
 import { PinPrompt } from '../components/PinPrompt';
+import { loadProfilePickerSettings, type ProfilePickerSettings } from '../core/profileAvatarPacks';
+import { ProfilePickerSettings as ProfilePickerSettingsView } from './ProfilePickerSettings';
 
 interface Props {
   onProfileSelected: (profile: UserProfile) => void;
@@ -16,12 +18,14 @@ interface Props {
 
 export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }: Props) {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
-  const [mode, setMode] = useState<'select' | 'create' | 'edit'>('select');
+  const [mode, setMode] = useState<'select' | 'create' | 'edit' | 'settings'>('select');
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
   const [pinProfile, setPinProfile] = useState<UserProfile | null>(null);
+  const [pickerSettings, setPickerSettings] = useState<ProfilePickerSettings>({ avatarPacks: [] });
 
   useEffect(() => {
     loadProfiles().then(setProfiles);
+    loadProfilePickerSettings().then(setPickerSettings);
   }, []);
 
   const handleSelect = async (profile: UserProfile) => {
@@ -67,26 +71,37 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
   };
 
   const showForm = mode === 'create' || mode === 'edit';
+  const isSettings = mode === 'settings';
 
   return (
-    <div style={S.root}>
+    <div style={{ ...S.root, ...(pickerSettings.backgroundUrl ? { backgroundImage: `linear-gradient(rgba(12,12,12,0.78), rgba(12,12,12,0.88)), url(${pickerSettings.backgroundUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}) }}>
       <div style={S.topBar}>
         <div>
           <p style={S.logo}>fluxa</p>
           <p style={S.kicker}>{t('app.desktop')}</p>
         </div>
-        {showForm && (
+        {(showForm || isSettings) ? (
           <button style={S.closeButton} onClick={() => { setMode('select'); setEditingProfile(null); }} aria-label={t('common.close')}>
             <X size={20} />
+          </button>
+        ) : (
+          <button style={S.closeButton} onClick={() => setMode('settings')} aria-label={t('profiles.picker_settings')} title={t('profiles.picker_settings')}>
+            <Settings size={19} />
           </button>
         )}
       </div>
 
-      <main style={showForm ? S.main : S.mainSelect}>
+      <main style={showForm || isSettings ? S.main : S.mainSelect}>
         {showForm ? (
           <section style={S.hero}>
             <p style={S.eyebrow}>{t('profiles.settings')}</p>
             <h1 style={S.title}>{editingProfile ? t('profiles.edit') : t('profiles.create_new')}</h1>
+            <p style={S.subtitle}>{t('profiles.form_subtitle')}</p>
+          </section>
+        ) : isSettings ? (
+          <section style={S.hero}>
+            <p style={S.eyebrow}>{t('profiles.settings')}</p>
+            <h1 style={S.title}>{t('profiles.picker_settings')}</h1>
             <p style={S.subtitle}>{t('profiles.form_subtitle')}</p>
           </section>
         ) : (
@@ -112,9 +127,14 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
           <ProfileForm
             existing={editingProfile}
             allProfiles={profiles}
+            avatarPacks={pickerSettings.avatarPacks}
             onSaved={handleSaved}
             onCancel={() => { setMode('select'); setEditingProfile(null); }}
           />
+        )}
+
+        {isSettings && (
+          <ProfilePickerSettingsView settings={pickerSettings} onSaved={setPickerSettings} onBack={() => setMode('select')} />
         )}
       </main>
 

@@ -369,17 +369,24 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
   const apiKey = prefString(prefs, 'tmdbApiKey');
   const omdbApiKey = prefString(prefs, 'omdbApiKey');
   const fanartApiKey = prefString(prefs, 'fanartApiKey');
+  const requestedSource = String(payload.similarTitlesSource ?? '');
+  const source = ['auto', 'trakt', 'simkl', 'tmdb'].includes(requestedSource)
+    ? requestedSource
+    : prefString(prefs, 'similarTitlesSource', 'auto');
+  const recommendationsEnabled = prefBool(prefs, 'tmdbRecommendationsEnabled', true);
+  const similarEnabled = prefBool(prefs, 'tmdbSimilarResultsEnabled', true);
+  const shouldFetchSimilar = source !== 'tmdb' || recommendationsEnabled || similarEnabled;
 
   const [similarItems, trailers, omdbRatings, fanartArtwork] = await Promise.all([
-    (prefBool(prefs, 'tmdbRecommendationsEnabled', true) || prefBool(prefs, 'tmdbSimilarResultsEnabled', true))
+    shouldFetchSimilar
       ? fetchSimilarItems({
           contentType,
           id,
           language,
           apiKey,
-          source: prefString(prefs, 'similarTitlesSource', 'auto'),
-          recommendationsEnabled: prefBool(prefs, 'tmdbRecommendationsEnabled', true),
-          similarEnabled: prefBool(prefs, 'tmdbSimilarResultsEnabled', true),
+          source,
+          recommendationsEnabled,
+          similarEnabled,
         })
       : Promise.resolve([]),
     prefBool(prefs, 'tmdbTrailersEnabled', true)

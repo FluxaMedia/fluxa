@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, BookmarkCheck, CheckCircle2, Circle, Film, Maximize2, Volume2, VolumeX, XCircle } from 'lucide-react';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { MovieCard } from '../MovieCard';
-import { t } from '../../i18n';
+import { getLanguage, t } from '../../i18n';
 import type { DetailState, LibraryItem, Meta, MetaLink, Stream, Trailer, Video } from '../../core/types';
 import type { posterPrefsFromState } from '../../core/posterPrefs';
 import { MS, S, spinnerStyle } from './detailStyles';
@@ -107,7 +107,13 @@ export function ModernDetailLayout({
   onToggleWatchlist, onToggleCompleted, onToggleDropped, onBgError,
 }: ModernDetailProps) {
   const [activeTab, setActiveTab] = useState<'episodes' | 'related' | 'details'>(() => isSeries ? 'episodes' : 'details');
+  const [similarSource, setSimilarSource] = useState('auto');
   const [prevSeasonDialog, setPrevSeasonDialog] = useState<{ season: number; unwatchedPrev: number[] } | null>(null);
+
+  const changeSimilarSource = (source: string) => {
+    setSimilarSource(source);
+    onDispatch(JSON.stringify({ type: 'detailSecondaryRequested', contentType: meta.type, id: meta.id, language: getLanguage(), similarTitlesSource: source }));
+  };
 
   const { seasonWatchedMap, dispatchMarkSeason, toggleEpisodeWatched } = useSeasonWatched({
     meta, displayMeta, episodes, seasonNumbers, watchedMap, onDispatch,
@@ -581,6 +587,15 @@ export function ModernDetailLayout({
 
               {activeTab === 'related' && (
                 <div style={{ ...MS.relatedSection, minHeight: '12.5rem' }}>
+                  <label style={MS.similarSourceLabel}>
+                    {t('detail.similar_source')}
+                    <select value={similarSource} onChange={(event) => changeSimilarSource(event.target.value)} style={MS.similarSourceSelect}>
+                      <option value="auto">{t('detail.similar_source_auto')}</option>
+                      <option value="trakt">{t('detail.similar_source_trakt')}</option>
+                      <option value="simkl">{t('detail.similar_source_simkl')}</option>
+                      <option value="tmdb">{t('detail.similar_source_tmdb')}</option>
+                    </select>
+                  </label>
                   {similarItems.length === 0 ? (
                     <p style={MS.episodeCount}>{t('auto.no_similar_titles')}</p>
                   ) : (
@@ -637,6 +652,15 @@ export function ModernDetailLayout({
 
               {(activeTab === 'related' || activeTab === 'episodes') && (
                 <div style={{ ...MS.relatedSection, minHeight: '12.5rem' }}>
+                  <label style={MS.similarSourceLabel}>
+                    {t('detail.similar_source')}
+                    <select value={similarSource} onChange={(event) => changeSimilarSource(event.target.value)} style={MS.similarSourceSelect}>
+                      <option value="auto">{t('detail.similar_source_auto')}</option>
+                      <option value="trakt">{t('detail.similar_source_trakt')}</option>
+                      <option value="simkl">{t('detail.similar_source_simkl')}</option>
+                      <option value="tmdb">{t('detail.similar_source_tmdb')}</option>
+                    </select>
+                  </label>
                   {similarItems.length === 0 ? (
                     <p style={MS.episodeCount}>{t('auto.no_similar_titles')}</p>
                   ) : (

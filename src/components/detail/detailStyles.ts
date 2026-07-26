@@ -52,6 +52,8 @@ export const S: Record<string, React.CSSProperties> = {
   similarSection: { position: 'relative', zIndex: 1, padding: '0.5rem 0 1.875rem' },
   similarTitle: { color: '#FFFFFF', fontSize: '1.125rem', lineHeight: '1.5rem', fontWeight: 900, margin: '0 0 0.875rem' },
   similarRow: { display: 'flex', gap: '1rem', overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', padding: '0.625rem 0 1.5rem' },
+  similarSourceLabel: { display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end', marginBottom: '1rem', color: 'rgba(255,255,255,0.58)', fontSize: '0.75rem', fontWeight: 600 },
+  similarSourceSelect: { border: '1px solid rgba(255,255,255,0.16)', borderRadius: '0.375rem', background: 'rgba(255,255,255,0.08)', color: '#FFFFFF', padding: '0.375rem 0.5rem', font: 'inherit' },
   actionBar: { flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: `0.875rem 2.125rem 1.125rem ${NAV_RAIL_WIDTH + 2.625}rem`, borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0A0B14' },
   playBtn: { display: 'inline-flex', alignItems: 'center', height: '2.625rem', minWidth: '6.875rem', background: '#FFFFFF', color: '#000000', border: 'none', borderRadius: '0.625rem', fontSize: '0.875rem', fontWeight: 900, cursor: 'pointer', paddingLeft: '1.125rem', paddingRight: '1.125rem', flexShrink: 0 },
   secondaryBtn: { display: 'inline-flex', alignItems: 'center', height: '2.625rem', padding: '0 1rem', background: 'transparent', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '0.625rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0, transition: 'background 0.15s' },

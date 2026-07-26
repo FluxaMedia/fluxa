@@ -10,9 +10,7 @@ use std::sync::{Arc, Mutex};
 const LIBVLC_NOTHING_SPECIAL: c_int = 0;
 const LIBVLC_PLAYING: c_int = 3;
 const LIBVLC_PAUSED: c_int = 4;
-const LIBVLC_STOPPED: c_int = 5;
 const LIBVLC_ENDED: c_int = 6;
-const LIBVLC_ERROR: c_int = 7;
 
 const LIBVLC_MEDIA_PLAYER_END_REACHED: c_int = 265;
 const LIBVLC_MEDIA_PLAYER_ENCOUNTERED_ERROR: c_int = 266;
@@ -49,19 +47,12 @@ type LibvlcMediaPlayerGetTime = unsafe extern "C" fn(*mut c_void) -> i64;
 type LibvlcMediaPlayerSetTime = unsafe extern "C" fn(*mut c_void, i64);
 type LibvlcMediaPlayerGetLength = unsafe extern "C" fn(*mut c_void) -> i64;
 type LibvlcMediaPlayerGetPosition = unsafe extern "C" fn(*mut c_void) -> f32;
-type LibvlcMediaPlayerSetPosition = unsafe extern "C" fn(*mut c_void, f32);
-type LibvlcAudioSetVolume = unsafe extern "C" fn(*mut c_void, c_int) -> c_int;
 type LibvlcAudioGetVolume = unsafe extern "C" fn(*mut c_void) -> c_int;
-type LibvlcAudioSetMute = unsafe extern "C" fn(*mut c_void, c_int);
 type LibvlcAudioGetMute = unsafe extern "C" fn(*mut c_void) -> c_int;
 type LibvlcMediaPlayerAddSlave = unsafe extern "C" fn(*mut c_void, c_int, *const c_char, c_int) -> c_int;
-type LibvlcVideoGetSpuCount = unsafe extern "C" fn(*mut c_void) -> c_int;
 type LibvlcVideoGetSpu = unsafe extern "C" fn(*mut c_void) -> c_int;
-type LibvlcVideoSetSpu = unsafe extern "C" fn(*mut c_void, c_int) -> c_int;
 type LibvlcVideoGetSpuDescription = unsafe extern "C" fn(*mut c_void) -> *mut LibvlcTrackDescription;
-type LibvlcAudioGetTrackCount = unsafe extern "C" fn(*mut c_void) -> c_int;
 type LibvlcAudioGetTrack = unsafe extern "C" fn(*mut c_void) -> c_int;
-type LibvlcAudioSetTrack = unsafe extern "C" fn(*mut c_void, c_int) -> c_int;
 type LibvlcAudioGetTrackDescription = unsafe extern "C" fn(*mut c_void) -> *mut LibvlcTrackDescription;
 type LibvlcTrackDescriptionListRelease = unsafe extern "C" fn(*mut LibvlcTrackDescription);
 type LibvlcMediaPlayerHasVout = unsafe extern "C" fn(*mut c_void) -> c_int;
@@ -95,19 +86,12 @@ struct VlcApi {
     media_player_set_time: LibvlcMediaPlayerSetTime,
     media_player_get_length: LibvlcMediaPlayerGetLength,
     media_player_get_position: LibvlcMediaPlayerGetPosition,
-    media_player_set_position: LibvlcMediaPlayerSetPosition,
-    audio_set_volume: LibvlcAudioSetVolume,
     audio_get_volume: LibvlcAudioGetVolume,
-    audio_set_mute: LibvlcAudioSetMute,
     audio_get_mute: LibvlcAudioGetMute,
     media_player_add_slave: LibvlcMediaPlayerAddSlave,
-    video_get_spu_count: LibvlcVideoGetSpuCount,
     video_get_spu: LibvlcVideoGetSpu,
-    video_set_spu: LibvlcVideoSetSpu,
     video_get_spu_description: LibvlcVideoGetSpuDescription,
-    audio_get_track_count: LibvlcAudioGetTrackCount,
     audio_get_track: LibvlcAudioGetTrack,
-    audio_set_track: LibvlcAudioSetTrack,
     audio_get_track_description: LibvlcAudioGetTrackDescription,
     track_description_list_release: LibvlcTrackDescriptionListRelease,
     media_player_has_vout: LibvlcMediaPlayerHasVout,
@@ -156,19 +140,12 @@ impl VlcApi {
                 media_player_set_time: sym!(b"libvlc_media_player_set_time\0"),
                 media_player_get_length: sym!(b"libvlc_media_player_get_length\0"),
                 media_player_get_position: sym!(b"libvlc_media_player_get_position\0"),
-                media_player_set_position: sym!(b"libvlc_media_player_set_position\0"),
-                audio_set_volume: sym!(b"libvlc_audio_set_volume\0"),
                 audio_get_volume: sym!(b"libvlc_audio_get_volume\0"),
-                audio_set_mute: sym!(b"libvlc_audio_set_mute\0"),
                 audio_get_mute: sym!(b"libvlc_audio_get_mute\0"),
                 media_player_add_slave: sym!(b"libvlc_media_player_add_slave\0"),
-                video_get_spu_count: sym!(b"libvlc_video_get_spu_count\0"),
                 video_get_spu: sym!(b"libvlc_video_get_spu\0"),
-                video_set_spu: sym!(b"libvlc_video_set_spu\0"),
                 video_get_spu_description: sym!(b"libvlc_video_get_spu_description\0"),
-                audio_get_track_count: sym!(b"libvlc_audio_get_track_count\0"),
                 audio_get_track: sym!(b"libvlc_audio_get_track\0"),
-                audio_set_track: sym!(b"libvlc_audio_set_track\0"),
                 audio_get_track_description: sym!(b"libvlc_audio_get_track_description\0"),
                 track_description_list_release: sym!(b"libvlc_track_description_list_release\0"),
                 media_player_has_vout: sym!(b"libvlc_media_player_has_vout\0"),
