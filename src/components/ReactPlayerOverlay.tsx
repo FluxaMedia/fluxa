@@ -586,7 +586,8 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
           flashFeedback('seekFwd', t('player.skipped'));
           setActiveSkip(null);
         } else {
-          setActiveSkip(seg ? { label: skipLabelForType(seg.type), startMs: seg.startTime, endMs: seg.endTime } : null);
+          const outroEndsPlayback = seg?.type === 'outro' && dur > 0 && seg.endTime >= dur * 1000 - 500;
+          setActiveSkip(seg && !outroEndsPlayback ? { label: skipLabelForType(seg.type), startMs: seg.startTime, endMs: seg.endTime, type: seg.type } : null);
         }
       }
       if (seg && skipFillRef.current) {
@@ -595,8 +596,9 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
         skipFillRef.current.style.width = `${(skipFrac * 100).toFixed(2)}%`;
       }
 
+      const outroEndsPlayback = seg?.type === 'outro' && dur > 0 && seg.endTime >= dur * 1000 - 500;
       setShowNextEpCard((prev) => {
-        const next = dur > 0 && !!nextEpSubtitle && !nextEpDismissed && (pos / dur) * 100 >= nextEpThreshold;
+        const next = dur > 0 && !!nextEpSubtitle && !nextEpDismissed && (outroEndsPlayback || (pos / dur) * 100 >= nextEpThreshold);
         return prev === next ? prev : next;
       });
     };
@@ -677,6 +679,10 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
     }
     setCountdown(autoPlayCountdownSecs);
   }, [showNextEpCard, autoPlayNextEpisode, nextEpDismissed, autoPlayCountdownSecs]);
+
+  useEffect(() => {
+    if (showNextEpCard && activeSkip?.type === 'outro') setActiveSkip(null);
+  }, [showNextEpCard, activeSkip]);
 
   useEffect(() => {
     if (countdown === null) return;
@@ -1427,10 +1433,10 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
         @keyframes fluxa-nextep-in { from { opacity: 0; transform: translateX(0.75rem); } to { opacity: 1; transform: translateX(0); } }
         .fluxa-ibtn { opacity: 0.8; transition: opacity 0.15s, background 0.12s; }
         .fluxa-ibtn:hover { opacity: 1; background: rgba(255,255,255,0.09) !important; }
-        .fluxa-skip-btn { animation: fluxa-skip-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); transition: background 0.12s, border-color 0.12s, transform 0.12s; }
-        .fluxa-skip-btn:hover { background: rgba(30,33,42,0.96) !important; border-color: rgba(255,255,255,0.5) !important; transform: translateY(-0.0625rem); }
+        .fluxa-skip-btn { animation: fluxa-skip-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); transition: filter 0.12s, transform 0.12s; }
+        .fluxa-skip-btn:hover { filter: brightness(1.06); transform: translateY(-0.0625rem); }
         .fluxa-skip-btn:active { transform: translateY(0); }
-        .fluxa-skip-btn:focus-visible { outline: 0.125rem solid rgba(255,255,255,0.4); outline-offset: 0.125rem; }
+        .fluxa-skip-btn:focus-visible { outline: 0.125rem solid rgba(255,255,255,0.85); outline-offset: 0.125rem; }
         .fluxa-cursor-hidden, .fluxa-cursor-hidden * { cursor: none !important; }
         .fluxa-seek-track { transition: height 0.15s ease; }
         .fluxa-seek-dot { transition: width 0.15s, height 0.15s; }
@@ -1505,16 +1511,24 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
         </div>
       )}
 
-      {activeSkip && (
-        <div style={{ position: 'absolute', bottom: '6.625rem', right: 0, zIndex: 4 }}>
+      {activeSkip && !showNextEpCard && (
+        <div style={{ position: 'absolute', bottom: '6.625rem', right: 0, zIndex: 4, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {activeSkip.type === 'outro' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); resetActivity(); setActiveSkip(null); }}
+              style={styles.watchCreditsBtn}
+            >
+              {t('player.watch_credits')}
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); resetActivity(); sendCmd(`set time-pos ${Math.floor(activeSkip.endMs / 1000)}`); }}
             className="fluxa-skip-btn"
             style={styles.skipBtn}
           >
-            <SkipForward size={18} />
-            {activeSkip.label}
-            <div ref={skipFillRef} style={{ position: 'absolute', left: 0, bottom: 0, height: '0.125rem', width: '0%', background: 'var(--primary-accent-color)' }} />
+            <div ref={skipFillRef} aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '0%', background: '#fff', transition: 'width 0.15s linear' }} />
+            <SkipForward size={18} style={{ position: 'relative', zIndex: 1 }} />
+            <span style={{ position: 'relative', zIndex: 1 }}>{activeSkip.label}</span>
           </button>
         </div>
       )}
@@ -1525,7 +1539,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
           thumbnail={nextEpThumbnail}
           countdown={countdown}
           countdownTotal={autoPlayCountdownSecs}
-          bottom={activeSkip ? 168 : 106}
+          bottom={activeSkip && !showNextEpCard ? 168 : 106}
           onPlay={() => { resetActivity(); void emit('native-player-next-episode', null); }}
           onDismiss={() => setNextEpDismissed(true)}
         />
@@ -1932,13 +1946,13 @@ const styles = {
 
   skipBtn: {
     appearance: 'none',
-    background: 'rgba(20,22,28,0.9)',
-    backdropFilter: 'blur(0.75rem)',
+    background: 'rgba(218,218,218,0.88)',
+    backdropFilter: 'blur(0.5rem)',
     boxShadow: 'none',
     outline: 'none',
-    border: '1px solid rgba(255,255,255,0.35)',
-    borderRadius: '0.5rem 0 0 0.5rem',
-    color: '#fff',
+    border: 'none',
+    borderRadius: '0.1875rem 0 0 0.1875rem',
+    color: '#090909',
     fontSize: '0.9375rem',
     fontWeight: 600,
     padding: '0.75rem 1.4375rem',
@@ -1949,5 +1963,20 @@ const styles = {
     gap: '0.5rem',
     position: 'relative',
     overflow: 'hidden',
+  } as React.CSSProperties,
+
+  watchCreditsBtn: {
+    appearance: 'none',
+    background: 'rgba(218,218,218,0.88)',
+    backdropFilter: 'blur(0.5rem)',
+    border: 'none',
+    borderRadius: '0.1875rem',
+    color: '#090909',
+    fontSize: '0.9375rem',
+    fontWeight: 600,
+    padding: '0.75rem 1.125rem',
+    cursor: 'pointer',
+    letterSpacing: '0.0125rem',
+    transition: 'filter 0.12s, transform 0.12s',
   } as React.CSSProperties,
 } satisfies Record<string, React.CSSProperties>;

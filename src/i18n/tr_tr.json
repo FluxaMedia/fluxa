@@ -511,6 +511,7 @@
   "player.dismiss": "Kapat",
   "player.finish_episode": "Bölümü Bitir",
   "player.skip_recap": "Özeti Geç",
+  "player.watch_credits": "Kapanışı İzle",
   "player.skip": "Atla",
   "player.mark_segment_title": "Segmentlere Katkıda Bulun",
   "player.mark_segment_help": "Bir tür seçin, video oynarken başlangıç ve bitişi işaretleyin, ardından IntroDB'ye gönderin.",

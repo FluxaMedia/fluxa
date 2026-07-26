@@ -12,18 +12,13 @@ interface NextEpCardProps {
   onDismiss: () => void;
 }
 
-const RING_SIZE = 44;
-const RING_STROKE = 2.5;
-const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
-const RING_CIRC = 2 * Math.PI * RING_RADIUS;
-
 export function NextEpCard({ subtitle, thumbnail, countdown, countdownTotal, bottom, onPlay, onDismiss }: NextEpCardProps) {
   const [hovered, setHovered] = useState(false);
   const [thumbErr, setThumbErr] = useState(false);
   const epCodeMatch = subtitle.match(/^(S\d+:E\d+)\s+(.+)/i);
   const epCode = epCodeMatch ? epCodeMatch[1] : null;
   const epTitle = epCodeMatch ? epCodeMatch[2] : subtitle;
-  const progress = countdown !== null ? countdown / countdownTotal : null;
+  const progress = countdown !== null && countdownTotal > 0 ? 1 - countdown / countdownTotal : 0;
   const borderColor = hovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.35)';
 
   return (
@@ -62,82 +57,22 @@ export function NextEpCard({ subtitle, thumbnail, countdown, countdownTotal, bot
         </button>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6875rem', padding: '0.5rem 1.1875rem 0.5rem 0.5rem' }}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onPlay(); }}
-          aria-label={t('player.next_label', epTitle)}
-          style={{
-            position: 'relative',
-            width: `${RING_SIZE}px`,
-            height: `${RING_SIZE}px`,
-            flexShrink: 0,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <svg width={RING_SIZE} height={RING_SIZE} style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-            <circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={RING_RADIUS}
-              fill="none"
-              stroke="rgba(255,255,255,0.14)"
-              strokeWidth={RING_STROKE}
-            />
-            {progress !== null && (
-              <circle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={RING_RADIUS}
-                fill="none"
-                stroke="var(--primary-accent-color)"
-                strokeWidth={RING_STROKE}
-                strokeLinecap="round"
-                strokeDasharray={RING_CIRC}
-                strokeDashoffset={RING_CIRC * (1 - progress)}
-                style={{ transition: 'stroke-dashoffset 1s linear' }}
-              />
-            )}
-          </svg>
-          <Play size={16} fill="#fff" strokeWidth={0} style={{ marginLeft: '0.0625rem' }} />
-        </button>
-
-        <button
-          onClick={(e) => { e.stopPropagation(); onPlay(); }}
-          style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', padding: 0, minWidth: 0 }}
-        >
-          <span style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: '0.0625rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {t('auto.up_next')}
-          </span>
-          <span style={{ fontSize: '0.9375rem', fontWeight: 700, display: 'block', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '14.375rem' }}>
-            {epCode ? `${epCode} · ${epTitle}` : epTitle}
-          </span>
-        </button>
-
-        <button
-          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'rgba(255,255,255,0.4)',
-            cursor: 'pointer',
-            padding: '0.25rem',
-            marginLeft: '0.25rem',
-            display: 'flex',
-            flexShrink: 0,
-            transition: 'color 0.15s',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.9)'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.4)'; }}
-          aria-label={t('player.dismiss')}
-        >
-          <X size={15} />
-        </button>
-      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+        style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.48)', border: 'none', borderRadius: '50%', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', padding: '0.3125rem', display: 'flex' }}
+        aria-label={t('player.dismiss')}
+      >
+        <X size={15} />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onPlay(); }}
+        aria-label={t('player.next_label', epTitle)}
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: '2.75rem', border: 'none', borderTop: '1px solid rgba(0,0,0,0.12)', padding: '0.625rem 1rem', overflow: 'hidden', background: '#d8d8d8', color: '#090909', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 700 }}
+      >
+        <span aria-hidden="true" style={{ position: 'absolute', inset: 0, width: `${(progress * 100).toFixed(2)}%`, background: '#fff', transition: 'width 1s linear' }} />
+        <Play size={16} fill="currentColor" strokeWidth={0} style={{ position: 'relative', zIndex: 1 }} />
+        <span style={{ position: 'relative', zIndex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{epCode ? `${epCode} · ${epTitle}` : epTitle}</span>
+      </button>
     </div>
   );
 }

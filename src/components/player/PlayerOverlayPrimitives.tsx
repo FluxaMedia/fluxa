@@ -5,7 +5,7 @@ import type { EpisodeInfo } from './EpisodePanel';
 
 export type Chapter = { title: string; startMs: number };
 export type SkipSegment = { type: string; startTime: number; endTime: number };
-export type ActiveSkip = { label: string; startMs: number; endMs: number };
+export type ActiveSkip = { label: string; startMs: number; endMs: number; type: string };
 export type FeedbackFlash = { icon: 'play' | 'pause' | 'seekBack' | 'seekFwd' | 'speed' | 'abLoop' | 'screenshot' | 'subDelay' | 'volume' | 'anime4k'; label: string };
 
 export const ANIME4K_MODES = ['a', 'b', 'c', 'aa', 'bb', 'ca'] as const;
