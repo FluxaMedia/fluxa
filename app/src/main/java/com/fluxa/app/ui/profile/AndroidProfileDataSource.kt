@@ -44,6 +44,7 @@ private class AndroidProfileStore(
                     avatarPacks = pickerSettings.avatarPacks.map { pack ->
                         ProfileAvatarPackUiModel(
                             id = pack.id,
+                            repositoryUrl = pack.repositoryUrl,
                             title = pack.title,
                             avatars = pack.avatars.map { ProfileAvatarUiModel(name = it.name, url = it.url) }
                         )
@@ -76,6 +77,14 @@ private class AndroidProfileStore(
     override suspend fun removeAvatarPack(packId: String) {
         val current = pickerSettingsStore.get()
         pickerSettingsStore.save(current.copy(avatarPacks = current.avatarPacks.filterNot { it.id == packId }))
+    }
+
+    override suspend fun refreshAvatarPack(repositoryUrl: String): Result<Unit> {
+        return avatarPackRepository.discover(repositoryUrl).map { refreshed ->
+            val current = pickerSettingsStore.get()
+            val kept = current.avatarPacks.filterNot { it.repositoryUrl == repositoryUrl }
+            pickerSettingsStore.save(current.copy(avatarPacks = kept + refreshed))
+        }
     }
 
     override suspend fun pinHash(profileId: String): String? =

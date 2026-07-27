@@ -229,6 +229,9 @@ fun FluxaAppHost(
         remember(source) { ProfileStore(source, scope) }
     }
     val profileState = profileStore?.state?.collectAsState()?.value
+    LaunchedEffect(profileDataSource) {
+        profileDataSource?.refreshAllAvatarPacks()
+    }
     val settingsStore = settingsDataSource?.let { source ->
         remember(source) { SettingsStore(source, scope) }
     }

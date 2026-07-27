@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -162,7 +163,12 @@ fun ProfilePickerSettingsScreen(
             )
         } else {
             state.avatarPacks.forEach { pack ->
-                AvatarPackRow(pack, language, onRemove = { onAction(ProfileAction.RemoveAvatarPackRequested(pack.id)) })
+                AvatarPackRow(
+                    pack,
+                    language,
+                    onRefresh = { onAction(ProfileAction.RefreshAvatarPackRequested(pack.repositoryUrl)) },
+                    onRemove = { onAction(ProfileAction.RemoveAvatarPackRequested(pack.id)) }
+                )
                 Spacer(Modifier.height(12.dp))
             }
         }
@@ -172,7 +178,7 @@ fun ProfilePickerSettingsScreen(
 }
 
 @Composable
-private fun AvatarPackRow(pack: ProfileAvatarPackUiModel, language: String?, onRemove: () -> Unit) {
+private fun AvatarPackRow(pack: ProfileAvatarPackUiModel, language: String?, onRefresh: () -> Unit, onRemove: () -> Unit) {
     SettingsGroupCard {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
@@ -202,6 +208,13 @@ private fun AvatarPackRow(pack: ProfileAvatarPackUiModel, language: String?, onR
                 }
             }
             Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.06f)).clickable(onClick = onRefresh),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+            }
+            Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.06f)).clickable(onClick = onRemove),
                 contentAlignment = Alignment.Center

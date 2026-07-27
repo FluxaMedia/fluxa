@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 
 class ProfileStore(
@@ -32,6 +33,7 @@ class ProfileStore(
             is ProfileAction.BackgroundUrlChanged -> dataSource.setPickerBackground(action.url)
             is ProfileAction.AddAvatarPackRequested -> dataSource.addAvatarPack(action.repositoryUrl)
             is ProfileAction.RemoveAvatarPackRequested -> dataSource.removeAvatarPack(action.packId)
+            is ProfileAction.RefreshAvatarPackRequested -> dataSource.refreshAvatarPack(action.repositoryUrl)
         }
     }
 
@@ -57,6 +59,7 @@ interface ProfilePersistence {
     suspend fun setPickerBackground(url: String?) {}
     suspend fun addAvatarPack(repositoryUrl: String): Result<Unit> = Result.success(Unit)
     suspend fun removeAvatarPack(packId: String) {}
+    suspend fun refreshAvatarPack(repositoryUrl: String): Result<Unit> = Result.success(Unit)
 }
 
 class SharedProfileDataSource(
@@ -135,4 +138,14 @@ class SharedProfileDataSource(
     }
 
     override suspend fun removeAvatarPack(packId: String) = store.removeAvatarPack(packId)
+
+    override suspend fun refreshAvatarPack(repositoryUrl: String) {
+        avatarPackDiscoveryError.value = avatarPackDiscoveryError.value || store.refreshAvatarPack(repositoryUrl).isFailure
+    }
+
+    override suspend fun refreshAllAvatarPacks() {
+        store.observe().first().avatarPacks.map { it.repositoryUrl }.distinct().forEach { repositoryUrl ->
+            store.refreshAvatarPack(repositoryUrl)
+        }
+    }
 }

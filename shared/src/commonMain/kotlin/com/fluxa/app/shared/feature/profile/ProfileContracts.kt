@@ -26,6 +26,7 @@ data class ProfileUiState(
 
 data class ProfileAvatarPackUiModel(
     val id: String,
+    val repositoryUrl: String,
     val title: String,
     val avatars: List<ProfileAvatarUiModel>
 )
@@ -55,6 +56,7 @@ sealed interface ProfileAction {
     data class BackgroundUrlChanged(val url: String?) : ProfileAction
     data class AddAvatarPackRequested(val repositoryUrl: String) : ProfileAction
     data class RemoveAvatarPackRequested(val packId: String) : ProfileAction
+    data class RefreshAvatarPackRequested(val repositoryUrl: String) : ProfileAction
 }
 
 sealed interface ProfileEditTarget {
@@ -73,4 +75,6 @@ interface ProfileDataSource {
     suspend fun setPickerBackground(url: String?)
     suspend fun addAvatarPack(repositoryUrl: String)
     suspend fun removeAvatarPack(packId: String)
+    suspend fun refreshAvatarPack(repositoryUrl: String)
+    suspend fun refreshAllAvatarPacks()
 }
