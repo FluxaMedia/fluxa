@@ -268,13 +268,15 @@ struct VkSubmitInfo {
 
 type PfnGetInstanceProcAddr =
     unsafe extern "system" fn(instance: VkInstance, name: *const i8) -> *mut c_void;
-type PfnCreateInstance =
-    unsafe extern "system" fn(*const VkInstanceCreateInfo, *const c_void, *mut VkInstance) -> VkResult;
+type PfnCreateInstance = unsafe extern "system" fn(
+    *const VkInstanceCreateInfo,
+    *const c_void,
+    *mut VkInstance,
+) -> VkResult;
 type PfnDestroyInstance = unsafe extern "system" fn(VkInstance, *const c_void);
 type PfnEnumeratePhysicalDevices =
     unsafe extern "system" fn(VkInstance, *mut u32, *mut VkPhysicalDevice) -> VkResult;
-type PfnGetPhysicalDeviceProperties =
-    unsafe extern "system" fn(VkPhysicalDevice, *mut c_void);
+type PfnGetPhysicalDeviceProperties = unsafe extern "system" fn(VkPhysicalDevice, *mut c_void);
 type PfnGetPhysicalDeviceQueueFamilyProperties =
     unsafe extern "system" fn(VkPhysicalDevice, *mut u32, *mut VkQueueFamilyProperties);
 type PfnGetPhysicalDeviceSurfaceSupportKHR =
@@ -573,7 +575,12 @@ impl VulkanContext {
                 }
                 let mut present_supported: u32 = 0;
                 unsafe {
-                    get_surface_support_khr(phys_device, index as u32, surface, &mut present_supported)
+                    get_surface_support_khr(
+                        phys_device,
+                        index as u32,
+                        surface,
+                        &mut present_supported,
+                    )
                 };
                 if present_supported != 0 {
                     let mut props = [0u8; 1024];
@@ -668,7 +675,8 @@ impl VulkanContext {
         let device_wait_idle: PfnDeviceWaitIdle = dproc!("vkDeviceWaitIdle");
         let create_command_pool: PfnCreateCommandPool = dproc!("vkCreateCommandPool");
         let destroy_command_pool: PfnDestroyCommandPool = dproc!("vkDestroyCommandPool");
-        let allocate_command_buffers: PfnAllocateCommandBuffers = dproc!("vkAllocateCommandBuffers");
+        let allocate_command_buffers: PfnAllocateCommandBuffers =
+            dproc!("vkAllocateCommandBuffers");
         let reset_command_buffer: PfnResetCommandBuffer = dproc!("vkResetCommandBuffer");
         let begin_command_buffer: PfnBeginCommandBuffer = dproc!("vkBeginCommandBuffer");
         let end_command_buffer: PfnEndCommandBuffer = dproc!("vkEndCommandBuffer");
@@ -744,11 +752,14 @@ impl VulkanContext {
         let mut acquire: VkSemaphore = 0;
         let mut render_done: VkSemaphore = 0;
         let mut transition: VkSemaphore = 0;
-        let r1 = unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut acquire) };
-        let r2 =
-            unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut render_done) };
-        let r3 =
-            unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut transition) };
+        let r1 =
+            unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut acquire) };
+        let r2 = unsafe {
+            (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut render_done)
+        };
+        let r3 = unsafe {
+            (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut transition)
+        };
         if r1 != VK_SUCCESS || r2 != VK_SUCCESS || r3 != VK_SUCCESS {
             return Err(format!("vkCreateSemaphore failed: {r1}/{r2}/{r3}"));
         }
@@ -766,8 +777,9 @@ impl VulkanContext {
             queue_family_index: self.queue_family_index,
         };
         let mut pool: VkCommandPool = ptr::null_mut();
-        let result =
-            unsafe { (self.fns.create_command_pool)(self.device, &pool_info, ptr::null(), &mut pool) };
+        let result = unsafe {
+            (self.fns.create_command_pool)(self.device, &pool_info, ptr::null(), &mut pool)
+        };
         if result != VK_SUCCESS {
             return Err(format!("vkCreateCommandPool failed: VkResult {result}"));
         }
@@ -784,7 +796,9 @@ impl VulkanContext {
         };
         if result != VK_SUCCESS {
             unsafe { (self.fns.destroy_command_pool)(self.device, pool, ptr::null()) };
-            return Err(format!("vkAllocateCommandBuffers failed: VkResult {result}"));
+            return Err(format!(
+                "vkAllocateCommandBuffers failed: VkResult {result}"
+            ));
         }
         self.command_pool = pool;
         self.command_buffer = command_buffer;
@@ -855,7 +869,11 @@ impl VulkanContext {
                     f.format == VK_FORMAT_B8G8R8A8_UNORM
                         && f.color_space == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
                 })
-                .or_else(|| formats.iter().find(|f| f.format == VK_FORMAT_B8G8R8A8_UNORM))
+                .or_else(|| {
+                    formats
+                        .iter()
+                        .find(|f| f.format == VK_FORMAT_B8G8R8A8_UNORM)
+                })
                 .or_else(|| formats.first())
                 .copied()
                 .unwrap_or(VkSurfaceFormatKHR {
@@ -941,7 +959,13 @@ impl VulkanContext {
     }
 
     pub fn device_handles(&self) -> (*mut c_void, *mut c_void, *mut c_void, u32, u32) {
-        (self.instance, self.phys_device, self.device, self.queue_family_index, 1)
+        (
+            self.instance,
+            self.phys_device,
+            self.device,
+            self.queue_family_index,
+            1,
+        )
     }
 
     pub fn image_usage(&self) -> u32 {

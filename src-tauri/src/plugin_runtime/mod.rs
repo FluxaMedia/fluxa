@@ -55,7 +55,9 @@ async fn run(
         .set_interrupt_handler(Some(Box::new(move || std::time::Instant::now() > deadline)))
         .await;
     tokio::task::spawn_local(qjs_rt.drive());
-    let ctx = AsyncContext::full(&qjs_rt).await.map_err(|e| e.to_string())?;
+    let ctx = AsyncContext::full(&qjs_rt)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let captured: Arc<Mutex<Option<String>>> = Default::default();
     let captured_clone = captured.clone();
@@ -282,7 +284,9 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Rc<DomBridge>) -> rquickjs::Resu
         "__cheerio_find",
         Function::new(
             ctx.clone(),
-            move |doc_id: String, element_id: String, selector: String| d.find(doc_id, element_id, selector),
+            move |doc_id: String, element_id: String, selector: String| {
+                d.find(doc_id, element_id, selector)
+            },
         )?,
     )?;
 
@@ -313,9 +317,12 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Rc<DomBridge>) -> rquickjs::Resu
     let d = dom.clone();
     ctx.globals().set(
         "__cheerio_attr",
-        Function::new(ctx.clone(), move |_doc_id: String, element_id: String, attr_name: String| {
-            d.attr(element_id, attr_name)
-        })?,
+        Function::new(
+            ctx.clone(),
+            move |_doc_id: String, element_id: String, attr_name: String| {
+                d.attr(element_id, attr_name)
+            },
+        )?,
     )?;
 
     let d = dom.clone();
@@ -336,7 +343,9 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Rc<DomBridge>) -> rquickjs::Resu
 
     ctx.globals().set(
         "__crypto_get_random_values_hex",
-        Function::new(ctx.clone(), |len: usize| to_hex(&crypto_bridge::random_bytes(len)))?,
+        Function::new(ctx.clone(), |len: usize| {
+            to_hex(&crypto_bridge::random_bytes(len))
+        })?,
     )?;
 
     ctx.globals().set(
@@ -350,18 +359,25 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Rc<DomBridge>) -> rquickjs::Resu
 
     ctx.globals().set(
         "__crypto_hmac_hex_raw",
-        Function::new(ctx.clone(), |algorithm: String, key_hex: String, data_hex: String| {
-            crypto_bridge::hmac(&algorithm, &from_hex(&key_hex), &from_hex(&data_hex))
-                .map(|bytes| to_hex(&bytes))
-                .unwrap_or_default()
-        })?,
+        Function::new(
+            ctx.clone(),
+            |algorithm: String, key_hex: String, data_hex: String| {
+                crypto_bridge::hmac(&algorithm, &from_hex(&key_hex), &from_hex(&data_hex))
+                    .map(|bytes| to_hex(&bytes))
+                    .unwrap_or_default()
+            },
+        )?,
     )?;
 
     ctx.globals().set(
         "__crypto_pbkdf2_hex",
         Function::new(
             ctx.clone(),
-            |password_hex: String, salt_hex: String, iterations: u32, key_size_bits: u32, algorithm: String| {
+            |password_hex: String,
+             salt_hex: String,
+             iterations: u32,
+             key_size_bits: u32,
+             algorithm: String| {
                 crypto_bridge::pbkdf2(
                     &from_hex(&password_hex),
                     &from_hex(&salt_hex),
@@ -380,9 +396,14 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Rc<DomBridge>) -> rquickjs::Resu
         Function::new(
             ctx.clone(),
             |mode: String, key_hex: String, iv_hex: String, data_hex: String| {
-                crypto_bridge::aes_encrypt(&mode, &from_hex(&key_hex), &from_hex(&iv_hex), &from_hex(&data_hex))
-                    .map(|bytes| to_hex(&bytes))
-                    .unwrap_or_default()
+                crypto_bridge::aes_encrypt(
+                    &mode,
+                    &from_hex(&key_hex),
+                    &from_hex(&iv_hex),
+                    &from_hex(&data_hex),
+                )
+                .map(|bytes| to_hex(&bytes))
+                .unwrap_or_default()
             },
         )?,
     )?;
@@ -392,9 +413,14 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Rc<DomBridge>) -> rquickjs::Resu
         Function::new(
             ctx.clone(),
             |mode: String, key_hex: String, iv_hex: String, data_hex: String| {
-                crypto_bridge::aes_decrypt(&mode, &from_hex(&key_hex), &from_hex(&iv_hex), &from_hex(&data_hex))
-                    .map(|bytes| to_hex(&bytes))
-                    .unwrap_or_default()
+                crypto_bridge::aes_decrypt(
+                    &mode,
+                    &from_hex(&key_hex),
+                    &from_hex(&iv_hex),
+                    &from_hex(&data_hex),
+                )
+                .map(|bytes| to_hex(&bytes))
+                .unwrap_or_default()
             },
         )?,
     )?;
@@ -413,11 +439,14 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Rc<DomBridge>) -> rquickjs::Resu
 
     ctx.globals().set(
         "__crypto_sign_hex",
-        Function::new(ctx.clone(), |algorithm: String, key_hex: String, data_hex: String| {
-            crypto_bridge::sign(&algorithm, &from_hex(&key_hex), &from_hex(&data_hex))
-                .map(|bytes| to_hex(&bytes))
-                .unwrap_or_default()
-        })?,
+        Function::new(
+            ctx.clone(),
+            |algorithm: String, key_hex: String, data_hex: String| {
+                crypto_bridge::sign(&algorithm, &from_hex(&key_hex), &from_hex(&data_hex))
+                    .map(|bytes| to_hex(&bytes))
+                    .unwrap_or_default()
+            },
+        )?,
     )?;
 
     ctx.globals().set(

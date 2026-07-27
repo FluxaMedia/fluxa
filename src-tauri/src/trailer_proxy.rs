@@ -93,7 +93,11 @@ async fn read_request(socket: &mut TcpStream) -> Option<(String, String, Option<
     Some((method, path, range_header))
 }
 
-async fn handle_conn(mut socket: TcpStream, targets: Arc<Mutex<HashMap<String, ProxyTarget>>>, client: reqwest::Client) {
+async fn handle_conn(
+    mut socket: TcpStream,
+    targets: Arc<Mutex<HashMap<String, ProxyTarget>>>,
+    client: reqwest::Client,
+) {
     loop {
         let Some((method, path, range_header)) = read_request(&mut socket).await else {
             return;
@@ -114,7 +118,9 @@ async fn handle_conn(mut socket: TcpStream, targets: Arc<Mutex<HashMap<String, P
 
         if method == "HEAD" {
             let total = content_length_hint(&target.url);
-            let mut header_buf = String::from("HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nAccept-Ranges: bytes\r\n");
+            let mut header_buf = String::from(
+                "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nAccept-Ranges: bytes\r\n",
+            );
             if let Some(total) = total {
                 header_buf.push_str(&format!("content-length: {total}\r\n"));
             }
@@ -141,14 +147,21 @@ async fn handle_conn(mut socket: TcpStream, targets: Arc<Mutex<HashMap<String, P
         let mut response = match response {
             Ok(response) if response.status().is_success() => response,
             Ok(response) => {
-                log::warn!("[trailer_proxy] upstream returned {} for url={}", response.status(), target.url);
+                log::warn!(
+                    "[trailer_proxy] upstream returned {} for url={}",
+                    response.status(),
+                    target.url
+                );
                 let _ = socket
                     .write_all(b"HTTP/1.1 502 Bad Gateway\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n")
                     .await;
                 continue;
             }
             Err(err) => {
-                log::warn!("[trailer_proxy] upstream request failed url={}: {err}", target.url);
+                log::warn!(
+                    "[trailer_proxy] upstream request failed url={}: {err}",
+                    target.url
+                );
                 let _ = socket
                     .write_all(b"HTTP/1.1 502 Bad Gateway\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n")
                     .await;
@@ -163,13 +176,25 @@ async fn handle_conn(mut socket: TcpStream, targets: Arc<Mutex<HashMap<String, P
             status.canonical_reason().unwrap_or("")
         );
         header_buf.push_str("Connection: keep-alive\r\nAccept-Ranges: bytes\r\n");
-        if let Some(value) = response.headers().get("content-type").and_then(|v| v.to_str().ok()) {
+        if let Some(value) = response
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+        {
             header_buf.push_str(&format!("content-type: {value}\r\n"));
         }
-        if let Some(value) = response.headers().get("content-length").and_then(|v| v.to_str().ok()) {
+        if let Some(value) = response
+            .headers()
+            .get("content-length")
+            .and_then(|v| v.to_str().ok())
+        {
             header_buf.push_str(&format!("content-length: {value}\r\n"));
         }
-        if let Some(value) = response.headers().get("content-range").and_then(|v| v.to_str().ok()) {
+        if let Some(value) = response
+            .headers()
+            .get("content-range")
+            .and_then(|v| v.to_str().ok())
+        {
             header_buf.push_str(&format!("content-range: {value}\r\n"));
         }
         header_buf.push_str("\r\n");
@@ -188,7 +213,9 @@ async fn handle_conn(mut socket: TcpStream, targets: Arc<Mutex<HashMap<String, P
                 }
                 Ok(None) => break,
                 Err(err) => {
-                    log::warn!("[trailer_proxy] upstream body read failed after {sent} bytes: {err}");
+                    log::warn!(
+                        "[trailer_proxy] upstream body read failed after {sent} bytes: {err}"
+                    );
                     return;
                 }
             }
@@ -199,7 +226,11 @@ async fn handle_conn(mut socket: TcpStream, targets: Arc<Mutex<HashMap<String, P
 pub async fn register(state: &TrailerProxyState, url: String) -> Result<String, String> {
     let port = ensure_server(state).await?;
     let token = random_token();
-    state.targets.lock().unwrap().insert(token.clone(), ProxyTarget { url });
+    state
+        .targets
+        .lock()
+        .unwrap()
+        .insert(token.clone(), ProxyTarget { url });
     Ok(format!("http://127.0.0.1:{port}/trailer/{token}"))
 }
 

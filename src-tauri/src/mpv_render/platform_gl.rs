@@ -52,7 +52,10 @@ pub(super) fn query_draw_fbo() -> c_int {
 static GL_PROC_FN: OnceLock<Option<GlProcFn>> = OnceLock::new();
 
 #[cfg(target_os = "linux")]
-pub(super) unsafe extern "C" fn get_gl_proc_address(_ctx: *mut c_void, name: *const c_char) -> *mut c_void {
+pub(super) unsafe extern "C" fn get_gl_proc_address(
+    _ctx: *mut c_void,
+    name: *const c_char,
+) -> *mut c_void {
     if name.is_null() {
         return ptr::null_mut();
     }
@@ -110,7 +113,10 @@ pub(super) fn load_linux_gl_proc_fn() -> Option<GlProcFn> {
 // (plain WGL has no D3D11 device for hwdec to attach to).
 
 #[cfg(target_os = "windows")]
-pub(super) unsafe extern "C" fn get_gl_proc_address(ctx: *mut c_void, name: *const c_char) -> *mut c_void {
+pub(super) unsafe extern "C" fn get_gl_proc_address(
+    ctx: *mut c_void,
+    name: *const c_char,
+) -> *mut c_void {
     crate::windows_egl::get_gl_proc_address(ctx, name)
 }
 
@@ -121,7 +127,10 @@ pub(super) unsafe extern "C" fn get_gl_proc_address(ctx: *mut c_void, name: *con
 static OPENGL_FW_HANDLE: OnceLock<usize> = OnceLock::new();
 
 #[cfg(target_os = "macos")]
-pub(super) unsafe extern "C" fn get_gl_proc_address(_ctx: *mut c_void, name: *const c_char) -> *mut c_void {
+pub(super) unsafe extern "C" fn get_gl_proc_address(
+    _ctx: *mut c_void,
+    name: *const c_char,
+) -> *mut c_void {
     if name.is_null() {
         return ptr::null_mut();
     }

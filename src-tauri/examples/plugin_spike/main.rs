@@ -60,7 +60,9 @@ fn main() {
 async fn run_dom_test() {
     let rt = AsyncRuntime::new().expect("create quickjs runtime");
     tokio::task::spawn_local(rt.drive());
-    let ctx = AsyncContext::full(&rt).await.expect("create quickjs context");
+    let ctx = AsyncContext::full(&rt)
+        .await
+        .expect("create quickjs context");
     let dom = DomBridge::new();
 
     let result: rquickjs::Result<String> = ctx
@@ -114,7 +116,9 @@ async fn run() {
 
     let rt = AsyncRuntime::new().expect("create quickjs runtime");
     tokio::task::spawn_local(rt.drive());
-    let ctx = AsyncContext::full(&rt).await.expect("create quickjs context");
+    let ctx = AsyncContext::full(&rt)
+        .await
+        .expect("create quickjs context");
 
     let captured: std::sync::Arc<std::sync::Mutex<Option<String>>> = Default::default();
     let captured_clone = captured.clone();
@@ -242,7 +246,9 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Arc<DomBridge>) -> rquickjs::Res
         "__cheerio_find",
         Function::new(
             ctx.clone(),
-            move |doc_id: String, element_id: String, selector: String| d.find(doc_id, element_id, selector),
+            move |doc_id: String, element_id: String, selector: String| {
+                d.find(doc_id, element_id, selector)
+            },
         )?,
     )?;
 
@@ -273,9 +279,12 @@ fn register_host_functions(ctx: &Ctx<'_>, dom: &Arc<DomBridge>) -> rquickjs::Res
     let d = dom.clone();
     ctx.globals().set(
         "__cheerio_attr",
-        Function::new(ctx.clone(), move |_doc_id: String, element_id: String, attr_name: String| {
-            d.attr(element_id, attr_name)
-        })?,
+        Function::new(
+            ctx.clone(),
+            move |_doc_id: String, element_id: String, attr_name: String| {
+                d.attr(element_id, attr_name)
+            },
+        )?,
     )?;
 
     let d = dom.clone();

@@ -370,7 +370,11 @@ pub(super) fn anime4k_chain_shaders(tier: &str, mode: &str) -> Vec<String> {
     chain
 }
 
-pub(super) fn resolve_anime4k_chain(app: Option<&AppHandle>, tier: &str, mode: &str) -> Option<String> {
+pub(super) fn resolve_anime4k_chain(
+    app: Option<&AppHandle>,
+    tier: &str,
+    mode: &str,
+) -> Option<String> {
     let shader_names = anime4k_chain_shaders(tier, mode);
     let mut paths = Vec::with_capacity(shader_names.len());
     for shader_name in &shader_names {
@@ -418,7 +422,10 @@ pub(super) fn resolve_shader_path(app: Option<&AppHandle>, shader_name: &str) ->
     None
 }
 
-pub(super) fn push_frame_interpolation_options(options: &mut Vec<(String, String)>, mode: Option<&str>) {
+pub(super) fn push_frame_interpolation_options(
+    options: &mut Vec<(String, String)>,
+    mode: Option<&str>,
+) {
     match mode.unwrap_or("off") {
         "display_resample" => {
             options.push(("video-sync".to_string(), "display-resample".to_string()));

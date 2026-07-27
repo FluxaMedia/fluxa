@@ -9,7 +9,12 @@ pub trait PlaybackEngine: Send {
     fn command_args(&self, args: &[&str]) -> Result<(), String>;
     fn apply_options(&self, options: &[(String, String)]) -> Result<(), String>;
     fn set_http_headers(&self, headers: &[(String, String)]) -> Result<(), String>;
-    fn add_subtitle(&self, url: &str, title: Option<&str>, language: Option<&str>) -> Result<(), String>;
+    fn add_subtitle(
+        &self,
+        url: &str,
+        title: Option<&str>,
+        language: Option<&str>,
+    ) -> Result<(), String>;
     fn query_property(&self, name: &str) -> Option<String>;
     fn status(&self) -> PlayerStatus;
     fn track_options(&self, track_type: &str) -> Vec<PlayerTrackOption>;
@@ -36,7 +41,12 @@ impl PlaybackEngine for MpvRenderer {
     fn set_http_headers(&self, headers: &[(String, String)]) -> Result<(), String> {
         MpvRenderer::set_http_headers(self, headers)
     }
-    fn add_subtitle(&self, url: &str, title: Option<&str>, language: Option<&str>) -> Result<(), String> {
+    fn add_subtitle(
+        &self,
+        url: &str,
+        title: Option<&str>,
+        language: Option<&str>,
+    ) -> Result<(), String> {
         MpvRenderer::add_subtitle(self, url, title, language)
     }
     fn query_property(&self, name: &str) -> Option<String> {

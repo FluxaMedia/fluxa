@@ -55,7 +55,12 @@ fn block_private_redirects() -> reqwest::redirect::Policy {
         let blocked = attempt
             .url()
             .host_str()
-            .and_then(|h| h.trim_start_matches('[').trim_end_matches(']').parse::<IpAddr>().ok())
+            .and_then(|h| {
+                h.trim_start_matches('[')
+                    .trim_end_matches(']')
+                    .parse::<IpAddr>()
+                    .ok()
+            })
             .is_some_and(|ip| is_blocked_ip(&ip));
         if blocked {
             attempt.error("refusing to redirect to a local/private address")

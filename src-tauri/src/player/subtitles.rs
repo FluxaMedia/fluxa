@@ -41,7 +41,10 @@ pub(super) async fn load_subtitle_text(source: &str) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|error| error.to_string())
 }
 
-pub(super) fn speech_intervals_from_media(source: &str, analysis_seconds: f64) -> Result<Vec<Value>, String> {
+pub(super) fn speech_intervals_from_media(
+    source: &str,
+    analysis_seconds: f64,
+) -> Result<Vec<Value>, String> {
     let output = Command::new("ffmpeg")
         .args([
             "-hide_banner",
@@ -91,7 +94,9 @@ pub(super) fn speech_intervals_from_media(source: &str, analysis_seconds: f64) -
 }
 
 #[tauri::command]
-pub(crate) async fn player_auto_sync_subtitles(state: State<'_, DesktopState>) -> Result<Value, String> {
+pub(crate) async fn player_auto_sync_subtitles(
+    state: State<'_, DesktopState>,
+) -> Result<Value, String> {
     let (media_source, subtitle_source, duration) = with_renderer_retry(&state, 60, |renderer| {
         Ok((
             renderer.query_property("path"),
@@ -121,7 +126,9 @@ pub(crate) async fn player_auto_sync_subtitles(state: State<'_, DesktopState>) -
 }
 
 #[tauri::command]
-pub(crate) async fn player_capture_subtitle_cues(state: State<'_, DesktopState>) -> Result<Value, String> {
+pub(crate) async fn player_capture_subtitle_cues(
+    state: State<'_, DesktopState>,
+) -> Result<Value, String> {
     let (subtitle_source, current_time) = with_renderer_retry(&state, 60, |renderer| {
         Ok((
             selected_external_subtitle_source(renderer),
@@ -145,4 +152,3 @@ pub(crate) async fn player_capture_subtitle_cues(state: State<'_, DesktopState>)
         })
         .ok_or_else(|| "could not read subtitle cues".to_string())
 }
-

@@ -123,7 +123,12 @@ fn cbc_decrypt(key: &[u8], iv: &[u8], data: &[u8], no_padding: bool) -> Result<V
     }
 }
 
-fn cbc_encrypt_with<C>(key: &[u8], iv: &[u8], data: &[u8], no_padding: bool) -> Result<Vec<u8>, String>
+fn cbc_encrypt_with<C>(
+    key: &[u8],
+    iv: &[u8],
+    data: &[u8],
+    no_padding: bool,
+) -> Result<Vec<u8>, String>
 where
     cbc::Encryptor<C>: KeyIvInit + BlockModeEncrypt,
     C: aes::cipher::BlockCipherEncrypt,
@@ -143,7 +148,12 @@ where
     Ok(result.to_vec())
 }
 
-fn cbc_decrypt_with<C>(key: &[u8], iv: &[u8], data: &[u8], no_padding: bool) -> Result<Vec<u8>, String>
+fn cbc_decrypt_with<C>(
+    key: &[u8],
+    iv: &[u8],
+    data: &[u8],
+    no_padding: bool,
+) -> Result<Vec<u8>, String>
 where
     cbc::Decryptor<C>: KeyIvInit + BlockModeDecrypt,
     C: aes::cipher::BlockCipherDecrypt,
@@ -271,7 +281,12 @@ pub fn sign(algorithm: &str, private_key_der: &[u8], data: &[u8]) -> Result<Vec<
     Err(format!("unsupported signature algorithm: {algorithm}"))
 }
 
-pub fn verify(algorithm: &str, public_key_der: &[u8], signature: &[u8], data: &[u8]) -> Result<bool, String> {
+pub fn verify(
+    algorithm: &str,
+    public_key_der: &[u8],
+    signature: &[u8],
+    data: &[u8],
+) -> Result<bool, String> {
     if let Some(hash) = algorithm.strip_prefix("RSASSA-PKCS1-V1_5-") {
         return rsa_verify(hash, public_key_der, signature, data);
     }
@@ -299,7 +314,12 @@ fn rsa_sign(hash: &str, private_key_der: &[u8], data: &[u8]) -> Result<Vec<u8>, 
     })
 }
 
-fn rsa_verify(hash: &str, public_key_der: &[u8], signature: &[u8], data: &[u8]) -> Result<bool, String> {
+fn rsa_verify(
+    hash: &str,
+    public_key_der: &[u8],
+    signature: &[u8],
+    data: &[u8],
+) -> Result<bool, String> {
     use rsa::sha2::{Sha256, Sha384, Sha512};
 
     let key = RsaPublicKey::from_public_key_der(public_key_der).map_err(|e| e.to_string())?;
@@ -323,8 +343,7 @@ fn ecdsa_sign(private_key_der: &[u8], data: &[u8]) -> Result<Vec<u8>, String> {
     use p256::ecdsa::{Signature, SigningKey};
     use p256::pkcs8::DecodePrivateKey as EcdsaDecodePrivateKey;
 
-    let signing_key =
-        SigningKey::from_pkcs8_der(private_key_der).map_err(|e| e.to_string())?;
+    let signing_key = SigningKey::from_pkcs8_der(private_key_der).map_err(|e| e.to_string())?;
     let signature: Signature = signing_key.sign(data);
     Ok(signature.to_bytes().to_vec())
 }
@@ -346,8 +365,18 @@ mod tests {
 
     #[test]
     fn hmac_sha256_output_is_32_bytes() {
-        let mac = hmac("SHA256", b"key", b"The quick brown fox jumps over the lazy dog").unwrap();
-        assert_eq!(mac.len(), 32, "HMAC-SHA256 must be 32 bytes, got {}", mac.len());
+        let mac = hmac(
+            "SHA256",
+            b"key",
+            b"The quick brown fox jumps over the lazy dog",
+        )
+        .unwrap();
+        assert_eq!(
+            mac.len(),
+            32,
+            "HMAC-SHA256 must be 32 bytes, got {}",
+            mac.len()
+        );
         let hex: String = mac.iter().map(|b| format!("{b:02x}")).collect();
         assert_eq!(
             hex,
@@ -392,7 +421,13 @@ mod tests {
         let priv_key = hex_decode(RSA_PRIV_DER_HEX);
         let pub_key = hex_decode(RSA_PUB_DER_HEX);
         let sig = sign("RSASSA-PKCS1-V1_5-SHA256", &priv_key, RSA_SIGNED_MESSAGE).unwrap();
-        let ok = verify("RSASSA-PKCS1-V1_5-SHA256", &pub_key, &sig, RSA_SIGNED_MESSAGE).unwrap();
+        let ok = verify(
+            "RSASSA-PKCS1-V1_5-SHA256",
+            &pub_key,
+            &sig,
+            RSA_SIGNED_MESSAGE,
+        )
+        .unwrap();
         assert!(ok);
     }
 
@@ -401,7 +436,10 @@ mod tests {
         let key = hex_decode(EC_PUB_DER_HEX);
         let sig = hex_decode(EC_SIG_HEX);
         let ok = verify("ECDSA-SHA256", &key, &sig, EC_SIGNED_MESSAGE).unwrap();
-        assert!(ok, "should verify a real python `cryptography`-produced P-256 signature");
+        assert!(
+            ok,
+            "should verify a real python `cryptography`-produced P-256 signature"
+        );
     }
 
     #[test]

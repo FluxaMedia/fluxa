@@ -60,8 +60,14 @@ const VK_QUEUE_FAMILY_IGNORED: u32 = 0xFFFFFFFF;
 
 #[derive(Debug)]
 pub enum NativeSurface {
-    Xlib { display: *mut c_void, window: u64 },
-    Wayland { display: *mut c_void, surface: *mut c_void },
+    Xlib {
+        display: *mut c_void,
+        window: u64,
+    },
+    Wayland {
+        display: *mut c_void,
+        surface: *mut c_void,
+    },
 }
 
 #[repr(C)]
@@ -291,8 +297,11 @@ struct VkSubmitInfo {
 
 type PfnGetInstanceProcAddr =
     unsafe extern "system" fn(instance: VkInstance, name: *const i8) -> *mut c_void;
-type PfnCreateInstance =
-    unsafe extern "system" fn(*const VkInstanceCreateInfo, *const c_void, *mut VkInstance) -> VkResult;
+type PfnCreateInstance = unsafe extern "system" fn(
+    *const VkInstanceCreateInfo,
+    *const c_void,
+    *mut VkInstance,
+) -> VkResult;
 type PfnDestroyInstance = unsafe extern "system" fn(VkInstance, *const c_void);
 type PfnEnumeratePhysicalDevices =
     unsafe extern "system" fn(VkInstance, *mut u32, *mut VkPhysicalDevice) -> VkResult;
@@ -309,8 +318,7 @@ struct VkExtensionProperties {
     extension_name: [u8; 256],
     spec_version: u32,
 }
-type PfnGetPhysicalDeviceProperties =
-    unsafe extern "system" fn(VkPhysicalDevice, *mut c_void);
+type PfnGetPhysicalDeviceProperties = unsafe extern "system" fn(VkPhysicalDevice, *mut c_void);
 type PfnGetPhysicalDeviceQueueFamilyProperties =
     unsafe extern "system" fn(VkPhysicalDevice, *mut u32, *mut VkQueueFamilyProperties);
 type PfnGetPhysicalDeviceSurfaceSupportKHR =
@@ -544,7 +552,11 @@ impl VulkanContext {
         let extension_ptrs: Vec<*const i8> = extensions.iter().map(|e| e.as_ptr()).collect();
         let validation_layer = CString::new("VK_LAYER_KHRONOS_validation").unwrap();
         let want_validation = std::env::var_os("FLUXA_VULKAN_VALIDATION").is_some();
-        let layer_ptrs: Vec<*const i8> = if want_validation { vec![validation_layer.as_ptr()] } else { vec![] };
+        let layer_ptrs: Vec<*const i8> = if want_validation {
+            vec![validation_layer.as_ptr()]
+        } else {
+            vec![]
+        };
         let instance_create_info = VkInstanceCreateInfo {
             s_type: VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             p_next: ptr::null(),
@@ -593,12 +605,17 @@ impl VulkanContext {
         let mut owned_xlib_display: *mut c_void = ptr::null_mut();
         let result = match native_surface {
             NativeSurface::Xlib { display, window } => {
-                let create_xlib_surface_khr: PfnCreateXlibSurfaceKHR = iproc!("vkCreateXlibSurfaceKHR");
+                let create_xlib_surface_khr: PfnCreateXlibSurfaceKHR =
+                    iproc!("vkCreateXlibSurfaceKHR");
                 // The render loop runs on its own thread, but GTK's Display
                 // connection is not thread-safe (XInitThreads is never called).
                 // A private connection keeps Mesa's WSI traffic off GTK's.
                 owned_xlib_display = unsafe { x11::xlib::XOpenDisplay(ptr::null()) as *mut c_void };
-                let dpy = if owned_xlib_display.is_null() { display } else { owned_xlib_display };
+                let dpy = if owned_xlib_display.is_null() {
+                    display
+                } else {
+                    owned_xlib_display
+                };
                 let create_info = VkXlibSurfaceCreateInfoKHR {
                     s_type: VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
                     p_next: ptr::null(),
@@ -606,9 +623,14 @@ impl VulkanContext {
                     dpy,
                     window,
                 };
-                unsafe { create_xlib_surface_khr(instance, &create_info, ptr::null(), &mut surface) }
+                unsafe {
+                    create_xlib_surface_khr(instance, &create_info, ptr::null(), &mut surface)
+                }
             }
-            NativeSurface::Wayland { display, surface: wl_surface } => {
+            NativeSurface::Wayland {
+                display,
+                surface: wl_surface,
+            } => {
                 let create_wayland_surface_khr: PfnCreateWaylandSurfaceKHR =
                     iproc!("vkCreateWaylandSurfaceKHR");
                 let create_info = VkWaylandSurfaceCreateInfoKHR {
@@ -675,7 +697,12 @@ impl VulkanContext {
                 }
                 let mut present_supported: u32 = 0;
                 unsafe {
-                    get_surface_support_khr(phys_device, index as u32, surface, &mut present_supported)
+                    get_surface_support_khr(
+                        phys_device,
+                        index as u32,
+                        surface,
+                        &mut present_supported,
+                    )
                 };
                 if present_supported != 0 {
                     let mut props = [0u8; 1024];
@@ -804,7 +831,8 @@ impl VulkanContext {
         let device_wait_idle: PfnDeviceWaitIdle = dproc!("vkDeviceWaitIdle");
         let create_command_pool: PfnCreateCommandPool = dproc!("vkCreateCommandPool");
         let destroy_command_pool: PfnDestroyCommandPool = dproc!("vkDestroyCommandPool");
-        let allocate_command_buffers: PfnAllocateCommandBuffers = dproc!("vkAllocateCommandBuffers");
+        let allocate_command_buffers: PfnAllocateCommandBuffers =
+            dproc!("vkAllocateCommandBuffers");
         let reset_command_buffer: PfnResetCommandBuffer = dproc!("vkResetCommandBuffer");
         let begin_command_buffer: PfnBeginCommandBuffer = dproc!("vkBeginCommandBuffer");
         let end_command_buffer: PfnEndCommandBuffer = dproc!("vkEndCommandBuffer");
@@ -885,11 +913,14 @@ impl VulkanContext {
         let mut acquire: VkSemaphore = 0;
         let mut render_done: VkSemaphore = 0;
         let mut transition: VkSemaphore = 0;
-        let r1 = unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut acquire) };
-        let r2 =
-            unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut render_done) };
-        let r3 =
-            unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut transition) };
+        let r1 =
+            unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut acquire) };
+        let r2 = unsafe {
+            (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut render_done)
+        };
+        let r3 = unsafe {
+            (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut transition)
+        };
         if r1 != VK_SUCCESS || r2 != VK_SUCCESS || r3 != VK_SUCCESS {
             return Err(format!("vkCreateSemaphore failed: {r1}/{r2}/{r3}"));
         }
@@ -903,7 +934,8 @@ impl VulkanContext {
             flags: VK_FENCE_CREATE_SIGNALED_BIT,
         };
         let mut fence: VkFence = 0;
-        let r4 = unsafe { (self.fns.create_fence)(self.device, &fence_info, ptr::null(), &mut fence) };
+        let r4 =
+            unsafe { (self.fns.create_fence)(self.device, &fence_info, ptr::null(), &mut fence) };
         if r4 != VK_SUCCESS {
             return Err(format!("vkCreateFence failed: {r4}"));
         }
@@ -919,8 +951,9 @@ impl VulkanContext {
             queue_family_index: self.queue_family_index,
         };
         let mut pool: VkCommandPool = ptr::null_mut();
-        let result =
-            unsafe { (self.fns.create_command_pool)(self.device, &pool_info, ptr::null(), &mut pool) };
+        let result = unsafe {
+            (self.fns.create_command_pool)(self.device, &pool_info, ptr::null(), &mut pool)
+        };
         if result != VK_SUCCESS {
             return Err(format!("vkCreateCommandPool failed: VkResult {result}"));
         }
@@ -937,7 +970,9 @@ impl VulkanContext {
         };
         if result != VK_SUCCESS {
             unsafe { (self.fns.destroy_command_pool)(self.device, pool, ptr::null()) };
-            return Err(format!("vkAllocateCommandBuffers failed: VkResult {result}"));
+            return Err(format!(
+                "vkAllocateCommandBuffers failed: VkResult {result}"
+            ));
         }
         self.command_pool = pool;
         self.command_buffer = command_buffer;
@@ -1005,7 +1040,11 @@ impl VulkanContext {
                     f.format == VK_FORMAT_B8G8R8A8_UNORM
                         && f.color_space == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
                 })
-                .or_else(|| formats.iter().find(|f| f.format == VK_FORMAT_B8G8R8A8_UNORM))
+                .or_else(|| {
+                    formats
+                        .iter()
+                        .find(|f| f.format == VK_FORMAT_B8G8R8A8_UNORM)
+                })
                 .or_else(|| formats.first())
                 .copied()
                 .unwrap_or(VkSurfaceFormatKHR {
@@ -1136,7 +1175,10 @@ impl VulkanContext {
     }
 
     pub fn enabled_device_extension_ptrs(&self) -> Vec<*const i8> {
-        self.enabled_device_extensions.iter().map(|e| e.as_ptr()).collect()
+        self.enabled_device_extensions
+            .iter()
+            .map(|e| e.as_ptr())
+            .collect()
     }
 
     pub fn resize(&mut self, width: i32, height: i32) -> Result<(), String> {

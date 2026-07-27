@@ -33,7 +33,9 @@ impl DomBridge {
     pub fn load(&self, html: String) -> String {
         let mut state = self.state.borrow_mut();
         let doc_id = format!("doc_{}", state.next_id());
-        state.documents.insert(doc_id.clone(), Html::parse_document(&html));
+        state
+            .documents
+            .insert(doc_id.clone(), Html::parse_document(&html));
         doc_id
     }
 
@@ -43,7 +45,10 @@ impl DomBridge {
             return "[]".into();
         }
         let ids: Vec<NodeId> = match state.documents.get(&doc_id) {
-            Some(doc) => run_selector(doc, &selector).iter().map(|el| el.id()).collect(),
+            Some(doc) => run_selector(doc, &selector)
+                .iter()
+                .map(|el| el.id())
+                .collect(),
             None => return "[]".into(),
         };
         cache_and_encode(&mut state, &doc_id, ids)
@@ -79,15 +84,23 @@ impl DomBridge {
     pub fn html(&self, doc_id: String, element_id: String) -> String {
         let state = self.state.borrow();
         if element_id.is_empty() {
-            state.documents.get(&doc_id).map(|d| d.html()).unwrap_or_default()
+            state
+                .documents
+                .get(&doc_id)
+                .map(|d| d.html())
+                .unwrap_or_default()
         } else {
-            resolve(&state, &element_id).map(|el| el.inner_html()).unwrap_or_default()
+            resolve(&state, &element_id)
+                .map(|el| el.inner_html())
+                .unwrap_or_default()
         }
     }
 
     pub fn inner_html(&self, element_id: String) -> String {
         let state = self.state.borrow();
-        resolve(&state, &element_id).map(|el| el.inner_html()).unwrap_or_default()
+        resolve(&state, &element_id)
+            .map(|el| el.inner_html())
+            .unwrap_or_default()
     }
 
     pub fn attr(&self, element_id: String, attr_name: String) -> String {
@@ -121,7 +134,9 @@ impl DomBridge {
         match found {
             Some(node_id) => {
                 let element_id = format!("{doc_id}:{}", state.next_id());
-                state.elements.insert(element_id.clone(), (doc_id.to_string(), node_id));
+                state
+                    .elements
+                    .insert(element_id.clone(), (doc_id.to_string(), node_id));
                 element_id
             }
             None => "__NONE__".to_string(),
@@ -164,12 +179,18 @@ fn split_contains(selector: &str) -> (String, Option<String>) {
     let Some(end) = after.find(')') else {
         return (selector.to_string(), None);
     };
-    let needle = after[..end].trim_matches(|c| c == '\'' || c == '"').to_string();
+    let needle = after[..end]
+        .trim_matches(|c| c == '\'' || c == '"')
+        .to_string();
     let mut base = String::new();
     base.push_str(&selector[..start]);
     base.push_str(&after[end + 1..]);
     let base = base.trim();
-    let base = if base.is_empty() { "*".to_string() } else { base.to_string() };
+    let base = if base.is_empty() {
+        "*".to_string()
+    } else {
+        base.to_string()
+    };
     (base, Some(needle))
 }
 
@@ -205,7 +226,9 @@ fn cache_and_encode(state: &mut DomState, doc_id: &str, ids: Vec<NodeId>) -> Str
         .into_iter()
         .map(|node_id| {
             let element_id = format!("{doc_id}:{}", state.next_id());
-            state.elements.insert(element_id.clone(), (doc_id.to_string(), node_id));
+            state
+                .elements
+                .insert(element_id.clone(), (doc_id.to_string(), node_id));
             element_id
         })
         .collect();

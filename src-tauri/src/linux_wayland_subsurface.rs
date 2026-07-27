@@ -70,8 +70,7 @@ type PfnMarshalAttach = unsafe extern "C" fn(
     i32,
     i32,
 ) -> *mut c_void;
-type PfnProxyAddListener =
-    unsafe extern "C" fn(*mut c_void, *const c_void, *mut c_void) -> i32;
+type PfnProxyAddListener = unsafe extern "C" fn(*mut c_void, *const c_void, *mut c_void) -> i32;
 type PfnProxyDestroy = unsafe extern "C" fn(*mut c_void);
 type PfnProxyGetVersion = unsafe extern "C" fn(*mut c_void) -> u32;
 type PfnProxySetQueue = unsafe extern "C" fn(*mut c_void, *mut c_void);
