@@ -5,6 +5,7 @@ import com.fluxa.app.ui.catalog.DeviceType
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
@@ -40,7 +41,9 @@ fun Modifier.playerInputControls(
     isLocked: Boolean = false,
     onToggleLockHint: () -> Unit = {},
     onVolumeSwipe: (Float) -> Unit = {},
-    onBrightnessSwipe: (Float) -> Unit = {}
+    onBrightnessSwipe: (Float) -> Unit = {},
+    onSettingsSwipeUp: () -> Unit = {},
+    onEpisodeSwipeRight: () -> Unit = {}
 ): Modifier {
     if (isLocked) {
         return onKeyEvent { event ->
@@ -154,13 +157,57 @@ fun Modifier.playerInputControls(
                     }
                 }.pointerInput(hasStartedPlaying) {
                     if (!hasStartedPlaying) return@pointerInput
-                    var isRightSide = true
+                    var gestureTarget = 0
+                    var settingsDragDistance = 0f
                     detectVerticalDragGestures(
-                        onDragStart = { offset -> isRightSide = offset.x > size.width / 2f },
+                        onDragStart = { offset ->
+                            val width = size.width.toFloat()
+                            val height = size.height.toFloat()
+                            gestureTarget = when {
+                                offset.x < width * 0.30f -> 1
+                                offset.x > width * 0.70f -> 2
+                                offset.y > height * 0.70f -> 3
+                                else -> 0
+                            }
+                            settingsDragDistance = 0f
+                        },
                         onVerticalDrag = { change, dragAmount ->
-                            change.consume()
-                            val delta = -dragAmount / size.height.toFloat()
-                            if (isRightSide) onVolumeSwipe(delta) else onBrightnessSwipe(delta)
+                            when (gestureTarget) {
+                                1 -> {
+                                    change.consume()
+                                    onBrightnessSwipe(-dragAmount / size.height.toFloat())
+                                }
+                                2 -> {
+                                    change.consume()
+                                    onVolumeSwipe(-dragAmount / size.height.toFloat())
+                                }
+                                3 -> {
+                                    change.consume()
+                                    settingsDragDistance += dragAmount
+                                }
+                            }
+                        },
+                        onDragEnd = {
+                            if (gestureTarget == 3 && settingsDragDistance < -72f) onSettingsSwipeUp()
+                        }
+                    )
+                }.pointerInput(hasStartedPlaying) {
+                    if (!hasStartedPlaying) return@pointerInput
+                    var episodeDragDistance = 0f
+                    var startsAtLeftEdge = false
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            startsAtLeftEdge = offset.x < size.width * 0.24f
+                            episodeDragDistance = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            if (startsAtLeftEdge && dragAmount > 0f) {
+                                change.consume()
+                                episodeDragDistance += dragAmount
+                            }
+                        },
+                        onDragEnd = {
+                            if (startsAtLeftEdge && episodeDragDistance > 96f) onEpisodeSwipeRight()
                         }
                     )
                 }

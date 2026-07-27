@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -245,6 +246,74 @@ fun UniversalSettingsSidebar(
                 if (tab == 0) audioList() else subtitleList()
             }
         }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun MobilePlayerSettingsSheet(
+    lang: String,
+    supportsTrackSettings: Boolean,
+    playbackSpeed: Float,
+    onSelectSettings: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.width(300.dp),
+        containerColor = Color(0xFF101418),
+        contentColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = AppStrings.t(lang, "nav.settings"),
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            if (supportsTrackSettings) {
+                MobilePlayerSettingsRow(
+                    icon = FluxaIcons.AudioTrack,
+                    title = AppStrings.t(lang, "player.audio_and_subtitles"),
+                    onClick = { onSelectSettings(0) }
+                )
+            }
+            MobilePlayerSettingsRow(
+                icon = FluxaIcons.Speed,
+                title = AppStrings.t(lang, "player.speed"),
+                detail = "${formatSpeedLabel(playbackSpeed)}",
+                onClick = { onSelectSettings(2) }
+            )
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun MobilePlayerSettingsRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    detail: String? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
+        Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        detail?.let { Text(it, color = Color.White.copy(alpha = 0.65f), fontSize = 14.sp) }
+        Icon(FluxaIcons.ChevronRight, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
     }
 }
 

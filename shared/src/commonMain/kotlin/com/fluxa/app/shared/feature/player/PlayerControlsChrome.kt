@@ -652,27 +652,14 @@ fun MobilePlayerUIContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                            if (supportsTrackSettings) {
-                                MobileBottomAction(
-                                    icon = if (subtitlesEnabled) FluxaIcons.Subtitles else FluxaIcons.AudioTrack,
-                                    label = AppStrings.t(lang, "player.audio_and_subtitles"),
-                                    onClick = { onShowSettings(0) }
-                                )
-                            }
                             MobileBottomAction(
-                                icon = FluxaIcons.Speed,
-                                label = "${AppStrings.t(lang, "player.speed")} (${playbackSpeed}x)",
-                                onClick = { onShowSettings(2) }
+                                icon = FluxaIcons.Settings,
+                                label = AppStrings.t(lang, "nav.settings"),
+                                onClick = { onShowSettings(-1) },
+                                iconOnly = true
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                            if (showEpisodesButton) {
-                                MobileBottomAction(
-                                    icon = FluxaIcons.List,
-                                    label = AppStrings.t(lang, "player.episodes"),
-                                    onClick = { onShowSettings(3) }
-                                )
-                            }
                             if (hasNextEpisode) {
                                 MobileBottomAction(
                                     icon = FluxaIcons.SkipNext,

@@ -79,6 +79,7 @@ fun PlayerSidebarShell(
     onBack: (() -> Unit)? = null,
     cardWidth: Dp? = null,
     anchorTop: Boolean = false,
+    mobileDrawer: Boolean = false,
     scrimAlpha: Float = 0.42f,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -111,7 +112,8 @@ fun PlayerSidebarShell(
             }
     ) {
         val isLandscape = maxWidth > maxHeight
-        val isCard = !isMobile || isLandscape || anchorTop
+        val isDrawer = isMobile && mobileDrawer
+        val isCard = (!isMobile || isLandscape || anchorTop) && !isDrawer
 
         Box(
             modifier = Modifier
@@ -123,19 +125,22 @@ fun PlayerSidebarShell(
                 ) { requestClose() }
         )
 
-        val panelShape = if (isCard) {
-            RoundedCornerShape(24.dp)
-        } else {
-            RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+        val panelShape = when {
+            isDrawer -> RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
+            isCard -> RoundedCornerShape(24.dp)
+            else -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
         }
-        val panelSizeModifier = if (isCard) {
-            Modifier
+        val panelSizeModifier = when {
+            isDrawer -> Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(0.62f)
+                .widthIn(max = 300.dp)
+            isCard -> Modifier
                 .padding(top = if (anchorTop) 16.dp else 0.dp, end = if (anchorTop) 16.dp else 0.dp)
                 .width(minOf(cardWidth ?: if (isMobile) 340.dp else 360.dp, maxWidth - 48.dp))
                 .wrapContentHeight()
                 .heightIn(max = maxHeight - 48.dp)
-        } else {
-            Modifier
+            else -> Modifier
                 .fillMaxWidth(0.92f)
                 .widthIn(max = 430.dp)
                 .wrapContentHeight()
@@ -151,6 +156,7 @@ fun PlayerSidebarShell(
                 .align(
                     when {
                         anchorTop -> Alignment.TopEnd
+                        isDrawer -> Alignment.CenterStart
                         isCard -> Alignment.Center
                         else -> Alignment.BottomCenter
                     }
@@ -158,8 +164,11 @@ fun PlayerSidebarShell(
                 .then(panelSizeModifier)
                 .animateContentSize(tween(220, easing = FastOutSlowInEasing))
                 .graphicsLayer {
-                    alpha = if (isCard) progress else 1f
-                    translationY = if (isCard) {
+                    alpha = if (isCard || isDrawer) progress else 1f
+                    translationX = if (isDrawer) -(1f - progress) * size.width else 0f
+                    translationY = if (isDrawer) {
+                        dragOffsetPx
+                    } else if (isCard) {
                         (1f - progress) * (if (anchorTop) (-16).dp.toPx() else 16.dp.toPx())
                     } else {
                         (1f - progress) * size.height + dragOffsetPx
@@ -168,6 +177,19 @@ fun PlayerSidebarShell(
                 .background(Color(0xE6101418), shape = panelShape)
                 .clip(panelShape)
                 .then(if (!isCard) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier)
+                .then(if (isDrawer) Modifier.pointerInput(onClose) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            if (dragOffsetPx > dismissThresholdPx) requestClose() else dragOffsetPx = 0f
+                        },
+                        onVerticalDrag = { change, dragAmount ->
+                            if (dragAmount > 0f) {
+                                change.consume()
+                                dragOffsetPx += dragAmount
+                            }
+                        }
+                    )
+                } else Modifier)
                 .padding(16.dp)
         ) {
             if (!isCard) {

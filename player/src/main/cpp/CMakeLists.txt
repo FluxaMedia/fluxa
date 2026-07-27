@@ -17,3 +17,7 @@ target_link_libraries(fluxa_libass_renderer
     ${log-lib}
     ${dl-lib}
 )
+
+target_link_options(fluxa_libass_renderer PRIVATE
+    "-Wl,-z,max-page-size=16384"
+)

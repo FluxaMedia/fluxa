@@ -224,7 +224,19 @@ internal fun PlayerScreenContent(
                 isLocked = state.isLocked,
                 onToggleLockHint = { state.showLockHint = !state.showLockHint },
                 onVolumeSwipe = onVolumeSwipe,
-                onBrightnessSwipe = onBrightnessSwipe
+                onBrightnessSwipe = onBrightnessSwipe,
+                onSettingsSwipeUp = {
+                    state.activeSettingsTab = -1
+                    state.showSettings = true
+                    state.showControls = false
+                },
+                onEpisodeSwipeRight = {
+                    if (meta.type == "series") {
+                        state.activeSettingsTab = 3
+                        state.showSettings = true
+                        state.showControls = false
+                    }
+                }
             )
     ) {
         PlayerPlaybackSurface(
@@ -369,6 +381,7 @@ internal fun PlayerScreenContent(
                 activeProfile = activeProfile,
                 lang = lang,
                 activeSettingsTab = state.activeSettingsTab,
+                onSelectSettingsTab = { state.activeSettingsTab = it },
                 currentStreams = state.currentStreams,
                 currentUrl = state.currentUrl,
                 currentStreamIndex = state.currentStreamIndex,

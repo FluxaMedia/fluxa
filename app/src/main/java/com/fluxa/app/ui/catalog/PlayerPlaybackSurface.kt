@@ -47,6 +47,7 @@ import com.fluxa.app.shared.feature.player.TorrentStreamStatus
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.shared.feature.player.ArtisticLoadingOverlay
 import com.fluxa.app.shared.feature.player.MarkSegmentSidebar
+import com.fluxa.app.shared.feature.player.MobilePlayerSettingsSheet
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
 import com.fluxa.app.shared.feature.player.PlayerSkipSegmentOverlay
 import com.fluxa.app.shared.feature.player.PlayerTopIconButton
@@ -433,6 +434,7 @@ internal fun PlayerSettingsPanel(
     activeProfile: UserProfile?,
     lang: String,
     activeSettingsTab: Int,
+    onSelectSettingsTab: (Int) -> Unit,
     currentStreams: List<Stream>,
     currentUrl: String?,
     currentStreamIndex: Int,
@@ -469,7 +471,15 @@ internal fun PlayerSettingsPanel(
     onAdjustMarkSegmentEnd: (Long) -> Unit = {},
     onSubmitMarkSegment: () -> Unit = {}
 ) {
-    if (activeSettingsTab == 5) {
+    if (activeSettingsTab == -1 && deviceType == DeviceType.Mobile) {
+        MobilePlayerSettingsSheet(
+            lang = lang,
+            supportsTrackSettings = true,
+            playbackSpeed = playbackSpeed,
+            onSelectSettings = onSelectSettingsTab,
+            onDismiss = onCloseSettings
+        )
+    } else if (activeSettingsTab == 5) {
         MarkSegmentSidebar(
             deviceType = deviceType,
             lang = lang,
