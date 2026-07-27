@@ -2,6 +2,7 @@ package com.fluxa.app.ui
 
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.ProfilePickerSettingsStore
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistStore
 import com.fluxa.app.shared.platform.FluxaMobilePlatformServices
@@ -24,6 +25,7 @@ class AndroidFluxaPlatformServices(
     homeViewModel: HomeViewModel,
     detailViewModel: DetailViewModel,
     profileManager: ProfileManager,
+    profilePickerSettingsStore: ProfilePickerSettingsStore,
     activeProfile: () -> UserProfile?,
     onActiveProfileChanged: (UserProfile) -> Unit,
     offlineDownloadManager: OfflineDownloadManager,
@@ -44,7 +46,7 @@ class AndroidFluxaPlatformServices(
         language = { activeProfile()?.language ?: "en" }
     )
     override val detailDataSource = AndroidDetailDataSource(detailViewModel, activeProfile)
-    override val profileDataSource = AndroidProfileDataSource(profileManager)
+    override val profileDataSource = AndroidProfileDataSource(profileManager, profilePickerSettingsStore)
     override val addonStoreDataSource = AndroidAddonStoreDataSource(
         repository = AppContainer.repository,
         profileManager = profileManager,

@@ -2,6 +2,10 @@ package com.fluxa.app.core.rust
 
 import com.fluxa.app.core.rust.models.NativeActiveProfilePlan
 import com.fluxa.app.core.rust.models.NativeAddonFetchResult
+import com.fluxa.app.core.rust.models.NativeAvatarPack
+import com.fluxa.app.core.rust.models.NativeAvatarPackCatalog
+import com.fluxa.app.core.rust.models.NativeAvatarPackDiscoveryPlan
+import com.fluxa.app.core.rust.models.NativeAvatarPackRepositoryPlan
 import com.fluxa.app.core.rust.models.NativeAddonResourceParseResult
 import com.fluxa.app.core.rust.models.NativeAddonResourceRequestPlan
 import com.fluxa.app.core.rust.models.NativeAddonStoreSearchPolicy
@@ -1721,6 +1725,26 @@ object FluxaCoreNative {
     fun profileAvatarDefault(requestJson: String): NativeProfileAvatarDefault {
         val value = FluxaCoreUniFfi.coreInvokeValue("profileAvatarDefault", requestJson)
         return gson.fromJson(value, NativeProfileAvatarDefault::class.java) ?: NativeProfileAvatarDefault()
+    }
+
+    fun profileAvatarPackRepositoryPlan(requestJson: String): NativeAvatarPackRepositoryPlan? {
+        val value = FluxaCoreUniFfi.coreInvokeValue("profileAvatarPackRepositoryPlan", requestJson)
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeAvatarPackRepositoryPlan::class.java) }
+    }
+
+    fun profileAvatarPackDiscoveryPlan(requestJson: String): NativeAvatarPackDiscoveryPlan? {
+        val value = FluxaCoreUniFfi.coreInvokeValue("profileAvatarPackDiscoveryPlan", requestJson)
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeAvatarPackDiscoveryPlan::class.java) }
+    }
+
+    fun profileAvatarPackCatalog(requestJson: String): NativeAvatarPackCatalog? {
+        val value = FluxaCoreUniFfi.coreInvokeValue("profileAvatarPackCatalog", requestJson)
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeAvatarPackCatalog::class.java) }
+    }
+
+    fun profileAvatarPackParse(requestJson: String): NativeAvatarPack? {
+        val value = FluxaCoreUniFfi.coreInvokeValue("profileAvatarPackParse", requestJson)
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeAvatarPack::class.java) }
     }
 
     // ── watchlist_plan ────────────────────────────────────────────────────────

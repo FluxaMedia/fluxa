@@ -24,6 +24,7 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
             selectedCategoryId = null,
             selectedCategoryTitle = null,
             editingProfile = null,
+            showProfilePickerSettings = false,
             settingsBackStack = emptyList(),
             initialLibrarySection = null
         )
@@ -101,6 +102,14 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
         uiState = uiState.copy(editingProfile = target)
     }
 
+    fun openProfilePickerSettings() {
+        uiState = uiState.copy(showProfilePickerSettings = true)
+    }
+
+    fun closeProfilePickerSettings() {
+        uiState = uiState.copy(showProfilePickerSettings = false)
+    }
+
     fun updateCatalogHome(catalogHome: CatalogHomeUiState) {
         uiState = uiState.copy(catalogHome = catalogHome)
     }
@@ -129,6 +138,7 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
             selectedCategoryId = null,
             selectedCategoryTitle = null,
             editingProfile = null,
+            showProfilePickerSettings = false,
             settingsBackStack = emptyList()
         )
     }

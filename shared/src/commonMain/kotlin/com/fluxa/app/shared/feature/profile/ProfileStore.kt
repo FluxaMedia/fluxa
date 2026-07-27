@@ -27,6 +27,11 @@ class ProfileStore(
             is ProfileAction.EditRequested -> Unit
             is ProfileAction.PinAttempt -> dataSource.attemptPin(action.profileId, action.pin)
             ProfileAction.PinCancelled -> dataSource.cancelPinUnlock()
+            ProfileAction.PickerSettingsRequested -> Unit
+            ProfileAction.PickerSettingsClosed -> Unit
+            is ProfileAction.BackgroundUrlChanged -> dataSource.setPickerBackground(action.url)
+            is ProfileAction.AddAvatarPackRequested -> dataSource.addAvatarPack(action.repositoryUrl)
+            is ProfileAction.RemoveAvatarPackRequested -> dataSource.removeAvatarPack(action.packId)
         }
     }
 
@@ -38,7 +43,9 @@ class ProfileStore(
 data class ProfileStoreSnapshot(
     val activeProfile: ProfileUiModel? = null,
     val profiles: List<ProfileUiModel> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val pickerBackgroundUrl: String? = null,
+    val avatarPacks: List<ProfileAvatarPackUiModel> = emptyList()
 )
 
 interface ProfilePersistence {
@@ -47,6 +54,9 @@ interface ProfilePersistence {
     suspend fun activate(profileId: String)
     suspend fun delete(profileId: String)
     suspend fun save(edit: ProfileEditUiModel, pinHash: String?): String
+    suspend fun setPickerBackground(url: String?) {}
+    suspend fun addAvatarPack(repositoryUrl: String): Result<Unit> = Result.success(Unit)
+    suspend fun removeAvatarPack(packId: String) {}
 }
 
 class SharedProfileDataSource(
@@ -54,14 +64,22 @@ class SharedProfileDataSource(
 ) : ProfileDataSource {
     private val pendingPinId = MutableStateFlow<String?>(null)
     private val pinError = MutableStateFlow(false)
+    private val avatarPackDiscoveryInProgress = MutableStateFlow(false)
+    private val avatarPackDiscoveryError = MutableStateFlow(false)
 
-    override fun observeProfiles(): Flow<ProfileUiState> = combine(store.observe(), pendingPinId, pinError) { snapshot, pendingId, error ->
+    override fun observeProfiles(): Flow<ProfileUiState> = combine(
+        store.observe(), pendingPinId, pinError, avatarPackDiscoveryInProgress, avatarPackDiscoveryError
+    ) { snapshot, pendingId, error, discoveryInProgress, discoveryError ->
         ProfileUiState(
             activeProfile = snapshot.activeProfile,
             profiles = snapshot.profiles,
             isLoading = snapshot.isLoading,
             pendingPinProfile = snapshot.profiles.firstOrNull { it.id == pendingId },
-            pinError = error
+            pinError = error,
+            pickerBackgroundUrl = snapshot.pickerBackgroundUrl,
+            avatarPacks = snapshot.avatarPacks,
+            avatarPackDiscoveryInProgress = discoveryInProgress,
+            avatarPackDiscoveryError = discoveryError
         )
     }
 
@@ -105,4 +123,16 @@ class SharedProfileDataSource(
         }
         return store.save(edit, pinHash)
     }
+
+    override suspend fun setPickerBackground(url: String?) = store.setPickerBackground(url)
+
+    override suspend fun addAvatarPack(repositoryUrl: String) {
+        avatarPackDiscoveryInProgress.value = true
+        avatarPackDiscoveryError.value = false
+        val result = store.addAvatarPack(repositoryUrl)
+        avatarPackDiscoveryInProgress.value = false
+        avatarPackDiscoveryError.value = result.isFailure
+    }
+
+    override suspend fun removeAvatarPack(packId: String) = store.removeAvatarPack(packId)
 }

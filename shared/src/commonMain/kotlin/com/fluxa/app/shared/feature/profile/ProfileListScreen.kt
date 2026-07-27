@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -78,6 +79,28 @@ fun ProfileListScreen(
     }
 
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
+        if (!state.pickerBackgroundUrl.isNullOrBlank()) {
+            FluxaRemoteImage(
+                imageUrl = state.pickerBackgroundUrl,
+                cacheKey = "profile-picker-background:${state.pickerBackgroundUrl}",
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.72f)))
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 48.dp, end = 20.dp)
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.06f))
+                .clickable { onAction(ProfileAction.PickerSettingsRequested) },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Filled.Settings, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+        }
         Column(
             modifier = Modifier.fillMaxSize().padding(top = 48.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally

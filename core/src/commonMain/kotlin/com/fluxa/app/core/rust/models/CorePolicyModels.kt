@@ -191,3 +191,38 @@ data class NativeSearchResultGrouping(
     val totalCount: Int = 0,
     val query: String = ""
 )
+
+data class NativeAvatarPackRepositoryPlan(
+    val owner: String = "",
+    val repository: String = "",
+    val repositoryApiUrl: String = ""
+)
+
+data class NativeAvatarPackDiscoveryPlan(
+    val reference: String = "",
+    val treeApiUrl: String = ""
+)
+
+data class NativeAvatarPackCategory(
+    val name: String = "",
+    val path: String = "",
+    val manifestUrl: String = ""
+)
+
+data class NativeAvatarPackCatalog(
+    val owner: String = "",
+    val repository: String = "",
+    val reference: String = "",
+    val categories: List<NativeAvatarPackCategory> = emptyList()
+)
+
+data class NativeAvatarPackImage(
+    val name: String = "",
+    val url: String = ""
+)
+
+data class NativeAvatarPack(
+    val title: String = "",
+    val manifestUrl: String = "",
+    val avatars: List<NativeAvatarPackImage> = emptyList()
+)

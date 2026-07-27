@@ -527,6 +527,8 @@ fun FluxaAppHost(
                     profileAvatarUrl = action.profile.avatarUrl
                     appState.beginProfileEdit(ProfileEditTarget.Existing(action.profile.id))
                 }
+                ProfileAction.PickerSettingsRequested -> appState.openProfilePickerSettings()
+                ProfileAction.PickerSettingsClosed -> appState.closeProfilePickerSettings()
                 is ProfileAction.Selected -> scope.launch {
                     profileStore?.dispatch(action)
                     if (!action.profile.hasPin) onProfileSelectionCompleted(action.profile.id)
@@ -547,6 +549,10 @@ fun FluxaAppHost(
         profileEditAvatarUrl = profileAvatarUrl,
         onPickAvatarClick = { onPickAvatarRequested { url -> profileAvatarUrl = url } },
         onRemoveAvatarClick = { profileAvatarUrl = null },
+        onPickPackAvatarClick = { url -> profileAvatarUrl = url },
+        onPickBackgroundClick = {
+            onPickAvatarRequested { url -> scope.launch { profileStore?.dispatch(ProfileAction.BackgroundUrlChanged(url)) } }
+        },
         onProfileSave = { edit ->
             scope.launch {
                 profileStore?.saveProfile(edit)

@@ -78,6 +78,7 @@ import javax.inject.Inject
 class MainActivity : FragmentActivity() {
 
     @Inject lateinit var profileManager: ProfileManager
+    @Inject lateinit var profilePickerSettingsStore: com.fluxa.app.data.local.ProfilePickerSettingsStore
     @Inject lateinit var pluginManager: PluginManager
     @Inject lateinit var pluginRepositoryManager: com.fluxa.app.plugins.PluginRepositoryManager
     @Inject lateinit var stremioRepository: StremioRepository
@@ -385,11 +386,12 @@ class MainActivity : FragmentActivity() {
                         onDispose { mediaSession.release() }
                     }
 
-                    val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager) {
+                    val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager, profilePickerSettingsStore) {
                         AndroidFluxaPlatformServices(
                             homeViewModel = homeViewModel,
                             detailViewModel = sharedDetailViewModel,
                             profileManager = profileManager,
+                            profilePickerSettingsStore = profilePickerSettingsStore,
                             activeProfile = { activeProfile },
                             onActiveProfileChanged = { updated -> activeProfile = updated },
                             offlineDownloadManager = offlineDownloadManager,

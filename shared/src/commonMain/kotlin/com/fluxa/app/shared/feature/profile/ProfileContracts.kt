@@ -17,7 +17,22 @@ data class ProfileUiState(
     val profiles: List<ProfileUiModel> = emptyList(),
     val isLoading: Boolean = false,
     val pendingPinProfile: ProfileUiModel? = null,
-    val pinError: Boolean = false
+    val pinError: Boolean = false,
+    val pickerBackgroundUrl: String? = null,
+    val avatarPacks: List<ProfileAvatarPackUiModel> = emptyList(),
+    val avatarPackDiscoveryInProgress: Boolean = false,
+    val avatarPackDiscoveryError: Boolean = false
+)
+
+data class ProfileAvatarPackUiModel(
+    val id: String,
+    val title: String,
+    val avatars: List<ProfileAvatarUiModel>
+)
+
+data class ProfileAvatarUiModel(
+    val name: String,
+    val url: String
 )
 
 data class ProfileEditUiModel(
@@ -35,6 +50,11 @@ sealed interface ProfileAction {
     data class EditRequested(val profile: ProfileUiModel) : ProfileAction
     data class PinAttempt(val profileId: String, val pin: String) : ProfileAction
     data object PinCancelled : ProfileAction
+    data object PickerSettingsRequested : ProfileAction
+    data object PickerSettingsClosed : ProfileAction
+    data class BackgroundUrlChanged(val url: String?) : ProfileAction
+    data class AddAvatarPackRequested(val repositoryUrl: String) : ProfileAction
+    data class RemoveAvatarPackRequested(val packId: String) : ProfileAction
 }
 
 sealed interface ProfileEditTarget {
@@ -50,4 +70,7 @@ interface ProfileDataSource {
     suspend fun cancelPinUnlock()
     suspend fun deleteProfile(id: String)
     suspend fun saveProfile(edit: ProfileEditUiModel): String
+    suspend fun setPickerBackground(url: String?)
+    suspend fun addAvatarPack(repositoryUrl: String)
+    suspend fun removeAvatarPack(packId: String)
 }

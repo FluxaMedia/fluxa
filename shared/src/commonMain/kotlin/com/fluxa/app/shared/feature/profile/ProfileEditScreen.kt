@@ -59,6 +59,8 @@ fun ProfileEditScreen(
     onSave: (ProfileEditUiModel) -> Unit,
     onDelete: (() -> Unit)?,
     onCancel: () -> Unit,
+    avatarPacks: List<ProfileAvatarPackUiModel> = emptyList(),
+    onPickPackAvatarClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var name by remember(initialProfile?.id) { mutableStateOf(initialProfile?.name.orEmpty()) }
@@ -218,6 +220,44 @@ fun ProfileEditScreen(
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onRemoveAvatarClick) {
                 Text(AppStrings.t(language, "profiles.remove_image"), color = Color.White.copy(alpha = 0.6f))
+            }
+        }
+
+        if (avatarPacks.isNotEmpty()) {
+            Spacer(Modifier.height(24.dp))
+            Text(
+                AppStrings.t(language, "profiles.choose_from_pack"),
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            avatarPacks.forEach { pack ->
+                Spacer(Modifier.height(12.dp))
+                Text(pack.title, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp)
+                Spacer(Modifier.height(8.dp))
+                pack.avatars.chunked(5).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+                        row.forEach { avatar ->
+                            val selected = avatar.url == avatarUrl
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.08f))
+                                    .then(if (selected) Modifier.border(2.dp, Color.White, CircleShape) else Modifier)
+                                    .clickable { onPickPackAvatarClick(avatar.url) }
+                            ) {
+                                FluxaRemoteImage(
+                                    imageUrl = avatar.url,
+                                    cacheKey = "profile-avatar-pack:${avatar.url}",
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 

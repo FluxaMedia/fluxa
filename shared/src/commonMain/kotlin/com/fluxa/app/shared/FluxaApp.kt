@@ -117,6 +117,7 @@ import com.fluxa.app.shared.feature.profile.ProfileEditScreen
 import com.fluxa.app.shared.feature.profile.ProfileEditTarget
 import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.ProfileListScreen
+import com.fluxa.app.shared.feature.profile.ProfilePickerSettingsScreen
 import com.fluxa.app.shared.feature.profile.ProfileUiState
 import com.fluxa.app.shared.feature.settings.SettingsAction
 import com.fluxa.app.shared.feature.settings.SettingsScreen
@@ -169,6 +170,7 @@ data class FluxaAppUiState(
     val selectedCategoryId: String? = null,
     val selectedCategoryTitle: String? = null,
     val editingProfile: ProfileEditTarget? = null,
+    val showProfilePickerSettings: Boolean = false,
     val showNotifications: Boolean = false,
     val settingsBackStack: List<com.fluxa.app.shared.feature.settings.SettingsCategory> = emptyList(),
     val initialLibrarySection: com.fluxa.app.shared.feature.library.LibrarySection? = null
@@ -223,9 +225,11 @@ fun FluxaApp(
     profileEditAvatarUrl: String? = null,
     onPickAvatarClick: () -> Unit = {},
     onRemoveAvatarClick: () -> Unit = {},
+    onPickPackAvatarClick: (String) -> Unit = {},
     onProfileSave: (ProfileEditUiModel) -> Unit = {},
     onProfileDelete: (() -> Unit)? = null,
     onProfileEditCancel: () -> Unit = {},
+    onPickBackgroundClick: () -> Unit = {},
     playerState: PlayerRenderState? = null,
     onPlayerAction: (PlayerRenderAction) -> Unit = {},
     biometricAvailable: Boolean = false,
@@ -314,13 +318,23 @@ fun FluxaApp(
                         profileState.profiles.firstOrNull { it.id == target.id }
                     },
                     avatarUrl = profileEditAvatarUrl,
+                    avatarPacks = profileState.avatarPacks,
                     biometricAvailable = biometricAvailable,
                     language = state.language,
                     onPickAvatarClick = onPickAvatarClick,
                     onRemoveAvatarClick = onRemoveAvatarClick,
+                    onPickPackAvatarClick = onPickPackAvatarClick,
                     onSave = onProfileSave,
                     onDelete = onProfileDelete,
                     onCancel = onProfileEditCancel,
+                    modifier = Modifier.fillMaxSize()
+                )
+                state.showProfilePickerSettings && profileState != null -> ProfilePickerSettingsScreen(
+                    state = profileState,
+                    language = state.language,
+                    onAction = onProfileListAction,
+                    onPickBackgroundClick = onPickBackgroundClick,
+                    onBack = { onProfileListAction(ProfileAction.PickerSettingsClosed) },
                     modifier = Modifier.fillMaxSize()
                 )
                 state.showNotifications -> NotificationsScreen(

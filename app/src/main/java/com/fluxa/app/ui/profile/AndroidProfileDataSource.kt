@@ -2,9 +2,13 @@ package com.fluxa.app.ui.profile
 
 import android.content.SharedPreferences
 import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.ProfilePickerSettingsStore
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeAccentColorArgb
 import com.fluxa.app.data.local.safeLanguage
+import com.fluxa.app.data.repository.ProfileAvatarPackRepository
+import com.fluxa.app.shared.feature.profile.ProfileAvatarPackUiModel
+import com.fluxa.app.shared.feature.profile.ProfileAvatarUiModel
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.ProfilePersistence
@@ -17,27 +21,61 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
 class AndroidProfileDataSource(
-    profileManager: ProfileManager
-) : ProfileDataSource by SharedProfileDataSource(AndroidProfileStore(profileManager))
+    profileManager: ProfileManager,
+    pickerSettingsStore: ProfilePickerSettingsStore
+) : ProfileDataSource by SharedProfileDataSource(AndroidProfileStore(profileManager, pickerSettingsStore))
 
 private class AndroidProfileStore(
-    private val profileManager: ProfileManager
+    private val profileManager: ProfileManager,
+    private val pickerSettingsStore: ProfilePickerSettingsStore
 ) : ProfilePersistence {
+    private val avatarPackRepository = ProfileAvatarPackRepository()
+
     override fun observe(): Flow<ProfileStoreSnapshot> = callbackFlow {
         fun emit() {
             val profiles = profileManager.getProfiles()
             val activeId = profileManager.getLastActiveProfileId()
+            val pickerSettings = pickerSettingsStore.get()
             trySend(
                 ProfileStoreSnapshot(
                     activeProfile = profiles.firstOrNull { it.id == activeId }?.toUiModel(),
-                    profiles = profiles.map(UserProfile::toUiModel)
+                    profiles = profiles.map(UserProfile::toUiModel),
+                    pickerBackgroundUrl = pickerSettings.backgroundUrl,
+                    avatarPacks = pickerSettings.avatarPacks.map { pack ->
+                        ProfileAvatarPackUiModel(
+                            id = pack.id,
+                            title = pack.title,
+                            avatars = pack.avatars.map { ProfileAvatarUiModel(name = it.name, url = it.url) }
+                        )
+                    }
                 )
             )
         }
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> emit() }
         profileManager.registerOnChangeListener(listener)
+        pickerSettingsStore.registerOnChangeListener(listener)
         emit()
-        awaitClose { profileManager.unregisterOnChangeListener(listener) }
+        awaitClose {
+            profileManager.unregisterOnChangeListener(listener)
+            pickerSettingsStore.unregisterOnChangeListener(listener)
+        }
+    }
+
+    override suspend fun setPickerBackground(url: String?) {
+        pickerSettingsStore.save(pickerSettingsStore.get().copy(backgroundUrl = url))
+    }
+
+    override suspend fun addAvatarPack(repositoryUrl: String): Result<Unit> {
+        return avatarPackRepository.discover(repositoryUrl).map { discovered ->
+            val current = pickerSettingsStore.get()
+            val merged = (current.avatarPacks.filterNot { existing -> discovered.any { it.id == existing.id } } + discovered)
+            pickerSettingsStore.save(current.copy(avatarPacks = merged))
+        }
+    }
+
+    override suspend fun removeAvatarPack(packId: String) {
+        val current = pickerSettingsStore.get()
+        pickerSettingsStore.save(current.copy(avatarPacks = current.avatarPacks.filterNot { it.id == packId }))
     }
 
     override suspend fun pinHash(profileId: String): String? =
