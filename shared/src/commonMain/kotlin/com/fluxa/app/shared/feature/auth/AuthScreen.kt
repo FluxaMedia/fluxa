@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -322,20 +323,46 @@ private fun NuvioImportingStage(
             Spacer(Modifier.height(20.dp))
             IMPORT_STEP_ORDER.forEach { (step, key) ->
                 val complete = step in state.importSteps
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(vertical = 6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .background(
-                                if (complete) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.08f),
-                                CircleShape
-                            )
-                    )
-                    Text(AppStrings.t(language, key), color = Color.White.copy(alpha = if (complete) 0.85f else 0.3f))
+                val active = !complete && !state.importDone && (state.importSteps.size == IMPORT_STEP_ORDER.indexOfFirst { it.first == step })
+                Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(
+                                    if (complete) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.08f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (complete) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                        Text(AppStrings.t(language, key), color = Color.White.copy(alpha = if (complete) 0.85f else 0.3f))
+                    }
+                    if (active && state.importItemTitle != null && state.importItemIndex != null && state.importItemTotal != null) {
+                        Text(
+                            AppStrings.format(
+                                language,
+                                "auth.nuvio.import.item_progress",
+                                state.importItemIndex,
+                                state.importItemTotal,
+                                state.importItemTitle
+                            ),
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 28.dp, top = 2.dp)
+                        )
+                    }
                 }
             }
             if (state.importDone) {

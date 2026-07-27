@@ -158,7 +158,7 @@ internal class AndroidAuthEffectHandler(
         val profile = payload.parseProfile() ?: return failure(effect, "missing_profile")
         if (payload.string("provider") == "nuvio") {
             if (profile.nuvioAccessToken.isNullOrBlank()) return failure(effect, "missing_nuvio_token")
-            val imported = nuvioAccountImportCoordinator.sync(profile) {}
+            val imported = nuvioAccountImportCoordinator.sync(profile, onStep = {})
             pluginRepositoryManager.importNuvioPlugins(imported.plugins)
             return success(
                 effect,

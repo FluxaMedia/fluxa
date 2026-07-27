@@ -57,7 +57,11 @@ class NuvioAccountImportCoordinator(
         nuvioService.signUp(NuvioCredentials(email, password))
     }
 
-    suspend fun sync(profile: UserProfile, onStep: (NuvioImportStep) -> Unit): NuvioImportResult {
+    suspend fun sync(
+        profile: UserProfile,
+        onStep: (NuvioImportStep) -> Unit,
+        onItemProgress: (index: Int, total: Int, title: String) -> Unit = { _, _, _ -> }
+    ): NuvioImportResult {
         val refreshedProfile = refreshProfileIfNeeded(profile)
         val accessToken = refreshedProfile.nuvioAccessToken?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("Nuvio is not connected")
@@ -72,7 +76,7 @@ class NuvioAccountImportCoordinator(
                 com.fluxa.app.data.remote.NuvioUser(userId, refreshedProfile.nuvioEmail ?: refreshedProfile.email)
             }
         )
-        return import(refreshedProfile, session, onStep)
+        return import(refreshedProfile, session, onStep, onItemProgress)
     }
 
     private suspend inline fun authenticate(call: suspend () -> retrofit2.Response<NuvioSessionDto>): Result<NuvioSession> {
@@ -92,7 +96,8 @@ class NuvioAccountImportCoordinator(
     suspend fun import(
         baseProfile: UserProfile,
         session: NuvioSession,
-        onStep: (NuvioImportStep) -> Unit
+        onStep: (NuvioImportStep) -> Unit,
+        onItemProgress: (index: Int, total: Int, title: String) -> Unit = { _, _, _ -> }
     ): NuvioImportResult {
         val connectedProfile = baseProfile.copy(
             email = session.user?.email ?: baseProfile.email,
@@ -172,7 +177,7 @@ class NuvioAccountImportCoordinator(
 
         if (watchProgressDtos != null) {
             val watchProgressJson = gson.toJsonTree(watchProgressDtos).asJsonArray
-            val addonMetas = fetchAddonMetaNeeds(watchProgressJson, libraryJson, profile.localAddons)
+            val addonMetas = fetchAddonMetaNeeds(watchProgressJson, libraryJson, profile.localAddons, onItemProgress)
             val mergePlan = NuvioCoreBridge.importMergePlan(
                 libraryJson,
                 addonMetas,
@@ -288,16 +293,22 @@ class NuvioAccountImportCoordinator(
             ?: connectedProfile.copy(nuvioProfileIndex = primaryIndex)
     }
 
-    private suspend fun fetchAddonMetaNeeds(watchProgressJson: JsonArray, libraryJson: JsonArray, localAddons: List<String>?): JsonObject {
+    private suspend fun fetchAddonMetaNeeds(
+        watchProgressJson: JsonArray,
+        libraryJson: JsonArray,
+        localAddons: List<String>?,
+        onItemProgress: (index: Int, total: Int, title: String) -> Unit
+    ): JsonObject {
         val needs = NuvioCoreBridge.progressMetaNeeds(watchProgressJson, libraryJson)
         val addonMetas = JsonObject()
-        needs.forEach { need ->
+        needs.forEachIndexed { index, need ->
             val obj = need.asJsonObject
-            val contentId = obj.get("contentId")?.takeUnless { it.isJsonNull }?.asString ?: return@forEach
-            val contentType = obj.get("contentType")?.takeUnless { it.isJsonNull }?.asString ?: return@forEach
+            val contentId = obj.get("contentId")?.takeUnless { it.isJsonNull }?.asString ?: return@forEachIndexed
+            val contentType = obj.get("contentType")?.takeUnless { it.isJsonNull }?.asString ?: return@forEachIndexed
             val detail = runCatching {
                 addonRepository.getAddonMetaDetail(type = contentType, id = contentId, authKey = "", localAddons = localAddons)
-            }.getOrNull() ?: return@forEach
+            }.getOrNull() ?: return@forEachIndexed
+            onItemProgress(index + 1, needs.size(), detail.name)
             val metaJson = JsonObject().apply {
                 addProperty("name", detail.name)
                 detail.poster?.let { addProperty("poster", it) }

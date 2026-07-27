@@ -207,12 +207,19 @@ class AndroidAuthDataSource(
                 email = session.user?.email ?: pendingNuvioEmail,
                 authKey = ""
             )
-            val imported = nuvioCoordinator.import(baseProfile, session) { step ->
-                NUVIO_STEP_MAP[step]?.let { mapped -> state.update { it.copy(importSteps = it.importSteps + mapped) } }
-            }
+            val imported = nuvioCoordinator.import(
+                baseProfile,
+                session,
+                onStep = { step ->
+                    NUVIO_STEP_MAP[step]?.let { mapped -> state.update { it.copy(importSteps = it.importSteps + mapped) } }
+                },
+                onItemProgress = { index, total, title ->
+                    state.update { it.copy(importItemIndex = index, importItemTotal = total, importItemTitle = title) }
+                }
+            )
             pluginRepositoryManager.importNuvioPlugins(imported.plugins)
             pendingImportedProfile = imported.profile
-            state.update { it.copy(importDone = true) }
+            state.update { it.copy(importDone = true, importItemIndex = null, importItemTotal = null, importItemTitle = null) }
         } catch (e: Exception) {
             state.update { it.copy(stage = AuthStage.Nuvio, globalError = AppStrings.t(lang, "auth.error.network")) }
         }

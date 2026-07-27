@@ -21,6 +21,9 @@ data class AuthUiState(
     val isSubmitting: Boolean = false,
     val importSteps: Set<AuthImportStep> = emptySet(),
     val importDone: Boolean = false,
+    val importItemIndex: Int? = null,
+    val importItemTotal: Int? = null,
+    val importItemTitle: String? = null,
     val isAuthenticated: Boolean = false
 )
 
