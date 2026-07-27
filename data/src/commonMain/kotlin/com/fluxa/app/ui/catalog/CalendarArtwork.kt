@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 fun CalendarUpcomingItem.artworkUrl(): String? {
+    if (isUsableCalendarArtwork(resolvedArtworkUrl)) return resolvedArtworkUrl
     return listOf(
         episodePoster,
         poster,

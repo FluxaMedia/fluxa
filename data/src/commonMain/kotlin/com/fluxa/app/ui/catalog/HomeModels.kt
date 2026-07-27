@@ -73,5 +73,6 @@ data class CalendarUpcomingItem(
     val episodePoster: String? = null,
     val seasonNumber: Int? = null,
     val episodeNumber: Int? = null,
-    val episodeTitle: String? = null
+    val episodeTitle: String? = null,
+    val resolvedArtworkUrl: String? = null
 )
