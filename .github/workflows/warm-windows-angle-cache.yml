@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/build.yml"
       - ".github/workflows/warm-windows-angle-cache.yml"
+  schedule:
+    - cron: "0 6 */3 * *"
   workflow_dispatch: {}
 
 permissions:
