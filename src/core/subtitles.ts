@@ -1,4 +1,5 @@
 import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex, storageRead } from './engine';
+import { invoke } from '@tauri-apps/api/core';
 import {
   coreResourceFetchPlan,
   coreResourceParsePlan,
@@ -12,6 +13,10 @@ export type ResolvedSubtitles = {
   subtitles: PlayerSubtitleSource[];
   failedAddons: string[];
 };
+function subtitleTrace(message: string): void {
+  void invoke('debug_log', { msg: `subtitles: ${message}` }).catch(() => undefined);
+}
+
 
 export async function resolvePlaybackSubtitles(
   stream: Stream,
@@ -51,6 +56,7 @@ export async function resolvePlaybackSubtitles(
     id,
     extraRaw: subtitleExtraArgs ?? '',
   });
+  subtitleTrace(`plan contentType=${contentType}, id=${id}, addons=${addons.length}, requests=${plan?.requests?.length ?? 0}`);
   await Promise.all((plan?.requests ?? []).map(async (request) => {
     const addonName = String(request.addonName ?? 'Subtitle');
     try {
@@ -89,27 +95,48 @@ export async function resolvePlaybackSubtitles(
     subtitles.unshift(preferred);
   }
 
-  return { subtitles, failedAddons };
+  // OpenSubtitles can return dozens of duplicates. Keep two choices per
+  // language, matching the player UX without hammering the download host.
+  const languageCounts = new Map<string, number>();
+  const limitedSubtitles = subtitles.filter((subtitle) => {
+    const language = (subtitle.lang ?? 'unknown').trim().toLowerCase() || 'unknown';
+    const count = languageCounts.get(language) ?? 0;
+    if (count >= 2) return false;
+    languageCounts.set(language, count + 1);
+    return true;
+  });
+  return { subtitles: limitedSubtitles, failedAddons };
 }
 
 async function tryFetchSubtitleResource(resourceUrl: string): Promise<unknown[]> {
-  let statusCode = 0;
-  let body: string | null = null;
+  let statusCode: number;
+  let body: string;
   try {
-    const res = await fetch(resourceUrl);
-    statusCode = res.status;
-    body = await res.text();
-  } catch {
-    statusCode = 0;
+    const response = await fetch(resourceUrl);
+    statusCode = response.status;
+    body = await response.text();
+  } catch (error) {
+    console.warn('[subtitles] addon request failed', resourceUrl, error);
+    throw error;
   }
 
   const result = await coreParseAddonResourceResult('subtitles', resourceUrl, statusCode, body);
-  if (result.kind !== 'success') return [];
+  if (result.kind !== 'success') {
+    console.warn('[subtitles] addon response rejected', resourceUrl, result);
+    throw new Error(result.error ?? `subtitle addon returned ${statusCode}`);
+  }
   try {
     const subtitles = JSON.parse(result.valueJson) as unknown;
-    return Array.isArray(subtitles) ? subtitles : [];
-  } catch {
-    return [];
+    const entries = Array.isArray(subtitles)
+      ? subtitles
+      : subtitles && typeof subtitles === 'object' && Array.isArray((subtitles as { subtitles?: unknown[] }).subtitles)
+        ? (subtitles as { subtitles: unknown[] }).subtitles
+        : [];
+    console.info('[subtitles] addon results', resourceUrl, entries.length);
+    return entries;
+  } catch (error) {
+    console.warn('[subtitles] addon response JSON failed', resourceUrl, error);
+    throw error;
   }
 }
 

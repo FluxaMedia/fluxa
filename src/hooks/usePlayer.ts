@@ -28,11 +28,13 @@ import {
   playerSetEpisodes,
   playerSetSkipInfo,
   playerTorrentStats,
+  playerTorrentSiblingSubtitles,
   startTorrentStream,
   stopTorrentStream,
 } from '../core/mpvPlayer';
 import { fetchPlaybackSkipSegments, fetchStreamsForEpisode, fetchMetaVideos, pumpEffects } from '../core/effectRunner';
 import { fetchContentLogo } from '../core/detailEffects';
+import { loadAddons } from '../core/libraryOps';
 import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { getLanguage, t } from '../i18n';
 import {
@@ -50,6 +52,15 @@ import { persistLastPlaybackSource } from '../core/libraryStorage';
 import type { AppState, Meta, Video, Stream, AddonDescriptor, UserProfile } from '../core/types';
 import { usePlayerNativeEvents } from './usePlayerNativeEvents';
 
+function playbackErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (typeof error === 'string' && error.trim()) return error.trim();
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message ?? '').trim();
+    if (message) return message;
+  }
+  return fallback;
+}
 export type PlayerLoadingOverlayState = {
   background?: string | null;
   logo?: string | null;
@@ -294,16 +305,36 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     await embeddedMpvLoad(url, resumeAtSeconds, totalDurationSeconds);
     const { subtitles, failedAddons } = await subtitlesPromise.catch(() => ({ subtitles: [], failedAddons: [] } as ResolvedSubtitles));
     if (isCancelled()) return;
+    if (usesTorrent) {
+      const seenUrls = new Set(subtitles.map((s) => s.url));
+      const siblingSubtitles = await playerTorrentSiblingSubtitles().catch(() => []);
+      for (const sibling of siblingSubtitles) {
+        if (!sibling.url || seenUrls.has(sibling.url)) continue;
+        seenUrls.add(sibling.url);
+        subtitles.push({
+          url: sibling.url,
+          label: sibling.title ?? 'Torrent subtitle',
+          lang: sibling.language,
+          addonName: 'Torrent',
+        });
+      }
+    }
+    if (isCancelled()) return;
+    debugLog(`subtitles: resolved=${subtitles.length}, failedAddons=${failedAddons.join(',') || 'none'}`);
     const castableSubtitle = subtitles.find((s) => /^https?:\/\//i.test(s.url));
     setPlayerSubtitleUrl(castableSubtitle?.url);
     const failedTrackAddons: string[] = [];
-    await Promise.all(
-      subtitles.map((subtitle) =>
-        embeddedMpvAddSubtitle(subtitle.url, subtitle.addonName ?? subtitle.label, subtitle.lang).catch(() => {
-          if (subtitle.addonName) failedTrackAddons.push(subtitle.addonName);
-        }),
-      ),
-    );
+    const subtitleStaggerMs = 550;
+    for (let i = 0; i < subtitles.length; i++) {
+      const subtitle = subtitles[i];
+      await embeddedMpvAddSubtitle(subtitle.url, subtitle.addonName ?? subtitle.label, subtitle.lang).catch(() => {
+        if (subtitle.addonName) failedTrackAddons.push(subtitle.addonName);
+      });
+      if (isCancelled()) return;
+      if (i + 1 < subtitles.length) {
+        await new Promise((r) => setTimeout(r, subtitleStaggerMs));
+      }
+    }
     if (isCancelled()) return;
     const allFailedAddons = Array.from(new Set([...failedAddons, ...failedTrackAddons]));
     setPlayerSubtitleWarning(allFailedAddons.length ? allFailedAddons : null);
@@ -578,12 +609,13 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
       }
     }
 
+    const playbackAddons = await loadAddons().catch(() => stateRef.current.addons.installed ?? [] as AddonDescriptor[]);
     const subtitlesPromise = resolvePlaybackSubtitles(
       stream,
       meta,
       episode,
       playbackPlan?.subtitleExtraArgs,
-      stateRef.current.addons.installed ?? [] as AddonDescriptor[],
+      playbackAddons,
     ).catch(() => ({ subtitles: [], failedAddons: [] } as ResolvedSubtitles));
 
     await playerClearSkipInfo();
@@ -748,7 +780,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
         statusPollActive = false;
         loadingStatusPollActive = false;
         debugLog(`handlePlay:torrent path FAILED ${err instanceof Error ? `${err.message}\n${err.stack}` : String(err)}`);
-        await retryNextOrFail(err instanceof Error && err.message ? err.message : (t('player.playback_error') || 'Playback failed'));
+        await retryNextOrFail(playbackErrorMessage(err, t('player.playback_error') || 'Playback failed'));
         return;
       }
     } else {
@@ -761,7 +793,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
       } catch (err) {
         loadingStatusPollActive = false;
         debugLog(`handlePlay:direct path FAILED ${err instanceof Error ? `${err.message}\n${err.stack}` : String(err)}`);
-        await retryNextOrFail(err instanceof Error && err.message ? err.message : (t('player.playback_error') || 'Playback failed'));
+        await retryNextOrFail(playbackErrorMessage(err, t('player.playback_error') || 'Playback failed'));
         return;
       }
     }
@@ -817,10 +849,10 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     } catch (err) {
       debugLog(`handlePlay:FATAL ${err instanceof Error ? `${err.message}\n${err.stack}` : String(err)}`);
       if (openSourcePickerOnFailure && meta && episode && onEpisodePlaybackFailed) {
-        await onEpisodePlaybackFailed(meta, episode, err instanceof Error && err.message ? err.message : t('player.playback_error'));
+        await onEpisodePlaybackFailed(meta, episode, playbackErrorMessage(err, t('player.playback_error')));
         return;
       }
-      await failPlayerLoading(err instanceof Error && err.message ? err.message : (t('player.playback_error') || 'Playback failed'));
+      await failPlayerLoading(playbackErrorMessage(err, t('player.playback_error') || 'Playback failed'));
     }
   }, [stateRef, showPlayerLoading, failPlayerLoading, playInEmbeddedMpv, nextRetrySource, setLoadingStatus, onEpisodePlaybackFailed]);
 

@@ -12,6 +12,16 @@ export async function stopTorrentStream(): Promise<boolean> {
   return invoke<boolean>('stop_torrent_stream').catch(() => false);
 }
 
+export type TorrentSiblingSubtitle = {
+  url: string;
+  title?: string;
+  language?: string;
+};
+
+export async function playerTorrentSiblingSubtitles(): Promise<TorrentSiblingSubtitle[]> {
+  return invoke<TorrentSiblingSubtitle[]>('player_torrent_sibling_subtitles').catch(() => []);
+}
+
 export type EmbeddedMpvFrame = {
   width: number;
   height: number;

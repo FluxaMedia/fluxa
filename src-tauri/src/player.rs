@@ -86,6 +86,166 @@ mod player_preferences;
 
 use player_preferences::*;
 
+fn encode_query_component(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(byte as char);
+        } else {
+            use std::fmt::Write as _;
+            let _ = write!(encoded, "%{byte:02X}");
+        }
+    }
+    encoded
+}
+
+const VIDEO_EXTENSIONS: [&str; 9] = [
+    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".ts",
+];
+
+/// Pulls a "s01e02"-style tag out of a lowercased filename, if present.
+/// Season-pack subtitle folders/files usually keep this tag even when the
+/// rest of the naming (release group, resolution) differs from the video.
+fn extract_episode_tag(lower_name: &str) -> Option<String> {
+    let bytes = lower_name.as_bytes();
+    for start in 0..bytes.len() {
+        if bytes[start] != b's' {
+            continue;
+        }
+        let mut i = start + 1;
+        let season_start = i;
+        while i < bytes.len() && bytes[i].is_ascii_digit() && i - season_start < 2 {
+            i += 1;
+        }
+        if i == season_start || i >= bytes.len() || bytes[i] != b'e' {
+            continue;
+        }
+        i += 1;
+        let episode_start = i;
+        while i < bytes.len() && bytes[i].is_ascii_digit() && i - episode_start < 3 {
+            i += 1;
+        }
+        if i == episode_start {
+            continue;
+        }
+        return Some(lower_name[start..i].to_string());
+    }
+    None
+}
+
+fn torrent_sibling_subtitles(state: &DesktopState) -> Vec<(String, String, Option<String>)> {
+    let base_url = state.torrent_server_base_url.lock().unwrap().clone();
+    let link = state.torrent_stream_link.lock().unwrap().clone();
+    let selected_id = *state.torrent_stream_file_id.lock().unwrap();
+    let (Some(base_url), Some(link), Some(selected_id)) = (base_url, link, selected_id) else {
+        return Vec::new();
+    };
+    let status_url = format!("{}/torrents", base_url.trim_end_matches('/'));
+    let body =
+        serde_json::json!({ "action": "get", "link": link, "file_id": selected_id }).to_string();
+    let Some(response) =
+        crate::torrent_engine_request(&status_url, Some(&body), std::time::Duration::from_secs(5))
+    else {
+        log::warn!("torrent subtitles: status request failed");
+        return Vec::new();
+    };
+    let Some((_, response_body)) = response.split_once("\r\n\r\n") else {
+        return Vec::new();
+    };
+    let Ok(status) = serde_json::from_str::<serde_json::Value>(response_body) else {
+        log::warn!("torrent subtitles: invalid status response");
+        return Vec::new();
+    };
+    let files = status
+        .get("file_stats")
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let selected_path = files.iter().find_map(|file| {
+        (file.get("id").and_then(serde_json::Value::as_u64) == Some(selected_id as u64))
+            .then(|| file.get("path").and_then(serde_json::Value::as_str))
+            .flatten()
+            .map(str::to_string)
+    });
+    let Some(selected_path) = selected_path else {
+        return Vec::new();
+    };
+    let selected_name = std::path::Path::new(&selected_path)
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if selected_name.is_empty() {
+        return Vec::new();
+    }
+    let episode_tag = extract_episode_tag(&selected_name);
+    // Single-video torrents (a lone episode/movie release) have no other
+    // video file to disambiguate against, so any subtitle file in the
+    // torrent must belong to it regardless of naming.
+    let is_single_video_torrent = files
+        .iter()
+        .filter(|file| {
+            file.get("path")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|path| {
+                    let lower = path.to_ascii_lowercase();
+                    VIDEO_EXTENSIONS.iter().any(|ext| lower.ends_with(ext))
+                })
+        })
+        .count()
+        <= 1;
+
+    let mut subtitles = Vec::new();
+    let mut total_subtitle_files = 0usize;
+    for file in files {
+        let Some(id) = file.get("id").and_then(serde_json::Value::as_u64) else {
+            continue;
+        };
+        let Some(path) = file.get("path").and_then(serde_json::Value::as_str) else {
+            continue;
+        };
+        let lower = path.to_ascii_lowercase();
+        let is_subtitle = [".srt", ".ass", ".ssa", ".vtt", ".sub"]
+            .iter()
+            .any(|extension| lower.ends_with(extension));
+        if !is_subtitle {
+            continue;
+        }
+        total_subtitle_files += 1;
+        let matches_name = lower.contains(&selected_name);
+        let matches_episode_tag = episode_tag
+            .as_deref()
+            .is_some_and(|tag| lower.contains(tag));
+        if !matches_name && !matches_episode_tag && !is_single_video_torrent {
+            log::warn!("torrent subtitles: skipped unmatched path={path:?}");
+            continue;
+        }
+        let url = format!(
+            "{}/stream/fname?link={}&index={}&play&title={}",
+            base_url.trim_end_matches('/'),
+            encode_query_component(&link),
+            id,
+            encode_query_component(path),
+        );
+        let title = std::path::Path::new(path)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("Torrent subtitle")
+            .to_string();
+        let language = lower
+            .split('.')
+            .rev()
+            .nth(1)
+            .filter(|part| part.len() == 3)
+            .map(str::to_string);
+        subtitles.push((url, title, language));
+    }
+    log::warn!(
+        "torrent subtitles: selected={selected_path:?}, episode_tag={episode_tag:?}, single_video={is_single_video_torrent}, total_subtitle_files={total_subtitle_files}, sibling_count={}",
+        subtitles.len()
+    );
+    subtitles
+}
 fn with_renderer_retry<T, F>(
     state: &DesktopState,
     attempts: usize,
@@ -214,6 +374,18 @@ pub fn player_load(
 
     let engine = playback_engine::read_player_engine(&app);
     *state.active_player_engine.lock().unwrap() = engine;
+    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+    if engine == PlayerEngine::Vlc {
+        {
+            let mut renderer = state.player_renderer_vlc.lock().unwrap();
+            if renderer.is_none() {
+                *renderer = Some(libvlc_render::LibvlcPlayer::new()?);
+            }
+        }
+        let surface = ensure_native_player_surface(&app, &state)
+            .ok_or_else(|| "native player surface is unavailable for libVLC".to_string())?;
+        return surface.load(url, start_at, total_duration);
+    }
     if engine == PlayerEngine::Vlc {
         let mut renderer = state.player_renderer_vlc.lock().unwrap();
         if renderer.is_none() {
@@ -457,12 +629,28 @@ pub async fn player_prefetch_artwork(background_url: Option<String>, logo_url: O
 }
 
 #[tauri::command]
+pub fn player_torrent_sibling_subtitles(state: State<DesktopState>) -> Vec<Value> {
+    torrent_sibling_subtitles(&state)
+        .into_iter()
+        .map(|(url, title, language)| {
+            json!({ "url": url, "title": title, "language": language })
+        })
+        .collect()
+}
+
+#[tauri::command]
 pub fn player_add_subtitle(
     state: State<DesktopState>,
     url: String,
     title: Option<String>,
     language: Option<String>,
 ) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+            return surface.add_subtitle(url, title, language);
+        }
+    }
     match with_renderer_retry(&state, 80, |renderer| {
         renderer.add_subtitle(&url, title.as_deref(), language.as_deref())
     }) {
@@ -579,7 +767,11 @@ pub fn player_get_anime4k_enabled(state: State<DesktopState>) -> bool {
 }
 
 #[tauri::command]
-pub fn player_command(_app: AppHandle, state: State<DesktopState>, command: String) -> Result<(), String> {
+pub fn player_command(
+    _app: AppHandle,
+    state: State<DesktopState>,
+    command: String,
+) -> Result<(), String> {
     if command == "stop" {
         *state.eof_next_fired.lock().unwrap() = true;
     }
@@ -673,6 +865,13 @@ pub fn player_show_loading(
 pub fn player_hide(app: AppHandle, state: State<DesktopState>) {
     state.pending_hide.store(true, Ordering::Release);
     let _ = state.sleep_inhibitor.lock().unwrap().set_enabled(false);
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
+        if let Ok(guard) = state.player_renderer_vlc.try_lock() {
+            if let Some(player) = guard.as_ref() {
+                let _ = player.command_string("stop");
+            }
+        }
+    }
     #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
     if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
         surface.hide();
@@ -745,12 +944,48 @@ pub fn player_track_options(
     state: State<DesktopState>,
     track_type: String,
 ) -> Vec<mpv_render::PlayerTrackOption> {
-    with_renderer_retry(&state, 80, |renderer| {
+    log::warn!("player_track_options invoked: track_type={track_type:?}");
+    #[cfg(target_os = "windows")]
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+            return match surface.track_options(track_type.clone()) {
+                Ok(tracks) => {
+                    log::warn!(
+                        "player_track_options surface result: track_type={track_type:?}, count={}",
+                        tracks.len()
+                    );
+                    tracks
+                }
+                Err(error) => {
+                    log::error!(
+                        "player_track_options surface failed: track_type={track_type:?}, error={error}"
+                    );
+                    Vec::new()
+                }
+            };
+        }
+    }
+    match with_renderer_retry(&state, 80, |renderer| {
         Ok(renderer.track_options(&track_type))
-    })
-    .ok()
-    .flatten()
-    .unwrap_or_default()
+    }) {
+        Ok(Some(tracks)) => {
+            log::warn!(
+                "player_track_options result: track_type={track_type:?}, count={}",
+                tracks.len()
+            );
+            tracks
+        }
+        Ok(None) => {
+            log::warn!(
+                "player_track_options result: track_type={track_type:?}, renderer unavailable"
+            );
+            Vec::new()
+        }
+        Err(error) => {
+            log::error!("player_track_options failed: track_type={track_type:?}, error={error}");
+            Vec::new()
+        }
+    }
 }
 
 #[tauri::command]

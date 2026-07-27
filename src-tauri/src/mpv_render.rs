@@ -417,8 +417,17 @@ impl MpvRenderer {
             return Err(format!("mpv_initialize failed: {message}"));
         }
 
-        let level = CString::new("v").unwrap();
-        unsafe { (renderer.api.mpv_request_log_messages)(renderer.handle, level.as_ptr()) };
+        let level = CString::new("info").unwrap();
+        let log_result =
+            unsafe { (renderer.api.mpv_request_log_messages)(renderer.handle, level.as_ptr()) };
+        if log_result < 0 {
+            log::warn!(
+                "mpv: failed to enable info logging: {}",
+                renderer.api.error_string(log_result)
+            );
+        } else {
+            log::info!("mpv: info logging enabled");
+        }
 
         Ok(renderer)
     }
@@ -965,10 +974,25 @@ impl MpvRenderer {
                 MPV_EVENT_NONE => break,
                 MPV_EVENT_LOG_MESSAGE if !event.data.is_null() => {
                     let msg = unsafe { &*(event.data as *const MpvEventLogMessage) };
+                    let prefix = if msg.prefix.is_null() {
+                        "unknown".into()
+                    } else {
+                        unsafe { CStr::from_ptr(msg.prefix) }.to_string_lossy()
+                    };
+                    let level = if msg.level.is_null() {
+                        "unknown".into()
+                    } else {
+                        unsafe { CStr::from_ptr(msg.level) }.to_string_lossy()
+                    };
                     let text = unsafe { CStr::from_ptr(msg.text) }.to_string_lossy();
                     let text = text.trim_end();
                     if !text.is_empty() {
-                        log::debug!("mpv: {text}");
+                        match msg.log_level {
+                            10 | 20 => log::error!("mpv [{prefix}] [{level}]: {text}"),
+                            30 => log::warn!("mpv [{prefix}] [{level}]: {text}"),
+                            40 => log::info!("mpv [{prefix}] [{level}]: {text}"),
+                            _ => log::debug!("mpv [{prefix}] [{level}]: {text}"),
+                        }
                         if self.log_ring.len() >= 40 {
                             self.log_ring.pop_front();
                         }
@@ -1037,9 +1061,9 @@ impl MpvRenderer {
 
     fn track_list_status(&self) -> (bool, bool) {
         let count = self
-            .get_string_property("track-list/count")
-            .and_then(|value| value.parse::<usize>().ok())
-            .unwrap_or(0);
+            .get_i64_property("track-list/count")
+            .unwrap_or(0)
+            .max(0) as usize;
         if count == 0 {
             return (false, false);
         }
@@ -1110,19 +1134,35 @@ impl MpvRenderer {
 
     pub fn track_options(&self, track_type: &str) -> Vec<PlayerTrackOption> {
         let count = self
-            .get_string_property("track-list/count")
-            .and_then(|value| value.parse::<usize>().ok())
-            .unwrap_or(0);
+            .get_i64_property("track-list/count")
+            .unwrap_or(0)
+            .max(0) as usize;
+        log::warn!(
+            "mpv track query: requested={track_type:?}, loaded={}, count={count}, path={:?}",
+            self.loaded,
+            self.get_string_property("path")
+        );
         let mut tracks = Vec::new();
         for index in 0..count {
-            let Some(kind) = self.get_string_property(&format!("track-list/{index}/type")) else {
+            let kind = self.get_string_property(&format!("track-list/{index}/type"));
+            log::warn!(
+                "mpv track query: index={index}, type={kind:?}, id={:?}, title={:?}, lang={:?}, codec={:?}, selected={:?}, external={:?}",
+                self.get_i64_property(&format!("track-list/{index}/id")),
+                self.get_string_property(&format!("track-list/{index}/title")),
+                self.get_string_property(&format!("track-list/{index}/lang")),
+                self.get_string_property(&format!("track-list/{index}/codec")),
+                self.get_flag_property(&format!("track-list/{index}/selected")),
+                self.get_flag_property(&format!("track-list/{index}/external")),
+            );
+            let Some(kind) = kind else {
                 continue;
             };
             if kind != track_type {
                 continue;
             }
             let id = self
-                .get_string_property(&format!("track-list/{index}/id"))
+                .get_i64_property(&format!("track-list/{index}/id"))
+                .map(|value| value.to_string())
                 .unwrap_or_else(|| (index + 1).to_string());
             let title = self
                 .get_string_property(&format!("track-list/{index}/title"))
@@ -1140,15 +1180,13 @@ impl MpvRenderer {
                 })
                 .filter(|value| !value.trim().is_empty());
             let external = self
-                .get_string_property(&format!("track-list/{index}/external"))
-                .map(|value| value == "yes")
+                .get_flag_property(&format!("track-list/{index}/external"))
                 .unwrap_or(false);
             let codec = self
                 .get_string_property(&format!("track-list/{index}/codec"))
                 .filter(|value| !value.trim().is_empty());
             let selected = self
-                .get_string_property(&format!("track-list/{index}/selected"))
-                .map(|value| value == "yes")
+                .get_flag_property(&format!("track-list/{index}/selected"))
                 .unwrap_or(false);
             let fallback = if track_type == "audio" {
                 format!("Audio {}", tracks.len() + 1)
@@ -1504,6 +1542,33 @@ impl MpvRenderer {
         self.get_string_property(name)
     }
 
+    fn get_i64_property(&self, name: &str) -> Option<i64> {
+        let c_name = CString::new(name).ok()?;
+        let mut value = 0i64;
+        let result = unsafe {
+            (self.api.mpv_get_property)(
+                self.handle,
+                c_name.as_ptr(),
+                4,
+                (&mut value as *mut i64).cast(),
+            )
+        };
+        (result >= 0).then_some(value)
+    }
+
+    fn get_flag_property(&self, name: &str) -> Option<bool> {
+        let c_name = CString::new(name).ok()?;
+        let mut value = 0i32;
+        let result = unsafe {
+            (self.api.mpv_get_property)(
+                self.handle,
+                c_name.as_ptr(),
+                3,
+                (&mut value as *mut i32).cast(),
+            )
+        };
+        (result >= 0).then_some(value != 0)
+    }
     fn get_string_property(&self, name: &str) -> Option<String> {
         let c_name = CString::new(name).ok()?;
         let mut value: *mut c_char = ptr::null_mut();

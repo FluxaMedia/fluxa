@@ -21,8 +21,8 @@ mod macos_vulkan;
 mod mpv_render;
 mod net_guard;
 mod oauth;
-mod player;
 mod playback_engine;
+mod player;
 mod plugin_runtime;
 mod poster_cache;
 mod roku;
@@ -236,7 +236,9 @@ fn debug_log(msg: String) {
     if std::env::var_os("FLUXA_DEBUG_LOGS").is_some() {
         println!("[perf] {msg}");
     }
-    log::debug!("[app] {msg}");
+    if msg.starts_with("subtitles:") {
+        log::warn!("[app] {msg}");
+    } else { log::debug!("[app] {msg}"); }
 }
 
 #[tauri::command]
@@ -333,7 +335,9 @@ async fn http_execute_text(
 ) -> Result<HttpTextResponse, String> {
     let client = net_guard::vetted_client(&url, std::time::Duration::from_secs(10)).await?;
     let method = reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| e.to_string())?;
-    let mut request = client.request(method, &url).header("User-Agent", "Fluxa/1.0");
+    let mut request = client
+        .request(method, &url)
+        .header("User-Agent", "Fluxa/1.0");
     for (name, value) in headers {
         request = request.header(name, value);
     }
@@ -607,7 +611,7 @@ async fn player_torrent_stats(state: State<'_, DesktopState>) -> Result<Option<V
     Ok(Some(json_val))
 }
 
-fn torrent_engine_request(
+pub(crate) fn torrent_engine_request(
     url: &str,
     body: Option<&str>,
     read_timeout: std::time::Duration,
@@ -964,6 +968,7 @@ pub fn run() {
             player_prefetch_artwork,
             enqueue_offline_download,
             player_add_subtitle,
+            player_torrent_sibling_subtitles,
             player_title,
             player_status,
             player_set_sleep_inhibition,
