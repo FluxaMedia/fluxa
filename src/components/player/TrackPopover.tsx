@@ -114,10 +114,11 @@ const CHARACTER_EDGES = ['none', 'raised', 'depressed', 'uniform', 'drop-shadow'
 function groupTracks(tracks: PlayerTrackOption[]): TrackGroup[] {
   const groups = new Map<string, TrackGroup>();
   for (const track of tracks) {
-    const key = track.lang?.toLowerCase() || 'und';
+    const label = langDisplayName(track.lang);
+    const key = track.lang ? label : 'und';
     let group = groups.get(key);
     if (!group) {
-      group = { key, label: langDisplayName(track.lang), tracks: [] };
+      group = { key, label, tracks: [] };
       groups.set(key, group);
     }
     group.tracks.push(track);

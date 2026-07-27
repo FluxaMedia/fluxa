@@ -690,7 +690,10 @@ pub fn player_set_anime4k_enabled(
             quality.as_deref().unwrap_or("anime4k_m"),
             mode.as_deref().unwrap_or("a"),
         )
-        .ok_or_else(|| "Anime4K shader chain not found".to_string())?;
+        .ok_or_else(|| {
+            log::error!("player_set_anime4k_enabled: shader chain not found for quality={:?} mode={:?}", quality, mode);
+            "Anime4K shader chain not found".to_string()
+        })?;
         vec![
             vec![
                 "change-list".to_string(),
@@ -751,7 +754,10 @@ pub fn player_set_anime4k_enabled(
     };
     for command in commands {
         let args = command.iter().map(String::as_str).collect::<Vec<_>>();
-        with_renderer_retry(&state, 60, |renderer| renderer.command_args(&args))?;
+        with_renderer_retry(&state, 600, |renderer| renderer.command_args(&args)).map_err(|err| {
+            log::error!("player_set_anime4k_enabled: command {:?} failed: {err}", args);
+            err
+        })?;
     }
     *state.anime4k_enabled.lock().unwrap() = enabled;
     let _ = app.emit(
