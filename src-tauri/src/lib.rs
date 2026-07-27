@@ -690,6 +690,19 @@ fn get_data_dir(state: State<DesktopState>) -> Option<String> {
         .map(|d| d.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+fn player_hdr_supported(app: tauri::AppHandle) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        return windows_player_surface::hdr_display_supported(&app);
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app;
+        false
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let _sentry_guard = sentry::init(sentry::ClientOptions {
@@ -976,6 +989,7 @@ pub fn run() {
             player_get_playback_info,
             player_track_options,
             player_set_seek_thumbnail_enabled,
+            player_hdr_supported,
             player_get_seek_thumbnail,
             player_screenshot,
             custom_fonts_list,

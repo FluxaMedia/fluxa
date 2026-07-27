@@ -10,17 +10,18 @@
 
 use crate::linux_vulkan::{NativeSurface, VulkanContext};
 use crate::mpv_render::VulkanTargetImage;
+use crate::playback_engine::{PlaybackEngine, PlayerEngine};
 use crate::DesktopState;
 use fluxa_core::FluxaCore;
 use glib::ControlFlow;
 use gtk::prelude::*;
-use webkit2gtk::WebViewExt;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
+use webkit2gtk::WebViewExt;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum RenderBackend {
@@ -88,102 +89,116 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
         .spawn(move || {
             let mut last_present = Instant::now();
             loop {
-            let w = shared.width.load(Ordering::Acquire);
-            let h = shared.height.load(Ordering::Acquire);
-            if w > 1 && h > 1 {
-                if let Err(e) = ctx.resize(w, h) {
-                    log::warn!("linux_player_surface: Vulkan resize failed: {e}");
-                    std::thread::sleep(Duration::from_millis(100));
-                    continue;
-                }
-            }
-            let forced = last_present.elapsed() >= PRESENT_WATCHDOG_INTERVAL;
-            shared.hdr.store(ctx.is_hdr(), Ordering::Release);
-
-            let state = app.state::<DesktopState>();
-            let mut wire_error = false;
-            let ready = {
-                let Ok(mut guard) = state.player_renderer.try_lock() else {
-                    std::thread::sleep(Duration::from_millis(2));
-                    continue;
-                };
-                match guard.as_mut() {
-                    None => {
-                        shared.mpv_context_ready.store(false, Ordering::Release);
-                        false
+                let w = shared.width.load(Ordering::Acquire);
+                let h = shared.height.load(Ordering::Acquire);
+                if w > 1 && h > 1 {
+                    if let Err(e) = ctx.resize(w, h) {
+                        log::warn!("linux_player_surface: Vulkan resize failed: {e}");
+                        std::thread::sleep(Duration::from_millis(100));
+                        continue;
                     }
-                    Some(renderer) => {
-                        if renderer.needs_vulkan_context() {
+                }
+                let forced = last_present.elapsed() >= PRESENT_WATCHDOG_INTERVAL;
+                shared.hdr.store(ctx.is_hdr(), Ordering::Release);
+
+                let state = app.state::<DesktopState>();
+                let mut wire_error = false;
+                let ready = {
+                    let Ok(mut guard) = state.player_renderer.try_lock() else {
+                        std::thread::sleep(Duration::from_millis(2));
+                        continue;
+                    };
+                    match guard.as_mut() {
+                        None => {
                             shared.mpv_context_ready.store(false, Ordering::Release);
-                            let (instance, phys_device, device, queue_index, queue_count, get_proc_addr) =
-                                ctx.device_handles();
-                            let ext_ptrs = ctx.enabled_device_extension_ptrs();
-                            match renderer.create_vulkan_context(
-                                instance,
-                                phys_device,
-                                device,
-                                queue_index,
-                                queue_count,
-                                get_proc_addr,
-                                &ext_ptrs,
-                            ) {
-                                Ok(()) => shared.mpv_context_ready.store(true, Ordering::Release),
-                                Err(e) => {
-                                    log::error!("linux_player_surface: mpv Vulkan context failed: {e}");
-                                    wire_error = true;
+                            false
+                        }
+                        Some(renderer) => {
+                            if renderer.needs_vulkan_context() {
+                                shared.mpv_context_ready.store(false, Ordering::Release);
+                                let (
+                                    instance,
+                                    phys_device,
+                                    device,
+                                    queue_index,
+                                    queue_count,
+                                    get_proc_addr,
+                                ) = ctx.device_handles();
+                                let ext_ptrs = ctx.enabled_device_extension_ptrs();
+                                match renderer.create_vulkan_context(
+                                    instance,
+                                    phys_device,
+                                    device,
+                                    queue_index,
+                                    queue_count,
+                                    get_proc_addr,
+                                    &ext_ptrs,
+                                ) {
+                                    Ok(()) => {
+                                        shared.mpv_context_ready.store(true, Ordering::Release)
+                                    }
+                                    Err(e) => {
+                                        log::error!(
+                                            "linux_player_surface: mpv Vulkan context failed: {e}"
+                                        );
+                                        wire_error = true;
+                                    }
                                 }
+                            } else {
+                                shared.mpv_context_ready.store(true, Ordering::Release);
                             }
-                        } else {
-                            shared.mpv_context_ready.store(true, Ordering::Release);
+                            !wire_error && (forced || renderer.vulkan_frame_ready())
                         }
-                        !wire_error && (forced || renderer.vulkan_frame_ready())
                     }
-                }
-            };
-            if wire_error {
-                std::thread::sleep(Duration::from_millis(250));
-                continue;
-            }
-            if !ready {
-                std::thread::sleep(Duration::from_millis(4));
-                continue;
-            }
-
-            let image_usage = ctx.image_usage();
-            let result = ctx.render_and_present(|image, format, iw, ih, wait_semaphore, signal_semaphore| {
-                let mut guard = state
-                    .player_renderer
-                    .lock()
-                    .map_err(|_| "player renderer lock poisoned".to_string())?;
-                let renderer = guard
-                    .as_mut()
-                    .ok_or_else(|| "player renderer destroyed".to_string())?;
-                let mut target = VulkanTargetImage {
-                    image,
-                    format,
-                    w: iw as i32,
-                    h: ih as i32,
-                    usage: image_usage,
-                    layout: 0,
-                    wait_semaphore,
-                    signal_semaphore,
                 };
-                renderer.render_vulkan_frame(&mut target).map(|_| target.layout)
-            });
-            match result {
-                Ok(()) => {
-                    last_present = Instant::now();
-                    if let Ok(mut guard) = state.player_renderer.lock() {
-                        if let Some(r) = guard.as_mut() {
-                            r.report_swap();
+                if wire_error {
+                    std::thread::sleep(Duration::from_millis(250));
+                    continue;
+                }
+                if !ready {
+                    std::thread::sleep(Duration::from_millis(4));
+                    continue;
+                }
+
+                let image_usage = ctx.image_usage();
+                let result = ctx.render_and_present(
+                    |image, format, iw, ih, wait_semaphore, signal_semaphore| {
+                        let mut guard = state
+                            .player_renderer
+                            .lock()
+                            .map_err(|_| "player renderer lock poisoned".to_string())?;
+                        let renderer = guard
+                            .as_mut()
+                            .ok_or_else(|| "player renderer destroyed".to_string())?;
+                        let mut target = VulkanTargetImage {
+                            image,
+                            format,
+                            w: iw as i32,
+                            h: ih as i32,
+                            usage: image_usage,
+                            layout: 0,
+                            wait_semaphore,
+                            signal_semaphore,
+                        };
+                        renderer
+                            .render_vulkan_frame(&mut target)
+                            .map(|_| target.layout)
+                    },
+                );
+                match result {
+                    Ok(()) => {
+                        last_present = Instant::now();
+                        if let Ok(mut guard) = state.player_renderer.lock() {
+                            if let Some(r) = guard.as_mut() {
+                                r.report_swap();
+                            }
                         }
                     }
+                    Err(e) => {
+                        log::warn!("linux_player_surface: Vulkan render failed: {e}");
+                        std::thread::sleep(Duration::from_millis(50));
+                    }
                 }
-                Err(e) => {
-                    log::warn!("linux_player_surface: Vulkan render failed: {e}");
-                    std::thread::sleep(Duration::from_millis(50));
-                }
-            }
             }
         })
         .expect("failed to spawn vulkan render thread");
@@ -206,7 +221,10 @@ fn create_vulkan_surface(
         .window()
         .ok_or("Vulkan surface setup: toplevel window is not realized yet")?;
 
-    if let Ok(wl_parent) = parent_gdk_window.clone().downcast::<gdkwayland::WaylandWindow>() {
+    if let Ok(wl_parent) = parent_gdk_window
+        .clone()
+        .downcast::<gdkwayland::WaylandWindow>()
+    {
         let parent_wl_surface = unsafe {
             gdkwayland::ffi::gdk_wayland_window_get_wl_surface(wl_parent.to_glib_none().0)
         };
@@ -255,11 +273,20 @@ fn create_vulkan_surface(
 
 fn log_current_toplevel_wl_surface(gl_area: &gtk::GLArea, label: &str) {
     use glib::translate::ToGlibPtr;
-    let Some(toplevel) = gl_area.toplevel() else { return };
-    let Ok(toplevel_window) = toplevel.downcast::<gtk::Window>() else { return };
-    let Some(gdk_window) = toplevel_window.window() else { return };
-    let Ok(wl_window) = gdk_window.downcast::<gdkwayland::WaylandWindow>() else { return };
-    let wl_surface = unsafe { gdkwayland::ffi::gdk_wayland_window_get_wl_surface(wl_window.to_glib_none().0) };
+    let Some(toplevel) = gl_area.toplevel() else {
+        return;
+    };
+    let Ok(toplevel_window) = toplevel.downcast::<gtk::Window>() else {
+        return;
+    };
+    let Some(gdk_window) = toplevel_window.window() else {
+        return;
+    };
+    let Ok(wl_window) = gdk_window.downcast::<gdkwayland::WaylandWindow>() else {
+        return;
+    };
+    let wl_surface =
+        unsafe { gdkwayland::ffi::gdk_wayland_window_get_wl_surface(wl_window.to_glib_none().0) };
     log::debug!("linux_player_surface: {label} current toplevel wl_surface={wl_surface:p}");
 }
 
@@ -274,7 +301,12 @@ fn vulkan_surface_size(gl_area: &gtk::GLArea, webview_widget: &gtk::Widget) -> (
     let (w, h) = gl_area
         .toplevel()
         .map(|t| (t.allocated_width(), t.allocated_height()))
-        .unwrap_or_else(|| (webview_widget.allocated_width(), webview_widget.allocated_height()));
+        .unwrap_or_else(|| {
+            (
+                webview_widget.allocated_width(),
+                webview_widget.allocated_height(),
+            )
+        });
     (w.max(2) * scale, h.max(2) * scale)
 }
 
@@ -282,8 +314,9 @@ fn native_surface_for_gdk_window(window: &gdk::Window) -> Option<NativeSurface> 
     use glib::translate::ToGlibPtr;
 
     if let Ok(wl_window) = window.clone().downcast::<gdkwayland::WaylandWindow>() {
-        let wl_surface =
-            unsafe { gdkwayland::ffi::gdk_wayland_window_get_wl_surface(wl_window.to_glib_none().0) };
+        let wl_surface = unsafe {
+            gdkwayland::ffi::gdk_wayland_window_get_wl_surface(wl_window.to_glib_none().0)
+        };
         let display = gdk::Display::default()?;
         let wayland_display: gdkwayland::WaylandDisplay = display.downcast().ok()?;
         let wl_display = unsafe {
@@ -301,7 +334,8 @@ fn native_surface_for_gdk_window(window: &gdk::Window) -> Option<NativeSurface> 
         let xid = unsafe { gdkx11::ffi::gdk_x11_window_get_xid(x11_window.to_glib_none().0) };
         let display = gdk::Display::default()?;
         let x11_display: gdkx11::X11Display = display.downcast().ok()?;
-        let xdisplay = unsafe { gdkx11::ffi::gdk_x11_display_get_xdisplay(x11_display.to_glib_none().0) };
+        let xdisplay =
+            unsafe { gdkx11::ffi::gdk_x11_display_get_xdisplay(x11_display.to_glib_none().0) };
         if xdisplay.is_null() {
             return None;
         }
@@ -558,7 +592,32 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                                 .store(false, std::sync::atomic::Ordering::Release);
                             *command_app.state::<DesktopState>().eof_next_fired.lock().unwrap() = false;
                             *command_app.state::<DesktopState>().chapters_json.lock().unwrap() = None;
-                            if backend == RenderBackend::OpenGl {
+                                                        if *command_app.state::<DesktopState>().active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
+                                command_gl_area.set_auto_render(false);
+                                command_gl_area.show();
+                                let result = (|| {
+                                    use glib::translate::ToGlibPtr;
+                                    let window = command_gl_area.window().ok_or_else(|| "libVLC requires a realized X11 video surface".to_string())?;
+                                    let x11_window = window.downcast::<gdkx11::X11Window>().map_err(|_| "embedded libVLC currently requires an X11 session; Wayland needs the libVLC video-callback renderer".to_string())?;
+                                    let xid = unsafe { gdkx11::ffi::gdk_x11_window_get_xid(x11_window.to_glib_none().0) };
+                                    let mut players = command_app.state::<DesktopState>().player_renderer_vlc.lock().unwrap();
+                                    if players.is_none() {
+                                        *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
+                                    }
+                                    let player = players.as_mut().ok_or_else(|| "libVLC player is unavailable".to_string())?;
+                                    player.attach_xwindow(xid as u32)?;
+                                    player.load(&url, start_at)
+                                })();
+                                if let Err(error) = result {
+                                    visible.set(false);
+                                    command_gl_area.hide();
+                                    let _ = command_app.emit("native-player-error", error);
+                                } else {
+                                    visible.set(true);
+                                    let _ = command_app.emit("native-player-show", ());
+                                }
+                                continue;
+                            }if backend == RenderBackend::OpenGl {
                                 command_gl_area.set_auto_render(true);
                                 command_gl_area.show();
                             } else if let Some(state) = vulkan_state.borrow().as_ref() {
@@ -850,7 +909,8 @@ fn prepare_and_load(
                 .as_ref()
                 .map(|vs| vs.shared.clone())
                 .ok_or_else(|| VULKAN_CONTEXT_PENDING.to_string())?;
-            if renderer.needs_vulkan_context() && !shared.mpv_context_ready.load(Ordering::Acquire) {
+            if renderer.needs_vulkan_context() && !shared.mpv_context_ready.load(Ordering::Acquire)
+            {
                 return Err(VULKAN_CONTEXT_PENDING.to_string());
             }
             if shared.hdr.load(Ordering::Acquire) {

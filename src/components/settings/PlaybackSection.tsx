@@ -7,6 +7,8 @@ import { styles, FONT } from './settingsStyles';
 import type { Prefs } from './settingsTypes';
 import { listCustomFonts, pickAndAddCustomFont, removeCustomFont, type CustomFont } from '../../core/customFonts';
 
+const isWindows = navigator.userAgent.includes('Windows');
+
 export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void }) {
   const [mpvScriptsDir, setMpvScriptsDir] = useState<string | null>(null);
   const [scriptsDirCopied, setScriptsDirCopied] = useState(false);
@@ -144,7 +146,21 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
         selected={prefs.holdSpeed}
         onSelect={(v) => setPref('holdSpeed', v)}
       />
-    </SettingsSection>
+      <ToggleTile
+        title={t('settings.seek_thumbnails')}
+        subtitle={t('settings.seek_thumbnails_desc')}
+        checked={prefs.seekThumbnailEnabled}
+        onToggle={(v) => {
+          void setPref('seekThumbnailEnabled', v);
+          void invoke('player_set_seek_thumbnail_enabled', { enabled: v });
+        }}
+      />
+      <ToggleTile
+        title="HDR output"
+        subtitle="Use HDR output when the display and renderer support it. Falls back to SDR when unavailable."
+        checked={prefs.hdrEnabled}
+        onToggle={(v) => setPref('hdrEnabled', v)}
+      />    </SettingsSection>
     <SettingsSection title={t('settings.stream_settings')} subtitle={t('settings.stream_source_selection_desc')}>
       <ChoiceTile
         title={t('settings.stream_source_selection')}
@@ -181,7 +197,27 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
       <ChoiceTile title={t('settings.buffer_cache')} subtitle={t('settings.buffer_cache_desc')} options={[{ value: '100', label: '100 MB' }, { value: '500', label: '500 MB' }, { value: '1000', label: '1 GB' }, { value: '2000', label: '2 GB' }, { value: '-1', label: t('settings.buffer_cache_infinite') }]} selected={prefs.playerBufferCacheMb} onSelect={(v) => setPref('playerBufferCacheMb', v)} />
       <ChoiceTile title={t('settings.forward_buffer')} subtitle={t('settings.forward_buffer_desc')} options={[{ value: '30', label: '30s' }, { value: '60', label: '60s' }, { value: '120', label: '120s' }, { value: '300', label: '300s' }, { value: '600', label: '600s' }]} selected={prefs.playerForwardBufferSeconds} onSelect={(v) => setPref('playerForwardBufferSeconds', v)} />
       <ChoiceTile title={t('settings.back_buffer')} subtitle={t('settings.back_buffer_desc')} options={[{ value: '0', label: '0s' }, { value: '15', label: '15s' }, { value: '30', label: '30s' }, { value: '60', label: '60s' }, { value: '120', label: '120s' }, { value: '300', label: '300s' }]} selected={prefs.playerBackBufferSeconds} onSelect={(v) => setPref('playerBackBufferSeconds', v)} />
-    </SettingsSection>
+      <ChoiceTile
+        title={t('settings.render_backend')}
+        subtitle={t('settings.render_backend_desc')}
+        options={[
+          { value: 'opengl', label: 'OpenGL' },
+          { value: 'vulkan', label: 'Vulkan' },
+          ...(isWindows ? [{ value: 'd3d11', label: 'D3D11' }] : []),
+        ]}
+        selected={prefs.renderBackend}
+        onSelect={(v) => setPref('renderBackend', v)}
+      />
+      <ChoiceTile
+        title={t('settings.player_engine')}
+        subtitle={t('settings.player_engine_desc')}
+        options={[
+          { value: 'mpv', label: 'mpv' },
+          { value: 'libvlc', label: 'libVLC' },
+        ]}
+        selected={prefs.playerEngine}
+        onSelect={(v) => setPref('playerEngine', v)}
+      />    </SettingsSection>
     <SettingsSection title={t('settings.skip_segments')} subtitle={t('settings.use_introdb_desc')}>
       <ToggleTile title={t('settings.skip_intro_outro_recap')} subtitle={t('settings.skip_intro_outro_recap_desc')} checked={prefs.useIntroDb || prefs.useAniSkip} onToggle={(v) => { setPref('useIntroDb', v); setPref('useAniSkip', v); }} />
       <ToggleTile title={t('settings.use_animeskip')} subtitle={t('settings.use_animeskip_desc')} checked={prefs.useAnimeSkip} onToggle={(v) => setPref('useAnimeSkip', v)} />
@@ -260,47 +296,6 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
         </div>
       ))}
     </SettingsSection>
-    <div style={styles.settingsGroup}>
-      <div style={styles.groupHeading}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ background: 'rgba(255,149,0,0.15)', border: '1px solid rgba(255,149,0,0.3)', color: '#FF9500', fontSize: '0.625rem', fontWeight: 600, fontFamily: FONT, padding: '0.125rem 0.4375rem', borderRadius: '0.25rem', letterSpacing: '0.07em', flexShrink: 0, textTransform: 'uppercase' }}>Experimental</span>
-          <p style={{ ...styles.groupTitle, margin: 0 }}>Experimental</p>
-        </div>
-        <p style={styles.groupSubtitle}>Features that may change or be removed. Use with caution.</p>
-      </div>
-      <div style={styles.settingsCard}>
-        <ToggleTile
-          title={t('settings.seek_thumbnails')}
-          subtitle={t('settings.seek_thumbnails_desc')}
-          checked={prefs.seekThumbnailEnabled}
-          onToggle={(v) => {
-            void setPref('seekThumbnailEnabled', v);
-            void invoke('player_set_seek_thumbnail_enabled', { enabled: v });
-          }}
-        />
-        <ChoiceTile
-          title={t('settings.render_backend')}
-          subtitle={t('settings.render_backend_desc')}
-          options={[
-            { value: 'opengl', label: 'OpenGL' },
-            { value: 'vulkan', label: 'Vulkan' },
-            { value: 'd3d11', label: 'D3D11 (Windows only)' },
-          ]}
-          selected={prefs.renderBackend}
-          onSelect={(v) => setPref('renderBackend', v)}
-        />
-        <ChoiceTile
-          title={t('settings.player_engine')}
-          subtitle={t('settings.player_engine_desc')}
-          options={[
-            { value: 'mpv', label: 'mpv' },
-            { value: 'libvlc', label: 'libVLC' },
-          ]}
-          selected={prefs.playerEngine}
-          onSelect={(v) => setPref('playerEngine', v)}
-        />
-      </div>
-    </div>
     </>
   );
 }

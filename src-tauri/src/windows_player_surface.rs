@@ -10,6 +10,7 @@
 //   • Player controls live in the WebView overlay (transparent background CSS).
 
 use crate::mpv_render::VulkanTargetImage;
+use crate::playback_engine::{PlaybackEngine, PlayerEngine};
 use crate::windows_d3d11::D3d11Context;
 use crate::windows_egl::{self, EglContext};
 use crate::windows_vulkan::VulkanContext;
@@ -47,6 +48,11 @@ enum RenderBackend {
     D3d11,
 }
 
+fn hdr_output_enabled(app: &AppHandle) -> bool {
+    let state = app.state::<DesktopState>();
+    crate::storage::read_pref_bool(state, "hdrEnabled").unwrap_or(true)
+}
+
 fn read_render_backend(app: &AppHandle) -> RenderBackend {
     let state = app.state::<DesktopState>();
     match crate::storage::read_pref_field(state, "renderBackend").as_deref() {
@@ -66,6 +72,20 @@ impl RenderContext {
     fn poll_resize(&self) {
         if let RenderContext::Egl(egl) = self {
             egl.poll_resize();
+        }
+    }
+
+    fn warm_up_after_show(&self) {
+        if let RenderContext::Egl(egl) = self {
+            // ANGLE can create its window surface while the child HWND is hidden,
+            // but DXVA2/EGL interop on some drivers is not usable until that HWND
+            // has been presented once. Prime it before mpv starts decoding.
+            egl.poll_resize();
+            // Never let the one-time prime wait for a compositor/vblank. Some
+            // virtual display drivers can leave that wait pending indefinitely.
+            let _ = egl.set_swap_interval(0);
+            egl.swap_buffers();
+            let _ = egl.set_swap_interval(1);
         }
     }
 
@@ -97,12 +117,7 @@ impl RenderContext {
                     renderer.create_d3d11_context(ctx.device_ptr())?;
                 }
                 let back_buffer = ctx.back_buffer()?;
-                renderer.render_d3d11_frame(
-                    back_buffer.as_raw(),
-                    ctx.dxgi_format(),
-                    ctx.width(),
-                    ctx.height(),
-                )?;
+                renderer.render_d3d11_frame(back_buffer.as_raw())?;
                 ctx.present(vsync_enabled)?;
                 renderer.report_swap();
                 Ok(())
@@ -123,8 +138,8 @@ impl RenderContext {
                 }
                 ctx.resize(width, height)?;
                 let image_usage = ctx.image_usage();
-                let result =
-                    ctx.render_and_present(|image, format, w, h, wait_semaphore, signal_semaphore| {
+                let result = ctx.render_and_present(
+                    |image, format, w, h, wait_semaphore, signal_semaphore| {
                         let mut target = VulkanTargetImage {
                             image,
                             format,
@@ -138,7 +153,8 @@ impl RenderContext {
                         renderer
                             .render_vulkan_frame(&mut target)
                             .map(|_| target.layout)
-                    });
+                    },
+                );
                 if result.is_ok() {
                     renderer.report_swap();
                 }
@@ -278,6 +294,16 @@ enum SurfaceCommand {
     Hide,
     PlayerCommand(String),
     Status(mpsc::Sender<crate::mpv_render::PlayerStatus>),
+    TrackOptions {
+        track_type: String,
+        sender: mpsc::Sender<Vec<crate::mpv_render::PlayerTrackOption>>,
+    },
+    AddSubtitle {
+        url: String,
+        title: Option<String>,
+        language: Option<String>,
+        sender: mpsc::Sender<Result<(), String>>,
+    },
     SetCursorVisible(bool),
     ShowLoading {
         title: String,
@@ -332,6 +358,37 @@ impl NativePlayerSurface {
             .recv_timeout(Duration::from_millis(250))
             .map_err(|e| format!("player status unavailable: {e}"))
     }
+    pub fn track_options(
+        &self,
+        track_type: String,
+    ) -> Result<Vec<crate::mpv_render::PlayerTrackOption>, String> {
+        let (sender, receiver) = mpsc::channel();
+        self.sender
+            .send(SurfaceCommand::TrackOptions { track_type, sender })
+            .map_err(|e| format!("surface unavailable: {e}"))?;
+        receiver
+            .recv_timeout(Duration::from_secs(2))
+            .map_err(|e| format!("player track options unavailable: {e}"))
+    }
+    pub fn add_subtitle(
+        &self,
+        url: String,
+        title: Option<String>,
+        language: Option<String>,
+    ) -> Result<(), String> {
+        let (sender, receiver) = mpsc::channel();
+        self.sender
+            .send(SurfaceCommand::AddSubtitle {
+                url,
+                title,
+                language,
+                sender,
+            })
+            .map_err(|e| format!("surface unavailable: {e}"))?;
+        receiver
+            .recv_timeout(Duration::from_secs(5))
+            .map_err(|e| format!("player add subtitle unavailable: {e}"))?
+    }
     pub fn set_cursor_visible(&self, visible: bool) {
         let _ = self.sender.send(SurfaceCommand::SetCursorVisible(visible));
     }
@@ -375,6 +432,21 @@ fn reset_install_slot() {
     *INSTALL.lock().unwrap() = InstallSlot::NotStarted;
 }
 
+pub fn hdr_display_supported(app: &AppHandle) -> bool {
+    let Some(window) = app.get_webview_window("main") else {
+        return false;
+    };
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let Ok(handle) = window.window_handle() else {
+        return false;
+    };
+    let RawWindowHandle::Win32(handle) = handle.as_ref() else {
+        return false;
+    };
+    D3d11Context::new(handle.hwnd.get() as isize, 2, 2, true)
+        .map(|ctx| ctx.is_hdr())
+        .unwrap_or(false)
+}
 pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
     let mut slot = INSTALL.lock().unwrap();
     let rx = match std::mem::replace(&mut *slot, InstallSlot::NotStarted) {
@@ -499,11 +571,15 @@ fn spawn_install_thread(
         }
 
         let backend = read_render_backend(&app);
-        log::info!("player surface: experimental render backend = {}", match backend {
-            RenderBackend::OpenGl => "opengl",
-            RenderBackend::Vulkan => "vulkan",
-            RenderBackend::D3d11 => "d3d11",
-        });
+        let hdr_enabled = hdr_output_enabled(&app);
+        log::info!(
+            "player surface: experimental render backend = {}",
+            match backend {
+                RenderBackend::OpenGl => "opengl",
+                RenderBackend::Vulkan => "vulkan",
+                RenderBackend::D3d11 => "d3d11",
+            }
+        );
 
         let mut render_ctx = match backend {
             RenderBackend::OpenGl => match windows_egl::create_window_context(child_hwnd) {
@@ -514,22 +590,26 @@ fn spawn_install_thread(
                     return;
                 }
             },
-            RenderBackend::D3d11 => match D3d11Context::new(child_hwnd as isize, init_w, init_h) {
-                Ok(ctx) => RenderContext::D3d11(ctx),
-                Err(e) => {
-                    log::error!("player surface: D3D11 context creation failed: {e}");
-                    let _ = setup_tx.send(Err(format!("D3D11 context creation failed: {e}")));
-                    return;
+            RenderBackend::D3d11 => {
+                match D3d11Context::new(child_hwnd as isize, init_w, init_h, hdr_enabled) {
+                    Ok(ctx) => RenderContext::D3d11(ctx),
+                    Err(e) => {
+                        log::error!("player surface: D3D11 context creation failed: {e}");
+                        let _ = setup_tx.send(Err(format!("D3D11 context creation failed: {e}")));
+                        return;
+                    }
                 }
-            },
-            RenderBackend::Vulkan => match VulkanContext::new(child_hwnd as isize, init_w, init_h) {
-                Ok(ctx) => RenderContext::Vulkan(ctx),
-                Err(e) => {
-                    log::error!("player surface: Vulkan context creation failed: {e}");
-                    let _ = setup_tx.send(Err(format!("Vulkan context creation failed: {e}")));
-                    return;
+            }
+            RenderBackend::Vulkan => {
+                match VulkanContext::new(child_hwnd as isize, init_w, init_h) {
+                    Ok(ctx) => RenderContext::Vulkan(ctx),
+                    Err(e) => {
+                        log::error!("player surface: Vulkan context creation failed: {e}");
+                        let _ = setup_tx.send(Err(format!("Vulkan context creation failed: {e}")));
+                        return;
+                    }
                 }
-            },
+            }
         };
         if render_ctx.is_hdr() {
             log::info!("player surface: HDR-capable swap chain in use");
@@ -539,7 +619,9 @@ fn spawn_install_thread(
             RenderContext::Egl(egl) => {
                 let enabled = egl.set_swap_interval(1);
                 if !enabled {
-                    log::warn!("eglSwapInterval unavailable; falling back to timer-paced rendering");
+                    log::warn!(
+                        "eglSwapInterval unavailable; falling back to timer-paced rendering"
+                    );
                 }
                 enabled
             }
@@ -565,6 +647,7 @@ fn spawn_install_thread(
         let mut last_size = (init_w, init_h);
         let mut last_render_error: Option<String> = None;
         let mut consecutive_render_errors = 0u32;
+        let mut surface_warmed_up = false;
 
         'render: loop {
             unsafe {
@@ -580,7 +663,7 @@ fn spawn_install_thread(
                 match cmd {
                     SurfaceCommand::Load { url, start_at, .. } => {
                         log::info!("player surface: loading url={url} start_at={start_at:?}");
-                        schedule_parent_blur(&app, parent_hwnd, false);
+                        schedule_parent_blur(&app, parent_hwnd, true);
                         unsafe {
                             ShowWindow(child_hwnd, SW_SHOW);
                         }
@@ -595,11 +678,39 @@ fn spawn_install_thread(
                                 SWP_NOACTIVATE,
                             )
                         };
+                        if !surface_warmed_up && backend == RenderBackend::OpenGl {
+                            render_ctx.warm_up_after_show();
+                            surface_warmed_up = true;
+                            log::info!(
+                                "player surface: OpenGL window surface warmed before first load"
+                            );
+                        }
                         visible = true;
                         let _ = app.emit("native-player-show", ());
                         let state = app.state::<DesktopState>();
+
                         state.pending_hide.store(false, Ordering::Release);
                         *state.eof_next_fired.lock().unwrap() = false;
+                        if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
+                            let result = (|| {
+                                let mut players = state.player_renderer_vlc.lock().unwrap();
+                                if players.is_none() {
+                                    *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
+                                }
+                                let player = players
+                                    .as_mut()
+                                    .ok_or_else(|| "libVLC player is unavailable".to_string())?;
+                                player.attach_hwnd(child_hwnd as *mut std::ffi::c_void)?;
+                                player.load(&url, start_at)
+                            })();
+                            if let Err(error) = result {
+                                log::error!("player surface: libVLC load failed: {error}");
+                                let _ = app.emit("native-player-error", error);
+                                visible = false;
+                                unsafe { ShowWindow(child_hwnd, SW_HIDE) };
+                            }
+                            continue;
+                        }
                         if let Err(e) = ensure_renderer_for_surface(&app, hdc, backend) {
                             log::error!(
                                 "player surface: renderer recreate failed before load: {e}"
@@ -638,6 +749,7 @@ fn spawn_install_thread(
                     }
                     SurfaceCommand::PlayerCommand(command) => {
                         let state = app.state::<DesktopState>();
+
                         let mut renderer = state.player_renderer.lock().unwrap();
                         if let Some(r) = renderer.as_mut() {
                             if let Err(error) = r.user_command(&command) {
@@ -647,10 +759,41 @@ fn spawn_install_thread(
                     }
                     SurfaceCommand::Status(sender) => {
                         let state = app.state::<DesktopState>();
+
                         let renderer = state.player_renderer.lock().unwrap();
                         if let Some(r) = renderer.as_ref() {
                             let _ = sender.send(r.status());
                         }
+                    }
+                    SurfaceCommand::TrackOptions { track_type, sender } => {
+                        let state = app.state::<DesktopState>();
+                        let renderer = state.player_renderer.lock().unwrap();
+                        let tracks = renderer
+                            .as_ref()
+                            .map(|r| r.track_options(&track_type))
+                            .unwrap_or_default();
+                        let _ = sender.send(tracks);
+                    }
+                    SurfaceCommand::AddSubtitle {
+                        url,
+                        title,
+                        language,
+                        sender,
+                    } => {
+                        let state = app.state::<DesktopState>();
+                        let renderer = state.player_renderer.lock().unwrap();
+                        let result = renderer
+                            .as_ref()
+                            .ok_or_else(|| "player renderer is not initialized".to_string())
+                            .and_then(|r| {
+                                r.add_subtitle(&url, title.as_deref(), language.as_deref())
+                            });
+                        if let Err(error) = &result {
+                            log::error!("player surface: add subtitle failed: {error}");
+                        } else {
+                            log::info!("player surface: external subtitle added: {url}");
+                        }
+                        let _ = sender.send(result);
                     }
                     SurfaceCommand::Hide => {
                         visible = false;
@@ -660,6 +803,7 @@ fn spawn_install_thread(
                         schedule_parent_blur(&app, parent_hwnd, true);
                         let _ = app.emit("native-player-hide", ());
                         let state = app.state::<DesktopState>();
+
                         let guard = state.player_renderer.lock().unwrap();
                         if let Some(r) = guard.as_ref() {
                             let _ = r.command_string("stop");
@@ -720,6 +864,10 @@ fn spawn_install_thread(
                 }
 
                 render_ctx.poll_resize();
+                if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
+                    std::thread::sleep(Duration::from_millis(16));
+                    continue;
+                }
                 let swap_start = std::time::Instant::now();
                 {
                     let Ok(mut renderer) = state.player_renderer.try_lock() else {
@@ -737,6 +885,7 @@ fn spawn_install_thread(
                                 log::error!("player surface: too many render failures; switching to software video rendering");
                                 unsafe { ShowWindow(child_hwnd, SW_HIDE) };
                                 let state = app.state::<DesktopState>();
+
                                 *state.native_player_surface.lock().unwrap() = None;
                                 reset_install_slot();
                                 r.reset_render_context();

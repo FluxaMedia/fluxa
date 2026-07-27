@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { coreApplyPreferenceUpdate, coreInvoke, httpFetchText, storageRead, storageWrite } from '../core/engine';
 import { Keyboard, Search } from 'lucide-react';
 import {
@@ -136,6 +137,13 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       else setLanguage(DEFAULT_PREFS.language);
       setPrefs(merged);
       if (legacyAnimeQuality) void storageWrite('prefs', merged);
+      if (!p?.hdrDetectionCompleted) {
+        void invoke<boolean>('player_hdr_supported').then((supported) => {
+          const detected = { ...merged, hdrEnabled: supported, hdrDetectionCompleted: true };
+          setPrefs(detected);
+          void storageWrite('prefs', detected);
+        }).catch(() => undefined);
+      }
       void import('@tauri-apps/api/core').then(({ invoke }) =>
         invoke('player_set_seek_thumbnail_enabled', { enabled: merged.seekThumbnailEnabled })
       );

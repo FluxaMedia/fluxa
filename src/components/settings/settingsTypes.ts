@@ -130,6 +130,8 @@ export interface Prefs {
   traktCommentsEnabled: boolean;
   searchSuggestionsOpenDetail: boolean;
   renderBackend: string;
+  hdrEnabled: boolean;
+  hdrDetectionCompleted: boolean;
   playerEngine: string;
 }
 
@@ -278,5 +280,7 @@ export const DEFAULT_PREFS: Prefs = {
   traktCommentsEnabled: false,
   searchSuggestionsOpenDetail: false,
   renderBackend: 'opengl',
+  hdrEnabled: false,
+  hdrDetectionCompleted: false,
   playerEngine: 'mpv',
 };

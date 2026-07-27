@@ -158,9 +158,6 @@ struct MpvD3d11InitParams {
 #[repr(C)]
 struct MpvD3d11Target {
     tex: *mut c_void,
-    format: i32,
-    w: c_int,
-    h: c_int,
 }
 
 type MpvCreate = unsafe extern "C" fn() -> *mut MpvHandle;
@@ -1489,19 +1486,15 @@ impl MpvRenderer {
     }
 
     #[cfg(target_os = "windows")]
-    pub fn render_d3d11_frame(
-        &mut self,
-        tex: *mut c_void,
-        format: i32,
-        w: i32,
-        h: i32,
-    ) -> Result<(), String> {
+    pub fn render_d3d11_frame(&mut self, tex: *mut c_void) -> Result<(), String> {
         if self.render_context.is_null() {
             return Err("d3d11 render context not created".to_string());
         }
         let update_flags = unsafe { (self.api.mpv_render_context_update)(self.render_context) };
 
-        let mut target = MpvD3d11Target { tex, format, w, h };
+        // mpv_d3d11_fbo contains only the ID3D11Texture2D pointer. The
+        // texture itself supplies dimensions and format to the renderer.
+        let mut target = MpvD3d11Target { tex };
         let mut params = [
             MpvRenderParam {
                 param_type: MPV_RENDER_PARAM_D3D11_TARGET,

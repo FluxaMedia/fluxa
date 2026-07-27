@@ -19,6 +19,7 @@
         "minHeight": 600,
         "decorations": true,
         "transparent": true,
+        "backgroundColor": "#00000000",
         "theme": "Dark"
       }
     ],

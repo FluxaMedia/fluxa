@@ -209,10 +209,9 @@ fn ensure_progress_migrated(
         .as_deref()
         .and_then(|bytes| decrypt_or_legacy(dir, bytes))
         .unwrap_or_else(|| "{}".to_string());
-    let entries: Vec<MigrationEntry> = serde_json::from_str(
-        &FluxaCore::library_progress_entries_json(&document),
-    )
-    .map_err(|e| e.to_string())?;
+    let entries: Vec<MigrationEntry> =
+        serde_json::from_str(&FluxaCore::library_progress_entries_json(&document))
+            .map_err(|e| e.to_string())?;
     let entries = entries
         .into_iter()
         .map(|entry| {
@@ -282,7 +281,10 @@ fn ensure_items_migrated(
         .unchecked_transaction()
         .map_err(|e| e.to_string())?;
     for entry in entries {
-        let value = encrypt(dir, &serde_json::to_vec(&entry.value).map_err(|e| e.to_string())?)?;
+        let value = encrypt(
+            dir,
+            &serde_json::to_vec(&entry.value).map_err(|e| e.to_string())?,
+        )?;
         tx.execute("INSERT INTO library_items (profile_key, media_id, status, value) VALUES (?1, ?2, ?3, ?4)", params![profile_key, entry.media_id, entry.status, value]).map_err(|e| e.to_string())?;
     }
     tx.execute(
@@ -313,10 +315,9 @@ fn ensure_watched_migrated(
     let tx = connection
         .unchecked_transaction()
         .map_err(|e| e.to_string())?;
-    let video_ids: Vec<String> = serde_json::from_str(
-        &FluxaCore::library_watched_video_ids_json(&document),
-    )
-    .map_err(|e| e.to_string())?;
+    let video_ids: Vec<String> =
+        serde_json::from_str(&FluxaCore::library_watched_video_ids_json(&document))
+            .map_err(|e| e.to_string())?;
     for video_id in video_ids {
         tx.execute(
             "INSERT INTO watched_videos (profile_key, video_id) VALUES (?1, ?2)",
@@ -349,15 +350,17 @@ fn ensure_last_watched_migrated(
         return Ok(());
     }
     let document = library_document(connection, dir, profile_key)?;
-    let entries: Vec<MigrationEntry> = serde_json::from_str(
-        &FluxaCore::library_last_watched_entries_json(&document),
-    )
-    .map_err(|e| e.to_string())?;
+    let entries: Vec<MigrationEntry> =
+        serde_json::from_str(&FluxaCore::library_last_watched_entries_json(&document))
+            .map_err(|e| e.to_string())?;
     let tx = connection
         .unchecked_transaction()
         .map_err(|e| e.to_string())?;
     for entry in entries {
-        let value = encrypt(dir, &serde_json::to_vec(&entry.value).map_err(|e| e.to_string())?)?;
+        let value = encrypt(
+            dir,
+            &serde_json::to_vec(&entry.value).map_err(|e| e.to_string())?,
+        )?;
         tx.execute(
             "INSERT INTO library_last_watched (profile_key, series_id, value) VALUES (?1, ?2, ?3)",
             params![profile_key, entry.key, value],
@@ -397,7 +400,10 @@ fn ensure_continue_watching_migrated(
         .unchecked_transaction()
         .map_err(|e| e.to_string())?;
     for entry in entries {
-        let value = encrypt(dir, &serde_json::to_vec(&entry.value).map_err(|e| e.to_string())?)?;
+        let value = encrypt(
+            dir,
+            &serde_json::to_vec(&entry.value).map_err(|e| e.to_string())?,
+        )?;
         tx.execute(
             "INSERT INTO library_continue_watching (profile_key, media_id, value) VALUES (?1, ?2, ?3)",
             params![profile_key, entry.key, value],
@@ -504,6 +510,12 @@ pub fn storage_read(state: State<DesktopState>, key: String) -> Option<String> {
         }
     }
     read_legacy_file(&dir, &key)
+}
+
+pub fn read_pref_bool(state: State<DesktopState>, field: &str) -> Option<bool> {
+    let raw = storage_read(state, "prefs".to_string())?;
+    let value: Value = serde_json::from_str(&raw).ok()?;
+    value.get(field)?.as_bool()
 }
 
 pub fn read_pref_field(state: State<DesktopState>, field: &str) -> Option<String> {

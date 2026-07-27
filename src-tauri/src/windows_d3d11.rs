@@ -9,12 +9,12 @@ use windows::Win32::Graphics::Direct3D11::{
 };
 use windows::Win32::Graphics::Dxgi::Common::{
     DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709, DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020,
-    DXGI_FORMAT, DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_SAMPLE_DESC,
+    DXGI_FORMAT, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SAMPLE_DESC,
 };
 use windows::Win32::Graphics::Dxgi::{
     IDXGIDevice, IDXGIFactory2, IDXGISwapChain1, IDXGISwapChain3, DXGI_SCALING_STRETCH,
     DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT, DXGI_SWAP_CHAIN_DESC1,
-    DXGI_SWAP_EFFECT_FLIP_DISCARD, DXGI_USAGE_RENDER_TARGET_OUTPUT,
+    DXGI_SWAP_EFFECT_FLIP_DISCARD, DXGI_USAGE_RENDER_TARGET_OUTPUT, DXGI_USAGE_SHADER_INPUT,
 };
 
 pub struct D3d11Context {
@@ -43,7 +43,7 @@ fn display_wants_hdr(swap_chain: &IDXGISwapChain1) -> bool {
 }
 
 impl D3d11Context {
-    pub fn new(hwnd: isize, width: i32, height: i32) -> Result<Self, String> {
+    pub fn new(hwnd: isize, width: i32, height: i32, hdr_enabled: bool) -> Result<Self, String> {
         let hwnd = HWND(hwnd as *mut _);
         let width = width.max(2);
         let height = height.max(2);
@@ -78,13 +78,13 @@ impl D3d11Context {
         let sdr_desc = DXGI_SWAP_CHAIN_DESC1 {
             Width: width as u32,
             Height: height as u32,
-            Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+            Format: DXGI_FORMAT_R8G8B8A8_UNORM,
             Stereo: false.into(),
             SampleDesc: DXGI_SAMPLE_DESC {
                 Count: 1,
                 Quality: 0,
             },
-            BufferUsage: DXGI_USAGE_RENDER_TARGET_OUTPUT,
+            BufferUsage: DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT,
             BufferCount: 2,
             Scaling: DXGI_SCALING_STRETCH,
             SwapEffect: DXGI_SWAP_EFFECT_FLIP_DISCARD,
@@ -96,9 +96,9 @@ impl D3d11Context {
             unsafe { factory.CreateSwapChainForHwnd(&device, hwnd, &sdr_desc, None, None) }
                 .map_err(|e| format!("CreateSwapChainForHwnd failed: {e}"))?;
 
-        let mut format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        let mut format = DXGI_FORMAT_R8G8B8A8_UNORM;
         let mut hdr = false;
-        if display_wants_hdr(&swap_chain) {
+        if hdr_enabled && display_wants_hdr(&swap_chain) {
             if let Ok(swap_chain3) = swap_chain.cast::<IDXGISwapChain3>() {
                 if unsafe { swap_chain3.SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) }
                     .is_ok()
