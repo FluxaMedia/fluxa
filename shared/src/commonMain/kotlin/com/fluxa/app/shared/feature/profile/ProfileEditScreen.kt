@@ -235,25 +235,41 @@ fun ProfileEditScreen(
                 Spacer(Modifier.height(12.dp))
                 Text(pack.title, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp)
                 Spacer(Modifier.height(8.dp))
-                pack.avatars.chunked(5).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+                pack.avatars.chunked(4).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 12.dp)) {
                         row.forEach { avatar ->
                             val selected = avatar.url == avatarUrl
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.08f))
-                                    .then(if (selected) Modifier.border(2.dp, Color.White, CircleShape) else Modifier)
-                                    .clickable { onPickPackAvatarClick(avatar.url) }
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.width(64.dp)
                             ) {
-                                FluxaRemoteImage(
-                                    imageUrl = avatar.url,
-                                    cacheKey = "profile-avatar-pack:${avatar.url}",
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.08f))
+                                        .then(if (selected) Modifier.border(2.dp, Color.White, CircleShape) else Modifier)
+                                        .clickable { onPickPackAvatarClick(avatar.url) }
+                                ) {
+                                    FluxaRemoteImage(
+                                        imageUrl = avatar.url,
+                                        cacheKey = "profile-avatar-pack:${avatar.url}",
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                }
+                                if (avatar.name.isNotBlank()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        avatar.name,
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 10.sp,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
                             }
                         }
                     }

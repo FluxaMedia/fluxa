@@ -21,7 +21,7 @@ actual fun FluxaRemoteImage(
     val context = LocalPlatformContext.current
     val request = remember(context, imageUrl, cacheKey) {
         ImageRequest.Builder(context)
-            .data(imageUrl)
+            .data(imageUrl?.let(::sanitizeImageUrl))
             .crossfade(false)
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
@@ -35,3 +35,5 @@ actual fun FluxaRemoteImage(
         onError = { onError?.invoke() }
     )
 }
+
+private fun sanitizeImageUrl(url: String): String = url.replace(" ", "%20")
