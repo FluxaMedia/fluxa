@@ -50,6 +50,7 @@ type CalendarItem = {
   poster?: string;
   seriesPoster?: string;
   episodePoster?: string;
+  resolvedArtworkUrl?: string;
   contentId?: string;
   seriesId?: string;
   metaId?: string;
@@ -731,6 +732,7 @@ function calendarPoster(
   if (!item) return undefined;
   return [
     resolved[calendarArtworkKey(item)],
+    item.resolvedArtworkUrl,
     item.episodePoster,
     item.poster,
     item.seriesPoster,
