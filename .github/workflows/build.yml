@@ -90,6 +90,20 @@ jobs:
           mkdir -p src-tauri/lib
           cp "$VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin/"*.dll src-tauri/lib/
 
+      - name: Fetch libVLC runtime
+        shell: pwsh
+        run: |
+          $version = "3.0.23"
+          $archive = "$env:RUNNER_TEMP/vlc-win64.zip"
+          Invoke-WebRequest "https://get.videolan.org/vlc/$version/win64/vlc-$version-win64.zip" -OutFile $archive
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne "26D556648D4A67E8938D6D4B4D99BA0359F1979BFEF985C8F6710882C7ED5975") { throw "Unexpected VLC archive checksum" }
+          $extract = "$env:RUNNER_TEMP/vlc-win64"
+          Expand-Archive $archive -DestinationPath $extract
+          $root = Get-ChildItem $extract -Directory | Select-Object -First 1
+          New-Item -ItemType Directory -Force src-tauri/lib/vlc | Out-Null
+          Copy-Item "$($root.FullName)/libvlc.dll" src-tauri/lib/vlc/
+          Copy-Item "$($root.FullName)/libvlccore.dll" src-tauri/lib/vlc/
+          Copy-Item "$($root.FullName)/plugins" src-tauri/lib/vlc/plugins -Recurse
       - name: Verify bundled DLLs are present
         shell: bash
         run: |
@@ -98,6 +112,8 @@ jobs:
           test -f src-tauri/lib/libGLESv2.dll
           test -f src-tauri/lib/z.dll
           ls src-tauri/lib/*mpv*.dll >/dev/null
+          test -f src-tauri/lib/vlc/libvlc.dll
+          test -d src-tauri/lib/vlc/plugins
 
       - name: npm install
         run: npm ci
@@ -167,6 +183,21 @@ jobs:
       - name: Fetch libmpv (KhooLy/mpv gpu-next fork)
         run: ./src-tauri/fetch-libmpv.sh "$LIBMPV_TAG"
 
+      - name: Fetch libVLC runtime
+        run: |
+          VERSION="3.0.23"
+          DMG="$RUNNER_TEMP/vlc-universal.dmg"
+          curl -fL "https://get.videolan.org/vlc/$VERSION/macosx/vlc-$VERSION-universal.dmg" -o "$DMG"
+          echo "88f23b219e0ec238f6e5791694838d87bbbb3a46bd2f7fa452027122e40790f3  $DMG" | shasum -a 256 -c -
+          MOUNT="$RUNNER_TEMP/vlc-mount"
+          mkdir -p "$MOUNT"
+          hdiutil attach "$DMG" -nobrowse -mountpoint "$MOUNT"
+          mkdir -p src-tauri/lib/vlc
+          cp -R "$MOUNT/VLC.app/Contents/MacOS/lib/." src-tauri/lib/vlc/
+          cp -R "$MOUNT/VLC.app/Contents/MacOS/plugins" src-tauri/lib/vlc/plugins
+          hdiutil detach "$MOUNT"
+          test -f src-tauri/lib/vlc/libvlc.dylib
+          test -d src-tauri/lib/vlc/plugins
       - name: Verify bundled macOS libraries
         run: |
           find src-tauri/lib -maxdepth 1 -type f -name '*.dylib' -print
@@ -299,6 +330,17 @@ jobs:
 
       - name: Fetch libmpv (KhooLy/mpv gpu-next fork)
         run: ./src-tauri/fetch-libmpv.sh "$LIBMPV_TAG"
+
+      - name: Bundle libVLC runtime
+        run: |
+          sudo apt-get install -y libvlc5 vlc-plugin-base vlc-plugin-access-extra vlc-plugin-video-output
+          VLC_LIB="/usr/lib/x86_64-linux-gnu"
+          mkdir -p src-tauri/lib/vlc
+          cp -a "$VLC_LIB/libvlc.so.5" "$VLC_LIB/libvlccore.so.9" src-tauri/lib/vlc/
+          cp -a "$VLC_LIB/vlc/plugins" src-tauri/lib/vlc/plugins
+          test -f src-tauri/lib/vlc/libvlc.so.5
+          test -d src-tauri/lib/vlc/plugins
+
 
       - name: Verify libmpv.so is intact
         run: |
