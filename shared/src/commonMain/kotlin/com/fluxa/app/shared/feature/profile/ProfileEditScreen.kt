@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -129,7 +130,7 @@ fun ProfileEditScreen(
                     if (!avatarUrl.isNullOrBlank()) {
                         FluxaRemoteImage(
                             imageUrl = avatarUrl,
-                            cacheKey = "profile-avatar-edit:$avatarUrl",
+                            cacheKey = "profile-avatar:$avatarUrl",
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize().clip(CircleShape),
                             contentScale = ContentScale.Crop
@@ -224,7 +225,14 @@ fun ProfileEditScreen(
 
     if (showAvatarSheet) {
         ModalBottomSheet(onDismissRequest = { showAvatarSheet = false }) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.85f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 24.dp)
+            ) {
                 Text(
                     AppStrings.t(language, "profiles.choose_image"),
                     color = Color.White,

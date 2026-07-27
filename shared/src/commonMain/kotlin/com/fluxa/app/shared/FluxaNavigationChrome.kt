@@ -402,7 +402,7 @@ internal fun FluxaNavigationBar(
                         if (item.destination == FluxaDestination.Settings && !profileAvatarUrl.isNullOrBlank()) {
                             FluxaRemoteImage(
                                 imageUrl = profileAvatarUrl,
-                                cacheKey = "bottom-profile:$profileAvatarUrl",
+                                cacheKey = "profile-avatar:$profileAvatarUrl",
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(32.dp)
