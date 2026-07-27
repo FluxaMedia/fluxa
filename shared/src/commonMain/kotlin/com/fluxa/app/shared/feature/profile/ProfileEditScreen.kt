@@ -21,9 +21,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -39,15 +40,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.shared.feature.settings.SettingsGroupCard
+import com.fluxa.app.shared.feature.settings.SettingsSectionHeader
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.FluxaColors
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileEditScreen(
     initialProfile: ProfileUiModel?,
@@ -67,6 +74,7 @@ fun ProfileEditScreen(
     var pin by remember(initialProfile?.id) { mutableStateOf("") }
     var removePin by remember(initialProfile?.id) { mutableStateOf(false) }
     var biometricEnabled by remember(initialProfile?.id) { mutableStateOf(initialProfile?.biometricEnabled == true) }
+    var showAvatarSheet by remember { mutableStateOf(false) }
 
     val pinValid = pin.isEmpty() || pin.length == 4
     val willHavePin = !removePin && (pin.length == 4 || initialProfile?.hasPin == true)
@@ -112,162 +120,155 @@ fun ProfileEditScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.size(140.dp)) {
-            Box(
-                modifier = Modifier.size(140.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!avatarUrl.isNullOrBlank()) {
-                    FluxaRemoteImage(
-                        imageUrl = avatarUrl,
-                        cacheKey = "profile-avatar-edit:$avatarUrl",
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-                } else {
-                    ProfileDefaultAvatar(modifier = Modifier.size(90.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.size(110.dp)) {
+                Box(
+                    modifier = Modifier.size(110.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!avatarUrl.isNullOrBlank()) {
+                        FluxaRemoteImage(
+                            imageUrl = avatarUrl,
+                            cacheKey = "profile-avatar-edit:$avatarUrl",
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        ProfileDefaultAvatar(modifier = Modifier.size(70.dp))
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2C2C2C))
+                        .border(2.dp, Color.Black, CircleShape)
+                        .clickable { showAvatarSheet = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                 }
             }
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2C2C2C))
-                    .border(2.dp, Color.Black, CircleShape)
-                    .clickable(onClick = onPickAvatarClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.height(10.dp))
+            TextButton(onClick = { showAvatarSheet = true }) {
+                Text(AppStrings.t(language, "profiles.change_image"), color = Color.White.copy(alpha = 0.7f), fontWeight = FontWeight.Medium)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsSectionHeader(AppStrings.t(language, "profiles.name"))
+        SettingsGroupCard {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                colors = profileFieldColors(),
+                singleLine = true
+            )
+        }
+
+        SettingsSectionHeader(AppStrings.t(language, "profiles.pin_lock"))
+        SettingsGroupCard {
+            OutlinedTextField(
+                value = pin,
+                onValueChange = {
+                    pin = it.filter(Char::isDigit).take(4)
+                    if (pin.isNotEmpty()) removePin = false
+                },
+                placeholder = {
+                    Text(
+                        if (initialProfile?.hasPin == true && !removePin) {
+                            AppStrings.t(language, "profiles.pin_set_placeholder")
+                        } else {
+                            AppStrings.t(language, "profiles.pin_placeholder")
+                        }
+                    )
+                },
+                isError = !pinValid,
+                supportingText = if (!pinValid) { { Text(AppStrings.t(language, "profiles.pin_invalid")) } } else null,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                colors = profileFieldColors()
+            )
+            if (initialProfile?.hasPin == true && !removePin) {
+                TextButton(onClick = { removePin = true; pin = "" }) {
+                    Text(AppStrings.t(language, "profiles.pin_remove"), color = FluxaColors.errorRed)
+                }
+            }
+            if (biometricAvailable && willHavePin) {
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(AppStrings.t(language, "profiles.biometric_lock"), color = Color.White, fontWeight = FontWeight.Medium)
+                        Text(AppStrings.t(language, "profiles.biometric_lock_desc"), color = Color.Gray, fontSize = 12.sp)
+                    }
+                    Switch(checked = biometricEnabled, onCheckedChange = { biometricEnabled = it })
+                }
+            }
+        }
+
+        if (initialProfile != null && onDelete != null) {
+            SettingsSectionHeader(AppStrings.t(language, "profiles.danger_zone"))
+            SettingsGroupCard {
+                TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
+                    Text(AppStrings.t(language, "profiles.delete"), color = FluxaColors.errorRed, fontWeight = FontWeight.Bold)
+                }
             }
         }
 
         Spacer(Modifier.height(32.dp))
+    }
 
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text(AppStrings.t(language, "profiles.name")) },
-            modifier = Modifier.fillMaxWidth(),
-            colors = profileFieldColors(),
-            singleLine = true
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = pin,
-            onValueChange = {
-                pin = it.filter(Char::isDigit).take(4)
-                if (pin.isNotEmpty()) removePin = false
-            },
-            label = { Text(AppStrings.t(language, "profiles.pin_lock")) },
-            placeholder = {
+    if (showAvatarSheet) {
+        ModalBottomSheet(onDismissRequest = { showAvatarSheet = false }) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
                 Text(
-                    if (initialProfile?.hasPin == true && !removePin) {
-                        AppStrings.t(language, "profiles.pin_set_placeholder")
-                    } else {
-                        AppStrings.t(language, "profiles.pin_placeholder")
-                    }
+                    AppStrings.t(language, "profiles.choose_image"),
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
                 )
-            },
-            isError = !pinValid,
-            supportingText = if (!pinValid) { { Text(AppStrings.t(language, "profiles.pin_invalid")) } } else null,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = profileFieldColors()
-        )
-        if (initialProfile?.hasPin == true && !removePin) {
-            TextButton(onClick = { removePin = true; pin = "" }) {
-                Text(AppStrings.t(language, "profiles.pin_remove"), color = FluxaColors.errorRed)
-            }
-        }
+                Spacer(Modifier.height(4.dp))
+                Text(AppStrings.t(language, "profiles.choose_image_desc"), color = Color.Gray, fontSize = 12.sp)
+                Spacer(Modifier.height(16.dp))
 
-        if (biometricAvailable && willHavePin) {
-            Spacer(Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(AppStrings.t(language, "profiles.biometric_lock"), color = Color.White, fontWeight = FontWeight.Medium)
-                    Text(AppStrings.t(language, "profiles.biometric_lock_desc"), color = Color.Gray, fontSize = 12.sp)
+                OutlinedButton(
+                    onClick = onPickAvatarClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                ) {
+                    Text(AppStrings.t(language, "profiles.upload_image"))
                 }
-                Switch(checked = biometricEnabled, onCheckedChange = { biometricEnabled = it })
-            }
-        }
 
-        Spacer(Modifier.height(24.dp))
+                if (!avatarUrl.isNullOrBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = onRemoveAvatarClick, modifier = Modifier.fillMaxWidth()) {
+                        Text(AppStrings.t(language, "profiles.remove_image"), color = Color.White.copy(alpha = 0.6f))
+                    }
+                }
 
-        Text(
-            AppStrings.t(language, "profiles.choose_image"),
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(AppStrings.t(language, "profiles.choose_image_desc"), color = Color.Gray, fontSize = 12.sp)
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedButton(
-            onClick = onPickAvatarClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-        ) {
-            Text(AppStrings.t(language, "profiles.upload_image"))
-        }
-
-        if (!avatarUrl.isNullOrBlank()) {
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = onRemoveAvatarClick) {
-                Text(AppStrings.t(language, "profiles.remove_image"), color = Color.White.copy(alpha = 0.6f))
-            }
-        }
-
-        if (avatarPacks.isNotEmpty()) {
-            Spacer(Modifier.height(24.dp))
-            Text(
-                AppStrings.t(language, "profiles.choose_from_pack"),
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            avatarPacks.forEach { pack ->
-                Spacer(Modifier.height(12.dp))
-                Text(pack.title, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp)
-                Spacer(Modifier.height(8.dp))
-                pack.avatars.chunked(4).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                        row.forEach { avatar ->
-                            val selected = avatar.url == avatarUrl
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.width(64.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.White.copy(alpha = 0.08f))
-                                        .then(if (selected) Modifier.border(2.dp, Color.White, CircleShape) else Modifier)
-                                        .clickable { onPickPackAvatarClick(avatar.url) }
-                                ) {
-                                    FluxaRemoteImage(
-                                        imageUrl = avatar.url,
-                                        cacheKey = "profile-avatar-pack:${avatar.url}",
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                    )
-                                }
-                                if (avatar.name.isNotBlank()) {
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        avatar.name,
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 10.sp,
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                if (avatarPacks.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        AppStrings.t(language, "profiles.choose_from_pack"),
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    avatarPacks.forEach { pack ->
+                        Spacer(Modifier.height(12.dp))
+                        Text(pack.title, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp)
+                        Spacer(Modifier.height(8.dp))
+                        pack.avatars.chunked(4).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                                row.forEach { avatar ->
+                                    AvatarPackThumbnail(
+                                        avatar = avatar,
+                                        selected = avatar.url == avatarUrl,
+                                        onClick = { onPickPackAvatarClick(avatar.url) }
                                     )
                                 }
                             }
@@ -276,19 +277,47 @@ fun ProfileEditScreen(
                 }
             }
         }
-
-        if (initialProfile != null && onDelete != null) {
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = onDelete) {
-                Text(AppStrings.t(language, "profiles.delete"), color = FluxaColors.errorRed, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(Modifier.height(32.dp))
     }
 }
 
-private const val EXISTING_PIN_MARKER = " existing-pin"
+@Composable
+private fun AvatarPackThumbnail(avatar: ProfileAvatarUiModel, selected: Boolean, onClick: () -> Unit) {
+    var failed by remember(avatar.url) { mutableStateOf(false) }
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp)) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.08f))
+                .then(if (selected) Modifier.border(2.dp, Color.White, CircleShape) else Modifier)
+                .clickable(onClick = onClick)
+        ) {
+            if (failed) {
+                ProfileDefaultAvatar(modifier = Modifier.size(34.dp).align(Alignment.Center), tint = Color.White.copy(alpha = 0.35f))
+            } else {
+                FluxaRemoteImage(
+                    imageUrl = avatar.url,
+                    cacheKey = "profile-avatar-pack:${avatar.url}",
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                    onError = { failed = true }
+                )
+            }
+        }
+        if (avatar.name.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                avatar.name,
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
 
 @Composable
 private fun profileFieldColors() = OutlinedTextFieldDefaults.colors(

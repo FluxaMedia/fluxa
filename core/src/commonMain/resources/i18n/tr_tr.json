@@ -901,6 +901,8 @@
   "profiles.avatar_pack_count": "%s profil görseli",
   "profiles.choose_from_pack": "Ya da bir paketten seç",
   "profiles.avatar_pack_error": "Bu depoda profil görseli paketi bulunamadı.",
+  "profiles.change_image": "Görseli değiştir",
+  "profiles.danger_zone": "Tehlikeli Alan",
   "addons.version_badge": "v%s",
   "addons.type_channels": "Kanallar",
   "integration.connected": "Bağlı",
