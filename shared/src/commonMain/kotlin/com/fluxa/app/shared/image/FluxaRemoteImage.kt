@@ -13,3 +13,5 @@ expect fun FluxaRemoteImage(
     contentScale: ContentScale,
     onError: (() -> Unit)? = null
 )
+
+fun sanitizeImageUrl(url: String): String = url.replace(" ", "%20")

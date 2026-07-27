@@ -35,5 +35,3 @@ actual fun FluxaRemoteImage(
         onError = { onError?.invoke() }
     )
 }
-
-private fun sanitizeImageUrl(url: String): String = url.replace(" ", "%20")

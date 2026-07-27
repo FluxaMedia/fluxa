@@ -60,7 +60,7 @@ private fun loadImage(
         imageView.image = it
         return
     }
-    val url = NSURL.URLWithString(imageUrl)
+    val url = NSURL.URLWithString(sanitizeImageUrl(imageUrl))
     if (url == null) {
         onError?.invoke()
         return
