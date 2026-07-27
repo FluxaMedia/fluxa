@@ -104,7 +104,7 @@ export const ShelfRow = React.memo(function ShelfRow({
               ))
             : visibleItems.map((meta, idx) => (
                 <MovieCard
-                  key={meta.id}
+                  key={`${meta.id}-${idx}`}
                   meta={meta}
                   width={width}
                   height={height}
@@ -118,7 +118,7 @@ export const ShelfRow = React.memo(function ShelfRow({
                 />
               ))}
           {!isLoading && isLoadingMore && (
-            <SkeletonCard width={width} height={height} radius={radius} delay={0} />
+            <SkeletonCard key="loading-more" width={width} height={height} radius={radius} delay={0} />
           )}
         </div>
         {hovered && canScrollRight && (

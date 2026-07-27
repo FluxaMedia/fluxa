@@ -8,6 +8,11 @@ import { fetchStreamsForEpisode } from '../core/effectRunner';
 import { playerArtwork, playerDisplayTitle } from '../core/playerUtils';
 import { coreResolveNextEpisode, coreSelectNextEpisodeStream } from '../core/engine';
 import type { AppState } from '../core/types';
+function presentNativePlayerError(message: string): string {
+  const sourceFailure = /\b(loading failed|failed to open|http(?:\s+error)?|403|401|forbidden|unauthorized|not found|timed?\s*out|connection (?:refused|reset|failed)|network|no such host|certificate)\b/i.test(message);
+  if (!sourceFailure) return message;
+  return `Source error: the selected stream is unavailable, expired, or blocked.\n${message}`;
+}
 
 export function usePlayerNativeEvents({
   stateRef,
@@ -47,7 +52,7 @@ export function usePlayerNativeEvents({
       .catch(() => undefined);
 
     listen<string>('native-player-error', (event) => {
-      void onPlayerError(event.payload);
+      void onPlayerError(presentNativePlayerError(event.payload));
     })
       .then((fn) => { if (cancelled) fn(); else unlisteners.push(fn); })
       .catch(() => undefined);

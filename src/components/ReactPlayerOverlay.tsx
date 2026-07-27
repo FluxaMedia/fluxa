@@ -515,11 +515,16 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
         const renderedVideo =
           status.loaded &&
           status.hasVideoTrack &&
-          hasVideoDimensions &&
-          status.voConfigured === 'yes' &&
-          status.framesRendered >= 2 &&
-          status.pausedForCache !== 'yes' &&
-          pos > 0.15;
+          (
+            status.firstFramePresented ||
+            (
+              hasVideoDimensions &&
+              status.voConfigured === 'yes' &&
+              status.framesRendered >= 2 &&
+              status.pausedForCache !== 'yes' &&
+              pos > 0.15
+            )
+          );
         const activeAudioOnlyPlayback =
           status.loaded &&
           status.trackListReady &&
