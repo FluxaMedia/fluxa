@@ -67,6 +67,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import com.fluxa.app.ui.catalog.FluxaColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -91,15 +93,24 @@ fun Modifier.settingsFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifi
         .background(if (focused) Color.White.copy(alpha = 0.14f) else Color.Transparent)
 }
 
+fun Modifier.settingsRowDivider(): Modifier = drawBehind {
+    drawLine(
+        color = Color.White.copy(alpha = 0.06f),
+        start = Offset(0f, 0f),
+        end = Offset(size.width, 0f),
+        strokeWidth = 1.dp.toPx()
+    )
+}
+
 @Composable
 fun SettingsSectionHeader(title: String) {
     Text(
         text = title.uppercase(),
-        color = Color.White.copy(alpha = 0.5f),
+        color = Color.White.copy(alpha = 0.55f),
         fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         letterSpacing = 0.6.sp,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, top = 20.dp)
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, top = 16.dp)
     )
 }
 
@@ -109,7 +120,8 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.045f))
+            .background(Color.White.copy(alpha = 0.07f))
+            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(16.dp))
             .padding(horizontal = 14.dp, vertical = 4.dp),
         content = content
     )
@@ -128,6 +140,7 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
             .fillMaxWidth()
             .bringIntoViewRequester(bringIntoViewRequester)
             .settingsHighlight(highlighted)
+            .settingsRowDivider()
             .clickable {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onValueChanged(!value)
@@ -165,6 +178,7 @@ fun SettingsChoiceRow(
             .fillMaxWidth()
             .bringIntoViewRequester(bringIntoViewRequester)
             .settingsHighlight(highlighted)
+            .settingsRowDivider()
             .settingsFocusRing()
             .clickable { showDialog = true }
             .padding(vertical = 10.dp),
@@ -263,6 +277,7 @@ fun SettingsStepperRow(
             .fillMaxWidth()
             .bringIntoViewRequester(bringIntoViewRequester)
             .settingsHighlight(highlighted)
+            .settingsRowDivider()
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -492,6 +507,7 @@ fun SettingsActionRow(
             .fillMaxWidth()
             .bringIntoViewRequester(bringIntoViewRequester)
             .settingsHighlight(highlighted)
+            .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
@@ -537,7 +553,7 @@ fun SettingsConnectionRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -668,6 +684,7 @@ fun SettingsNavRow(
             .fillMaxWidth()
             .bringIntoViewRequester(bringIntoViewRequester)
             .settingsHighlight(highlighted)
+            .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
             .padding(vertical = 14.dp),

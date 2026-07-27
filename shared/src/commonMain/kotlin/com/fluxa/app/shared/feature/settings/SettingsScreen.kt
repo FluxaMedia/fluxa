@@ -323,7 +323,7 @@ private fun SettingsHubContent(
             modifier = Modifier.fillMaxWidth().clickable { onNavigate(SettingsCategory.Account) }.padding(vertical = 12.dp)
         ) {
             Box(
-                modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f)),
+                modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (!state.account.avatarUrl.isNullOrBlank()) {
@@ -335,12 +335,12 @@ private fun SettingsHubContent(
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
                 } else {
-                    com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar(modifier = Modifier.size(26.dp))
+                    com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar(modifier = Modifier.size(28.dp))
                 }
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(state.account.displayName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(state.account.displayName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 Text(AppStrings.t(lang, "auto.account"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
             }
             Icon(
@@ -350,11 +350,11 @@ private fun SettingsHubContent(
                 modifier = Modifier.size(20.dp)
             )
         }
-        SettingsNavRow(AppStrings.t(lang, "settings.notifications_title"), icon = Icons.Filled.Notifications) { onNavigate(SettingsCategory.Notifications) }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_preferences"))
     SettingsGroupCard {
+        SettingsNavRow(AppStrings.t(lang, "settings.notifications_title"), icon = Icons.Filled.Notifications) { onNavigate(SettingsCategory.Notifications) }
         SettingsNavRow(AppStrings.t(lang, "auto.general"), icon = Icons.Filled.Tune) { onNavigate(SettingsCategory.General) }
         SettingsNavRow(AppStrings.t(lang, "auto.appearance"), icon = Icons.Filled.Palette) { onNavigate(SettingsCategory.Appearance) }
         SettingsNavRow(
@@ -447,7 +447,10 @@ private fun SettingsAccountContent(
             hasSyncFailure = "anilist" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
         ) { selectedProvider = SettingsAccountProvider.Anilist }
-        if (model.hasAnySync) {
+    }
+    if (model.hasAnySync) {
+        Spacer(Modifier.height(20.dp))
+        SettingsGroupCard {
             SettingsActionRow(AppStrings.t(lang, "auto.disconnect"), destructive = true) { confirmingDisconnect = true }
         }
     }
