@@ -2,10 +2,10 @@ package com.fluxa.app.ui.catalog
 
 fun CalendarUpcomingItem.artworkUrl(): String? {
     return listOf(
+        episodePoster,
         poster,
         meta.poster,
         meta.continueWatchingPoster,
-        episodePoster,
         meta.background,
         meta.continueWatchingBackground
     ).firstOrNull(::isUsableCalendarArtwork)

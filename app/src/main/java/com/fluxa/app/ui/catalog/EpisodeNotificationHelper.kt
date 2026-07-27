@@ -63,12 +63,13 @@ object EpisodeNotificationHelper {
                     it.episodeNumber == row.get("episodeNumber")?.takeIf { v -> !v.isJsonNull }?.asInt
             } ?: return@forEach
             val image = loadBitmap(original.artworkUrl())
-            val notificationTitle = AppStrings.t(profile?.safeLanguage, row.get("titleKey").asString)
+            val releaseKindLabel = AppStrings.t(profile?.safeLanguage, row.get("titleKey").asString)
             val text = releaseNotificationText(original, profile?.safeLanguage)
             val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle(notificationTitle)
+                .setContentTitle(original.title)
                 .setContentText(text)
+                .setSubText(releaseKindLabel)
                 .setStyle(
                     if (image != null) {
                         NotificationCompat.BigPictureStyle()
@@ -126,10 +127,14 @@ object EpisodeNotificationHelper {
     private fun releaseNotificationText(item: CalendarUpcomingItem, language: String?): String {
         val season = item.seasonNumber
         val episode = item.episodeNumber
-        return if (season != null && episode != null) {
-            AppStrings.format(language, "notification.release_now_episode", item.title, season, episode)
-        } else {
-            listOf(item.title, item.subtitle).filter { !it.isNullOrBlank() }.joinToString(" - ")
+        val episodeTitle = item.episodeTitle?.takeIf { it.isNotBlank() }
+        return when {
+            season != null && episode != null && episodeTitle != null ->
+                AppStrings.format(language, "notification.new_episode_body_titled", season, episode, episodeTitle)
+            season != null && episode != null ->
+                AppStrings.format(language, "notification.new_episode_body", season, episode)
+            season != null -> AppStrings.format(language, "notification.new_season_body", season)
+            else -> listOf(item.title, item.subtitle).filter { !it.isNullOrBlank() }.joinToString(" - ")
         }
     }
 
