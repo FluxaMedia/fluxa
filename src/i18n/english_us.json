@@ -1554,5 +1554,5 @@
   "settings.render_backend": "Render Backend",
   "settings.render_backend_desc": "GPU API mpv renders through. OpenGL is the stable default; Vulkan/D3D11 are experimental and need an app restart to take effect. D3D11 only applies on Windows.",
   "settings.player_engine": "Player Engine",
-  "settings.player_engine_desc": "Which playback engine handles video. libVLC is experimental and currently plays in its own separate window rather than embedded in the app."
+  "settings.player_engine_desc": "Choose the engine that plays video. libVLC renders inside Fluxa when its runtime is installed."
 }

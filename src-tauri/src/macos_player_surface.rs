@@ -6,6 +6,7 @@
 
 use crate::macos_vulkan::VulkanContext;
 use crate::mpv_render::VulkanTargetImage;
+use crate::playback_engine::{PlaybackEngine, PlayerEngine};
 use crate::DesktopState;
 use fluxa_core::FluxaCore;
 use std::ffi::{c_void, CString};
@@ -371,8 +372,13 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
     );
 
     enum MacRenderTarget {
-        Gl { gl_ctx: usize },
-        Vulkan { ctx: VulkanContext, metal_layer: usize },
+        Gl {
+            gl_ctx: usize,
+        },
+        Vulkan {
+            ctx: VulkanContext,
+            metal_layer: usize,
+        },
     }
 
     let render_target = match backend {
@@ -452,8 +458,16 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
             if let Some(r) = renderer.as_mut() {
                 let (instance, phys_device, device, queue_index, queue_count) =
                     vk_ctx.device_handles();
-                r.create_vulkan_context(instance, phys_device, device, queue_index, queue_count, std::ptr::null_mut(), &[])
-                    .map_err(|e| format!("mpv Vulkan context failed: {e}"))?;
+                r.create_vulkan_context(
+                    instance,
+                    phys_device,
+                    device,
+                    queue_index,
+                    queue_count,
+                    std::ptr::null_mut(),
+                    &[],
+                )
+                .map_err(|e| format!("mpv Vulkan context failed: {e}"))?;
                 if vk_ctx.is_hdr() {
                     let _ = r.set_option("target-trc", "linear");
                     let _ = r.set_option("target-prim", "bt.709");
@@ -505,7 +519,30 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                             .store(false, std::sync::atomic::Ordering::Release);
                         let _ = app.emit("native-player-show", ());
                         let state = app.state::<DesktopState>();
+
                         *state.eof_next_fired.lock().unwrap() = false;
+                        if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
+                            let result = (|| {
+                                let mut players = state.player_renderer_vlc.lock().unwrap();
+                                if players.is_none() {
+                                    *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
+                                }
+                                let player = players
+                                    .as_mut()
+                                    .ok_or_else(|| "libVLC player is unavailable".to_string())?;
+                                player.attach_nsobject(rv)?;
+                                player.load(&url, start_at)
+                            })();
+                            if let Err(error) = result {
+                                let _ = app.emit("native-player-error", error);
+                                visible = false;
+                                let view = rv as usize;
+                                run_on_main(move || unsafe {
+                                    msg1_bool(view as Id, "setHidden:", 1)
+                                });
+                            }
+                            continue;
+                        }
                         let mut r = state.player_renderer.lock().unwrap();
                         if let Some(renderer) = r.as_mut() {
                             if let Err(e) = renderer.load(&url, start_at) {
@@ -527,6 +564,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         });
                         let _ = app.emit("native-player-hide", ());
                         let state = app.state::<DesktopState>();
+
                         let guard = state.player_renderer.lock().unwrap();
                         if let Some(r) = guard.as_ref() {
                             let _ = r.command_string("stop");
@@ -623,10 +661,22 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                     }
                 }
 
+                if *app
+                    .state::<DesktopState>()
+                    .active_player_engine
+                    .lock()
+                    .unwrap()
+                    == PlayerEngine::Vlc
+                {
+                    std::thread::sleep(Duration::from_millis(16));
+                    continue;
+                }
+
                 match &mut render_target {
                     MacRenderTarget::Gl { gl_ctx } => {
                         {
                             let state = app.state::<DesktopState>();
+
                             let mut renderer = state.player_renderer.lock().unwrap();
                             if let Some(r) = renderer.as_mut() {
                                 let _ = r.render_opengl_frame(last_size.0, last_size.1);
@@ -639,6 +689,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         }
                         {
                             let state = app.state::<DesktopState>();
+
                             let mut renderer = state.player_renderer.lock().unwrap();
                             if let Some(r) = renderer.as_mut() {
                                 r.report_swap();
@@ -652,11 +703,12 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                             }
                         }
                         let state = app.state::<DesktopState>();
+
                         let mut renderer = state.player_renderer.lock().unwrap();
                         if let Some(r) = renderer.as_mut() {
                             let image_usage = ctx.image_usage();
-                            let result =
-                                ctx.render_and_present(|image, format, iw, ih, wait_semaphore, signal_semaphore| {
+                            let result = ctx.render_and_present(
+                                |image, format, iw, ih, wait_semaphore, signal_semaphore| {
                                     let mut target = VulkanTargetImage {
                                         image,
                                         format,
@@ -668,10 +720,13 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                                         signal_semaphore,
                                     };
                                     r.render_vulkan_frame(&mut target).map(|_| target.layout)
-                                });
+                                },
+                            );
                             match result {
                                 Ok(()) => r.report_swap(),
-                                Err(e) => log::warn!("macos_player_surface: Vulkan render failed: {e}"),
+                                Err(e) => {
+                                    log::warn!("macos_player_surface: Vulkan render failed: {e}")
+                                }
                             }
                         }
                         std::thread::sleep(Duration::from_millis(16));

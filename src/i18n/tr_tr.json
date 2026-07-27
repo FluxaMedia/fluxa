@@ -1554,5 +1554,5 @@
   "settings.render_backend": "Görüntü İşleme Motoru",
   "settings.render_backend_desc": "mpv'nin görüntüleri işlerken kullandığı GPU API'si. OpenGL kararlı varsayılan seçenektir; Vulkan/D3D11 deneyseldir ve etkili olması için uygulamanın yeniden başlatılması gerekir. D3D11 yalnızca Windows'ta geçerlidir.",
   "settings.player_engine": "Oynatıcı Motoru",
-  "settings.player_engine_desc": "Videoyu hangi oynatma motorunun işleyeceği. libVLC deneyseldir ve şu anda uygulama içine gömülü olarak değil, kendi ayrı penceresinde oynatma yapar."
+  "settings.player_engine_desc": "Videoyu işleyecek oynatma motorunu seçin. libVLC, çalışma zamanı dosyaları kurulduğunda Fluxa içinde görüntülenir."
 }
