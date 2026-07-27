@@ -2,7 +2,7 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.core.StremioId
 import com.fluxa.app.data.remote.ParentsGuideCategory
-import com.fluxa.app.data.repository.ImdbApiService
+import com.fluxa.app.data.remote.ImdbApiService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

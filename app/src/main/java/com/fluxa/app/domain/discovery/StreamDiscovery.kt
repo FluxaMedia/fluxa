@@ -90,7 +90,8 @@ class StreamDiscoveryUseCase @Inject constructor(
         plan: PluginExecutionPlan?,
         timeoutMs: Long
     ): List<Stream> = coroutineScope {
-        val scrapers = plan?.scrapers.orEmpty()
+        val executionPlan = plan ?: return@coroutineScope emptyList()
+        val scrapers = executionPlan.scrapers
         if (scrapers.isEmpty()) return@coroutineScope emptyList()
         scrapers.map { scraper ->
             async {
@@ -98,10 +99,10 @@ class StreamDiscoveryUseCase @Inject constructor(
                     withTimeoutOrNull(timeoutMs) {
                         pluginRepositoryManager.executeScraper(
                             scraper = scraper,
-                            tmdbId = plan.contentId,
-                            mediaType = plan.mediaType,
-                            season = plan.season,
-                            episode = plan.episode
+                            tmdbId = executionPlan.contentId,
+                            mediaType = executionPlan.mediaType,
+                            season = executionPlan.season,
+                            episode = executionPlan.episode
                         )
                     } ?: emptyList()
                 } catch (e: Exception) {
