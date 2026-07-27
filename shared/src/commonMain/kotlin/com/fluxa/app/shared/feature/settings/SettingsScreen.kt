@@ -350,6 +350,10 @@ private fun SettingsHubContent(
                 modifier = Modifier.size(20.dp)
             )
         }
+        SettingsNavRow(
+            AppStrings.t(lang, "settings.switch_profiles"),
+            icon = Icons.Filled.AccountCircle
+        ) { onSwitchProfiles() }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_preferences"))
