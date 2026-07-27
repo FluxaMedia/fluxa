@@ -10,9 +10,11 @@ import com.fluxa.app.shared.feature.discover.DiscoverFilterOptionUiModel
 import com.fluxa.app.shared.feature.discover.DiscoverFiltersUiModel
 import com.fluxa.app.shared.feature.discover.DiscoverUiState
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 
 class AndroidDiscoverDataSource(
     private val homeViewModel: HomeViewModel,
@@ -61,15 +63,21 @@ class AndroidDiscoverDataSource(
             },
             isLoading = state.isLoading
         )
-    }
+    }.flowOn(Dispatchers.Default)
 
     override suspend fun updateFilters(filters: DiscoverFiltersUiModel) {
         val previousFilters = this.filters.value
         if (filters != previousFilters) homeViewModel.clearDiscoverResults()
         homeViewModel.setDiscoverLoading(true)
-        val availableCatalogs = homeViewModel.discoverCatalogOptions(filters.contentType)
-        catalogOptions.value = availableCatalogs
-        contentTypes.value = homeViewModel.discoverContentTypes()
+        val contentTypeUnchanged = filters.contentType == previousFilters.contentType
+        val availableCatalogs = if (contentTypeUnchanged && catalogOptions.value.isNotEmpty()) {
+            catalogOptions.value
+        } else {
+            homeViewModel.discoverCatalogOptions(filters.contentType).also { catalogOptions.value = it }
+        }
+        if (!contentTypeUnchanged || contentTypes.value.isEmpty()) {
+            contentTypes.value = homeViewModel.discoverContentTypes()
+        }
         val selectedCatalogKey = filters.catalogKey
             ?.takeIf { key -> availableCatalogs.any { it.key == key } }
             ?: availableCatalogs.firstOrNull()?.key

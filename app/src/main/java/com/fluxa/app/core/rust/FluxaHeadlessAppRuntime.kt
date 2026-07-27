@@ -4,8 +4,6 @@ import java.io.Closeable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * Android-side owner for the Rust headless app runtime.
@@ -19,19 +17,18 @@ class FluxaHeadlessAppRuntime(
     private val environment: HeadlessPlatformEnvironment,
     private val maxEffectsPerDispatch: Int = 64
 ) : Closeable {
-    private val mutex = Mutex()
     private val runner = FluxaHeadlessEffectRunner(engine, environment, maxEffectsPerDispatch)
     private val _state = MutableStateFlow<Map<String, Any?>>(emptyMap())
     val state: StateFlow<Map<String, Any?>> = _state.asStateFlow()
 
     suspend fun dispatch(action: Any): NativeHeadlessEngineResult {
-        return mutex.withLock { runner.dispatchAndDrain(action) }.also { result ->
+        return runner.dispatchAndDrain(action).also { result ->
             _state.value = result.state
         }
     }
 
     suspend fun complete(result: HeadlessEffectCompletion): NativeHeadlessEngineResult {
-        return mutex.withLock { runner.completeAndDrain(result) }.also { next ->
+        return runner.completeAndDrain(result).also { next ->
             _state.value = next.state
         }
     }

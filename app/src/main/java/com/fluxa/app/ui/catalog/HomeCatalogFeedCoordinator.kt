@@ -16,10 +16,13 @@ import com.fluxa.app.domain.discovery.metadataFeedHomeTitle
 import com.fluxa.app.domain.discovery.orderedMetadataFeeds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class HomeCatalogFeedCoordinator(
     private val repository: StremioRepository,
@@ -33,6 +36,8 @@ internal class HomeCatalogFeedCoordinator(
     private val setCategories: (List<HomeCategory>) -> Unit,
     private val currentCategories: () -> List<HomeCategory>
 ) {
+    private var remainingCatalogsJob: Job? = null
+
     suspend fun buildInitialCategories(profile: UserProfile?): List<HomeCategory> {
         val lang = profile?.safeLanguage ?: "en"
         val categories = mutableListOf<HomeCategory>()
@@ -272,9 +277,10 @@ internal class HomeCatalogFeedCoordinator(
     }
 
     fun loadRemainingCatalogs(profile: UserProfile?) {
+        remainingCatalogsJob?.cancel()
         val lang = profile?.safeLanguage ?: "en"
 
-        scope.launch(Dispatchers.IO) {
+        remainingCatalogsJob = scope.launch(Dispatchers.IO) {
             try {
                 val enabledFeeds = getMetadataFeeds(profile)
                     .let { orderedMetadataFeeds(it, profile?.homeFeedOrder) }
@@ -284,19 +290,25 @@ internal class HomeCatalogFeedCoordinator(
                         feeds.filter { isMetadataFeedEnabled(selectedKeys, it.key) }
                     }
                     .drop(2)
-                val firstWave = enabledFeeds.take(8).map { feed ->
-                    async { fetchAddonFeedCategory(feed, lang) }
-                }
-                setCategories(optimizeHomeCategories(currentCategories() + firstWave.awaitAll().filterNotNull(), lang))
 
-                val secondWave = enabledFeeds.drop(8).map { feed ->
-                    async { fetchAddonFeedCategory(feed, lang) }
-                }
-                setCategories(optimizeHomeCategories(currentCategories() + secondWave.awaitAll().filterNotNull(), lang))
+                val publishMutex = Mutex()
+                enabledFeeds.map { feed ->
+                    async {
+                        val category = fetchAddonFeedCategory(feed, lang) ?: return@async
+                        publishMutex.withLock {
+                            setCategories(optimizeHomeCategories(currentCategories() + category, lang))
+                        }
+                    }
+                }.awaitAll()
             } catch (e: Exception) {
                 Log.e("HomeViewModel", "Remaining catalogs failed", e)
             }
         }
+    }
+
+    fun pauseRemainingCatalogs() {
+        remainingCatalogsJob?.cancel()
+        remainingCatalogsJob = null
     }
 
     suspend fun getMetadataFeeds(profile: UserProfile?): List<MetadataFeedOption> {

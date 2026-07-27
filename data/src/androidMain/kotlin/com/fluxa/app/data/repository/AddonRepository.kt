@@ -3,22 +3,34 @@ package com.fluxa.app.data.repository
 import android.util.Log
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.domain.discovery.supportsStremioResource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val ADDON_META_TIMEOUT_MS = 3000L
+private const val ADDON_META_HEDGE_DELAY_MS = 500L
+private const val META_DETAIL_CACHE_TTL_MS = 5 * 60 * 1000L
 
 @Singleton
 class AddonRepository @Inject constructor(
     private val addonManifestClient: StremioAddonManifestClient,
     private val addonResourceClient: StremioAddonResourceClient
 ) {
+    private val metaDetailRepositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val metaDetailCache = ConcurrentHashMap<String, Pair<Long, MetaDetail?>>()
+    private val metaDetailInFlight = ConcurrentHashMap<String, Deferred<MetaDetail?>>()
+
     suspend fun getAddonManifest(
         transportUrl: String,
         forceRefresh: Boolean = false
@@ -30,42 +42,83 @@ class AddonRepository @Inject constructor(
         authKey: String,
         localAddons: List<String>? = emptyList()
     ): MetaDetail? {
+        val cacheKey = "$type:$id"
+        metaDetailCache[cacheKey]?.let { (cachedAt, value) ->
+            if (System.currentTimeMillis() - cachedAt < META_DETAIL_CACHE_TTL_MS) return value
+        }
+
+        val deferred = metaDetailInFlight.computeIfAbsent(cacheKey) {
+            metaDetailRepositoryScope.async {
+                try {
+                    fetchAddonMetaDetailUncached(type, id, authKey, localAddons)
+                } finally {
+                    metaDetailInFlight.remove(cacheKey)
+                }
+            }
+        }
+        val result = deferred.await()
+        metaDetailCache[cacheKey] = System.currentTimeMillis() to result
+        return result
+    }
+
+    private suspend fun fetchAddonMetaDetailUncached(
+        type: String,
+        id: String,
+        authKey: String,
+        localAddons: List<String>? = emptyList()
+    ): MetaDetail? {
         val allAddons = getUserAddons(authKey, localAddons)
         val addons = allAddons.filter { it.supportsStremioResource("meta") }
         Log.d("MetaFetch", "getAddonMetaDetail type=$type id=${id.take(30)}: total=${allAddons.size} supported=${addons.size} names=${addons.map { it.manifest.name }}")
         if (addons.isEmpty()) return null
 
-        val results = supervisorScope {
-            addons.map { addon ->
-                async {
-                    withTimeoutOrNull(ADDON_META_TIMEOUT_MS) {
-                        addonResourceClient.getMetaDetailFromAddonResult(addon.transportUrl, type, id)
-                    } ?: AddonResourceResult.NetworkError(
-                        url = addon.transportUrl,
-                        cause = null
+        return coroutineScope {
+            fun launchLookup(transportUrl: String) = async {
+                withTimeoutOrNull(ADDON_META_TIMEOUT_MS) {
+                    addonResourceClient.getMetaDetailFromAddonResult(transportUrl, type, id)
+                } ?: AddonResourceResult.NetworkError(url = transportUrl, cause = null)
+            }
+
+            val primaryDeferred = launchLookup(addons.first().transportUrl)
+            val hedgedResult = withTimeoutOrNull(ADDON_META_HEDGE_DELAY_MS) { primaryDeferred.await() }
+            if (hedgedResult is AddonResourceResult.Success) {
+                return@coroutineScope hedgedResult.value
+            }
+
+            val remainingAddons = addons.drop(1)
+            if (remainingAddons.isEmpty()) {
+                val result = if (hedgedResult != null) hedgedResult else primaryDeferred.await()
+                return@coroutineScope (result as? AddonResourceResult.Success)?.value
+            }
+
+            val pending = mutableListOf(primaryDeferred)
+            pending += remainingAddons.map { addon -> launchLookup(addon.transportUrl) }
+
+            var found: MetaDetail? = null
+            while (pending.isNotEmpty() && found == null) {
+                val (finished, result) = select<Pair<Deferred<AddonResourceResult<MetaDetail>>, AddonResourceResult<MetaDetail>>> {
+                    pending.forEach { deferred -> deferred.onAwait { value -> deferred to value } }
+                }
+                pending.remove(finished)
+                when (result) {
+                    is AddonResourceResult.Success -> found = result.value
+                    is AddonResourceResult.Empty,
+                    is AddonResourceResult.AddonUnsupported -> Unit
+                    is AddonResourceResult.NetworkError -> Log.w(
+                        "AddonRepository",
+                        "Meta request failed: ${result.url} status=${result.statusCode}",
+                        result.cause
+                    )
+                    is AddonResourceResult.ParseError -> Log.w(
+                        "AddonRepository",
+                        "Meta parse failed: ${result.url}",
+                        result.cause
                     )
                 }
-            }.awaitAll()
-        }
-
-        results.forEach { result ->
-            when (result) {
-                is AddonResourceResult.Success -> return result.value
-                is AddonResourceResult.Empty,
-                is AddonResourceResult.AddonUnsupported -> Unit
-                is AddonResourceResult.NetworkError -> Log.w(
-                    "AddonRepository",
-                    "Meta request failed: ${result.url} status=${result.statusCode}",
-                    result.cause
-                )
-                is AddonResourceResult.ParseError -> Log.w(
-                    "AddonRepository",
-                    "Meta parse failed: ${result.url}",
-                    result.cause
-                )
             }
+            pending.forEach { it.cancel() }
+            found
         }
-        return null
     }
 
     suspend fun getMetaDetailFromSpecificAddon(

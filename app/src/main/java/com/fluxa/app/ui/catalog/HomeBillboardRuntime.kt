@@ -74,6 +74,12 @@ internal class HomeBillboardRuntime(
         rotationJob?.cancel()
     }
 
+    fun pauseBackgroundWork() {
+        rotationJob?.cancel()
+        prefetchJob?.cancel()
+        trailerJob?.cancel()
+    }
+
     fun next() {
         pauseRotation()
         val items = pool()

@@ -906,7 +906,13 @@ class HomeViewModel @Inject constructor(
         browseCoordinator.setLoading(isLoading)
     }
 
+    fun pauseHomeBackgroundWork() {
+        billboardRuntime.pauseBackgroundWork()
+        feedCoordinator.pauseRemainingCatalogs()
+    }
+
     fun discover(type: String, catalogKey: String?, genre: String?, year: String?, rating: Float?, provider: String?, region: String?) {
+        pauseHomeBackgroundWork()
         browseCoordinator.discover(type, catalogKey, genre, year, rating, provider, region)
     }
 

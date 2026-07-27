@@ -39,7 +39,72 @@ object NetworkModule {
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.NONE
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
+        }
+    }
+
+    @Provides
+    @Singleton
+    fun provideNetTimingEventListenerFactory(): okhttp3.EventListener.Factory {
+        return okhttp3.EventListener.Factory { call ->
+            if (!BuildConfig.DEBUG) return@Factory okhttp3.EventListener.NONE
+            object : okhttp3.EventListener() {
+                var callStartNs = 0L
+                fun elapsedMs() = (System.nanoTime() - callStartNs) / 1_000_000
+
+                override fun callStart(call: okhttp3.Call) {
+                    callStartNs = System.nanoTime()
+                    android.util.Log.d("NetTiming", "callStart url=${call.request().url}")
+                }
+
+                override fun dnsStart(call: okhttp3.Call, domainName: String) {
+                    android.util.Log.d("NetTiming", "dnsStart +${elapsedMs()}ms host=$domainName")
+                }
+
+                override fun dnsEnd(call: okhttp3.Call, domainName: String, inetAddressList: List<java.net.InetAddress>) {
+                    android.util.Log.d("NetTiming", "dnsEnd +${elapsedMs()}ms host=$domainName resolved=$inetAddressList")
+                }
+
+                override fun connectStart(call: okhttp3.Call, inetSocketAddress: java.net.InetSocketAddress, proxy: java.net.Proxy) {
+                    android.util.Log.d("NetTiming", "connectStart +${elapsedMs()}ms addr=$inetSocketAddress")
+                }
+
+                override fun secureConnectStart(call: okhttp3.Call) {
+                    android.util.Log.d("NetTiming", "secureConnectStart +${elapsedMs()}ms")
+                }
+
+                override fun secureConnectEnd(call: okhttp3.Call, handshake: okhttp3.Handshake?) {
+                    android.util.Log.d("NetTiming", "secureConnectEnd +${elapsedMs()}ms")
+                }
+
+                override fun connectEnd(call: okhttp3.Call, inetSocketAddress: java.net.InetSocketAddress, proxy: java.net.Proxy, protocol: okhttp3.Protocol?) {
+                    android.util.Log.d("NetTiming", "connectEnd +${elapsedMs()}ms")
+                }
+
+                override fun connectFailed(call: okhttp3.Call, inetSocketAddress: java.net.InetSocketAddress, proxy: java.net.Proxy, protocol: okhttp3.Protocol?, ioe: java.io.IOException) {
+                    android.util.Log.d("NetTiming", "connectFailed +${elapsedMs()}ms addr=$inetSocketAddress error=$ioe")
+                }
+
+                override fun requestHeadersEnd(call: okhttp3.Call, request: okhttp3.Request) {
+                    android.util.Log.d("NetTiming", "requestHeadersEnd +${elapsedMs()}ms")
+                }
+
+                override fun responseHeadersStart(call: okhttp3.Call) {
+                    android.util.Log.d("NetTiming", "responseHeadersStart +${elapsedMs()}ms (time to first byte)")
+                }
+
+                override fun responseBodyEnd(call: okhttp3.Call, byteCount: Long) {
+                    android.util.Log.d("NetTiming", "responseBodyEnd +${elapsedMs()}ms bytes=$byteCount")
+                }
+
+                override fun callEnd(call: okhttp3.Call) {
+                    android.util.Log.d("NetTiming", "callEnd +${elapsedMs()}ms url=${call.request().url}")
+                }
+
+                override fun callFailed(call: okhttp3.Call, ioe: java.io.IOException) {
+                    android.util.Log.d("NetTiming", "callFailed +${elapsedMs()}ms url=${call.request().url} error=$ioe")
+                }
+            }
         }
     }
 
@@ -54,17 +119,27 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideDispatcher(): okhttp3.Dispatcher = okhttp3.Dispatcher().apply {
-        maxRequests = 64
-        maxRequestsPerHost = 16
+        maxRequests = 96
+        maxRequestsPerHost = 32
     }
 
     @Provides
     @Singleton
     @Named("StremioClient")
-    fun provideStremioOkHttpClient(logging: HttpLoggingInterceptor, connectionPool: okhttp3.ConnectionPool, dispatcher: okhttp3.Dispatcher): OkHttpClient {
+    fun provideStremioOkHttpClient(
+        logging: HttpLoggingInterceptor,
+        connectionPool: okhttp3.ConnectionPool,
+        dispatcher: okhttp3.Dispatcher,
+        netTimingEventListenerFactory: okhttp3.EventListener.Factory
+    ): OkHttpClient {
         val ipv4OnlyDns = object : okhttp3.Dns {
             override fun lookup(hostname: String): List<java.net.InetAddress> {
-                return okhttp3.Dns.SYSTEM.lookup(hostname).filter { it is java.net.Inet4Address }
+                val all = okhttp3.Dns.SYSTEM.lookup(hostname)
+                val filtered = all.filter { it is java.net.Inet4Address }
+                if (BuildConfig.DEBUG) {
+                    android.util.Log.d("NetTiming", "dns host=$hostname all=$all filteredToIpv4=$filtered")
+                }
+                return filtered
             }
         }
 
@@ -72,6 +147,7 @@ object NetworkModule {
             .dns(ipv4OnlyDns)
             .connectionPool(connectionPool)
             .dispatcher(dispatcher)
+            .eventListenerFactory(netTimingEventListenerFactory)
             .addInterceptor { chain ->
                 chain.proceed(HttpRequestSecurity.upgradeRemoteHttpRequest(chain.request()))
             }
