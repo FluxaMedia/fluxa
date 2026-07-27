@@ -82,6 +82,16 @@ export interface NuvioWatchedItem {
   watched_at: number;
 }
 
+export interface NuvioWatchProgressDeltaEvent extends NuvioWatchProgress {
+  event_id: number;
+  operation: 'upsert' | 'delete';
+}
+
+export interface NuvioWatchedItemDeltaEvent extends NuvioWatchedItem {
+  event_id: number;
+  operation: 'upsert' | 'delete';
+}
+
 export interface NuvioAvatar {
   id: string;
   display_name: string;
@@ -353,12 +363,12 @@ export async function nuvioPushLibrary(
 export async function nuvioPullWatchProgress(
   token: string,
   profileId: number,
-  limit = 100_000,
+  limit = 1_000,
   sinceLastWatched?: number,
 ): Promise<NuvioWatchProgress[]> {
   const body: Record<string, unknown> = {
     p_profile_id: profileId,
-    p_limit: limit,
+    p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
   };
   if (typeof sinceLastWatched === 'number' && Number.isFinite(sinceLastWatched) && sinceLastWatched > 0) {
     body.p_since_last_watched = Math.trunc(sinceLastWatched);
@@ -366,6 +376,23 @@ export async function nuvioPullWatchProgress(
   return post<NuvioWatchProgress[]>('/rest/v1/rpc/sync_pull_watch_progress', {
     ...body,
   }, token);
+}
+
+export async function nuvioPullWatchProgressDelta(
+  token: string,
+  profileId: number,
+  sinceEventId: number,
+  limit = 1_000,
+): Promise<NuvioWatchProgressDeltaEvent[]> {
+  return post<NuvioWatchProgressDeltaEvent[]>('/rest/v1/rpc/sync_pull_watch_progress_delta', {
+    p_profile_id: profileId,
+    p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
+    p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
+  }, token);
+}
+
+export async function nuvioGetWatchProgressDeltaCursor(token: string, profileId: number): Promise<number> {
+  return post<number>('/rest/v1/rpc/sync_get_watch_progress_delta_cursor', { p_profile_id: profileId }, token);
 }
 
 export async function nuvioPushWatchProgress(
@@ -409,6 +436,23 @@ export async function nuvioPullWatchHistory(
     p_page: page,
     p_page_size: pageSize,
   }, token);
+}
+
+export async function nuvioPullWatchHistoryDelta(
+  token: string,
+  profileId: number,
+  sinceEventId: number,
+  limit = 1_000,
+): Promise<NuvioWatchedItemDeltaEvent[]> {
+  return post<NuvioWatchedItemDeltaEvent[]>('/rest/v1/rpc/sync_pull_watched_items_delta', {
+    p_profile_id: profileId,
+    p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
+    p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
+  }, token);
+}
+
+export async function nuvioGetWatchHistoryDeltaCursor(token: string, profileId: number): Promise<number> {
+  return post<number>('/rest/v1/rpc/sync_get_watched_items_delta_cursor', { p_profile_id: profileId }, token);
 }
 
 export async function nuvioPushWatchHistory(

@@ -185,6 +185,7 @@ export default function App() {
     ready,
     profilesChecked,
     welcomeCompleted,
+    externalSyncPending,
     activeProfile,
     allProfiles,
     updateModalState,
@@ -733,6 +734,7 @@ export default function App() {
             isActive={!showDetail && activeRoute === 'home'}
             onScrolledChange={setHomeScrolled}
             resetKey={homeResetKey}
+            deferStaleRefresh={externalSyncPending}
           />
         </div>
         {!showDetail && activeRoute === 'calendar' && (

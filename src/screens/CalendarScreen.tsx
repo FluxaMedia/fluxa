@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   Check,
@@ -12,16 +12,19 @@ import {
 import type { AppState, LibraryItem, Video } from "../core/types";
 import {
   refreshExternalCalendarItems,
+  refreshCalendarMonth,
   refreshWatchlistAirDates,
 } from "../core/libraryEffects";
 import { fetchMetaDetail } from "../core/detailEffects";
 import { coreInvoke } from "../core/engine";
 import { t } from "../i18n";
 import { Toast } from "../components/Toast";
+import { usePosterSrc } from "../hooks/usePosterSrc";
 
 const NAV_RAIL_WIDTH = 6.5;
 const CONTENT_PAD = 2.625;
 const AIR_DATES_REFRESH_THROTTLE_MS = 60_000;
+const CALENDAR_ARTWORK_RESOLVE_LIMIT = 4;
 let lastAirDatesRefreshAt = 0;
 
 interface Props {
@@ -49,6 +52,7 @@ type CalendarItem = {
   episodePoster?: string;
   contentId?: string;
   seriesId?: string;
+  metaId?: string;
   metaType?: string;
 };
 
@@ -80,6 +84,22 @@ export const CalendarScreen = React.memo(
     }, [year, month]);
 
     useEffect(() => {
+      let cancelled = false;
+      refreshCalendarMonth(year, month)
+        .then(() => {
+          if (!cancelled) {
+            onDispatch(
+              JSON.stringify({ type: "calendarMonthRequested", year, month }),
+            );
+          }
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }, [year, month]);
+
+    useEffect(() => {
       if (
         Date.now() - lastAirDatesRefreshAt < AIR_DATES_REFRESH_THROTTLE_MS
       ) return;
@@ -96,6 +116,7 @@ export const CalendarScreen = React.memo(
             );
           }
         })
+        .catch(() => {})
         .finally(() => {
           if (!cancelled) setIsRefreshingAirDates(false);
         });
@@ -122,7 +143,11 @@ export const CalendarScreen = React.memo(
         ...(calendar.items ?? []),
         ...(calendar.localItems ?? []),
         ...(calendar.externalItems ?? []),
-      ],
+      ].map((item) => ({
+        ...item,
+        contentId: item.contentId ?? item.seriesId ?? item.metaId,
+        seriesId: item.seriesId ?? item.contentId ?? item.metaId,
+      })),
       [calendar.items, calendar.localItems, calendar.externalItems],
     );
     const completedItems =
@@ -142,7 +167,8 @@ export const CalendarScreen = React.memo(
       )
         .then((plan) => {
           if (active) setVisibleItems(plan ?? []);
-        });
+        })
+        .catch(() => {});
       return () => {
         active = false;
       };
@@ -152,6 +178,8 @@ export const CalendarScreen = React.memo(
     const [resolvedArtwork, setResolvedArtwork] = useState<
       Record<string, string>
     >({});
+    const attemptedArtwork = useRef(new Set<string>());
+    const [artworkResolveGeneration, setArtworkResolveGeneration] = useState(0);
     const [resolvedEpisodes, setResolvedEpisodes] = useState<
       Record<string, Partial<CalendarItem>>
     >({});
@@ -160,9 +188,14 @@ export const CalendarScreen = React.memo(
       let active = true;
       const unresolved = visibleItems.filter((item) => {
         const id = item.contentId ?? item.seriesId;
-        return id && !resolvedArtwork[calendarArtworkKey(item)];
-      });
+        const key = calendarArtworkKey(item);
+        return id && !resolvedArtwork[key] && !item.episodePoster &&
+          !attemptedArtwork.current.has(key);
+      }).slice(0, CALENDAR_ARTWORK_RESOLVE_LIMIT);
       if (unresolved.length === 0) return;
+      for (const item of unresolved) {
+        attemptedArtwork.current.add(calendarArtworkKey(item));
+      }
       const itemsBySeries = new Map<string, CalendarItem[]>();
       for (const item of unresolved) {
         const id = item.contentId ?? item.seriesId ?? "";
@@ -170,10 +203,17 @@ export const CalendarScreen = React.memo(
       }
       void Promise.all(
         [...itemsBySeries].map(async ([id, seriesItems]) => {
-          const meta = await fetchMetaDetail({
-            id,
-            contentType: seriesItems[0]?.metaType ?? "series",
-          }) as { poster?: string; videos?: Video[] } | null;
+          let meta: { poster?: string; videos?: Video[] } | null = null;
+          try {
+            meta = await fetchMetaDetail({
+              id,
+              contentType: seriesItems[0]?.metaType === "movie"
+                ? "movie"
+                : "series",
+            }) as { poster?: string; videos?: Video[] } | null;
+          } catch {
+            return [];
+          }
           return seriesItems.map((item) => {
             const season = item.seasonNumber ?? item.season;
             const episode = item.episodeNumber ?? item.episode ?? item.number;
@@ -223,11 +263,12 @@ export const CalendarScreen = React.memo(
             ...Object.fromEntries(episodes),
           }));
         }
+        setArtworkResolveGeneration((generation) => generation + 1);
       });
       return () => {
         active = false;
       };
-    }, [visibleItems, resolvedArtwork]);
+    }, [visibleItems, resolvedArtwork, artworkResolveGeneration]);
 
     const displayItems = useMemo(
       () =>
@@ -237,6 +278,15 @@ export const CalendarScreen = React.memo(
         })),
       [visibleItems, resolvedEpisodes],
     );
+    const seriesArtwork = useMemo(() => {
+      const artwork: Record<string, string> = {};
+      for (const item of displayItems) {
+        const image = calendarPoster(item, resolvedArtwork);
+        const key = calendarSeriesArtworkKey(item);
+        if (image && !artwork[key]) artwork[key] = image;
+      }
+      return artwork;
+    }, [displayItems, resolvedArtwork]);
     const itemsByDate = useMemo(() => groupItemsByDate(displayItems), [
       displayItems,
     ]);
@@ -368,7 +418,7 @@ export const CalendarScreen = React.memo(
                 }}
               >
                 <CalendarArtwork
-                  src={calendarPoster(dayItems[0], resolvedArtwork)}
+                  src={calendarPoster(dayItems[0], resolvedArtwork, seriesArtwork)}
                   fallbackSrc={dayItems[0]?.seriesPoster}
                   style={styles.dayBackdrop}
                 />
@@ -463,8 +513,8 @@ export const CalendarScreen = React.memo(
                         key={item.id ?? `${item.title}-${index}`}
                         style={styles.modalItem}
                       >
-                        <CalendarArtwork
-                          src={calendarPoster(item, resolvedArtwork)}
+                          <CalendarArtwork
+                          src={calendarPoster(item, resolvedArtwork, seriesArtwork)}
                           fallbackSrc={item.seriesPoster}
                           style={styles.modalPoster}
                           fallback={
@@ -558,6 +608,8 @@ function eventEpisodeCode(item: CalendarItem): string {
   if (season != null && episode != null) return `S${season} • E${episode}`;
   if (season != null) return `S${season}`;
   if (episode != null) return `E${episode}`;
+  const subtitleEpisode = item.subtitle?.match(/S\s*(\d+)\s*[:•-]?\s*E\s*(\d+)/i);
+  if (subtitleEpisode) return `S${subtitleEpisode[1]} • E${subtitleEpisode[2]}`;
   return t("calendar.episode");
 }
 function isReleased(item: CalendarItem): boolean {
@@ -588,12 +640,41 @@ function buildMonthCells(monthStart: Date) {
 function groupItemsByDate(
   items: CalendarItem[],
 ): Record<string, CalendarItem[]> {
-  return items.reduce<Record<string, CalendarItem[]>>((grouped, item) => {
-    if (!item.dateIso) return grouped;
+  const grouped = items.reduce<Record<string, CalendarItem[]>>((result, item) => {
+    if (!item.dateIso) return result;
     const date = localDateKeyFromIso(item.dateIso);
-    grouped[date] = [...(grouped[date] ?? []), item];
-    return grouped;
+    result[date] = [...(result[date] ?? []), item];
+    return result;
   }, {});
+  for (const date of Object.keys(grouped)) {
+    const unique = new Map<string, CalendarItem>();
+    for (const item of grouped[date]) {
+      const key = calendarDisplayIdentity(item);
+      const current = unique.get(key);
+      if (!current || calendarDisplayDetailScore(item) > calendarDisplayDetailScore(current)) {
+        unique.set(key, item);
+      }
+    }
+    grouped[date] = [...unique.values()];
+  }
+  return grouped;
+}
+
+function calendarDisplayIdentity(item: CalendarItem): string {
+  const subtitleEpisode = item.subtitle?.match(/S\s*(\d+)\s*[:•-]?\s*E\s*(\d+)/i);
+  const season = item.seasonNumber ?? item.season ??
+    (subtitleEpisode ? Number(subtitleEpisode[1]) : 0);
+  const episode = item.episodeNumber ?? item.episode ?? item.number ??
+    (subtitleEpisode ? Number(subtitleEpisode[2]) : 0);
+  const title = item.title ?? item.name ?? item.contentId ?? item.seriesId ?? item.metaId ?? item.id ?? "";
+  return `${title.trim().toLocaleLowerCase()}:${season}:${episode}`;
+}
+
+function calendarDisplayDetailScore(item: CalendarItem): number {
+  const subtitleRepeatsEpisode = /^S\s*\d+\s*[:•-]?\s*E\s*\d+/i.test(item.subtitle ?? "");
+  return [item.episodeTitle, item.episodePoster, item.poster, item.seriesPoster]
+    .filter((value) => !!value)
+    .length - (subtitleRepeatsEpisode ? 1 : 0);
 }
 
 function CalendarArtwork({
@@ -608,16 +689,22 @@ function CalendarArtwork({
   fallback?: React.ReactNode;
 }) {
   const [currentSrc, setCurrentSrc] = useState(src ?? fallbackSrc);
+  const cacheUrl = currentSrc && isTraktArtworkUrl(currentSrc)
+    ? currentSrc
+    : undefined;
+  const { src: cachedSrc, failed } = usePosterSrc(cacheUrl);
+  const displaySrc = cacheUrl ? cachedSrc : currentSrc;
 
   useEffect(() => {
     setCurrentSrc(src ?? fallbackSrc);
   }, [src, fallbackSrc]);
 
-  if (!currentSrc) return <>{fallback}</>;
+  if (!currentSrc || (cacheUrl && (!cachedSrc || failed))) return <>{fallback}</>;
+  if (!displaySrc) return <>{fallback}</>;
   return (
     <img
-      key={currentSrc}
-      src={currentSrc}
+      key={displaySrc}
+      src={displaySrc}
       alt=""
       style={style}
       onError={() =>
@@ -628,18 +715,37 @@ function CalendarArtwork({
   );
 }
 
+function isTraktArtworkUrl(url: string): boolean {
+  try {
+    return new URL(url).hostname.endsWith("trakt.tv");
+  } catch {
+    return false;
+  }
+}
+
 function calendarPoster(
   item: CalendarItem | undefined,
   resolved: Record<string, string>,
+  seriesArtwork: Record<string, string> = {},
 ): string | undefined {
   if (!item) return undefined;
-  return resolved[calendarArtworkKey(item)] ?? item.episodePoster ??
-    item.poster ?? item.seriesPoster;
+  return [
+    resolved[calendarArtworkKey(item)],
+    item.episodePoster,
+    item.poster,
+    item.seriesPoster,
+    seriesArtwork[calendarSeriesArtworkKey(item)],
+  ].find((value) => typeof value === "string" && value.trim().length > 0);
 }
 
 function calendarArtworkKey(item: CalendarItem): string {
-  const id = item.contentId ?? item.seriesId ?? item.id ?? "";
+  const id = item.contentId ?? item.seriesId ?? item.metaId ?? item.id ?? "";
   return `${id}:${item.dateIso ?? ""}`;
+}
+
+function calendarSeriesArtworkKey(item: CalendarItem): string {
+  return (item.title ?? item.name ?? item.contentId ?? item.seriesId ??
+    item.metaId ?? item.id ?? "").trim().toLocaleLowerCase();
 }
 
 const styles: Record<string, React.CSSProperties> = {

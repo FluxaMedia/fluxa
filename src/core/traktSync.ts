@@ -1,4 +1,4 @@
-import { platformFetch } from './httpClient';
+import { _appVersion, platformFetch } from './httpClient';
 import { loadActiveProfile } from './libraryOps';
 import { invoke } from '@tauri-apps/api/core';
 import { coreInvoke } from './engine';
@@ -31,6 +31,7 @@ export async function getOAuthClientId(service: string): Promise<string> {
 export function traktHeaders(token: string, clientId: string): HeadersInit {
   return {
     'Content-Type': 'application/json',
+    'User-Agent': `Fluxa Desktop/${_appVersion}`,
     Authorization: `Bearer ${token}`,
     'trakt-api-version': '2',
     'trakt-api-key': clientId,
@@ -48,11 +49,13 @@ export async function dropTraktPlaybackProgress(showId: string): Promise<void> {
   const headers = traktHeaders(token, clientId);
 
   try {
-    const res = await platformFetch('https://api.trakt.tv/sync/playback', { headers });
-    if (!res.ok) return;
-
-    const playbackItems = await res.json() as unknown[];
-    if (!Array.isArray(playbackItems)) return;
+    const responses = await Promise.all([
+      platformFetch('https://api.trakt.tv/sync/playback/movies', { headers }),
+      platformFetch('https://api.trakt.tv/sync/playback/episodes', { headers }),
+    ]);
+    if (responses.some((response) => !response.ok)) return;
+    const pages = await Promise.all(responses.map((response) => response.json().catch(() => [])));
+    const playbackItems = pages.flatMap((page) => Array.isArray(page) ? page : []);
 
     const deleteIds = await coreInvoke<number[]>('traktPlaybackDeleteIds', JSON.stringify({ contentId: showId, items: playbackItems })) ?? [];
     const deletePromises = deleteIds.map((id) =>
@@ -77,6 +80,7 @@ export async function enqueueTraktScrobble(payload: Record<string, unknown>): Pr
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': `Fluxa Desktop/${_appVersion}`,
         Authorization: `Bearer ${token}`,
         'trakt-api-version': '2',
         'trakt-api-key': payload.clientId as string,

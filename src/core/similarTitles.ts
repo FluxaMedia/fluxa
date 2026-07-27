@@ -40,6 +40,8 @@ export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: 
   const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
   if (!clientId) return [];
   const headers = {
+    'Content-Type': 'application/json',
+    'User-Agent': `Fluxa Desktop/${_appVersion}`,
     'trakt-api-version': '2',
     'trakt-api-key': clientId,
   };
@@ -96,8 +98,10 @@ export async function fetchSimklSimilarItems({ imdbId, contentType }: { imdbId: 
   const simklQuery = `client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`;
   const wantType = contentType === 'series' ? 'tv' : 'movie';
 
+  const headers = { 'Content-Type': 'application/json', 'User-Agent': `Fluxa Desktop/${_appVersion}` };
   const lookup = await tryFetchJson(
     `https://api.simkl.com/search/id?imdb=${encodeURIComponent(imdbId)}&${simklQuery}`,
+    { headers },
   );
   const simklId = await coreInvoke<number | null>('simklLookupIdForType', JSON.stringify({
     lookupJson: JSON.stringify(Array.isArray(lookup) ? lookup : []),
@@ -106,7 +110,7 @@ export async function fetchSimklSimilarItems({ imdbId, contentType }: { imdbId: 
   if (simklId == null) return [];
 
   const resource = wantType === 'tv' ? 'tv' : 'movies';
-  const detail = await tryFetchJson(`https://api.simkl.com/${resource}/${simklId}?${simklQuery}`);
+  const detail = await tryFetchJson(`https://api.simkl.com/${resource}/${simklId}?${simklQuery}`, { headers });
   const candidates = await coreInvoke<Array<{ ids?: { simkl?: number }; type?: string }> | null>(
     'simklRecommendationCandidates',
     JSON.stringify({ detailJson: JSON.stringify(detail ?? {}) }),
@@ -124,7 +128,7 @@ export async function fetchSimklSimilarItems({ imdbId, contentType }: { imdbId: 
       const recSimklId = rec.ids?.simkl;
       if (recSimklId == null) continue;
       const recResource = rec.type === 'tv' ? 'tv' : 'movies';
-      const recDetail = await tryFetchJson(`https://api.simkl.com/${recResource}/${recSimklId}?${simklQuery}`) as {
+      const recDetail = await tryFetchJson(`https://api.simkl.com/${recResource}/${recSimklId}?${simklQuery}`, { headers }) as {
         ids?: { imdb?: string };
       } | null;
       const imdb = recDetail?.ids?.imdb;

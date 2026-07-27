@@ -44,7 +44,7 @@ import {
   withCloseTimeout,
 } from '../core/playerUtils';
 import type { PlayerDisplayTitle, PlayerArtwork, PlaybackPreparePlan } from '../core/playerUtils';
-import { traktScrobbleOnClose, simklScrobbleOnClose } from '../core/scrobble';
+import { scrobblePlaybackAction } from '../core/scrobble';
 import { saveProfile } from '../core/profiles';
 import { resolvePlaybackSubtitles } from '../core/subtitles';
 import type { ResolvedSubtitles } from '../core/subtitles';
@@ -144,6 +144,9 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   const lastPlaybackStatusRef = useRef<EmbeddedMpvStatus | null>(null);
   const openSourcePickerOnFailureRef = useRef(false);
   const firstFrameHandoffPendingRef = useRef(false);
+  const scrobbleStartedRef = useRef(false);
+  const scrobbleStoppedRef = useRef(false);
+  const scrobbleWasPausedRef = useRef(false);
 
   const playerLoadingOverlayRef = useRef<PlayerLoadingOverlayState | null>(null);
 
@@ -340,6 +343,35 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerSubtitleWarning(allFailedAddons.length ? allFailedAddons : null);
   }, [stateRef]);
 
+  const dispatchScrobbleLifecycle = useCallback(async (
+    event: 'start' | 'pause' | 'stop',
+    status: EmbeddedMpvStatus,
+  ) => {
+    const profile = activeProfileRef.current;
+    const meta = playingMetaRef.current;
+    if (!profile || !meta) return;
+    const timePosSec = parseFloat(status.timePos ?? '0');
+    const durationSec = parseFloat(status.duration ?? '0');
+    if (!Number.isFinite(timePosSec) || !Number.isFinite(durationSec) || durationSec <= 0) return;
+    const token = profile.traktAccessToken ?? profile.simklAccessToken;
+    const action = await coreInvoke<{ action: 'start' | 'pause' | 'stop' }>('playerScrobbleLifecycleAction', JSON.stringify({
+      event,
+      token,
+      hasStarted: scrobbleStartedRef.current,
+      hasPaused: scrobbleWasPausedRef.current,
+      hasStopped: scrobbleStoppedRef.current,
+      progress: (timePosSec / durationSec) * 100,
+    }));
+    if (!action) return;
+    scrobblePlaybackAction(profile, meta, playingEpisodeRef.current, timePosSec, durationSec, action.action, (revoked) => {
+      void saveProfile(revoked);
+      onProfileUpdated?.(revoked);
+    });
+    if (action.action === 'start') scrobbleStartedRef.current = true;
+    if (action.action === 'start') scrobbleWasPausedRef.current = false;
+    if (action.action === 'stop') scrobbleStoppedRef.current = true;
+  }, [onProfileUpdated]);
+
   const closePlayer = useCallback(async () => {
     if (closingPlayerRef.current) return;
     closingPlayerRef.current = true;
@@ -397,13 +429,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
           streamIndex: stateRef.current.player.currentStreamIndex ?? null,
           prefs: closePrefs,
         }));
-        if (closePlan?.shouldScrobble) {
-          traktScrobbleOnClose(activeProfileRef.current, captureMeta, captureEpisode, timePos, duration);
-          simklScrobbleOnClose(activeProfileRef.current, captureMeta, captureEpisode, timePos, duration, (revoked) => {
-            void saveProfile(revoked);
-            onProfileUpdated?.(revoked);
-          });
-        }
+        if (scrobbleStartedRef.current) await dispatchScrobbleLifecycle('stop', status);
         for (const action of [closePlan?.progressAction, closePlan?.markWatchedAction, closePlan?.upNextAction]) {
           if (!action) continue;
           const result = await dispatchAction(JSON.stringify(action)).catch(() => null);
@@ -436,7 +462,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
       lastTotalDurationSecondsRef.current = undefined;
       lastPlaybackStatusRef.current = null;
     }
-  }, [stateRef, updateState]);
+  }, [stateRef, updateState, dispatchScrobbleLifecycle]);
 
   const saveProgressTick = useCallback(async () => {
     if (closingPlayerRef.current || !inNativePlayerRef.current) return;
@@ -479,6 +505,28 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     return () => clearInterval(interval);
   }, [playerUrl, saveProgressTick]);
 
+  useEffect(() => {
+    if (!playerUrl) return;
+    let cancelled = false;
+    const pollScrobble = async () => {
+      if (cancelled || closingPlayerRef.current || !inNativePlayerRef.current) return;
+      const status = await embeddedMpvStatus().catch(() => null);
+      if (!status || cancelled) return;
+      lastPlaybackStatusRef.current = status;
+      const paused = status.pause === 'yes';
+      if (!paused) await dispatchScrobbleLifecycle('start', status);
+      if (paused && !scrobbleWasPausedRef.current) {
+        scrobbleWasPausedRef.current = true;
+        await dispatchScrobbleLifecycle('pause', status);
+        return;
+      }
+      scrobbleWasPausedRef.current = paused;
+    };
+    void pollScrobble();
+    const interval = setInterval(() => { void pollScrobble(); }, 1000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [playerUrl, dispatchScrobbleLifecycle]);
+
   const handlePlay = useCallback(async (
     stream: Stream,
     meta?: Meta,
@@ -489,6 +537,9 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     openSourcePickerOnFailure = false,
   ) => {
     debugLog('handlePlay:start');
+    scrobbleStartedRef.current = false;
+    scrobbleStoppedRef.current = false;
+    scrobbleWasPausedRef.current = false;
     setPlayerPlaybackError(null);
     setPlayerSubtitleWarning(null);
     try {

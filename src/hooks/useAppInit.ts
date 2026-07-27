@@ -16,6 +16,7 @@ interface AppInitResult {
   ready: boolean;
   profilesChecked: boolean;
   welcomeCompleted: boolean;
+  externalSyncPending: boolean;
   activeProfile: UserProfile | null;
   allProfiles: UserProfile[];
   updateModalState: UpdateState;
@@ -33,6 +34,7 @@ export function useAppInit(
   const [ready, setReady] = useState(false);
   const [profilesChecked, setProfilesChecked] = useState(false);
   const [welcomeCompleted, setWelcomeCompleted] = useState(true);
+  const [externalSyncPending, setExternalSyncPending] = useState(true);
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null);
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([]);
   const [updateModalState, setUpdateModalState] = useState<UpdateState>({ phase: 'idle' });
@@ -81,13 +83,16 @@ export function useAppInit(
         }
         const libResult = await dispatchAction(JSON.stringify({ type: 'libraryHydrateRequested' }));
         if (libResult) updateState(libResult.state);
-        const cwResult = await dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested' }));
-        if (cwResult) {
-          updateState(cwResult.state);
-          if (cwResult.effects.length > 0) await pumpEffects(cwResult.effects, updateState);
+        const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true }));
+        if (homeResult) {
+          updateState(homeResult.state);
+          if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
         }
       }
-    } catch {}
+    } catch {
+    } finally {
+      setExternalSyncPending(false);
+    }
   }, [updateState]);
 
   useEffect(() => {
@@ -149,6 +154,8 @@ export function useAppInit(
 
       if (startupProfile) {
         void syncExternalOnStartup(startupProfile);
+      } else {
+        setExternalSyncPending(false);
       }
 
       if (prefBool(storedPrefsRef.current, 'automaticUpdates', true)) {
@@ -165,6 +172,7 @@ export function useAppInit(
     ready,
     profilesChecked,
     welcomeCompleted,
+    externalSyncPending,
     activeProfile,
     allProfiles,
     updateModalState,

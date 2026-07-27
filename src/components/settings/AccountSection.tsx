@@ -25,6 +25,14 @@ function generateCodeVerifier(): string {
     .slice(0, 64);
 }
 
+async function codeChallenge(verifier: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
 interface OAuthCodePayload {
   code: string;
   state: string | null;
@@ -32,6 +40,45 @@ interface OAuthCodePayload {
 
 type OAuthService = 'trakt' | 'anilist' | 'simkl';
 type IntegrationService = OAuthService | 'nuvio' | 'stremio';
+
+function tokenRefreshCountdown(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remainingSeconds = total % 60;
+  return hours > 0
+    ? t('format.duration_hours_minutes_seconds', hours, minutes, remainingSeconds)
+    : t('format.duration_minutes_seconds', minutes, remainingSeconds);
+}
+
+function ProviderTokenStatus({ expiresAt, verified, refreshScheduled }: { expiresAt?: number; verified: boolean; refreshScheduled: boolean }) {
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const refreshAt = expiresAt ? expiresAt - 60 : undefined;
+  const expired = expiresAt != null && expiresAt <= now;
+  const status = expired
+    ? t('settings.token_status_expired')
+    : verified
+    ? t('settings.token_status_verified')
+    : t('sync.device.connected');
+  const refresh = !refreshScheduled || refreshAt == null
+    ? t('settings.token_refresh_not_scheduled')
+    : refreshAt <= now
+    ? t('settings.token_refresh_due')
+    : t('settings.token_refresh_in', tokenRefreshCountdown(refreshAt - now));
+
+  return (
+    <div style={{ display: 'grid', gap: '0.25rem', padding: '0 1.125rem 0.75rem', color: 'rgba(255,255,255,0.66)', fontSize: '0.75rem' }}>
+      <span>{t('settings.token_status', status)}</span>
+      <span>{refresh}</span>
+    </div>
+  );
+}
 
 function credentialAuthErrorMessage(err: unknown): string {
   switch (nuvioAuthErrorKind(err)) {
@@ -196,6 +243,7 @@ export function AccountSection({
   const traktStateRef = useRef<string | null>(null);
   const anilistStateRef = useRef<string | null>(null);
   const simklStateRef = useRef<string | null>(null);
+  const simklCodeVerifierRef = useRef<string | null>(null);
   const [anilistBusy, setAnilistBusy] = useState(false);
   const [anilistError, setAnilistError] = useState<string | null>(null);
   const [anilistPopoverOpen, setAnilistPopoverOpen] = useState(false);
@@ -370,11 +418,11 @@ export function AccountSection({
         setAuthUrl('anilist');
         try {
           const tokenJson = await invoke<string>('anilist_oauth_exchange', { code: payload.code });
-          const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; expires_in?: number };
+          const tokens = JSON.parse(tokenJson) as { access_token: string; expires_in?: number };
           const updated: UserProfile = {
             ...activeProfile,
             anilistAccessToken: tokens.access_token,
-            anilistRefreshToken: tokens.refresh_token,
+            anilistRefreshToken: undefined,
             anilistTokenExpiresAt: tokens.expires_in ? Math.floor(Date.now() / 1000) + tokens.expires_in : undefined,
           };
           await saveProfile(updated);
@@ -420,8 +468,11 @@ export function AccountSection({
         return;
       }
       const state = generateCodeVerifier();
+      const verifier = generateCodeVerifier();
       simklStateRef.current = state;
-      const authUrl = `https://simkl.com/oauth/authorize?response_type=code&client_id=${simklClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/simkl')}&state=${state}`;
+      simklCodeVerifierRef.current = verifier;
+      const challenge = await codeChallenge(verifier);
+      const authUrl = `https://simkl.com/oauth/authorize?response_type=code&client_id=${simklClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/simkl')}&state=${state}&code_challenge=${challenge}&code_challenge_method=S256&app-name=fluxa&app-version=1`;
       setAuthUrl('simkl', authUrl);
       let unlisten: (() => void) | undefined;
       const consumeCallback = async () => {
@@ -430,6 +481,7 @@ export function AccountSection({
         unlisten?.();
         if (payload.state !== simklStateRef.current) {
           setSimklError(t('settings.oauth_state_mismatch'));
+          simklCodeVerifierRef.current = null;
           setAuthUrl('simkl');
           setSimklBusy(false);
           return;
@@ -437,14 +489,20 @@ export function AccountSection({
         simklStateRef.current = null;
         setAuthUrl('simkl');
         try {
-          const tokenJson = await invoke<string>('simkl_oauth_exchange', { code: payload.code });
-          const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string };
-          const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token };
+          const codeVerifier = simklCodeVerifierRef.current;
+          if (!codeVerifier) throw new Error(t('settings.oauth_state_mismatch'));
+          const tokenJson = await invoke<string>('simkl_oauth_exchange', { code: payload.code, codeVerifier });
+          const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; created_at?: number; expires_in?: number };
+          const expiresAt = tokens.expires_in
+            ? (tokens.created_at ?? Math.floor(Date.now() / 1000)) + tokens.expires_in
+            : undefined;
+          const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token, simklTokenExpiresAt: expiresAt };
           await saveProfile(updated);
           onProfileUpdated(updated);
         } catch (err) {
           setSimklError(err instanceof Error ? err.message : String(err));
         } finally {
+          simklCodeVerifierRef.current = null;
           setSimklBusy(false);
         }
       };
@@ -461,7 +519,7 @@ export function AccountSection({
   const handleSimklDisconnect = async () => {
     if (!activeProfile) return;
     setSimklPopoverOpen(false);
-    const updated: UserProfile = { ...activeProfile, simklAccessToken: undefined, simklRefreshToken: undefined };
+    const updated: UserProfile = { ...activeProfile, simklAccessToken: undefined, simklRefreshToken: undefined, simklTokenExpiresAt: undefined };
     await saveProfile(updated);
     onProfileUpdated(updated);
   };
@@ -703,6 +761,11 @@ export function AccountSection({
   };
 
   if (selectedIntegration) {
+    const tokenExpiresAt = selectedIntegration === 'trakt'
+      ? activeProfile?.traktTokenExpiresAt
+      : selectedIntegration === 'simkl'
+      ? activeProfile?.simklTokenExpiresAt
+      : undefined;
     const page = selectedIntegration === 'trakt'
       ? { title: t('brand.trakt'), connected: traktConnected, busy: traktBusy, meta: traktSyncMeta, error: traktError, connect: () => void handleTraktConnect(), sync: () => void handleTraktSyncNow(), disconnect: () => void handleTraktDisconnect() }
       : selectedIntegration === 'anilist'
@@ -721,6 +784,7 @@ export function AccountSection({
       </div>
       <SettingsSection title={t('settings.sync_with')} subtitle={t('settings.sync_with_desc')}>
         <SyncServiceRow icon={null} title={page.title} value={page.connected ? t('sync.device.connected') : t('settings.connect_account')} valueColor={page.connected ? '#54D17A' : undefined} onClick={page.connected ? undefined : page.connect} busy={page.busy} />
+        {page.connected && (selectedIntegration === 'trakt' || selectedIntegration === 'simkl') && <ProviderTokenStatus expiresAt={tokenExpiresAt} verified={Boolean(page.meta && !page.meta.error)} refreshScheduled={selectedIntegration === 'trakt'} />}
         {!page.connected && oauthService && renderOAuthFallback(oauthService)}
         {!page.connected && selectedIntegration === 'nuvio' && nuvioFormOpen && <CredentialLoginForm busy={nuvioBusy} onSubmit={(email, password) => void handleNuvioConnect(email, password)} onCancel={() => setNuvioFormOpen(false)} />}
         {!page.connected && selectedIntegration === 'stremio' && stremioFormOpen && !stremioAuthKeyMode && <CredentialLoginForm busy={stremioBusy} onSubmit={(email, password) => void handleStremioConnect(email, password)} onCancel={() => setStremioFormOpen(false)} />}

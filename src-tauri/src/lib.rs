@@ -1010,7 +1010,6 @@ pub fn run() {
             trakt_oauth_exchange,
             trakt_oauth_refresh,
             anilist_oauth_exchange,
-            anilist_oauth_refresh,
             simkl_oauth_exchange,
             get_data_dir,
             set_download_dir,

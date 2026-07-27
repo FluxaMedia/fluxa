@@ -7,8 +7,7 @@ getVersion().then((v) => { _appVersion = v; }).catch(() => {});
 const DEFAULT_TIMEOUT_MS = 12_000;
 
 const NO_CORS_HOSTS = new Set(['api.introdb.app', 'api.aniskip.com', 'api.anime-skip.com']);
-const NATIVE_FETCH_HOSTS = new Set(['api.trakt.tv']);
-const NATIVE_FETCH_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
+const NATIVE_FETCH_HOSTS = new Set(['api.trakt.tv', 'media.trakt.tv', 'api.simkl.com', 'data.simkl.in']);
 
 export async function platformFetch(url: string, init?: RequestInit): Promise<Response> {
   const signal = init?.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
@@ -20,7 +19,7 @@ export async function platformFetch(url: string, init?: RequestInit): Promise<Re
   if (NATIVE_FETCH_HOSTS.has(hostname)) {
     return tauriFetch(url, {
       ...init,
-      headers: { ...nativeHeaders, 'User-Agent': NATIVE_FETCH_USER_AGENT },
+      headers: { ...nativeHeaders, 'User-Agent': `Fluxa Desktop/${_appVersion}` },
       signal,
     });
   }

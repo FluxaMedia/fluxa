@@ -50,6 +50,7 @@ interface Props {
   // Bumped when the user clicks "Home" while already on the home route, so we can
   // exit a folder's "view all" grid rather than doing nothing.
   resetKey?: number;
+  deferStaleRefresh?: boolean;
 }
 
 interface FolderItemsResult {
@@ -108,7 +109,7 @@ async function loadFolderSourcePage(
   return { type: plan.type, items: [] as Meta[] };
 }
 
-export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, onNavigateDetail, onPlay, onResume, onStartOver, onPlayManually, onOpenSettings, isActive, onScrolledChange, resetKey }: Props) {
+export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, onNavigateDetail, onPlay, onResume, onStartOver, onPlayManually, onOpenSettings, isActive, onScrolledChange, resetKey, deferStaleRefresh }: Props) {
   const home = state.home;
   const [viewAllCategory, setViewAllCategory] = useState<{ title: string; items: Meta[]; groups?: Array<{ type: string; items: Meta[] }> } | null>(null);
   const [folderLoading, setFolderLoading] = useState(false);
@@ -249,13 +250,13 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   }, []);
 
   useEffect(() => {
-    if (!home.isStale || refreshStartedRef.current) return;
+    if (!home.isStale || deferStaleRefresh || refreshStartedRef.current) return;
     refreshStartedRef.current = true;
     const timer = window.setTimeout(() => {
       void onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [home.isStale, onDispatch]);
+  }, [deferStaleRefresh, home.isStale, onDispatch]);
 
   const continueWatching = useMemo(() => (home.continueWatching ?? []) as Meta[], [home.continueWatching]);
   const posterPrefs = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);

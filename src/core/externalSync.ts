@@ -10,7 +10,6 @@ import {
   syncStremioNow,
 } from './stremioExternalSync';
 import { pushAnimeTrackingExternal } from './animeExternalSync';
-import { simklScrobbleOnClose, traktScrobbleOnClose } from './scrobble';
 import { pushLibraryStatusAniList, pushWatchlistAniList, syncAniListNow } from './anilistExternalSync';
 import {
   nuvioDeleteWatchHistory,
@@ -84,8 +83,14 @@ export async function promoteExternalProgress(
   if (!plan) return;
   for (const promotion of plan.promotions) {
     await pushPlaybackProgressExternal(promotion.externalProgress, promotion.item, profile);
-    if (promotion.scrobbleTrakt) traktScrobbleOnClose(profile, promotion.meta, promotion.episode, promotion.externalProgress.positionSeconds, promotion.externalProgress.durationSeconds);
-    if (promotion.scrobbleSimkl) simklScrobbleOnClose(profile, promotion.meta, promotion.episode, promotion.externalProgress.positionSeconds, promotion.externalProgress.durationSeconds);
+    if (promotion.scrobbleTrakt && profile.traktAccessToken) {
+      const clientId = await getOAuthClientId('trakt');
+      await pushMarkWatchedTrakt([promotion.externalProgress.videoId], true, profile.traktAccessToken, clientId, promotion.externalProgress.lastWatched).catch(() => undefined);
+    }
+    if (promotion.scrobbleSimkl && profile.simklAccessToken) {
+      const clientId = await getOAuthClientId('simkl');
+      await pushMarkWatchedSimkl([promotion.externalProgress.videoId], true, promotion.meta as unknown as Record<string, unknown>, profile.simklAccessToken, clientId, promotion.externalProgress.lastWatched).catch(() => undefined);
+    }
   }
   if (plan.promotions.length > 0) {
     lib.progress = plan.progress;

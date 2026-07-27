@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Bookmark, BookmarkCheck, Check, CheckCircle2, ChevronDown, Circle, Film, Maximize2, Volume2, VolumeX, XCircle } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkCheck, Check, CheckCircle2, ChevronDown, Circle, Film, Maximize2, MessageCircle, Volume2, VolumeX, XCircle } from 'lucide-react';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { MovieCard } from '../MovieCard';
 import { getLanguage, t } from '../../i18n';
@@ -74,6 +74,7 @@ export type ModernDetailProps = {
   onToggleWatchlist: () => void;
   onToggleCompleted: () => void;
   onToggleDropped: () => void;
+  onOpenComments?: () => void;
   onBgError: () => void;
 };
 
@@ -166,7 +167,7 @@ export function ModernDetailLayout({
   blurUnwatchedEpisodes, spoilerHideEpisodeInfo, detailSeasonSelectorMode: _detailSeasonSelectorMode, episodeCardsLayout,
   onBack, onDispatch, onNavigateDetail, onNavigateGenre, onSeasonChange, onEpisodeClick,
   onMovieSources, onRetryFailed, onBackToEpisodes, onPlaySource, onPlay,
-  onToggleWatchlist, onToggleCompleted, onToggleDropped, onBgError,
+  onToggleWatchlist, onToggleCompleted, onToggleDropped, onOpenComments, onBgError,
 }: ModernDetailProps) {
   const [activeTab, setActiveTab] = useState<'episodes' | 'related' | 'details'>(() => isSeries ? 'episodes' : 'details');
   const [similarSource, setSimilarSource] = useState('auto');
@@ -543,6 +544,9 @@ export function ModernDetailLayout({
             <ModernIconBtn title={isDropped ? t('library.unmark_dropped') : t('library.mark_dropped')} active={isDropped} onClick={onToggleDropped}>
               <XCircle size={18} />
             </ModernIconBtn>
+            {onOpenComments && <ModernIconBtn title={t('detail.trakt_comments')} onClick={onOpenComments}>
+              <MessageCircle size={18} />
+            </ModernIconBtn>}
           </div>
 
           <div style={MS.metaBlock}>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Play } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Play } from 'lucide-react';
 import { coreDetailEpisodePlan, coreInvoke } from '../core/engine';
 import { prewarmYoutubeTrailerConfig } from '../core/effectRunner';
 import { coreSupportsResource } from '../core/addonManifest';
@@ -17,6 +17,7 @@ import { TrailerCarousel, fetchYoutubeTrailerMetadata, youtubeVideoId, type Trai
 import { MovieSourcePanel } from '../components/detail/SourcePanel';
 import { EpisodePanel, type ProgressEntry } from '../components/detail/EpisodePanel';
 import { ModernDetailLayout } from '../components/detail/ModernDetailLayout';
+import { TraktCommentsDialog } from '../components/detail/TraktCommentsDialog';
 import { useSeasonWatched } from '../hooks/useSeasonWatched';
 import { imdbButtonFor, setViewingDiscordPresence } from '../core/discordPresence';
 
@@ -75,6 +76,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
 
   const [resumeDialog, setResumeDialog] = useState<{ episode: Video; timeOffset: number } | null>(null);
   const [episodeResumeAt, setEpisodeResumeAt] = useState<number | undefined>(undefined);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   const isSeries = meta.type === 'series';
   const displayMeta = detail.meta ?? meta;
@@ -88,6 +90,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   const spoilerHideEpisodeInfo = prefBool(prefs, 'spoilerHideEpisodeInfo', false);
   const detailSeasonSelectorMode = prefString(prefs, 'detailSeasonSelectorMode', 'tabs');
   const episodeCardsLayout = prefString(prefs, 'episodeCardsLayout', 'standard');
+  const traktCommentsEnabled = prefBool(prefs, 'traktCommentsEnabled', false);
   const seasonHeroUrl = prefBool(prefs, 'detailSeasonPostersOnHero', true)
     ? seasonPosterUrl(displayMeta, selectedSeason) ?? seasonPosterUrl(meta, selectedSeason)
     : undefined;
@@ -406,9 +409,11 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
           onToggleWatchlist={() => { flipWatchlistOverride(); onDispatch(JSON.stringify({ type: 'toggleWatchlistRequested', item: displayMeta })); }}
           onToggleCompleted={() => { flipCompletedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'completed', item: displayMeta })); }}
           onToggleDropped={() => { flipDroppedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'dropped', item: displayMeta })); }}
+          onOpenComments={traktCommentsEnabled ? () => setCommentsOpen(true) : undefined}
           onBgError={() => setBgError(true)}
         />
         {resumeDialogEl}
+        {commentsOpen && <TraktCommentsDialog meta={displayMeta} onClose={() => setCommentsOpen(false)} />}
       </>
     );
   }
@@ -553,6 +558,11 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
               {isDropped ? t('library.unmark_dropped') : t('library.mark_dropped')}
             </button>
 
+            {traktCommentsEnabled && <button style={S.secondaryBtn} onClick={() => setCommentsOpen(true)}>
+              <MessageCircle size={17} />
+              <span>{t('detail.trakt_comments')}</span>
+            </button>}
+
             <div style={{ flex: 1 }} />
           </div>
         </div>
@@ -602,6 +612,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
         )}
       </div>
       {resumeDialogEl}
+      {commentsOpen && <TraktCommentsDialog meta={displayMeta} onClose={() => setCommentsOpen(false)} />}
     </>
   );
 }
