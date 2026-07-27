@@ -531,6 +531,7 @@ class MainActivity : FragmentActivity() {
                             settingsPopRequestId = settingsPopRequestId,
                             onSettingsCanPopChanged = { canPopSettings = it },
                             onNavigateToDestination = { destination -> navigateToDestination(destination, false) },
+                            onDestinationChanged = { destination -> currentDestination = destination },
                             onPlayerRequestChanged = { playerRequest = it },
                             profileManager = profileManager,
                             homeViewModel = homeViewModel,

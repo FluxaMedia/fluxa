@@ -247,6 +247,7 @@ fun FluxaApp(
             val screenKey = when {
                 playerState?.content != null -> "player:${playerState.content?.id.orEmpty()}"
                 state.editingProfile != null -> "profileEdit"
+                state.showProfilePickerSettings -> "profilePickerSettings"
                 state.showSourceSelection -> "sources"
                 state.selectedDetail != null -> "detail:${state.selectedDetail.id}"
                 libraryState?.folderDetail?.folder != null -> "folder:${libraryState.folderDetail.folder.id}"

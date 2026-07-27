@@ -61,7 +61,8 @@ internal fun AppRoutesHost(
     onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
     navigateBackSafely: () -> Unit,
     settingsPopRequestId: Int,
-    onSettingsCanPopChanged: (Boolean) -> Unit
+    onSettingsCanPopChanged: (Boolean) -> Unit,
+    onDestinationChanged: (FluxaDestination) -> Unit = {}
 ) {
     if (playerRequest != null) {
         PlayerRoute(
@@ -226,6 +227,7 @@ internal fun AppRoutesHost(
         onSettingsBackRequested = navigateBackSafely,
         settingsPopRequestId = settingsPopRequestId,
         onSettingsCanPopChanged = onSettingsCanPopChanged,
+        onDestinationChanged = onDestinationChanged,
         onManageAddonsRequested = { onNavigateToDestination(FluxaDestination.AddonStore) },
         onManagePluginsRequested = { onNavigateToDestination(FluxaDestination.Plugins) },
         onConnectStremioRequested = {

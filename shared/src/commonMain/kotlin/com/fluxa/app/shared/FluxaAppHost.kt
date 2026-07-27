@@ -101,6 +101,7 @@ fun FluxaAppHost(
     onSettingsBackRequested: () -> Unit = {},
     settingsPopRequestId: Int = 0,
     onSettingsCanPopChanged: (Boolean) -> Unit = {},
+    onDestinationChanged: (FluxaDestination) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     FluxaAppHost(
@@ -150,6 +151,7 @@ fun FluxaAppHost(
         onSettingsBackRequested = onSettingsBackRequested,
         settingsPopRequestId = settingsPopRequestId,
         onSettingsCanPopChanged = onSettingsCanPopChanged,
+        onDestinationChanged = onDestinationChanged,
         modifier = modifier
     )
 }
@@ -202,6 +204,7 @@ fun FluxaAppHost(
     onSettingsBackRequested: () -> Unit = {},
     settingsPopRequestId: Int = 0,
     onSettingsCanPopChanged: (Boolean) -> Unit = {},
+    onDestinationChanged: (FluxaDestination) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -255,6 +258,9 @@ fun FluxaAppHost(
             catalogHome = catalogHome
         )
     )
+    LaunchedEffect(appState.uiState.destination) {
+        onDestinationChanged(appState.uiState.destination)
+    }
     var profileAvatarUrl by remember(appState.uiState.editingProfile) {
         val target = appState.uiState.editingProfile
         val initial = (target as? ProfileEditTarget.Existing)?.let { existing ->
@@ -288,7 +294,9 @@ fun FluxaAppHost(
         appState.updateLanguage(language)
     }
     LaunchedEffect(destination) {
-        destination?.let(appState::selectDestination)
+        if (destination != null && destination != appState.uiState.destination) {
+            appState.selectDestination(destination)
+        }
     }
     LaunchedEffect(detailRequest) {
         detailRequest?.let(appState::selectDetail)
