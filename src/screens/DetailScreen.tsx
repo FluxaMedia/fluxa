@@ -17,6 +17,7 @@ import { TrailerCarousel, fetchYoutubeTrailerMetadata, youtubeVideoId, type Trai
 import { MovieSourcePanel } from '../components/detail/SourcePanel';
 import { EpisodePanel, type ProgressEntry } from '../components/detail/EpisodePanel';
 import { ModernDetailLayout } from '../components/detail/ModernDetailLayout';
+import { RatingsRow } from '../components/detail/RatingBadge';
 import { TraktCommentsDialog } from '../components/detail/TraktCommentsDialog';
 import { useSeasonWatched } from '../hooks/useSeasonWatched';
 import { imdbButtonFor, setViewingDiscordPresence } from '../core/discordPresence';
@@ -168,6 +169,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   );
   const similarItems = detail.similarItems ?? [];
   const omdbRatings = detail.omdbRatings;
+  const mdblistRatings = detail.mdblistRatings;
   const fanartArtwork = detail.fanartArtwork;
   const metaEpisodes = displayMeta.videos ?? [];
   const episodes = useMemo(() => metaEpisodes, [metaEpisodes]);
@@ -382,6 +384,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
           isDropped={isDropped}
           isCompleted={isCompleted}
           omdbRatings={omdbRatings}
+          mdblistRatings={mdblistRatings}
           fanartArtwork={fanartArtwork}
           availableAddons={detail.availableAddons ?? []}
           streamAddonCount={streamAddonCount}
@@ -454,26 +457,32 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
                   )}
                 </div>
 
-                {(metaLine || displayMeta.imdbRating || omdbRatings) && (
+                {(metaLine || displayMeta.imdbRating || omdbRatings || mdblistRatings) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                     {metaLine && <span style={S.metaLine}>{metaLine}</span>}
-                    {displayMeta.imdbRating && (
-                      <span style={S.imdbBadge}>
-                        <span style={S.imdbLogo}>IMDb</span>
-                        <span style={S.imdbRating}>{displayMeta.imdbRating}</span>
-                      </span>
-                    )}
-                    {omdbRatings?.rottenTomatoes && (
-                      <span style={S.imdbBadge}>
-                        <span style={S.imdbLogo}>RT</span>
-                        <span style={S.imdbRating}>{omdbRatings.rottenTomatoes}</span>
-                      </span>
-                    )}
-                    {omdbRatings?.metascore && (
-                      <span style={S.imdbBadge}>
-                        <span style={S.imdbLogo}>Metascore</span>
-                        <span style={S.imdbRating}>{omdbRatings.metascore}</span>
-                      </span>
+                    {mdblistRatings && Object.keys(mdblistRatings).length > 0 ? (
+                      <RatingsRow ratings={mdblistRatings} />
+                    ) : (
+                      <>
+                        {displayMeta.imdbRating && (
+                          <span style={S.imdbBadge}>
+                            <span style={S.imdbLogo}>IMDb</span>
+                            <span style={S.imdbRating}>{displayMeta.imdbRating}</span>
+                          </span>
+                        )}
+                        {omdbRatings?.rottenTomatoes && (
+                          <span style={S.imdbBadge}>
+                            <span style={S.imdbLogo}>RT</span>
+                            <span style={S.imdbRating}>{omdbRatings.rottenTomatoes}</span>
+                          </span>
+                        )}
+                        {omdbRatings?.metascore && (
+                          <span style={S.imdbBadge}>
+                            <span style={S.imdbLogo}>Metascore</span>
+                            <span style={S.imdbRating}>{omdbRatings.metascore}</span>
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

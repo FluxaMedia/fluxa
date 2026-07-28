@@ -354,6 +354,7 @@ export interface DetailState {
   trailers?: Trailer[];
   similarItems?: Meta[];
   omdbRatings?: { rottenTomatoes?: string; metascore?: string } | null;
+  mdblistRatings?: Record<string, number> | null;
   fanartArtwork?: { hdLogo?: string; hdBackdrop?: string } | null;
   error?: string | null;
   id?: string;

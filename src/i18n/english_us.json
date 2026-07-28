@@ -645,6 +645,8 @@
   "settings.rpdb_key_invalid": "Key could not be verified",
   "settings.omdb_api_key": "OMDB API Key",
   "settings.omdb_api_key_desc": "Adds Rotten Tomatoes and Metascore ratings. Get a free key at omdbapi.com/apikey.aspx.",
+  "settings.mdblist_api_key": "MDBList API Key",
+  "settings.mdblist_api_key_desc": "Adds IMDb, TMDB, Trakt, Letterboxd, Rotten Tomatoes, Metacritic and MyAnimeList ratings with logos on the detail page. Get a free key at mdblist.com/preferences.",
   "settings.fanart_api_key": "Fanart.tv API Key",
   "settings.fanart_api_key_desc": "Adds HD logos and backdrops for movies and TV shows. Get a free key at fanart.tv/get-an-api-key.",
   "settings.alert_new_episodes": "Alert me on new episodes",

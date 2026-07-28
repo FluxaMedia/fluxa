@@ -4,6 +4,8 @@ import {
   coreTmdbImageUrl,
   coreTmdbBulkMetas,
   coreTmdbBulkVideosToTrailers,
+  coreMdblistMediaInfoUrl,
+  coreMdblistMediaRatingsFromResponse,
   dispatchAction,
 } from './engine';
 import { loadAddons, loadPrefs } from './libraryOps';
@@ -249,6 +251,34 @@ async function fetchOmdbRatings(id: string, apiKey: string): Promise<OmdbRatings
   return { rottenTomatoes, metascore };
 }
 
+async function fetchMdblistRatings(
+  contentType: string,
+  id: string,
+  apiKey: string,
+): Promise<Record<string, number> | null> {
+  if (!apiKey) return null;
+  const baseId = id.split(':')[0];
+  let provider: string;
+  let mediaId: string;
+  if (/^tt\d+$/i.test(baseId)) {
+    provider = 'imdb';
+    mediaId = baseId;
+  } else if (id.startsWith('tmdb:') && /^\d+$/.test(id.split(':')[1] ?? '')) {
+    provider = 'tmdb';
+    mediaId = id.split(':')[1] ?? '';
+  } else {
+    return null;
+  }
+  if (!mediaId) return null;
+  const mediaType = contentType === 'series' ? 'show' : 'movie';
+  const url = await coreMdblistMediaInfoUrl(provider, mediaType, mediaId, 'ratings');
+  if (!url) return null;
+  const separator = url.includes('?') ? '&' : '?';
+  const response = await tryFetchJson(`${url}${separator}apikey=${encodeURIComponent(apiKey)}`);
+  if (!response) return null;
+  return coreMdblistMediaRatingsFromResponse(JSON.stringify(response));
+}
+
 interface FanartArtwork {
   hdLogo?: string;
   hdBackdrop?: string;
@@ -359,6 +389,7 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
   const language = prefString(prefs, 'language', String(payload.language ?? 'en'));
   const apiKey = prefString(prefs, 'tmdbApiKey');
   const omdbApiKey = prefString(prefs, 'omdbApiKey');
+  const mdblistApiKey = prefString(prefs, 'mdblistApiKey');
   const fanartApiKey = prefString(prefs, 'fanartApiKey');
   const requestedSource = String(payload.similarTitlesSource ?? '');
   const source = ['auto', 'trakt', 'simkl', 'tmdb'].includes(requestedSource)
@@ -368,7 +399,7 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
   const similarEnabled = prefBool(prefs, 'tmdbSimilarResultsEnabled', true);
   const shouldFetchSimilar = source !== 'tmdb' || recommendationsEnabled || similarEnabled;
 
-  const [similarItems, trailers, omdbRatings, fanartArtwork] = await Promise.all([
+  const [similarItems, trailers, omdbRatings, mdblistRatings, fanartArtwork] = await Promise.all([
     shouldFetchSimilar
       ? fetchSimilarItems({
           contentType,
@@ -384,6 +415,7 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
       ? fetchTmdbTrailers({ contentType, id, language, apiKey })
       : Promise.resolve([]),
     fetchOmdbRatings(id, omdbApiKey),
+    fetchMdblistRatings(contentType, id, mdblistApiKey),
     fetchFanartArtwork({ contentType, id, language, apiKey }, fanartApiKey),
   ]);
 
@@ -392,6 +424,7 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
     similarItems,
     trailers,
     omdbRatings,
+    mdblistRatings,
     fanartArtwork,
   };
 }

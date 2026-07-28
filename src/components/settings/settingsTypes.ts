@@ -17,6 +17,7 @@ export interface Prefs {
   tmdbRatingsEnabled: boolean;
   rpdbApiKey: string;
   omdbApiKey: string;
+  mdblistApiKey: string;
   fanartApiKey: string;
   accentColorArgb: string;
   uiScale: string;
@@ -270,6 +271,7 @@ export const DEFAULT_PREFS: Prefs = {
   diagnosticMode: false,
   rpdbApiKey: '',
   omdbApiKey: '',
+  mdblistApiKey: '',
   fanartApiKey: '',
   syncCwSourceOfTruth: '',
   syncCwRanking: 'last_watched',

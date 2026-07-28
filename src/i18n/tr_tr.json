@@ -645,6 +645,8 @@
   "settings.rpdb_key_invalid": "Anahtar doğrulanamadı",
   "settings.omdb_api_key": "OMDB API Anahtarı",
   "settings.omdb_api_key_desc": "Rotten Tomatoes ve Metascore puanlarını ekler. Ücretsiz anahtar: omdbapi.com/apikey.aspx.",
+  "settings.mdblist_api_key": "MDBList API Anahtarı",
+  "settings.mdblist_api_key_desc": "Detay sayfasında IMDb, TMDB, Trakt, Letterboxd, Rotten Tomatoes, Metacritic ve MyAnimeList puanlarını logolarıyla ekler. Ücretsiz anahtar: mdblist.com/preferences.",
   "settings.fanart_api_key": "Fanart.tv API Anahtarı",
   "settings.fanart_api_key_desc": "Filmler ve diziler için HD logo ve arka plan ekler. Ücretsiz anahtar: fanart.tv/get-an-api-key.",
   "settings.alert_new_episodes": "Yeni bölümlerde uyar",

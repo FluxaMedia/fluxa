@@ -16,6 +16,7 @@ import { useSeasonWatched } from '../../hooks/useSeasonWatched';
 import { httpFetchText } from '../../core/engine';
 import { resolveYoutubeTrailer, type YoutubeTrailerSubtitleTrack } from '../../core/effectRunner';
 import { normalizeTrailerSubtitleUrl, parseTrailerSubtitleCues, selectTrailerSubtitle, type TrailerCue } from '../../core/trailerSubtitles';
+import { RatingsRow } from './RatingBadge';
 
 const STALL_TIMEOUT_MS = 7000;
 
@@ -56,6 +57,7 @@ export type ModernDetailProps = {
   isDropped: boolean;
   isCompleted: boolean;
   omdbRatings?: { rottenTomatoes?: string; metascore?: string } | null;
+  mdblistRatings?: Record<string, number> | null;
   fanartArtwork?: { hdLogo?: string } | null;
   availableAddons: string[];
   streamAddonCount: number;
@@ -162,7 +164,7 @@ export function ModernDetailLayout({
   selectedSeason, selectedEpisode, showSources, playbackFailure, streams, episodePlan, similarItems,
   displayTrailers, trailerMetadata, castMembers, directorLinks, peopleImages,
   watchedMap, progressMap, continueWatchingEntry, isInWatchlist, isDropped, isCompleted,
-  omdbRatings, fanartArtwork, availableAddons, streamAddonCount, poster,
+  omdbRatings, mdblistRatings, fanartArtwork, availableAddons, streamAddonCount, poster,
   trailerOnHero, detailHeroAutoplayTrailer, detailHeroAutoplayTrailerDelaySecs, preferredSubtitleLanguage, secondarySubtitleLanguage,
   blurUnwatchedEpisodes, spoilerHideEpisodeInfo, detailSeasonSelectorMode: _detailSeasonSelectorMode, episodeCardsLayout,
   onBack, onDispatch, onNavigateDetail, onNavigateGenre, onSeasonChange, onEpisodeClick,
@@ -399,10 +401,13 @@ export function ModernDetailLayout({
     ? t('format.season_episode_short', continueEp.season ?? 1, continueEp.episode ?? continueEp.number ?? 1)
     : null;
 
+  const hasMdblistRatings = mdblistRatings != null && Object.keys(mdblistRatings).length > 0;
   const modernMetaDetails: string[] = [];
-  if (displayMeta.imdbRating) modernMetaDetails.push(`IMDb ${displayMeta.imdbRating}/10`);
-  if (omdbRatings?.rottenTomatoes) modernMetaDetails.push(`RT ${omdbRatings.rottenTomatoes}`);
-  if (omdbRatings?.metascore) modernMetaDetails.push(`Metascore ${omdbRatings.metascore}`);
+  if (!hasMdblistRatings) {
+    if (displayMeta.imdbRating) modernMetaDetails.push(`IMDb ${displayMeta.imdbRating}/10`);
+    if (omdbRatings?.rottenTomatoes) modernMetaDetails.push(`RT ${omdbRatings.rottenTomatoes}`);
+    if (omdbRatings?.metascore) modernMetaDetails.push(`Metascore ${omdbRatings.metascore}`);
+  }
   if (displayMeta.releaseInfo) modernMetaDetails.push(displayMeta.releaseInfo);
   if (displayMeta.runtime) modernMetaDetails.push(displayMeta.runtime);
   if (isSeries && seasonNumbers.length > 0) modernMetaDetails.push(`${seasonNumbers.length} ${t('auto.seasons')}`);
@@ -588,6 +593,11 @@ export function ModernDetailLayout({
           </div>
 
           <div style={MS.metaBlock}>
+            {hasMdblistRatings && (
+              <div style={{ marginBottom: '0.625rem' }}>
+                <RatingsRow ratings={mdblistRatings} />
+              </div>
+            )}
             {(metaGenres.length > 0 || modernMetaDetails.length > 0) && (
               <p style={MS.metaInfoLine}>
                 {metaGenres.map((g, i) => (

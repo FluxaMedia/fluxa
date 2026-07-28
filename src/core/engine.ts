@@ -565,6 +565,7 @@ export async function coreComputeContinueWatchingBadges(
 }
 
 export * from "./engineTmdb";
+export * from "./engineMdblist";
 
 export async function coreParseIntroDbSegments(
   dataJson: string,

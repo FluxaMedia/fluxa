@@ -148,6 +148,13 @@ export function GeneralSection({ prefs, setPref }: { prefs: Prefs; setPref: <K e
         onChange={(v) => setPref('omdbApiKey', v)}
       />
       <InputTile
+        title={t('settings.mdblist_api_key')}
+        subtitle={t('settings.mdblist_api_key_desc')}
+        value={prefs.mdblistApiKey}
+        placeholder={t('settings.api_key_placeholder')}
+        onChange={(v) => setPref('mdblistApiKey', v)}
+      />
+      <InputTile
         title={t('settings.fanart_api_key')}
         subtitle={t('settings.fanart_api_key_desc')}
         value={prefs.fanartApiKey}
