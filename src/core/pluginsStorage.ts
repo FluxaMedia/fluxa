@@ -8,7 +8,7 @@ const LEGACY_SCRAPER_ENABLED_KEY = 'plugin_scraper_enabled';
 export async function pluginsOwnerId(): Promise<string> {
   const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
   const activeId = (await storageRead<string>('active_profile_id'))?.trim() ?? '';
-  const ownerId = await coreInvoke<string>('effectivePluginsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId }));
+  const ownerId = await coreInvoke<string>('effectivePluginsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId })).catch(() => null);
   return (ownerId || activeId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 

@@ -43,9 +43,9 @@ export async function effectRunnerLibraryKey(): Promise<string> {
 }
 
 export async function effectiveAddonsOwnerId(): Promise<string> {
-  const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
   const activeId = (await storageRead<string>('active_profile_id'))?.trim() ?? '';
-  const ownerId = await coreInvoke<string>('effectiveAddonsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId }));
+  const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
+  const ownerId = await coreInvoke<string>('effectiveAddonsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId })).catch(() => null);
   return (ownerId || activeId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
@@ -109,7 +109,7 @@ export async function prefsOwnerId(): Promise<string> {
   if (activeId) return activeId.replace(/[^a-zA-Z0-9_-]/g, '_');
   const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
   if (profiles.length === 0) return 'guest';
-  const primaryId = await coreInvoke<string>('primaryProfileId', JSON.stringify(profiles));
+  const primaryId = await coreInvoke<string>('primaryProfileId', JSON.stringify(profiles)).catch(() => null);
   return (primaryId || profiles[0].id).replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
