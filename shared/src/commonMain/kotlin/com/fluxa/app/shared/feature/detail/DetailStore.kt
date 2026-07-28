@@ -36,7 +36,6 @@ class DetailStore(
             DetailAction.ToggleWatchlist -> dataSource.toggleWatchlist(request.id, request.type)
             is DetailAction.SeasonSelected -> dataSource.selectSeason(action.season)
             is DetailAction.EpisodeSelected -> {
-                dataSource.selectEpisode(action.episodeId)
                 val content = state.value.content
                 _navigation.emit(
                     DetailNavigationEvent.SelectSources(
