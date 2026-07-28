@@ -5,23 +5,6 @@ import type { CoreMethod } from "./coreMethods";
 
 let engineHandle: number | null = null;
 
-function debugLog(msg: string) {
-  void invoke("debug_log", { msg }).catch(() => {});
-}
-
-function logDispatch(label: string, raw: string | null, ms: number) {
-  if (!raw) return;
-  let domains: string[] = [];
-  try {
-    domains = Object.keys((JSON.parse(raw) as DispatchResult).state ?? {});
-  } catch {}
-  debugLog(
-    `${label} bytes=${raw.length} ms=${ms.toFixed(1)} domains=[${
-      domains.join(",")
-    }]`,
-  );
-}
-
 export async function initEngine(initialJson: string = "{}"): Promise<void> {
   if (engineHandle !== null) return;
   engineHandle = await invoke<number>("engine_init", { initialJson });
@@ -37,9 +20,7 @@ export async function dispatchAction(
     }`;
   } catch {}
   return Sentry.startSpan({ name: label, op: "fluxa.ipc" }, async () => {
-    const t0 = performance.now();
     const raw = await invoke<string | null>("engine_dispatch", { actionJson });
-    logDispatch(label, raw, performance.now() - t0);
     if (!raw) return null;
     return JSON.parse(raw) as DispatchResult;
   });
@@ -52,15 +33,9 @@ export async function completeEffect(
     name: `completeEffect:${result.effectId}`,
     op: "fluxa.ipc",
   }, async () => {
-    const t0 = performance.now();
     const raw = await invoke<string | null>("engine_complete_effect", {
       resultJson: JSON.stringify(result),
     });
-    logDispatch(
-      `completeEffect:${result.effectId}`,
-      raw,
-      performance.now() - t0,
-    );
     if (!raw) return null;
     return JSON.parse(raw) as DispatchResult;
   });
@@ -132,13 +107,7 @@ export async function coreInvoke<T>(
   return Sentry.startSpan(
     { name: `coreInvoke:${method}`, op: "fluxa.core" },
     async () => {
-      const t0 = performance.now();
       const raw = await invoke<string>("core_invoke", { method, argsJson });
-      debugLog(
-        `coreInvoke:${method} bytes=${argsJson.length}+${raw.length} ms=${
-          (performance.now() - t0).toFixed(1)
-        }`,
-      );
       const envelope = JSON.parse(raw) as {
         ok: boolean;
         value?: T;
