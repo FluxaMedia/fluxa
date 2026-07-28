@@ -1,5 +1,9 @@
 package com.fluxa.app.shared.platform
 
+import com.fluxa.app.core.apple.AppleCatalogItemSnapshot
+import com.fluxa.app.core.apple.AppleDiscoverFilterOptionSnapshot
+import com.fluxa.app.core.apple.AppleDiscoverRequestSnapshot
+import com.fluxa.app.core.apple.AppleDiscoverSnapshot
 import com.fluxa.app.shared.feature.discover.DiscoverDataSource
 import com.fluxa.app.shared.feature.discover.DiscoverFilterOptionUiModel
 import com.fluxa.app.shared.feature.discover.DiscoverFiltersUiModel
@@ -11,25 +15,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-data class AppleDiscoverRequestSnapshot(
-    val contentType: String,
-    val catalogKey: String? = null,
-    val genre: String? = null
-)
-
-data class AppleDiscoverFilterOptionSnapshot(
-    val id: String? = null,
-    val label: String
-)
-
-data class AppleDiscoverSnapshot(
-    val request: AppleDiscoverRequestSnapshot,
-    val catalogOptions: List<AppleDiscoverFilterOptionSnapshot> = emptyList(),
-    val genreOptions: List<AppleDiscoverFilterOptionSnapshot> = emptyList(),
-    val results: List<AppleCatalogItemSnapshot> = emptyList(),
-    val isLoading: Boolean = false
-)
 
 class AppleDiscoverDataSource : DiscoverDataSource {
     private val state = MutableStateFlow(DiscoverUiState())

@@ -15,7 +15,7 @@ kotlin {
 
     targets
         .withType<KotlinNativeTarget>()
-        .matching { it.name.startsWith("tvos") }
+        .matching { it.name.startsWith("tvos") || it.name.startsWith("ios") }
         .configureEach {
             binaries.framework {
                 baseName = "FluxaCore"

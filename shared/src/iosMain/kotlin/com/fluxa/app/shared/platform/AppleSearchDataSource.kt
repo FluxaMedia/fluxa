@@ -1,6 +1,8 @@
 package com.fluxa.app.shared.platform
 
 import androidx.compose.ui.unit.dp
+import com.fluxa.app.core.apple.AppleCatalogItemSnapshot
+import com.fluxa.app.core.apple.AppleSearchSnapshot
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.search.SearchDataSource
@@ -14,12 +16,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import platform.Foundation.NSUserDefaults
-
-data class AppleSearchSnapshot(
-    val query: String,
-    val results: List<AppleCatalogItemSnapshot> = emptyList(),
-    val isLoading: Boolean = false
-)
 
 class AppleSearchDataSource : SearchDataSource {
     private val defaults = NSUserDefaults.standardUserDefaults

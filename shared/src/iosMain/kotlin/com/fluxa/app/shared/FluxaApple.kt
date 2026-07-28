@@ -2,17 +2,17 @@ package com.fluxa.app.shared
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.window.ComposeUIViewController
-import com.fluxa.app.shared.platform.AppleCatalogHomeSnapshot
-import com.fluxa.app.shared.platform.AppleSearchSnapshot
-import com.fluxa.app.shared.platform.AppleDiscoverRequestSnapshot
-import com.fluxa.app.shared.platform.AppleDiscoverSnapshot
+import com.fluxa.app.core.apple.AppleCatalogHomeSnapshot
+import com.fluxa.app.core.apple.AppleSearchSnapshot
+import com.fluxa.app.core.apple.AppleDiscoverRequestSnapshot
+import com.fluxa.app.core.apple.AppleDiscoverSnapshot
 import com.fluxa.app.shared.platform.AppleCalendarSnapshot
 import com.fluxa.app.shared.platform.AppleAuthSubmitSnapshot
 import com.fluxa.app.shared.platform.AppleAuthSnapshot
 import com.fluxa.app.shared.platform.AppleLibrarySnapshot
-import com.fluxa.app.shared.platform.AppleDetailRequestSnapshot
-import com.fluxa.app.shared.platform.AppleDetailSnapshot
-import com.fluxa.app.shared.platform.ApplePlaybackRequestSnapshot
+import com.fluxa.app.core.apple.AppleDetailRequestSnapshot
+import com.fluxa.app.core.apple.AppleDetailSnapshot
+import com.fluxa.app.core.apple.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreActionSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
 import com.fluxa.app.shared.platform.AppleAddonStoreSnapshot

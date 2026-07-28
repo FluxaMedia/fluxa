@@ -1,5 +1,8 @@
 package com.fluxa.app.shared.platform
 
+import com.fluxa.app.core.apple.AppleCatalogHomeSnapshot
+import com.fluxa.app.core.apple.AppleCatalogItemSnapshot
+import com.fluxa.app.core.apple.AppleCatalogRowSnapshot
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
@@ -10,31 +13,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.compose.ui.unit.dp
-
-data class AppleCatalogHomeSnapshot(
-    val rows: List<AppleCatalogRowSnapshot> = emptyList(),
-    val isLoading: Boolean = false
-)
-
-data class AppleCatalogRowSnapshot(
-    val id: String,
-    val title: String,
-    val items: List<AppleCatalogItemSnapshot>,
-    val canLoadMore: Boolean = false
-)
-
-data class AppleCatalogItemSnapshot(
-    val id: String,
-    val type: String,
-    val title: String,
-    val subtitle: String = "",
-    val artworkUrl: String? = null,
-    val logoUrl: String? = null,
-    val addonTransportUrl: String? = null,
-    val catalogType: String? = null,
-    val progress: Float? = null,
-    val topTenRank: Int? = null
-)
 
 class AppleCatalogHomeDataSource : CatalogHomeDataSource {
     private val state = MutableStateFlow(CatalogHomeUiState())

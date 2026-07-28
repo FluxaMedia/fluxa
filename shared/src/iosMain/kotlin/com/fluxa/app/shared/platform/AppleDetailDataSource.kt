@@ -1,5 +1,9 @@
 package com.fluxa.app.shared.platform
 
+import com.fluxa.app.core.apple.AppleDetailRequestSnapshot
+import com.fluxa.app.core.apple.AppleDetailSnapshot
+import com.fluxa.app.core.apple.AppleDetailStreamSnapshot
+import com.fluxa.app.core.apple.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.detail.DetailDataSource
@@ -14,45 +18,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-data class AppleDetailRequestSnapshot(
-    val id: String,
-    val type: String,
-    val addonTransportUrl: String? = null,
-    val catalogType: String? = null,
-    val title: String? = null
-)
-
-data class AppleDetailSnapshot(
-    val id: String,
-    val type: String,
-    val title: String,
-    val description: String = "",
-    val posterUrl: String? = null,
-    val backgroundUrl: String? = null,
-    val logoUrl: String? = null,
-    val releaseLabel: String = "",
-    val ratingLabel: String = "",
-    val isInWatchlist: Boolean = false,
-    val isLoading: Boolean = false,
-    val errorKey: String? = null,
-    val streams: List<AppleDetailStreamSnapshot> = emptyList(),
-    val hasStreamProviders: Boolean = true
-)
-
-data class ApplePlaybackRequestSnapshot(
-    val playableUrl: String,
-    val title: String,
-    val resumePositionMs: Long = 0L,
-    val requestHeadersJson: String = "{}"
-)
-
-data class AppleDetailStreamSnapshot(
-    val addonName: String,
-    val title: String,
-    val playableUrl: String,
-    val requestHeadersJson: String = "{}"
-)
 
 class AppleDetailDataSource(
     private val watchlistStore: WatchlistStore
