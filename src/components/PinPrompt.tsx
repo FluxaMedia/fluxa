@@ -3,8 +3,9 @@ import { verifyPin } from '../core/profiles';
 import type { UserProfile } from '../core/types';
 import { t } from '../i18n';
 
-export function PinPrompt({ profile, onSuccess, onCancel }: {
+export function PinPrompt({ profile, overridePin, onSuccess, onCancel }: {
   profile: UserProfile;
+  overridePin?: UserProfile;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
@@ -15,7 +16,7 @@ export function PinPrompt({ profile, onSuccess, onCancel }: {
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 30); }, []);
 
   const submit = async (value: string) => {
-    if (await verifyPin(profile, value)) {
+    if (await verifyPin(profile, value) || (overridePin && await verifyPin(overridePin, value))) {
       onSuccess();
     } else {
       setError(true);

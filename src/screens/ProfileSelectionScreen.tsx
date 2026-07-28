@@ -9,6 +9,7 @@ import { colors } from '../theme';
 import { t } from '../i18n';
 import { ProfileForm, AvatarPreview } from './ProfileForm';
 import { PinPrompt } from '../components/PinPrompt';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { loadProfilePickerSettings, refreshAllAvatarPacks, type ProfilePickerSettings } from '../core/profileAvatarPacks';
 import { ProfilePickerSettings as ProfilePickerSettingsView } from './ProfilePickerSettings';
 
@@ -23,7 +24,10 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
   const [mode, setMode] = useState<'select' | 'create' | 'edit' | 'settings'>('select');
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
   const [pinProfile, setPinProfile] = useState<UserProfile | null>(null);
+  const [pinGate, setPinGate] = useState<{ profile: UserProfile; action: 'edit' | 'delete' } | null>(null);
+  const [confirmDeleteProfile, setConfirmDeleteProfile] = useState<UserProfile | null>(null);
   const [pickerSettings, setPickerSettings] = useState<ProfilePickerSettings>({ avatarPacks: [] });
+  const primaryProfile = profiles.find((p) => p.id === primaryProfileId) ?? null;
 
   useEffect(() => {
     loadProfiles().then(setProfiles);
@@ -78,6 +82,16 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
     setMode('edit');
   };
 
+  const requestEdit = (profile: UserProfile) => {
+    if (profile.pinHash) { setPinGate({ profile, action: 'edit' }); return; }
+    handleEdit(profile);
+  };
+
+  const requestDelete = (profile: UserProfile) => {
+    if (profile.pinHash) { setPinGate({ profile, action: 'delete' }); return; }
+    setConfirmDeleteProfile(profile);
+  };
+
   const showForm = mode === 'create' || mode === 'edit';
   const isSettings = mode === 'settings';
 
@@ -124,8 +138,8 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
                 profile={profile}
                 isPrimary={primaryProfileId === profile.id}
                 onSelect={() => void handleSelect(profile)}
-                onDelete={() => void handleDelete(profile.id)}
-                onEdit={() => handleEdit(profile)}
+                onDelete={() => requestDelete(profile)}
+                onEdit={() => requestEdit(profile)}
               />
             ))}
             <AddProfileCard onClick={() => setMode('create')} />
@@ -159,6 +173,36 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
             const profile = pinProfile;
             setPinProfile(null);
             void (async () => { await setActiveProfileId(profile.id); onProfileSelected(profile); })();
+          }}
+        />
+      )}
+
+      {pinGate && (
+        <PinPrompt
+          profile={pinGate.profile}
+          overridePin={primaryProfile && primaryProfile.id !== pinGate.profile.id ? primaryProfile : undefined}
+          onCancel={() => setPinGate(null)}
+          onSuccess={() => {
+            const { profile, action } = pinGate;
+            setPinGate(null);
+            if (action === 'edit') handleEdit(profile);
+            else setConfirmDeleteProfile(profile);
+          }}
+        />
+      )}
+
+      {confirmDeleteProfile && (
+        <ConfirmDialog
+          title={t('profiles.delete_confirm_title')}
+          body={t('profiles.delete_confirm_body', confirmDeleteProfile.name ?? t('auto.profile'))}
+          confirmLabel={t('profiles.delete')}
+          cancelLabel={t('common.cancel')}
+          destructive
+          onCancel={() => setConfirmDeleteProfile(null)}
+          onConfirm={() => {
+            const id = confirmDeleteProfile.id;
+            setConfirmDeleteProfile(null);
+            void handleDelete(id);
           }}
         />
       )}
