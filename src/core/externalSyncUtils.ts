@@ -68,7 +68,8 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
 }
 
 export async function replaceExternalContinueWatching(payload: Record<string, unknown>): Promise<unknown> {
-  const lib = await loadLibrary();
+  const profileKey = typeof payload.profileKey === 'string' ? payload.profileKey : undefined;
+  const lib = await loadLibrary(profileKey);
   const prefs = await loadPrefs();
   const provider = typeof payload.provider === 'string' ? payload.provider : null;
   const dismissed = (lib.dismissedContinueWatching as Record<string, unknown> | undefined) ?? {};
@@ -86,7 +87,7 @@ export async function replaceExternalContinueWatching(payload: Record<string, un
     Number(prefs.continueWatchingDays) || 0,
   );
   lib.externalContinueWatching = merged;
-  await persistContinueWatchingMerge(existing, merged as Record<string, unknown>[]);
-  await saveLibrary(lib);
+  await persistContinueWatchingMerge(existing, merged as Record<string, unknown>[], profileKey);
+  await saveLibrary(lib, profileKey);
   return { count: merged.length };
 }

@@ -254,6 +254,9 @@ export async function importNuvioProfileData(
 
   const suffix = profileStorageSuffix(profile);
   const profileKey = `library_${suffix}`;
+  void import('@tauri-apps/api/core').then(({ invoke }) =>
+    invoke('debug_log', { msg: `nuvio-import-debug: importNuvioProfileData start profile.id=${profile.id} profileIdx=${profileIdx} profileKey=${profileKey}` }),
+  );
   const existingLib = await loadLibrary(profileKey);
   const libDoc: Record<string, unknown> = {
     schemaVersion: 2,

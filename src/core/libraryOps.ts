@@ -32,6 +32,10 @@ async function activeProfileStorageSuffix(): Promise<string> {
   return profileId ? profileId.replace(/[^a-zA-Z0-9_-]/g, '_') : 'guest';
 }
 
+export function profileStorageKey(profile: UserProfile): string {
+  return `library_${profile.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
+
 export async function effectRunnerLibraryKey(): Promise<string> {
   if (_cachedLibraryKey) return _cachedLibraryKey;
   _cachedLibraryKey = `library_${await activeProfileStorageSuffix()}`;
@@ -119,8 +123,9 @@ export async function persistStatusListMerge(
   before: Record<string, unknown>[],
   after: Record<string, unknown>[],
   list: 'watchlist' | 'completed' | 'dropped',
+  profileKey?: string,
 ): Promise<void> {
-  const key = await effectRunnerLibraryKey();
+  const key = profileKey ?? await effectRunnerLibraryKey();
   const newEntries = (await diffPlan<Record<string, unknown>[]>('itemListNewEntries', before, after)) ?? [];
   for (const item of newEntries) {
     const id = item.id as string | undefined;

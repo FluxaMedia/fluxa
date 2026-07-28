@@ -1,5 +1,6 @@
 import { platformFetch } from './httpClient';
-import { loadLibrary, saveLibrary, buildContinueWatching, persistStatusListMerge, persistWatchedMerge, persistProgressMerge } from './libraryOps';
+import { loadLibrary, saveLibrary, buildContinueWatching, persistStatusListMerge, persistWatchedMerge, persistProgressMerge, profileStorageKey } from './libraryOps';
+import type { UserProfile } from './types';
 import { replaceExternalContinueWatching } from './externalSyncUtils';
 import { coreAnilistEntriesToSync, coreInvoke, coreMergeLibraryItemsById } from './engine';
 import { saveProviderLibrary } from './providerLibraries';
@@ -50,6 +51,8 @@ const ANILIST_VIEWER_QUERY = `query { Viewer { id } }`;
 export async function syncAniListNow(payload: Record<string, unknown>): Promise<unknown> {
   const token = typeof payload.token === 'string' ? payload.token : undefined;
   if (!token) return { synced: false, error: 'AniList is not connected' };
+  const profile = payload.profile as UserProfile | undefined;
+  const profileKey = profile ? profileStorageKey(profile) : undefined;
 
   const viewer = await anilistGraphql<{ Viewer?: { id?: number } }>(ANILIST_VIEWER_QUERY, {}, token);
   const userId = viewer?.Viewer?.id;
@@ -63,7 +66,7 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
   const plan = await coreAnilistEntriesToSync(entries, Date.now());
   if (!plan) return { synced: false, error: 'AniList entries could not be processed' };
 
-  const lib = await loadLibrary();
+  const lib = await loadLibrary(profileKey);
   const watchlistBefore = (lib.watchlist as LibraryItemRecord[] | undefined) ?? [];
   const completedBefore = (lib.completed as LibraryItemRecord[] | undefined) ?? [];
   const droppedBefore = (lib.dropped as LibraryItemRecord[] | undefined) ?? [];
@@ -77,19 +80,19 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
   lib.progress = { ...progressBefore, ...plan.progress };
   lib.continueWatching = await buildContinueWatching(lib.progress as Record<string, unknown>);
 
-  await persistStatusListMerge(watchlistBefore, lib.watchlist as LibraryItemRecord[], 'watchlist');
-  await persistStatusListMerge(completedBefore, lib.completed as LibraryItemRecord[], 'completed');
-  await persistStatusListMerge(droppedBefore, lib.dropped as LibraryItemRecord[], 'dropped');
-  await persistWatchedMerge(watchedBefore, lib.watched as Record<string, boolean>);
-  await persistProgressMerge(progressBefore, lib.progress as Record<string, unknown>);
-  await saveLibrary(lib);
-  await replaceExternalContinueWatching({ provider: 'anilist', items: plan.watching });
+  await persistStatusListMerge(watchlistBefore, lib.watchlist as LibraryItemRecord[], 'watchlist', profileKey);
+  await persistStatusListMerge(completedBefore, lib.completed as LibraryItemRecord[], 'completed', profileKey);
+  await persistStatusListMerge(droppedBefore, lib.dropped as LibraryItemRecord[], 'dropped', profileKey);
+  await persistWatchedMerge(watchedBefore, lib.watched as Record<string, boolean>, profileKey);
+  await persistProgressMerge(progressBefore, lib.progress as Record<string, unknown>, profileKey);
+  await saveLibrary(lib, profileKey);
+  await replaceExternalContinueWatching({ provider: 'anilist', items: plan.watching, profileKey });
   await saveProviderLibrary('anilist', {
     watchlist: plan.watchlist,
     watching: plan.watching,
     completed: plan.completed,
     dropped: plan.dropped,
-  });
+  }, profileKey);
 
   return {
     synced: true,

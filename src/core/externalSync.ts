@@ -21,7 +21,7 @@ import {
   nuvioRefreshToken,
 } from './nuvioApi';
 import { saveProfile } from './profiles';
-import { loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistProgressMerge } from './libraryOps';
+import { loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistProgressMerge, profileStorageKey } from './libraryOps';
 import type { UserProfile } from './types';
 
 export { enqueueTraktScrobble } from './traktSync';
@@ -66,7 +66,8 @@ export async function promoteExternalProgress(
   profile: UserProfile | null,
 ): Promise<void> {
   if (!profile) return;
-  const lib = await loadLibrary();
+  const profileKey = profileStorageKey(profile);
+  const lib = await loadLibrary(profileKey);
   const progress = (lib.progress as Record<string, Record<string, unknown>> | undefined) ?? {};
   const progressBefore = { ...progress };
   const plan = await coreInvoke<{
@@ -95,8 +96,8 @@ export async function promoteExternalProgress(
   if (plan.promotions.length > 0) {
     lib.progress = plan.progress;
     lib.continueWatching = await buildContinueWatching(plan.progress);
-    await persistProgressMerge(progressBefore, plan.progress);
-    await saveLibrary(lib);
+    await persistProgressMerge(progressBefore, plan.progress, profileKey);
+    await saveLibrary(lib, profileKey);
   }
 }
 
