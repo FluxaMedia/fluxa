@@ -15,6 +15,7 @@ import com.fluxa.app.core.rust.models.NativeCacheTrimPolicy
 import com.fluxa.app.core.rust.models.NativeCloudstreamRequest
 import com.fluxa.app.core.rust.models.NativeDataFailurePolicy
 import com.fluxa.app.core.rust.models.NativeDetailSeasonLoadPlan
+import com.fluxa.app.core.rust.models.NativeDiscoverSelectionPlan
 import com.fluxa.app.core.rust.models.NativeDetailStreamResultPlan
 import com.fluxa.app.core.rust.models.NativeDirectPlaybackPlan
 import com.fluxa.app.core.rust.models.NativeDirectPlaybackPolicy
@@ -893,6 +894,24 @@ object FluxaCoreNative {
         }
         val value = FluxaCoreUniFfi.coreInvokeValue("discoverCatalogOptions", args.toString())
         return gson.fromJson(value, object : TypeToken<List<DiscoverCatalogOption>>() {}.type) ?: emptyList()
+    }
+
+    fun discoverSelectionPlan(
+        contentType: String,
+        catalogs: List<DiscoverCatalogOption>,
+        selectedCatalogKey: String?,
+        extraValue: String?
+    ): NativeDiscoverSelectionPlan {
+        val args = JsonObject().apply {
+            addProperty("contentType", contentType)
+            add("catalogs", gson.toJsonTree(catalogs))
+            addProperty("selectedCatalogKey", selectedCatalogKey)
+            addProperty("extraValue", extraValue)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("discoverSelectionPlan", args.toString())
+        return value.takeUnless { it.isJsonNull }
+            ?.let { gson.fromJson(it, NativeDiscoverSelectionPlan::class.java) }
+            ?: NativeDiscoverSelectionPlan()
     }
 
     fun normalizeContentType(value: String): String? {

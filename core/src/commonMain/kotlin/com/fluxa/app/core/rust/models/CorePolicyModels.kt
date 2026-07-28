@@ -192,6 +192,11 @@ data class NativeSearchResultGrouping(
     val query: String = ""
 )
 
+data class NativeDiscoverSelectionPlan(
+    val selectedCatalogKey: String? = null,
+    val extraValue: String? = null
+)
+
 data class NativeAvatarPackRepositoryPlan(
     val owner: String = "",
     val repository: String = "",

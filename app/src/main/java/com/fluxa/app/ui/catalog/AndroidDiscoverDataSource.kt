@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
@@ -78,17 +79,16 @@ class AndroidDiscoverDataSource(
         if (!contentTypeUnchanged || contentTypes.value.isEmpty()) {
             contentTypes.value = homeViewModel.discoverContentTypes()
         }
-        val selectedCatalogKey = filters.catalogKey
-            ?.takeIf { key -> availableCatalogs.any { it.key == key } }
-            ?: availableCatalogs.firstOrNull()?.key
+        val plan = FluxaCoreNative.discoverSelectionPlan(
+            contentType = filters.contentType,
+            catalogs = availableCatalogs,
+            selectedCatalogKey = filters.catalogKey,
+            extraValue = filters.genre
+        )
+        val selectedCatalogKey = plan.selectedCatalogKey
         if (selectedCatalogKey != null) {
             val selectedCatalog = availableCatalogs.firstOrNull { it.key == selectedCatalogKey }
-            val selectedGenre = filters.genre
-                ?.takeIf { genre -> selectedCatalog?.genres?.contains(genre) == true }
-                ?: selectedCatalog
-                    ?.takeIf { it.requiresGenre }
-                    ?.let { it.defaultGenre ?: it.genres.firstOrNull() }
-            val selectedFilters = filters.copy(catalogKey = selectedCatalogKey, genre = selectedGenre)
+            val selectedFilters = filters.copy(catalogKey = selectedCatalogKey, genre = plan.extraValue)
             this.filters.value = selectedFilters
             homeViewModel.discover(
                 type = selectedFilters.contentType,

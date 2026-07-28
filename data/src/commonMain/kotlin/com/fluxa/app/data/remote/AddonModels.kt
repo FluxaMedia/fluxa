@@ -32,7 +32,8 @@ data class CatalogExtra(
     val name: String? = null,
     val options: List<String>? = null,
     val isRequired: Boolean? = null,
-    val optionsLimit: Int? = null
+    val optionsLimit: Int? = null,
+    val default: String? = null
 )
 
 data class AddonCollectionResponse(val result: AddonCollectionResult)
