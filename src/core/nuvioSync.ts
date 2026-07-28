@@ -134,12 +134,19 @@ async function pullAllHistoryDelta(token: string, profileId: number, cursor: num
   }
 }
 
-async function pullAllNuvioLibrary(token: string, profileId: number): Promise<Awaited<ReturnType<typeof nuvioPullLibrary>>> {
+async function pullAllNuvioLibrary(
+  token: string,
+  profileId: number,
+  onItemProgress?: (index: number, total: number | null, title: string) => void,
+): Promise<Awaited<ReturnType<typeof nuvioPullLibrary>>> {
   const items: Awaited<ReturnType<typeof nuvioPullLibrary>> = [];
   const limit = 500;
   for (let offset = 0; ; offset += limit) {
     const page = await nuvioPullLibrary(token, profileId, limit, offset);
-    items.push(...page);
+    for (const item of page) {
+      items.push(item);
+      onItemProgress?.(items.length, null, item.name);
+    }
     if (page.length < limit) return items;
   }
 }
@@ -180,7 +187,10 @@ export async function refreshNuvioProfiles(profile: UserProfile): Promise<UserPr
     ?? freshProfile;
 }
 
-async function fetchAddonManifests(addons: NuvioAddon[]): Promise<{
+async function fetchAddonManifests(
+  addons: NuvioAddon[],
+  onItemProgress?: (index: number, total: number | null, title: string) => void,
+): Promise<{
   addonList: NuvioAddon[];
   manifestIdByUrl: Map<string, string>;
   descriptors: Array<Record<string, unknown>>;
@@ -188,11 +198,18 @@ async function fetchAddonManifests(addons: NuvioAddon[]): Promise<{
   const sorted = (await coreNuvioSortAddonsByPriority(addons)) ?? addons;
   const enabled = sorted.filter((a) => a.enabled);
   const manifestIdByUrl = new Map<string, string>();
+  let completed = 0;
   const manifests = await Promise.allSettled(
     enabled.map(async (a) => {
-      const res = await platformFetch(a.url);
-      if (!res.ok) return null;
-      return res.json() as Promise<Record<string, unknown>>;
+      try {
+        const res = await platformFetch(a.url);
+        if (!res.ok) return null;
+        const manifest = await (res.json() as Promise<Record<string, unknown>>);
+        onItemProgress?.(++completed, enabled.length, typeof manifest.name === 'string' ? manifest.name : a.name ?? a.url);
+        return manifest;
+      } catch {
+        return null;
+      }
     })
   );
 
@@ -218,7 +235,7 @@ async function fetchAddonManifests(addons: NuvioAddon[]): Promise<{
 async function fetchAddonMetas(
   needs: Array<{ contentId: string; contentType: string }>,
   addonDescriptors: Array<Record<string, unknown>>,
-  onItemProgress?: (index: number, total: number, title: string) => void,
+  onItemProgress?: (index: number, total: number | null, title: string) => void,
 ): Promise<Record<string, unknown>> {
   const metas: Record<string, unknown> = {};
   if (needs.length === 0 || addonDescriptors.length === 0) return metas;
@@ -246,7 +263,7 @@ async function fetchAddonMetas(
 export async function importNuvioProfileData(
   profile: UserProfile,
   onStep?: (step: NuvioImportStep, ok: boolean, error?: string) => void,
-  onItemProgress?: (index: number, total: number, title: string) => void,
+  onItemProgress?: (index: number, total: number | null, title: string) => void,
 ): Promise<NuvioImportReport> {
   const freshProfile = await freshNuvioProfile(profile).catch(() => profile);
   const token = freshProfile.nuvioAccessToken;
@@ -275,7 +292,7 @@ export async function importNuvioProfileData(
   let addonDescriptors: Array<Record<string, unknown>> = [];
   try {
     const addons = await nuvioPullAddons(token, profileIdx);
-    const fetched = await fetchAddonManifests(addons);
+    const fetched = await fetchAddonManifests(addons, onItemProgress);
     addonDescriptors = fetched.descriptors;
     await storageWrite(`addons_${suffix}`, fetched.descriptors);
     onStep?.('addons', true);
@@ -286,7 +303,7 @@ export async function importNuvioProfileData(
 
   let library: unknown[] = [];
   try {
-    library = await pullAllNuvioLibrary(token, profileIdx);
+    library = await pullAllNuvioLibrary(token, profileIdx, onItemProgress);
     libDoc.watchlist = (await coreNuvioLibraryToWatchlist(library)) ?? libDoc.watchlist;
     onStep?.('library', true);
   } catch (err) {

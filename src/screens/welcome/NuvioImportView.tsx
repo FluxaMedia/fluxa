@@ -30,7 +30,7 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
     profile: false, addons: false, library: false,
     progress: false, history: false, collections: false,
   });
-  const [itemProgress, setItemProgress] = useState<{ index: number; total: number; title: string } | null>(null);
+  const [itemProgress, setItemProgress] = useState<{ index: number; total: number | null; title: string } | null>(null);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const started = React.useRef(false);
@@ -160,7 +160,9 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
                   </div>
                   {isFirstIncomplete && itemProgress && (
                     <p style={{ margin: '0.25rem 0 0 1.875rem', fontSize: '0.75rem', fontFamily: FONT, color: 'rgba(255,255,255,0.45)' }}>
-                      {t('auth.nuvio.import.item_progress', itemProgress.index, itemProgress.total, itemProgress.title)}
+                      {itemProgress.total != null
+                        ? t('auth.nuvio.import.item_progress', itemProgress.index, itemProgress.total, itemProgress.title)
+                        : t('auth.nuvio.import.item_progress_count', itemProgress.index, itemProgress.title)}
                     </p>
                   )}
                 </div>
