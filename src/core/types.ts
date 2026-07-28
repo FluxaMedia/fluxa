@@ -298,6 +298,8 @@ export interface UserProfile {
   pinHash?: string;
   nuvioEmail?: string;
   nuvioProfileIndex?: number;
+  usesPrimaryAddons?: boolean;
+  usesPrimaryPlugins?: boolean;
 }
 
 export interface Effect {

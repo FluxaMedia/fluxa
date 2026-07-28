@@ -4,6 +4,7 @@ import { dispatchAction, getSnapshot, initEngine, storageRead } from '../core/en
 import { getActiveProfileId, loadProfiles } from '../core/profiles';
 import { pumpEffects, syncExternalIntegrationNow } from '../core/effectRunner';
 import { importNuvioProfileData, recordNuvioSyncMeta } from '../core/nuvioSync';
+import { hydratePluginsFromStorage } from '../core/pluginsStorage';
 import { setLanguage } from '../i18n';
 import { prefBool, prefString } from '../core/appPrefs';
 import { setRpdbApiKey } from '../core/rpdb';
@@ -100,19 +101,7 @@ export function useAppInit(
       try {
         void restoreWindowGeometry();
         await initEngine('{}');
-        const pluginRepositories = await storageRead<string[]>('plugin_repository_urls') ?? [];
-        const pluginOverrides = await storageRead<Record<string, boolean>>('plugin_scraper_enabled') ?? {};
-        for (const manifestUrl of pluginRepositories) {
-          if (!manifestUrl.trim()) continue;
-          const result = await dispatchAction(JSON.stringify({ type: 'pluginRepositoryAddRequested', manifestUrl }));
-          if (!result) continue;
-          updateState(result.state);
-          if (result.effects.length > 0) await pumpEffects(result.effects, updateState);
-        }
-        for (const [scraperId, enabled] of Object.entries(pluginOverrides)) {
-          const result = await dispatchAction(JSON.stringify({ type: 'pluginScraperToggled', scraperId, enabled }));
-          if (result) updateState(result.state);
-        }
+        await hydratePluginsFromStorage(updateState);
         const snap = await getSnapshot();
         const prefs = (await storageRead<Record<string, unknown>>('prefs')) ?? {};
         storedPrefsRef.current = prefs;

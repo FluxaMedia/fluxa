@@ -8,6 +8,7 @@ import {
   setActiveProfileId,
 } from '../core/profiles';
 import { saveAddons } from '../core/libraryOps';
+import { coreInvoke } from '../core/engine';
 import { nuvioPushProfiles } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
 import type { AddonDescriptor, UserProfile } from '../core/types';
@@ -109,12 +110,19 @@ export function ProfileForm({
   const [busy, setBusy] = useState(false);
   const [pin, setPin] = useState('');
   const [removePin, setRemovePin] = useState(false);
+  const [usesPrimaryAddons, setUsesPrimaryAddons] = useState(existing?.usesPrimaryAddons ?? false);
+  const [usesPrimaryPlugins, setUsesPrimaryPlugins] = useState(existing?.usesPrimaryPlugins ?? false);
+  const [primaryProfileId, setPrimaryProfileId] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTimeout(() => nameInputRef.current?.focus(), 60);
   }, []);
+
+  useEffect(() => {
+    coreInvoke<string>('primaryProfileId', JSON.stringify(allProfiles)).then(setPrimaryProfileId);
+  }, [allProfiles]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -160,7 +168,15 @@ export function ProfileForm({
           } : {}),
         };
       const pinHash = removePin ? undefined : pin.trim().length === 4 ? await hashPin(pin.trim()) : base.pinHash;
-      const profile: UserProfile = { ...base, name: name.trim(), color, avatarUrl, pinHash };
+      const profile: UserProfile = {
+        ...base,
+        name: name.trim(),
+        color,
+        avatarUrl,
+        pinHash,
+        usesPrimaryAddons,
+        usesPrimaryPlugins,
+      };
       const updated = await saveProfile(profile);
       if (!existing) {
         await setActiveProfileId(profile.id);
@@ -177,6 +193,8 @@ export function ProfileForm({
             name: candidate.name ?? `Profile ${candidate.nuvioProfileIndex}`,
             avatar_color_hex: candidate.color ?? null,
             avatar_url: candidate.avatarUrl ?? null,
+            uses_primary_addons: candidate.usesPrimaryAddons ?? false,
+            uses_primary_plugins: candidate.usesPrimaryPlugins ?? false,
           })));
         } catch {}
       }
@@ -185,6 +203,8 @@ export function ProfileForm({
       setBusy(false);
     }
   };
+
+  const isPrimary = existing ? primaryProfileId === existing.id : allProfiles.length === 0;
 
   const duplicateName = Boolean(
     name.trim() &&
@@ -207,7 +227,10 @@ export function ProfileForm({
           <AvatarPreview profile={previewProfile} size={128} />
           <span style={S.cameraBadge}><Camera size={15} /></span>
         </button>
-        <p style={S.previewName}>{name.trim() || t('auto.profile')}</p>
+        <p style={S.previewName}>
+          {name.trim() || t('auto.profile')}
+          {isPrimary && <span style={S.primaryBadge}>{t('profiles.primary_badge')}</span>}
+        </p>
         {avatarUrl && (
           <button style={S.clearImageBtn} onClick={() => setAvatarUrl(undefined)}>
             {t('profiles.use_initials')}
@@ -291,6 +314,22 @@ export function ProfileForm({
           </div>
         )}
 
+        {!isPrimary && (
+          <div>
+            <label style={S.fieldLabel}>{t('profiles.sharing')}</label>
+            <div style={S.checkboxRow}>
+              <label style={S.checkboxLabel}>
+                <input type="checkbox" checked={usesPrimaryAddons} onChange={(e) => setUsesPrimaryAddons(e.target.checked)} />
+                {t('profiles.use_primary_addons')}
+              </label>
+              <label style={S.checkboxLabel}>
+                <input type="checkbox" checked={usesPrimaryPlugins} onChange={(e) => setUsesPrimaryPlugins(e.target.checked)} />
+                {t('profiles.use_primary_plugins')}
+              </label>
+            </div>
+          </div>
+        )}
+
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
@@ -304,6 +343,9 @@ const S: Record<string, React.CSSProperties> = {
   avatarEditButton: { position: 'relative', border: 'none', background: 'transparent', padding: 0, color: '#FFFFFF', cursor: 'pointer', outline: 'none' },
   cameraBadge: { position: 'absolute', right: '-0.5rem', bottom: '-0.5rem', width: '2rem', height: '2rem', borderRadius: '0.5rem', background: '#2C2C2C', border: '0.125rem solid #141414', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.65)' },
   previewName: { margin: '1.25rem 0 0', fontSize: '1.125rem', fontWeight: 600, fontFamily: FONT, letterSpacing: '-0.02em', color: '#FFFFFF' },
+  primaryBadge: { marginLeft: '0.5rem', verticalAlign: 'middle', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.65)', fontSize: '0.625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' },
+  checkboxRow: { display: 'grid', gap: '0.5rem' },
+  checkboxLabel: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.75)', fontSize: '0.8125rem', fontFamily: FONT, cursor: 'pointer' },
   clearImageBtn: { marginTop: '0.625rem', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.38)', fontSize: '0.75rem', fontWeight: 400, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
   profileControls: { width: '100%', display: 'grid', gap: '0.875rem', marginTop: '1.5rem' },
   formPanel: { borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.08)', background: '#141414', padding: '1.375rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' },

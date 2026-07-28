@@ -45,6 +45,7 @@ import { useNuvioConnectivity } from './hooks/useNuvioConnectivity';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { setActiveProfileId, createProfileObject, saveProfile, loadProfiles } from './core/profiles';
 import { invalidateLibraryKeyCache } from './core/libraryOps';
+import { clearEnginePlugins, hydratePluginsFromStorage } from './core/pluginsStorage';
 import { storageWrite, storageRead } from './core/engine';
 import { toggleWindowFullscreen, watchWindowGeometry } from './core/windowGeometry';
 import { comboFromEvent, findActionForCombo, loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from './core/shortcuts';
@@ -605,6 +606,7 @@ export default function App() {
       <React.Suspense fallback={null}>
       <ProfileSelectionScreen
         onProfileSelected={async (profile) => {
+          const outgoingRepositories = state.plugins?.repositories ?? [];
           invalidateLibraryKeyCache();
           stateRef.current = DEFAULT_STATE;
           setState(DEFAULT_STATE);
@@ -614,6 +616,8 @@ export default function App() {
           await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
           void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
+          await clearEnginePlugins(outgoingRepositories, updateState);
+          void hydratePluginsFromStorage(updateState);
         }}
         onProfilesChanged={setAllProfiles}
       />

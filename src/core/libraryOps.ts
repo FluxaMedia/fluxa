@@ -42,8 +42,15 @@ export async function effectRunnerLibraryKey(): Promise<string> {
   return _cachedLibraryKey;
 }
 
+export async function effectiveAddonsOwnerId(): Promise<string> {
+  const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
+  const activeId = (await storageRead<string>('active_profile_id'))?.trim() ?? '';
+  const ownerId = await coreInvoke<string>('effectiveAddonsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId }));
+  return (ownerId || activeId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 export async function addonsStorageKey(): Promise<string> {
-  return `addons_${await activeProfileStorageSuffix()}`;
+  return `addons_${await effectiveAddonsOwnerId()}`;
 }
 
 export async function loadAddons(): Promise<AddonDescriptor[]> {

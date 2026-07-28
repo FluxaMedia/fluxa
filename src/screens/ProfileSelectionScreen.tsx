@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pencil, Plus, Settings, Trash2, UserRound, X } from 'lucide-react';
 import { deleteProfile, loadProfiles, profileColor, profileInitials, setActiveProfileId } from '../core/profiles';
+import { coreInvoke } from '../core/engine';
 import { nuvioDeleteProfileData, nuvioPushProfiles } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
 import type { UserProfile } from '../core/types';
@@ -18,6 +19,7 @@ interface Props {
 
 export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }: Props) {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [primaryProfileId, setPrimaryProfileId] = useState<string | null>(null);
   const [mode, setMode] = useState<'select' | 'create' | 'edit' | 'settings'>('select');
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
   const [pinProfile, setPinProfile] = useState<UserProfile | null>(null);
@@ -27,6 +29,10 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
     loadProfiles().then(setProfiles);
     loadProfilePickerSettings().then(setPickerSettings);
   }, []);
+
+  useEffect(() => {
+    coreInvoke<string>('primaryProfileId', JSON.stringify(profiles)).then(setPrimaryProfileId);
+  }, [profiles]);
 
   const handleSelect = async (profile: UserProfile) => {
     if (profile.pinHash) { setPinProfile(profile); return; }
@@ -52,6 +58,8 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
             name: profile.name ?? `Profile ${profile.nuvioProfileIndex}`,
             avatar_color_hex: profile.color ?? null,
             avatar_url: profile.avatarUrl ?? null,
+            uses_primary_addons: profile.usesPrimaryAddons ?? false,
+            uses_primary_plugins: profile.usesPrimaryPlugins ?? false,
           })));
         } catch {}
       })();
@@ -114,6 +122,7 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
               <ProfileCard
                 key={profile.id}
                 profile={profile}
+                isPrimary={primaryProfileId === profile.id}
                 onSelect={() => void handleSelect(profile)}
                 onDelete={() => void handleDelete(profile.id)}
                 onEdit={() => handleEdit(profile)}
@@ -153,8 +162,8 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
   );
 }
 
-function ProfileCard({ profile, onSelect, onDelete, onEdit }: {
-  profile: UserProfile; onSelect: () => void; onDelete: () => void; onEdit: () => void;
+function ProfileCard({ profile, isPrimary, onSelect, onDelete, onEdit }: {
+  profile: UserProfile; isPrimary: boolean; onSelect: () => void; onDelete: () => void; onEdit: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -165,6 +174,7 @@ function ProfileCard({ profile, onSelect, onDelete, onEdit }: {
           <AvatarPreview profile={profile} size={130} circular />
         </div>
         <span style={S.profileName}>{profile.name ?? t('auto.profile')}</span>
+        {isPrimary && <span style={S.primaryBadge}>{t('profiles.primary_badge')}</span>}
       </button>
       <div style={{ display: 'flex', gap: '0.25rem' }}>
         <button
@@ -227,6 +237,7 @@ const S: Record<string, React.CSSProperties> = {
   profileSelectButton: { width: 'auto', border: 'none', background: 'transparent', color: colors.white, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', cursor: 'pointer', padding: 0, outline: 'none' },
   avatarCircleWrap: { borderRadius: '50%', overflow: 'hidden', transition: 'opacity 0.15s, transform 0.15s', width: '8.125rem', height: '8.125rem', flexShrink: 0 },
   profileName: { marginTop: '0.875rem', maxWidth: '8.75rem', color: 'rgba(255,255,255,0.85)', fontSize: '0.875rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FONT },
+  primaryBadge: { marginTop: '0.375rem', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)', fontSize: '0.625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' },
   editPencilBtn: { marginTop: '0.5rem', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s', outline: 'none' },
   addCircle: { width: '8.125rem', height: '8.125rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s, transform 0.15s', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.10)' },
   addLabel: { marginTop: '0.875rem', color: 'rgba(255,255,255,0.35)', fontSize: '0.875rem', fontWeight: 500, fontFamily: FONT },

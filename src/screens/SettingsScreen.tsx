@@ -13,6 +13,7 @@ import type { AddonDescriptor, AppState, PluginRepository, PluginScraper, UserPr
 import { addonKey, normalizeAddonDescriptor } from '../core/addons';
 import { saveProfile } from '../core/profiles';
 import { loadAddons, saveAddons } from '../core/libraryOps';
+import { pluginRepositoryUrlsKey, pluginScraperEnabledKey } from '../core/pluginsStorage';
 import { nuvioReplaceAddons } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
 import { syncStremioAddons } from '../core/stremioExternalSync';
@@ -340,8 +341,9 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       const normalizedUrl = await coreInvoke<string>('normalizePluginRepositoryUrl', JSON.stringify({ url: rawUrl }));
       if (!normalizedUrl) throw new Error(t('plugins.invalid_url'));
       await onDispatch(JSON.stringify({ type: 'pluginRepositoryAddRequested', manifestUrl: normalizedUrl }));
-      const persisted = await storageRead<string[]>('plugin_repository_urls') ?? [];
-      await storageWrite('plugin_repository_urls', [...new Set([...persisted, normalizedUrl])]);
+      const key = await pluginRepositoryUrlsKey();
+      const persisted = await storageRead<string[]>(key) ?? [];
+      await storageWrite(key, [...new Set([...persisted, normalizedUrl])]);
       setPluginUrl('');
     } catch (error) {
       setPluginInstallError(error instanceof Error ? error.message : String(error));
@@ -352,8 +354,9 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
 
   const handleRemovePlugin = async (repository: PluginRepository) => {
     await onDispatch(JSON.stringify({ type: 'pluginRepositoryRemoveRequested', manifestUrl: repository.manifestUrl }));
-    const persisted = await storageRead<string[]>('plugin_repository_urls') ?? [];
-    await storageWrite('plugin_repository_urls', persisted.filter((url) => url !== repository.manifestUrl));
+    const key = await pluginRepositoryUrlsKey();
+    const persisted = await storageRead<string[]>(key) ?? [];
+    await storageWrite(key, persisted.filter((url) => url !== repository.manifestUrl));
   };
 
   const handleRefreshPlugin = async (repository: PluginRepository) => {
@@ -363,8 +366,9 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
   const handleTogglePluginScraper = async (scraper: PluginScraper) => {
     const enabled = !scraper.enabled;
     await onDispatch(JSON.stringify({ type: 'pluginScraperToggled', scraperId: scraper.id, enabled }));
-    const overrides = await storageRead<Record<string, boolean>>('plugin_scraper_enabled') ?? {};
-    await storageWrite('plugin_scraper_enabled', { ...overrides, [scraper.id]: enabled });
+    const key = await pluginScraperEnabledKey();
+    const overrides = await storageRead<Record<string, boolean>>(key) ?? {};
+    await storageWrite(key, { ...overrides, [scraper.id]: enabled });
   };
 
   const disabledAddonKeys = activeProfile?.addonSettings?.disabledLocalAddons ?? activeProfile?.disabledLocalAddons ?? [];
