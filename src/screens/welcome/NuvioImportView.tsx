@@ -6,6 +6,7 @@ import {
   nuvioListAvatars,
 } from '../../core/nuvioApi';
 import { loadProfiles, saveProfiles, setActiveProfileId } from '../../core/profiles';
+import { invalidateLibraryKeyCache } from '../../core/libraryOps';
 import { buildLocalNuvioProfiles, importNuvioProfileData, type NuvioImportStep } from '../../core/nuvioSync';
 import type { UserProfile } from '../../core/types';
 import { S, FONT } from './styles';
@@ -69,12 +70,16 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
       const secondaryFailures: string[] = [];
       for (const remoteProfile of localProfiles) {
         if (remoteProfile.id === selectedProfile.id) continue;
+        await setActiveProfileId(remoteProfile.id);
+        invalidateLibraryKeyCache();
         const secondaryReport = await importNuvioProfileData(remoteProfile, undefined, { includeSettings: false });
         const failedSteps = Object.keys(secondaryReport.errors);
         if (failedSteps.length > 0) {
           secondaryFailures.push(`${remoteProfile.name || remoteProfile.id}: ${failedSteps.join(', ')}`);
         }
       }
+      await setActiveProfileId(selectedProfile.id);
+      invalidateLibraryKeyCache();
       const finalProfiles = await loadProfiles();
       const finalProfile = finalProfiles.find((p) => p.id === selectedProfile.id) ?? selectedProfile;
       const failed = Object.keys(report.errors);
