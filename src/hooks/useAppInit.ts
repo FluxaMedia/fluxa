@@ -5,6 +5,7 @@ import { getActiveProfileId, loadProfiles } from '../core/profiles';
 import { pumpEffects, syncExternalIntegrationNow } from '../core/effectRunner';
 import { importNuvioProfileData, recordNuvioSyncMeta } from '../core/nuvioSync';
 import { hydratePluginsFromStorage } from '../core/pluginsStorage';
+import { refreshAllAvatarPacks } from '../core/profileAvatarPacks';
 import { setLanguage } from '../i18n';
 import { prefBool, prefString } from '../core/appPrefs';
 import { setRpdbApiKey } from '../core/rpdb';
@@ -101,6 +102,7 @@ export function useAppInit(
       try {
         void restoreWindowGeometry();
         await initEngine('{}');
+        void refreshAllAvatarPacks();
         await hydratePluginsFromStorage(updateState);
         const snap = await getSnapshot();
         const prefs = (await storageRead<Record<string, unknown>>('prefs')) ?? {};

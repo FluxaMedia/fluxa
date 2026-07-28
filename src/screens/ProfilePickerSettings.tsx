@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { ImagePlus, Plus, Trash2 } from 'lucide-react';
+import { ImagePlus, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import {
   discoverProfileAvatarPacks,
+  refreshAvatarPackRepository,
   type ProfilePickerSettings,
   saveProfilePickerSettings,
 } from '../core/profileAvatarPacks';
@@ -20,6 +21,7 @@ export function ProfilePickerSettings({
   const [backgroundUrl, setBackgroundUrl] = useState(settings.backgroundUrl ?? '');
   const [packs, setPacks] = useState(settings.avatarPacks);
   const [busy, setBusy] = useState(false);
+  const [refreshingRepo, setRefreshingRepo] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const save = async (next: ProfilePickerSettings) => {
@@ -39,6 +41,18 @@ export function ProfilePickerSettings({
       await save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks });
     } finally {
       setBusy(false);
+    }
+  };
+
+  const refreshPack = async (repositoryUrl: string) => {
+    if (refreshingRepo) return;
+    setRefreshingRepo(repositoryUrl);
+    try {
+      const next = await refreshAvatarPackRepository(repositoryUrl);
+      setPacks(next.avatarPacks);
+      onSaved(next);
+    } finally {
+      setRefreshingRepo(null);
     }
   };
 
@@ -83,7 +97,10 @@ export function ProfilePickerSettings({
                 </div>
                 <span>{pack.title} · {t('profiles.avatar_pack_count', pack.avatars.length)}</span>
               </div>
-              <button onClick={() => { const nextPacks = packs.filter((candidate) => candidate.id !== pack.id); setPacks(nextPacks); void save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks }); }} style={S.removeButton} title={t('profiles.remove_pack')}><Trash2 size={16} /></button>
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                <button onClick={() => void refreshPack(pack.repositoryUrl)} disabled={refreshingRepo === pack.repositoryUrl} style={S.refreshButton} title={t('profiles.refresh_pack')}><RefreshCw size={16} /></button>
+                <button onClick={() => { const nextPacks = packs.filter((candidate) => candidate.id !== pack.id); setPacks(nextPacks); void save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks }); }} style={S.removeButton} title={t('profiles.remove_pack')}><Trash2 size={16} /></button>
+              </div>
             </div>
           ))}
         </div>
@@ -109,6 +126,7 @@ const S: Record<string, React.CSSProperties> = {
   packPreview: { display: 'flex', overflow: 'hidden', borderRadius: '0.375rem', flexShrink: 0 },
   packPreviewImage: { width: '2.25rem', height: '2.25rem', objectFit: 'cover', marginLeft: '-0.375rem', border: '1px solid #202020' },
   removeButton: { border: 0, background: 'transparent', color: '#d34a4a', cursor: 'pointer', display: 'flex' },
+  refreshButton: { border: 0, background: 'transparent', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', display: 'flex' },
   empty: { margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem' },
   backButton: { justifySelf: 'start', border: 0, background: 'transparent', color: '#fff', cursor: 'pointer', padding: '0.5rem 0' },
 };

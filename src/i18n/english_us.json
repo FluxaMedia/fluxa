@@ -1262,6 +1262,7 @@
   "profiles.avatar_pack_repository_placeholder": "https://github.com/owner/repository",
   "profiles.add_pack": "Add pack",
   "profiles.remove_pack": "Remove pack",
+  "profiles.refresh_pack": "Refresh pack",
   "profiles.no_avatar_packs": "No profile image packs have been added.",
   "profiles.avatar_pack_count": "%s profile images",
   "detail.similar_source": "Recommendations from",

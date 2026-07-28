@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, ImagePlus } from 'lucide-react';
+import { Camera, ImagePlus, RefreshCw } from 'lucide-react';
 import {
   PROFILE_COLORS,
   createProfileObject,
@@ -98,12 +98,14 @@ export function ProfileForm({
   avatarPacks,
   onSaved,
   onCancel,
+  onRefreshAvatarPacks,
 }: {
   existing: UserProfile | null;
   allProfiles: UserProfile[];
   avatarPacks: ProfileAvatarPack[];
   onSaved: (updated: UserProfile[]) => void;
   onCancel: () => void;
+  onRefreshAvatarPacks: () => Promise<void>;
 }) {
   const [name, setName] = useState(existing?.name ?? '');
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(existing?.avatarUrl);
@@ -113,6 +115,7 @@ export function ProfileForm({
   const [usesPrimaryAddons, setUsesPrimaryAddons] = useState(existing?.usesPrimaryAddons ?? false);
   const [usesPrimaryPlugins, setUsesPrimaryPlugins] = useState(existing?.usesPrimaryPlugins ?? false);
   const [primaryProfileId, setPrimaryProfileId] = useState<string | null>(null);
+  const [refreshingPacks, setRefreshingPacks] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -206,6 +209,16 @@ export function ProfileForm({
 
   const isPrimary = existing ? primaryProfileId === existing.id : allProfiles.length === 0;
 
+  const handleRefreshAvatarPacks = async () => {
+    if (refreshingPacks) return;
+    setRefreshingPacks(true);
+    try {
+      await onRefreshAvatarPacks();
+    } finally {
+      setRefreshingPacks(false);
+    }
+  };
+
   const duplicateName = Boolean(
     name.trim() &&
     allProfiles.some((p) => p.id !== existing?.id && p.name?.trim().toLowerCase() === name.trim().toLowerCase()),
@@ -269,6 +282,21 @@ export function ProfileForm({
             )}
             {removePin && <p style={S.fieldNote}>{t('profiles.pin_will_be_removed')}</p>}
           </div>
+          {!isPrimary && (
+            <div>
+              <label style={S.fieldLabel}>{t('profiles.sharing')}</label>
+              <div style={S.checkboxRow}>
+                <label style={S.checkboxLabel}>
+                  <input type="checkbox" checked={usesPrimaryAddons} onChange={(e) => setUsesPrimaryAddons(e.target.checked)} />
+                  {t('profiles.use_primary_addons')}
+                </label>
+                <label style={S.checkboxLabel}>
+                  <input type="checkbox" checked={usesPrimaryPlugins} onChange={(e) => setUsesPrimaryPlugins(e.target.checked)} />
+                  {t('profiles.use_primary_plugins')}
+                </label>
+              </div>
+            </div>
+          )}
           <div style={S.actions}>
             <button onClick={onCancel} style={S.btnSecondary}>{t('common.cancel')}</button>
             <button
@@ -295,7 +323,17 @@ export function ProfileForm({
 
         {avatarPacks.length > 0 && (
           <div>
-            <label style={S.fieldLabel}>{t('profiles.avatar_packs')}</label>
+            <div style={S.avatarPacksHeader}>
+              <label style={S.fieldLabel}>{t('profiles.avatar_packs')}</label>
+              <button
+                onClick={() => void handleRefreshAvatarPacks()}
+                disabled={refreshingPacks}
+                style={S.refreshPacksButton}
+                title={t('profiles.refresh_pack')}
+              >
+                <RefreshCw size={13} />
+              </button>
+            </div>
             <div style={S.avatarPackGroups}>
               {avatarPacks.map((pack) => (
                 <section key={pack.id}>
@@ -310,22 +348,6 @@ export function ProfileForm({
                   </div>
                 </section>
               ))}
-            </div>
-          </div>
-        )}
-
-        {!isPrimary && (
-          <div>
-            <label style={S.fieldLabel}>{t('profiles.sharing')}</label>
-            <div style={S.checkboxRow}>
-              <label style={S.checkboxLabel}>
-                <input type="checkbox" checked={usesPrimaryAddons} onChange={(e) => setUsesPrimaryAddons(e.target.checked)} />
-                {t('profiles.use_primary_addons')}
-              </label>
-              <label style={S.checkboxLabel}>
-                <input type="checkbox" checked={usesPrimaryPlugins} onChange={(e) => setUsesPrimaryPlugins(e.target.checked)} />
-                {t('profiles.use_primary_plugins')}
-              </label>
             </div>
           </div>
         )}
@@ -350,6 +372,8 @@ const S: Record<string, React.CSSProperties> = {
   profileControls: { width: '100%', display: 'grid', gap: '0.875rem', marginTop: '1.5rem' },
   formPanel: { borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.08)', background: '#141414', padding: '1.375rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' },
   fieldLabel: { display: 'block', color: 'rgba(255,255,255,0.38)', fontSize: '0.625rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: FONT, marginBottom: '0.5rem' },
+  avatarPacksHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  refreshPacksButton: { border: 0, background: 'transparent', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', display: 'flex', padding: '0 0 0.5rem' },
   input: { width: '100%', height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', padding: '0 0.8125rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' },
   fieldNote: { margin: '0.375rem 0 0', color: '#FFD280', fontSize: '0.75rem', fontWeight: 400, fontFamily: FONT },
   imageButton: { width: '100%', height: '2.625rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.60)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },

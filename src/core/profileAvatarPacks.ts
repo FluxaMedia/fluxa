@@ -63,3 +63,22 @@ export async function discoverProfileAvatarPacks(repositoryUrl: string): Promise
   }));
   return packs.filter((pack): pack is ProfileAvatarPack => pack !== null);
 }
+
+export async function refreshAvatarPackRepository(repositoryUrl: string): Promise<ProfilePickerSettings> {
+  const settings = await loadProfilePickerSettings();
+  const refreshed = await discoverProfileAvatarPacks(repositoryUrl);
+  const kept = settings.avatarPacks.filter((pack) => pack.repositoryUrl !== repositoryUrl);
+  const next: ProfilePickerSettings = { ...settings, avatarPacks: [...kept, ...refreshed] };
+  await saveProfilePickerSettings(next);
+  return next;
+}
+
+export async function refreshAllAvatarPacks(): Promise<void> {
+  const settings = await loadProfilePickerSettings();
+  const repositoryUrls = Array.from(new Set(settings.avatarPacks.map((pack) => pack.repositoryUrl)));
+  for (const repositoryUrl of repositoryUrls) {
+    try {
+      await refreshAvatarPackRepository(repositoryUrl);
+    } catch {}
+  }
+}

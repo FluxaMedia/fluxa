@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pencil, Plus, Settings, Trash2, UserRound, X } from 'lucide-react';
+import { Lock, Pencil, Plus, Settings, Trash2, UserRound, X } from 'lucide-react';
 import { deleteProfile, loadProfiles, profileColor, profileInitials, setActiveProfileId } from '../core/profiles';
 import { coreInvoke } from '../core/engine';
 import { nuvioDeleteProfileData, nuvioPushProfiles } from '../core/nuvioApi';
@@ -9,7 +9,7 @@ import { colors } from '../theme';
 import { t } from '../i18n';
 import { ProfileForm, AvatarPreview } from './ProfileForm';
 import { PinPrompt } from '../components/PinPrompt';
-import { loadProfilePickerSettings, type ProfilePickerSettings } from '../core/profileAvatarPacks';
+import { loadProfilePickerSettings, refreshAllAvatarPacks, type ProfilePickerSettings } from '../core/profileAvatarPacks';
 import { ProfilePickerSettings as ProfilePickerSettingsView } from './ProfilePickerSettings';
 
 interface Props {
@@ -139,6 +139,10 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
             avatarPacks={pickerSettings.avatarPacks}
             onSaved={handleSaved}
             onCancel={() => { setMode('select'); setEditingProfile(null); }}
+            onRefreshAvatarPacks={async () => {
+              await refreshAllAvatarPacks();
+              setPickerSettings(await loadProfilePickerSettings());
+            }}
           />
         )}
 
@@ -170,8 +174,15 @@ function ProfileCard({ profile, isPrimary, onSelect, onDelete, onEdit }: {
   return (
     <article style={S.profileCard} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       <button onClick={onSelect} style={S.profileSelectButton}>
-        <div style={{ ...S.avatarCircleWrap, opacity: hovered ? 1 : 0.85, transform: hovered ? 'scale(1.04)' : 'scale(1)' }}>
-          <AvatarPreview profile={profile} size={130} circular />
+        <div style={S.avatarOuterWrap}>
+          <div style={{ ...S.avatarCircleWrap, opacity: hovered ? 1 : 0.85, transform: hovered ? 'scale(1.04)' : 'scale(1)' }}>
+            <AvatarPreview profile={profile} size={130} circular />
+          </div>
+          {profile.pinHash && (
+            <span style={S.lockBadge} title={t('profiles.pin_lock')}>
+              <Lock size={18} />
+            </span>
+          )}
         </div>
         <span style={S.profileName}>{profile.name ?? t('auto.profile')}</span>
         {isPrimary && <span style={S.primaryBadge}>{t('profiles.primary_badge')}</span>}
@@ -235,7 +246,9 @@ const S: Record<string, React.CSSProperties> = {
   profileGrid: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2.5rem', alignItems: 'flex-start', justifyContent: 'center' },
   profileCard: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, background: 'transparent', border: 'none' },
   profileSelectButton: { width: 'auto', border: 'none', background: 'transparent', color: colors.white, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', cursor: 'pointer', padding: 0, outline: 'none' },
+  avatarOuterWrap: { position: 'relative', width: '8.125rem', height: '8.125rem', flexShrink: 0 },
   avatarCircleWrap: { borderRadius: '50%', overflow: 'hidden', transition: 'opacity 0.15s, transform 0.15s', width: '8.125rem', height: '8.125rem', flexShrink: 0 },
+  lockBadge: { position: 'absolute', right: '0.125rem', bottom: '0.125rem', width: '2.25rem', height: '2.25rem', borderRadius: '50%', background: 'rgba(12,12,12,0.9)', border: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.85)' },
   profileName: { marginTop: '0.875rem', maxWidth: '8.75rem', color: 'rgba(255,255,255,0.85)', fontSize: '0.875rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FONT },
   primaryBadge: { marginTop: '0.375rem', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)', fontSize: '0.625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' },
   editPencilBtn: { marginTop: '0.5rem', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s', outline: 'none' },

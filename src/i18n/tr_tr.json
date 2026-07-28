@@ -1262,6 +1262,7 @@
   "profiles.avatar_pack_repository_placeholder": "https://github.com/sahip/depo",
   "profiles.add_pack": "Paket ekle",
   "profiles.remove_pack": "Paketi kaldır",
+  "profiles.refresh_pack": "Paketi yenile",
   "profiles.no_avatar_packs": "Henüz profil görseli paketi eklenmedi.",
   "profiles.avatar_pack_count": "%s profil görseli",
   "detail.similar_source": "Öneri kaynağı",
