@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicLong
 
 internal class HomeDynamicRowsCoordinator(
     private val scope: CoroutineScope,
@@ -20,11 +21,13 @@ internal class HomeDynamicRowsCoordinator(
     private val optimizeHomeCategories: (List<HomeCategory>, String) -> List<HomeCategory>
 ) {
     private var refreshJob: Job? = null
+    private val refreshGeneration = AtomicLong(0)
 
     fun refresh() {
-        val currentCategories = categories()
+        val generation = refreshGeneration.incrementAndGet()
         refreshJob?.cancel()
         refreshJob = scope.launch(Dispatchers.IO) {
+            val currentCategories = categories()
             val profile = activeProfile()
             val lang = profile?.safeLanguage ?: "en"
 
@@ -80,7 +83,9 @@ internal class HomeDynamicRowsCoordinator(
             }
             staticCategories.addAll(insertIndex, belowContinueWatching)
 
-            setCategories(optimizeHomeCategories(staticCategories, lang))
+            if (generation == refreshGeneration.get()) {
+                setCategories(optimizeHomeCategories(staticCategories, lang))
+            }
         }
     }
 }

@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.ui.catalog.CONTINUE_WATCHING_CATEGORY_ID
 
 @Composable
 fun TvCatalogHomeScreen(
@@ -57,6 +58,9 @@ fun TvCatalogHomeScreen(
             TvCatalogHomeLoading(Modifier.fillMaxSize())
         } else {
             LaunchedEffect(Unit) { runCatching { columnFocus.requestFocus() } }
+            val contentRows = state.rows.filterNot { it.categoryType == "collection_folder" }
+            val orderedRows = contentRows.filter { it.id == CONTINUE_WATCHING_CATEGORY_ID } +
+                contentRows.filterNot { it.id == CONTINUE_WATCHING_CATEGORY_ID }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -65,8 +69,10 @@ fun TvCatalogHomeScreen(
                 contentPadding = PaddingValues(top = 44.dp, bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(30.dp)
             ) {
-                val heroItems = state.rows.firstOrNull()?.items.orEmpty()
-                if (heroItems.isNotEmpty()) {
+                val heroItems = state.heroItems.ifEmpty {
+                    orderedRows.firstOrNull { it.id != CONTINUE_WATCHING_CATEGORY_ID }?.items.orEmpty()
+                }
+                if (state.showHeroSection && heroItems.isNotEmpty()) {
                     item(key = "tv-hero") {
                         TvHeroRow(
                             items = heroItems,
@@ -76,7 +82,7 @@ fun TvCatalogHomeScreen(
                         )
                     }
                 }
-                items(state.rows, key = { it.id }) { row ->
+                items(orderedRows, key = { it.id }) { row ->
                     Column(
                         modifier = Modifier.focusGroup(),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -96,9 +102,14 @@ fun TvCatalogHomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
                             items(row.items, key = { it.id }) { item ->
+                                val cardItem = if (row.id == CONTINUE_WATCHING_CATEGORY_ID) {
+                                    item.withProminentContinueWatchingCard()
+                                } else {
+                                    item
+                                }
                                 CatalogCard(
-                                    model = item.card,
-                                    onClick = { onAction(CatalogAction.ItemSelected(item)) },
+                                    model = cardItem.card,
+                                    onClick = { onAction(CatalogAction.ItemSelected(cardItem)) },
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }

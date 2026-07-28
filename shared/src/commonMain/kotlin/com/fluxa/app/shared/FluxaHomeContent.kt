@@ -84,9 +84,11 @@ import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogBillboardUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.catalog.withProminentContinueWatchingCard
 import com.fluxa.app.shared.feature.catalog.CategoryResultsScreen
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.CONTINUE_WATCHING_CATEGORY_ID
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreScreen
 import com.fluxa.app.shared.feature.addonstore.AddonStoreUiState
@@ -156,6 +158,9 @@ internal fun FluxaHomeContent(
 
     val heroItems = state.catalogHome.heroItems
     val showHero = state.catalogHome.showHeroSection && heroItems.isNotEmpty()
+    val contentRows = state.catalogHome.rows.filterNot { it.categoryType == "collection_folder" }
+    val orderedRows = contentRows.filter { it.id == CONTINUE_WATCHING_CATEGORY_ID } +
+        contentRows.filterNot { it.id == CONTINUE_WATCHING_CATEGORY_ID }
     val listState = rememberLazyListState()
     var posterActionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
 
@@ -178,7 +183,7 @@ internal fun FluxaHomeContent(
                 }
             }
             items(
-                state.catalogHome.rows.filterNot { it.categoryType == "collection_folder" },
+                orderedRows,
                 key = { it.id }
             ) { row ->
                 val rowState = rememberLazyListState()
@@ -234,10 +239,15 @@ internal fun FluxaHomeContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(row.items, key = { it.id }) { item ->
+                            val cardItem = if (row.id == CONTINUE_WATCHING_CATEGORY_ID) {
+                                item.withProminentContinueWatchingCard()
+                            } else {
+                                item
+                            }
                             CatalogCard(
-                                model = item.card,
-                                onClick = { onCatalogAction(CatalogAction.ItemSelected(item)) },
-                                onLongClick = { posterActionItem = item }
+                                model = cardItem.card,
+                                onClick = { onCatalogAction(CatalogAction.ItemSelected(cardItem)) },
+                                onLongClick = { posterActionItem = cardItem }
                             )
                         }
                     }
@@ -508,4 +518,3 @@ private fun FluxaHomeHeroSlide(
         }
     }
 }
-
