@@ -81,19 +81,6 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
         })();
       } else if (!down && !pulledRemote) {
         pulledRemote = true;
-        void (async () => {
-          const report = await importNuvioProfileData(profile)
-            .then((report) => { void recordNuvioSyncMeta(report); return report; })
-            .catch((err) => {
-              const errorReport = { errors: { library: err instanceof Error ? err.message : String(err) }, changed: false };
-              void recordNuvioSyncMeta(errorReport);
-              return errorReport;
-            });
-          if (cancelled) return;
-          await refreshNuvioProfiles(profile).catch(() => profile);
-          if (cancelled) return;
-          await onSynced?.(report.changed);
-        })();
       }
 
       timer = setTimeout(run, isCurrentlyDown ? 30_000 : 60_000);
