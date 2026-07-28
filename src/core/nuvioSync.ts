@@ -253,7 +253,8 @@ export async function importNuvioProfileData(
   if (!token) return { errors: { library: 'Missing Nuvio token' } };
 
   const suffix = profileStorageSuffix(profile);
-  const existingLib = await loadLibrary();
+  const profileKey = `library_${suffix}`;
+  const existingLib = await loadLibrary(profileKey);
   const libDoc: Record<string, unknown> = {
     schemaVersion: 2,
     ...existingLib,
@@ -353,16 +354,16 @@ export async function importNuvioProfileData(
       watching: libDoc.continueWatching as Record<string, unknown>[],
       completed: [],
       dropped: [],
-    });
+    }, profileKey);
     appliedRemoteWatchState = true;
   }
   if (watchProgress) onStep?.('progress', true);
   if (watchHistory) onStep?.('history', true);
 
-  await persistProgressMerge(progressBefore, libDoc.progress as Record<string, unknown>);
-  await persistWatchedMerge(watchedBefore, libDoc.watched as Record<string, boolean>);
-  await persistContinueWatchingMerge(continueWatchingBefore, libDoc.continueWatching as Record<string, unknown>[]);
-  await saveLibrary(libDoc);
+  await persistProgressMerge(progressBefore, libDoc.progress as Record<string, unknown>, profileKey);
+  await persistWatchedMerge(watchedBefore, libDoc.watched as Record<string, boolean>, profileKey);
+  await persistContinueWatchingMerge(continueWatchingBefore, libDoc.continueWatching as Record<string, unknown>[], profileKey);
+  await saveLibrary(libDoc, profileKey);
   if (appliedRemoteWatchState && watchProgress) {
     await storageWrite(deltaCacheKey(profile, 'progress'), watchProgress);
     if (progressCursor != null) await storageWrite(deltaCursorKey(profile, 'progress'), progressCursor);

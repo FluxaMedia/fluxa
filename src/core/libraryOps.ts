@@ -78,8 +78,8 @@ async function readStructuredLibraryDomains(key: string): Promise<{
   return { progress, statuses, watched, lastWatchedEpisodes, externalContinueWatching };
 }
 
-export async function loadLibrary(): Promise<Record<string, unknown>> {
-  const key = await effectRunnerLibraryKey();
+export async function loadLibrary(profileKey?: string): Promise<Record<string, unknown>> {
+  const key = profileKey ?? await effectRunnerLibraryKey();
   const profileLibrary = await storageRead<Record<string, unknown>>(key);
   if (profileLibrary) {
     const { progress, statuses, watched, lastWatchedEpisodes, externalContinueWatching } = await readStructuredLibraryDomains(key);
@@ -96,8 +96,8 @@ export async function loadLibrary(): Promise<Record<string, unknown>> {
   return normalizeLibraryDoc({ ...statuses, progress, watched, lastWatchedEpisodes, externalContinueWatching });
 }
 
-export async function saveLibrary(lib: Record<string, unknown>): Promise<void> {
-  await storageWrite(await effectRunnerLibraryKey(), await normalizeLibraryDoc(lib));
+export async function saveLibrary(lib: Record<string, unknown>, profileKey?: string): Promise<void> {
+  await storageWrite(profileKey ?? await effectRunnerLibraryKey(), await normalizeLibraryDoc(lib));
 }
 
 export async function loadPrefs(): Promise<Record<string, unknown>> {
@@ -138,8 +138,9 @@ export async function persistStatusListMerge(
 export async function persistWatchedMerge(
   before: Record<string, boolean>,
   after: Record<string, boolean>,
+  profileKey?: string,
 ): Promise<void> {
-  const key = await effectRunnerLibraryKey();
+  const key = profileKey ?? await effectRunnerLibraryKey();
   const changed = (await diffPlan<Array<{ id: string; value: boolean }>>('watchedMapDiff', before, after)) ?? [];
   for (const { id, value } of changed) {
     await libraryWatchedSet(key, id, value);
@@ -155,8 +156,9 @@ export async function persistLastWatchedEpisode(seriesId: string, entry: unknown
 export async function persistContinueWatchingMerge(
   before: Record<string, unknown>[],
   after: Record<string, unknown>[],
+  profileKey?: string,
 ): Promise<void> {
-  const key = await effectRunnerLibraryKey();
+  const key = profileKey ?? await effectRunnerLibraryKey();
   const plan = await diffPlan<{ upserts: Record<string, unknown>[]; deletes: string[] }>('itemListDiff', before, after);
   for (const item of plan?.upserts ?? []) {
     await libraryContinueWatchingUpsert(key, item.id as string, item);
@@ -169,8 +171,9 @@ export async function persistContinueWatchingMerge(
 export async function persistProgressMerge(
   before: Record<string, unknown>,
   after: Record<string, unknown>,
+  profileKey?: string,
 ): Promise<void> {
-  const key = await effectRunnerLibraryKey();
+  const key = profileKey ?? await effectRunnerLibraryKey();
   const plan = await diffPlan<{ upserts: Array<{ id: string; value: unknown }>; deletes: string[] }>('valueMapDiff', before, after);
   for (const { id, value } of plan?.upserts ?? []) {
     await libraryProgressUpsert(key, id, value);

@@ -14,12 +14,12 @@ export const PROVIDER_LIBRARIES_CHANGED = 'provider-libraries-changed';
 
 type ProviderLibraries = Partial<Record<LibraryProvider, ProviderLibrarySnapshot>>;
 
-async function storageKey(): Promise<string> {
-  return (await effectRunnerLibraryKey()).replace(/^library_/, 'provider_libraries_');
+async function storageKey(profileKey?: string): Promise<string> {
+  return (profileKey ?? await effectRunnerLibraryKey()).replace(/^library_/, 'provider_libraries_');
 }
 
-export async function loadProviderLibraries(): Promise<ProviderLibraries> {
-  const libraries = (await storageRead<ProviderLibraries>(await storageKey())) ?? {};
+export async function loadProviderLibraries(profileKey?: string): Promise<ProviderLibraries> {
+  const libraries = (await storageRead<ProviderLibraries>(await storageKey(profileKey))) ?? {};
   return Object.fromEntries(
     Object.entries(libraries).map(([provider, snapshot]) => [provider, {
       watchlist: snapshot?.watchlist ?? [],
@@ -30,8 +30,8 @@ export async function loadProviderLibraries(): Promise<ProviderLibraries> {
   ) as ProviderLibraries;
 }
 
-export async function saveProviderLibrary(provider: LibraryProvider, snapshot: ProviderLibrarySnapshot): Promise<void> {
-  const libraries = await loadProviderLibraries();
-  await storageWrite(await storageKey(), { ...libraries, [provider]: snapshot });
+export async function saveProviderLibrary(provider: LibraryProvider, snapshot: ProviderLibrarySnapshot, profileKey?: string): Promise<void> {
+  const libraries = await loadProviderLibraries(profileKey);
+  await storageWrite(await storageKey(profileKey), { ...libraries, [provider]: snapshot });
   window.dispatchEvent(new Event(PROVIDER_LIBRARIES_CHANGED));
 }
