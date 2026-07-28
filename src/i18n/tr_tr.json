@@ -1442,6 +1442,7 @@
   "auth.nuvio.import.progress": "İzleme ilerlemesi",
   "auth.nuvio.import.history": "İzleme geçmişi",
   "auth.nuvio.import.collections": "Koleksiyonlar",
+  "auth.nuvio.import.item_progress": "[%s/%s] %s içe aktarılıyor…",
   "nuvio.status.offline": "Nuvio sunucularına ulaşılamıyor — yerel veriler kullanılıyor",
   "nuvio.status.online": "Nuvio'ya bağlandı",
   "app.status.noInternet": "İnternet bağlantısı yok",

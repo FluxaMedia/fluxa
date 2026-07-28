@@ -218,9 +218,11 @@ async function fetchAddonManifests(addons: NuvioAddon[]): Promise<{
 async function fetchAddonMetas(
   needs: Array<{ contentId: string; contentType: string }>,
   addonDescriptors: Array<Record<string, unknown>>,
+  onItemProgress?: (index: number, total: number, title: string) => void,
 ): Promise<Record<string, unknown>> {
   const metas: Record<string, unknown> = {};
   if (needs.length === 0 || addonDescriptors.length === 0) return metas;
+  let completed = 0;
   await Promise.allSettled(
     needs.map(async (need) => {
       try {
@@ -231,7 +233,10 @@ async function fetchAddonMetas(
           id: need.contentId,
         });
         const meta = (values.find((value) => (value as { meta?: unknown }).meta) as { meta?: { name?: string } } | undefined)?.meta;
-        if (meta?.name) metas[need.contentId] = meta;
+        if (meta?.name) {
+          metas[need.contentId] = meta;
+          onItemProgress?.(++completed, needs.length, meta.name);
+        }
       } catch {}
     })
   );
@@ -241,6 +246,7 @@ async function fetchAddonMetas(
 export async function importNuvioProfileData(
   profile: UserProfile,
   onStep?: (step: NuvioImportStep, ok: boolean, error?: string) => void,
+  onItemProgress?: (index: number, total: number, title: string) => void,
 ): Promise<NuvioImportReport> {
   const freshProfile = await freshNuvioProfile(profile).catch(() => profile);
   const token = freshProfile.nuvioAccessToken;
@@ -311,7 +317,7 @@ export async function importNuvioProfileData(
   let addonMetas: Record<string, unknown> = {};
   if (watchProgress) {
     const needs = (await coreNuvioProgressMetaNeeds(watchProgress, library)) ?? [];
-    addonMetas = await fetchAddonMetas(needs, addonDescriptors);
+    addonMetas = await fetchAddonMetas(needs, addonDescriptors, onItemProgress);
   }
 
   let watchHistory: NuvioWatchedItem[] | null = null;

@@ -1442,6 +1442,7 @@
   "auth.nuvio.import.progress": "Watch progress",
   "auth.nuvio.import.history": "Watch history",
   "auth.nuvio.import.collections": "Collections",
+  "auth.nuvio.import.item_progress": "[%s/%s] Importing %s…",
   "nuvio.status.offline": "Nuvio servers unreachable — using local data",
   "nuvio.status.online": "Connected to Nuvio",
   "app.status.noInternet": "No internet connection",

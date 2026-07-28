@@ -30,6 +30,7 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
     profile: false, addons: false, library: false,
     progress: false, history: false, collections: false,
   });
+  const [itemProgress, setItemProgress] = useState<{ index: number; total: number; title: string } | null>(null);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const started = React.useRef(false);
@@ -63,9 +64,14 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
       await setActiveProfileId(selectedProfile.id);
       mark('profile');
 
-      const report = await importNuvioProfileData(selectedProfile, (step: NuvioImportStep, ok, message) => {
-        mark(step as keyof ImportProgress, ok, message);
-      });
+      const report = await importNuvioProfileData(
+        selectedProfile,
+        (step: NuvioImportStep, ok, message) => {
+          mark(step as keyof ImportProgress, ok, message);
+        },
+        (index, total, title) => setItemProgress({ index, total, title }),
+      );
+      setItemProgress(null);
       const secondaryFailures: string[] = [];
       for (const remoteProfile of localProfiles) {
         if (remoteProfile.id === selectedProfile.id) continue;
@@ -130,26 +136,36 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
           {error && <p style={S.globalError}>{error}</p>}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {steps.map(({ key, label }) => (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                <div style={{
-                  width: '1.25rem', height: '1.25rem', borderRadius: '50%', flexShrink: 0,
-                  background: imp[key] ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)',
-                  border: imp[key] ? 'none' : '1px solid rgba(255,255,255,0.15)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.3s',
-                }}>
-                  {imp[key] && <Check size={11} color="#000" strokeWidth={3} />}
+            {steps.map(({ key, label }) => {
+              const isFirstIncomplete = !imp[key] && steps.slice(0, steps.findIndex((s) => s.key === key)).every((s) => imp[s.key]);
+              return (
+                <div key={key}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                    <div style={{
+                      width: '1.25rem', height: '1.25rem', borderRadius: '50%', flexShrink: 0,
+                      background: imp[key] ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)',
+                      border: imp[key] ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.3s',
+                    }}>
+                      {imp[key] && <Check size={11} color="#000" strokeWidth={3} />}
+                    </div>
+                    <span style={{
+                      fontSize: '0.8125rem', fontFamily: FONT,
+                      color: imp[key] ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.30)',
+                      transition: 'color 0.3s',
+                    }}>
+                      {label}
+                    </span>
+                  </div>
+                  {isFirstIncomplete && itemProgress && (
+                    <p style={{ margin: '0.25rem 0 0 1.875rem', fontSize: '0.75rem', fontFamily: FONT, color: 'rgba(255,255,255,0.45)' }}>
+                      {t('auth.nuvio.import.item_progress', itemProgress.index, itemProgress.total, itemProgress.title)}
+                    </p>
+                  )}
                 </div>
-                <span style={{
-                  fontSize: '0.8125rem', fontFamily: FONT,
-                  color: imp[key] ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.30)',
-                  transition: 'color 0.3s',
-                }}>
-                  {label}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </main>
