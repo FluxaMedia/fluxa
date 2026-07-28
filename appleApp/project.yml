@@ -33,7 +33,7 @@ targets:
         script: scripts/build-rust-core-xcframework.sh
         basedOnDependencyAnalysis: false
       - name: Build FluxaShared
-        script: ../gradlew -p .. :shared:embedAndSignAppleFrameworkForXcode --rerun-tasks
+        script: ../gradlew -p .. :shared:embedAndSignAppleFrameworkForXcode --info
         basedOnDependencyAnalysis: false
   FluxaTvos:
     type: application
@@ -56,11 +56,11 @@ targets:
         script: scripts/build-rust-core-xcframework.sh
         basedOnDependencyAnalysis: false
       - name: Build FluxaCore
-        script: ../gradlew -p .. :core:embedAndSignAppleFrameworkForXcode --rerun-tasks
+        script: ../gradlew -p .. :core:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
       - name: Build FluxaData
-        script: ../gradlew -p .. :data:embedAndSignAppleFrameworkForXcode --rerun-tasks
+        script: ../gradlew -p .. :data:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
       - name: Build FluxaPlayer
-        script: ../gradlew -p .. :player:embedAndSignAppleFrameworkForXcode --rerun-tasks
+        script: ../gradlew -p .. :player:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
