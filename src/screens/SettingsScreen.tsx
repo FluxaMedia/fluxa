@@ -120,6 +120,11 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
   const [addedAddonName, setAddedAddonName] = useState<string | null>(null);
   const [pluginInstallLoading, setPluginInstallLoading] = useState(false);
   const [pluginInstallError, setPluginInstallError] = useState<string | null>(null);
+  const [inAppUpdatesSupported, setInAppUpdatesSupported] = useState(true);
+
+  useEffect(() => {
+    invoke<boolean>('in_app_updates_supported').then(setInAppUpdatesSupported).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     storageRead<Prefs>('prefs').then((p) => {
@@ -406,7 +411,14 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
         <div style={{ flex: 1 }} />
         <SidebarDivider />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-          <SidebarItem label={t('settings.check_for_updates') || 'Check for updates'} subtitle="" icon={<RefreshIcon />} selected={false} onClick={onCheckForUpdates} />
+          {inAppUpdatesSupported ? (
+            <SidebarItem label={t('settings.check_for_updates') || 'Check for updates'} subtitle="" icon={<RefreshIcon />} selected={false} onClick={onCheckForUpdates} />
+          ) : (
+            <div style={{ padding: '0.5625rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+              <RefreshIcon />
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem' }}>{t('settings.updates_managed_by_package_manager')}</span>
+            </div>
+          )}
           <SidebarItem label={t('common.back')} subtitle="" icon={<ArrowBackIcon />} selected={false} onClick={onBack} />
         </div>
         <VersionFooter />

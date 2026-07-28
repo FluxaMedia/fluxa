@@ -703,6 +703,18 @@ fn player_hdr_supported(app: tauri::AppHandle) -> bool {
     }
 }
 
+#[tauri::command]
+fn in_app_updates_supported() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        std::env::var_os("APPIMAGE").is_some()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        true
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let _sentry_guard = sentry::init(sentry::ClientOptions {
@@ -1013,6 +1025,7 @@ pub fn run() {
             anilist_oauth_exchange,
             simkl_oauth_exchange,
             get_data_dir,
+            in_app_updates_supported,
             set_download_dir,
             list_offline_downloads,
             delete_offline_download,

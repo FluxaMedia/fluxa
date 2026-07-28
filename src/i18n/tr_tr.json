@@ -693,6 +693,7 @@
   "settings.hold_speed_desc": "Ekrana basılı tutulduğunda kullanılacak oynatma hızı.",
   "settings.advanced": "ADVANCED",
   "settings.check_for_updates": "Güncellemeleri kontrol et",
+  "settings.updates_managed_by_package_manager": "Güncellemeler paket yöneticiniz tarafından yönetiliyor",
   "settings.check_for_updates_desc": "Sürüm bilgileri ve güncelleme kontrolleri.",
   "settings.developer": "Geliştirici",
   "settings.developer_desc": "Geliştirici seçenekleri ve tanı araçları.",

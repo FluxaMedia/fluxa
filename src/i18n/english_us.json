@@ -693,6 +693,7 @@
   "settings.hold_speed_desc": "Playback speed used while holding the screen.",
   "settings.advanced": "ADVANCED",
   "settings.check_for_updates": "Check for updates",
+  "settings.updates_managed_by_package_manager": "Updates are managed by your package manager",
   "settings.check_for_updates_desc": "Version information and update controls.",
   "settings.developer": "Developer",
   "settings.developer_desc": "Developer options and diagnostic tools.",
