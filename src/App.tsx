@@ -423,11 +423,14 @@ export default function App() {
     setAllProfiles(profiles);
     if (activeProfileId) {
       const freshActiveProfile = profiles.find((p) => p.id === activeProfileId);
-      if (freshActiveProfile) setActiveProfile(freshActiveProfile);
+      if (freshActiveProfile) {
+        setActiveProfile(freshActiveProfile);
+        void dispatch(JSON.stringify({ type: 'profileActivated', profile: freshActiveProfile }));
+      }
     }
     await applyStoredPrefs();
     void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-    void dispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
+    void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
   }, [activeProfileId, applyStoredPrefs, dispatch, setAllProfiles, setActiveProfile]);
 
   const { serverDown, justRecovered, dismissed, dismiss } = useNuvioConnectivity(activeProfile, handleNuvioSynced);
@@ -585,9 +588,10 @@ export default function App() {
           const profiles = await loadProfiles();
           setAllProfiles(profiles);
           setActiveProfile(profile);
+          void dispatch(JSON.stringify({ type: 'profileActivated', profile }));
           await applyStoredPrefs();
           await dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-          void dispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
+          void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
           setWelcomeCompleted(true);
         }}
       />
@@ -604,8 +608,9 @@ export default function App() {
           setState(DEFAULT_STATE);
           setActiveProfile(profile);
           setEditProfileOpen(false);
+          void dispatch(JSON.stringify({ type: 'profileActivated', profile }));
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-          void dispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
+          void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
         }}
         onProfilesChanged={setAllProfiles}
       />
@@ -694,8 +699,9 @@ export default function App() {
                 invalidateLibraryKeyCache();
                 setState(DEFAULT_STATE);
                 setActiveProfile(p);
+                void dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
                 void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-                void dispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
+                void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
               }}
               onOpenSettings={() => navigateRoute('settings')}
               onEditProfile={() => setEditProfileOpen(true)}

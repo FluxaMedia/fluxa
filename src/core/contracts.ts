@@ -15,6 +15,7 @@ export type AppActionType =
   | 'libraryAddRequested'
   | 'libraryHydrateRequested'
   | 'markWatchedRequested'
+  | 'profileActivated'
   | 'savePlaybackProgressRequested'
   | 'searchRequested'
   | 'settingsChanged'
