@@ -257,26 +257,31 @@ async function fetchMdblistRatings(
   apiKey: string,
 ): Promise<Record<string, number> | null> {
   if (!apiKey) return null;
-  const baseId = id.split(':')[0];
-  let provider: string;
-  let mediaId: string;
-  if (/^tt\d+$/i.test(baseId)) {
-    provider = 'imdb';
-    mediaId = baseId;
-  } else if (id.startsWith('tmdb:') && /^\d+$/.test(id.split(':')[1] ?? '')) {
-    provider = 'tmdb';
-    mediaId = id.split(':')[1] ?? '';
-  } else {
+  try {
+    const tmdbBaseId = id.replace(/^tmdb:/i, '').split(':')[0] ?? '';
+    const imdbBaseId = id.split(':')[0] ?? '';
+    let provider: string;
+    let mediaId: string;
+    if (/^\d+$/.test(tmdbBaseId)) {
+      provider = 'tmdb';
+      mediaId = tmdbBaseId;
+    } else if (/^tt\d+$/i.test(imdbBaseId)) {
+      provider = 'imdb';
+      mediaId = imdbBaseId;
+    } else {
+      return null;
+    }
+    const mediaType = contentType === 'series' ? 'show' : 'movie';
+    const url = await coreMdblistMediaInfoUrl(provider, mediaType, mediaId, 'ratings');
+    if (!url) return null;
+    const separator = url.includes('?') ? '&' : '?';
+    const response = await tryFetchJson(`${url}${separator}apikey=${encodeURIComponent(apiKey)}`);
+    if (!response) return null;
+    return await coreMdblistMediaRatingsFromResponse(JSON.stringify(response));
+  } catch (err) {
+    console.error('fetchMdblistRatings failed', err);
     return null;
   }
-  if (!mediaId) return null;
-  const mediaType = contentType === 'series' ? 'show' : 'movie';
-  const url = await coreMdblistMediaInfoUrl(provider, mediaType, mediaId, 'ratings');
-  if (!url) return null;
-  const separator = url.includes('?') ? '&' : '?';
-  const response = await tryFetchJson(`${url}${separator}apikey=${encodeURIComponent(apiKey)}`);
-  if (!response) return null;
-  return coreMdblistMediaRatingsFromResponse(JSON.stringify(response));
 }
 
 interface FanartArtwork {
