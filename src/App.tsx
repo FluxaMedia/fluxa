@@ -610,9 +610,10 @@ export default function App() {
           setState(DEFAULT_STATE);
           setActiveProfile(profile);
           setEditProfileOpen(false);
+          setHomeResetKey((k) => k + 1);
           await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-          void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
+          void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
         }}
         onProfilesChanged={setAllProfiles}
       />
@@ -702,9 +703,10 @@ export default function App() {
                 stateRef.current = DEFAULT_STATE;
                 setState(DEFAULT_STATE);
                 setActiveProfile(p);
+                setHomeResetKey((k) => k + 1);
                 await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
                 void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-                void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
+                void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
               }}
               onOpenSettings={() => navigateRoute('settings')}
               onEditProfile={() => setEditProfileOpen(true)}

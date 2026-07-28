@@ -179,6 +179,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
     setFolderPaginated(false);
     folderSourcesRef.current = [];
     folderSourceStatesRef.current = [];
+    refreshStartedRef.current = false;
   }, [resetKey]);
 
   useLayoutEffect(() => {
