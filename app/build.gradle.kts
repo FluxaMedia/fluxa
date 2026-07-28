@@ -200,7 +200,9 @@ val rustTargetTasks = rustAndroidTargets.map { (abi, target, envName) ->
             environment("CARGO_TARGET_${envName}_LINKER", clang)
             environment("CC_$target", clang)
             environment("CC_${target.replace("-", "_")}", clang)
-            environment("AR_${envName}", file(toolchainBin.resolve("llvm-ar")).absolutePath)
+            val ar = file(toolchainBin.resolve("llvm-ar")).absolutePath
+            environment("AR_$target", ar)
+            environment("AR_${target.replace("-", "_")}", ar)
 
             val clangTargetTriple = linkerName.removeSuffix("-clang")
             val sysroot = toolchainRoot.resolve("sysroot")
@@ -263,7 +265,9 @@ val rustStreamingTargetTasks = rustAndroidTargets.map { (abi, target, envName) -
             environment("CARGO_TARGET_${envName}_LINKER", clang)
             environment("CC_$target", clang)
             environment("CC_${target.replace("-", "_")}", clang)
-            environment("AR_${envName}", file(toolchainBin.resolve("llvm-ar")).absolutePath)
+            val ar = file(toolchainBin.resolve("llvm-ar")).absolutePath
+            environment("AR_$target", ar)
+            environment("AR_${target.replace("-", "_")}", ar)
         }
         doLast {
             val builtLibrary = file("$rustCrateDir/target/$target/$rustProfile/libfluxa_streaming_engine.so")
