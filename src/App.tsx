@@ -600,10 +600,12 @@ export default function App() {
       <React.Suspense fallback={null}>
       <ProfileSelectionScreen
         onProfileSelected={(profile) => {
+          invalidateLibraryKeyCache();
           setState(DEFAULT_STATE);
           setActiveProfile(profile);
           setEditProfileOpen(false);
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+          void dispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
         }}
         onProfilesChanged={setAllProfiles}
       />
