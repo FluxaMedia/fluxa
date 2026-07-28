@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import {
   coreBuildHomeCollectionShelves,
   coreBuildMetadataFeedOptions,
@@ -12,6 +13,10 @@ import {
 } from './engine';
 import { buildResourceUrl } from './addonManifest';
 import { effectRunnerLibraryKey, loadActiveProfile, loadAddons, loadLibrary, loadPrefs } from './libraryOps';
+
+function debugLog(msg: string) {
+  void invoke('debug_log', { msg }).catch(() => {});
+}
 import { fetchBuiltinCatalog, isBuiltinTmdbAddon, withBuiltinTmdbAddon } from './tmdbAddon';
 import { fetchVideosForSeries, runWithConcurrency } from './fetchPlanning';
 import { tryFetchJson } from './httpClient';
@@ -99,6 +104,7 @@ export async function readHomeBootstrap(
 ): Promise<unknown> {
   const language = (payload.language as string | undefined) ?? 'en';
   const cacheKey = `${HOME_BOOTSTRAP_CACHE_PREFIX}_${await effectRunnerLibraryKey()}_${language}`;
+  debugLog(`profile-switch-debug: readHomeBootstrap payload.force=${payload.force} payload.profileId=${payload.profileId} cacheKey=${cacheKey}`);
   if (!payload.force) {
     const cached = await storageRead<HomeBootstrapCache>(cacheKey);
     if (cached) return { ...cached, stale: true };
@@ -106,6 +112,7 @@ export async function readHomeBootstrap(
   }
 
   const profile = await loadActiveProfile();
+  debugLog(`profile-switch-debug: readHomeBootstrap loadActiveProfile()=${profile?.id}`);
   const disabledAddonKeys = profile?.addonSettings?.disabledLocalAddons ?? profile?.disabledLocalAddons ?? [];
   const allAddons = await loadAddons();
   const library = await loadLibrary();
@@ -115,6 +122,7 @@ export async function readHomeBootstrap(
 
   const localContinueWatching = (library.continueWatching as Record<string, unknown>[] | undefined) ?? [];
   const externalContinueWatching = (library.externalContinueWatching as Record<string, unknown>[] | undefined) ?? [];
+  debugLog(`profile-switch-debug: loadLibrary local=${localContinueWatching.length} external=${externalContinueWatching.length} firstLocalId=${JSON.stringify((localContinueWatching[0] as { id?: string } | undefined)?.id)} firstExternalId=${JSON.stringify((externalContinueWatching[0] as { id?: string } | undefined)?.id)}`);
 
   const progressMap = (library.progress as Record<string, unknown> | undefined) ?? {};
   const mergedCWRaw = await coreMergeContinueWatchingLists(
