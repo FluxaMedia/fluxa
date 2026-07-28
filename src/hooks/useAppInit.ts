@@ -96,14 +96,6 @@ export function useAppInit(
           updateState(cwResult.state);
           if (cwResult.effects.length > 0) await pumpEffects(cwResult.effects, updateState);
         }
-        const snap = (await getSnapshot()) as AppState | null;
-        if (snap && (snap.addons?.installed?.length ?? 0) > 0 && (snap.home?.categories?.length ?? 0) === 0) {
-          const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
-          if (homeResult) {
-            updateState(homeResult.state);
-            if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
-          }
-        }
       }
     } catch {
     } finally {

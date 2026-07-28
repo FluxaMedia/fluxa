@@ -437,11 +437,8 @@ export default function App() {
       }
     }
     await applyStoredPrefs();
-    await dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-    await dispatch(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }));
-    if ((stateRef.current.addons?.installed?.length ?? 0) > 0 && (stateRef.current.home?.categories?.length ?? 0) === 0) {
-      void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
-    }
+    void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+    void dispatch(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }));
   }, [activeProfileId, applyStoredPrefs, dispatch, setAllProfiles, setActiveProfile]);
 
   const { serverDown, justRecovered, dismissed, dismiss } = useNuvioConnectivity(activeProfile, handleNuvioSynced);
