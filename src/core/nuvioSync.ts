@@ -4,7 +4,6 @@ import {
   nuvioPullCollections,
   nuvioPullLibrary,
   nuvioPullProfiles,
-  nuvioPullProfileSettings,
   nuvioPullWatchHistory,
   nuvioPullWatchProgress,
   nuvioPullWatchProgressDelta,
@@ -37,15 +36,11 @@ import { loadProfiles, saveProfile, saveProfiles } from './profiles';
 import { fetchPlannedResources } from './fetchPlanning';
 import { saveProviderLibrary } from './providerLibraries';
 
-export type NuvioImportStep = 'addons' | 'library' | 'progress' | 'history' | 'collections' | 'settings';
+export type NuvioImportStep = 'addons' | 'library' | 'progress' | 'history' | 'collections';
 
 export interface NuvioImportReport {
   errors: Partial<Record<NuvioImportStep, string>>;
   changed: boolean;
-}
-
-export interface NuvioImportOptions {
-  includeSettings?: boolean;
 }
 
 export interface NuvioSyncMeta {
@@ -246,7 +241,6 @@ async function fetchAddonMetas(
 export async function importNuvioProfileData(
   profile: UserProfile,
   onStep?: (step: NuvioImportStep, ok: boolean, error?: string) => void,
-  options: NuvioImportOptions = {},
 ): Promise<NuvioImportReport> {
   const freshProfile = await freshNuvioProfile(profile).catch(() => profile);
   const token = freshProfile.nuvioAccessToken;
@@ -375,21 +369,6 @@ export async function importNuvioProfileData(
   if (appliedRemoteWatchState && watchHistory) {
     await storageWrite(deltaCacheKey(profile, 'history'), watchHistory);
     if (historyCursor != null) await storageWrite(deltaCursorKey(profile, 'history'), historyCursor);
-  }
-
-  if (options.includeSettings !== false) {
-    try {
-      const profileSettings = await nuvioPullProfileSettings(token, profileIdx, 'desktop');
-      const blob = profileSettings[0]?.settings_json;
-      if (blob && typeof blob === 'object' && !Array.isArray(blob)) {
-        const existing = await storageRead<Record<string, unknown>>('prefs') ?? {};
-        await storageWrite('prefs', { ...existing, ...blob as Record<string, unknown> });
-      }
-      onStep?.('settings', true);
-    } catch (err) {
-      errors.settings = err instanceof Error ? err.message : String(err);
-      onStep?.('settings', false, errors.settings);
-    }
   }
 
   try {

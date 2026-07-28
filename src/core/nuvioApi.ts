@@ -481,30 +481,6 @@ export async function nuvioDeleteWatchHistory(
   }, token);
 }
 
-export async function nuvioPullProfileSettings(
-  token: string,
-  profileId: number,
-  platform = 'desktop',
-): Promise<Array<{ profile_id: number; settings_json: unknown; updated_at: string }>> {
-  return post('/rest/v1/rpc/sync_pull_profile_settings_blob', {
-    p_profile_id: profileId,
-    p_platform: platform,
-  }, token);
-}
-
-export async function nuvioPushProfileSettings(
-  token: string,
-  profileId: number,
-  settingsJson: unknown,
-  platform = 'desktop',
-): Promise<void> {
-  return post('/rest/v1/rpc/sync_push_profile_settings_blob', {
-    p_profile_id: profileId,
-    p_platform: platform,
-    p_settings_json: settingsJson,
-  }, token);
-}
-
 export async function nuvioPullCollections(
   token: string,
   profileId: number,

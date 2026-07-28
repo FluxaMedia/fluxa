@@ -18,7 +18,6 @@ interface ImportProgress {
   progress: boolean;
   history: boolean;
   collections: boolean;
-  settings: boolean;
 }
 
 interface NuvioImportViewProps {
@@ -29,7 +28,7 @@ interface NuvioImportViewProps {
 export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
   const [imp, setImp] = useState<ImportProgress>({
     profile: false, addons: false, library: false,
-    progress: false, history: false, collections: false, settings: false,
+    progress: false, history: false, collections: false,
   });
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
@@ -72,7 +71,7 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
         if (remoteProfile.id === selectedProfile.id) continue;
         await setActiveProfileId(remoteProfile.id);
         invalidateLibraryKeyCache();
-        const secondaryReport = await importNuvioProfileData(remoteProfile, undefined, { includeSettings: false });
+        const secondaryReport = await importNuvioProfileData(remoteProfile);
         const failedSteps = Object.keys(secondaryReport.errors);
         if (failedSteps.length > 0) {
           secondaryFailures.push(`${remoteProfile.name || remoteProfile.id}: ${failedSteps.join(', ')}`);
@@ -104,7 +103,6 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
     { key: 'progress', label: t('auth.nuvio.import.progress') },
     { key: 'history', label: t('auth.nuvio.import.history') },
     { key: 'collections', label: t('auth.nuvio.import.collections') },
-    { key: 'settings', label: t('nav.settings') },
   ];
 
   return (
