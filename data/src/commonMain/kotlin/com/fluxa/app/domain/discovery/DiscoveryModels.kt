@@ -16,7 +16,8 @@ data class DiscoverCatalogOption(
     val type: String,
     val id: String,
     val genres: List<String>,
-    val requiresGenre: Boolean = false
+    val requiresGenre: Boolean = false,
+    val defaultGenre: String? = null
 )
 
 data class Cs3CatalogFeedDescriptor(

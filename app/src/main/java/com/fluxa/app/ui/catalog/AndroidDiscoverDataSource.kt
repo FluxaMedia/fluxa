@@ -82,7 +82,13 @@ class AndroidDiscoverDataSource(
             ?.takeIf { key -> availableCatalogs.any { it.key == key } }
             ?: availableCatalogs.firstOrNull()?.key
         if (selectedCatalogKey != null) {
-            val selectedFilters = filters.copy(catalogKey = selectedCatalogKey)
+            val selectedCatalog = availableCatalogs.firstOrNull { it.key == selectedCatalogKey }
+            val selectedGenre = filters.genre
+                ?.takeIf { genre -> selectedCatalog?.genres?.contains(genre) == true }
+                ?: selectedCatalog
+                    ?.takeIf { it.requiresGenre }
+                    ?.let { it.defaultGenre ?: it.genres.firstOrNull() }
+            val selectedFilters = filters.copy(catalogKey = selectedCatalogKey, genre = selectedGenre)
             this.filters.value = selectedFilters
             homeViewModel.discover(
                 type = selectedFilters.contentType,
@@ -93,7 +99,6 @@ class AndroidDiscoverDataSource(
                 provider = null,
                 region = null
             )
-            val selectedCatalog = availableCatalogs.firstOrNull { it.key == selectedCatalogKey }
             if (selectedCatalog?.genres.isNullOrEmpty()) {
                 homeViewModel.loadDiscoverCatalogFilters(filters.contentType, selectedCatalogKey) { catalogs ->
                     if (this.filters.value.catalogKey == selectedCatalogKey) {
