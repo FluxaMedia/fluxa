@@ -695,13 +695,11 @@ export default function App() {
               allProfiles={allProfiles}
               onSwitchProfile={() => setActiveProfile(null)}
               onSwitchToProfile={async (p) => {
-                debugLog(`profile-switch-debug: onSwitchToProfile start target=${p.id}`);
                 await setActiveProfileId(p.id);
                 invalidateLibraryKeyCache();
                 setState(DEFAULT_STATE);
                 setActiveProfile(p);
                 await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
-                debugLog(`profile-switch-debug: profileActivated dispatch resolved for ${p.id}`);
                 void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
                 void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
               }}

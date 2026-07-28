@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import {
   coreBuildContinueWatchingFromProgress,
   coreInvoke,
@@ -22,14 +21,9 @@ import {
 import { normalizeAddonDescriptor } from './addons';
 import type { AddonDescriptor, UserProfile } from './types';
 
-function debugLog(msg: string) {
-  void invoke('debug_log', { msg }).catch(() => {});
-}
-
 let _cachedLibraryKey: string | null = null;
 
 export function invalidateLibraryKeyCache(): void {
-  debugLog(`profile-switch-debug: invalidateLibraryKeyCache called, was=${_cachedLibraryKey}`);
   _cachedLibraryKey = null;
 }
 
@@ -41,7 +35,6 @@ async function activeProfileStorageSuffix(): Promise<string> {
 export async function effectRunnerLibraryKey(): Promise<string> {
   if (_cachedLibraryKey) return _cachedLibraryKey;
   _cachedLibraryKey = `library_${await activeProfileStorageSuffix()}`;
-  debugLog(`profile-switch-debug: effectRunnerLibraryKey resolved fresh to ${_cachedLibraryKey}`);
   return _cachedLibraryKey;
 }
 
