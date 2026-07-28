@@ -605,6 +605,7 @@ export default function App() {
       <ProfileSelectionScreen
         onProfileSelected={async (profile) => {
           invalidateLibraryKeyCache();
+          stateRef.current = DEFAULT_STATE;
           setState(DEFAULT_STATE);
           setActiveProfile(profile);
           setEditProfileOpen(false);
@@ -697,6 +698,7 @@ export default function App() {
               onSwitchToProfile={async (p) => {
                 await setActiveProfileId(p.id);
                 invalidateLibraryKeyCache();
+                stateRef.current = DEFAULT_STATE;
                 setState(DEFAULT_STATE);
                 setActiveProfile(p);
                 await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
