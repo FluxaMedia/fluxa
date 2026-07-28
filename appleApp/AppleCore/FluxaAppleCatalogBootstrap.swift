@@ -1,4 +1,4 @@
-import FluxaShared
+import FluxaCore
 import Foundation
 
 @MainActor

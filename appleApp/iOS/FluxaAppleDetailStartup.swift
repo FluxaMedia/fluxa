@@ -1,3 +1,4 @@
+import FluxaCore
 import FluxaShared
 import Foundation
 
@@ -18,7 +19,7 @@ final class FluxaAppleDetailStartup {
         self.addonResourceLoader = addonResourceLoader
     }
 
-    func load(request: AppleDetailRequestSnapshot) async {
+    func load(request: FluxaShared.AppleDetailRequestSnapshot) async {
         do {
             let action = FluxaAppleDetailAction(
                 type: "detailLoadRequested",
@@ -37,7 +38,7 @@ final class FluxaAppleDetailStartup {
         }
     }
 
-    func toggleWatchlist(request: AppleDetailRequestSnapshot) async {
+    func toggleWatchlist(request: FluxaShared.AppleDetailRequestSnapshot) async {
         do {
             let action = FluxaAppleToggleWatchlistAction(
                 type: "toggleWatchlistRequested",
@@ -57,7 +58,7 @@ final class FluxaAppleDetailStartup {
 
     private func updateSharedDetail(
         result: FluxaAppleHeadlessResult,
-        request: AppleDetailRequestSnapshot
+        request: FluxaShared.AppleDetailRequestSnapshot
     ) async {
         guard case .object(let detail)? = result.state["detail"],
               case .object(let meta)? = detail["meta"] else {
@@ -67,21 +68,21 @@ final class FluxaAppleDetailStartup {
         let id = text(meta["id"]) ?? request.id
         let type = text(meta["type"]) ?? request.type
         let streams = await loadDirectStreams(request: request, contentType: type, id: id)
-        FluxaApple.shared.updateDetail(snapshot: AppleDetailSnapshot(id: id, type: type, title: text(meta["name"]) ?? request.id, description: text(meta["description"]) ?? "", posterUrl: text(meta["poster"]), backgroundUrl: text(meta["background"]), logoUrl: text(meta["logo"]), releaseLabel: text(meta["releaseInfo"]) ?? "", ratingLabel: text(meta["imdbRating"]) ?? "", isInWatchlist: bool(detail["isInWatchlist"]), isLoading: false, errorKey: nil, streams: streams, hasStreamProviders: !streams.isEmpty))
+        FluxaApple.shared.updateDetail(snapshot: FluxaShared.AppleDetailSnapshot(id: id, type: type, title: text(meta["name"]) ?? request.id, description: text(meta["description"]) ?? "", posterUrl: text(meta["poster"]), backgroundUrl: text(meta["background"]), logoUrl: text(meta["logo"]), releaseLabel: text(meta["releaseInfo"]) ?? "", ratingLabel: text(meta["imdbRating"]) ?? "", isInWatchlist: bool(detail["isInWatchlist"]), isLoading: false, errorKey: nil, streams: streams.map(toSharedStream), hasStreamProviders: !streams.isEmpty))
     }
 
     private func loadDirectStreams(
-        request: AppleDetailRequestSnapshot,
+        request: FluxaShared.AppleDetailRequestSnapshot,
         contentType: String,
         id: String
-    ) async -> [AppleDetailStreamSnapshot] {
+    ) async -> [FluxaCore.AppleDetailStreamSnapshot] {
         let addons = ([request.addonTransportUrl].compactMap { $0 } + configurationStore.enabledAddonUrls())
             .reduce(into: [String]()) { result, addon in
                 if !result.contains(addon) {
                     result.append(addon)
                 }
             }
-        var results = [AppleDetailStreamSnapshot]()
+        var results = [FluxaCore.AppleDetailStreamSnapshot]()
         for addon in addons {
             if let streams = try? await addonResourceLoader.loadDirectStreams(
                 transportUrl: addon,
@@ -94,8 +95,17 @@ final class FluxaAppleDetailStartup {
         return results
     }
 
-    private func updateEmptyDetail(request: AppleDetailRequestSnapshot) {
-        FluxaApple.shared.updateDetail(snapshot: AppleDetailSnapshot(id: request.id, type: request.type, title: request.title ?? request.id, description: "", posterUrl: nil, backgroundUrl: nil, logoUrl: nil, releaseLabel: "", ratingLabel: "", isInWatchlist: false, isLoading: false, errorKey: "auto.no_results_found", streams: [], hasStreamProviders: false))
+    private func toSharedStream(_ stream: FluxaCore.AppleDetailStreamSnapshot) -> FluxaShared.AppleDetailStreamSnapshot {
+        FluxaShared.AppleDetailStreamSnapshot(
+            addonName: stream.addonName,
+            title: stream.title,
+            playableUrl: stream.playableUrl,
+            requestHeadersJson: stream.requestHeadersJson
+        )
+    }
+
+    private func updateEmptyDetail(request: FluxaShared.AppleDetailRequestSnapshot) {
+        FluxaApple.shared.updateDetail(snapshot: FluxaShared.AppleDetailSnapshot(id: request.id, type: request.type, title: request.title ?? request.id, description: "", posterUrl: nil, backgroundUrl: nil, logoUrl: nil, releaseLabel: "", ratingLabel: "", isInWatchlist: false, isLoading: false, errorKey: "auto.no_results_found", streams: [], hasStreamProviders: false))
     }
 
     private func text(_ value: FluxaAppleJsonValue?) -> String? {

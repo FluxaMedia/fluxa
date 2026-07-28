@@ -1,4 +1,5 @@
 import Foundation
+import FluxaCore
 import FluxaShared
 
 final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
@@ -64,7 +65,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         }
     }
 
-    private func homeCategory(_ row: AppleCatalogRowSnapshot) -> FluxaAppleJsonValue {
+    private func homeCategory(_ row: FluxaCore.AppleCatalogRowSnapshot) -> FluxaAppleJsonValue {
         .object([
             "id": .string(row.id),
             "name": .string(row.title),
@@ -75,7 +76,7 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         ])
     }
 
-    private func homeMeta(_ item: AppleCatalogItemSnapshot) -> FluxaAppleJsonValue {
+    private func homeMeta(_ item: FluxaCore.AppleCatalogItemSnapshot) -> FluxaAppleJsonValue {
         .object([
             "id": .string(item.id),
             "type": .string(item.type),
