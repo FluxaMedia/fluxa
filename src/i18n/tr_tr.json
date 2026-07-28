@@ -614,7 +614,6 @@
   "settings.show_hero_section": "Hero Bölümünü Göster",
   "settings.show_hero_section_desc": "Ana ekrandaki büyük öne çıkan afişi gösterir veya gizler.",
   "settings.language_desc": "Uygulama metinlerini ve katalog etiketlerini değiştirir.",
-  "settings.language_primary_only": "Uygulama dilini sadece birincil profil değiştirebilir.",
   "calendar.season_episode": "Sezon %s • Bölüm %s",
   "calendar.upcoming_on": "%s tarihinde gelecekler",
   "settings.start_page_desc": "Profil seçildikten sonra açılacak ekranı belirler.",

@@ -12,7 +12,7 @@ import {
 import type { AddonDescriptor, AppState, PluginRepository, PluginScraper, UserProfile } from '../core/types';
 import { addonKey, normalizeAddonDescriptor } from '../core/addons';
 import { saveProfile } from '../core/profiles';
-import { loadAddons, saveAddons } from '../core/libraryOps';
+import { loadAddons, loadPrefs, saveAddons, savePrefs } from '../core/libraryOps';
 import { pluginRepositoryUrlsKey, pluginScraperEnabledKey } from '../core/pluginsStorage';
 import { nuvioReplaceAddons } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
@@ -103,7 +103,6 @@ interface Props {
   state: AppState;
   onDispatch: (actionJson: string) => void | Promise<void>;
   activeProfile: UserProfile | null;
-  isPrimaryProfile?: boolean;
   onProfileUpdated: (profile: UserProfile) => void;
   onSwitchProfile: () => void;
   onBack: () => void;
@@ -111,7 +110,7 @@ interface Props {
   initialAddonUrl?: string | null;
 }
 
-export function SettingsScreen({ state, onDispatch, activeProfile, isPrimaryProfile = true, onProfileUpdated, onSwitchProfile, onBack, onCheckForUpdates, initialAddonUrl }: Props) {
+export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpdated, onSwitchProfile, onBack, onCheckForUpdates, initialAddonUrl }: Props) {
   const [tab, setTab] = useState<Tab>('account');
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [addonUrl, setAddonUrl] = useState('');
@@ -129,7 +128,8 @@ export function SettingsScreen({ state, onDispatch, activeProfile, isPrimaryProf
   }, []);
 
   useEffect(() => {
-    storageRead<Prefs>('prefs').then((p) => {
+    loadPrefs().then((raw) => {
+      const p = Object.keys(raw).length > 0 ? (raw as unknown as Prefs) : undefined;
       const legacyAnimeQuality = p && ['anime4k_s', 'anime4k_m', 'anime4k_l'].includes(p.animeUpscalingMode)
         ? p.animeUpscalingMode
         : undefined;
@@ -143,12 +143,12 @@ export function SettingsScreen({ state, onDispatch, activeProfile, isPrimaryProf
       if (p) setLanguage(merged.language);
       else setLanguage(DEFAULT_PREFS.language);
       setPrefs(merged);
-      if (legacyAnimeQuality) void storageWrite('prefs', merged);
+      if (legacyAnimeQuality) void savePrefs(merged as unknown as Record<string, unknown>);
       if (!p?.hdrDetectionCompleted) {
         void invoke<boolean>('player_hdr_supported').then((supported) => {
           const detected = { ...merged, hdrEnabled: supported, hdrDetectionCompleted: true };
           setPrefs(detected);
-          void storageWrite('prefs', detected);
+          void savePrefs(detected);
         }).catch(() => undefined);
       }
       void import('@tauri-apps/api/core').then(({ invoke }) =>
@@ -217,7 +217,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, isPrimaryProf
       const updated = { ...previous, ...(planned ?? { [key]: value }) };
       if (key === 'language') setLanguage(String(updated.language));
       setPrefs(updated as Prefs);
-      await storageWrite('prefs', updated);
+      await savePrefs(updated);
       onDispatch(JSON.stringify({ type: 'settingsChanged', key, value }));
       if (
         key === 'heroFeedToggles'
@@ -446,7 +446,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, isPrimaryProf
             onNuvioSyncComplete={reloadInstalledAddons}
           />
         )}
-        {tab === 'general' && <GeneralSection prefs={prefs} setPref={setPref} isPrimaryProfile={isPrimaryProfile} />}
+        {tab === 'general' && <GeneralSection prefs={prefs} setPref={setPref} />}
         {tab === 'appearance' && <AppearanceSection prefs={prefs} setPref={setPref} />}
         {tab === 'playback' && <PlaybackSection prefs={prefs} setPref={setPref} />}
         {tab === 'shortcuts' && <ShortcutsSection />}

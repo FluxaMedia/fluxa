@@ -5,6 +5,7 @@ import { getActiveProfileId, loadProfiles } from '../core/profiles';
 import { pumpEffects, syncExternalIntegrationNow } from '../core/effectRunner';
 import { importNuvioProfileData, recordNuvioSyncMeta } from '../core/nuvioSync';
 import { hydratePluginsFromStorage } from '../core/pluginsStorage';
+import { loadPrefs } from '../core/libraryOps';
 import { refreshAllAvatarPacks } from '../core/profileAvatarPacks';
 import { setLanguage } from '../i18n';
 import { prefBool, prefString } from '../core/appPrefs';
@@ -105,7 +106,7 @@ export function useAppInit(
         void refreshAllAvatarPacks();
         await hydratePluginsFromStorage(updateState);
         const snap = await getSnapshot();
-        const prefs = (await storageRead<Record<string, unknown>>('prefs')) ?? {};
+        const prefs = await loadPrefs();
         storedPrefsRef.current = prefs;
         void invoke('player_set_seek_thumbnail_enabled', { enabled: prefBool(prefs, 'seekThumbnailEnabled', false) });
         void invoke('discord_presence_configure', { enabled: prefBool(prefs, 'discordRichPresenceEnabled', true) });

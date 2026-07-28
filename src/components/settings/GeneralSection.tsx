@@ -15,7 +15,7 @@ function applyDiagnosticMode(enabled: boolean) {
   void invoke('set_diagnostic_mode', { enabled }).catch(() => undefined);
 }
 
-export function GeneralSection({ prefs, setPref, isPrimaryProfile = true }: { prefs: Prefs; setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void; isPrimaryProfile?: boolean }) {
+export function GeneralSection({ prefs, setPref }: { prefs: Prefs; setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void }) {
   const [rpdbKeyStatus, setRpdbKeyStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const rpdbCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [diagExportStatus, setDiagExportStatus] = useState<'idle' | 'saved' | 'failed'>('idle');
@@ -52,11 +52,10 @@ export function GeneralSection({ prefs, setPref, isPrimaryProfile = true }: { pr
     <SettingsSection title={t('auto.app')} subtitle={t('auto.language_theme_startup')}>
       <ChoiceTile
         title={t('auto.interface_language')}
-        subtitle={isPrimaryProfile ? t('settings.language_desc') : t('settings.language_primary_only')}
+        subtitle={t('settings.language_desc')}
         options={[{ value: 'en', label: t('language.english') }, { value: 'tr', label: t('language.turkish') }]}
         selected={prefs.language}
         onSelect={(v) => setPref('language', v)}
-        disabled={!isPrimaryProfile}
       />
       <ChoiceTile
         title={t('auto.start_page')}

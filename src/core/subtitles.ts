@@ -1,10 +1,11 @@
-import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex, storageRead } from './engine';
+import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex } from './engine';
 import { invoke } from '@tauri-apps/api/core';
 import {
   coreResourceFetchPlan,
   coreResourceParsePlan,
   coreParseAddonResourceResult,
 } from './addonManifest';
+import { loadPrefs } from './libraryOps';
 import type { Stream, Meta, Video, AddonDescriptor } from './types';
 import { stringValue } from './playerUtils';
 import type { PlayerSubtitleSource } from './playerUtils';
@@ -78,7 +79,7 @@ export async function resolvePlaybackSubtitles(
     }
   }));
 
-  const prefs = (await storageRead<Record<string, unknown>>('prefs')) ?? {};
+  const prefs = await loadPrefs();
   const preferredIndex = await coreFindPreferredSubtitleIndex(
     subtitles.map((subtitle, index) => ({
       id: subtitle.url || String(index),

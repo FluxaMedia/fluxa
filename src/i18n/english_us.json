@@ -614,7 +614,6 @@
   "settings.show_hero_section": "Show Hero Section",
   "settings.show_hero_section_desc": "Shows or hides the large featured banner on the home screen.",
   "settings.language_desc": "Changes app text and catalog labels.",
-  "settings.language_primary_only": "Only the primary profile can change the app language.",
   "calendar.season_episode": "Season %s • Episode %s",
   "calendar.upcoming_on": "Upcoming on %s",
   "settings.start_page_desc": "Chooses which screen opens after profile selection.",

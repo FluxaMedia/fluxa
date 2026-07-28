@@ -104,8 +104,27 @@ export async function saveLibrary(lib: Record<string, unknown>, profileKey?: str
   await storageWrite(profileKey ?? await effectRunnerLibraryKey(), await normalizeLibraryDoc(lib));
 }
 
+export async function prefsOwnerId(): Promise<string> {
+  const activeId = (await storageRead<string>('active_profile_id'))?.trim();
+  if (activeId) return activeId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
+  if (profiles.length === 0) return 'guest';
+  const primaryId = await coreInvoke<string>('primaryProfileId', JSON.stringify(profiles));
+  return (primaryId || profiles[0].id).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+export async function prefsStorageKey(): Promise<string> {
+  return `prefs_${await prefsOwnerId()}`;
+}
+
 export async function loadPrefs(): Promise<Record<string, unknown>> {
+  const scoped = await storageRead<Record<string, unknown>>(await prefsStorageKey());
+  if (scoped) return scoped;
   return (await storageRead<Record<string, unknown>>('prefs')) ?? {};
+}
+
+export async function savePrefs(value: Record<string, unknown>): Promise<void> {
+  await storageWrite(await prefsStorageKey(), value);
 }
 
 export async function loadActiveProfile(): Promise<UserProfile | null> {

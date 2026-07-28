@@ -44,7 +44,7 @@ import { P2PDialog } from './components/P2PDialog';
 import { useNuvioConnectivity } from './hooks/useNuvioConnectivity';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { setActiveProfileId, createProfileObject, saveProfile, loadProfiles } from './core/profiles';
-import { invalidateLibraryKeyCache } from './core/libraryOps';
+import { invalidateLibraryKeyCache, loadPrefs, prefsOwnerId, savePrefs } from './core/libraryOps';
 import { clearEnginePlugins, hydratePluginsFromStorage } from './core/pluginsStorage';
 import { storageWrite, storageRead } from './core/engine';
 import { toggleWindowFullscreen, watchWindowGeometry } from './core/windowGeometry';
@@ -397,7 +397,7 @@ export default function App() {
     try {
       const action = JSON.parse(actionJson) as { type?: string };
       if (action.type === 'settingsChanged') {
-        const freshPrefs = (await storageRead<Record<string, unknown>>('prefs')) ?? {};
+        const freshPrefs = await loadPrefs();
         storedPrefsRef.current = freshPrefs;
       }
     } catch {}
@@ -408,7 +408,7 @@ export default function App() {
   }, [updateState, updateStateDeferred]);
 
   const applyStoredPrefs = useCallback(async () => {
-    const freshPrefs = (await storageRead<Record<string, unknown>>('prefs')) ?? {};
+    const freshPrefs = await loadPrefs();
     storedPrefsRef.current = freshPrefs;
     setLanguage(typeof freshPrefs.language === 'string' ? freshPrefs.language : null);
     setRpdbApiKey(prefString(freshPrefs, 'rpdbApiKey', ''));
@@ -416,6 +416,12 @@ export default function App() {
     void invoke('set_diagnostic_mode', { enabled: prefBool(freshPrefs, 'diagnosticMode', false) });
     updateState({ settings: { values: freshPrefs } });
   }, [updateState]);
+
+  const switchToNoProfile = useCallback(async () => {
+    setActiveProfile(null);
+    await setActiveProfileId('');
+    await applyStoredPrefs();
+  }, [applyStoredPrefs]);
 
   const activeProfileId = activeProfile?.id;
   const handleNuvioSynced = useCallback(async (changed: boolean) => {
@@ -523,16 +529,17 @@ export default function App() {
   }, [uiScale]);
   useEffect(() => {
     void (async () => {
-      const applied = await storageRead<boolean>('ui_scale_auto_applied').catch(() => false);
+      const flagKey = `ui_scale_auto_applied_${await prefsOwnerId()}`;
+      const applied = await storageRead<boolean>(flagKey).catch(() => false);
       if (applied) return;
-      const current = (await storageRead<Record<string, unknown>>('prefs').catch(() => null)) ?? {};
+      const current = await loadPrefs().catch(() => ({} as Record<string, unknown>));
       if (typeof current.uiScale !== 'string') {
         const updated = { ...current, uiScale: String(computeAutoUiScale()) };
-        await storageWrite('prefs', updated);
+        await savePrefs(updated);
         storedPrefsRef.current = updated;
         updateState({ settings: { values: updated } });
       }
-      await storageWrite('ui_scale_auto_applied', true);
+      await storageWrite(flagKey, true);
     })();
   }, [updateState]);
   const accentColor = prefString(prefs, 'accentColorArgb', '#FFFFFF');
@@ -614,6 +621,7 @@ export default function App() {
           setEditProfileOpen(false);
           setHomeResetKey((k) => k + 1);
           await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
+          await applyStoredPrefs();
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
           void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
           await clearEnginePlugins(outgoingRepositories, updateState);
@@ -700,7 +708,7 @@ export default function App() {
             <ProfileChip
               profile={activeProfile}
               allProfiles={allProfiles}
-              onSwitchProfile={() => setActiveProfile(null)}
+              onSwitchProfile={() => void switchToNoProfile()}
               onSwitchToProfile={async (p) => {
                 await setActiveProfileId(p.id);
                 invalidateLibraryKeyCache();
@@ -709,6 +717,7 @@ export default function App() {
                 setActiveProfile(p);
                 setHomeResetKey((k) => k + 1);
                 await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
+                await applyStoredPrefs();
                 void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
                 void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
               }}
@@ -798,9 +807,8 @@ export default function App() {
               state={state}
               onDispatch={dispatch}
               activeProfile={activeProfile}
-              isPrimaryProfile={allProfiles[0]?.id === activeProfile?.id}
               onProfileUpdated={(updated) => setActiveProfile(updated)}
-              onSwitchProfile={() => setActiveProfile(null)}
+              onSwitchProfile={() => void switchToNoProfile()}
               onBack={() => navigateRoute(lastNonSettingsRouteRef.current)}
               onCheckForUpdates={() => void startUpdateCheck(setUpdateModalState)}
               initialAddonUrl={pendingAddonUrl}
