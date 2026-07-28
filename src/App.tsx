@@ -798,6 +798,7 @@ export default function App() {
               state={state}
               onDispatch={dispatch}
               activeProfile={activeProfile}
+              isPrimaryProfile={allProfiles[0]?.id === activeProfile?.id}
               onProfileUpdated={(updated) => setActiveProfile(updated)}
               onSwitchProfile={() => setActiveProfile(null)}
               onBack={() => navigateRoute(lastNonSettingsRouteRef.current)}

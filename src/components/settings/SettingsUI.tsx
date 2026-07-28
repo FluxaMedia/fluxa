@@ -399,12 +399,14 @@ export function ChoiceTile({
   options,
   selected,
   onSelect,
+  disabled,
 }: {
   title: string;
   subtitle: string;
   options: { value: string; label: string }[];
   selected: string;
   onSelect: (v: string) => void;
+  disabled?: boolean;
 }) {
   const selectedLabel = options.find((opt) => opt.value === selected)?.label ?? selected;
   return (
@@ -422,12 +424,14 @@ export function ChoiceTile({
         <p style={styles.rowTitle}>{title}</p>
         <p style={styles.rowSubtitle}>{subtitle}</p>
       </div>
-      <Dropdown
-        ariaLabel={`${title}: ${selectedLabel}`}
-        options={options}
-        selected={selected}
-        onSelect={onSelect}
-      />
+      <div style={disabled ? { pointerEvents: 'none', opacity: 0.45 } : undefined}>
+        <Dropdown
+          ariaLabel={`${title}: ${selectedLabel}`}
+          options={options}
+          selected={selected}
+          onSelect={disabled ? () => {} : onSelect}
+        />
+      </div>
     </div>
   );
 }

@@ -103,6 +103,7 @@ interface Props {
   state: AppState;
   onDispatch: (actionJson: string) => void | Promise<void>;
   activeProfile: UserProfile | null;
+  isPrimaryProfile?: boolean;
   onProfileUpdated: (profile: UserProfile) => void;
   onSwitchProfile: () => void;
   onBack: () => void;
@@ -110,7 +111,7 @@ interface Props {
   initialAddonUrl?: string | null;
 }
 
-export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpdated, onSwitchProfile, onBack, onCheckForUpdates, initialAddonUrl }: Props) {
+export function SettingsScreen({ state, onDispatch, activeProfile, isPrimaryProfile = true, onProfileUpdated, onSwitchProfile, onBack, onCheckForUpdates, initialAddonUrl }: Props) {
   const [tab, setTab] = useState<Tab>('account');
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [addonUrl, setAddonUrl] = useState('');
@@ -445,7 +446,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
             onNuvioSyncComplete={reloadInstalledAddons}
           />
         )}
-        {tab === 'general' && <GeneralSection prefs={prefs} setPref={setPref} />}
+        {tab === 'general' && <GeneralSection prefs={prefs} setPref={setPref} isPrimaryProfile={isPrimaryProfile} />}
         {tab === 'appearance' && <AppearanceSection prefs={prefs} setPref={setPref} />}
         {tab === 'playback' && <PlaybackSection prefs={prefs} setPref={setPref} />}
         {tab === 'shortcuts' && <ShortcutsSection />}
