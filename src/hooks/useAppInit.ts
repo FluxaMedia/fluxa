@@ -91,10 +91,10 @@ export function useAppInit(
         }
         const libResult = await dispatchAction(JSON.stringify({ type: 'libraryHydrateRequested' }));
         if (libResult) updateState(libResult.state);
-        const cwResult = await dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }));
-        if (cwResult) {
-          updateState(cwResult.state);
-          if (cwResult.effects.length > 0) await pumpEffects(cwResult.effects, updateState);
+        const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
+        if (homeResult) {
+          updateState(homeResult.state);
+          if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
         }
       }
     } catch {

@@ -438,7 +438,7 @@ export default function App() {
     }
     await applyStoredPrefs();
     void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-    void dispatch(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }));
+    void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
   }, [activeProfileId, applyStoredPrefs, dispatch, setAllProfiles, setActiveProfile]);
 
   const { serverDown, justRecovered, dismissed, dismiss } = useNuvioConnectivity(activeProfile, handleNuvioSynced);
