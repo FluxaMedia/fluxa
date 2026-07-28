@@ -159,11 +159,14 @@ export function useAppInit(
       }
 
       if (prefBool(storedPrefsRef.current, 'automaticUpdates', true)) {
-        setTimeout(() => {
-          void startUpdateCheck((s) => {
-            if (s.phase === 'available' || s.phase === 'error') setUpdateModalState(s);
-          });
-        }, 5000);
+        void invoke<boolean>('in_app_updates_supported').then((supported) => {
+          if (!supported) return;
+          setTimeout(() => {
+            void startUpdateCheck((s) => {
+              if (s.phase === 'available' || s.phase === 'error') setUpdateModalState(s);
+            });
+          }, 5000);
+        }).catch(() => undefined);
       }
     })();
   }, []);
