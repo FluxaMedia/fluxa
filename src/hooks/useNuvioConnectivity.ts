@@ -68,8 +68,11 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
           await importNuvioProfileData(profile)
             .then((report) => recordNuvioSyncMeta(report))
             .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }));
+          if (cancelled) return;
           await refreshNuvioProfiles(profile).catch(() => profile);
+          if (cancelled) return;
           await pushLocalToNuvio(profile).catch(() => undefined);
+          if (cancelled) return;
           await onSynced?.();
         })();
       } else if (!down && !pulledRemote) {
@@ -78,7 +81,9 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
           await importNuvioProfileData(profile)
             .then((report) => recordNuvioSyncMeta(report))
             .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }));
+          if (cancelled) return;
           await refreshNuvioProfiles(profile).catch(() => profile);
+          if (cancelled) return;
           await onSynced?.();
         })();
       }
