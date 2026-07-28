@@ -425,7 +425,7 @@ export default function App() {
       const freshActiveProfile = profiles.find((p) => p.id === activeProfileId);
       if (freshActiveProfile) {
         setActiveProfile(freshActiveProfile);
-        void dispatch(JSON.stringify({ type: 'profileActivated', profile: freshActiveProfile }));
+        await dispatch(JSON.stringify({ type: 'profileActivated', profile: freshActiveProfile }));
       }
     }
     await applyStoredPrefs();
@@ -588,7 +588,7 @@ export default function App() {
           const profiles = await loadProfiles();
           setAllProfiles(profiles);
           setActiveProfile(profile);
-          void dispatch(JSON.stringify({ type: 'profileActivated', profile }));
+          await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
           await applyStoredPrefs();
           await dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
           void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
@@ -603,12 +603,12 @@ export default function App() {
     return (
       <React.Suspense fallback={null}>
       <ProfileSelectionScreen
-        onProfileSelected={(profile) => {
+        onProfileSelected={async (profile) => {
           invalidateLibraryKeyCache();
           setState(DEFAULT_STATE);
           setActiveProfile(profile);
           setEditProfileOpen(false);
-          void dispatch(JSON.stringify({ type: 'profileActivated', profile }));
+          await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
           void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
         }}
@@ -699,7 +699,7 @@ export default function App() {
                 invalidateLibraryKeyCache();
                 setState(DEFAULT_STATE);
                 setActiveProfile(p);
-                void dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
+                await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
                 void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
                 void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
               }}
