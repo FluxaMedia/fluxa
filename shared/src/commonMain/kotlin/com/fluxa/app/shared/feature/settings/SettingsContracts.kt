@@ -14,7 +14,6 @@ data class SettingsAccountUiModel(
     val email: String = "",
     val nuvioEmail: String? = null,
     val avatarUrl: String? = null,
-    val isGuest: Boolean = true,
     val hasStremio: Boolean = false,
     val hasNuvio: Boolean = false,
     val hasTrakt: Boolean = false,

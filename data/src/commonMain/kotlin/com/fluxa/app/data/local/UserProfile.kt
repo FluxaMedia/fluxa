@@ -8,7 +8,6 @@ data class UserProfile(
     val authKey: String,
     val profileName: String? = null,
     val colorArgb: Int = 0xFFFFFFFF.toInt(),
-    val isGuest: Boolean = false,
     val avatarUrl: String? = null,
     val pinHash: String? = null,
     val biometricEnabled: Boolean? = false,
@@ -233,7 +232,6 @@ data class UserProfile(
 
     val displayName: String get() = when {
         !profileName.isNullOrBlank() -> profileName
-        isGuest -> if (email.isBlank() || email == "guest") "Guest" else email
         email.contains("@") -> email.substringBefore("@")
         else -> email
     }

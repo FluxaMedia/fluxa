@@ -90,7 +90,7 @@ data class NativePlayerRetryPolicy(
 )
 
 data class NativeActiveProfilePlan(
-    val activeId: String = "guest",
+    val activeId: String = "",
     val shouldCreateDefault: Boolean = false,
     val activeProfile: Map<String, Any?> = emptyMap()
 )

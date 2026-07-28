@@ -777,7 +777,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val meta = gson.fromJson(gson.toJsonTree(progress["meta"]), Meta::class.java)
         val timeOffset = progress.number("timeOffset")?.toLong() ?: 0L
         val duration = progress.number("duration")?.toLong() ?: 0L
-        if (profile?.isGuest == false) {
+        if (profile != null) {
             StremioPlaybackProgressPushWorker.enqueue(context, gson, profile.id, meta, timeOffset, duration)
         }
         watchlistManager.savePlaybackProgress(

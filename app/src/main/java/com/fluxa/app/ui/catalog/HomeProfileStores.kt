@@ -20,7 +20,8 @@ class SearchHistoryStore @Inject constructor(
 ) {
     private val prefs = context.getSharedPreferences("fluxa_search", Context.MODE_PRIVATE)
     fun load(profile: UserProfile?): List<Meta> {
-        val saved = prefs.getString(key(profile), null) ?: return emptyList()
+        val key = key(profile) ?: return emptyList()
+        val saved = prefs.getString(key, null) ?: return emptyList()
         return runCatching {
             val listType = object : TypeToken<List<Meta>>() {}.type
             gson.fromJson<List<Meta>>(saved, listType)
@@ -30,16 +31,11 @@ class SearchHistoryStore @Inject constructor(
     }
 
     fun save(list: List<Meta>, profile: UserProfile?) {
-        prefs.edit().putString(key(profile), gson.toJson(list)).apply()
+        val key = key(profile) ?: return
+        prefs.edit().putString(key, gson.toJson(list)).apply()
     }
 
-    private fun key(profile: UserProfile?): String {
-        return if (profile?.isGuest == true || profile == null) {
-            "history_guest"
-        } else {
-            "history_${profile.id}"
-        }
-    }
+    private fun key(profile: UserProfile?): String? = profile?.id?.takeIf { it.isNotBlank() }?.let { "history_$it" }
 }
 
 @Singleton
@@ -47,20 +43,16 @@ class ForgottenContinueWatchingStore @Inject constructor(@ApplicationContext con
     private val prefs = context.getSharedPreferences("fluxa_search", Context.MODE_PRIVATE)
 
     fun load(profile: UserProfile?): Set<String> {
-        return prefs.getStringSet(key(profile), emptySet()).orEmpty()
+        val key = key(profile) ?: return emptySet()
+        return prefs.getStringSet(key, emptySet()).orEmpty()
     }
 
     fun save(profile: UserProfile?, keys: Set<String>) {
-        prefs.edit().putStringSet(key(profile), keys).apply()
+        val key = key(profile) ?: return
+        prefs.edit().putStringSet(key, keys).apply()
     }
 
-    private fun key(profile: UserProfile?): String {
-        return if (profile?.isGuest == true || profile == null) {
-            "forgotten_continue_guest"
-        } else {
-            "forgotten_continue_${profile.id}"
-        }
-    }
+    private fun key(profile: UserProfile?): String? = profile?.id?.takeIf { it.isNotBlank() }?.let { "forgotten_continue_$it" }
 }
 
 internal fun mergeSyncedProfile(gson: Gson, base: UserProfile, updated: UserProfile, current: UserProfile?): UserProfile {
@@ -84,7 +76,8 @@ class HomeCategoryCache @Inject constructor(
     private val prefs = context.getSharedPreferences("fluxa_home_cache", Context.MODE_PRIVATE)
 
     fun load(profile: UserProfile?): List<HomeCategory> {
-        val saved = prefs.getString(key(profile), null) ?: return emptyList()
+        val key = key(profile) ?: return emptyList()
+        val saved = prefs.getString(key, null) ?: return emptyList()
         return runCatching {
             val listType = object : TypeToken<List<HomeCategory>>() {}.type
             gson.fromJson<List<HomeCategory>>(saved, listType).orEmpty()
@@ -92,12 +85,11 @@ class HomeCategoryCache @Inject constructor(
     }
 
     fun save(profile: UserProfile?, list: List<HomeCategory>) {
-        prefs.edit().putString(key(profile), gson.toJson(list)).apply()
+        val key = key(profile) ?: return
+        prefs.edit().putString(key, gson.toJson(list)).apply()
     }
 
-    private fun key(profile: UserProfile?): String {
-        return if (profile?.isGuest == true || profile == null) "home_cache_guest" else "home_cache_${profile.id}"
-    }
+    private fun key(profile: UserProfile?): String? = profile?.id?.takeIf { it.isNotBlank() }?.let { "home_cache_$it" }
 }
 
 @Singleton
@@ -108,7 +100,8 @@ class HomeBillboardCache @Inject constructor(
     private val prefs = context.getSharedPreferences("fluxa_home_billboard_cache", Context.MODE_PRIVATE)
 
     fun load(profile: UserProfile?): List<Meta> {
-        val saved = prefs.getString(key(profile), null) ?: return emptyList()
+        val key = key(profile) ?: return emptyList()
+        val saved = prefs.getString(key, null) ?: return emptyList()
         return runCatching {
             val listType = object : TypeToken<List<Meta>>() {}.type
             gson.fromJson<List<Meta>>(saved, listType).orEmpty()
@@ -116,10 +109,9 @@ class HomeBillboardCache @Inject constructor(
     }
 
     fun save(profile: UserProfile?, pool: List<Meta>) {
-        prefs.edit().putString(key(profile), gson.toJson(pool)).apply()
+        val key = key(profile) ?: return
+        prefs.edit().putString(key, gson.toJson(pool)).apply()
     }
 
-    private fun key(profile: UserProfile?): String {
-        return if (profile?.isGuest == true || profile == null) "billboard_cache_guest" else "billboard_cache_${profile.id}"
-    }
+    private fun key(profile: UserProfile?): String? = profile?.id?.takeIf { it.isNotBlank() }?.let { "billboard_cache_$it" }
 }

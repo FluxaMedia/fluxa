@@ -38,7 +38,7 @@ class ProfileManager @Inject constructor(
             val profiles = getProfiles().toMutableList()
             val existingIndex = profiles.indexOfFirst {
                 it.id == sanitizedProfile.id ||
-                    (it.email == sanitizedProfile.email && !it.isGuest &&
+                    (it.email == sanitizedProfile.email &&
                         it.nuvioUserId.isNullOrBlank() && sanitizedProfile.nuvioUserId.isNullOrBlank())
             }
             if (existingIndex != -1) {
@@ -90,7 +90,6 @@ class ProfileManager @Inject constructor(
             .map { sanitizeProfile(it, mergeMirroredAddons = true) }
             .distinctBy { profile ->
                 when {
-                    profile.isGuest -> profile.id
                     !profile.nuvioUserId.isNullOrBlank() -> "nuvio:${profile.nuvioUserId}:${profile.nuvioProfileIndex ?: 1}"
                     else -> profile.email
                 }

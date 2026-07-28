@@ -54,15 +54,14 @@ class AndroidAuthDataSource(
     }
 
     override suspend fun continueWithoutAccount() {
-        val guest = UserProfile(
+        val profile = UserProfile(
             id = UUID.randomUUID().toString(),
             email = AppStrings.t(language(), "auth.primary_profile_name"),
-            authKey = "",
-            isGuest = false
+            authKey = ""
         )
-        profileManager.saveProfile(guest)
-        profileManager.setLastActiveProfile(guest)
-        onAuthenticated(guest)
+        profileManager.saveProfile(profile)
+        profileManager.setLastActiveProfile(profile)
+        onAuthenticated(profile)
         state.update { it.copy(isAuthenticated = true) }
     }
 
@@ -153,13 +152,12 @@ class AndroidAuthDataSource(
             val result = response.body()?.result
             if (response.isSuccessful && result != null) {
                 val existing = profileManager.getProfiles().firstOrNull {
-                    it.id == result.user.id || (!it.isGuest && it.email == result.user.email)
+                    it.id == result.user.id || it.email == result.user.email
                 }
                 val profile = existing?.copy(
                     id = result.user.id,
                     email = result.user.email,
-                    authKey = result.user.authKey,
-                    isGuest = false
+                    authKey = result.user.authKey
                 ) ?: UserProfile(result.user.id, result.user.email, result.user.authKey)
                 profileManager.saveProfile(profile)
                 profileManager.setLastActiveProfile(profile)

@@ -124,7 +124,7 @@ class FluxaCorePlatformContractTest {
     fun profileSafePrefsAreOwnedByNativeCore() {
         val profile = UserProfile(
             id = "p1",
-            email = "guest",
+            email = "local-profile",
             authKey = "",
             language = null,
             subtitleSize = 20f,
@@ -540,7 +540,7 @@ class FluxaCorePlatformContractTest {
                     "watched" to false,
                     "meta" to mapOf("id" to "tt1", "name" to "Show", "type" to "series"),
                     "episodes" to listOf(mapOf("id" to "tt1:1:2", "season" to 1, "number" to 2)),
-                    "profile" to mapOf("id" to "p1", "authKey" to "auth", "isGuest" to false)
+                    "profile" to mapOf("id" to "p1", "authKey" to "auth")
                 )
             )
 

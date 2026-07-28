@@ -352,7 +352,6 @@ class DetailViewModel @Inject constructor(
     }
 
     fun abandonShow(profile: UserProfile) {
-        if (profile.isGuest) return
         viewModelScope.launch {
             val currentDetail = _uiState.value.detail ?: return@launch
             headlessRuntime.dispatch(
@@ -392,7 +391,6 @@ class DetailViewModel @Inject constructor(
     }
 
     fun setFeedback(isLike: Boolean) {
-        if (currentProfile?.isGuest == true) return
         val currentDetail = _uiState.value.detail ?: return
         val previous = _uiState.value.feedback
         val newValue = if (previous == isLike) null else isLike

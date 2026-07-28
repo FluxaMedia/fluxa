@@ -1152,7 +1152,7 @@ class HomeViewModel @Inject constructor(
     private fun setActiveProfileState(profile: UserProfile?) {
         if (profile == null && currentActiveProfile != null) return
         currentActiveProfile = profile
-        watchlistManager.setActiveProfile(profile?.id ?: "guest")
+        watchlistManager.setActiveProfile(profile?.id.orEmpty())
     }
 
     private fun setCurrentWatchlistState(items: List<Meta>) {

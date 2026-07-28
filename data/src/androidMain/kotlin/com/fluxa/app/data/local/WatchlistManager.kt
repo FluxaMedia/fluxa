@@ -18,10 +18,10 @@ import javax.inject.Singleton
 class WatchlistManager @Inject constructor(
     private val dao: WatchlistDao
 ) {
-    private val _activeProfileId = MutableStateFlow("guest")
+    private val _activeProfileId = MutableStateFlow("")
 
     fun setActiveProfile(profileId: String) {
-        val normalized = profileId.ifBlank { "guest" }
+        val normalized = profileId.trim()
         if (_activeProfileId.value != normalized) {
             _activeProfileId.value = normalized
         }

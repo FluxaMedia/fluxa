@@ -60,7 +60,7 @@ internal class HomePlaybackController(
             syncWatchlistProfile(profile)
             forgottenKeys.remove(ContinueWatchingListMerger.identityKey(meta))
             forgottenStore.save(profile, forgottenKeys.toSet())
-            if (profile?.isGuest == false) {
+            if (profile != null) {
                 StremioPlaybackProgressPushWorker.enqueue(context, gson, profile.id, meta, timeOffset, duration)
             }
             watchlistManager.savePlaybackProgress(
@@ -168,7 +168,7 @@ internal class HomePlaybackController(
             syncWatchlistProfile(profile)
             val forgottenKey = ContinueWatchingListMerger.identityKey(meta)
             forgottenKeys.add(forgottenKey)
-            if (profile?.isGuest == false) {
+            if (profile != null) {
                 repository.clearPlaybackProgress(profile.authKey, meta)
             }
             repository.clearTraktPlaybackProgress(profile?.traktAccessToken, meta)

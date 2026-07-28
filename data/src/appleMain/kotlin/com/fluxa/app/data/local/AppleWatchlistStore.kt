@@ -17,7 +17,7 @@ class AppleWatchlistStore(
     private val defaults: NSUserDefaults = NSUserDefaults.standardUserDefaults
 ) : WatchlistStore {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private var profileId = "guest"
+    private var profileId = ""
     private val watchlist = MutableStateFlow<List<Meta>>(emptyList())
     private val progress = MutableStateFlow<List<Meta>>(emptyList())
     private val externalProgress = MutableStateFlow<List<Meta>>(emptyList())
@@ -31,7 +31,7 @@ class AppleWatchlistStore(
     }
 
     override fun setActiveProfile(profileId: String) {
-        this.profileId = profileId.ifBlank { "guest" }
+        this.profileId = profileId.trim()
         reload()
     }
 

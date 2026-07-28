@@ -75,7 +75,7 @@ internal class HomeLibraryCoordinator(
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 }
-                val stremioAuthKey = profile?.authKey?.takeIf { !profile.isGuest }
+                val stremioAuthKey = profile?.authKey?.takeIf { it.isNotBlank() }
                 val stremioWatchlistWithTimestamps = stremioAuthKey?.let { authKey ->
                     async(Dispatchers.IO) { repository.getLibraryWatchlistWithTimestamps(authKey) }
                 }

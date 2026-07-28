@@ -128,7 +128,6 @@ class AndroidSettingsDataSource(
                 email = profile.email,
                 nuvioEmail = profile.nuvioEmail,
                 avatarUrl = profile.avatarUrl,
-                isGuest = profile.isGuest,
                 hasStremio = profile.authKey.isNotBlank(),
                 hasNuvio = !profile.nuvioAccessToken.isNullOrBlank(),
                 hasTrakt = !profile.traktAccessToken.isNullOrBlank(),

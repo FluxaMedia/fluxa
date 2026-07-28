@@ -88,7 +88,7 @@ class AndroidLibraryDataSource(
             }
         }
 
-        val profileDownloads = downloads.filter { it.profileId == null || it.profileId == profile?.id }
+        val profileDownloads = downloads.filter { it.profileId == profile?.id }
         val downloadGroups = OfflineDownloadGrouping.group(profileDownloads, String::toFileImageModel).map { group ->
             LibraryDownloadGroupUiModel(
                 key = group.key,
