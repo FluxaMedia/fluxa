@@ -24,7 +24,7 @@ async function pushLocalToNuvio(profile: UserProfile): Promise<void> {
   ]);
 }
 
-export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced?: () => void | Promise<void>) {
+export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced?: (changed: boolean) => void | Promise<void>) {
   const [serverDown, setServerDown] = useState(false);
   const [justRecovered, setJustRecovered] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -65,26 +65,34 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
         setDismissed(false);
         setTimeout(() => { if (!cancelled) setJustRecovered(false); }, 2000);
         void (async () => {
-          await importNuvioProfileData(profile)
-            .then((report) => recordNuvioSyncMeta(report))
-            .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }));
+          const report = await importNuvioProfileData(profile)
+            .then((report) => { void recordNuvioSyncMeta(report); return report; })
+            .catch((err) => {
+              const errorReport = { errors: { library: err instanceof Error ? err.message : String(err) }, changed: false };
+              void recordNuvioSyncMeta(errorReport);
+              return errorReport;
+            });
           if (cancelled) return;
           await refreshNuvioProfiles(profile).catch(() => profile);
           if (cancelled) return;
           await pushLocalToNuvio(profile).catch(() => undefined);
           if (cancelled) return;
-          await onSynced?.();
+          await onSynced?.(report.changed);
         })();
       } else if (!down && !pulledRemote) {
         pulledRemote = true;
         void (async () => {
-          await importNuvioProfileData(profile)
-            .then((report) => recordNuvioSyncMeta(report))
-            .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }));
+          const report = await importNuvioProfileData(profile)
+            .then((report) => { void recordNuvioSyncMeta(report); return report; })
+            .catch((err) => {
+              const errorReport = { errors: { library: err instanceof Error ? err.message : String(err) }, changed: false };
+              void recordNuvioSyncMeta(errorReport);
+              return errorReport;
+            });
           if (cancelled) return;
           await refreshNuvioProfiles(profile).catch(() => profile);
           if (cancelled) return;
-          await onSynced?.();
+          await onSynced?.(report.changed);
         })();
       }
 

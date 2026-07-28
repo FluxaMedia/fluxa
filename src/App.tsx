@@ -417,7 +417,8 @@ export default function App() {
   }, [updateState]);
 
   const activeProfileId = activeProfile?.id;
-  const handleNuvioSynced = useCallback(async () => {
+  const handleNuvioSynced = useCallback(async (changed: boolean) => {
+    if (!changed) return;
     invalidateLibraryKeyCache();
     const profiles = await loadProfiles();
     setAllProfiles(profiles);

@@ -41,6 +41,7 @@ export type NuvioImportStep = 'addons' | 'library' | 'progress' | 'history' | 'c
 
 export interface NuvioImportReport {
   errors: Partial<Record<NuvioImportStep, string>>;
+  changed: boolean;
 }
 
 export interface NuvioImportOptions {
@@ -250,7 +251,7 @@ export async function importNuvioProfileData(
   const freshProfile = await freshNuvioProfile(profile).catch(() => profile);
   const token = freshProfile.nuvioAccessToken;
   const profileIdx = freshProfile.nuvioProfileIndex ?? 1;
-  if (!token) return { errors: { library: 'Missing Nuvio token' } };
+  if (!token) return { errors: { library: 'Missing Nuvio token' }, changed: false };
 
   const suffix = profileStorageSuffix(profile);
   const profileKey = `library_${suffix}`;
@@ -405,5 +406,9 @@ export async function importNuvioProfileData(
     onStep?.('collections', false, errors.collections);
   }
 
-  return { errors };
+  const changed = JSON.stringify(continueWatchingBefore) !== JSON.stringify(libDoc.continueWatching)
+    || JSON.stringify(progressBefore) !== JSON.stringify(libDoc.progress)
+    || JSON.stringify(watchedBefore) !== JSON.stringify(libDoc.watched);
+
+  return { errors, changed };
 }
