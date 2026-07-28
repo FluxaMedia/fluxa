@@ -384,8 +384,10 @@ jobs:
           chmod +x "$APPIMAGE"
           WORKDIR="$(mktemp -d)"
           (cd "$WORKDIR" && "$APPIMAGE" --appimage-extract >/dev/null)
-          find "$WORKDIR/squashfs-root/usr/lib" -maxdepth 1 -iname '*.so*' ! -iname 'libgst*' ! -iname 'liborc*' -delete
-          rm -rf "$WORKDIR/squashfs-root/usr/lib/x86_64-linux-gnu"
+          find "$WORKDIR/squashfs-root/usr/lib" -maxdepth 1 -iname '*.so*' -delete
+          rm -rf "$WORKDIR/squashfs-root/usr/lib/x86_64-linux-gnu" \
+                 "$WORKDIR/squashfs-root/usr/lib/gstreamer-1.0" \
+                 "$WORKDIR/squashfs-root/usr/lib/gstreamer1.0"
 
           PLUGIN="$HOME/.cache/tauri/linuxdeploy-plugin-appimage.AppImage"
           if [ ! -f "$PLUGIN" ]; then
