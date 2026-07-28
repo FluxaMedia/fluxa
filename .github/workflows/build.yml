@@ -462,3 +462,151 @@ jobs:
       - run: gh release edit "${{ github.ref_name }}" --draft=false --notes-file notes.md --repo "${{ github.repository }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-linux-repos:
+    if: github.event_name == 'push'
+    needs: [publish-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install repo tooling
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils gnupg rpm createrepo-c
+
+      - name: Import GPG signing key
+        env:
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          GPG_KEY_FINGERPRINT: ${{ secrets.GPG_KEY_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          echo "$GPG_SIGNING_KEY" | gpg --batch --import
+          gpg --batch --yes --export --armor "$GPG_KEY_FINGERPRINT" > /tmp/pubkey.asc
+
+      - name: Download release packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pkgs
+          gh release download "${{ github.ref_name }}" --repo "${{ github.repository }}" \
+            --pattern '*.deb' --pattern '*.rpm' --dir /tmp/pkgs
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Build APT repo
+        run: |
+          set -euo pipefail
+          FPR="${{ secrets.GPG_KEY_FINGERPRINT }}"
+          REPO="gh-pages/apt"
+          mkdir -p "$REPO/pool/main" "$REPO/dists/stable/main/binary-amd64"
+          cp /tmp/pkgs/*.deb "$REPO/pool/main/"
+          cp /tmp/pubkey.asc "$REPO/fluxa-archive-keyring.asc"
+          gpg --dearmor < /tmp/pubkey.asc > "$REPO/fluxa-archive-keyring.gpg"
+
+          cd "$REPO"
+          dpkg-scanpackages --arch amd64 pool > dists/stable/main/binary-amd64/Packages
+          gzip -9 -c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
+
+          apt-ftparchive \
+            -o APT::FTPArchive::Release::Origin="Fluxa Desktop" \
+            -o APT::FTPArchive::Release::Label="Fluxa Desktop" \
+            -o APT::FTPArchive::Release::Suite="stable" \
+            -o APT::FTPArchive::Release::Codename="stable" \
+            -o APT::FTPArchive::Release::Architectures="amd64" \
+            -o APT::FTPArchive::Release::Components="main" \
+            release dists/stable > dists/stable/Release
+
+          gpg --batch --yes --default-key "$FPR" -abs -o dists/stable/Release.gpg dists/stable/Release
+          gpg --batch --yes --default-key "$FPR" --clearsign -o dists/stable/InRelease dists/stable/Release
+
+      - name: Build DNF/YUM repo
+        run: |
+          set -euo pipefail
+          FPR="${{ secrets.GPG_KEY_FINGERPRINT }}"
+          REPO="gh-pages/rpm"
+          mkdir -p "$REPO/x86_64"
+          cp /tmp/pkgs/*.rpm "$REPO/x86_64/"
+          cp /tmp/pubkey.asc "$REPO/RPM-GPG-KEY-fluxa"
+
+          cat > ~/.rpmmacros <<EOF
+          %_gpg_name $FPR
+          %__gpg_sign_cmd %{__gpg} gpg --batch --yes --no-armor --pinentry-mode loopback --no-secmem-warning -u "%{_gpg_name}" --sign --detach-sign --output %{__signature_filename} %{__plaintext_filename}
+          EOF
+          rpmsign --addsign "$REPO"/x86_64/*.rpm
+
+          createrepo_c "$REPO/x86_64"
+          gpg --batch --yes --default-key "$FPR" --detach-sign --armor -o "$REPO/x86_64/repodata/repomd.xml.asc" "$REPO/x86_64/repodata/repomd.xml"
+
+      - name: Write repo landing page
+        run: |
+          cat > gh-pages/index.html <<'EOF'
+          <html><body>
+          <h1>Fluxa Desktop package repositories</h1>
+
+          <h2>Debian / Ubuntu (apt)</h2>
+          <pre>
+          curl -fsSL https://fluxamedia.github.io/fluxa-desktop/apt/fluxa-archive-keyring.gpg | sudo tee /usr/share/keyrings/fluxa-archive-keyring.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/fluxa-archive-keyring.gpg] https://fluxamedia.github.io/fluxa-desktop/apt stable main" | sudo tee /etc/apt/sources.list.d/fluxa-desktop.list
+          sudo apt update
+          sudo apt install fluxa-desktop
+          </pre>
+
+          <h2>Fedora (dnf)</h2>
+          <pre>
+          sudo rpm --import https://fluxamedia.github.io/fluxa-desktop/rpm/RPM-GPG-KEY-fluxa
+          sudo tee /etc/yum.repos.d/fluxa-desktop.repo &lt;&lt;REPOEOF
+          [fluxa-desktop]
+          name=Fluxa Desktop
+          baseurl=https://fluxamedia.github.io/fluxa-desktop/rpm/x86_64
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://fluxamedia.github.io/fluxa-desktop/rpm/RPM-GPG-KEY-fluxa
+          REPOEOF
+          sudo dnf install fluxa-desktop
+          </pre>
+          </body></html>
+          EOF
+
+      - name: Publish gh-pages
+        run: |
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apt rpm index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: publish ${{ github.ref_name }} to apt/dnf repos"
+          git push origin gh-pages
+
+  publish-aur:
+    if: github.event_name == 'push'
+    needs: [publish-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render PKGBUILD for this release
+        run: |
+          set -euo pipefail
+          PKGVER="${GITHUB_REF_NAME#v}"
+          DEB_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Fluxa.Desktop_${PKGVER}_amd64.deb"
+          curl -fL -o /tmp/fluxa.deb "$DEB_URL"
+          SHA256="$(sha256sum /tmp/fluxa.deb | cut -d' ' -f1)"
+          sed -i \
+            -e "s/^pkgver=.*/pkgver=${PKGVER}/" \
+            -e "s/^pkgrel=.*/pkgrel=1/" \
+            -e "s/^sha256sums=.*/sha256sums=('${SHA256}')/" \
+            packaging/aur/PKGBUILD
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v3
+        with:
+          pkgname: fluxa-desktop-bin
+          pkgbuild: ./packaging/aur/PKGBUILD
+          commit_username: KhooLy
+          commit_email: seslikitapicinkhooly@gmail.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ github.ref_name }}"
