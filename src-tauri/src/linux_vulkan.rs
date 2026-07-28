@@ -575,7 +575,7 @@ impl VulkanContext {
         }
 
         macro_rules! iproc {
-            ($name:expr) => {
+            ($name:expr_2021) => {
                 unsafe {
                     std::mem::transmute(get_instance_proc(get_instance_proc_addr, instance, $name)?)
                 }
@@ -809,7 +809,7 @@ impl VulkanContext {
         }
 
         macro_rules! dproc {
-            ($name:expr) => {
+            ($name:expr_2021) => {
                 unsafe {
                     std::mem::transmute(get_instance_proc(get_instance_proc_addr, instance, $name)?)
                 }

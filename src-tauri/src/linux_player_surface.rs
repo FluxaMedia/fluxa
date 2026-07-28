@@ -600,7 +600,8 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                                     let window = command_gl_area.window().ok_or_else(|| "libVLC requires a realized X11 video surface".to_string())?;
                                     let x11_window = window.downcast::<gdkx11::X11Window>().map_err(|_| "embedded libVLC currently requires an X11 session; Wayland needs the libVLC video-callback renderer".to_string())?;
                                     let xid = unsafe { gdkx11::ffi::gdk_x11_window_get_xid(x11_window.to_glib_none().0) };
-                                    let mut players = command_app.state::<DesktopState>().player_renderer_vlc.lock().unwrap();
+                                    let state = command_app.state::<DesktopState>();
+                                    let mut players = state.player_renderer_vlc.lock().unwrap();
                                     if players.is_none() {
                                         *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
                                     }

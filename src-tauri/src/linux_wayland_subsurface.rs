@@ -129,7 +129,7 @@ impl WaylandFns {
         let module = dlopen_first(&["libwayland-client.so.0", "libwayland-client.so"])
             .ok_or("libwayland-client.so.0 not found")?;
         macro_rules! sym {
-            ($name:expr) => {
+            ($name:expr_2021) => {
                 unsafe { std::mem::transmute(dlsym_typed(module, $name)?) }
             };
         }

@@ -308,7 +308,8 @@ fn configure_plugin_path(lib_path: &str) -> Option<PathBuf> {
     let lib_dir = Path::new(lib_path).parent()?;
     let plugin_dir = lib_dir.join("plugins");
     if plugin_dir.is_dir() {
-        std::env::set_var("VLC_PLUGIN_PATH", &plugin_dir);
+        // TODO: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("VLC_PLUGIN_PATH", &plugin_dir) };
         Some(plugin_dir)
     } else {
         None

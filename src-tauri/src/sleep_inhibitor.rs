@@ -50,10 +50,10 @@ impl SleepInhibitor {
                     });
                 }
                 self.process = Some(command.spawn().map_err(|error| error.to_string())?);
-            } else if let Some(mut process) = self.process.take() {
+            } else { match self.process.take() { Some(mut process) => {
                 let _ = process.kill();
                 let _ = process.wait();
-            }
+            } _ => {}}}
         }
 
         #[cfg(target_os = "macos")]

@@ -717,7 +717,8 @@ pub fn run() {
         ..Default::default()
     });
 
-    std::env::set_var("MPV_LIBMPV_RENDER_BACKEND", "gpu-next");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("MPV_LIBMPV_RENDER_BACKEND", "gpu-next") };
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_fs::init())

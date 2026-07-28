@@ -39,8 +39,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           repository: FluxaMedia/fluxa-core
           path: fluxa-core
@@ -51,7 +51,7 @@ jobs:
           cmd //c mklink //J "$PARENT\\fluxa-core" "$GITHUB_WORKSPACE\\fluxa-core"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -76,7 +76,7 @@ jobs:
       # VCPKG_INSTALLATION_ROOT is C:\vcpkg on windows runners; it is a machine
       # env var, not visible to ${{ env.* }} expressions, so it is hardcoded.
       - name: Cache vcpkg ANGLE build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             C:\vcpkg\installed
@@ -141,7 +141,7 @@ jobs:
 
       - name: Upload build artifacts (manual run)
         if: github.event_name != 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fluxa-windows-x64
           path: |
@@ -155,8 +155,8 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           repository: FluxaMedia/fluxa-core
           path: fluxa-core
@@ -164,7 +164,7 @@ jobs:
         run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -265,7 +265,7 @@ jobs:
 
       - name: Upload build artifacts (manual run)
         if: github.event_name != 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fluxa-macos-universal
           path: |
@@ -281,8 +281,8 @@ jobs:
     outputs:
       appimage_signature: ${{ steps.strip-appimage.outputs.signature }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           repository: FluxaMedia/fluxa-core
           path: fluxa-core
@@ -290,7 +290,7 @@ jobs:
         run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -307,7 +307,7 @@ jobs:
 
       # cached under $HOME, not /var/cache/apt/archives, to avoid root-owned dir
       - name: Cache apt packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.apt-cache
           key: apt-noble-v2-${{ hashFiles('.github/workflows/build.yml') }}
@@ -408,7 +408,7 @@ jobs:
 
       - name: Upload build artifacts (manual run)
         if: github.event_name != 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fluxa-linux-x64
           path: |
@@ -422,7 +422,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -491,7 +491,7 @@ jobs:
             --pattern '*.deb' --pattern '*.rpm' --dir /tmp/pkgs
 
       - name: Checkout gh-pages
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: gh-pages
@@ -586,7 +586,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Render PKGBUILD for this release
         run: |
