@@ -93,19 +93,27 @@ class AndroidDiscoverDataSource(
                 provider = null,
                 region = null
             )
+            val selectedCatalog = availableCatalogs.firstOrNull { it.key == selectedCatalogKey }
+            if (selectedCatalog?.genres.isNullOrEmpty()) {
+                homeViewModel.loadDiscoverCatalogFilters(filters.contentType, selectedCatalogKey) { catalogs ->
+                    if (this.filters.value.catalogKey == selectedCatalogKey) {
+                        catalogOptions.value = catalogs
+                    }
+                }
+            }
             return
         }
         if (filters.catalogKey == null || homeViewModel.discoverUiState.value.catalogs.none { it.key == filters.catalogKey }) {
             homeViewModel.loadDiscoverCatalogFilters(filters.contentType, filters.catalogKey) { catalogs ->
-                val selectedCatalogKey = catalogs.firstOrNull()?.key
-                if (selectedCatalogKey == null) {
+                val resolvedCatalogKey = catalogs.firstOrNull()?.key
+                if (resolvedCatalogKey == null) {
                     homeViewModel.setDiscoverLoading(false)
                     return@loadDiscoverCatalogFilters
                 }
                 if (this.filters.value == filters) {
                     catalogOptions.value = catalogs
                     contentTypes.value = catalogs.map { it.type }.distinct()
-                    val selectedFilters = filters.copy(catalogKey = selectedCatalogKey)
+                    val selectedFilters = filters.copy(catalogKey = resolvedCatalogKey)
                     this.filters.value = selectedFilters
                     homeViewModel.discover(
                         type = selectedFilters.contentType,
