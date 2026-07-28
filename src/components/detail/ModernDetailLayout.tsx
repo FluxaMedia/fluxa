@@ -173,6 +173,36 @@ export function ModernDetailLayout({
   const [similarSource, setSimilarSource] = useState('auto');
   const [prevSeasonDialog, setPrevSeasonDialog] = useState<{ season: number; unwatchedPrev: number[] } | null>(null);
 
+  const screenRef = useRef<HTMLDivElement | null>(null);
+  const [heroInView, setHeroInView] = useState(true);
+  useEffect(() => {
+    const el = screenRef.current;
+    if (!el) return;
+    const onScroll = () => setHeroInView(el.scrollTop < 120);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const bgLayerKeyRef = useRef(0);
+  const [bgLayers, setBgLayers] = useState<{ url: string; key: number }[]>(() => bgUrl ? [{ url: bgUrl, key: 0 }] : []);
+  const [bgLoadedKeys, setBgLoadedKeys] = useState<Set<number>>(() => new Set());
+  useEffect(() => {
+    setBgLayers((layers) => {
+      const top = layers[layers.length - 1];
+      if (top?.url === bgUrl) return layers;
+      if (!bgUrl) return [];
+      bgLayerKeyRef.current += 1;
+      return [...layers, { url: bgUrl, key: bgLayerKeyRef.current }];
+    });
+  }, [bgUrl]);
+  const handleBgLayerLoad = useCallback((key: number) => {
+    setBgLoadedKeys((prev) => new Set(prev).add(key));
+    setBgLayers((layers) => {
+      const idx = layers.findIndex((layer) => layer.key === key);
+      return idx <= 0 ? layers : layers.slice(idx);
+    });
+  }, []);
+
   const changeSimilarSource = (source: string) => {
     setSimilarSource(source);
     onDispatch(JSON.stringify({ type: 'detailSecondaryRequested', contentType: meta.type, id: meta.id, language: getLanguage(), similarTitlesSource: source }));
@@ -396,83 +426,127 @@ export function ModernDetailLayout({
   ];
 
   return (
-    <div style={MS.screen}>
-      <div style={MS.heroWrap}>
-        {bgUrl ? (
-          <>
+    <div style={MS.screen} ref={screenRef}>
+      {bgUrl ? (
+        <div style={MS.pageBgWrap}>
+          {bgLayers.map((layer, index) => (
             <img
-              src={bgUrl}
+              key={layer.key}
+              src={layer.url}
               alt=""
-              style={{ ...MS.heroImg, opacity: trailerActive ? 0 : 1, transition: 'opacity 0.6s ease' }}
+              style={{
+                ...MS.pageBgImg,
+                position: 'absolute',
+                inset: 0,
+                opacity: index === 0 || bgLoadedKeys.has(layer.key) ? 1 : 0,
+              }}
+              onLoad={() => handleBgLayerLoad(layer.key)}
               onError={onBgError}
             />
-            <div style={MS.heroGradLeft} />
-            <div style={MS.heroGradBottom} />
-          </>
-        ) : (
-          <div style={MS.heroPlaceholder} />
-        )}
+          ))}
 
-        <button style={MS.backBtn} onClick={onBack}>
-          <ArrowLeft size={18} color="rgba(255,255,255,0.85)" />
-        </button>
+          <div ref={trailerContainerRef} style={MS.heroTrailerContainer}>
+            {trailerStreamUrl && (
+              <video
+                ref={trailerVideoRef}
+                key={trailerStreamUrl}
+                style={{ ...MS.heroTrailerFrame, opacity: trailerReady ? 1 : 0, transition: 'opacity 0.6s ease' }}
+                src={trailerStreamUrl}
+                autoPlay
+                playsInline
+                onPlaying={() => {
+                  setTrailerReady(true);
+                  lastTrailerProgressAtRef.current = Date.now();
+                  if (trailerVideoRef.current) {
+                    trailerVideoRef.current.muted = trailerMuted;
+                    trailerVideoRef.current.volume = trailerMuted ? 0 : 1;
+                  }
+                  syncTrailerAudio(true);
+                  updateActiveTrailerSubtitle(trailerVideoRef.current?.currentTime ?? 0);
+                }}
+                onTimeUpdate={(e) => {
+                  const el = e.currentTarget;
+                  lastTrailerProgressAtRef.current = Date.now();
+                  if (el.duration > 0) setTrailerProgress(el.currentTime / el.duration);
+                  syncTrailerAudio(false);
+                  updateActiveTrailerSubtitle(el.currentTime);
+                }}
+                onEnded={() => {
+                  trailerAudioRef.current?.pause();
+                  setTrailerStreamUrl(null);
+                  setTrailerAudioUrl(null);
+                }}
+                onError={() => {
+                  trailerAudioRef.current?.pause();
+                  setTrailerStreamUrl(null);
+                  setTrailerAudioUrl(null);
+                }}
+              />
+            )}
+            {trailerAudioUrl && (
+              <audio ref={trailerAudioRef} key={trailerAudioUrl} src={trailerAudioUrl} preload="auto" />
+            )}
+          </div>
 
-        <div ref={trailerContainerRef} style={MS.heroTrailerContainer}>
-        {trailerStreamUrl && (
-          <video
-            ref={trailerVideoRef}
-            key={trailerStreamUrl}
-            style={{ ...MS.heroTrailerFrame, opacity: trailerReady ? 1 : 0, transition: 'opacity 0.6s ease' }}
-            src={trailerStreamUrl}
-            autoPlay
-            playsInline
-            onPlaying={() => {
-              setTrailerReady(true);
-              lastTrailerProgressAtRef.current = Date.now();
-              if (trailerVideoRef.current) {
-                trailerVideoRef.current.muted = trailerMuted;
-                trailerVideoRef.current.volume = trailerMuted ? 0 : 1;
-              }
-              syncTrailerAudio(true);
-              updateActiveTrailerSubtitle(trailerVideoRef.current?.currentTime ?? 0);
-            }}
-            onTimeUpdate={(e) => {
-              const el = e.currentTarget;
-              lastTrailerProgressAtRef.current = Date.now();
-              if (el.duration > 0) setTrailerProgress(el.currentTime / el.duration);
-              syncTrailerAudio(false);
-              updateActiveTrailerSubtitle(el.currentTime);
-            }}
-            onEnded={() => {
-              trailerAudioRef.current?.pause();
-              setTrailerStreamUrl(null);
-              setTrailerAudioUrl(null);
-            }}
-            onError={() => {
-              trailerAudioRef.current?.pause();
-              setTrailerStreamUrl(null);
-              setTrailerAudioUrl(null);
-            }}
-          />
-        )}
-        {trailerAudioUrl && (
-          <audio ref={trailerAudioRef} key={trailerAudioUrl} src={trailerAudioUrl} preload="auto" />
-        )}
+          <div style={MS.pageBgGradLeft} />
+          <div style={MS.pageBgGradBottom} />
+        </div>
+      ) : (
+        <div style={MS.heroPlaceholder} />
+      )}
 
-        {trailerActive && activeTrailerSubtitle && (
-          <div style={MS.heroTrailerSubtitleOverlay}>{activeTrailerSubtitle}</div>
-        )}
+      {trailerActive && heroInView && (
+        <div style={MS.trailerOverlayWrap}>
+          {activeTrailerSubtitle && (
+            <div style={MS.heroTrailerSubtitleOverlay}>{activeTrailerSubtitle}</div>
+          )}
 
-        {trailerActive && (
           <button
-            style={MS.heroTrailerFullscreenButton}
+            style={{ ...MS.heroTrailerFullscreenButton, pointerEvents: 'auto' }}
             onClick={fullscreenTrailer}
             aria-label="Fullscreen trailer"
             title="Fullscreen trailer"
           >
             <Maximize2 size={16} />
           </button>
-        )}
+
+          <button
+            style={{ ...MS.heroTrailerMuteButton, pointerEvents: 'auto' }}
+            onClick={() => {
+              const newMutedState = !trailerMuted;
+              setTrailerMuted(newMutedState);
+              if (trailerVideoRef.current) {
+                trailerVideoRef.current.muted = newMutedState;
+                trailerVideoRef.current.volume = newMutedState ? 0 : 1;
+                if (!newMutedState && trailerVideoRef.current.paused) {
+                  trailerVideoRef.current.play().catch(() => {});
+                }
+              }
+              if (trailerAudioRef.current && trailerVideoRef.current) {
+                trailerAudioRef.current.muted = newMutedState;
+                trailerAudioRef.current.volume = newMutedState ? 0 : 1;
+                if (newMutedState) {
+                  trailerAudioRef.current.pause();
+                } else {
+                  trailerAudioRef.current.currentTime = trailerVideoRef.current.currentTime;
+                  trailerAudioRef.current.play().catch(() => {});
+                }
+              }
+            }}
+            aria-label={trailerMuted ? 'Unmute' : 'Mute'}
+          >
+            {trailerMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
+          <div style={MS.heroTrailerProgressTrack}>
+            <span style={{ ...MS.heroTrailerProgressFill, width: `${trailerProgress * 100}%` }} />
+          </div>
+        </div>
+      )}
+
+      <div style={MS.heroWrap}>
+        <button style={MS.backBtn} onClick={onBack}>
+          <ArrowLeft size={18} color="rgba(255,255,255,0.85)" />
+        </button>
 
         <div style={{ ...MS.logoWrap, opacity: trailerActive ? 0 : 1, transition: 'opacity 0.4s ease' }}>
           {heroLogo ? (
@@ -480,42 +554,6 @@ export function ModernDetailLayout({
           ) : (
             <h1 style={MS.titleHero}>{displayMeta.name}</h1>
           )}
-        </div>
-
-        {trailerActive && (
-          <>
-            <button
-              style={MS.heroTrailerMuteButton}
-              onClick={() => {
-                const newMutedState = !trailerMuted;
-                setTrailerMuted(newMutedState);
-                if (trailerVideoRef.current) {
-                  trailerVideoRef.current.muted = newMutedState;
-                  trailerVideoRef.current.volume = newMutedState ? 0 : 1;
-                  if (!newMutedState && trailerVideoRef.current.paused) {
-                    trailerVideoRef.current.play().catch(() => {});
-                  }
-                }
-                if (trailerAudioRef.current && trailerVideoRef.current) {
-                  trailerAudioRef.current.muted = newMutedState;
-                  trailerAudioRef.current.volume = newMutedState ? 0 : 1;
-                  if (newMutedState) {
-                    trailerAudioRef.current.pause();
-                  } else {
-                    trailerAudioRef.current.currentTime = trailerVideoRef.current.currentTime;
-                    trailerAudioRef.current.play().catch(() => {});
-                  }
-                }
-              }}
-              aria-label={trailerMuted ? 'Unmute' : 'Mute'}
-            >
-              {trailerMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-            </button>
-            <div style={MS.heroTrailerProgressTrack}>
-              <span style={{ ...MS.heroTrailerProgressFill, width: `${trailerProgress * 100}%` }} />
-            </div>
-          </>
-        )}
         </div>
       </div>
 
