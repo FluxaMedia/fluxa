@@ -63,6 +63,7 @@ export type EmbeddedMpvStatus = {
   videoOutMatrix?: string | null;
   videoOutGamma?: string | null;
   sigPeak?: string | null;
+  hdrActive: boolean;
   containerFps?: string | null;
   displayFps?: string | null;
   mistimedFrameCount?: string | null;

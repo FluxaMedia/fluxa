@@ -186,6 +186,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
   const [statsSnap, setStatsSnap] = useState<EmbeddedMpvStatus | null>(null);
   const [torrentStatsSnap, setTorrentStatsSnap] = useState<TorrentStats | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [hdrLabel, setHdrLabel] = useState<string | null>(null);
   const [bufferingProgress, setBufferingProgress] = useState(0);
   const bufferHistoryRef = useRef<number[]>([]);
   const netSpeedHistoryRef = useRef<number[]>([]);
@@ -475,6 +476,11 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
       if (pausedForCache) setBufferingProgress(Number.isFinite(cacheProgress) ? Math.max(0, Math.min(100, cacheProgress)) : 0);
       if (pausedForCache && !prevPausedForCacheRef.current) stallCountRef.current++;
       prevPausedForCacheRef.current = pausedForCache;
+
+      const gamma = (status.colorGamma ?? '').toLowerCase();
+      const sigPeak = parseFloat(status.sigPeak ?? '');
+      const contentIsHdr = gamma.includes('hlg') || gamma.includes('pq') || gamma.includes('2084') || (Number.isFinite(sigPeak) && sigPeak > 1);
+      setHdrLabel(status.hdrActive && contentIsHdr ? (gamma.includes('hlg') ? 'HLG' : 'HDR10') : null);
 
       const pos = parseFloat(status.timePos ?? '0');
       const dur = parseFloat(status.duration ?? '0');
@@ -1464,6 +1470,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
         bannerOffset={bannerOffset}
         title={title}
         episodeTitle={episodeTitle}
+        hdrLabel={hdrLabel}
         activeCastDeviceId={activeCastDeviceId}
         activeCastDeviceName={activeCastDeviceName}
         castPaused={castPaused}

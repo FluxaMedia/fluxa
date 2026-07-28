@@ -7,6 +7,7 @@ interface PlayerHeaderProps {
   bannerOffset: number;
   title: string;
   episodeTitle: string;
+  hdrLabel: string | null;
   activeCastDeviceId: string | null;
   activeCastDeviceName: string;
   castPaused: boolean;
@@ -27,7 +28,9 @@ interface PlayerHeaderProps {
 
 const iconButtonStyle: CSSProperties = { width: '2.25rem', height: '2.25rem', borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 };
 
-export function PlayerHeader({ style, bannerOffset, title, episodeTitle, activeCastDeviceId, activeCastDeviceName, castPaused, castButtonRef, streamLinksButtonRef, settingsButtonRef, showSegmentMarker, canMarkSegments, onClose, onResetActivity, onToggleCastPause, onOpenCast, onToggleMiniPlayer, onOpenStreamLinks, onToggleSettings, onToggleSegmentMarker }: PlayerHeaderProps) {
+const hdrBadgeStyle: CSSProperties = { display: 'inline-flex', alignItems: 'center', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '0.1875rem', padding: '0.0625rem 0.25rem', color: 'rgba(255,255,255,0.75)', fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.03em', flexShrink: 0 };
+
+export function PlayerHeader({ style, bannerOffset, title, episodeTitle, hdrLabel, activeCastDeviceId, activeCastDeviceName, castPaused, castButtonRef, streamLinksButtonRef, settingsButtonRef, showSegmentMarker, canMarkSegments, onClose, onResetActivity, onToggleCastPause, onOpenCast, onToggleMiniPlayer, onOpenStreamLinks, onToggleSettings, onToggleSegmentMarker }: PlayerHeaderProps) {
   const stopAndRun = (event: React.MouseEvent, action: () => void) => {
     event.stopPropagation();
     onResetActivity();
@@ -42,6 +45,7 @@ export function PlayerHeader({ style, bannerOffset, title, episodeTitle, activeC
           {title && <span style={{ color: '#fff', fontSize: '0.9375rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>{title}</span>}
           {title && episodeTitle && <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.875rem', flexShrink: 0 }}>·</span>}
           {episodeTitle && <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{episodeTitle}</span>}
+          {hdrLabel && <span style={hdrBadgeStyle}>{hdrLabel}</span>}
         </div>}
         {activeCastDeviceId && <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: '0.125rem' }}><Cast size={11} style={{ color: 'var(--primary-accent-color)' }} /><span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.6875rem' }}>{t('player.casting_to', activeCastDeviceName)}</span></div>}
       </div>

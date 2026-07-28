@@ -835,6 +835,7 @@ impl PlaybackEngine for LibvlcPlayer {
             video_out_matrix: None,
             video_out_gamma: None,
             sig_peak: None,
+            hdr_active: false,
             container_fps: None,
             display_fps: None,
             mistimed_frame_count: None,

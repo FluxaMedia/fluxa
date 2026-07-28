@@ -762,7 +762,9 @@ fn spawn_install_thread(
 
                         let renderer = state.player_renderer.lock().unwrap();
                         if let Some(r) = renderer.as_ref() {
-                            let _ = sender.send(r.status());
+                            let mut status = r.status();
+                            status.hdr_active = render_ctx.is_hdr();
+                            let _ = sender.send(status);
                         }
                     }
                     SurfaceCommand::TrackOptions { track_type, sender } => {
