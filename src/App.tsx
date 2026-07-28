@@ -51,7 +51,7 @@ import { toggleWindowFullscreen, watchWindowGeometry } from './core/windowGeomet
 import { comboFromEvent, findActionForCombo, loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from './core/shortcuts';
 import { focusNearestCard, isNavCard } from './core/spatialNav';
 import { notify } from './core/notifications';
-import { setLanguage, t } from './i18n';
+import { getLanguage, setLanguage, t } from './i18n';
 import { dispatchAction } from './core/engine';
 import { prefetchPlayerArtwork } from './core/mpvPlayer';
 import { pumpEffects } from './core/effectRunner';
@@ -438,7 +438,7 @@ export default function App() {
     }
     await applyStoredPrefs();
     void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-    void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
+    void dispatch(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }));
   }, [activeProfileId, applyStoredPrefs, dispatch, setAllProfiles, setActiveProfile]);
 
   const { serverDown, justRecovered, dismissed, dismiss } = useNuvioConnectivity(activeProfile, handleNuvioSynced);

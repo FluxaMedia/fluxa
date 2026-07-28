@@ -7,7 +7,7 @@ import { importNuvioProfileData, recordNuvioSyncMeta } from '../core/nuvioSync';
 import { hydratePluginsFromStorage } from '../core/pluginsStorage';
 import { loadPrefs } from '../core/libraryOps';
 import { refreshAllAvatarPacks } from '../core/profileAvatarPacks';
-import { setLanguage } from '../i18n';
+import { getLanguage, setLanguage } from '../i18n';
 import { prefBool, prefString } from '../core/appPrefs';
 import { setRpdbApiKey } from '../core/rpdb';
 import { restoreWindowGeometry } from '../core/windowGeometry';
@@ -45,14 +45,16 @@ export function useAppInit(
   const syncExternalOnStartup = useCallback(async (profile: UserProfile) => {
     try {
       const syncTasks: Promise<unknown>[] = [];
+      let changed = false;
       if (profile.nuvioAccessToken) {
         syncTasks.push(
           importNuvioProfileData(profile)
-            .then((report) => recordNuvioSyncMeta(report))
+            .then((report) => { changed = changed || report.changed; recordNuvioSyncMeta(report); })
             .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }))
         );
       }
       if (profile.stremioAuthKey) {
+        changed = true;
         syncTasks.push(syncExternalIntegrationNow({
           provider: 'stremio',
           profile,
@@ -60,6 +62,7 @@ export function useAppInit(
         }).catch(() => undefined));
       }
       if (profile.traktAccessToken) {
+        changed = true;
         const traktClientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
         syncTasks.push(syncExternalIntegrationNow({
           provider: 'trakt',
@@ -69,6 +72,7 @@ export function useAppInit(
         }).catch(() => undefined));
       }
       if (profile.simklAccessToken) {
+        changed = true;
         const simklClientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' }).catch(() => '');
         syncTasks.push(syncExternalIntegrationNow({
           provider: 'simkl',
@@ -79,6 +83,7 @@ export function useAppInit(
       }
       if (syncTasks.length > 0) {
         await Promise.all(syncTasks);
+        if (!changed) return;
         const addonsResult = await dispatchAction(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
         if (addonsResult) {
           updateState(addonsResult.state);
@@ -86,10 +91,10 @@ export function useAppInit(
         }
         const libResult = await dispatchAction(JSON.stringify({ type: 'libraryHydrateRequested' }));
         if (libResult) updateState(libResult.state);
-        const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true }));
-        if (homeResult) {
-          updateState(homeResult.state);
-          if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
+        const cwResult = await dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }));
+        if (cwResult) {
+          updateState(cwResult.state);
+          if (cwResult.effects.length > 0) await pumpEffects(cwResult.effects, updateState);
         }
       }
     } catch {
