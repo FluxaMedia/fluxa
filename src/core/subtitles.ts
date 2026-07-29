@@ -1,4 +1,4 @@
-import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex } from './engine';
+import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex, coreSubtitleLanguageDedupKeepIndices } from './engine';
 import { invoke } from '@tauri-apps/api/core';
 import {
   coreResourceFetchPlan,
@@ -96,16 +96,10 @@ export async function resolvePlaybackSubtitles(
     subtitles.unshift(preferred);
   }
 
-  // OpenSubtitles can return dozens of duplicates. Keep two choices per
-  // language, matching the player UX without hammering the download host.
-  const languageCounts = new Map<string, number>();
-  const limitedSubtitles = subtitles.filter((subtitle) => {
-    const language = (subtitle.lang ?? 'unknown').trim().toLowerCase() || 'unknown';
-    const count = languageCounts.get(language) ?? 0;
-    if (count >= 2) return false;
-    languageCounts.set(language, count + 1);
-    return true;
-  });
+  const keepIndices = new Set(
+    await coreSubtitleLanguageDedupKeepIndices(subtitles.map((subtitle) => subtitle.lang)),
+  );
+  const limitedSubtitles = subtitles.filter((_, index) => keepIndices.has(index));
   return { subtitles: limitedSubtitles, failedAddons };
 }
 

@@ -99,40 +99,6 @@ fn encode_query_component(value: &str) -> String {
     encoded
 }
 
-const VIDEO_EXTENSIONS: [&str; 9] = [
-    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".ts",
-];
-
-/// Pulls a "s01e02"-style tag out of a lowercased filename, if present.
-/// Season-pack subtitle folders/files usually keep this tag even when the
-/// rest of the naming (release group, resolution) differs from the video.
-fn extract_episode_tag(lower_name: &str) -> Option<String> {
-    let bytes = lower_name.as_bytes();
-    for start in 0..bytes.len() {
-        if bytes[start] != b's' {
-            continue;
-        }
-        let mut i = start + 1;
-        let season_start = i;
-        while i < bytes.len() && bytes[i].is_ascii_digit() && i - season_start < 2 {
-            i += 1;
-        }
-        if i == season_start || i >= bytes.len() || bytes[i] != b'e' {
-            continue;
-        }
-        i += 1;
-        let episode_start = i;
-        while i < bytes.len() && bytes[i].is_ascii_digit() && i - episode_start < 3 {
-            i += 1;
-        }
-        if i == episode_start {
-            continue;
-        }
-        return Some(lower_name[start..i].to_string());
-    }
-    None
-}
-
 fn torrent_sibling_subtitles(state: &DesktopState) -> Vec<(String, String, Option<String>)> {
     let base_url = state.torrent_server_base_url.lock().unwrap().clone();
     let link = state.torrent_stream_link.lock().unwrap().clone();
@@ -170,56 +136,22 @@ fn torrent_sibling_subtitles(state: &DesktopState) -> Vec<(String, String, Optio
     let Some(selected_path) = selected_path else {
         return Vec::new();
     };
-    let selected_name = std::path::Path::new(&selected_path)
-        .file_stem()
-        .and_then(|name| name.to_str())
-        .unwrap_or("")
-        .to_ascii_lowercase();
-    if selected_name.is_empty() {
+    let request = serde_json::json!({ "selectedPath": selected_path, "files": files }).to_string();
+    let Some(matches_json) = FluxaCore::torrent_sibling_subtitle_matches_json(&request) else {
         return Vec::new();
-    }
-    let episode_tag = extract_episode_tag(&selected_name);
-    // Single-video torrents (a lone episode/movie release) have no other
-    // video file to disambiguate against, so any subtitle file in the
-    // torrent must belong to it regardless of naming.
-    let is_single_video_torrent = files
-        .iter()
-        .filter(|file| {
-            file.get("path")
-                .and_then(serde_json::Value::as_str)
-                .is_some_and(|path| {
-                    let lower = path.to_ascii_lowercase();
-                    VIDEO_EXTENSIONS.iter().any(|ext| lower.ends_with(ext))
-                })
-        })
-        .count()
-        <= 1;
+    };
+    let Ok(matches) = serde_json::from_str::<Vec<serde_json::Value>>(&matches_json) else {
+        return Vec::new();
+    };
 
     let mut subtitles = Vec::new();
-    let mut total_subtitle_files = 0usize;
-    for file in files {
-        let Some(id) = file.get("id").and_then(serde_json::Value::as_u64) else {
+    for entry in matches {
+        let Some(id) = entry.get("id").and_then(serde_json::Value::as_u64) else {
             continue;
         };
-        let Some(path) = file.get("path").and_then(serde_json::Value::as_str) else {
+        let Some(path) = entry.get("path").and_then(serde_json::Value::as_str) else {
             continue;
         };
-        let lower = path.to_ascii_lowercase();
-        let is_subtitle = [".srt", ".ass", ".ssa", ".vtt", ".sub"]
-            .iter()
-            .any(|extension| lower.ends_with(extension));
-        if !is_subtitle {
-            continue;
-        }
-        total_subtitle_files += 1;
-        let matches_name = lower.contains(&selected_name);
-        let matches_episode_tag = episode_tag
-            .as_deref()
-            .is_some_and(|tag| lower.contains(tag));
-        if !matches_name && !matches_episode_tag && !is_single_video_torrent {
-            log::warn!("torrent subtitles: skipped unmatched path={path:?}");
-            continue;
-        }
         let url = format!(
             "{}/stream/fname?link={}&index={}&play&title={}",
             base_url.trim_end_matches('/'),
@@ -232,16 +164,14 @@ fn torrent_sibling_subtitles(state: &DesktopState) -> Vec<(String, String, Optio
             .and_then(|name| name.to_str())
             .unwrap_or("Torrent subtitle")
             .to_string();
-        let language = lower
-            .split('.')
-            .rev()
-            .nth(1)
-            .filter(|part| part.len() == 3)
+        let language = entry
+            .get("language")
+            .and_then(serde_json::Value::as_str)
             .map(str::to_string);
         subtitles.push((url, title, language));
     }
     log::warn!(
-        "torrent subtitles: selected={selected_path:?}, episode_tag={episode_tag:?}, single_video={is_single_video_torrent}, total_subtitle_files={total_subtitle_files}, sibling_count={}",
+        "torrent subtitles: selected={selected_path:?}, sibling_count={}",
         subtitles.len()
     );
     subtitles
@@ -362,14 +292,31 @@ pub async fn player_init(app: AppHandle, state: State<'_, DesktopState>) -> Resu
 }
 
 #[tauri::command]
-pub fn player_load(
+pub async fn player_load(
     app: AppHandle,
-    state: State<DesktopState>,
+    state: State<'_, DesktopState>,
+    stream_proxy_state: State<'_, crate::stream_proxy::StreamProxyState>,
     url: String,
     start_at: Option<u64>,
     total_duration: Option<u64>,
 ) -> Result<(), String> {
     log::info!("player_load: url={url} start_at={start_at:?} total_duration={total_duration:?}");
+
+    let pending_headers = std::mem::take(&mut *state.pending_stream_headers.lock().unwrap());
+    let url = if !pending_headers.is_empty()
+        && (url.starts_with("http://") || url.starts_with("https://"))
+    {
+        match crate::stream_proxy::register(&stream_proxy_state, url.clone(), pending_headers).await {
+            Ok(proxied_url) => proxied_url,
+            Err(error) => {
+                log::warn!("player_load: stream_proxy registration failed, playing raw url: {error}");
+                url
+            }
+        }
+    } else {
+        url
+    };
+
     *state.thumb_url.lock().unwrap() = Some(url.clone());
 
     let engine = playback_engine::read_player_engine(&app);
@@ -449,12 +396,20 @@ pub fn player_set_http_headers(
     headers: std::collections::HashMap<String, String>,
 ) -> Result<(), String> {
     let header_list = headers.into_iter().collect::<Vec<_>>();
+    *state.pending_stream_headers.lock().unwrap() = header_list.clone();
     match with_renderer_retry(&state, 80, |renderer| {
         renderer.set_http_headers(&header_list)
     }) {
         Ok(Some(())) => Ok(()),
         Ok(None) | Err(_) => Ok(()),
     }
+}
+
+#[tauri::command]
+pub fn player_last_stream_error(
+    stream_proxy_state: State<crate::stream_proxy::StreamProxyState>,
+) -> Option<String> {
+    crate::stream_proxy::take_last_failure(&stream_proxy_state).map(|(_, detail)| detail)
 }
 
 #[tauri::command]

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
-import { coreInvoke, coreParseVideoId, coreSimklLookupIdForType, coreSimklMatchEpisode, coreSimklScrobbleBody, coreTraktScrobblePlan } from './engine';
+import { coreInvoke, coreParseVideoId, coreSimklLookupIdForType, coreSimklMatchEpisode, coreSimklScrobbleAction, coreSimklScrobbleBody, coreTraktScrobblePlan } from './engine';
 import { _appVersion } from './httpClient';
 import type { UserProfile, Meta, Video } from './types';
 
@@ -137,8 +137,9 @@ export function traktScrobbleOnClose(
   timePosSec: number,
   durationSec: number,
 ): void {
-  const action = durationSec > 0 && timePosSec / durationSec >= 0.8 ? 'stop' : 'pause';
-  void traktScrobble(profile, meta, episode, timePosSec, durationSec, action).catch(() => undefined);
+  void coreSimklScrobbleAction(timePosSec, durationSec)
+    .then((action) => traktScrobble(profile, meta, episode, timePosSec, durationSec, action as 'pause' | 'stop'))
+    .catch(() => undefined);
 }
 
 export function simklScrobbleOnClose(
@@ -149,6 +150,7 @@ export function simklScrobbleOnClose(
   durationSec: number,
   onTokenRevoked?: (profile: UserProfile) => void,
 ): void {
-  const action = durationSec > 0 && timePosSec / durationSec >= 0.8 ? 'stop' : 'pause';
-  void simklScrobble(profile, meta, episode, timePosSec, durationSec, action, onTokenRevoked).catch(() => undefined);
+  void coreSimklScrobbleAction(timePosSec, durationSec)
+    .then((action) => simklScrobble(profile, meta, episode, timePosSec, durationSec, action as 'pause' | 'stop', onTokenRevoked))
+    .catch(() => undefined);
 }

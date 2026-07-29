@@ -358,6 +358,7 @@ export const CORE_METHODS = [
   'stremioLibraryMutationPlan',
   'stremioWatchedToIds',
   'stremioWatchlistToItems',
+  'subtitleLanguageDedupKeepIndices',
   'subtitleLanguageMatches',
   'supportsResource',
   'tmdbBuiltinCatalogUrl',
