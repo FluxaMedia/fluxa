@@ -1066,6 +1066,8 @@
   "settings.import_category.watched": "İzleme Geçmişi",
   "settings.import_category.collections": "Koleksiyonlar",
   "settings.import_category.addons": "Eklentiler",
+  "settings.import_destination_label": "Ayrıca şuraya gönder",
+  "settings.import_destination_local": "Sadece kütüphaneme — hiçbir yere gönderme",
   "settings.out_of_sync": "Eşitlenmedi",
   "settings.synced": "Eşitlendi",
   "settings.sync_error": "Eşitleme hatası",

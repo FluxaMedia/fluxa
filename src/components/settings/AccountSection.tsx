@@ -8,6 +8,7 @@ import { t } from '../../i18n';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { ImportDialog } from '../ImportDialog';
 import { PROVIDER_IMPORT_CATEGORIES, type ImportCategory } from '../../core/importCategories';
+import { pushImportedCategoriesToDestination } from '../../core/crossProviderPush';
 import { profileConnectionState, profileColor, saveProfile } from '../../core/profiles';
 import { AvatarPreview } from '../../screens/ProfileForm';
 import { syncExternalIntegrationNow } from '../../core/effectRunner';
@@ -830,16 +831,48 @@ export function AccountSection({
         <ImportDialog
           title={t('settings.import_title', page.title)}
           items={PROVIDER_IMPORT_CATEGORIES[importDialog].map((key) => ({ key, label: t(`settings.import_category.${key}`) }))}
+          destinations={([
+            ['trakt', t('brand.trakt'), traktConnected],
+            ['simkl', t('brand.simkl'), simklConnected],
+            ['anilist', t('brand.anilist'), anilistConnected],
+            ['stremio', t('brand.stremio'), stremioConnected],
+            ['nuvio', t('brand.nuvio'), nuvioConnected],
+          ] as const)
+            .filter(([key, , connected]) => connected && key !== importDialog)
+            .map(([key, label]) => ({ key, label }))}
+          destinationLabel={t('settings.import_destination_label')}
+          localOnlyLabel={t('settings.import_destination_local')}
           confirmLabel={t('settings.import')}
           cancelLabel={t('common.cancel')}
           onCancel={() => setImportDialog(null)}
-          onConfirm={(selected) => {
+          onConfirm={(selected, destination) => {
+            const source = importDialog;
             setImportDialog(null);
-            if (importDialog === 'trakt') void handleTraktSyncNow(selected);
-            else if (importDialog === 'simkl') void handleSimklSyncNow(selected);
-            else if (importDialog === 'anilist') void handleAnilistSyncNow(selected);
-            else if (importDialog === 'stremio') void handleStremioSyncNow(selected);
-            else if (importDialog === 'nuvio') void handleNuvioSyncNow(selected);
+            void (async () => {
+              if (source === 'trakt') await handleTraktSyncNow(selected);
+              else if (source === 'simkl') await handleSimklSyncNow(selected);
+              else if (source === 'anilist') await handleAnilistSyncNow(selected);
+              else if (source === 'stremio') await handleStremioSyncNow(selected);
+              else if (source === 'nuvio') await handleNuvioSyncNow(selected);
+
+              if (!destination || !activeProfile) return;
+              const traktClientId = destination === 'trakt' ? await invoke<string>('get_oauth_client_id', { service: 'trakt' }) : undefined;
+              const simklClientId = destination === 'simkl' ? await invoke<string>('get_oauth_client_id', { service: 'simkl' }) : undefined;
+              const { errors } = await pushImportedCategoriesToDestination({
+                destination,
+                categories: selected,
+                profile: activeProfile,
+                traktClientId,
+                simklClientId,
+              });
+              const message = Object.values(errors).filter(Boolean).join('; ');
+              if (!message) return;
+              if (source === 'trakt') setTraktError(message);
+              else if (source === 'simkl') setSimklError(message);
+              else if (source === 'anilist') setAnilistError(message);
+              else if (source === 'stremio') setStremioError(message);
+              else if (source === 'nuvio') setNuvioError(message);
+            })();
           }}
         />
       )}

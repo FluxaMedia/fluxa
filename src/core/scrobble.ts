@@ -4,7 +4,7 @@ import { coreInvoke, coreParseVideoId, coreScrobbleCloseAction, coreSimklLookupI
 import { _appVersion } from './httpClient';
 import type { UserProfile, Meta, Video } from './types';
 
-async function traktScrobble(
+export async function traktScrobble(
   profile: UserProfile | null,
   meta: Meta | null,
   episode: Video | null,
@@ -39,7 +39,7 @@ async function traktScrobble(
   });
 }
 
-async function simklScrobble(
+export async function simklScrobble(
   profile: UserProfile | null,
   meta: Meta | null,
   episode: Video | null,

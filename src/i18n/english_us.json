@@ -1066,6 +1066,8 @@
   "settings.import_category.watched": "Watched History",
   "settings.import_category.collections": "Collections",
   "settings.import_category.addons": "Addons",
+  "settings.import_destination_label": "Also push to",
+  "settings.import_destination_local": "Just my library — don't push anywhere",
   "settings.out_of_sync": "Out of sync",
   "settings.synced": "Synced",
   "settings.sync_error": "Sync error",
