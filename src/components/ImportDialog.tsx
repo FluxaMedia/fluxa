@@ -126,14 +126,20 @@ export function ImportDialog({
             {scanResult.error ? (
               <p style={S.errorText}>{scanResult.error}</p>
             ) : (
-              <div style={S.list}>
-                {items.filter((item) => selected.has(item.key)).map((item) => (
-                  <div key={item.key} style={S.countRow}>
-                    <span>{item.label}</span>
-                    <span style={S.countValue}>{scanResult.counts[item.key] ?? 0}</span>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div style={S.list}>
+                  {items.filter((item) => selected.has(item.key)).map((item) => (
+                    <div key={item.key} style={S.countRow}>
+                      <span>{item.label}</span>
+                      <span style={S.countValue}>{scanResult.counts[item.key] ?? 0}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={S.destinationReminder}>
+                  {selectedDestination.icon}
+                  <span>{destinationLabel}: <strong style={S.destinationReminderName}>{selectedDestination.label}</strong></span>
+                </div>
+              </>
             )}
             <div style={S.actions}>
               <button onClick={() => setPhase('select')} style={S.cancelBtn}>{backLabel}</button>
@@ -162,6 +168,8 @@ const S: Record<string, React.CSSProperties> = {
   checkbox: { width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#FFFFFF' },
   countRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'rgba(255,255,255,0.85)', fontSize: '0.8125rem', padding: '0.5rem 0.625rem', borderRadius: '0.375rem', background: 'rgba(255,255,255,0.045)' },
   countValue: { color: '#FFFFFF', fontWeight: 700 },
+  destinationReminder: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.375rem', padding: '0.625rem', borderRadius: '0.375rem', background: 'rgba(255,255,255,0.045)', color: 'rgba(255,255,255,0.65)', fontSize: '0.75rem' },
+  destinationReminderName: { color: '#FFFFFF', fontWeight: 700 },
   errorText: { color: '#FF5D5D', fontSize: '0.8125rem', margin: '0 0 1rem', lineHeight: 1.5 },
   destinationBlock: { marginBottom: '1.375rem' },
   destinationLabel: { margin: '0 0 0.5rem', color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', fontWeight: 600 },
