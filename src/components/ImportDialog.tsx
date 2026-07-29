@@ -65,12 +65,21 @@ export function ImportDialog({
             {destinations.length > 0 && (
               <div style={S.destinationBlock}>
                 <p style={S.destinationLabel}>{destinationLabel}</p>
-                <select value={destination} onChange={(e) => setDestination(e.target.value)} style={S.select}>
-                  <option value="">{localOnlyLabel}</option>
-                  {destinations.map((dest) => (
-                    <option key={dest.key} value={dest.key}>{dest.label}</option>
-                  ))}
-                </select>
+                <div style={S.destinationList}>
+                  {[{ key: '', label: localOnlyLabel }, ...destinations].map((dest) => {
+                    const isSelected = destination === dest.key;
+                    return (
+                      <button
+                        key={dest.key || 'local'}
+                        type="button"
+                        onClick={() => setDestination(dest.key)}
+                        style={{ ...S.destinationOption, ...(isSelected ? S.destinationOptionSelected : null) }}
+                      >
+                        {dest.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
             <div style={S.actions}>
@@ -135,7 +144,9 @@ const S: Record<string, React.CSSProperties> = {
   errorText: { color: '#FF5D5D', fontSize: '0.8125rem', margin: '0 0 1rem', lineHeight: 1.5 },
   destinationBlock: { marginBottom: '1.375rem' },
   destinationLabel: { margin: '0 0 0.5rem', color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', fontWeight: 600 },
-  select: { width: '100%', height: '2.5rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', fontSize: '0.8125rem', fontFamily: FONT, padding: '0 0.75rem', outline: 'none' },
+  destinationList: { display: 'flex', flexDirection: 'column', gap: '0.375rem' },
+  destinationOption: { width: '100%', textAlign: 'left', height: '2.5rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)', fontSize: '0.8125rem', fontFamily: FONT, padding: '0 0.75rem', cursor: 'pointer', outline: 'none' },
+  destinationOptionSelected: { background: '#FFFFFF', color: '#000', fontWeight: 600, border: '1px solid #FFFFFF' },
   actions: { display: 'flex', gap: '0.5rem' },
   cancelBtn: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
   confirmBtn: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', border: 'none', background: '#FFFFFF', color: '#000', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
