@@ -6,21 +6,10 @@ import { PlayerLoadingOverlay } from './components/PlayerLoadingOverlay';
 import { ReactPlayerOverlay } from './components/ReactPlayerOverlay';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { setBrowsingDiscordPresence } from './core/discordPresence';
-
-function debugLog(msg: string) {
-  void invoke('debug_log', { msg }).catch(() => {});
-}
-
-const BROWSING_LABELS: Record<NavRoute, string> = {
-  home: 'Browsing Home',
-  search: 'Searching',
-  library: 'Browsing Library',
-  discover: 'Browsing Discover',
-  calendar: 'Browsing Calendar',
-  settings: 'In Settings',
-};
+import { appStyles, accentForegroundColor, computeAutoUiScale, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
+import { useNativePlayerEvents } from './hooks/useNativePlayerEvents';
+import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import * as Sentry from '@sentry/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UpdateModal, startUpdateCheck } from './components/UpdateModal';
@@ -47,11 +36,7 @@ import { setActiveProfileId, createProfileObject, saveProfile, loadProfiles } fr
 import { invalidateLibraryKeyCache, loadPrefs, prefsOwnerId, savePrefs } from './core/libraryOps';
 import { clearEnginePlugins, hydratePluginsFromStorage } from './core/pluginsStorage';
 import { storageWrite, storageRead } from './core/engine';
-import { toggleWindowFullscreen, watchWindowGeometry } from './core/windowGeometry';
-import { comboFromEvent, findActionForCombo, loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from './core/shortcuts';
-import { focusNearestCard, isNavCard } from './core/spatialNav';
-import { notify } from './core/notifications';
-import { getLanguage, setLanguage, t } from './i18n';
+import { getLanguage, setLanguage } from './i18n';
 import { dispatchAction } from './core/engine';
 import { prefetchPlayerArtwork } from './core/mpvPlayer';
 import { pumpEffects } from './core/effectRunner';
@@ -63,37 +48,6 @@ import { mergeAppState } from './core/mergeState';
 import { usePlayer } from './hooks/usePlayer';
 import { useAppInit } from './hooks/useAppInit';
 import type { AppState, LibraryItem, Meta, Stream, Video, UserProfile } from './core/types';
-
-function computeAutoUiScale(): number {
-  const width = window.screen.width || 1920;
-  const raw = Math.round((width / 1920) * 100 / 5) * 5;
-  return Math.min(150, Math.max(75, raw));
-}
-
-function accentForegroundColor(hex: string): string {
-  const c = hex.replace('#', '');
-  const r = parseInt(c.substring(0, 2), 16) / 255;
-  const g = parseInt(c.substring(2, 4), 16) / 255;
-  const b = parseInt(c.substring(4, 6), 16) / 255;
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return luminance > 0.45 ? '#000000' : '#FFFFFF';
-}
-
-const DEFAULT_STATE: AppState = {
-  navigation: { route: 'home', params: null },
-  home: {},
-  detail: {},
-  search: {},
-  player: {},
-  library: {},
-  discover: {},
-  calendar: {},
-  addons: { installed: [] },
-  plugins: { repositories: [], scrapers: [] },
-  settings: {},
-  profile: {},
-  pendingEffects: [],
-};
 
 export default function App() {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
@@ -107,9 +61,6 @@ export default function App() {
   const [detailPlaybackError, setDetailPlaybackError] = useState<string | null>(null);
   const [discoverInitialGenre, setDiscoverInitialGenre] = useState<string | null>(null);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
-  const [searchFocusSignal, setSearchFocusSignal] = useState(0);
-  const [nativePlayerActive, setNativePlayerActive] = useState(false);
-  const [softwareVideoActive, setSoftwareVideoActive] = useState(false);
   const [pendingAddonUrl, setPendingAddonUrl] = useState<string | null>(null);
   const [p2pDialog, setP2PDialog] = useState<{ mode: 'first-time' | 'disabled'; pendingPlay: () => void } | null>(null);
   const storedPrefsRef = useRef<Record<string, unknown>>({});
@@ -118,7 +69,6 @@ export default function App() {
   const lastNonSearchRouteRef = useRef<NavRoute>('home');
   const episodePlaybackFailureRef = useRef<(meta: Meta, episode: Video, message: string) => Promise<void>>(async () => {});
   const artworkPrefetchRef = useRef<Promise<unknown> | null>(null);
-  const windowFullscreenRef = useRef(false);
   const handleEpisodePlaybackFailed = useCallback((meta: Meta, episode: Video, message: string) => episodePlaybackFailureRef.current(meta, episode, message), []);
 
   const overlayPrefs = useCallback((merged: AppState): AppState => {
@@ -141,46 +91,6 @@ export default function App() {
     stateRef.current = overlaid;
     React.startTransition(() => setState(overlaid));
   }, [overlayPrefs]);
-
-  useEffect(() => {
-    const unlisteners: Array<() => void> = [];
-    let cancelled = false;
-
-    debugLog('App: registering native-player-show/hide listeners');
-    listen('native-player-show', () => {
-      debugLog('App: received native-player-show');
-      setNativePlayerActive(true);
-      setSoftwareVideoActive(false);
-      document.documentElement.setAttribute('data-native-player-active', 'true');
-    }).then((fn) => { debugLog('App: native-player-show listener registered'); if (cancelled) fn(); else unlisteners.push(fn); }).catch((err) => debugLog(`App: native-player-show listen() failed ${String(err)}`));
-
-    listen('native-player-hide', () => {
-      debugLog('App: received native-player-hide');
-      setNativePlayerActive(false);
-      setSoftwareVideoActive(false);
-      document.documentElement.removeAttribute('data-native-player-active');
-    }).then((fn) => { if (cancelled) fn(); else unlisteners.push(fn); }).catch(() => undefined);
-
-    listen<string>('native-player-software-rendering', (event) => {
-      debugLog(`App: software video rendering active: ${event.payload}`);
-      setNativePlayerActive(true);
-      setSoftwareVideoActive(true);
-      document.documentElement.setAttribute('data-native-player-active', 'true');
-    }).then((fn) => { if (cancelled) fn(); else unlisteners.push(fn); }).catch(() => undefined);
-
-    return () => { cancelled = true; unlisteners.forEach((fn) => fn()); };
-  }, []);
-
-  useEffect(() => {
-    const unlisten = listen<{ title?: string; status: string }>('download-progress', (e) => {
-      if (e.payload.status === 'downloaded') {
-        void notify(t('notifications.download_complete_title'), e.payload.title);
-      } else if (e.payload.status === 'failed') {
-        void notify(t('notifications.download_failed_title'), e.payload.title);
-      }
-    });
-    return () => { void unlisten.then((fn) => fn()); };
-  }, []);
 
   const {
     ready,
@@ -217,36 +127,7 @@ export default function App() {
     episodePlaybackFailureRef.current = openEpisodeSourcePicker;
   }, [openEpisodeSourcePicker]);
 
-  useEffect(() => {
-    let cancelled = false;
-    let unlisten: (() => void) | null = null;
-    listen('native-app-close-requested', () => {
-      void flushProgressOnQuit()
-        .catch(() => undefined)
-        .finally(() => { void invoke('app_close_flush_done').catch(() => undefined); });
-    })
-      .then((fn) => { if (cancelled) fn(); else unlisten = fn; })
-      .catch(() => undefined);
-    return () => { cancelled = true; unlisten?.(); };
-  }, [flushProgressOnQuit]);
-
-  useEffect(() => watchWindowGeometry(), []);
-
-  const refreshWindowFullscreen = useCallback(() => {
-    getCurrentWindow().isFullscreen()
-      .then((isFullscreen) => { windowFullscreenRef.current = isFullscreen; })
-      .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
-    const win = getCurrentWindow();
-    let unlisten: (() => void) | null = null;
-    refreshWindowFullscreen();
-    win.listen('tauri://resize', refreshWindowFullscreen)
-      .then((fn) => { unlisten = fn; })
-      .catch(() => undefined);
-    return () => { unlisten?.(); };
-  }, [refreshWindowFullscreen]);
+  const { nativePlayerActive, softwareVideoActive } = useNativePlayerEvents(flushProgressOnQuit);
 
   const guardedPlay = useCallback(async (
     stream: Stream,
@@ -328,68 +209,7 @@ export default function App() {
     if (activeRoute === 'search') { navigateRoute(lastNonSearchRouteRef.current); }
   }, [detailMeta, activeRoute, navigateRoute, closePlayer]);
 
-  const [shortcutOverrides, setShortcutOverrides] = useState<ShortcutOverrides>({});
-  useEffect(() => {
-    loadShortcutOverrides().then(setShortcutOverrides);
-    return onShortcutsChanged(setShortcutOverrides);
-  }, []);
-
-  useEffect(() => {
-    const directions: Record<string, 'up' | 'down' | 'left' | 'right'> = {
-      ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (nativePlayerActive) return;
-      const direction = directions[e.key];
-      if (!direction || !isNavCard(document.activeElement)) return;
-      if (focusNearestCard(document.activeElement, direction)) e.preventDefault();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [nativePlayerActive]);
-
-  useEffect(() => {
-    const navRoutes: Record<string, NavRoute> = {
-      nav_home: 'home', nav_library: 'library', nav_discover: 'discover', nav_calendar: 'calendar', nav_settings: 'settings',
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (nativePlayerActive) return;
-      const combo = comboFromEvent(e);
-      if (findActionForCombo(combo, 'global', shortcutOverrides) === 'toggle_window_fullscreen') {
-        e.preventDefault();
-        windowFullscreenRef.current = !windowFullscreenRef.current;
-        void toggleWindowFullscreen().finally(refreshWindowFullscreen);
-        return;
-      }
-      if (e.key === 'Escape' && windowFullscreenRef.current) {
-        e.preventDefault();
-        windowFullscreenRef.current = false;
-        void getCurrentWindow().setFullscreen(false).catch(() => undefined).finally(refreshWindowFullscreen);
-        return;
-      }
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      const globalAction = findActionForCombo(combo, 'global', shortcutOverrides);
-      if (globalAction === 'focus_search') {
-        e.preventDefault();
-        setSearchFocusSignal((n) => n + 1);
-        return;
-      }
-      if (globalAction === 'go_back') {
-        e.preventDefault();
-        goBack();
-        return;
-      }
-      const route = globalAction ? navRoutes[globalAction] : undefined;
-      if (route) { navigateRoute(route); return; }
-      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        setSearchFocusSignal((n) => n + 1);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [nativePlayerActive, navigateRoute, goBack, refreshWindowFullscreen, shortcutOverrides]);
+  const { searchFocusSignal, setSearchFocusSignal } = useGlobalShortcuts({ nativePlayerActive, navigateRoute, goBack });
 
   const dispatch = useCallback(async (actionJson: string) => {
     const result = await dispatchAction(actionJson);
@@ -886,36 +706,3 @@ export default function App() {
     </div>
   );
 }
-
-const appStyles: Record<string, React.CSSProperties> = {
-  root: {
-    position: 'relative',
-    width: '100vw',
-    height: '100vh',
-    background: '#040508',
-    overflow: 'hidden',
-  },
-  content: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflow: 'hidden',
-  },
-  loading: {
-    width: '100vw',
-    height: '100vh',
-    background: '#040508',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: '#FFFFFF',
-    fontSize: '2.5rem',
-    fontWeight: 900,
-    fontFamily: "'Montserrat', sans-serif",
-    letterSpacing: 0,
-  },
-};
