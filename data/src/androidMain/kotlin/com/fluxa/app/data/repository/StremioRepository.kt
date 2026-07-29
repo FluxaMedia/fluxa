@@ -192,8 +192,14 @@ class StremioRepository @Inject constructor(
     suspend fun getSimklLibraryItems(token: String?, status: String): List<Meta> =
         externalLibraryClient.getSimklLibraryItems(token, status)
 
+    suspend fun getSimklLibraryItems(profile: UserProfile, status: String): List<Meta> =
+        externalLibraryClient.getSimklLibraryItems(profile, status)
+
     suspend fun getSimklWatchedEpisodesWithTimestamps(token: String?): Map<String, Long> =
         externalLibraryClient.getSimklWatchedEpisodesWithTimestamps(token)
+
+    suspend fun getSimklWatchedEpisodesWithTimestamps(profile: UserProfile): Map<String, Long> =
+        externalLibraryClient.getSimklWatchedEpisodesWithTimestamps(profile)
 
     suspend fun getAnilistWatchlistWithTimestamps(token: String?): List<Pair<Meta, Long>> =
         externalLibraryClient.getAnilistWatchlistWithTimestamps(token)

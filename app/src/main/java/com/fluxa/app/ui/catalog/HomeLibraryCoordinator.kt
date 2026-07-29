@@ -92,10 +92,10 @@ internal class HomeLibraryCoordinator(
                 val malCompleted = if (!malToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getMalLibraryItems(malToken, "completed") } else null
 
                 val simklToken = profile?.simklAccessToken
-                val simklWatching = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "watching") } else null
-                val simklPlanned = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "plantowatch") } else null
-                val simklCompleted = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklLibraryItems(simklToken, "completed") } else null
-                val simklWatchedEpisodesWithTimestamps = if (!simklToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getSimklWatchedEpisodesWithTimestamps(simklToken) } else null
+                val simklWatching = if (!simklToken.isNullOrBlank() && profile != null) async(Dispatchers.IO) { repository.getSimklLibraryItems(profile, "watching") } else null
+                val simklPlanned = if (!simklToken.isNullOrBlank() && profile != null) async(Dispatchers.IO) { repository.getSimklLibraryItems(profile, "plantowatch") } else null
+                val simklCompleted = if (!simklToken.isNullOrBlank() && profile != null) async(Dispatchers.IO) { repository.getSimklLibraryItems(profile, "completed") } else null
+                val simklWatchedEpisodesWithTimestamps = if (!simklToken.isNullOrBlank() && profile != null) async(Dispatchers.IO) { repository.getSimklWatchedEpisodesWithTimestamps(profile) } else null
 
                 val anilistToken = profile?.anilistAccessToken
                 val anilistWatchlistWithTimestamps = if (!anilistToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getAnilistWatchlistWithTimestamps(anilistToken) } else null

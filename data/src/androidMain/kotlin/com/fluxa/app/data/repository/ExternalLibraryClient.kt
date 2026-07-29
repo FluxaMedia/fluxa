@@ -55,7 +55,8 @@ query (${'$'}userId: Int) {
 class ExternalLibraryClient @Inject constructor(
     private val traktApi: TraktApi,
     private val addonRepository: AddonRepository,
-    private val traktSyncClient: TraktSyncClient
+    private val traktSyncClient: TraktSyncClient,
+    private val simklSyncCoordinator: SimklSyncCoordinator
 ) {
     private val traktKey = BuildConfig.TRAKT_CLIENT_ID
 
@@ -68,7 +69,7 @@ class ExternalLibraryClient @Inject constructor(
         supervisorScope {
             val trakt = async { getTraktPlaybackItems(profile, language) }
             val mal = async { getMalContinueWatchingItems(profile.malAccessToken) }
-            val simkl = async { getSimklContinueWatchingItems(profile.simklAccessToken) }
+            val simkl = async { getSimklContinueWatchingItems(profile) }
             val anilist = async { getAnilistContinueWatchingItems(profile.anilistAccessToken) }
             val combined = trakt.await() + mal.await() + simkl.await() + anilist.await()
             distinctByIdentityKey(combined)
@@ -134,6 +135,21 @@ class ExternalLibraryClient @Inject constructor(
         }
     }
 
+    suspend fun getSimklLibraryItems(profile: UserProfile, status: String): List<Meta> = withContext(Dispatchers.IO) {
+        val snapshot = simklSyncCoordinator.snapshot(profile)
+        val keys = when (status) {
+            "watching" -> listOf("moviesWatching" to "movie", "showsWatching" to "series")
+            "plantowatch" -> listOf("moviesPlanToWatch" to "movie", "showsPlanToWatch" to "series")
+            "completed" -> listOf("moviesCompleted" to "movie", "showsCompleted" to "series")
+            else -> emptyList()
+        }
+        keys.flatMap { (key, type) ->
+            val response = snapshot.resources[key] ?: return@flatMap emptyList()
+            val items = if (type == "movie") response.movies else response.shows
+            items.mapNotNull { it.toLibraryMeta(type, "Simkl") }
+        }.let(::distinctByIdentityKey)
+    }
+
     suspend fun getSimklWatchedEpisodesWithTimestamps(token: String?): Map<String, Long> = withContext(Dispatchers.IO) {
         if (token.isNullOrBlank() || BuildConfig.SIMKL_CLIENT_ID.isBlank()) return@withContext emptyMap()
         val statuses = listOf("watching", "completed")
@@ -155,6 +171,14 @@ class ExternalLibraryClient @Inject constructor(
                 }
             }.awaitAll().flatten().toMap()
         }
+    }
+
+    suspend fun getSimklWatchedEpisodesWithTimestamps(profile: UserProfile): Map<String, Long> = withContext(Dispatchers.IO) {
+        val snapshot = simklSyncCoordinator.snapshot(profile)
+        listOf("showsWatching", "showsCompleted")
+            .flatMap { snapshot.resources[it]?.shows.orEmpty() }
+            .flatMap { it.watchedEpisodeTimestamps() }
+            .toMap()
     }
 
     private fun SimklItem.watchedEpisodeTimestamps(): List<Pair<String, Long>> {
@@ -260,28 +284,14 @@ class ExternalLibraryClient @Inject constructor(
         }
     }
 
-    private suspend fun getSimklContinueWatchingItems(token: String?): List<Meta> {
-        if (token.isNullOrBlank() || BuildConfig.SIMKL_CLIENT_ID.isBlank()) return emptyList()
-        return try {
-            val types = listOf("movies" to "movie", "shows" to "series", "anime" to "series")
-            types.flatMap { (apiType, metaType) ->
-                runCatching {
-                    val response = traktApi.getSimklAllItems(
-                        type = apiType,
-                        status = "watching",
-                        token = "Bearer $token",
-                        apiKey = BuildConfig.SIMKL_CLIENT_ID
-                    )
-                    val items = when (apiType) {
-                        "movies" -> response.movies
-                        "anime" -> response.anime
-                        else -> response.shows
-                    }
-                    items.mapNotNull { it.toContinueMeta(metaType) }
-                }.getOrDefault(emptyList())
+    private suspend fun getSimklContinueWatchingItems(profile: UserProfile): List<Meta> {
+        return runCatching {
+            simklSyncCoordinator.snapshot(profile).resources.let { resources ->
+                resources["moviesWatching"]?.movies.orEmpty().mapNotNull { it.toContinueMeta("movie") } +
+                    resources["showsWatching"]?.shows.orEmpty().mapNotNull { it.toContinueMeta("series") }
             }
-        } catch (e: Exception) {
-            Log.w("ExternalLibraryClient", "Failed to load Simkl continue watching items", e)
+        }.getOrElse {
+            Log.w("ExternalLibraryClient", "Failed to load Simkl continue watching items", it)
             emptyList()
         }
     }

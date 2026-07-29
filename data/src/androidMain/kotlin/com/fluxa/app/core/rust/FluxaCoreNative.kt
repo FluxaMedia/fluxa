@@ -1406,6 +1406,26 @@ object FluxaCoreNative {
         return gson.fromJson(value, object : com.google.gson.reflect.TypeToken<Map<String, Boolean>>() {}.type)
     }
 
+    fun simklResourceSyncPlan(previous: Any?, current: Any?, resources: List<Map<String, Any>>): List<NativeSimklSyncPlan> {
+        val args = JsonObject().apply {
+            add("previous", gson.toJsonTree(previous))
+            add("current", gson.toJsonTree(current))
+            add("resources", gson.toJsonTree(resources))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("simklResourceSyncPlan", args.toString())
+        return gson.fromJson(value, Array<NativeSimklSyncPlan>::class.java).toList()
+    }
+
+    fun simklMergeDelta(previous: Any?, changes: Any?): String {
+        val args = JsonObject().apply {
+            addProperty("previousJson", gson.toJson(previous))
+            addProperty("changesJson", gson.toJson(changes))
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("simklMergeDelta", args.toString()).toString()
+    }
+
+    data class NativeSimklSyncPlan(val key: String, val action: String, val dateFrom: String? = null)
+
     fun subtitleLanguageDedupKeepIndices(languages: List<String?>, maxPerLanguage: Int = 2): List<Int> {
         val args = JsonObject().apply {
             add("languages", gson.toJsonTree(languages))

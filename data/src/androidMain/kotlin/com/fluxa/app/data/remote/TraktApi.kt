@@ -188,8 +188,15 @@ interface TraktApi {
         @Header("Authorization") token: String,
         @Header("simkl-api-key") apiKey: String,
         @Query("extended") extended: String = "full",
-        @Query("episode_watched_at") episodeWatchedAt: String = "yes"
+        @Query("episode_watched_at") episodeWatchedAt: String = "yes",
+        @Query("date_from") dateFrom: String? = null
     ): SimklAllItemsResponse
+
+    @GET("https://api.simkl.com/sync/activities")
+    suspend fun getSimklActivities(
+        @Header("Authorization") token: String,
+        @Header("simkl-api-key") apiKey: String
+    ): com.google.gson.JsonObject
 
     @Headers("Content-Type: application/json")
     @POST("https://graphql.anilist.co")
