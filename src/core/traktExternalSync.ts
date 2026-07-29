@@ -10,12 +10,27 @@ import {
   coreTraktWatchlistToItems,
   coreTraktWatchedToIds,
   httpExecuteText,
+  storageRead,
+  storageWrite,
 } from './engine';
 import { loadLibrary, saveLibrary, persistStatusListMerge, persistWatchedMerge, profileStorageKey } from './libraryOps';
 import { platformFetch } from './httpClient';
 import { refreshTraktProfile, traktHeaders } from './traktSync';
 import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
 import { saveProviderLibrary } from './providerLibraries';
+
+type TraktDeltaCache = {
+  activities?: Record<string, unknown>;
+  playbackItems?: Record<string, unknown>[];
+  watchlistMovies?: Record<string, unknown>[];
+  watchlistShows?: Record<string, unknown>[];
+  watchedMovies?: Record<string, unknown>[];
+  watchedShows?: Record<string, unknown>[];
+};
+
+function activityAt(activities: Record<string, unknown> | undefined, group: string, field: string): unknown {
+  return (activities?.[group] as Record<string, unknown> | undefined)?.[field];
+}
 
 async function fetchAllPages(url: string, headers: HeadersInit, limit: number): Promise<Record<string, unknown>[]> {
   type PaginationPlan = { items: Record<string, unknown>[]; done: boolean; page: number; requestUrl?: string | null };
@@ -68,23 +83,51 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   if (!token) return { synced: false, error: 'Trakt is not connected' };
 
   let headers = traktHeaders(token, clientId);
-  const fetchPlayback = async (requestHeaders: HeadersInit) => Promise.all([
-    platformFetch('https://api.trakt.tv/sync/playback/movies', { headers: requestHeaders }),
-    platformFetch('https://api.trakt.tv/sync/playback/episodes', { headers: requestHeaders }),
-  ]);
-  let responses = await fetchPlayback(headers);
-  if (responses.some((response) => response.status === 401 || response.status === 403) && profile) {
-    refreshedProfile = await refreshTraktProfile(profile, true).catch(() => profile);
-    token = refreshedProfile.traktAccessToken ?? token;
-    headers = traktHeaders(token, clientId);
-    responses = await fetchPlayback(headers);
+  const activeToken = token;
+  const fetchWithRefresh = async (request: (h: HeadersInit) => Promise<Response>): Promise<Response> => {
+    let response = await request(headers);
+    if ((response.status === 401 || response.status === 403) && profile) {
+      refreshedProfile = await refreshTraktProfile(profile, true).catch(() => profile);
+      headers = traktHeaders(refreshedProfile.traktAccessToken ?? activeToken, clientId);
+      response = await request(headers);
+    }
+    return response;
+  };
+
+  const profileId = typeof profile?.id === 'string' ? profile.id : 'default';
+  const cacheKey = `trakt_delta_cache_${profileId}`;
+  const cache = (await storageRead<TraktDeltaCache>(cacheKey)) ?? {};
+
+  let activities: Record<string, unknown> | undefined;
+  try {
+    const response = await fetchWithRefresh((h) => platformFetch('https://api.trakt.tv/sync/last_activities', { headers: h }));
+    if (response.ok) activities = (await response.json().catch(() => undefined)) as Record<string, unknown> | undefined;
+  } catch {}
+
+  const prevActivities = cache.activities;
+  const changedSince = (group: string, field: string) => !activities
+    || activityAt(activities, group, field) !== activityAt(prevActivities, group, field);
+  const playbackChanged = !cache.playbackItems || changedSince('movies', 'paused_at') || changedSince('episodes', 'paused_at');
+  const watchlistMoviesChanged = !cache.watchlistMovies || changedSince('movies', 'watchlisted_at');
+  const watchlistShowsChanged = !cache.watchlistShows || changedSince('shows', 'watchlisted_at');
+  const watchedMoviesChanged = !cache.watchedMovies || changedSince('movies', 'watched_at');
+  const watchedShowsChanged = !cache.watchedShows || changedSince('episodes', 'watched_at');
+
+  let playbackItems: Record<string, unknown>[];
+  if (playbackChanged) {
+    const responses = await Promise.all([
+      fetchWithRefresh((h) => platformFetch('https://api.trakt.tv/sync/playback/movies', { headers: h })),
+      fetchWithRefresh((h) => platformFetch('https://api.trakt.tv/sync/playback/episodes', { headers: h })),
+    ]);
+    const failedResponse = responses.find((response) => !response.ok);
+    if (failedResponse) {
+      return { synced: false, error: `Trakt sync failed: HTTP ${failedResponse.status}` };
+    }
+    const playbackPages = await Promise.all(responses.map((response) => response.json().catch(() => [])));
+    playbackItems = playbackPages.flatMap((page) => Array.isArray(page) ? page : []);
+  } else {
+    playbackItems = cache.playbackItems ?? [];
   }
-  const failedResponse = responses.find((response) => !response.ok);
-  if (failedResponse) {
-    return { synced: false, error: `Trakt sync failed: HTTP ${failedResponse.status}` };
-  }
-  const playbackPages = await Promise.all(responses.map((response) => response.json().catch(() => [])));
-  const playbackItems = playbackPages.flatMap((page) => Array.isArray(page) ? page : []);
   const allItems = ((await coreTraktPlaybackItemsToLibrary(JSON.stringify(playbackItems))) ?? []) as Record<string, unknown>[];
   let items = await enrichWithAddonMeta(allItems);
 
@@ -92,10 +135,10 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   let watchedCount = 0;
   try {
     const [watchlistMovies, watchlistShows, watchedMovies, watchedShows] = await Promise.all([
-      fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies/rank', headers, 250),
-      fetchAllPages('https://api.trakt.tv/users/me/watchlist/shows/rank', headers, 250),
-      fetchAllPages('https://api.trakt.tv/users/me/watched/movies', headers, 250),
-      fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=full', headers, 100),
+      watchlistMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies/rank', headers, 250) : Promise.resolve(cache.watchlistMovies ?? []),
+      watchlistShowsChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/shows/rank', headers, 250) : Promise.resolve(cache.watchlistShows ?? []),
+      watchedMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watched/movies', headers, 250) : Promise.resolve(cache.watchedMovies ?? []),
+      watchedShowsChanged ? fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=full', headers, 100) : Promise.resolve(cache.watchedShows ?? []),
     ]);
 
     const watchedShowItems = ((await coreTraktWatchedShowsToItems(JSON.stringify(watchedShows))) ?? []) as Record<string, unknown>[];
@@ -111,6 +154,10 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
     watchedCount = Object.keys(watchedIds).length;
     await mergeExternalWatched(watchedIds, profileKey);
+
+    if (activities) {
+      await storageWrite(cacheKey, { activities, playbackItems, watchlistMovies, watchlistShows, watchedMovies, watchedShows } satisfies TraktDeltaCache);
+    }
   } catch {}
 
   await replaceExternalContinueWatching({ items, provider: 'trakt', profileKey });
