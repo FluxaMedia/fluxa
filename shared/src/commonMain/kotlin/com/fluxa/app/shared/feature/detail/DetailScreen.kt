@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -37,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +55,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,40 +83,97 @@ fun DetailScreen(
     modifier: Modifier = Modifier
 ) {
     val content = state.content
+    val isMobile = LocalDeviceType.current == DeviceType.Mobile
+    var showStickyContext by remember(content?.id) { mutableStateOf(false) }
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
         when {
-            content != null -> DetailContent(content = content, language = language, onAction = onAction)
+            content != null -> DetailContent(
+                content = content,
+                language = language,
+                onAction = onAction,
+                onStickyContextVisibilityChanged = { showStickyContext = it }
+            )
             state.isLoading -> DetailLoading()
             else -> DetailEmpty(text = AppStrings.t(language, state.errorKey ?: "auto.no_results_found"))
         }
-        TopBar(onBack = onBack, onShareRequested = onShareRequested)
+        TopBar(
+            content = content,
+            language = language,
+            showStickyContext = isMobile && showStickyContext,
+            onAction = onAction,
+            onBack = onBack,
+            onShareRequested = onShareRequested
+        )
     }
 }
 
 @Composable
-private fun TopBar(onBack: () -> Unit, onShareRequested: () -> Unit) {
+private fun TopBar(
+    content: DetailUiModel?,
+    language: String?,
+    showStickyContext: Boolean,
+    onAction: (DetailAction) -> Unit,
+    onBack: () -> Unit,
+    onShareRequested: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
+            .then(
+                if (showStickyContext) Modifier.background(Color.Black.copy(alpha = 0.94f)) else Modifier.background(
+                    Brush.verticalGradient(
                     colorStops = arrayOf(0f to Color.Black.copy(alpha = 0.45f), 1f to Color.Transparent)
+                    )
                 )
             )
-            .padding(top = 44.dp, bottom = 24.dp, start = 12.dp, end = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(top = 44.dp, bottom = if (showStickyContext) 12.dp else 24.dp, start = 12.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = AppStrings.t(null, "common.close"),
+            contentDescription = AppStrings.t(language, "common.back"),
             tint = Color.White,
-            modifier = Modifier.size(28.dp).clickable(onClick = onBack)
+            modifier = Modifier.size(32.dp).clickable(onClick = onBack)
         )
+        if (showStickyContext && content != null) {
+            StickyContentIdentity(content = content, modifier = Modifier.weight(1f).padding(horizontal = 16.dp))
+            Icon(
+                imageVector = if (content.isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
+                contentDescription = AppStrings.t(language, if (content.isInWatchlist) "auto.in_list" else "auto.my_list"),
+                tint = Color.White,
+                modifier = Modifier.size(28.dp).clickable { onAction(DetailAction.ToggleWatchlist) }
+            )
+        } else {
+            Box(modifier = Modifier.weight(1f))
+        }
         Icon(
             imageVector = Icons.Filled.Share,
-            contentDescription = null,
+            contentDescription = AppStrings.t(language, "common.share"),
             tint = Color.White,
-            modifier = Modifier.size(24.dp).clickable(onClick = onShareRequested)
+            modifier = Modifier.padding(start = 18.dp).size(28.dp).clickable(onClick = onShareRequested)
+        )
+    }
+}
+
+@Composable
+private fun StickyContentIdentity(content: DetailUiModel, modifier: Modifier = Modifier) {
+    if (content.logoUrl != null) {
+        FluxaRemoteImage(
+            imageUrl = content.logoUrl,
+            cacheKey = "detail-sticky-logo:${content.id}",
+            contentDescription = content.title,
+            modifier = modifier.height(28.dp),
+            contentScale = ContentScale.Fit
+        )
+    } else {
+        Text(
+            text = content.title,
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = modifier
         )
     }
 }
@@ -121,15 +182,18 @@ private fun TopBar(onBack: () -> Unit, onShareRequested: () -> Unit) {
 private fun DetailContent(
     content: DetailUiModel,
     language: String?,
-    onAction: (DetailAction) -> Unit
+    onAction: (DetailAction) -> Unit,
+    onStickyContextVisibilityChanged: (Boolean) -> Unit
 ) {
     val isSeries = content.type == "series" && content.availableSeasons.isNotEmpty()
     val hasSecondary = isSeries || content.relatedItems.isNotEmpty()
     val twoPane = LocalWindowWidthClass.current == WindowWidthClass.Expanded &&
         LocalDeviceType.current != DeviceType.TV
     if (twoPane && hasSecondary) {
+        val listState = rememberLazyListState()
+        ObserveStickyContextVisibility(listState, onStickyContextVisibilityChanged)
         Row(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(modifier = Modifier.width(440.dp).fillMaxHeight()) {
+            LazyColumn(state = listState, modifier = Modifier.width(440.dp).fillMaxHeight()) {
                 item(key = "hero") { Hero(content = content, language = language) }
                 item(key = "body") { DetailBody(content = content, language = language, onAction = onAction) }
                 item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
@@ -144,12 +208,31 @@ private fun DetailContent(
         }
     } else {
         var activeTab by remember(content.id) { mutableStateOf(DetailTab.Episodes) }
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        val listState = rememberLazyListState()
+        ObserveStickyContextVisibility(listState, onStickyContextVisibilityChanged)
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             item(key = "hero") { Hero(content = content, language = language) }
             item(key = "body") { DetailBody(content = content, language = language, onAction = onAction) }
             detailSecondaryItems(content, language, onAction, isSeries, activeTab) { activeTab = it }
             item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
         }
+    }
+}
+
+@Composable
+private fun ObserveStickyContextVisibility(
+    listState: LazyListState,
+    onStickyContextVisibilityChanged: (Boolean) -> Unit
+) {
+    val logoExitOffset = with(LocalDensity.current) { 390.dp.roundToPx() }
+    val showStickyContext by remember(listState, logoExitOffset) {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 ||
+                (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset >= logoExitOffset)
+        }
+    }
+    LaunchedEffect(showStickyContext) {
+        onStickyContextVisibilityChanged(showStickyContext)
     }
 }
 
