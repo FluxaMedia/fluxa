@@ -2,20 +2,33 @@ import React from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import type { ImportCategory } from '../core/importCategories';
 
-export function ImportDialog({ title, items, destinations, destinationLabel, localOnlyLabel, confirmLabel, cancelLabel, onConfirm, onCancel }: {
+type ScanResult = { counts: Partial<Record<ImportCategory, number>>; error?: string };
+
+export function ImportDialog({
+  title, items, destinations, destinationLabel, localOnlyLabel,
+  scanLabel, scanningLabel, backLabel, continueLabel, confirmLabel, cancelLabel,
+  onScan, onConfirm, onCancel,
+}: {
   title: string;
   items: { key: ImportCategory; label: string }[];
   destinations: { key: string; label: string }[];
   destinationLabel: string;
   localOnlyLabel: string;
+  scanLabel: string;
+  scanningLabel: string;
+  backLabel: string;
+  continueLabel: string;
   confirmLabel: string;
   cancelLabel: string;
+  onScan: (selected: ImportCategory[]) => Promise<ScanResult>;
   onConfirm: (selected: ImportCategory[], destination: string | null) => void;
   onCancel: () => void;
 }) {
   useEscapeKey(onCancel);
   const [selected, setSelected] = React.useState<Set<ImportCategory>>(() => new Set(items.map((item) => item.key)));
   const [destination, setDestination] = React.useState<string>('');
+  const [phase, setPhase] = React.useState<'select' | 'scanning' | 'preview'>('select');
+  const [scanResult, setScanResult] = React.useState<ScanResult | null>(null);
 
   const toggle = (key: ImportCategory) => {
     setSelected((current) => {
@@ -26,39 +39,83 @@ export function ImportDialog({ title, items, destinations, destinationLabel, loc
     });
   };
 
+  const runScan = () => {
+    setPhase('scanning');
+    void onScan([...selected]).then((result) => {
+      setScanResult(result);
+      setPhase('preview');
+    });
+  };
+
   return (
     <div style={S.overlay} onClick={onCancel}>
       <div style={S.dialog} onClick={(e) => e.stopPropagation()}>
         <p style={S.title}>{title}</p>
-        <div style={S.list}>
-          {items.map((item) => (
-            <label key={item.key} style={S.row}>
-              <input type="checkbox" checked={selected.has(item.key)} onChange={() => toggle(item.key)} style={S.checkbox} />
-              <span>{item.label}</span>
-            </label>
-          ))}
-        </div>
-        {destinations.length > 0 && (
-          <div style={S.destinationBlock}>
-            <p style={S.destinationLabel}>{destinationLabel}</p>
-            <select value={destination} onChange={(e) => setDestination(e.target.value)} style={S.select}>
-              <option value="">{localOnlyLabel}</option>
-              {destinations.map((dest) => (
-                <option key={dest.key} value={dest.key}>{dest.label}</option>
+
+        {phase === 'select' && (
+          <>
+            <div style={S.list}>
+              {items.map((item) => (
+                <label key={item.key} style={S.row}>
+                  <input type="checkbox" checked={selected.has(item.key)} onChange={() => toggle(item.key)} style={S.checkbox} />
+                  <span>{item.label}</span>
+                </label>
               ))}
-            </select>
+            </div>
+            {destinations.length > 0 && (
+              <div style={S.destinationBlock}>
+                <p style={S.destinationLabel}>{destinationLabel}</p>
+                <select value={destination} onChange={(e) => setDestination(e.target.value)} style={S.select}>
+                  <option value="">{localOnlyLabel}</option>
+                  {destinations.map((dest) => (
+                    <option key={dest.key} value={dest.key}>{dest.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div style={S.actions}>
+              <button onClick={onCancel} style={S.cancelBtn}>{cancelLabel}</button>
+              <button
+                onClick={runScan}
+                disabled={selected.size === 0}
+                style={{ ...S.confirmBtn, opacity: selected.size === 0 ? 0.5 : 1 }}
+              >
+                {scanLabel}
+              </button>
+            </div>
+          </>
+        )}
+
+        {phase === 'scanning' && (
+          <div style={S.actions}>
+            <button disabled style={{ ...S.confirmBtn, width: '100%', opacity: 0.6 }}>{scanningLabel}</button>
           </div>
         )}
-        <div style={S.actions}>
-          <button onClick={onCancel} style={S.cancelBtn}>{cancelLabel}</button>
-          <button
-            onClick={() => onConfirm([...selected], destination || null)}
-            disabled={selected.size === 0}
-            style={{ ...S.confirmBtn, opacity: selected.size === 0 ? 0.5 : 1 }}
-          >
-            {confirmLabel}
-          </button>
-        </div>
+
+        {phase === 'preview' && scanResult && (
+          <>
+            {scanResult.error ? (
+              <p style={S.errorText}>{scanResult.error}</p>
+            ) : (
+              <div style={S.list}>
+                {items.filter((item) => selected.has(item.key)).map((item) => (
+                  <div key={item.key} style={S.countRow}>
+                    <span>{item.label}</span>
+                    <span style={S.countValue}>{scanResult.counts[item.key] ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={S.actions}>
+              <button onClick={() => setPhase('select')} style={S.cancelBtn}>{backLabel}</button>
+              {!scanResult.error && (
+                <button onClick={() => onConfirm([...selected], destination || null)} style={S.confirmBtn}>
+                  {continueLabel}
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -73,6 +130,9 @@ const S: Record<string, React.CSSProperties> = {
   list: { display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' },
   row: { display: 'flex', alignItems: 'center', gap: '0.625rem', color: 'rgba(255,255,255,0.85)', fontSize: '0.8125rem', cursor: 'pointer' },
   checkbox: { width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#FFFFFF' },
+  countRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'rgba(255,255,255,0.85)', fontSize: '0.8125rem', padding: '0.5rem 0.625rem', borderRadius: '0.375rem', background: 'rgba(255,255,255,0.045)' },
+  countValue: { color: '#FFFFFF', fontWeight: 700 },
+  errorText: { color: '#FF5D5D', fontSize: '0.8125rem', margin: '0 0 1rem', lineHeight: 1.5 },
   destinationBlock: { marginBottom: '1.375rem' },
   destinationLabel: { margin: '0 0 0.5rem', color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', fontWeight: 600 },
   select: { width: '100%', height: '2.5rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', fontSize: '0.8125rem', fontFamily: FONT, padding: '0 0.75rem', outline: 'none' },

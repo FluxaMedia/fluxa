@@ -81,6 +81,7 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   if (!token) return { synced: false, error: 'Trakt is not connected' };
   const categories = payload.categories as ImportCategory[] | undefined;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
+  const dryRun = payload.dryRun === true;
 
   let headers = traktHeaders(token, clientId);
   const activeToken = token;
@@ -154,20 +155,20 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
 
     const watchlistItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
     watchlistCount = watchlistItems.length;
-    if (wants('watchlist')) await mergeExternalWatchlist(watchlistItems, profileKey);
+    if (wants('watchlist') && !dryRun) await mergeExternalWatchlist(watchlistItems, profileKey);
 
-    await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
+    if (!dryRun) await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
 
     const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
     watchedCount = Object.keys(watchedIds).length;
-    if (wants('watched')) await mergeExternalWatched(watchedIds, profileKey);
+    if (wants('watched') && !dryRun) await mergeExternalWatched(watchedIds, profileKey);
 
     if (activities) {
       await storageWrite(cacheKey, { activities, playbackItems, watchlistMovies, watchlistShows, watchedMovies, watchedShows } satisfies TraktDeltaCache);
     }
   } catch {}
 
-  if (wants('continueWatching')) {
+  if (wants('continueWatching') && !dryRun) {
     await replaceExternalContinueWatching({ items, provider: 'trakt', profileKey });
     const { promoteExternalProgress } = await import('./externalSync');
     await promoteExternalProgress(items, 'trakt', refreshedProfile ?? null);

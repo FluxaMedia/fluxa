@@ -842,9 +842,40 @@ export function AccountSection({
             .map(([key, label]) => ({ key, label }))}
           destinationLabel={t('settings.import_destination_label')}
           localOnlyLabel={t('settings.import_destination_local')}
+          scanLabel={t('settings.import_scan')}
+          scanningLabel={t('settings.import_scanning')}
+          backLabel={t('settings.import_back')}
+          continueLabel={t('settings.import_continue')}
           confirmLabel={t('settings.import')}
           cancelLabel={t('common.cancel')}
           onCancel={() => setImportDialog(null)}
+          onScan={async (selected) => {
+            if (!importDialog || !activeProfile) return { counts: {} };
+            const provider = importDialog;
+            const token = provider === 'trakt' ? activeProfile.traktAccessToken
+              : provider === 'simkl' ? activeProfile.simklAccessToken
+              : provider === 'anilist' ? activeProfile.anilistAccessToken
+              : provider === 'stremio' ? activeProfile.stremioAuthKey
+              : activeProfile.nuvioAccessToken;
+            const clientId = provider === 'trakt' ? await invoke<string>('get_oauth_client_id', { service: 'trakt' })
+              : provider === 'simkl' ? await invoke<string>('get_oauth_client_id', { service: 'simkl' })
+              : undefined;
+            const result = await syncExternalIntegrationNow({
+              provider, profile: activeProfile, token, clientId, categories: selected, dryRun: true,
+            }) as {
+              synced?: boolean; error?: string;
+              watchlistCount?: number; continueWatchingCount?: number; watchedCount?: number;
+              completedCount?: number; droppedCount?: number; collectionsCount?: number; addonCount?: number;
+            };
+            if (!result.synced) return { counts: {}, error: result.error ?? t('common.error') };
+            const counts: Partial<Record<ImportCategory, number>> = {};
+            if (selected.includes('watchlist')) counts.watchlist = result.watchlistCount ?? 0;
+            if (selected.includes('continueWatching')) counts.continueWatching = result.continueWatchingCount ?? 0;
+            if (selected.includes('watched')) counts.watched = result.watchedCount ?? ((result.completedCount ?? 0) + (result.droppedCount ?? 0));
+            if (selected.includes('collections')) counts.collections = result.collectionsCount ?? 0;
+            if (selected.includes('addons')) counts.addons = result.addonCount ?? 0;
+            return { counts };
+          }}
           onConfirm={(selected, destination) => {
             const source = importDialog;
             setImportDialog(null);

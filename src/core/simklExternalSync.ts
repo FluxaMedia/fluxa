@@ -48,6 +48,7 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   if (!token) return { synced: false, error: 'Simkl is not connected' };
   const categories = payload.categories as ImportCategory[] | undefined;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
+  const dryRun = payload.dryRun === true;
 
   const headers: HeadersInit = {
     'Authorization': `Bearer ${token}`,
@@ -106,7 +107,7 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   const moviesData = JSON.stringify(movies);
   const rawItems = ((await coreSimklWatchingToItems(showsData, moviesData)) ?? []) as Record<string, unknown>[];
   const items = await enrichWithAddonMeta(rawItems);
-  if (wants('continueWatching')) {
+  if (wants('continueWatching') && !dryRun) {
     await replaceExternalContinueWatching({ items, provider: 'simkl', profileKey });
     const { promoteExternalProgress } = await import('./externalSync');
     await promoteExternalProgress(items, 'simkl', profile ?? null);
@@ -115,13 +116,13 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   const wlShowsData = JSON.stringify(wlShows);
   const wlMoviesData = JSON.stringify(wlMovies);
   const watchlistItems = ((await coreSimklWatchlistToItems(wlShowsData, wlMoviesData)) ?? []) as Record<string, unknown>[];
-  if (wants('watchlist')) await mergeExternalWatchlist(watchlistItems, profileKey);
-  await saveProviderLibrary('simkl', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
+  if (wants('watchlist') && !dryRun) await mergeExternalWatchlist(watchlistItems, profileKey);
+  if (!dryRun) await saveProviderLibrary('simkl', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
 
   const doneShowsData = JSON.stringify(doneShows);
   const doneMoviesData = JSON.stringify(doneMovies);
   const watchedMap = ((await coreSimklWatchedToIds(doneShowsData, doneMoviesData)) ?? {}) as Record<string, boolean>;
-  if (wants('watched')) await mergeExternalWatched(watchedMap, profileKey);
+  if (wants('watched') && !dryRun) await mergeExternalWatched(watchedMap, profileKey);
 
   return { synced: true, provider: 'simkl', continueWatchingCount: items.length, watchlistCount: watchlistItems.length, watchedCount: Object.keys(watchedMap).length };
 }

@@ -69,6 +69,7 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
 
   const categories = payload.categories as ImportCategory[] | undefined;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
+  const dryRun = payload.dryRun === true;
 
   const lib = await loadLibrary(profileKey);
   const watchlistBefore = (lib.watchlist as LibraryItemRecord[] | undefined) ?? [];
@@ -77,11 +78,11 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
   const watchedBefore = (lib.watched as Record<string, boolean> | undefined) ?? {};
   const progressBefore = (lib.progress as Record<string, unknown> | undefined) ?? {};
 
-  if (wants('watchlist')) {
+  if (wants('watchlist') && !dryRun) {
     lib.watchlist = await coreMergeLibraryItemsById(watchlistBefore, plan.watchlist);
     await persistStatusListMerge(watchlistBefore, lib.watchlist as LibraryItemRecord[], 'watchlist', profileKey);
   }
-  if (wants('watched')) {
+  if (wants('watched') && !dryRun) {
     lib.completed = await coreMergeLibraryItemsById(completedBefore, plan.completed);
     lib.dropped = await coreMergeLibraryItemsById(droppedBefore, plan.dropped);
     lib.watched = { ...watchedBefore, ...plan.watched };
@@ -89,19 +90,21 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
     await persistStatusListMerge(droppedBefore, lib.dropped as LibraryItemRecord[], 'dropped', profileKey);
     await persistWatchedMerge(watchedBefore, lib.watched as Record<string, boolean>, profileKey);
   }
-  if (wants('continueWatching')) {
+  if (wants('continueWatching') && !dryRun) {
     lib.progress = { ...progressBefore, ...plan.progress };
     lib.continueWatching = await buildContinueWatching(lib.progress as Record<string, unknown>);
     await persistProgressMerge(progressBefore, lib.progress as Record<string, unknown>, profileKey);
     await replaceExternalContinueWatching({ provider: 'anilist', items: plan.watching, profileKey });
   }
-  await saveLibrary(lib, profileKey);
-  await saveProviderLibrary('anilist', {
-    watchlist: plan.watchlist,
-    watching: plan.watching,
-    completed: plan.completed,
-    dropped: plan.dropped,
-  }, profileKey);
+  if (!dryRun) {
+    await saveLibrary(lib, profileKey);
+    await saveProviderLibrary('anilist', {
+      watchlist: plan.watchlist,
+      watching: plan.watching,
+      completed: plan.completed,
+      dropped: plan.dropped,
+    }, profileKey);
+  }
 
   return {
     synced: true,

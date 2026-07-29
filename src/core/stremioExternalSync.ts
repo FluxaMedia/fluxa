@@ -101,6 +101,7 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
   const profileKey = profile ? profileStorageKey(profile) : undefined;
   const categories = payload.categories as ImportCategory[] | undefined;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
+  const dryRun = payload.dryRun === true;
 
   let libraryItems: Record<string, unknown>[];
   try {
@@ -111,21 +112,26 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
 
   const rawItems = ((await coreLibraryContinueWatchingItems(libraryItems)) ?? []) as Record<string, unknown>[];
   const items = await enrichWithAddonMeta(rawItems);
-  if (wants('continueWatching')) await replaceExternalContinueWatching({ items, provider: 'stremio', profileKey });
+  if (wants('continueWatching') && !dryRun) await replaceExternalContinueWatching({ items, provider: 'stremio', profileKey });
 
   let watchlistCount = 0;
   if (wants('watchlist')) {
     try {
       const watchlistItems = ((await coreStremioWatchlistToItems(libraryItems)) ?? []) as Record<string, unknown>[];
-      watchlistCount = await mergeExternalWatchlist(watchlistItems, profileKey);
-      await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
+      watchlistCount = watchlistItems.length;
+      if (!dryRun) {
+        await mergeExternalWatchlist(watchlistItems, profileKey);
+        await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
+      }
     } catch {}
   }
 
+  let watchedCount = 0;
   if (wants('watched')) {
     try {
       const watchedIds = ((await coreStremioWatchedToIds(libraryItems)) ?? {}) as Record<string, boolean>;
-      await mergeExternalWatched(watchedIds, profileKey);
+      watchedCount = Object.keys(watchedIds).length;
+      if (!dryRun) await mergeExternalWatched(watchedIds, profileKey);
     } catch {}
   }
 
@@ -133,10 +139,10 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
   if (wants('addons')) {
     try {
       const addons = await stremioPullAddons(authKey);
-      await saveAddons(await Promise.all(addons.map(normalizeAddonDescriptor)));
       addonCount = addons.length;
+      if (!dryRun) await saveAddons(await Promise.all(addons.map(normalizeAddonDescriptor)));
     } catch {}
   }
 
-  return { synced: true, provider: 'stremio', continueWatchingCount: items.length, watchlistCount, addonCount };
+  return { synced: true, provider: 'stremio', continueWatchingCount: items.length, watchlistCount, watchedCount, addonCount };
 }

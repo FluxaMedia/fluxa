@@ -42,6 +42,7 @@ export type NuvioImportStep = 'addons' | 'library' | 'progress' | 'history' | 'c
 export interface NuvioImportReport {
   errors: Partial<Record<NuvioImportStep, string>>;
   changed: boolean;
+  counts?: { watchlist: number; continueWatching: number; watched: number; collections: number; addons: number };
 }
 
 export interface NuvioSyncMeta {
@@ -266,6 +267,7 @@ export async function importNuvioProfileData(
   onStep?: (step: NuvioImportStep, ok: boolean, error?: string) => void,
   onItemProgress?: (index: number, total: number | null, title: string) => void,
   categories?: ImportCategory[],
+  dryRun?: boolean,
 ): Promise<NuvioImportReport> {
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
   const freshProfile = await freshNuvioProfile(profile).catch(() => profile);
@@ -293,12 +295,14 @@ export async function importNuvioProfileData(
   const errors: Partial<Record<NuvioImportStep, string>> = {};
 
   let addonDescriptors: Array<Record<string, unknown>> = [];
+  let addonCount = 0;
   if (wants('addons')) {
     try {
       const addons = await nuvioPullAddons(token, profileIdx);
       const fetched = await fetchAddonManifests(addons, onItemProgress);
       addonDescriptors = fetched.descriptors;
-      await storageWrite(`addons_${suffix}`, fetched.descriptors);
+      addonCount = fetched.descriptors.length;
+      if (!dryRun) await storageWrite(`addons_${suffix}`, fetched.descriptors);
       onStep?.('addons', true);
     } catch (err) {
       errors.addons = err instanceof Error ? err.message : String(err);
@@ -307,10 +311,13 @@ export async function importNuvioProfileData(
   }
 
   let library: unknown[] = [];
+  let watchlistCount = 0;
   if (wants('watchlist')) {
     try {
       library = await pullAllNuvioLibrary(token, profileIdx, onItemProgress);
-      libDoc.watchlist = (await coreNuvioLibraryToWatchlist(library)) ?? libDoc.watchlist;
+      const mappedWatchlist = (await coreNuvioLibraryToWatchlist(library)) ?? libDoc.watchlist;
+      watchlistCount = Array.isArray(mappedWatchlist) ? mappedWatchlist.length : 0;
+      if (!dryRun) libDoc.watchlist = mappedWatchlist;
       onStep?.('library', true);
     } catch (err) {
       errors.library = err instanceof Error ? err.message : String(err);
@@ -368,53 +375,59 @@ export async function importNuvioProfileData(
     }
   }
 
-  const plan = await coreNuvioImportMergePlan({
-    progress: progressBefore,
-    watched: watchedBefore,
-    library,
-    addonMetas,
-    watchProgress,
-    watchHistory,
-  });
-  let appliedRemoteWatchState = false;
-  if (plan) {
-    if (wants('continueWatching')) {
-      libDoc.progress = plan.progress;
-      libDoc.continueWatching = await buildContinueWatching(plan.progress);
+  if (!dryRun) {
+    const plan = await coreNuvioImportMergePlan({
+      progress: progressBefore,
+      watched: watchedBefore,
+      library,
+      addonMetas,
+      watchProgress,
+      watchHistory,
+    });
+    let appliedRemoteWatchState = false;
+    if (plan) {
+      if (wants('continueWatching')) {
+        libDoc.progress = plan.progress;
+        libDoc.continueWatching = await buildContinueWatching(plan.progress);
+      }
+      if (wants('watched')) libDoc.watched = plan.watched;
+      await saveProviderLibrary('nuvio', {
+        watchlist: (libDoc.watchlist as Record<string, unknown>[]) ?? [],
+        watching: libDoc.continueWatching as Record<string, unknown>[],
+        completed: [],
+        dropped: [],
+      }, profileKey);
+      appliedRemoteWatchState = true;
     }
-    if (wants('watched')) libDoc.watched = plan.watched;
-    await saveProviderLibrary('nuvio', {
-      watchlist: (libDoc.watchlist as Record<string, unknown>[]) ?? [],
-      watching: libDoc.continueWatching as Record<string, unknown>[],
-      completed: [],
-      dropped: [],
-    }, profileKey);
-    appliedRemoteWatchState = true;
+
+    await persistProgressMerge(progressBefore, libDoc.progress as Record<string, unknown>, profileKey);
+    await persistWatchedMerge(watchedBefore, libDoc.watched as Record<string, boolean>, profileKey);
+    await persistContinueWatchingMerge(continueWatchingBefore, libDoc.continueWatching as Record<string, unknown>[], profileKey);
+    await saveLibrary(libDoc, profileKey);
+    if (appliedRemoteWatchState && watchProgress) {
+      await storageWrite(deltaCacheKey(profile, 'progress'), watchProgress);
+      if (progressCursor != null) await storageWrite(deltaCursorKey(profile, 'progress'), progressCursor);
+    }
+    if (appliedRemoteWatchState && watchHistory) {
+      await storageWrite(deltaCacheKey(profile, 'history'), watchHistory);
+      if (historyCursor != null) await storageWrite(deltaCursorKey(profile, 'history'), historyCursor);
+    }
   }
   if (watchProgress) onStep?.('progress', true);
   if (watchHistory) onStep?.('history', true);
 
-  await persistProgressMerge(progressBefore, libDoc.progress as Record<string, unknown>, profileKey);
-  await persistWatchedMerge(watchedBefore, libDoc.watched as Record<string, boolean>, profileKey);
-  await persistContinueWatchingMerge(continueWatchingBefore, libDoc.continueWatching as Record<string, unknown>[], profileKey);
-  await saveLibrary(libDoc, profileKey);
-  if (appliedRemoteWatchState && watchProgress) {
-    await storageWrite(deltaCacheKey(profile, 'progress'), watchProgress);
-    if (progressCursor != null) await storageWrite(deltaCursorKey(profile, 'progress'), progressCursor);
-  }
-  if (appliedRemoteWatchState && watchHistory) {
-    await storageWrite(deltaCacheKey(profile, 'history'), watchHistory);
-    if (historyCursor != null) await storageWrite(deltaCursorKey(profile, 'history'), historyCursor);
-  }
-
+  let collectionsCount = 0;
   if (wants('collections')) {
     try {
       const collections = await nuvioPullCollections(token, profileIdx);
       if (collections.length > 0) {
         const raw = (collections[0]?.collections_json ?? []) as unknown[];
         const mapped = (await coreNuvioMapCollections(raw)) ?? [];
-        const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
-        await storageWrite('profiles', profiles.map((p) => p.id === profile.id ? { ...p, libraryCollections: mapped as UserProfile['libraryCollections'] } : p));
+        collectionsCount = mapped.length;
+        if (!dryRun) {
+          const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
+          await storageWrite('profiles', profiles.map((p) => p.id === profile.id ? { ...p, libraryCollections: mapped as UserProfile['libraryCollections'] } : p));
+        }
       }
       onStep?.('collections', true);
     } catch (err) {
@@ -423,9 +436,17 @@ export async function importNuvioProfileData(
     }
   }
 
+  const counts = {
+    watchlist: watchlistCount,
+    continueWatching: watchProgress?.length ?? 0,
+    watched: watchHistory?.length ?? 0,
+    collections: collectionsCount,
+    addons: addonCount,
+  };
+
   const changed = JSON.stringify(continueWatchingBefore) !== JSON.stringify(libDoc.continueWatching)
     || JSON.stringify(progressBefore) !== JSON.stringify(libDoc.progress)
     || JSON.stringify(watchedBefore) !== JSON.stringify(libDoc.watched);
 
-  return { errors, changed };
+  return { errors, changed, counts };
 }

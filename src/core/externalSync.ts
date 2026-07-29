@@ -344,10 +344,19 @@ async function syncNuvioNow(payload: Record<string, unknown>): Promise<unknown> 
   if (!profile?.nuvioAccessToken) return { synced: false, error: 'Nuvio is not connected' };
   const { importNuvioProfileData } = await import('./nuvioSync');
   const categories = payload.categories as ImportCategory[] | undefined;
-  const report = await importNuvioProfileData(profile, undefined, undefined, categories);
+  const dryRun = payload.dryRun === true;
+  const report = await importNuvioProfileData(profile, undefined, undefined, categories, dryRun);
   const failures = Object.entries(report.errors);
   if (failures.length > 0) {
     return { synced: false, error: failures.map(([step, msg]) => `${step}: ${msg}`).join('; ') };
   }
-  return { synced: true, provider: 'nuvio' };
+  return {
+    synced: true,
+    provider: 'nuvio',
+    watchlistCount: report.counts?.watchlist ?? 0,
+    continueWatchingCount: report.counts?.continueWatching ?? 0,
+    watchedCount: report.counts?.watched ?? 0,
+    collectionsCount: report.counts?.collections ?? 0,
+    addonCount: report.counts?.addons ?? 0,
+  };
 }
