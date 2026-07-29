@@ -118,8 +118,8 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1rem', fontWeight: 600 }}>{initials}</span>
         )}
       </div>
-      <p style={{ color: '#FFFFFF', fontSize: '0.75rem', fontWeight: 750, lineHeight: '0.875rem', margin: '0.125rem 0 0', textAlign: 'center', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{name}</p>
-      <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '0.625rem', margin: '1px 0 0', textAlign: 'center', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{role}</p>
+      <p style={{ color: '#FFFFFF', fontSize: '0.75rem', fontWeight: 750, lineHeight: '0.875rem', margin: '0.125rem 0 0', textAlign: 'center', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, textShadow: '0 1px 0.125rem rgba(0,0,0,0.8)' }}>{name}</p>
+      <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.6875rem', margin: '1px 0 0', textAlign: 'center', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, textShadow: '0 1px 0.125rem rgba(0,0,0,0.8)' }}>{role}</p>
     </div>
   );
 });
