@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, MessageCircle, Play } from 'lucide-react';
 import { coreDetailEpisodePlan, coreInvoke } from '../core/engine';
 import { prewarmYoutubeTrailerConfig } from '../core/effectRunner';
 import { coreSupportsResource } from '../core/addonManifest';
@@ -7,17 +6,14 @@ import { loadAddons } from '../core/libraryOps';
 import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { posterPrefsFromState } from '../core/posterPrefs';
 import { seasonPosterUrl } from '../core/seasonPosters';
-import { MovieCard } from '../components/MovieCard';
 import type { AppState, LibraryItem, Meta, MetaLink, Stream, Video } from '../core/types';
 import { getLanguage, t } from '../i18n';
 import { fetchTmdbPeopleImages } from '../core/tmdb';
 import { NAV_RAIL_WIDTH, TOP_BAR_H, S } from '../components/detail/detailStyles';
-import { buildCastMembers, CastAvatar, type NormalizedCastMember } from '../components/detail/castSection';
-import { TrailerCarousel, fetchYoutubeTrailerMetadata, youtubeVideoId, type TrailerMetadata } from '../components/detail/TrailerCarousel';
-import { MovieSourcePanel } from '../components/detail/SourcePanel';
-import { EpisodePanel, type ProgressEntry } from '../components/detail/EpisodePanel';
+import { buildCastMembers, type NormalizedCastMember } from '../components/detail/castSection';
+import { fetchYoutubeTrailerMetadata, youtubeVideoId, type TrailerMetadata } from '../components/detail/TrailerCarousel';
+import { type ProgressEntry } from '../components/detail/EpisodePanel';
 import { ModernDetailLayout } from '../components/detail/ModernDetailLayout';
-import { RatingsRow } from '../components/detail/RatingBadge';
 import { TraktCommentsDialog } from '../components/detail/TraktCommentsDialog';
 import { useSeasonWatched } from '../hooks/useSeasonWatched';
 import { imdbButtonFor, setViewingDiscordPresence } from '../core/discordPresence';
@@ -363,7 +359,6 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   if (displayMeta.runtime) metaParts.push(displayMeta.runtime);
   const metaLine = metaParts.join(' · ');
 
-  const viewMode = prefString(prefs, 'detailEpisodeViewMode', 'legacy');
   const resumeDialogEl = resumeDialog ? (
     <ResumeDialog
       timeOffset={resumeDialog.timeOffset}
@@ -381,301 +376,70 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     />
   ) : null;
 
-  if (viewMode === 'modern') {
-    return (
-      <>
-        <ModernDetailLayout
-          displayMeta={displayMeta}
-          bgUrl={bgUrl}
-          isSeries={isSeries}
-          detail={detail}
-          meta={meta}
-          episodes={episodes}
-          filteredEps={filteredEps}
-          seasonNumbers={seasonNumbers}
-          selectedSeason={selectedSeason}
-          selectedEpisode={selectedEpisode}
-          showSources={showSources}
-          playbackFailure={playbackFailure}
-          streams={streams}
-          episodePlan={episodePlan}
-          similarItems={similarItems}
-          displayTrailers={displayTrailers}
-          trailerMetadata={trailerMetadata}
-          castMembers={castMembers}
-          directorLinks={directorLinks}
-          peopleImages={peopleImages}
-          watchedMap={watchedMap}
-          progressMap={progressMap}
-          continueWatchingEntry={continueWatchingEntry}
-          isInWatchlist={isInWatchlist}
-          isDropped={isDropped}
-          isCompleted={isCompleted}
-          omdbRatings={omdbRatings}
-          mdblistRatings={mdblistRatings}
-          fanartArtwork={fanartArtwork}
-          availableAddons={detail.availableAddons ?? []}
-          streamAddonCount={streamAddonCount}
-          poster={poster}
-          trailerOnHero={trailerOnHero}
-          detailHeroAutoplayTrailer={detailHeroAutoplayTrailer}
-          detailHeroAutoplayTrailerDelaySecs={detailHeroAutoplayTrailerDelaySecs}
-          preferredSubtitleLanguage={preferredSubtitleLanguage}
-          secondarySubtitleLanguage={secondarySubtitleLanguage}
-          blurUnwatchedEpisodes={blurUnwatchedEpisodes}
-          spoilerHideEpisodeInfo={spoilerHideEpisodeInfo}
-          detailSeasonSelectorMode={detailSeasonSelectorMode}
-          episodeCardsLayout={episodeCardsLayout}
-          onBack={onBack}
-          onDispatch={onDispatch}
-          onNavigateDetail={onNavigateDetail}
-          onNavigateGenre={onNavigateGenre}
-          onSeasonChange={changeSeason}
-          onEpisodeClick={handleEpisodeClick}
-          onMovieSources={openMovieSources}
-          onRetryFailed={retryFailedStreams}
-          onBackToEpisodes={() => setShowSources(false)}
-          onPlaySource={(stream) => onPlay(stream, displayMeta, selectedEpisodeEnriched, episodeResumeAt, streams)}
-          onPlay={onPlay}
-          onToggleWatchlist={() => { flipWatchlistOverride(); onDispatch(JSON.stringify({ type: 'toggleWatchlistRequested', item: displayMeta })); }}
-          onToggleCompleted={() => { flipCompletedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'completed', item: displayMeta })); }}
-          onToggleDropped={() => { flipDroppedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'dropped', item: displayMeta })); }}
-          onOpenComments={traktCommentsEnabled ? () => setCommentsOpen(true) : undefined}
-          onBgError={() => setBgError(true)}
-        />
-        {resumeDialogEl}
-        {commentsOpen && <TraktCommentsDialog meta={displayMeta} onClose={() => setCommentsOpen(false)} />}
-      </>
-    );
-  }
-
   return (
     <>
-      <div style={S.screen}>
-        {bgUrl && (
-          <div style={S.bgWrap}>
-            <img src={bgUrl} alt="" style={S.bgImg} onError={() => setBgError(true)} />
-            <div style={S.bgGradLeft} />
-            <div style={S.bgGradBottom} />
-          </div>
-        )}
-
-        <div style={S.leftPanel}>
-          <div style={S.scrollArea}>
-            <button style={S.backBtn} onClick={onBack}>
-              <ArrowLeft size={18} color="rgba(255,255,255,0.85)" />
-              <span style={{ marginLeft: '0.375rem' }}>{t('auto.back')}</span>
-            </button>
-
-            {detail.isLoading && !displayMeta.description ? (
-              <div style={{ marginTop: '2rem' }}>
-                <div style={{ width: '17.5rem', height: '5rem', background: 'rgba(255,255,255,0.06)', borderRadius: '0.375rem', marginBottom: '1.125rem' }} />
-                <div style={{ width: '10rem', height: '0.875rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.25rem', marginBottom: '0.625rem' }} />
-                <div style={{ width: '100%', maxWidth: '28.75rem', height: '0.875rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.25rem', marginBottom: '0.5rem' }} />
-                <div style={{ width: '80%', maxWidth: '23.125rem', height: '0.875rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.25rem', marginBottom: '0.5rem' }} />
-                <div style={{ width: '60%', maxWidth: '17.5rem', height: '0.875rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.25rem' }} />
-              </div>
-            ) : (
-              <>
-                <div style={{ marginTop: '1.75rem', marginBottom: '0.5rem' }}>
-                  {(fanartArtwork?.hdLogo || displayMeta.logo) ? (
-                    <img src={fanartArtwork?.hdLogo || displayMeta.logo} alt={displayMeta.name} style={S.logo} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                  ) : (
-                    <h1 style={S.titleText}>{displayMeta.name}</h1>
-                  )}
-                </div>
-
-                {(metaLine || displayMeta.imdbRating || omdbRatings || mdblistRatings) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                    {metaLine && <span style={S.metaLine}>{metaLine}</span>}
-                    {mdblistRatings && Object.keys(mdblistRatings).length > 0 ? (
-                      <RatingsRow ratings={mdblistRatings} />
-                    ) : (
-                      <>
-                        {displayMeta.imdbRating && (
-                          <span style={S.imdbBadge}>
-                            <span style={S.imdbLogo}>IMDb</span>
-                            <span style={S.imdbRating}>{displayMeta.imdbRating}</span>
-                          </span>
-                        )}
-                        {omdbRatings?.rottenTomatoes && (
-                          <span style={S.imdbBadge}>
-                            <span style={S.imdbLogo}>RT</span>
-                            <span style={S.imdbRating}>{omdbRatings.rottenTomatoes}</span>
-                          </span>
-                        )}
-                        {omdbRatings?.metascore && (
-                          <span style={S.imdbBadge}>
-                            <span style={S.imdbLogo}>Metascore</span>
-                            <span style={S.imdbRating}>{omdbRatings.metascore}</span>
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {trailerOnHero && displayTrailers.length > 0 && (
-                  <div style={{ maxWidth: '38.75rem', marginBottom: '1.375rem' }}>
-                    <TrailerCarousel trailers={displayTrailers.slice(0, 4)} trailerMetadata={trailerMetadata} />
-                  </div>
-                )}
-
-                {Array.isArray(displayMeta.genres) && displayMeta.genres.length > 0 && (
-                  <div style={{ display: 'flex', gap: '0.4375rem', flexWrap: 'wrap', marginBottom: '1.375rem' }}>
-                    {displayMeta.genres.slice(0, 6).map((g) => <span key={g} style={S.genrePill}>{g}</span>)}
-                  </div>
-                )}
-
-                {displayMeta.description && (
-                  <DescriptionBlock description={displayMeta.description} />
-                )}
-
-                {displayMeta.awards && (
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <p style={S.sectionLabel}>{t('detail.awards')}</p>
-                    <p style={S.awardsText}>{displayMeta.awards}</p>
-                  </div>
-                )}
-
-                {(castMembers.length > 0 || directorLinks.length > 0) && (
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    <p style={S.sectionLabel}>{t('detail.cast_crew')}</p>
-                    <div style={S.castRow}>
-                      {directorLinks.map((l) => <CastAvatar key={`dir-${l.name}`} name={l.name} role={t('detail.director')} imageUrl={peopleImages[l.name]} />)}
-                      {castMembers.map((member) => (
-                        <CastAvatar key={`cast-${member.name}:${member.role ?? ''}`} name={member.name} role={member.role || t('detail.actor')} imageUrl={member.imageUrl ?? peopleImages[member.name]} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {!trailerOnHero && displayTrailers.length > 0 && (
-                  <div style={S.trailerSection}>
-                    <h2 style={S.similarTitle}>{t('auto.trailers')}</h2>
-                    <TrailerCarousel trailers={displayTrailers} trailerMetadata={trailerMetadata} />
-                  </div>
-                )}
-
-                {similarItems.length > 0 && (
-                  <div style={S.similarSection}>
-                    <h2 style={S.similarTitle}>{t('auto.similar_titles')}</h2>
-                    <div style={S.similarRow}>
-                      {similarItems.slice(0, 16).map((item) => (
-                        <MovieCard key={`${item.type}:${item.id}`} meta={item} width={poster.width} height={poster.height} radius={poster.radius} hideTitle={poster.hideTitles} layout={poster.layout} onClick={onNavigateDetail} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          <div style={S.actionBar}>
-            <LegacyPlayButton isSeries={isSeries} selectedEpisode={selectedEpisode} filteredEps={filteredEps} episodes={episodes} openEpisodeSources={openEpisodeSources} openMovieSources={openMovieSources} />
-
-            <button
-              style={{ ...S.secondaryBtn, background: isInWatchlist ? 'rgba(255,255,255,0.14)' : 'transparent' }}
-              onClick={() => { flipWatchlistOverride(); onDispatch(JSON.stringify({ type: 'toggleWatchlistRequested', item: displayMeta })); }}
-            >
-              {isInWatchlist ? t('detail.in_library') : t('detail.add_to_library')}
-            </button>
-
-            <button
-              style={{ ...S.secondaryBtn, background: isCompleted ? 'rgba(255,255,255,0.14)' : 'transparent' }}
-              onClick={() => { flipCompletedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'completed', item: displayMeta })); }}
-            >
-              {isCompleted ? t('library.unmark_completed') : t('library.mark_completed')}
-            </button>
-
-            <button
-              style={{ ...S.secondaryBtn, background: isDropped ? 'rgba(255,255,255,0.14)' : 'transparent' }}
-              onClick={() => { flipDroppedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'dropped', item: displayMeta })); }}
-            >
-              {isDropped ? t('library.unmark_dropped') : t('library.mark_dropped')}
-            </button>
-
-            {traktCommentsEnabled && <button style={S.secondaryBtn} onClick={() => setCommentsOpen(true)}>
-              <MessageCircle size={17} />
-              <span>{t('detail.trakt_comments')}</span>
-            </button>}
-
-            <div style={{ flex: 1 }} />
-          </div>
-        </div>
-
-        {isSeries ? (
-          <EpisodePanel
-            metaId={meta.id}
-            meta={meta}
-            seasons={seasonNumbers}
-            selectedSeason={selectedSeason}
-            onSeasonChange={changeSeason}
-            episodes={filteredEps}
-            selectedEpisode={selectedEpisode}
-            showSources={showSources}
-            streams={streams}
-            isLoadingStreams={!!detail.isLoadingStreams}
-            isLoadingEpisodes={detail.isLoading && filteredEps.length === 0}
-            availableAddons={detail.availableAddons ?? []}
-            playbackFailure={playbackFailure}
-            streamAddonCount={streamAddonCount}
-            onBackToEpisodes={() => setShowSources(false)}
-            onEpisodeClick={handleEpisodeClick}
-            onPlaySource={(stream) => onPlay(stream, displayMeta, selectedEpisodeEnriched, episodeResumeAt, streams)}
-            onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))}
-            watchedMap={watchedMap}
-            progressMap={progressMap}
-            blurUnwatchedEpisodes={blurUnwatchedEpisodes}
-            detailSeasonSelectorMode={detailSeasonSelectorMode}
-            episodeCardsLayout={episodeCardsLayout}
-            onToggleEpisodeWatched={toggleEpisodeWatched}
-            onMarkSeason={dispatchMarkSeason}
-            seasonWatchedMap={seasonWatchedMap}
-          />
-        ) : (
-          <MovieSourcePanel
-            meta={displayMeta}
-            streams={streams}
-            isLoading={!!detail.isLoadingStreams}
-            availableAddons={detail.availableAddons ?? []}
-            failedAddons={detail.failedAddons ?? []}
-            playbackFailure={playbackFailure}
-            streamAddonCount={streamAddonCount}
-            onPlay={(stream) => onPlay(stream, displayMeta, null, undefined, streams)}
-            onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))}
-            onRetryFailed={retryFailedStreams}
-          />
-        )}
-      </div>
+      <ModernDetailLayout
+        displayMeta={displayMeta}
+        bgUrl={bgUrl}
+        isSeries={isSeries}
+        detail={detail}
+        meta={meta}
+        episodes={episodes}
+        filteredEps={filteredEps}
+        seasonNumbers={seasonNumbers}
+        selectedSeason={selectedSeason}
+        selectedEpisode={selectedEpisode}
+        showSources={showSources}
+        playbackFailure={playbackFailure}
+        streams={streams}
+        episodePlan={episodePlan}
+        similarItems={similarItems}
+        displayTrailers={displayTrailers}
+        trailerMetadata={trailerMetadata}
+        castMembers={castMembers}
+        directorLinks={directorLinks}
+        peopleImages={peopleImages}
+        watchedMap={watchedMap}
+        progressMap={progressMap}
+        continueWatchingEntry={continueWatchingEntry}
+        isInWatchlist={isInWatchlist}
+        isDropped={isDropped}
+        isCompleted={isCompleted}
+        omdbRatings={omdbRatings}
+        mdblistRatings={mdblistRatings}
+        fanartArtwork={fanartArtwork}
+        availableAddons={detail.availableAddons ?? []}
+        streamAddonCount={streamAddonCount}
+        poster={poster}
+        trailerOnHero={trailerOnHero}
+        detailHeroAutoplayTrailer={detailHeroAutoplayTrailer}
+        detailHeroAutoplayTrailerDelaySecs={detailHeroAutoplayTrailerDelaySecs}
+        preferredSubtitleLanguage={preferredSubtitleLanguage}
+        secondarySubtitleLanguage={secondarySubtitleLanguage}
+        blurUnwatchedEpisodes={blurUnwatchedEpisodes}
+        spoilerHideEpisodeInfo={spoilerHideEpisodeInfo}
+        detailSeasonSelectorMode={detailSeasonSelectorMode}
+        episodeCardsLayout={episodeCardsLayout}
+        onBack={onBack}
+        onDispatch={onDispatch}
+        onNavigateDetail={onNavigateDetail}
+        onNavigateGenre={onNavigateGenre}
+        onSeasonChange={changeSeason}
+        onEpisodeClick={handleEpisodeClick}
+        onMovieSources={openMovieSources}
+        onRetryFailed={retryFailedStreams}
+        onBackToEpisodes={() => setShowSources(false)}
+        onPlaySource={(stream) => onPlay(stream, displayMeta, selectedEpisodeEnriched, episodeResumeAt, streams)}
+        onPlay={onPlay}
+        onToggleWatchlist={() => { flipWatchlistOverride(); onDispatch(JSON.stringify({ type: 'toggleWatchlistRequested', item: displayMeta })); }}
+        onToggleCompleted={() => { flipCompletedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'completed', item: displayMeta })); }}
+        onToggleDropped={() => { flipDroppedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'dropped', item: displayMeta })); }}
+        onOpenComments={traktCommentsEnabled ? () => setCommentsOpen(true) : undefined}
+        onBgError={() => setBgError(true)}
+      />
       {resumeDialogEl}
       {commentsOpen && <TraktCommentsDialog meta={displayMeta} onClose={() => setCommentsOpen(false)} />}
     </>
-  );
-}
-
-function LegacyPlayButton({ isSeries, selectedEpisode, filteredEps, episodes, openEpisodeSources, openMovieSources }: {
-  isSeries: boolean; selectedEpisode: Video | null; filteredEps: Video[]; episodes: Video[];
-  openEpisodeSources: (ep: Video) => void; openMovieSources: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      style={{ ...S.playBtn, background: hovered ? '#e2e2e2' : '#FFFFFF' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={() => {
-        if (isSeries) {
-          const ep = selectedEpisode ?? filteredEps[0] ?? episodes[0];
-          if (ep) openEpisodeSources(ep);
-        } else {
-          openMovieSources();
-        }
-      }}
-    >
-      <Play size={16} fill="currentColor" strokeWidth={0} style={{ marginRight: '0.4375rem' }} />
-      {t('common.play')}
-    </button>
   );
 }
 

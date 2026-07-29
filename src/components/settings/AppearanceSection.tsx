@@ -217,13 +217,6 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           selected={prefs.episodeCardsLayout}
           onSelect={(v) => setPref('episodeCardsLayout', v)}
         />
-        <ChoiceTile
-          title={t('settings.detail_page_view_mode')}
-          subtitle={t('settings.detail_page_view_mode_desc')}
-          options={[{ value: 'modern', label: t('settings.view_mode_modern') }, { value: 'legacy', label: t('settings.view_mode_legacy') }]}
-          selected={prefs.detailEpisodeViewMode}
-          onSelect={(v) => setPref('detailEpisodeViewMode', v)}
-        />
       </SettingsSection>
     </>
   );
