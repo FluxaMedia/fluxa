@@ -282,6 +282,7 @@ async function runEffect(
 
     case 'fetchYoutubeTrailerWatchConfig':
     case 'fetchYoutubeTrailerPlayer':
+    case 'fetchYoutubeTrailerPlayerScript':
       value = await executeYoutubeTrailerRequest(p);
       break;
 
@@ -461,7 +462,7 @@ async function proxyTrailerUrls(resolution: YoutubeTrailerResolution): Promise<Y
 
 export async function resolveYoutubeTrailer(videoId: string): Promise<YoutubeTrailerResolution | null> {
   const requestId = crypto.randomUUID();
-  const dispatch = await dispatchAction(JSON.stringify({ type: 'trailerResolveRequested', requestId, videoId }));
+  const dispatch = await dispatchAction(JSON.stringify({ type: 'trailerResolveRequested', requestId, videoId, maxHeight: 1080 }));
   if (!dispatch) return null;
   const immediate = dispatch.state.trailer?.resolutions?.[requestId];
   if (immediate && typeof immediate === 'object' && (immediate as { status?: unknown }).status === 'ok') {

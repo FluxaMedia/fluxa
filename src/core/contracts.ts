@@ -50,6 +50,7 @@ export type EffectType =
   | 'fetchSeasonEpisodes'
   | 'fetchSubtitles'
   | 'fetchYoutubeTrailerPlayer'
+  | 'fetchYoutubeTrailerPlayerScript'
   | 'fetchYoutubeTrailerWatchConfig'
   | 'loadStreams'
   | 'notifyReleasedEpisodes'
