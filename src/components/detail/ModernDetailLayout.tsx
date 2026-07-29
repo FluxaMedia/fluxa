@@ -1,24 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Bookmark, BookmarkCheck, Check, CheckCircle2, ChevronDown, Circle, Film, Maximize2, MessageCircle, Volume2, VolumeX, XCircle } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkCheck, CheckCircle2, Circle, Film, Maximize2, MessageCircle, Volume2, VolumeX, XCircle } from 'lucide-react';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
-import { MovieCard } from '../MovieCard';
 import { getLanguage, t } from '../../i18n';
 import type { DetailState, LibraryItem, Meta, MetaLink, Stream, Trailer, Video } from '../../core/types';
 import type { posterPrefsFromState } from '../../core/posterPrefs';
-import { MS, S, spinnerStyle } from './detailStyles';
-import { CastAvatar, type NormalizedCastMember } from './castSection';
-import { TrailerCarousel, youtubeVideoId, type TrailerMetadata } from './TrailerCarousel';
+import { MS, spinnerStyle } from './detailStyles';
+import { type NormalizedCastMember } from './castSection';
+import { youtubeVideoId, type TrailerMetadata } from './TrailerCarousel';
 import { InlineSourceList, MovieSourcePanel } from './SourcePanel';
-import { SeasonDropdown, seasonLabel, formatEpDate as _formatEpDate, type ProgressEntry } from './EpisodePanel';
+import { SeasonDropdown, seasonLabel, type ProgressEntry } from './EpisodePanel';
 import { ModernIconBtn, ModernPlayButton, ModernTabBar } from './DetailButtons';
 import { ModernEpisodeCard } from './ModernEpisodeCard';
 import { useSeasonWatched } from '../../hooks/useSeasonWatched';
-import { httpFetchText } from '../../core/engine';
-import { resolveYoutubeTrailer, type YoutubeTrailerSubtitleTrack } from '../../core/effectRunner';
-import { normalizeTrailerSubtitleUrl, parseTrailerSubtitleCues, selectTrailerSubtitle, type TrailerCue } from '../../core/trailerSubtitles';
 import { RatingsRow } from './RatingBadge';
-
-const STALL_TIMEOUT_MS = 7000;
+import { GenreTag, SimilarSourcePicker } from './ModernDetailParts';
+import { DetailsTabContent, RelatedTabContent } from './ModernDetailTabs';
+import { useModernDetailTrailer } from './useModernDetailTrailer';
 
 export type ModernDetailProps = {
   displayMeta: Meta;
@@ -79,85 +76,6 @@ export type ModernDetailProps = {
   onOpenComments?: () => void;
   onBgError: () => void;
 };
-
-function GenreTag({ label, onClick }: { label: string; onClick?: () => void }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <span
-      style={{ ...MS.genreTag, textDecoration: hovered ? 'underline' : 'none' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(); }}
-    >
-      {label}
-    </span>
-  );
-}
-
-const similarSourceOptions = ['auto', 'trakt', 'simkl', 'tmdb'] as const;
-
-function SimilarSourcePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('mousedown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, []);
-
-  const labelFor = (source: string) => t(`detail.similar_source_${source}`);
-
-  return (
-    <div ref={pickerRef} style={MS.similarSourcePicker}>
-      <button
-        type="button"
-        aria-label={t('detail.similar_source')}
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-        style={MS.similarSourceButton}
-      >
-        <span>{labelFor(value)}</span>
-        <ChevronDown size={15} strokeWidth={2.5} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.16s ease' }} />
-      </button>
-      {open && (
-        <div role="menu" style={MS.similarSourceMenu}>
-          {similarSourceOptions.map((source) => {
-            const selected = source === value;
-            return (
-              <button
-                key={source}
-                type="button"
-                role="menuitemradio"
-                aria-checked={selected}
-                onClick={() => {
-                  setOpen(false);
-                  if (!selected) onChange(source);
-                }}
-                style={{ ...MS.similarSourceMenuItem, ...(selected ? MS.similarSourceMenuItemActive : {}) }}
-              >
-                <span>{labelFor(source)}</span>
-                {selected && <Check size={15} strokeWidth={3} />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function ModernDetailLayout({
   displayMeta, bgUrl, isSeries, detail, meta, episodes, filteredEps, seasonNumbers,
@@ -228,168 +146,19 @@ export function ModernDetailLayout({
     trailerVideoIdsRef.current = ids;
     return ids;
   }, [displayTrailers]);
-  const [trailerStreamUrl, setTrailerStreamUrl] = useState<string | null>(null);
-  const [trailerAudioUrl, setTrailerAudioUrl] = useState<string | null>(null);
-  const [trailerSubtitles, setTrailerSubtitles] = useState<YoutubeTrailerSubtitleTrack[]>([]);
-  const [trailerSubtitleCues, setTrailerSubtitleCues] = useState<TrailerCue[]>([]);
-  const [activeTrailerSubtitle, setActiveTrailerSubtitle] = useState('');
-  const [trailerReady, setTrailerReady] = useState(false);
-  const [trailerProgress, setTrailerProgress] = useState(0);
-  const [trailerMuted, setTrailerMuted] = useState(true);
-  const lastTrailerProgressAtRef = useRef(0);
-  const trailerVideoRef = useRef<HTMLVideoElement | null>(null);
-  const trailerAudioRef = useRef<HTMLAudioElement | null>(null);
-  const trailerContainerRef = useRef<HTMLDivElement | null>(null);
-  const activeTrailerSubtitleRef = useRef('');
-  const trailerActive = !!trailerStreamUrl && trailerReady;
-  const [selectedTrailerSubtitle, setSelectedTrailerSubtitle] = useState<YoutubeTrailerSubtitleTrack | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    selectTrailerSubtitle(trailerSubtitles, preferredSubtitleLanguage, secondarySubtitleLanguage).then((track) => {
-      if (!cancelled) setSelectedTrailerSubtitle(track);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [trailerSubtitles, preferredSubtitleLanguage, secondarySubtitleLanguage]);
-
-  useEffect(() => {
-    setTrailerStreamUrl(null);
-    setTrailerAudioUrl(null);
-    setTrailerSubtitles([]);
-    setTrailerSubtitleCues([]);
-    setActiveTrailerSubtitle('');
-    activeTrailerSubtitleRef.current = '';
-    setTrailerReady(false);
-    setTrailerProgress(0);
-    setTrailerMuted(true);
-  }, [displayMeta.id]);
-
-  useEffect(() => {
-    if (!detailHeroAutoplayTrailer || trailerVideoIds.length === 0) return;
-    let cancelled = false;
-    let delayElapsed = detailHeroAutoplayTrailerDelaySecs <= 0;
-    let resolvedTrailer: Awaited<ReturnType<typeof resolveYoutubeTrailer>> | null = null;
-    let resolveFinished = false;
-
-    const applyResolvedTrailer = () => {
-      if (cancelled || !delayElapsed || !resolveFinished) return;
-      if (resolvedTrailer?.streamUrl) {
-        setTrailerSubtitles(resolvedTrailer.subtitles ?? []);
-        setTrailerAudioUrl(resolvedTrailer.audioUrl ?? null);
-        setTrailerReady(false);
-        setTrailerStreamUrl(resolvedTrailer.streamUrl);
-      }
-    };
-
-    const delayId = window.setTimeout(() => {
-      delayElapsed = true;
-      applyResolvedTrailer();
-    }, detailHeroAutoplayTrailerDelaySecs * 1000);
-
-    (async () => {
-      for (const id of trailerVideoIds) {
-        if (cancelled) return;
-        try {
-          const resolved = await resolveYoutubeTrailer(id);
-          if (cancelled) return;
-          if (resolved?.streamUrl) {
-            resolvedTrailer = resolved;
-            break;
-          }
-        } catch (err) {
-          console.error('resolveYoutubeTrailerUrl failed', err);
-        }
-      }
-      if (cancelled) return;
-      resolveFinished = true;
-      applyResolvedTrailer();
-    })();
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(delayId);
-    };
-  }, [trailerVideoIds, detailHeroAutoplayTrailer, detailHeroAutoplayTrailerDelaySecs]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setTrailerSubtitleCues([]);
-    setActiveTrailerSubtitle('');
-    activeTrailerSubtitleRef.current = '';
-    if (!selectedTrailerSubtitle?.url || !trailerStreamUrl) return;
-
-    normalizeTrailerSubtitleUrl(selectedTrailerSubtitle.url).then(httpFetchText).then(async (response) => {
-      if (cancelled || response.statusCode < 200 || response.statusCode > 299 || !response.body.trim()) return;
-      const cues = await parseTrailerSubtitleCues(response.body);
-      if (cancelled) return;
-      setTrailerSubtitleCues(cues);
-      updateActiveTrailerSubtitle(trailerVideoRef.current?.currentTime ?? 0, cues);
-    }).catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedTrailerSubtitle?.url, trailerStreamUrl]);
-
-  function updateActiveTrailerSubtitle(time: number, cues = trailerSubtitleCues) {
-    const text = cues.find((cue) => time >= cue.start && time <= cue.end)?.text ?? '';
-    if (text !== activeTrailerSubtitleRef.current) {
-      activeTrailerSubtitleRef.current = text;
-      setActiveTrailerSubtitle(text);
-    }
-  }
-
-  function syncTrailerAudio(shouldPlay = false) {
-    if (!trailerAudioUrl) return;
-    const video = trailerVideoRef.current;
-    const audio = trailerAudioRef.current;
-    if (!video || !audio) return;
-    if (Number.isFinite(video.currentTime) && Math.abs(audio.currentTime - video.currentTime) > 0.35) {
-      audio.currentTime = video.currentTime;
-    }
-    audio.muted = trailerMuted;
-    audio.volume = trailerMuted ? 0 : 1;
-    if (trailerMuted || video.paused || video.ended) {
-      audio.pause();
-    } else if (shouldPlay || audio.paused) {
-      audio.play().catch(() => {});
-    }
-  }
-
-  useEffect(() => {
-    if (!trailerStreamUrl) return;
-    lastTrailerProgressAtRef.current = Date.now();
-    const id = window.setInterval(() => {
-      if (Date.now() - lastTrailerProgressAtRef.current > STALL_TIMEOUT_MS) {
-        setTrailerStreamUrl(null);
-      }
-    }, 2000);
-    return () => window.clearInterval(id);
-  }, [trailerStreamUrl]);
-
-  useEffect(() => {
-    const el = trailerVideoRef.current;
-    if (!el) return;
-    el.muted = trailerMuted;
-    el.volume = trailerMuted ? 0 : 1;
-    syncTrailerAudio(!trailerMuted);
-  }, [trailerMuted, trailerAudioUrl]);
-
-  const fullscreenTrailer = () => {
-    const container = trailerContainerRef.current;
-    if (!container) return;
-    const fullscreenTarget = container as HTMLDivElement & {
-      webkitRequestFullscreen?: () => Promise<void> | void;
-    };
-    const request = fullscreenTarget.requestFullscreen?.bind(fullscreenTarget)
-      ?? fullscreenTarget.webkitRequestFullscreen?.bind(fullscreenTarget);
-    try {
-      const result = request?.();
-      if (result && typeof result.catch === 'function') result.catch(() => {});
-    } catch {}
-  };
+  const {
+    trailerContainerRef, trailerVideoRef, trailerAudioRef,
+    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerProgress, trailerMuted, activeTrailerSubtitle,
+    handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
+  } = useModernDetailTrailer({
+    displayMetaId: displayMeta.id,
+    trailerVideoIds,
+    detailHeroAutoplayTrailer,
+    detailHeroAutoplayTrailerDelaySecs,
+    preferredSubtitleLanguage,
+    secondarySubtitleLanguage,
+  });
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -476,33 +245,10 @@ export function ModernDetailLayout({
                 src={trailerStreamUrl}
                 autoPlay
                 playsInline
-                onPlaying={() => {
-                  setTrailerReady(true);
-                  lastTrailerProgressAtRef.current = Date.now();
-                  if (trailerVideoRef.current) {
-                    trailerVideoRef.current.muted = trailerMuted;
-                    trailerVideoRef.current.volume = trailerMuted ? 0 : 1;
-                  }
-                  syncTrailerAudio(true);
-                  updateActiveTrailerSubtitle(trailerVideoRef.current?.currentTime ?? 0);
-                }}
-                onTimeUpdate={(e) => {
-                  const el = e.currentTarget;
-                  lastTrailerProgressAtRef.current = Date.now();
-                  if (el.duration > 0) setTrailerProgress(el.currentTime / el.duration);
-                  syncTrailerAudio(false);
-                  updateActiveTrailerSubtitle(el.currentTime);
-                }}
-                onEnded={() => {
-                  trailerAudioRef.current?.pause();
-                  setTrailerStreamUrl(null);
-                  setTrailerAudioUrl(null);
-                }}
-                onError={() => {
-                  trailerAudioRef.current?.pause();
-                  setTrailerStreamUrl(null);
-                  setTrailerAudioUrl(null);
-                }}
+                onPlaying={handleTrailerPlaying}
+                onTimeUpdate={(e) => handleTrailerTimeUpdate(e.currentTarget)}
+                onEnded={handleTrailerStopped}
+                onError={handleTrailerStopped}
               />
             )}
             {trailerAudioUrl && (
@@ -534,27 +280,7 @@ export function ModernDetailLayout({
 
           <button
             style={{ ...MS.heroTrailerMuteButton, pointerEvents: 'auto' }}
-            onClick={() => {
-              const newMutedState = !trailerMuted;
-              setTrailerMuted(newMutedState);
-              if (trailerVideoRef.current) {
-                trailerVideoRef.current.muted = newMutedState;
-                trailerVideoRef.current.volume = newMutedState ? 0 : 1;
-                if (!newMutedState && trailerVideoRef.current.paused) {
-                  trailerVideoRef.current.play().catch(() => {});
-                }
-              }
-              if (trailerAudioRef.current && trailerVideoRef.current) {
-                trailerAudioRef.current.muted = newMutedState;
-                trailerAudioRef.current.volume = newMutedState ? 0 : 1;
-                if (newMutedState) {
-                  trailerAudioRef.current.pause();
-                } else {
-                  trailerAudioRef.current.currentTime = trailerVideoRef.current.currentTime;
-                  trailerAudioRef.current.play().catch(() => {});
-                }
-              }
-            }}
+            onClick={toggleTrailerMute}
             aria-label={trailerMuted ? 'Unmute' : 'Mute'}
           >
             {trailerMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -717,50 +443,24 @@ export function ModernDetailLayout({
               )}
 
               {activeTab === 'related' && (
-                <div style={{ ...MS.relatedSection, minHeight: '12.5rem' }}>
-                  <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} />
-                  {similarItems.length === 0 ? (
-                    <p style={MS.episodeCount}>{t('auto.no_similar_titles')}</p>
-                  ) : (
-                    <div style={MS.relatedGrid}>
-                      {similarItems.slice(0, 24).map((item) => (
-                        <MovieCard key={`${item.type}:${item.id}`} meta={item} width={poster.width} height={poster.height} radius={poster.radius} hideTitle={poster.hideTitles} layout={poster.layout} onClick={onNavigateDetail} />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <RelatedTabContent
+                  similarSource={similarSource}
+                  onChangeSimilarSource={changeSimilarSource}
+                  similarItems={similarItems}
+                  poster={poster}
+                  onNavigateDetail={onNavigateDetail}
+                />
               )}
 
               {activeTab === 'details' && (
-                <div style={{ ...MS.detailsTab, minHeight: '12.5rem' }}>
-                  {displayMeta.description && (
-                    <div style={MS.detailsSection}>
-                      <h3 style={MS.detailsSectionTitle}>{t('detail.summary')}</h3>
-                      <p style={MS.detailsText}>{displayMeta.description}</p>
-                    </div>
-                  )}
-                  {displayMeta.awards && (
-                    <div style={MS.detailsSection}>
-                      <h3 style={MS.detailsSectionTitle}>{t('detail.awards')}</h3>
-                      <p style={{ ...MS.detailsText, color: '#54D17A', fontWeight: 700 }}>{displayMeta.awards}</p>
-                    </div>
-                  )}
-                  {(castMembers.length > 0 || directorLinks.length > 0) && (
-                    <div style={MS.detailsSection}>
-                      <h3 style={MS.detailsSectionTitle}>{t('detail.cast_crew')}</h3>
-                      <div style={S.castRow}>
-                        {directorLinks.map((l) => <CastAvatar key={`dir-${l.name}`} name={l.name} role={t('detail.director')} imageUrl={peopleImages[l.name]} />)}
-                        {castMembers.map((member) => <CastAvatar key={`cast-${member.name}:${member.role ?? ''}`} name={member.name} role={member.role || t('detail.actor')} imageUrl={member.imageUrl ?? peopleImages[member.name]} />)}
-                      </div>
-                    </div>
-                  )}
-                  {displayTrailers.length > 0 && (
-                    <div style={MS.detailsSection}>
-                      <h3 style={MS.detailsSectionTitle}>{t('auto.trailers')}</h3>
-                      <TrailerCarousel trailers={displayTrailers} trailerMetadata={trailerMetadata} />
-                    </div>
-                  )}
-                </div>
+                <DetailsTabContent
+                  displayMeta={displayMeta}
+                  castMembers={castMembers}
+                  directorLinks={directorLinks}
+                  peopleImages={peopleImages}
+                  displayTrailers={displayTrailers}
+                  trailerMetadata={trailerMetadata}
+                />
               )}
             </>
           )}
@@ -774,50 +474,24 @@ export function ModernDetailLayout({
               />
 
               {(activeTab === 'related' || activeTab === 'episodes') && (
-                <div style={{ ...MS.relatedSection, minHeight: '12.5rem' }}>
-                  <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} />
-                  {similarItems.length === 0 ? (
-                    <p style={MS.episodeCount}>{t('auto.no_similar_titles')}</p>
-                  ) : (
-                    <div style={MS.relatedGrid}>
-                      {similarItems.slice(0, 24).map((item) => (
-                        <MovieCard key={`${item.type}:${item.id}`} meta={item} width={poster.width} height={poster.height} radius={poster.radius} hideTitle={poster.hideTitles} layout={poster.layout} onClick={onNavigateDetail} />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <RelatedTabContent
+                  similarSource={similarSource}
+                  onChangeSimilarSource={changeSimilarSource}
+                  similarItems={similarItems}
+                  poster={poster}
+                  onNavigateDetail={onNavigateDetail}
+                />
               )}
 
               {activeTab === 'details' && (
-                <div style={{ ...MS.detailsTab, minHeight: '12.5rem' }}>
-                  {displayMeta.description && (
-                    <div style={MS.detailsSection}>
-                      <h3 style={MS.detailsSectionTitle}>{t('detail.summary')}</h3>
-                      <p style={MS.detailsText}>{displayMeta.description}</p>
-                    </div>
-                  )}
-                  {displayMeta.awards && (
-                    <div style={MS.detailsSection}>
-                      <h3 style={MS.detailsSectionTitle}>{t('detail.awards')}</h3>
-                      <p style={{ ...MS.detailsText, color: '#54D17A', fontWeight: 700 }}>{displayMeta.awards}</p>
-                    </div>
-                  )}
-                  {(castMembers.length > 0 || directorLinks.length > 0) && (
-                    <div style={MS.detailsSection}>
-                      <h3 style={MS.detailsSectionTitle}>{t('detail.cast_crew')}</h3>
-                      <div style={S.castRow}>
-                        {directorLinks.map((l) => <CastAvatar key={`dir-${l.name}`} name={l.name} role={t('detail.director')} imageUrl={peopleImages[l.name]} />)}
-                        {castMembers.map((member) => <CastAvatar key={`cast-${member.name}:${member.role ?? ''}`} name={member.name} role={member.role || t('detail.actor')} imageUrl={member.imageUrl ?? peopleImages[member.name]} />)}
-                      </div>
-                    </div>
-                  )}
-                  {displayTrailers.length > 0 && (
-                    <div style={MS.detailsSection}>
-                      <h3 style={MS.detailsSectionTitle}>{t('auto.trailers')}</h3>
-                      <TrailerCarousel trailers={displayTrailers} trailerMetadata={trailerMetadata} />
-                    </div>
-                  )}
-                </div>
+                <DetailsTabContent
+                  displayMeta={displayMeta}
+                  castMembers={castMembers}
+                  directorLinks={directorLinks}
+                  peopleImages={peopleImages}
+                  displayTrailers={displayTrailers}
+                  trailerMetadata={trailerMetadata}
+                />
               )}
             </>
           )}
