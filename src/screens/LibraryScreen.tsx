@@ -17,6 +17,7 @@ import { CollectionsTab } from '../components/library/CollectionsTab';
 import { loadNuvioCollectionSource } from '../core/collectionSources';
 import { coreInvoke } from '../core/engine';
 import { loadProviderLibraries, PROVIDER_LIBRARIES_CHANGED, type LibraryProvider, type ProviderLibrarySnapshot } from '../core/providerLibraries';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 'airing' | 'rated' | 'history';
 type LibrarySource = 'local' | LibraryProvider;
@@ -48,6 +49,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const [providerLibraries, setProviderLibraries] = useState<Partial<Record<LibraryProvider, ProviderLibrarySnapshot>>>({});
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
 
   useEffect(() => {
     void whenViewPrefsReady().then(() => {
@@ -411,7 +413,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
           <button style={styles.bulkBtn} disabled={selectedIds.size === 0} onClick={() => moveSelectedToStatus('completed')}>{t('library.mark_completed')}</button>
           <button style={styles.bulkBtn} disabled={selectedIds.size === 0} onClick={() => moveSelectedToStatus('dropped')}>{t('library.mark_dropped')}</button>
           {canRemoveFromCurrentList && (
-            <button style={styles.bulkDangerBtn} disabled={selectedIds.size === 0} onClick={removeSelectedFromCurrentList}>{t('common.remove')}</button>
+            <button style={styles.bulkDangerBtn} disabled={selectedIds.size === 0} onClick={() => setConfirmBulkRemove(true)}>{t('common.remove')}</button>
           )}
           <button style={styles.bulkIconBtn} onClick={() => { setBulkMode(false); clearSelection(); }} title={t('common.close')}><X size={17} /></button>
         </div>
@@ -479,6 +481,18 @@ export const LibraryScreen = React.memo(function LibraryScreen({
           onHover={() => false}
           onClick={bulkMode ? (item) => toggleSelected(item.id) : onNavigateDetail}
           onScrollActivity={() => {}}
+        />
+      )}
+
+      {confirmBulkRemove && (
+        <ConfirmDialog
+          title={t('library.bulk_remove_confirm_title', selectedIds.size)}
+          body={t('library.bulk_remove_confirm_body')}
+          confirmLabel={t('common.remove')}
+          cancelLabel={t('common.cancel')}
+          destructive
+          onCancel={() => setConfirmBulkRemove(false)}
+          onConfirm={() => { setConfirmBulkRemove(false); removeSelectedFromCurrentList(); }}
         />
       )}
     </div>

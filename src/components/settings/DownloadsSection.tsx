@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { t } from '../../i18n';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { ChoiceTile, InputTile, SettingsSection, streamSourceOptions } from './SettingsUI';
 import { styles, FONT } from './settingsStyles';
 import type { Prefs } from './settingsTypes';
@@ -290,6 +291,7 @@ function DownloadDirRow({ value, onChange }: { value: string; onChange: (v: stri
 
 export function DownloadsSection({ prefs, setPref }: { prefs: Prefs; setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void }) {
   const [downloads, setDownloads] = useState<OfflineDownloadItem[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<OfflineDownloadItem | null>(null);
 
   useEffect(() => {
     invoke('set_download_dir', { path: prefs.downloadDir || null }).catch(() => {});
@@ -397,7 +399,7 @@ export function DownloadsSection({ prefs, setPref }: { prefs: Prefs; setPref: <K
               <DownloadItemRow
                 key={item.id}
                 item={item}
-                onDelete={() => void handleDelete(item)}
+                onDelete={() => setConfirmDelete(item)}
                 onPause={() => void handlePause(item)}
                 onResume={() => void handleResume(item)}
               />
@@ -405,6 +407,22 @@ export function DownloadsSection({ prefs, setPref }: { prefs: Prefs; setPref: <K
           )}
         </div>
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={t('downloads.delete_confirm_title')}
+          body={t('downloads.delete_confirm_message')}
+          confirmLabel={t('downloads.delete')}
+          cancelLabel={t('common.cancel')}
+          destructive
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={() => {
+            const item = confirmDelete;
+            setConfirmDelete(null);
+            void handleDelete(item);
+          }}
+        />
+      )}
     </>
   );
 }

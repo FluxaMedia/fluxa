@@ -5,6 +5,7 @@ import { markContinueWatchingItemWatched, dropContinueWatchingItem, continueWatc
 import { ContinueCard } from './ContinueCard';
 import { t } from '../i18n';
 import { useDragScroll } from '../hooks/useDragScroll';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const ROW_PADDING_LEFT = '2rem';
 
@@ -76,6 +77,7 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set());
   const [aboutItem, setAboutItem] = React.useState<{ meta: Meta; artwork: string | null } | null>(null);
+  const [dropTarget, setDropTarget] = React.useState<Meta | null>(null);
   const markWatchedVideoIds = React.useRef<Map<string, string | null>>(new Map());
 
   React.useEffect(() => {
@@ -220,7 +222,7 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
               markWatchedVideoIds.current.set(item.id, (item as unknown as { lastVideoId?: string | null }).lastVideoId ?? null);
               startDismiss(item, () => void markContinueWatchingItemWatched(item, onDispatch));
             }}
-            onDrop={(item) => startDismiss(item, () => void dropContinueWatchingItem(item, onDispatch))}
+            onDrop={(item) => setDropTarget(item)}
             onDismissAnimationEnd={(item) => {
               setDismissingIds((prev) => { const n = new Set(prev); n.delete(item.id); return n; });
               if (markWatchedVideoIds.current.has(item.id)) {
@@ -233,6 +235,21 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
         ))}
       </div>
       {aboutItem && <ContinueWatchingAboutDialog meta={aboutItem.meta} artwork={aboutItem.artwork} onClose={() => setAboutItem(null)} />}
+      {dropTarget && (
+        <ConfirmDialog
+          title={t('home.drop_continue_watching_confirm_title', dropTarget.name)}
+          body={t('home.drop_continue_watching_confirm_body')}
+          confirmLabel={t('home.drop_continue_watching')}
+          cancelLabel={t('common.cancel')}
+          destructive
+          onCancel={() => setDropTarget(null)}
+          onConfirm={() => {
+            const item = dropTarget;
+            setDropTarget(null);
+            startDismiss(item, () => void dropContinueWatchingItem(item, onDispatch));
+          }}
+        />
+      )}
     </div>
   );
 }, (prev, next) => {

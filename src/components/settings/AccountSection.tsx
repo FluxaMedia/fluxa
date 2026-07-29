@@ -5,6 +5,7 @@ import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { storageRead, storageWrite } from '../../core/engine';
 import type { UserProfile } from '../../core/types';
 import { t } from '../../i18n';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { profileConnectionState, profileColor, saveProfile } from '../../core/profiles';
 import { AvatarPreview } from '../../screens/ProfileForm';
 import { syncExternalIntegrationNow } from '../../core/effectRunner';
@@ -269,6 +270,7 @@ export function AccountSection({
   const [stremioAuthKeyMode, setStremioAuthKeyMode] = useState(false);
   const [authUrls, setAuthUrls] = useState<Partial<Record<OAuthService, string>>>({});
   const [selectedIntegration, setSelectedIntegration] = useState<IntegrationService | null>(null);
+  const [confirmDisconnect, setConfirmDisconnect] = useState<{ title: string; onConfirm: () => void } | null>(null);
 
   useEffect(() => {
     if (prefs.syncCwSourceOfTruth === 'most_recent') setPref('syncCwSourceOfTruth', '');
@@ -793,7 +795,7 @@ export function AccountSection({
       </SettingsSection>
       {page.connected && <SettingsSection title={page.title} subtitle={t('settings.sync_with_desc')}>
         <SyncServiceRow icon={null} title={t('settings.sync_now')} value={page.meta ? new Date(page.meta.lastSyncAt).toLocaleString() : ''} onClick={page.sync} busy={page.busy} />
-        <SyncServiceRow icon={null} title={t('auto.disconnect')} value="" onClick={page.disconnect} destructive />
+        <SyncServiceRow icon={null} title={t('auto.disconnect')} value="" onClick={() => setConfirmDisconnect({ title: page.title, onConfirm: page.disconnect })} destructive />
       </SettingsSection>}
       {page.connected && <SettingsSection title={t('settings.provider_library')} subtitle={page.title}>
         <SyncServiceRow icon={null} title={t('settings.continue_watching_count', page.meta?.continueWatchingCount ?? 0)} value="" />
@@ -804,6 +806,17 @@ export function AccountSection({
         <ChoiceTile title={t('settings.continue_watching_window')} subtitle={t('settings.continue_watching_window_desc')} options={[{ value: '0', label: t('settings.continue_watching_window_all') }, { value: '7', label: '7' }, { value: '30', label: '30' }, { value: '90', label: '90' }, { value: '365', label: '365' }]} selected={prefs.continueWatchingDays} onSelect={(value) => setPref('continueWatchingDays', value)} />
         <ToggleTile title={t('settings.trakt_comments')} subtitle={t('settings.trakt_comments_desc')} checked={prefs.traktCommentsEnabled} onToggle={(value) => setPref('traktCommentsEnabled', value)} />
       </SettingsSection>}
+      {confirmDisconnect && (
+        <ConfirmDialog
+          title={t('settings.disconnect_confirm_title', confirmDisconnect.title)}
+          body={t('settings.disconnect_confirm_body', confirmDisconnect.title)}
+          confirmLabel={t('auto.disconnect')}
+          cancelLabel={t('common.cancel')}
+          destructive
+          onCancel={() => setConfirmDisconnect(null)}
+          onConfirm={() => { const { onConfirm } = confirmDisconnect; setConfirmDisconnect(null); onConfirm(); }}
+        />
+      )}
     </>;
   }
 
@@ -855,7 +868,7 @@ export function AccountSection({
               meta={traktSyncMeta}
               busy={traktBusy}
               onSyncNow={() => void handleTraktSyncNow()}
-              onDisconnect={() => void handleTraktDisconnect()}
+              onDisconnect={() => setConfirmDisconnect({ title: 'Trakt.tv', onConfirm: () => void handleTraktDisconnect() })}
               onClose={() => setTraktPopoverOpen(false)}
             />
           </div>
@@ -898,7 +911,7 @@ export function AccountSection({
               statusColor="#54D17A"
               syncLabel={t('settings.sync_now')}
               onSyncNow={() => void handleAnilistSyncNow()}
-              onDisconnect={() => void handleAnilistDisconnect()}
+              onDisconnect={() => setConfirmDisconnect({ title: 'AniList', onConfirm: () => void handleAnilistDisconnect() })}
               onClose={() => setAnilistPopoverOpen(false)}
             />
           </div>
@@ -938,7 +951,7 @@ export function AccountSection({
               meta={simklSyncMeta}
               busy={simklBusy}
               onSyncNow={() => void handleSimklSyncNow()}
-              onDisconnect={() => void handleSimklDisconnect()}
+              onDisconnect={() => setConfirmDisconnect({ title: 'Simkl', onConfirm: () => void handleSimklDisconnect() })}
               onClose={() => setSimklPopoverOpen(false)}
             />
           </div>
@@ -985,7 +998,7 @@ export function AccountSection({
               meta={nuvioSyncMeta}
               busy={nuvioBusy}
               onSyncNow={() => void handleNuvioSyncNow()}
-              onDisconnect={() => void handleNuvioDisconnect()}
+              onDisconnect={() => setConfirmDisconnect({ title: 'Nuvio', onConfirm: () => void handleNuvioDisconnect() })}
               onClose={() => setNuvioPopoverOpen(false)}
             />
           </div>
@@ -1050,7 +1063,7 @@ export function AccountSection({
               meta={stremioSyncMeta}
               busy={stremioBusy}
               onSyncNow={() => void handleStremioSyncNow()}
-              onDisconnect={() => void handleStremioDisconnect()}
+              onDisconnect={() => setConfirmDisconnect({ title: 'Stremio', onConfirm: () => void handleStremioDisconnect() })}
               onClose={() => setStremioPopoverOpen(false)}
             />
           </div>
@@ -1062,6 +1075,18 @@ export function AccountSection({
         <ChoiceTile title={t('settings.cw_ranking')} subtitle={t('settings.cw_ranking_desc')} options={cwRankingOptions()} selected={prefs.syncCwRanking} onSelect={(value) => setPref('syncCwRanking', value)} />
         <ChoiceTile title={t('settings.similar_titles_source')} subtitle={t('settings.similar_titles_source_desc')} options={similarTitlesSourceOptions()} selected={prefs.similarTitlesSource} onSelect={(value) => setPref('similarTitlesSource', value)} />
       </SettingsSection>
+
+      {confirmDisconnect && (
+        <ConfirmDialog
+          title={t('settings.disconnect_confirm_title', confirmDisconnect.title)}
+          body={t('settings.disconnect_confirm_body', confirmDisconnect.title)}
+          confirmLabel={t('auto.disconnect')}
+          cancelLabel={t('common.cancel')}
+          destructive
+          onCancel={() => setConfirmDisconnect(null)}
+          onConfirm={() => { const { onConfirm } = confirmDisconnect; setConfirmDisconnect(null); onConfirm(); }}
+        />
+      )}
     </>
   );
 }
