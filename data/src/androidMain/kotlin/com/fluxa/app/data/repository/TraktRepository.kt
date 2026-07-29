@@ -1,6 +1,7 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.BuildConfig
+import android.content.Context
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.local.safeLocalAddons
@@ -14,16 +15,23 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.fluxa.app.core.rust.FluxaCoreNative
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 
 @Singleton
 class TraktRepository @Inject constructor(
+    @ApplicationContext context: Context,
     private val traktApi: TraktApi,
     private val addonRepository: AddonRepository,
     private val externalLibraryClient: ExternalLibraryClient,
-    private val traktSyncClient: TraktSyncClient
+    private val traktSyncClient: TraktSyncClient,
+    private val gson: Gson
 ) {
     private val TRAKT_KEY = BuildConfig.TRAKT_CLIENT_ID
     private val MAX_CONCURRENT_TRAKT_DETAIL_RESOLUTION = 6
+    private val syncCache = context.getSharedPreferences("trakt_sync_delta", Context.MODE_PRIVATE)
 
     private val traktCatalogClient by lazy {
         TraktCatalogClient(
@@ -38,8 +46,36 @@ class TraktRepository @Inject constructor(
     }
 
     suspend fun getSyncSnapshot(profile: UserProfile, language: String = profile.safeLanguage): TraktSyncSnapshot = withContext(Dispatchers.IO) {
-        externalLibraryClient.getTraktSyncSnapshot(profile, language)
+        val token = profile.traktAccessToken ?: return@withContext TraktSyncSnapshot(0, 0)
+        if (!TraktIntegration.hasClient(TRAKT_KEY)) return@withContext TraktSyncSnapshot(0, 0)
+        val key = "snapshot:${profile.id}"
+        val cached = syncCache.getString(key, null)?.let { gson.fromJson(it, TraktSnapshotCache::class.java) }
+        val activities = runCatching {
+            traktApi.getLastActivities(TraktIntegration.bearer(token), TRAKT_KEY).body()
+        }.getOrNull()
+        if (cached != null && activities != null) {
+            val diff = FluxaCoreNative.traktActivityDiff(
+                previous = cached.activities,
+                current = activities,
+                hasPlayback = true,
+                hasWatchlistMovies = true,
+                hasWatchlistShows = true,
+                hasWatchedMovies = true,
+                hasWatchedShows = true
+            )
+            if (diff["playbackChanged"] != true &&
+                diff["watchlistMoviesChanged"] != true &&
+                diff["watchlistShowsChanged"] != true
+            ) return@withContext cached.snapshot
+        }
+        val snapshot = externalLibraryClient.getTraktSyncSnapshot(profile, language)
+        if (activities != null) {
+            syncCache.edit().putString(key, gson.toJson(TraktSnapshotCache(activities, snapshot))).apply()
+        }
+        snapshot
     }
+
+    private data class TraktSnapshotCache(val activities: JsonObject, val snapshot: TraktSyncSnapshot)
 
     suspend fun getWatchlist(token: String): List<Meta> = withContext(Dispatchers.IO) {
         traktSyncClient.getWatchlist(token)

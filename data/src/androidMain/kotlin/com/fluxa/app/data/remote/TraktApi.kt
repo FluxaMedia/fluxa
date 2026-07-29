@@ -1,6 +1,7 @@
 package com.fluxa.app.data.remote
 
 import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonObject
 import okhttp3.OkHttpClient
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -18,6 +19,13 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface TraktApi {
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/last_activities")
+    suspend fun getLastActivities(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String
+    ): Response<JsonObject>
+
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
     @GET("search/tmdb/{id}?type=show")
     suspend fun getShowByTmdbId(

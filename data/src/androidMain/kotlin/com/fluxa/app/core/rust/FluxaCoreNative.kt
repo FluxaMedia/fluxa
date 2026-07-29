@@ -1384,6 +1384,28 @@ object FluxaCoreNative {
         return gson.fromJson(value, object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type)
     }
 
+    fun traktActivityDiff(
+        previous: Any?,
+        current: Any?,
+        hasPlayback: Boolean,
+        hasWatchlistMovies: Boolean,
+        hasWatchlistShows: Boolean,
+        hasWatchedMovies: Boolean,
+        hasWatchedShows: Boolean
+    ): Map<String, Boolean> {
+        val args = JsonObject().apply {
+            add("previous", gson.toJsonTree(previous))
+            add("current", gson.toJsonTree(current))
+            addProperty("hasPlayback", hasPlayback)
+            addProperty("hasWatchlistMovies", hasWatchlistMovies)
+            addProperty("hasWatchlistShows", hasWatchlistShows)
+            addProperty("hasWatchedMovies", hasWatchedMovies)
+            addProperty("hasWatchedShows", hasWatchedShows)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("traktActivityDiff", args.toString())
+        return gson.fromJson(value, object : com.google.gson.reflect.TypeToken<Map<String, Boolean>>() {}.type)
+    }
+
     fun subtitleLanguageDedupKeepIndices(languages: List<String?>, maxPerLanguage: Int = 2): List<Int> {
         val args = JsonObject().apply {
             add("languages", gson.toJsonTree(languages))
