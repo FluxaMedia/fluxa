@@ -214,12 +214,18 @@ export function ModernDetailLayout({
     meta, displayMeta, episodes, seasonNumbers, watchedMap, onDispatch,
   });
 
+  const trailerVideoIdsRef = useRef<string[]>([]);
   const trailerVideoIds = useMemo(() => {
     const ids: string[] = [];
     for (const trailer of displayTrailers) {
       const id = youtubeVideoId(trailer.url);
       if (id && !ids.includes(id)) ids.push(id);
     }
+    const previous = trailerVideoIdsRef.current;
+    if (previous.length === ids.length && previous.every((id, index) => id === ids[index])) {
+      return previous;
+    }
+    trailerVideoIdsRef.current = ids;
     return ids;
   }, [displayTrailers]);
   const [trailerStreamUrl, setTrailerStreamUrl] = useState<string | null>(null);

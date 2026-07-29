@@ -313,7 +313,11 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
 
   const [castMembers, setCastMembers] = useState<NormalizedCastMember[]>([]);
   const [directorLinks, setDirectorLinks] = useState<MetaLink[]>([]);
+  const castSignatureRef = useRef<string | null>(null);
   useEffect(() => {
+    const signature = JSON.stringify({ id: displayMeta.id, cast: displayMeta.cast, links: displayMeta.links });
+    if (signature === castSignatureRef.current) return;
+    castSignatureRef.current = signature;
     let cancelled = false;
     buildCastMembers(displayMeta).then((members) => {
       if (!cancelled) setCastMembers(members.slice(0, 12));
