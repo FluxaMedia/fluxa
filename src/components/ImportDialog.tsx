@@ -7,11 +7,12 @@ import type { ImportCategory } from '../core/importCategories';
 type ScanResult = { counts: Partial<Record<ImportCategory, number>>; error?: string };
 
 export function ImportDialog({
-  title, items, destinations, destinationLabel, localOnlyLabel,
+  title, titleIcon, items, destinations, destinationLabel, localOnlyLabel,
   scanLabel, scanningLabel, backLabel, continueLabel, confirmLabel, cancelLabel,
   onScan, onConfirm, onCancel,
 }: {
   title: string;
+  titleIcon?: React.ReactNode;
   items: { key: ImportCategory; label: string }[];
   destinations: { key: string; label: string; icon?: React.ReactNode }[];
   destinationLabel: string;
@@ -56,7 +57,10 @@ export function ImportDialog({
   return (
     <div style={S.overlay} onClick={onCancel}>
       <div style={S.dialog} onClick={(e) => e.stopPropagation()}>
-        <p style={S.title}>{title}</p>
+        <div style={S.titleRow}>
+          {titleIcon}
+          <p style={S.title}>{title}</p>
+        </div>
 
         {phase === 'select' && (
           <>
@@ -151,7 +155,8 @@ const FONT = "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robot
 const S: Record<string, React.CSSProperties> = {
   overlay: { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   dialog: { width: '20rem', borderRadius: '0.75rem', background: '#141414', border: '1px solid rgba(255,255,255,0.10)', padding: '1.5rem', fontFamily: FONT },
-  title: { margin: '0 0 1rem', color: '#FFFFFF', fontSize: '1rem', fontWeight: 700, textAlign: 'center' },
+  titleRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem' },
+  title: { margin: 0, color: '#FFFFFF', fontSize: '1rem', fontWeight: 700, textAlign: 'center' },
   list: { display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' },
   row: { display: 'flex', alignItems: 'center', gap: '0.625rem', color: 'rgba(255,255,255,0.85)', fontSize: '0.8125rem', cursor: 'pointer' },
   checkbox: { width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#FFFFFF' },

@@ -848,6 +848,7 @@ export function AccountSection({
       {importDialog && (
         <ImportDialog
           title={t('settings.import_title', page.title)}
+          titleIcon={providerIcon(importDialog)}
           items={PROVIDER_IMPORT_CATEGORIES[importDialog].map((key) => ({ key, label: t(`settings.import_category.${key}`) }))}
           destinations={([
             ['trakt', t('brand.trakt'), traktConnected],
