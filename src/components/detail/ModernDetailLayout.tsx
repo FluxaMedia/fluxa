@@ -214,12 +214,13 @@ export function ModernDetailLayout({
     meta, displayMeta, episodes, seasonNumbers, watchedMap, onDispatch,
   });
 
-  const trailerVideoId = useMemo(() => {
+  const trailerVideoIds = useMemo(() => {
+    const ids: string[] = [];
     for (const trailer of displayTrailers) {
       const id = youtubeVideoId(trailer.url);
-      if (id) return id;
+      if (id && !ids.includes(id)) ids.push(id);
     }
-    return null;
+    return ids;
   }, [displayTrailers]);
   const [trailerStreamUrl, setTrailerStreamUrl] = useState<string | null>(null);
   const [trailerAudioUrl, setTrailerAudioUrl] = useState<string | null>(null);
@@ -260,7 +261,7 @@ export function ModernDetailLayout({
   }, [displayMeta.id]);
 
   useEffect(() => {
-    if (!detailHeroAutoplayTrailer || !trailerVideoId) return;
+    if (!detailHeroAutoplayTrailer || trailerVideoIds.length === 0) return;
     let cancelled = false;
     let delayElapsed = detailHeroAutoplayTrailerDelaySecs <= 0;
     let resolvedTrailer: Awaited<ReturnType<typeof resolveYoutubeTrailer>> | null = null;
@@ -281,20 +282,30 @@ export function ModernDetailLayout({
       applyResolvedTrailer();
     }, detailHeroAutoplayTrailerDelaySecs * 1000);
 
-    resolveYoutubeTrailer(trailerVideoId).then((resolved) => {
+    (async () => {
+      for (const id of trailerVideoIds) {
+        if (cancelled) return;
+        try {
+          const resolved = await resolveYoutubeTrailer(id);
+          if (cancelled) return;
+          if (resolved?.streamUrl) {
+            resolvedTrailer = resolved;
+            break;
+          }
+        } catch (err) {
+          console.error('resolveYoutubeTrailerUrl failed', err);
+        }
+      }
       if (cancelled) return;
-      resolvedTrailer = resolved;
       resolveFinished = true;
       applyResolvedTrailer();
-    }).catch((err) => {
-      console.error('resolveYoutubeTrailerUrl failed', err);
-    });
+    })();
 
     return () => {
       cancelled = true;
       window.clearTimeout(delayId);
     };
-  }, [trailerVideoId, detailHeroAutoplayTrailer, detailHeroAutoplayTrailerDelaySecs]);
+  }, [trailerVideoIds, detailHeroAutoplayTrailer, detailHeroAutoplayTrailerDelaySecs]);
 
   useEffect(() => {
     let cancelled = false;

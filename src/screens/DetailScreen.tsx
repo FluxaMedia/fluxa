@@ -322,7 +322,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
       if (!cancelled) setDirectorLinks((result?.directors ?? []).slice(0, 2));
     });
     return () => { cancelled = true; };
-  }, [displayMeta.id, displayMeta.type]);
+  }, [displayMeta]);
 
   useEffect(() => {
     const prefs = appPrefs(state);
