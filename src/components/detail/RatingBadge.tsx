@@ -9,18 +9,19 @@ interface RatingBadgeProps {
 export function RatingBadge({ source, value }: RatingBadgeProps) {
   const info = RATING_SOURCES[source];
   if (!info) return null;
+  const maskColor = info.colorForValue ? info.colorForValue(value) : info.maskColor;
   return (
     <span style={styles.badge} title={info.label}>
       {info.lucideIcon === 'popcorn' ? (
         <Popcorn size={18} color={info.iconColor} strokeWidth={2} />
-      ) : info.maskColor ? (
+      ) : maskColor ? (
         <span
           role="img"
           aria-label={info.label}
           style={{
             ...styles.logo,
             ...styles.maskedLogo,
-            backgroundColor: info.maskColor,
+            backgroundColor: maskColor,
             maskImage: `url(${info.icon})`,
             WebkitMaskImage: `url(${info.icon})`,
           }}
