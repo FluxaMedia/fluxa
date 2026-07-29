@@ -1,4 +1,3 @@
-import { Popcorn } from 'lucide-react';
 import { RATING_SOURCES, orderedRatingEntries } from './ratingSources';
 
 interface RatingBadgeProps {
@@ -9,12 +8,11 @@ interface RatingBadgeProps {
 export function RatingBadge({ source, value }: RatingBadgeProps) {
   const info = RATING_SOURCES[source];
   if (!info) return null;
-  const maskColor = info.colorForValue ? info.colorForValue(value) : info.maskColor;
+  const icon = info.iconForValue ? info.iconForValue(value) : info.icon;
+  const maskColor = info.colorForValue && !info.iconForValue ? info.colorForValue(value) : info.maskColor;
   return (
     <span style={styles.badge} title={info.label}>
-      {info.lucideIcon === 'popcorn' ? (
-        <Popcorn size={18} color={info.iconColor} strokeWidth={2} />
-      ) : maskColor ? (
+      {maskColor ? (
         <span
           role="img"
           aria-label={info.label}
@@ -22,12 +20,12 @@ export function RatingBadge({ source, value }: RatingBadgeProps) {
             ...styles.logo,
             ...styles.maskedLogo,
             backgroundColor: maskColor,
-            maskImage: `url(${info.icon})`,
-            WebkitMaskImage: `url(${info.icon})`,
+            maskImage: `url(${icon})`,
+            WebkitMaskImage: `url(${icon})`,
           }}
         />
       ) : (
-        <img src={info.icon} alt={info.label} style={styles.logo} />
+        <img src={icon} alt={info.label} style={styles.logo} />
       )}
       <span style={styles.score}>{info.format(value)}</span>
     </span>

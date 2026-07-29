@@ -4,8 +4,7 @@ export interface RatingSourceInfo {
   format: (value: number) => string;
   maskColor?: string;
   colorForValue?: (value: number) => string;
-  lucideIcon?: 'popcorn';
-  iconColor?: string;
+  iconForValue?: (value: number) => string;
 }
 
 const percent = (value: number) => `${Math.round(value)}%`;
@@ -28,13 +27,16 @@ const metacriticUserColor = (value: number) => {
   return METACRITIC_RED;
 };
 
+const tomatoIcon = (value: number) => (value >= 60 ? '/rt-tomato-fresh.svg' : '/rt-tomato-rotten.svg');
+const popcornIcon = (value: number) => (value >= 60 ? '/rt-popcorn-full.svg' : '/rt-popcorn-spilled.svg');
+
 export const RATING_SOURCES: Record<string, RatingSourceInfo> = {
   imdb: { icon: '/imdb.svg', label: 'IMDb', format: outOfTen },
   tmdb: { icon: '/tmdb.svg', label: 'TMDB', format: percent },
   trakt: { icon: '/trakt.svg', label: 'Trakt', format: percent },
   letterboxd: { icon: '/letterboxd.svg', label: 'Letterboxd', format: outOfTen },
-  tomatoes: { icon: '/rottentomatoes.svg', label: 'Rotten Tomatoes (Critics)', format: percent, maskColor: '#FA320A' },
-  popcorn: { label: 'Rotten Tomatoes (Audience)', format: percent, lucideIcon: 'popcorn', iconColor: '#FA320A' },
+  tomatoes: { icon: '/rt-tomato-fresh.svg', label: 'Rotten Tomatoes (Critics)', format: percent, iconForValue: tomatoIcon },
+  popcorn: { icon: '/rt-popcorn-full.svg', label: 'Rotten Tomatoes (Audience)', format: percent, iconForValue: popcornIcon },
   metacritic: { icon: '/metacritic.svg', label: 'Metacritic', format: bareScore, maskColor: METACRITIC_GREEN, colorForValue: metacriticCriticColor },
   metacriticuser: { icon: '/metacritic.svg', label: 'Metacritic Users', format: outOfTen, maskColor: METACRITIC_GREEN, colorForValue: metacriticUserColor },
   myanimelist: { icon: '/mal.svg', label: 'MyAnimeList', format: outOfTen },
