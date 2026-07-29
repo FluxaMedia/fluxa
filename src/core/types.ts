@@ -20,6 +20,8 @@ export interface Meta {
   trailers?: Trailer[];
   links?: MetaLink[];
   videos?: Video[];
+  sourceAddonTransportUrl?: string;
+  sourceAddonCatalogType?: string;
 }
 
 export interface CastMember {

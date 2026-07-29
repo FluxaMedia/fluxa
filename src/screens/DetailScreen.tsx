@@ -122,7 +122,14 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     setSelectedEpisode(initialEpisodeRef.current);
     setShowSources(autoShowStreamsRef.current);
     userChangedSeasonRef.current = false;
-    onDispatch(JSON.stringify({ type: 'detailLoadRequested', contentType: meta.type, id: meta.id, language: getLanguage() }));
+    onDispatch(JSON.stringify({
+      type: 'detailLoadRequested',
+      contentType: meta.type,
+      id: meta.id,
+      language: getLanguage(),
+      sourceAddonTransportUrl: meta.sourceAddonTransportUrl,
+      sourceAddonCatalogType: meta.sourceAddonCatalogType,
+    }));
   }, [meta.id]);
 
   useEffect(() => {
@@ -138,7 +145,14 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   useEffect(() => {
     if (!detail.isLoading || detail.meta) return;
     const timer = setTimeout(() => {
-      onDispatch(JSON.stringify({ type: 'detailLoadRequested', contentType: meta.type, id: meta.id, language: getLanguage() }));
+      onDispatch(JSON.stringify({
+      type: 'detailLoadRequested',
+      contentType: meta.type,
+      id: meta.id,
+      language: getLanguage(),
+      sourceAddonTransportUrl: meta.sourceAddonTransportUrl,
+      sourceAddonCatalogType: meta.sourceAddonCatalogType,
+    }));
     }, 7000);
     return () => clearTimeout(timer);
   }, [detail.isLoading, detail.meta, meta.id, meta.type, onDispatch]);

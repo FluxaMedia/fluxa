@@ -147,12 +147,17 @@ export async function readHomeBootstrap(
       : (await tryFetchJson(await buildResourceUrl(feed.transportUrl, 'catalog', feed.type, feed.id, JSON.stringify(extra))) as { metas?: unknown[] } | null);
     const metas = Array.isArray(data?.metas) ? data.metas : [];
     if (metas.length === 0) return null;
+    const items = metas.map((m) => (
+      m && typeof m === 'object'
+        ? { ...(m as Record<string, unknown>), sourceAddonTransportUrl: feed.transportUrl, sourceAddonCatalogType: feed.type }
+        : m
+    ));
     return {
       id: feed.key,
       name: feed.homeTitle ?? feed.label,
       semanticName: feed.homeTitle ?? feed.label,
       type: feed.type,
-      items: metas,
+      items,
       addonName: feed.label.split(' - ')[0] ?? feed.label,
       transportUrl: feed.transportUrl,
       catalogId: feed.id,

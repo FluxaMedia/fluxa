@@ -7,7 +7,14 @@ import { fetchBuiltinCatalog, isBuiltinTmdbAddon } from './tmdbAddon';
 
 export async function fetchCatalogPage(payload: Record<string, unknown>): Promise<unknown> {
   const values = await fetchPlannedResources({ ...payload, kind: 'catalogPage' });
-  const items = values.flatMap((value) => ((value as { items?: unknown[] })?.items ?? []));
+  const rawItems = values.flatMap((value) => ((value as { items?: unknown[] })?.items ?? []));
+  const transportUrl = typeof payload.transportUrl === 'string' ? payload.transportUrl : undefined;
+  const catalogType = typeof payload.contentType === 'string' ? payload.contentType : undefined;
+  const items = rawItems.map((item) => (
+    item && typeof item === 'object'
+      ? { ...(item as Record<string, unknown>), sourceAddonTransportUrl: transportUrl, sourceAddonCatalogType: catalogType }
+      : item
+  ));
   return { items };
 }
 
@@ -54,13 +61,20 @@ export async function runSearch(payload: Record<string, unknown>): Promise<unkno
       undefined,
       abortController.signal,
     );
-    const items = ((parsed?.items as unknown[] | undefined) ?? []);
-    if (!items.length) return;
+    const rawItems = ((parsed?.items as unknown[] | undefined) ?? []);
+    if (!rawItems.length) return;
+    const transportUrl = typeof request.transportUrl === 'string' ? request.transportUrl : undefined;
+    const catalogType = request.catalogType ? String(request.catalogType) : undefined;
+    const items = rawItems.map((item) => (
+      item && typeof item === 'object'
+        ? { ...(item as Record<string, unknown>), sourceAddonTransportUrl: transportUrl, sourceAddonCatalogType: catalogType }
+        : item
+    ));
     if (searchAbortController === abortController) _searchPartialHandler?.(query, items);
     sources.push({
       id: String(request.categoryId ?? url),
       name: request.categoryName ? String(request.categoryName) : (typeof request.addonName === 'string' ? request.addonName : undefined),
-      type: request.catalogType ? String(request.catalogType) : undefined,
+      type: catalogType,
       items,
       addonName: typeof request.addonName === 'string' ? request.addonName : undefined,
       catalogId: typeof request.catalogId === 'string' ? request.catalogId : undefined,
@@ -116,8 +130,13 @@ export async function runDiscover(payload: Record<string, unknown>): Promise<unk
   );
   if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
 
-  const results = values.flatMap((value) => ((value as { items?: unknown[] })?.items ?? []));
+  const rawResults = values.flatMap((value) => ((value as { items?: unknown[] })?.items ?? []));
   if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
+  const results = rawResults.map((item) => (
+    item && typeof item === 'object'
+      ? { ...(item as Record<string, unknown>), sourceAddonTransportUrl: filters?.transportUrl, sourceAddonCatalogType: contentType }
+      : item
+  ));
   return { results };
 }
 

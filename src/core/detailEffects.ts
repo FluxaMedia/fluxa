@@ -116,8 +116,9 @@ async function resolveImdbId({ contentType, id, language, apiKey }: TmdbRequest)
 export async function fetchMetaDetail(payload: Record<string, unknown>): Promise<unknown> {
   const id = payload.id as string;
   const contentType = payload.contentType as string;
+  const transportUrl = typeof payload.sourceAddonTransportUrl === 'string' ? payload.sourceAddonTransportUrl : undefined;
   const addons = await loadAddons();
-  const values = await fetchPlannedResources({ kind: 'metaDetail', addons, contentType, id });
+  const values = await fetchPlannedResources({ kind: 'metaDetail', addons, contentType, id, transportUrl });
   return (values.find((value) => (value as { meta?: unknown }).meta) as { meta?: unknown } | undefined)?.meta ?? null;
 }
 
