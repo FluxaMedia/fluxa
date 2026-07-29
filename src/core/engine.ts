@@ -921,12 +921,12 @@ export async function coreAirDateRefreshCandidates(
   )) ?? [];
 }
 
-export async function coreSimklScrobbleAction(
+export async function coreScrobbleCloseAction(
   timePosSec: number,
   durationSec: number,
 ): Promise<string> {
   return (await coreInvoke<string>(
-    "simklScrobbleAction",
+    "scrobbleCloseAction",
     JSON.stringify({ timePosSec, durationSec }),
   )) ?? "pause";
 }
