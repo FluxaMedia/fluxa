@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { t } from '../i18n';
 import type { Meta, Stream, Video } from '../core/types';
 import { appPrefs } from '../core/appPrefs';
-import { embeddedMpvSetTitle, embeddedMpvSetLoadingArtwork, embeddedMpvStop } from '../core/mpvPlayer';
+import { embeddedMpvSetTitle, embeddedMpvSetLoadingArtwork, embeddedMpvStop, playerLastStreamError } from '../core/mpvPlayer';
 import { fetchStreamsForEpisode } from '../core/effectRunner';
 import { playerArtwork, playerDisplayTitle } from '../core/playerUtils';
 import { coreResolveNextEpisode, coreSelectNextEpisodeStream } from '../core/engine';
@@ -52,7 +52,13 @@ export function usePlayerNativeEvents({
       .catch(() => undefined);
 
     listen<string>('native-player-error', (event) => {
-      void onPlayerError(presentNativePlayerError(event.payload));
+      void (async () => {
+        const proxyDetail = await playerLastStreamError();
+        const message = proxyDetail
+          ? `Source error: the selected stream is unavailable, expired, or blocked.\n${proxyDetail}`
+          : presentNativePlayerError(event.payload);
+        await onPlayerError(message);
+      })();
     })
       .then((fn) => { if (cancelled) fn(); else unlisteners.push(fn); })
       .catch(() => undefined);

@@ -28,6 +28,7 @@ mod poster_cache;
 mod roku;
 mod sleep_inhibitor;
 mod storage;
+mod stream_proxy;
 mod trailer_proxy;
 #[cfg(target_os = "windows")]
 mod windows_d3d11;
@@ -101,6 +102,7 @@ pub struct DesktopState {
     #[cfg(target_os = "windows")]
     pub main_window_size: std::sync::atomic::AtomicU64,
     pub downloads: downloads::DownloadsState,
+    pub pending_stream_headers: Mutex<Vec<(String, String)>>,
     pub torrent_server_base_url: Mutex<Option<String>>,
     pub torrent_stream_link: Mutex<Option<String>>,
     pub torrent_stream_file_id: Mutex<Option<usize>>,
@@ -214,6 +216,7 @@ impl Default for DesktopState {
             #[cfg(target_os = "windows")]
             main_window_size: std::sync::atomic::AtomicU64::new(0),
             downloads: downloads::DownloadsState::default(),
+            pending_stream_headers: Mutex::new(Vec::new()),
             torrent_server_base_url: Mutex::new(None),
             torrent_stream_link: Mutex::new(None),
             torrent_stream_file_id: Mutex::new(None),
@@ -821,6 +824,7 @@ pub fn run() {
         .manage(roku::RokuState::default())
         .manage(cast_proxy::CastProxyState::default())
         .manage(trailer_proxy::TrailerProxyState::default())
+        .manage(stream_proxy::StreamProxyState::default())
         .setup(|app| {
             #[cfg(any(target_os = "linux", all(debug_assertions, target_os = "windows")))]
             app.deep_link().register_all()?;
@@ -976,6 +980,7 @@ pub fn run() {
             start_torrent_stream,
             stop_torrent_stream,
             register_trailer_proxy_url,
+            player_last_stream_error,
             player_init,
             player_apply_preferences,
             player_set_http_headers,

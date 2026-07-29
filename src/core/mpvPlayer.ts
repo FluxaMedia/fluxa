@@ -116,6 +116,10 @@ export async function embeddedMpvSetHttpHeaders(headers: Record<string, string> 
   await invoke('player_set_http_headers', { headers: headers ?? {} });
 }
 
+export async function playerLastStreamError(): Promise<string | undefined> {
+  return invoke<string | null>('player_last_stream_error').then((value) => value ?? undefined).catch(() => undefined);
+}
+
 export async function embeddedMpvSetTitle(title?: string, episodeTitle?: string): Promise<void> {
   if (!title) return;
   await invoke('player_set_title', { title, episodeTitle });
