@@ -11,7 +11,7 @@ import type { AppState } from '../core/types';
 function presentNativePlayerError(message: string): string {
   const sourceFailure = /\b(loading failed|failed to open|http(?:\s+error)?|403|401|forbidden|unauthorized|not found|timed?\s*out|connection (?:refused|reset|failed)|network|no such host|certificate)\b/i.test(message);
   if (!sourceFailure) return message;
-  return `Source error: the selected stream is unavailable, expired, or blocked.\n${message}`;
+  return t('player.source_error_detail', message);
 }
 
 export function usePlayerNativeEvents({
@@ -55,7 +55,7 @@ export function usePlayerNativeEvents({
       void (async () => {
         const proxyDetail = await playerLastStreamError();
         const message = proxyDetail
-          ? `Source error: the selected stream is unavailable, expired, or blocked.\n${proxyDetail}`
+          ? t('player.source_error_detail', proxyDetail)
           : presentNativePlayerError(event.payload);
         await onPlayerError(message);
       })();

@@ -492,6 +492,7 @@
   "format.remaining_almost_done": "Bitiş yakın",
   "format.seconds": "%s saniye",
   "player.audio": "Ses",
+  "player.source_error_detail": "Kaynak hatası: seçilen yayın kullanılamıyor, süresi dolmuş veya engellenmiş.\n%s",
   "player.subtitles": "Altyazı",
   "player.subtitles_off": "Kapalı",
   "player.speed": "Hız",

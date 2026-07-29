@@ -492,6 +492,7 @@
   "format.remaining_almost_done": "Almost done",
   "format.seconds": "%s seconds",
   "player.audio": "Audio",
+  "player.source_error_detail": "Source error: the selected stream is unavailable, expired, or blocked.\n%s",
   "player.subtitles": "Subtitles",
   "player.subtitles_off": "Off",
   "player.speed": "Speed",
