@@ -452,6 +452,31 @@ private fun SettingsAccountContent(
             syncFailedLabel = syncFailedLabel
         ) { selectedProvider = SettingsAccountProvider.Anilist }
     }
+    SettingsSectionHeader(AppStrings.t(lang, "settings.sync_preferences"))
+    SettingsGroupCard {
+        val sourceOfTruthOptions = listOf(
+            SettingsChoiceOption("", AppStrings.t(lang, "settings.cw_source_of_truth_none")),
+            SettingsChoiceOption("local", AppStrings.t(lang, "settings.cw_source_of_truth_local")),
+            SettingsChoiceOption("nuvio", AppStrings.t(lang, "settings.cw_source_of_truth_nuvio")),
+            SettingsChoiceOption("trakt", AppStrings.t(lang, "settings.cw_source_of_truth_trakt")),
+            SettingsChoiceOption("simkl", AppStrings.t(lang, "settings.cw_source_of_truth_simkl")),
+            SettingsChoiceOption("anilist", AppStrings.t(lang, "settings.cw_source_of_truth_anilist")),
+            SettingsChoiceOption("stremio", AppStrings.t(lang, "settings.cw_source_of_truth_stremio"))
+        )
+        SettingsChoiceRow(
+            label = AppStrings.t(lang, "settings.cw_source_of_truth"),
+            value = model.syncCwSourceOfTruth,
+            options = sourceOfTruthOptions
+        ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(syncCwSourceOfTruth = it))) }
+        SettingsChoiceRow(
+            label = AppStrings.t(lang, "settings.cw_ranking"),
+            value = model.syncCwRanking,
+            options = listOf(
+                SettingsChoiceOption("last_watched", AppStrings.t(lang, "settings.cw_ranking_last_watched")),
+                SettingsChoiceOption("most_recent_episode", AppStrings.t(lang, "settings.cw_ranking_most_recent_episode"))
+            )
+        ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(syncCwRanking = it))) }
+    }
     if (model.hasAnySync) {
         Spacer(Modifier.height(20.dp))
         SettingsGroupCard {
@@ -520,7 +545,14 @@ private fun SettingsAccountContent(
 
     selectedProvider?.let { provider ->
         key(provider) {
-            SettingsAccountSheet(provider, model, lang, onDismiss = { selectedProvider = null }) {
+            SettingsAccountSheet(
+                provider = provider,
+                model = model,
+                lang = lang,
+                onDismiss = { selectedProvider = null },
+                onAccountChanged = { onAction(SettingsAction.TmdbAccountChanged(it)) },
+                onDisconnect = { onAction(SettingsAction.DisconnectProviderRequested(provider.name.lowercase())) }
+            ) {
                 onAction(
                     when (provider) {
                         SettingsAccountProvider.Stremio -> SettingsAction.ConnectStremioRequested
@@ -544,6 +576,8 @@ private fun SettingsAccountSheet(
     model: SettingsAccountUiModel,
     lang: String?,
     onDismiss: () -> Unit,
+    onAccountChanged: (SettingsAccountUiModel) -> Unit,
+    onDisconnect: () -> Unit,
     onSync: () -> Unit
 ) {
     val connected = when (provider) {
@@ -577,6 +611,7 @@ private fun SettingsAccountSheet(
     val hasSyncFailure = providerKey in model.syncFailedProviders
     val isSyncing = providerKey in model.syncingProviders
     var justSynced by remember { mutableStateOf(false) }
+    var confirmingDisconnect by remember { mutableStateOf(false) }
     LaunchedEffect(isSyncing) {
         if (isSyncing) {
             justSynced = false
@@ -608,6 +643,24 @@ private fun SettingsAccountSheet(
             SettingsAccountStat(AppStrings.t(lang, "integration.continue_watching"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktContinueWatchingCount else model.continueWatchingCount))
             SettingsAccountStat(AppStrings.t(lang, "integration.library_items"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktLibraryCount else 0))
             SettingsAccountStat(AppStrings.t(lang, "integration.addons"), AppStrings.format(lang, "integration.item_count", model.addonCount))
+            if (provider == SettingsAccountProvider.Trakt) {
+                SettingsChoiceRow(
+                    label = AppStrings.t(lang, "settings.continue_watching_window"),
+                    value = model.continueWatchingDays.toString(),
+                    options = listOf(
+                        SettingsChoiceOption("0", AppStrings.t(lang, "settings.continue_watching_window_all")),
+                        SettingsChoiceOption("7", "7"),
+                        SettingsChoiceOption("30", "30"),
+                        SettingsChoiceOption("90", "90"),
+                        SettingsChoiceOption("365", "365")
+                    )
+                ) { value -> onAccountChanged(model.copy(continueWatchingDays = value.toInt())) }
+                SettingsToggleRow(
+                    label = AppStrings.t(lang, "settings.trakt_comments"),
+                    description = AppStrings.t(lang, "settings.trakt_comments_desc"),
+                    value = model.traktCommentsEnabled
+                ) { onAccountChanged(model.copy(traktCommentsEnabled = it)) }
+            }
             Button(
                 onClick = onSync,
                 enabled = !isSyncing,
@@ -623,7 +676,32 @@ private fun SettingsAccountSheet(
                     }
                 )
             }
+            if (connected) {
+                TextButton(onClick = { confirmingDisconnect = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(AppStrings.t(lang, "integration.disconnect"), color = FluxaColors.errorRed)
+                }
+            }
         }
+    }
+    if (confirmingDisconnect) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmingDisconnect = false },
+            title = { Text(AppStrings.t(lang, titleKey)) },
+            text = { Text(AppStrings.t(lang, "settings.disconnect_confirm")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingDisconnect = false
+                    onDisconnect()
+                }) {
+                    Text(AppStrings.t(lang, "integration.disconnect"), color = FluxaColors.errorRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingDisconnect = false }) {
+                    Text(AppStrings.t(lang, "common.cancel"))
+                }
+            }
+        )
     }
 }
 
