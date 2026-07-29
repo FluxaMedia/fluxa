@@ -3,6 +3,7 @@ import {
   coreInvoke,
   coreMergeExternalWatched,
   coreMergeExternalWatchlist,
+  coreTraktActivityDiff,
   coreTraktMarkWatchedBody,
   coreTraktPlaybackItemsDedup,
   coreTraktPlaybackItemsToLibrary,
@@ -27,10 +28,6 @@ type TraktDeltaCache = {
   watchedMovies?: Record<string, unknown>[];
   watchedShows?: Record<string, unknown>[];
 };
-
-function activityAt(activities: Record<string, unknown> | undefined, group: string, field: string): unknown {
-  return (activities?.[group] as Record<string, unknown> | undefined)?.[field];
-}
 
 async function fetchAllPages(url: string, headers: HeadersInit, limit: number): Promise<Record<string, unknown>[]> {
   type PaginationPlan = { items: Record<string, unknown>[]; done: boolean; page: number; requestUrl?: string | null };
@@ -104,14 +101,21 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     if (response.ok) activities = (await response.json().catch(() => undefined)) as Record<string, unknown> | undefined;
   } catch {}
 
-  const prevActivities = cache.activities;
-  const changedSince = (group: string, field: string) => !activities
-    || activityAt(activities, group, field) !== activityAt(prevActivities, group, field);
-  const playbackChanged = !cache.playbackItems || changedSince('movies', 'paused_at') || changedSince('episodes', 'paused_at');
-  const watchlistMoviesChanged = !cache.watchlistMovies || changedSince('movies', 'watchlisted_at');
-  const watchlistShowsChanged = !cache.watchlistShows || changedSince('shows', 'watchlisted_at');
-  const watchedMoviesChanged = !cache.watchedMovies || changedSince('movies', 'watched_at');
-  const watchedShowsChanged = !cache.watchedShows || changedSince('episodes', 'watched_at');
+  const {
+    playbackChanged,
+    watchlistMoviesChanged,
+    watchlistShowsChanged,
+    watchedMoviesChanged,
+    watchedShowsChanged,
+  } = await coreTraktActivityDiff({
+    previous: cache.activities ?? null,
+    current: activities ?? null,
+    hasPlayback: Boolean(cache.playbackItems),
+    hasWatchlistMovies: Boolean(cache.watchlistMovies),
+    hasWatchlistShows: Boolean(cache.watchlistShows),
+    hasWatchedMovies: Boolean(cache.watchedMovies),
+    hasWatchedShows: Boolean(cache.watchedShows),
+  });
 
   let playbackItems: Record<string, unknown>[];
   if (playbackChanged) {

@@ -2,6 +2,8 @@ import {
   coreMergeExternalWatched,
   coreMergeExternalWatchlist,
   coreInvoke,
+  coreSimklMergeDelta,
+  coreSimklResourceSyncPlan,
   coreSimklWatchedToIds,
   coreSimklWatchingToItems,
   coreSimklWatchlistToItems,
@@ -17,41 +19,6 @@ type SimklDeltaCache = {
   activities?: Record<string, unknown>;
   resources: Record<string, unknown>;
 };
-
-function activityAt(activities: Record<string, unknown> | undefined, type: string, status: string): string | undefined {
-  const value = (activities?.[type] as Record<string, unknown> | undefined)?.[status];
-  return typeof value === 'string' && value ? value : undefined;
-}
-
-function itemKey(value: unknown): string | null {
-  if (!value || typeof value !== 'object') return null;
-  const item = value as Record<string, unknown>;
-  const ids = item.ids as Record<string, unknown> | undefined;
-  const id = ids?.simkl ?? ids?.imdb ?? ids?.tmdb ?? item.id;
-  return id == null ? null : String(id);
-}
-
-function mergeSimklDelta(previous: unknown, changes: unknown): unknown {
-  if (!Array.isArray(previous) || !Array.isArray(changes)) return changes;
-  const updates = new Map(changes.map((item) => [itemKey(item), item] as const).filter(([key]) => key != null));
-  const merged = previous.map((item) => updates.get(itemKey(item)) ?? item);
-  const existing = new Set(previous.map(itemKey).filter((key): key is string => key != null));
-  for (const item of changes) {
-    const key = itemKey(item);
-    if (key == null || !existing.has(key)) merged.push(item);
-  }
-  return merged;
-}
-
-function mergeSimklResource(previous: unknown, changes: unknown): unknown {
-  if (!previous || typeof previous !== 'object' || !changes || typeof changes !== 'object') return changes;
-  if (Array.isArray(previous) || Array.isArray(changes)) return mergeSimklDelta(previous, changes);
-  const merged: Record<string, unknown> = { ...(previous as Record<string, unknown>) };
-  for (const [key, value] of Object.entries(changes as Record<string, unknown>)) {
-    merged[key] = mergeSimklResource(merged[key], value);
-  }
-  return merged;
-}
 
 async function mergeExternalWatchlist(externalItems: Record<string, unknown>[], profileKey?: string): Promise<void> {
   const lib = await loadLibrary(profileKey);
@@ -108,19 +75,22 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
     ['showsCompleted', 'tv_shows', 'completed', 'shows'],
     ['moviesCompleted', 'movies', 'completed', 'movies'],
   ] as const;
+  const plan = await coreSimklResourceSyncPlan({
+    previous: cache.activities ?? null,
+    current: activities,
+    resources: resources.map(([key, type, status]) => ({ key, type, status, hasCached: Boolean(cache.resources[key]) })),
+  });
+  const planByKey = new Map(plan.map((entry) => [entry.key, entry]));
   let nextResources: unknown[];
   try {
-    nextResources = await Promise.all(resources.map(async ([key, type, status, path]) => {
-      const previousActivity = activityAt(cache.activities, type, status);
-      const currentActivity = activityAt(activities, type, status);
-      const forceFull = !cache.resources[key]
-        || activityAt(cache.activities, type, 'removed_from_list') !== activityAt(activities, type, 'removed_from_list');
-      if (!forceFull && previousActivity === currentActivity) return cache.resources[key];
-      const dateFrom = !forceFull && previousActivity ? `&date_from=${encodeURIComponent(previousActivity)}` : '';
+    nextResources = await Promise.all(resources.map(async ([key, , status, path]) => {
+      const entry = planByKey.get(key);
+      if (!entry || entry.action === 'unchanged') return cache.resources[key];
+      const dateFrom = entry.action === 'delta' && entry.dateFrom ? `&date_from=${encodeURIComponent(entry.dateFrom)}` : '';
       const response = await platformFetch(`https://api.simkl.com/sync/all-items/${path}/${status}?extended=full&episode_watched_at=yes&${query}${dateFrom}`, { headers, signal: AbortSignal.timeout(60_000) });
       if (!response.ok) throw new Error(`Simkl sync failed: HTTP ${response.status}`);
       const changes = await response.json();
-      return forceFull ? changes : mergeSimklResource(cache.resources[key], changes);
+      return entry.action === 'full' ? changes : coreSimklMergeDelta(JSON.stringify(cache.resources[key] ?? null), JSON.stringify(changes));
     }));
   } catch (error) {
     return { synced: false, error: error instanceof Error ? error.message : String(error) };

@@ -155,6 +155,45 @@ export async function coreSimklWatchedToIds(
   );
 }
 
+export async function coreTraktActivityDiff(request: {
+  previous?: unknown;
+  current?: unknown;
+  hasPlayback: boolean;
+  hasWatchlistMovies: boolean;
+  hasWatchlistShows: boolean;
+  hasWatchedMovies: boolean;
+  hasWatchedShows: boolean;
+}): Promise<{
+  playbackChanged: boolean;
+  watchlistMoviesChanged: boolean;
+  watchlistShowsChanged: boolean;
+  watchedMoviesChanged: boolean;
+  watchedShowsChanged: boolean;
+}> {
+  return (await coreInvoke("traktActivityDiff", JSON.stringify(request))) ?? {
+    playbackChanged: true,
+    watchlistMoviesChanged: true,
+    watchlistShowsChanged: true,
+    watchedMoviesChanged: true,
+    watchedShowsChanged: true,
+  };
+}
+
+export async function coreSimklResourceSyncPlan(request: {
+  previous?: unknown;
+  current?: unknown;
+  resources: Array<{ key: string; type: string; status: string; hasCached: boolean }>;
+}): Promise<Array<{ key: string; action: 'unchanged' | 'full' | 'delta'; dateFrom: string | null }>> {
+  return (await coreInvoke(
+    "simklResourceSyncPlan",
+    JSON.stringify(request),
+  )) ?? request.resources.map((resource) => ({ key: resource.key, action: 'full' as const, dateFrom: null }));
+}
+
+export async function coreSimklMergeDelta(previousJson: string, changesJson: string): Promise<unknown> {
+  return coreInvoke("simklMergeDelta", JSON.stringify({ previousJson, changesJson }));
+}
+
 export async function coreStremioWatchlistToItems(
   items: unknown[],
 ): Promise<unknown[] | null> {
