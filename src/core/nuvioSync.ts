@@ -375,22 +375,24 @@ export async function importNuvioProfileData(
     }
   }
 
+  const plan = await coreNuvioImportMergePlan({
+    progress: progressBefore,
+    watched: watchedBefore,
+    library,
+    addonMetas,
+    watchProgress,
+    watchHistory,
+    categories,
+    dryRun,
+  });
   if (!dryRun) {
-    const plan = await coreNuvioImportMergePlan({
-      progress: progressBefore,
-      watched: watchedBefore,
-      library,
-      addonMetas,
-      watchProgress,
-      watchHistory,
-    });
     let appliedRemoteWatchState = false;
-    if (plan) {
-      if (wants('continueWatching')) {
-        libDoc.progress = plan.progress;
-        libDoc.continueWatching = await buildContinueWatching(plan.progress);
-      }
-      if (wants('watched')) libDoc.watched = plan.watched;
+    if (plan?.progress != null) {
+      libDoc.progress = plan.progress;
+      libDoc.continueWatching = await buildContinueWatching(plan.progress);
+    }
+    if (plan?.watched != null) libDoc.watched = plan.watched;
+    if (plan?.progress != null || plan?.watched != null) {
       await saveProviderLibrary('nuvio', {
         watchlist: (libDoc.watchlist as Record<string, unknown>[]) ?? [],
         watching: libDoc.continueWatching as Record<string, unknown>[],
@@ -438,8 +440,8 @@ export async function importNuvioProfileData(
 
   const counts = {
     watchlist: watchlistCount,
-    continueWatching: watchProgress?.length ?? 0,
-    watched: watchHistory?.length ?? 0,
+    continueWatching: plan?.progressCount ?? 0,
+    watched: plan?.watchedCount ?? 0,
     collections: collectionsCount,
     addons: addonCount,
   };

@@ -1,5 +1,26 @@
 import { coreInvoke } from './engine';
 
+export interface CoreImportApplyPlan {
+  watchlist: Record<string, unknown>[] | null;
+  watchlistCount: number;
+  watched: Record<string, boolean> | null;
+  watchedCount: number;
+  continueWatchingApply: boolean;
+}
+
+export async function coreImportApplyPlan(request: {
+  localWatchlist: unknown[];
+  externalWatchlist: unknown[];
+  localWatched: Record<string, unknown>;
+  externalWatched: Record<string, unknown>;
+  categories?: string[];
+  dryRun?: boolean;
+}): Promise<CoreImportApplyPlan> {
+  return (await coreInvoke<CoreImportApplyPlan>("importApplyPlan", JSON.stringify(request))) ?? {
+    watchlist: null, watchlistCount: 0, watched: null, watchedCount: 0, continueWatchingApply: false,
+  };
+}
+
 export async function coreTraktScrobblePlan(
   videoId: string,
   isEpisode: boolean,

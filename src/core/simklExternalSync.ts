@@ -1,6 +1,5 @@
 import {
-  coreMergeExternalWatched,
-  coreMergeExternalWatchlist,
+  coreImportApplyPlan,
   coreInvoke,
   coreSimklMergeDelta,
   coreSimklResourceSyncPlan,
@@ -21,24 +20,18 @@ type SimklDeltaCache = {
   resources: Record<string, unknown>;
 };
 
-async function mergeExternalWatchlist(externalItems: Record<string, unknown>[], profileKey?: string): Promise<void> {
+async function applyWatchlistMerge(merged: Record<string, unknown>[], before: Record<string, unknown>[], profileKey?: string): Promise<void> {
+  if (merged.length <= before.length) return;
   const lib = await loadLibrary(profileKey);
-  const local = (lib.watchlist as Record<string, unknown>[] | undefined) ?? [];
-  const mergedJson = await coreMergeExternalWatchlist(JSON.stringify(local), JSON.stringify(externalItems));
-  const mergedList = mergedJson as Record<string, unknown>[];
-  if (mergedList.length > local.length) {
-    lib.watchlist = mergedList;
-    await persistStatusListMerge(local, mergedList, 'watchlist', profileKey);
-    await saveLibrary(lib, profileKey);
-  }
+  lib.watchlist = merged;
+  await persistStatusListMerge(before, merged, 'watchlist', profileKey);
+  await saveLibrary(lib, profileKey);
 }
 
-async function mergeExternalWatched(externalWatched: Record<string, boolean>, profileKey?: string): Promise<void> {
+async function applyWatchedMerge(merged: Record<string, boolean>, before: Record<string, boolean>, profileKey?: string): Promise<void> {
   const lib = await loadLibrary(profileKey);
-  const local = (lib.watched as Record<string, boolean> | undefined) ?? {};
-  const merged = await coreMergeExternalWatched(JSON.stringify(local), JSON.stringify(externalWatched));
   lib.watched = merged;
-  await persistWatchedMerge(local, merged, profileKey);
+  await persistWatchedMerge(before, merged, profileKey);
   await saveLibrary(lib, profileKey);
 }
 
@@ -116,15 +109,27 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   const wlShowsData = JSON.stringify(wlShows);
   const wlMoviesData = JSON.stringify(wlMovies);
   const watchlistItems = ((await coreSimklWatchlistToItems(wlShowsData, wlMoviesData)) ?? []) as Record<string, unknown>[];
-  if (wants('watchlist') && !dryRun) await mergeExternalWatchlist(watchlistItems, profileKey);
   if (!dryRun) await saveProviderLibrary('simkl', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
 
   const doneShowsData = JSON.stringify(doneShows);
   const doneMoviesData = JSON.stringify(doneMovies);
   const watchedMap = ((await coreSimklWatchedToIds(doneShowsData, doneMoviesData)) ?? {}) as Record<string, boolean>;
-  if (wants('watched') && !dryRun) await mergeExternalWatched(watchedMap, profileKey);
 
-  return { synced: true, provider: 'simkl', continueWatchingCount: items.length, watchlistCount: watchlistItems.length, watchedCount: Object.keys(watchedMap).length };
+  const localLib = await loadLibrary(profileKey);
+  const localWatchlist = (localLib.watchlist as Record<string, unknown>[] | undefined) ?? [];
+  const localWatched = (localLib.watched as Record<string, unknown> | undefined) ?? {};
+  const applyPlan = await coreImportApplyPlan({
+    localWatchlist,
+    externalWatchlist: watchlistItems,
+    localWatched,
+    externalWatched: watchedMap,
+    categories,
+    dryRun,
+  });
+  if (applyPlan.watchlist != null) await applyWatchlistMerge(applyPlan.watchlist, localWatchlist, profileKey);
+  if (applyPlan.watched != null) await applyWatchedMerge(applyPlan.watched, localWatched as Record<string, boolean>, profileKey);
+
+  return { synced: true, provider: 'simkl', continueWatchingCount: items.length, watchlistCount: applyPlan.watchlistCount, watchedCount: applyPlan.watchedCount };
 }
 
 export async function fetchSimklCalendarItems(

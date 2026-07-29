@@ -369,17 +369,24 @@ export async function coreDetectAnimePlayback(
 export async function coreAnilistEntriesToSync(
   entries: unknown[],
   nowMs: number,
+  categories?: string[],
+  dryRun?: boolean,
 ): Promise<
   {
-    watchlist: Record<string, unknown>[];
-    completed: Record<string, unknown>[];
-    dropped: Record<string, unknown>[];
-    watching: Record<string, unknown>[];
-    watched: Record<string, boolean>;
-    progress: Record<string, unknown>;
+    watchlist: Record<string, unknown>[] | null;
+    watchlistCount: number;
+    completed: Record<string, unknown>[] | null;
+    completedCount: number;
+    dropped: Record<string, unknown>[] | null;
+    droppedCount: number;
+    watching: Record<string, unknown>[] | null;
+    watchingCount: number;
+    watched: Record<string, boolean> | null;
+    watchedUpdatedAtMs: Record<string, unknown> | null;
+    progress: Record<string, unknown> | null;
   } | null
 > {
-  return coreInvoke("anilistEntriesToSync", JSON.stringify({ entries, nowMs }));
+  return coreInvoke("anilistEntriesToSync", JSON.stringify({ entries, nowMs, categories, dryRun }));
 }
 
 export async function coreMergeLibraryItemsById(
@@ -883,8 +890,15 @@ export async function coreNuvioImportMergePlan(args: {
   addonMetas: Record<string, unknown>;
   watchProgress: unknown[] | null;
   watchHistory: unknown[] | null;
+  categories?: string[];
+  dryRun?: boolean;
 }): Promise<
-  { progress: Record<string, unknown>; watched: Record<string, boolean> } | null
+  {
+    progress: Record<string, unknown> | null;
+    progressCount: number;
+    watched: Record<string, boolean> | null;
+    watchedCount: number;
+  } | null
 > {
   return coreInvoke("nuvioImportMergePlan", JSON.stringify(args));
 }

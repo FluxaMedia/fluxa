@@ -1,8 +1,7 @@
 import {
   coreBuildTraktIds,
+  coreImportApplyPlan,
   coreInvoke,
-  coreMergeExternalWatched,
-  coreMergeExternalWatchlist,
   coreTraktActivityDiff,
   coreTraktMarkWatchedBody,
   coreTraktPlaybackItemsDedup,
@@ -51,24 +50,18 @@ async function fetchAllPages(url: string, headers: HeadersInit, limit: number): 
   return plan?.items ?? [];
 }
 
-async function mergeExternalWatchlist(externalItems: Record<string, unknown>[], profileKey?: string): Promise<void> {
+async function applyWatchlistMerge(merged: Record<string, unknown>[], before: Record<string, unknown>[], profileKey?: string): Promise<void> {
+  if (merged.length <= before.length) return;
   const lib = await loadLibrary(profileKey);
-  const local = (lib.watchlist as Record<string, unknown>[] | undefined) ?? [];
-  const mergedJson = await coreMergeExternalWatchlist(JSON.stringify(local), JSON.stringify(externalItems));
-  const mergedList = mergedJson as Record<string, unknown>[];
-  if (mergedList.length > local.length) {
-    lib.watchlist = mergedList;
-    await persistStatusListMerge(local, mergedList, 'watchlist', profileKey);
-    await saveLibrary(lib, profileKey);
-  }
+  lib.watchlist = merged;
+  await persistStatusListMerge(before, merged, 'watchlist', profileKey);
+  await saveLibrary(lib, profileKey);
 }
 
-async function mergeExternalWatched(externalWatched: Record<string, boolean>, profileKey?: string): Promise<void> {
+async function applyWatchedMerge(merged: Record<string, boolean>, before: Record<string, boolean>, profileKey?: string): Promise<void> {
   const lib = await loadLibrary(profileKey);
-  const local = (lib.watched as Record<string, boolean> | undefined) ?? {};
-  const merged = await coreMergeExternalWatched(JSON.stringify(local), JSON.stringify(externalWatched));
   lib.watched = merged;
-  await persistWatchedMerge(local, merged, profileKey);
+  await persistWatchedMerge(before, merged, profileKey);
   await saveLibrary(lib, profileKey);
 }
 
@@ -154,14 +147,25 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     items = await enrichWithAddonMeta(rawItems);
 
     const watchlistItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
-    watchlistCount = watchlistItems.length;
-    if (wants('watchlist') && !dryRun) await mergeExternalWatchlist(watchlistItems, profileKey);
+    const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
 
     if (!dryRun) await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
 
-    const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
-    watchedCount = Object.keys(watchedIds).length;
-    if (wants('watched') && !dryRun) await mergeExternalWatched(watchedIds, profileKey);
+    const localLib = await loadLibrary(profileKey);
+    const localWatchlist = (localLib.watchlist as Record<string, unknown>[] | undefined) ?? [];
+    const localWatched = (localLib.watched as Record<string, unknown> | undefined) ?? {};
+    const applyPlan = await coreImportApplyPlan({
+      localWatchlist,
+      externalWatchlist: watchlistItems,
+      localWatched,
+      externalWatched: watchedIds,
+      categories,
+      dryRun,
+    });
+    watchlistCount = applyPlan.watchlistCount;
+    watchedCount = applyPlan.watchedCount;
+    if (applyPlan.watchlist != null) await applyWatchlistMerge(applyPlan.watchlist, localWatchlist, profileKey);
+    if (applyPlan.watched != null) await applyWatchedMerge(applyPlan.watched, localWatched as Record<string, boolean>, profileKey);
 
     if (activities) {
       await storageWrite(cacheKey, { activities, playbackItems, watchlistMovies, watchlistShows, watchedMovies, watchedShows } satisfies TraktDeltaCache);

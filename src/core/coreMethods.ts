@@ -110,6 +110,7 @@ export const CORE_METHODS = [
   'homeOverlapRatio',
   'homePersonalizationScore',
   'identity',
+  'importApplyPlan',
   'importCollections',
   'integrationSettingsPlan',
   'isEpisodeReleased',

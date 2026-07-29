@@ -1,8 +1,7 @@
 import {
+  coreImportApplyPlan,
   coreLibraryContinueWatchingItems,
   coreInvoke,
-  coreMergeExternalWatched,
-  coreMergeExternalWatchlist,
   coreStremioWatchedToIds,
   coreStremioWatchlistToItems,
 } from './engine';
@@ -73,24 +72,18 @@ export async function syncStremioAddons(profile: UserProfile, addons: AddonDescr
   await stremioReplaceAddons(profile.stremioAuthKey, addons);
 }
 
-async function mergeExternalWatchlist(externalItems: Record<string, unknown>[], profileKey?: string): Promise<number> {
+async function applyWatchlistMerge(merged: Record<string, unknown>[], before: Record<string, unknown>[], profileKey?: string): Promise<void> {
+  if (merged.length <= before.length) return;
   const lib = await loadLibrary(profileKey);
-  const local = (lib.watchlist as Record<string, unknown>[] | undefined) ?? [];
-  const merged = await coreMergeExternalWatchlist(JSON.stringify(local), JSON.stringify(externalItems));
-  if (merged.length > local.length) {
-    lib.watchlist = merged;
-    await persistStatusListMerge(local, merged, 'watchlist', profileKey);
-    await saveLibrary(lib, profileKey);
-  }
-  return externalItems.length;
+  lib.watchlist = merged;
+  await persistStatusListMerge(before, merged, 'watchlist', profileKey);
+  await saveLibrary(lib, profileKey);
 }
 
-async function mergeExternalWatched(externalWatched: Record<string, boolean>, profileKey?: string): Promise<void> {
+async function applyWatchedMerge(merged: Record<string, boolean>, before: Record<string, boolean>, profileKey?: string): Promise<void> {
   const lib = await loadLibrary(profileKey);
-  const local = (lib.watched as Record<string, boolean> | undefined) ?? {};
-  const merged = await coreMergeExternalWatched(JSON.stringify(local), JSON.stringify(externalWatched));
   lib.watched = merged;
-  await persistWatchedMerge(local, merged, profileKey);
+  await persistWatchedMerge(before, merged, profileKey);
   await saveLibrary(lib, profileKey);
 }
 
@@ -115,25 +108,30 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
   if (wants('continueWatching') && !dryRun) await replaceExternalContinueWatching({ items, provider: 'stremio', profileKey });
 
   let watchlistCount = 0;
-  if (wants('watchlist')) {
-    try {
-      const watchlistItems = ((await coreStremioWatchlistToItems(libraryItems)) ?? []) as Record<string, unknown>[];
-      watchlistCount = watchlistItems.length;
-      if (!dryRun) {
-        await mergeExternalWatchlist(watchlistItems, profileKey);
-        await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
-      }
-    } catch {}
-  }
-
   let watchedCount = 0;
-  if (wants('watched')) {
-    try {
-      const watchedIds = ((await coreStremioWatchedToIds(libraryItems)) ?? {}) as Record<string, boolean>;
-      watchedCount = Object.keys(watchedIds).length;
-      if (!dryRun) await mergeExternalWatched(watchedIds, profileKey);
-    } catch {}
-  }
+  try {
+    const watchlistItems = ((await coreStremioWatchlistToItems(libraryItems)) ?? []) as Record<string, unknown>[];
+    const watchedIds = ((await coreStremioWatchedToIds(libraryItems)) ?? {}) as Record<string, boolean>;
+
+    const localLib = await loadLibrary(profileKey);
+    const localWatchlist = (localLib.watchlist as Record<string, unknown>[] | undefined) ?? [];
+    const localWatched = (localLib.watched as Record<string, unknown> | undefined) ?? {};
+    const applyPlan = await coreImportApplyPlan({
+      localWatchlist,
+      externalWatchlist: watchlistItems,
+      localWatched,
+      externalWatched: watchedIds,
+      categories,
+      dryRun,
+    });
+    watchlistCount = applyPlan.watchlistCount;
+    watchedCount = applyPlan.watchedCount;
+    if (applyPlan.watchlist != null) {
+      await applyWatchlistMerge(applyPlan.watchlist, localWatchlist, profileKey);
+      await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
+    }
+    if (applyPlan.watched != null) await applyWatchedMerge(applyPlan.watched, localWatched as Record<string, boolean>, profileKey);
+  } catch {}
 
   let addonCount = 0;
   if (wants('addons')) {
