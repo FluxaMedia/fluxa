@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.settings.SettingsGroupCard
 import com.fluxa.app.shared.feature.settings.SettingsSectionHeader
@@ -65,7 +67,7 @@ fun ProfileEditScreen(
     onPickAvatarClick: () -> Unit,
     onRemoveAvatarClick: () -> Unit,
     onSave: (ProfileEditUiModel) -> Unit,
-    onDelete: (() -> Unit)?,
+    onDelete: (suspend (String?) -> Boolean)?,
     onCancel: () -> Unit,
     avatarPacks: List<ProfileAvatarPackUiModel> = emptyList(),
     onPickPackAvatarClick: (String) -> Unit = {},
@@ -77,6 +79,9 @@ fun ProfileEditScreen(
     var biometricEnabled by remember(initialProfile?.id) { mutableStateOf(initialProfile?.biometricEnabled == true) }
     var showAvatarSheet by remember { mutableStateOf(false) }
     var confirmDelete by remember(initialProfile?.id) { mutableStateOf(false) }
+    var deletePin by remember(initialProfile?.id) { mutableStateOf("") }
+    var deletePinError by remember(initialProfile?.id) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val pinValid = pin.isEmpty() || pin.length == 4
     val willHavePin = !removePin && (pin.length == 4 || initialProfile?.hasPin == true)
@@ -228,11 +233,30 @@ fun ProfileEditScreen(
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text(AppStrings.t(language, "profiles.delete_confirm_title")) },
-            text = { Text(AppStrings.t(language, "profiles.delete_confirm_message")) },
+            text = {
+                Column {
+                    Text(AppStrings.t(language, "profiles.delete_confirm_message"))
+                    if (initialProfile?.hasPin == true) {
+                        OutlinedTextField(
+                            value = deletePin,
+                            onValueChange = {
+                                deletePin = it.filter(Char::isDigit).take(4)
+                                deletePinError = false
+                            },
+                            label = { Text(AppStrings.t(language, "profiles.pin_prompt")) },
+                            isError = deletePinError,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    confirmDelete = false
-                    onDelete()
+                    scope.launch {
+                        val deleted = onDelete(if (initialProfile?.hasPin == true) deletePin else null)
+                        if (deleted) confirmDelete = false else deletePinError = true
+                    }
                 }) { Text(AppStrings.t(language, "profiles.delete"), color = FluxaColors.errorRed) }
             },
             dismissButton = {

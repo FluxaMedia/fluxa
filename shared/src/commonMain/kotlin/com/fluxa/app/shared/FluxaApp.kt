@@ -227,7 +227,7 @@ fun FluxaApp(
     onRemoveAvatarClick: () -> Unit = {},
     onPickPackAvatarClick: (String) -> Unit = {},
     onProfileSave: (ProfileEditUiModel) -> Unit = {},
-    onProfileDelete: (() -> Unit)? = null,
+    onProfileDelete: (suspend (String?) -> Boolean)? = null,
     onProfileEditCancel: () -> Unit = {},
     onPickBackgroundClick: () -> Unit = {},
     playerState: PlayerRenderState? = null,

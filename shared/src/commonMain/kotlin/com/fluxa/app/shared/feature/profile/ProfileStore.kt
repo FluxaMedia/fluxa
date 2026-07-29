@@ -37,7 +37,7 @@ class ProfileStore(
         }
     }
 
-    suspend fun deleteProfile(id: String) = dataSource.deleteProfile(id)
+    suspend fun deleteProfile(id: String, pin: String? = null): Boolean = dataSource.deleteProfile(id, pin)
 
     suspend fun saveProfile(edit: ProfileEditUiModel): String = dataSource.saveProfile(edit)
 }
@@ -116,7 +116,12 @@ class SharedProfileDataSource(
         pinError.value = false
     }
 
-    override suspend fun deleteProfile(id: String) = store.delete(id)
+    override suspend fun deleteProfile(id: String, pin: String?): Boolean {
+        val expectedPinHash = store.pinHash(id)
+        if (!expectedPinHash.isNullOrBlank() && PinHasher.hash(pin.orEmpty()) != expectedPinHash) return false
+        store.delete(id)
+        return true
+    }
 
     override suspend fun saveProfile(edit: ProfileEditUiModel): String {
         val pinHash = when {

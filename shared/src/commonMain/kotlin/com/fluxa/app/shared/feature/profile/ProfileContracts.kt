@@ -70,7 +70,7 @@ interface ProfileDataSource {
     suspend fun attemptPin(profileId: String, pin: String)
     suspend fun confirmBiometricUnlock(profileId: String)
     suspend fun cancelPinUnlock()
-    suspend fun deleteProfile(id: String)
+    suspend fun deleteProfile(id: String, pin: String? = null): Boolean
     suspend fun saveProfile(edit: ProfileEditUiModel): String
     suspend fun setPickerBackground(url: String?)
     suspend fun addAvatarPack(repositoryUrl: String)

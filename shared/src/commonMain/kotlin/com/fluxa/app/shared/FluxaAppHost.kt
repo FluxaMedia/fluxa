@@ -571,12 +571,12 @@ fun FluxaAppHost(
             }
         },
         onProfileDelete = (appState.uiState.editingProfile as? ProfileEditTarget.Existing)?.let { existing ->
-            {
-                scope.launch {
-                    profileStore?.deleteProfile(existing.id)
+            { pin ->
+                val deleted = profileStore?.deleteProfile(existing.id, pin) == true
+                if (deleted) {
                     appState.beginProfileEdit(null)
                 }
-                Unit
+                deleted
             }
         },
         onProfileEditCancel = { appState.beginProfileEdit(null) },
