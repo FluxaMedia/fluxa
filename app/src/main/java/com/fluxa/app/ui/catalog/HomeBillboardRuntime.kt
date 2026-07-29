@@ -360,7 +360,15 @@ private suspend fun resolveYoutubeTrailerViaCore(
     dispatchHeadless: suspend (Any) -> NativeHeadlessEngineResult
 ): TrailerResolveResult {
     val requestId = java.util.UUID.randomUUID().toString()
-    val result = dispatchHeadless(mapOf("type" to "trailerResolveRequested", "requestId" to requestId, "videoId" to videoId))
+    val maxHeight = if (com.fluxa.app.BuildConfig.IS_TV) 1080 else 720
+    val result = dispatchHeadless(
+        mapOf(
+            "type" to "trailerResolveRequested",
+            "requestId" to requestId,
+            "videoId" to videoId,
+            "maxHeight" to maxHeight
+        )
+    )
     val resolution = (result.state["trailer"] as? Map<*, *>)
         ?.get("resolutions") as? Map<*, *>
         ?: return TrailerResolveResult.Failed

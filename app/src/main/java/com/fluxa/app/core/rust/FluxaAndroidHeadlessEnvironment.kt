@@ -195,7 +195,8 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 "notifyReleasedEpisodes" -> calendarEffectHandler.execute(effect)
                 "enqueueOfflineDownload" -> offlineEffectHandler.enqueue(effect)
                 "fetchYoutubeTrailerWatchConfig",
-                "fetchYoutubeTrailerPlayer" -> executeTrailerHttpEffect(effect)
+                "fetchYoutubeTrailerPlayer",
+                "fetchYoutubeTrailerPlayerScript" -> executeTrailerHttpEffect(effect)
                 else -> error(effect, "unsupported_effect")
             }
         }.getOrElse { throwable ->
