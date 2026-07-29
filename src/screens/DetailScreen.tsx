@@ -126,6 +126,16 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   }, [meta.id]);
 
   useEffect(() => {
+    onDispatch(JSON.stringify({
+      type: 'detailSecondaryRequested',
+      contentType: meta.type,
+      id: meta.id,
+      language: getLanguage(),
+      similarTitlesSource: prefString(prefs, 'similarTitlesSource', 'auto'),
+    }));
+  }, [meta.id]);
+
+  useEffect(() => {
     if (!detail.isLoading || detail.meta) return;
     const timer = setTimeout(() => {
       onDispatch(JSON.stringify({ type: 'detailLoadRequested', contentType: meta.type, id: meta.id, language: getLanguage() }));

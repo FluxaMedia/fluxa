@@ -1,7 +1,10 @@
 export interface RatingSourceInfo {
-  icon: string;
+  icon?: string;
   label: string;
   format: (value: number) => string;
+  maskColor?: string;
+  lucideIcon?: 'popcorn';
+  iconColor?: string;
 }
 
 const percent = (value: number) => `${Math.round(value)}%`;
@@ -13,10 +16,10 @@ export const RATING_SOURCES: Record<string, RatingSourceInfo> = {
   tmdb: { icon: '/tmdb.svg', label: 'TMDB', format: percent },
   trakt: { icon: '/trakt.svg', label: 'Trakt', format: percent },
   letterboxd: { icon: '/letterboxd.svg', label: 'Letterboxd', format: outOfTen },
-  tomatoes: { icon: '/rottentomatoes.svg', label: 'Rotten Tomatoes', format: percent },
-  popcorn: { icon: '/rottentomatoes.svg', label: 'Popcornmeter', format: percent },
-  metacritic: { icon: '/metacritic.svg', label: 'Metacritic', format: bareScore },
-  metacriticuser: { icon: '/metacritic.svg', label: 'Metacritic Users', format: outOfTen },
+  tomatoes: { icon: '/rottentomatoes.svg', label: 'Rotten Tomatoes (Critics)', format: percent, maskColor: '#FA320A' },
+  popcorn: { label: 'Rotten Tomatoes (Audience)', format: percent, lucideIcon: 'popcorn', iconColor: '#FA320A' },
+  metacritic: { icon: '/metacritic.svg', label: 'Metacritic', format: bareScore, maskColor: '#66CC33' },
+  metacriticuser: { icon: '/metacritic.svg', label: 'Metacritic Users', format: outOfTen, maskColor: '#FFCC33' },
   myanimelist: { icon: '/mal.svg', label: 'MyAnimeList', format: outOfTen },
 };
 

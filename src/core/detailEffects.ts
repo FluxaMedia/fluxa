@@ -277,7 +277,8 @@ async function fetchMdblistRatings(
     const separator = url.includes('?') ? '&' : '?';
     const response = await tryFetchJson(`${url}${separator}apikey=${encodeURIComponent(apiKey)}`);
     if (!response) return null;
-    return await coreMdblistMediaRatingsFromResponse(JSON.stringify(response));
+    const ratings = await coreMdblistMediaRatingsFromResponse(JSON.stringify(response));
+    return ratings;
   } catch (err) {
     console.error('fetchMdblistRatings failed', err);
     return null;

@@ -1,3 +1,4 @@
+import { Popcorn } from 'lucide-react';
 import { RATING_SOURCES, orderedRatingEntries } from './ratingSources';
 
 interface RatingBadgeProps {
@@ -10,7 +11,23 @@ export function RatingBadge({ source, value }: RatingBadgeProps) {
   if (!info) return null;
   return (
     <span style={styles.badge} title={info.label}>
-      <img src={info.icon} alt={info.label} style={styles.logo} />
+      {info.lucideIcon === 'popcorn' ? (
+        <Popcorn size={18} color={info.iconColor} strokeWidth={2} />
+      ) : info.maskColor ? (
+        <span
+          role="img"
+          aria-label={info.label}
+          style={{
+            ...styles.logo,
+            ...styles.maskedLogo,
+            backgroundColor: info.maskColor,
+            maskImage: `url(${info.icon})`,
+            WebkitMaskImage: `url(${info.icon})`,
+          }}
+        />
+      ) : (
+        <img src={info.icon} alt={info.label} style={styles.logo} />
+      )}
       <span style={styles.score}>{info.format(value)}</span>
     </span>
   );
@@ -36,27 +53,39 @@ const styles = {
   row: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.875rem',
+    gap: '0.5rem',
     flexWrap: 'wrap',
   } as const,
   badge: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.375rem',
+    gap: '0.4375rem',
     flexShrink: 0,
+    background: 'rgba(0,0,0,0.55)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '0.4375rem',
+    padding: '0.25rem 0.5rem',
   } as const,
   logo: {
-    height: '1rem',
+    height: '1.25rem',
     width: 'auto',
     display: 'block',
     borderRadius: '0.1875rem',
     userSelect: 'none',
+  } as const,
+  maskedLogo: {
+    width: '1.25rem',
+    maskSize: 'contain',
+    WebkitMaskSize: 'contain',
+    maskRepeat: 'no-repeat',
+    WebkitMaskRepeat: 'no-repeat',
+    maskPosition: 'center',
+    WebkitMaskPosition: 'center',
   } as const,
   score: {
     color: 'rgba(255,255,255,0.92)',
     fontSize: '0.9rem',
     fontWeight: 700,
     lineHeight: 1,
-    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.8)',
   } as const,
 };
