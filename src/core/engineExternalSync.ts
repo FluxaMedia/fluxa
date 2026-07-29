@@ -86,6 +86,29 @@ export async function coreTraktWatchedToIds(
   );
 }
 
+export interface CorePushPlan {
+  watchlistItems?: { id: string; contentType: string }[];
+  watchlistNuvioItems?: { contentId: string; contentType: string; name?: string | null; poster?: string | null; background?: string | null }[];
+  watchedVideoIds?: string[];
+  watchedStatusItems?: { id: string; status: 'completed' | 'dropped' }[];
+  watchedItemIds?: string[];
+  watchedNuvioItems?: { contentId: string; contentType: string; title?: string | null; season?: number | null; episode?: number | null; watchedAt: number }[];
+  progressItemIds?: string[];
+  progressNuvioEntries?: { contentId: string; contentType: string; videoId: string; position: number; duration: number; lastWatched: number; season?: number | null; episode?: number | null }[];
+}
+
+export async function corePushPlan(request: {
+  destination: string;
+  categories: string[];
+  watchlist: unknown[];
+  completed: unknown[];
+  dropped: unknown[];
+  continueWatching: unknown[];
+  nowSec: number;
+}): Promise<CorePushPlan> {
+  return (await coreInvoke<CorePushPlan>("pushPlan", JSON.stringify(request))) ?? {};
+}
+
 export async function coreMergeExternalWatchlist(
   localJson: string,
   externalJson: string,

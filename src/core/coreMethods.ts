@@ -295,6 +295,7 @@ export const CORE_METHODS = [
   'providerCalendarItems',
   'providerPaginationPlan',
   'providerSearchTerms',
+  'pushPlan',
   'recentSearchesPlan',
   'rememberLastWatchedEpisodes',
   'remoteCollectionRequestPlan',
