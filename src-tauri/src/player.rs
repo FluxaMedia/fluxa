@@ -752,12 +752,28 @@ pub fn player_set_anime4k_enabled(
             ],
         ]
     };
+    #[cfg(target_os = "windows")]
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+            surface.command_args(commands)?;
+            *state.anime4k_enabled.lock().unwrap() = enabled;
+            let _ = app.emit(
+                "player-anime4k-state",
+                serde_json::json!({ "enabled": enabled }),
+            );
+            return Ok(());
+        }
+    }
     for command in commands {
         let args = command.iter().map(String::as_str).collect::<Vec<_>>();
-        with_renderer_retry(&state, 600, |renderer| renderer.command_args(&args)).map_err(|err| {
-            log::error!("player_set_anime4k_enabled: command {:?} failed: {err}", args);
-            err
-        })?;
+        match with_renderer_retry(&state, 600, |renderer| renderer.command_args(&args)) {
+            Ok(Some(())) => {}
+            Ok(None) => return Err("player renderer is not initialized".to_string()),
+            Err(err) => {
+                log::error!("player_set_anime4k_enabled: command {:?} failed: {err}", args);
+                return Err(err);
+            }
+        }
     }
     *state.anime4k_enabled.lock().unwrap() = enabled;
     let _ = app.emit(

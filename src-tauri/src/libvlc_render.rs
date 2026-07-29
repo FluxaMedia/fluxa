@@ -140,7 +140,7 @@ fn load_error(error: libloading::Error) -> String {
 #[cfg(target_os = "windows")]
 fn configure_windows_dll_path(lib_path: &str) -> Result<(), String> {
     #[link(name = "kernel32")]
-    extern "system" {
+    unsafe extern "system" {
         fn SetDllDirectoryW(path: *const u16) -> i32;
     }
 

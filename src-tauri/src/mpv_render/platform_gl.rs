@@ -117,7 +117,7 @@ pub(super) unsafe extern "C" fn get_gl_proc_address(
     ctx: *mut c_void,
     name: *const c_char,
 ) -> *mut c_void {
-    crate::windows_egl::get_gl_proc_address(ctx, name)
+    unsafe { crate::windows_egl::get_gl_proc_address(ctx, name) }
 }
 
 // macOS OpenGL proc address resolution

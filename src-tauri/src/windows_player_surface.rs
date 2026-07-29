@@ -171,15 +171,15 @@ unsafe extern "system" fn player_wnd_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     if msg == WM_SETCURSOR && CURSOR_HIDDEN.load(Ordering::Acquire) {
-        SetCursor(0);
+        unsafe { SetCursor(0) };
         return 1;
     }
-    DefWindowProcW(hwnd, msg, wparam, lparam)
+    unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
 }
 
 unsafe fn set_window_blur_behind(hwnd: HWND, enable: bool) {
     let region = if enable {
-        CreateRectRgn(0, 0, -1, -1)
+        unsafe { CreateRectRgn(0, 0, -1, -1) }
     } else {
         0
     };
@@ -193,9 +193,9 @@ unsafe fn set_window_blur_behind(hwnd: HWND, enable: bool) {
         hRgnBlur: region,
         fTransitionOnMaximized: 0,
     };
-    DwmEnableBlurBehindWindow(hwnd, &bb);
+    unsafe { DwmEnableBlurBehindWindow(hwnd, &bb) };
     if region != 0 {
-        DeleteObject(region);
+        unsafe { DeleteObject(region) };
     }
 }
 
@@ -292,6 +292,10 @@ enum SurfaceCommand {
         total_duration: Option<u64>,
     },
     Hide,
+    CommandArgs {
+        commands: Vec<Vec<String>>,
+        sender: mpsc::Sender<Result<(), String>>,
+    },
     PlayerCommand(String),
     Status(mpsc::Sender<crate::mpv_render::PlayerStatus>),
     TrackOptions {
@@ -348,6 +352,13 @@ impl NativePlayerSurface {
         self.sender
             .send(SurfaceCommand::PlayerCommand(command))
             .map_err(|e| format!("surface unavailable: {e}"))
+    }
+    pub fn command_args(&self, commands: Vec<Vec<String>>) -> Result<(), String> {
+        let (sender, receiver) = mpsc::channel();
+        self.sender.send(SurfaceCommand::CommandArgs { commands, sender })
+            .map_err(|e| format!("surface unavailable: {e}"))?;
+        receiver.recv_timeout(Duration::from_secs(5))
+            .map_err(|e| format!("player command unavailable: {e}"))?
     }
     pub fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
         let (sender, receiver) = mpsc::channel();
@@ -746,6 +757,23 @@ fn spawn_install_thread(
                             visible = false;
                             unsafe { ShowWindow(child_hwnd, SW_HIDE) };
                         }
+                    }
+                    SurfaceCommand::CommandArgs { commands, sender } => {
+                        let state = app.state::<DesktopState>();
+                        let renderer = state.player_renderer.lock().unwrap();
+                        let result = renderer.as_ref()
+                            .ok_or_else(|| "player renderer is not initialized".to_string())
+                            .and_then(|r| {
+                                for command in &commands {
+                                    let args = command.iter().map(String::as_str).collect::<Vec<_>>();
+                                    r.command_args(&args)?;
+                                }
+                                Ok(())
+                            });
+                        if let Err(error) = &result {
+                            log::error!("player surface: command batch failed: {error}");
+                        }
+                        let _ = sender.send(result);
                     }
                     SurfaceCommand::PlayerCommand(command) => {
                         let state = app.state::<DesktopState>();
