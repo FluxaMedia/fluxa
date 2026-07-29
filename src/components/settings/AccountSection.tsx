@@ -19,6 +19,24 @@ import { nuvioAuthErrorKind, nuvioSignIn } from '../../core/nuvioApi';
 import { refreshNuvioProfiles } from '../../core/nuvioSync';
 import { stremioLogin, stremioLoginWithAuthKey, stremioLogout } from '../../core/stremioApi';
 
+const PROVIDER_ICON: Record<string, { src: string; alt: string; background: string }> = {
+  trakt: { src: '/trakt.svg', alt: 'Trakt', background: 'rgba(237,28,36,0.12)' },
+  simkl: { src: '/simkl.svg', alt: 'Simkl', background: 'rgba(28,177,74,0.12)' },
+  anilist: { src: '/anilist.svg', alt: 'AniList', background: 'rgba(2,169,255,0.12)' },
+  stremio: { src: '/stremio.svg', alt: 'Stremio', background: 'rgba(123,91,245,0.12)' },
+  nuvio: { src: 'https://nuvio.tv//assets/Logo_1080x1080.png', alt: 'Nuvio', background: 'rgba(255,255,255,0.06)' },
+};
+
+function providerIcon(key: string): React.ReactNode {
+  const icon = PROVIDER_ICON[key];
+  if (!icon) return null;
+  return (
+    <div style={{ width: '1.5rem', height: '1.5rem', borderRadius: '0.375rem', background: icon.background, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+      <img src={icon.src} alt={icon.alt} style={{ width: '1.0625rem', height: '1.0625rem', objectFit: 'contain' }} />
+    </div>
+  );
+}
+
 function generateCodeVerifier(): string {
   const array = new Uint8Array(48);
   crypto.getRandomValues(array);
@@ -839,7 +857,7 @@ export function AccountSection({
             ['nuvio', t('brand.nuvio'), nuvioConnected],
           ] as const)
             .filter(([key, , connected]) => connected && key !== importDialog)
-            .map(([key, label]) => ({ key, label }))}
+            .map(([key, label]) => ({ key, label, icon: providerIcon(key) }))}
           destinationLabel={t('settings.import_destination_label')}
           localOnlyLabel={t('settings.import_destination_local')}
           scanLabel={t('settings.import_scan')}

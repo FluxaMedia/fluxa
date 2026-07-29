@@ -1,5 +1,7 @@
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { Popover } from './ui/Popover';
 import type { ImportCategory } from '../core/importCategories';
 
 type ScanResult = { counts: Partial<Record<ImportCategory, number>>; error?: string };
@@ -11,7 +13,7 @@ export function ImportDialog({
 }: {
   title: string;
   items: { key: ImportCategory; label: string }[];
-  destinations: { key: string; label: string }[];
+  destinations: { key: string; label: string; icon?: React.ReactNode }[];
   destinationLabel: string;
   localOnlyLabel: string;
   scanLabel: string;
@@ -29,6 +31,10 @@ export function ImportDialog({
   const [destination, setDestination] = React.useState<string>('');
   const [phase, setPhase] = React.useState<'select' | 'scanning' | 'preview'>('select');
   const [scanResult, setScanResult] = React.useState<ScanResult | null>(null);
+  const [destinationOpen, setDestinationOpen] = React.useState(false);
+  const destinationBtnRef = React.useRef<HTMLButtonElement>(null);
+  const destinationOptions: { key: string; label: string; icon?: React.ReactNode }[] = [{ key: '', label: localOnlyLabel }, ...destinations];
+  const selectedDestination = destinationOptions.find((d) => d.key === destination) ?? destinationOptions[0];
 
   const toggle = (key: ImportCategory) => {
     setSelected((current) => {
@@ -65,21 +71,31 @@ export function ImportDialog({
             {destinations.length > 0 && (
               <div style={S.destinationBlock}>
                 <p style={S.destinationLabel}>{destinationLabel}</p>
-                <div style={S.destinationList}>
-                  {[{ key: '', label: localOnlyLabel }, ...destinations].map((dest) => {
-                    const isSelected = destination === dest.key;
-                    return (
-                      <button
-                        key={dest.key || 'local'}
-                        type="button"
-                        onClick={() => setDestination(dest.key)}
-                        style={{ ...S.destinationOption, ...(isSelected ? S.destinationOptionSelected : null) }}
-                      >
-                        {dest.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <button
+                  ref={destinationBtnRef}
+                  type="button"
+                  onClick={() => setDestinationOpen((o) => !o)}
+                  style={S.destinationTrigger}
+                >
+                  <span style={S.destinationTriggerContent}>
+                    {selectedDestination.icon}
+                    <span style={S.destinationTriggerLabel}>{selectedDestination.label}</span>
+                  </span>
+                  <ChevronDown size={16} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.6)', transform: destinationOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                </button>
+                <Popover open={destinationOpen} onClose={() => setDestinationOpen(false)} anchorRef={destinationBtnRef} placement="bottom-start" matchWidth maxHeight="14rem" padding="0.25rem" zIndex={10050}>
+                  {destinationOptions.map((dest) => (
+                    <button
+                      key={dest.key || 'local'}
+                      type="button"
+                      onClick={() => { setDestination(dest.key); setDestinationOpen(false); }}
+                      style={{ ...S.destinationMenuItem, background: dest.key === destination ? 'rgba(255,255,255,0.12)' : 'transparent', fontWeight: dest.key === destination ? 700 : 500 }}
+                    >
+                      {dest.icon}
+                      <span>{dest.label}</span>
+                    </button>
+                  ))}
+                </Popover>
               </div>
             )}
             <div style={S.actions}>
@@ -144,9 +160,10 @@ const S: Record<string, React.CSSProperties> = {
   errorText: { color: '#FF5D5D', fontSize: '0.8125rem', margin: '0 0 1rem', lineHeight: 1.5 },
   destinationBlock: { marginBottom: '1.375rem' },
   destinationLabel: { margin: '0 0 0.5rem', color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', fontWeight: 600 },
-  destinationList: { display: 'flex', flexDirection: 'column', gap: '0.375rem' },
-  destinationOption: { width: '100%', textAlign: 'left', height: '2.5rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)', fontSize: '0.8125rem', fontFamily: FONT, padding: '0 0.75rem', cursor: 'pointer', outline: 'none' },
-  destinationOptionSelected: { background: '#FFFFFF', color: '#000', fontWeight: 600, border: '1px solid #FFFFFF' },
+  destinationTrigger: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', fontSize: '0.8125rem', fontFamily: FONT, padding: '0 0.75rem', cursor: 'pointer', outline: 'none' },
+  destinationTriggerContent: { display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 },
+  destinationTriggerLabel: { overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' },
+  destinationMenuItem: { width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: 'left', padding: '0.375rem 0.5rem', border: 'none', borderRadius: '0.4375rem', cursor: 'pointer', fontSize: '0.8125rem', color: '#FFFFFF', fontFamily: FONT, transition: 'background 0.12s' },
   actions: { display: 'flex', gap: '0.5rem' },
   cancelBtn: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
   confirmBtn: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', border: 'none', background: '#FFFFFF', color: '#000', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
