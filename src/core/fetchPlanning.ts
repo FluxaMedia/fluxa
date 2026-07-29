@@ -159,39 +159,41 @@ export async function fetchPlannedResources(
   // to race is re-checked here rather than trusting policy.mode as-is.
   const mode = requests.length > 1 && requests.every((r) => r.stopOnFirstResult) ? 'race' : 'fanout';
 
-  // Race mode (e.g. metaDetail, seasonEpisodes): fire all addon requests in parallel
-  // and take the first non-empty result, eliminating sequential per-addon latency.
+  // Race mode (e.g. metaDetail, seasonEpisodes): fire all addon requests in parallel,
+  // but pick the winner by the user's configured addon priority (request order), not
+  // by network arrival order — a slower but richer addon (e.g. a metadata addon with
+  // full cast/photos) should never lose to a faster but sparser one just because it
+  // answered first.
   if (mode === 'race') {
     const isNonEmpty = (parsed: Record<string, unknown> | null): parsed is Record<string, unknown> =>
       !!parsed && Object.values(parsed).some((v) => (Array.isArray(v) ? v.length > 0 : v != null));
 
-    try {
-      const result = await Promise.any(
-        requests.map(async (item) => {
-          if (isBuiltinRequest(item)) {
-            const parsed = await item.__builtinResolve();
-            if (!isNonEmpty(parsed)) throw new Error('empty');
-            return parsed;
-          }
-          const url = typeof item.url === 'string' ? item.url : '';
-          if (!url) throw new Error('no url');
-          const parsed = await fetchParsedAddonResource(
-            url,
-            await resourceForPlannedRequest(item.kind, request.resource, item.resource),
-            item.kind,
-            item.addonName,
-            request.season,
-            signal,
-            streamRetry,
-          );
+    const settled = await Promise.allSettled(
+      requests.map(async (item) => {
+        if (isBuiltinRequest(item)) {
+          const parsed = await item.__builtinResolve();
           if (!isNonEmpty(parsed)) throw new Error('empty');
           return parsed;
-        }),
-      );
-      return [result];
-    } catch {
-      return [];
-    }
+        }
+        const url = typeof item.url === 'string' ? item.url : '';
+        if (!url) throw new Error('no url');
+        const parsed = await fetchParsedAddonResource(
+          url,
+          await resourceForPlannedRequest(item.kind, request.resource, item.resource),
+          item.kind,
+          item.addonName,
+          request.season,
+          signal,
+          streamRetry,
+        );
+        if (!isNonEmpty(parsed)) throw new Error('empty');
+        return parsed;
+      }),
+    );
+    const winner = settled.find(
+      (outcome): outcome is PromiseFulfilledResult<Record<string, unknown>> => outcome.status === 'fulfilled',
+    );
+    return winner ? [winner.value] : [];
   }
 
   // Fan-out path: fetch addon requests with bounded concurrency (firing all of them
