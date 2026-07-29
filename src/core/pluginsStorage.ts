@@ -43,14 +43,14 @@ export async function hydratePluginsFromStorage(
   updateState: (s: Partial<AppState>) => void,
 ): Promise<void> {
   const { repositoryUrls, scraperOverrides } = await readPluginHydrationSource();
-  for (const manifestUrl of repositoryUrls) {
+  for (const manifestUrl of repositoryUrls ?? []) {
     if (!manifestUrl.trim()) continue;
     const result = await dispatchAction(JSON.stringify({ type: 'pluginRepositoryAddRequested', manifestUrl }));
     if (!result) continue;
     updateState(result.state);
     if (result.effects.length > 0) await pumpEffects(result.effects, updateState);
   }
-  for (const [scraperId, enabled] of Object.entries(scraperOverrides)) {
+  for (const [scraperId, enabled] of Object.entries(scraperOverrides ?? {})) {
     const result = await dispatchAction(JSON.stringify({ type: 'pluginScraperToggled', scraperId, enabled }));
     if (result) updateState(result.state);
   }

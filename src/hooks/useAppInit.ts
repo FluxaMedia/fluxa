@@ -109,7 +109,11 @@ export function useAppInit(
         void restoreWindowGeometry();
         await initEngine('{}');
         void refreshAllAvatarPacks();
-        await hydratePluginsFromStorage(updateState);
+        try {
+          await hydratePluginsFromStorage(updateState);
+        } catch (err) {
+          console.error('hydratePluginsFromStorage failed, continuing boot without it', err);
+        }
         const snap = await getSnapshot();
         const prefs = await loadPrefs();
         storedPrefsRef.current = prefs;
@@ -130,7 +134,8 @@ export function useAppInit(
         }
         const welcomeDone = await storageRead<boolean>('welcome_done');
         if (!welcomeDone) setWelcomeCompleted(false);
-      } catch {
+      } catch (err) {
+        console.error('app boot sequence failed', err);
       } finally {
         setReady(true);
       }
