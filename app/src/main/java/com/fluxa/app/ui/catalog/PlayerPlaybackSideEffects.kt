@@ -119,7 +119,7 @@ internal fun PlayerPlaybackSideEffects(
                 isPausedForScrobble = false
             }
 
-            if (!hasScrobbledStop && progress >= (activeProfile?.safeWatchedThresholdPercent ?: 80f)) {
+            if (!hasScrobbledStop && PlayerScrobbleCoordinator.closeAction(pos, duration) == "stop") {
                 if (token != null) enqueueDurableTraktScrobble("stop", progress)
                 enqueueDurableSimklScrobble("stop", pos, duration)
                 viewModel.markWatchedFromPlayback(meta, currentVideoId, currentEpisodeMetaLine, nextEpisode, duration)

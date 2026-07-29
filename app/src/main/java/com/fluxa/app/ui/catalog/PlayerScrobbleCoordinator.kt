@@ -43,6 +43,10 @@ object PlayerScrobbleCoordinator {
         return FluxaCoreNative.playerShouldEnqueueDurableScrobble(action, token, progress)
     }
 
+    fun closeAction(positionMs: Long, durationMs: Long): String {
+        return FluxaCoreNative.scrobbleCloseAction(positionMs / 1000.0, durationMs / 1000.0)
+    }
+
     fun shouldSavePeriodicProgress(isPlaying: Boolean, nowMs: Long, lastSavedAtMs: Long): Boolean {
         return FluxaCoreNative.playerShouldSavePeriodicProgress(isPlaying, nowMs, lastSavedAtMs)
     }

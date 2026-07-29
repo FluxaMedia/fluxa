@@ -133,6 +133,9 @@ class NuvioAccountImportCoordinator(
             null
         }
         if (addonDtos != null) {
+            addonDtos.forEachIndexed { index, addon ->
+                onItemProgress(index + 1, addonDtos.size, addon.name ?: addon.url)
+            }
             val addonState = NuvioImportPolicy.addonState(addonDtos.map { it.toDomain() })
             profile = profile.copy(
                 localAddons = addonState.installedUrls,
@@ -150,7 +153,7 @@ class NuvioAccountImportCoordinator(
         onStep(NuvioImportStep.PLUGINS)
 
         val libraryItems = try {
-            pullAllLibraryItems(token, primaryIndex)
+            pullAllLibraryItems(token, primaryIndex, onItemProgress)
         } catch (error: Exception) {
             Log.w("NuvioImport", "Import step ${NuvioImportStep.LIBRARY} failed; continuing without it", error)
             null
@@ -397,7 +400,11 @@ class NuvioAccountImportCoordinator(
         fallback
     }
 
-    private suspend fun pullAllLibraryItems(token: String, profileIndex: Int): List<NuvioLibraryItemDto> {
+    private suspend fun pullAllLibraryItems(
+        token: String,
+        profileIndex: Int,
+        onItemProgress: (index: Int, total: Int, title: String) -> Unit
+    ): List<NuvioLibraryItemDto> {
         val items = mutableListOf<NuvioLibraryItemDto>()
         var offset = 0
         do {
@@ -406,6 +413,9 @@ class NuvioAccountImportCoordinator(
                 mapOf("p_profile_id" to profileIndex, "p_limit" to NUVIO_PAGE_SIZE, "p_offset" to offset)
             ).requireBody()
             items += page
+            page.forEachIndexed { index, item ->
+                onItemProgress(offset + index + 1, offset + page.size, item.name)
+            }
             offset += page.size
         } while (page.size == NUVIO_PAGE_SIZE)
         return items

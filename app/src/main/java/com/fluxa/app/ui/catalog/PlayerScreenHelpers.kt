@@ -169,7 +169,7 @@ internal suspend fun fetchExternalSubtitleTracks(
     }
     LibassDebugLog.d("external subtitle fetch completed addonSubtitles=${subtitles.size}")
 
-    val result = (inlineSubtitles + subtitles)
+    val candidates = (inlineSubtitles + subtitles)
         .mapNotNull { (addonName, subtitle) ->
             val url = subtitle.subtitleUrl() ?: return@mapNotNull null
             val language = subtitle.subtitleLanguages().firstOrNull()?.lowercase(Locale.ROOT)
@@ -182,6 +182,8 @@ internal suspend fun fetchExternalSubtitleTracks(
             )
         }
         .distinctBy { "${it.language}:${it.url}" }
+    val result = FluxaCoreNative.subtitleLanguageDedupKeepIndices(candidates.map { it.language })
+        .mapNotNull(candidates::getOrNull)
         .sortedBy {
             val language = it.language?.substringBefore('-')?.substringBefore('_')?.lowercase(Locale.ROOT)
             when (language) {

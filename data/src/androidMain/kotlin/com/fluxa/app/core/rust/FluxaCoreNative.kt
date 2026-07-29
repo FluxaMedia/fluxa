@@ -1360,6 +1360,23 @@ object FluxaCoreNative {
         return FluxaCoreUniFfi.coreInvokeValue("playerShouldEnqueueDurableScrobble", args.toString()).asBoolean
     }
 
+    fun scrobbleCloseAction(timePosSec: Double, durationSec: Double): String {
+        val args = JsonObject().apply {
+            addProperty("timePosSec", timePosSec)
+            addProperty("durationSec", durationSec)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("scrobbleCloseAction", args.toString()).asString
+    }
+
+    fun subtitleLanguageDedupKeepIndices(languages: List<String?>, maxPerLanguage: Int = 2): List<Int> {
+        val args = JsonObject().apply {
+            add("languages", gson.toJsonTree(languages))
+            addProperty("maxPerLanguage", maxPerLanguage)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("subtitleLanguageDedupKeepIndices", args.toString())
+        return gson.fromJson(value, intArrayOf()::class.java).toList()
+    }
+
     fun playerShouldSavePeriodicProgress(isPlaying: Boolean, nowMs: Long, lastSavedAtMs: Long): Boolean {
         val args = JsonObject().apply {
             addProperty("isPlaying", isPlaying)

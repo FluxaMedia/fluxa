@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -75,6 +76,7 @@ fun ProfileEditScreen(
     var removePin by remember(initialProfile?.id) { mutableStateOf(false) }
     var biometricEnabled by remember(initialProfile?.id) { mutableStateOf(initialProfile?.biometricEnabled == true) }
     var showAvatarSheet by remember { mutableStateOf(false) }
+    var confirmDelete by remember(initialProfile?.id) { mutableStateOf(false) }
 
     val pinValid = pin.isEmpty() || pin.length == 4
     val willHavePin = !removePin && (pin.length == 4 || initialProfile?.hasPin == true)
@@ -213,13 +215,30 @@ fun ProfileEditScreen(
         if (initialProfile != null && onDelete != null) {
             SettingsSectionHeader(AppStrings.t(language, "profiles.danger_zone"))
             SettingsGroupCard {
-                TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(AppStrings.t(language, "profiles.delete"), color = FluxaColors.errorRed, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
         Spacer(Modifier.height(32.dp))
+    }
+
+    if (confirmDelete && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(AppStrings.t(language, "profiles.delete_confirm_title")) },
+            text = { Text(AppStrings.t(language, "profiles.delete_confirm_message")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    onDelete()
+                }) { Text(AppStrings.t(language, "profiles.delete"), color = FluxaColors.errorRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text(AppStrings.t(language, "common.cancel")) }
+            }
+        )
     }
 
     if (showAvatarSheet) {

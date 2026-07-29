@@ -316,8 +316,10 @@ internal suspend fun resolvePlayableTrailerUrl(
     trailers: List<DetailTrailer>,
     dispatchHeadless: suspend (Any) -> NativeHeadlessEngineResult
 ): String? {
-    val videoId = trailers.firstOrNull { it.url.extractYoutubeVideoId() != null }?.url?.extractYoutubeVideoId()
-    if (videoId != null) {
+    trailers.asSequence()
+        .mapNotNull { it.url.extractYoutubeVideoId() }
+        .distinct()
+        .forEach { videoId ->
         val youtubeUrl = (resolveYoutubeTrailerViaCore(videoId, dispatchHeadless) as? TrailerResolveResult.Ok)
             ?.data?.streamUrl
         if (youtubeUrl != null) return youtubeUrl

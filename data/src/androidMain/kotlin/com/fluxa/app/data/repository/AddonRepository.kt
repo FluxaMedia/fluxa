@@ -10,7 +10,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -19,7 +18,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val ADDON_META_TIMEOUT_MS = 3000L
-private const val ADDON_META_HEDGE_DELAY_MS = 500L
 private const val META_DETAIL_CACHE_TTL_MS = 5 * 60 * 1000L
 
 @Singleton
@@ -79,29 +77,10 @@ class AddonRepository @Inject constructor(
                 } ?: AddonResourceResult.NetworkError(url = transportUrl, cause = null)
             }
 
-            val primaryDeferred = launchLookup(addons.first().transportUrl)
-            val hedgedResult = withTimeoutOrNull(ADDON_META_HEDGE_DELAY_MS) { primaryDeferred.await() }
-            if (hedgedResult is AddonResourceResult.Success) {
-                return@coroutineScope hedgedResult.value
-            }
-
-            val remainingAddons = addons.drop(1)
-            if (remainingAddons.isEmpty()) {
-                val result = if (hedgedResult != null) hedgedResult else primaryDeferred.await()
-                return@coroutineScope (result as? AddonResourceResult.Success)?.value
-            }
-
-            val pending = mutableListOf(primaryDeferred)
-            pending += remainingAddons.map { addon -> launchLookup(addon.transportUrl) }
-
-            var found: MetaDetail? = null
-            while (pending.isNotEmpty() && found == null) {
-                val (finished, result) = select<Pair<Deferred<AddonResourceResult<MetaDetail>>, AddonResourceResult<MetaDetail>>> {
-                    pending.forEach { deferred -> deferred.onAwait { value -> deferred to value } }
-                }
-                pending.remove(finished)
+            val results = addons.map { addon -> launchLookup(addon.transportUrl) }.awaitAll()
+            results.forEach { result ->
                 when (result) {
-                    is AddonResourceResult.Success -> found = result.value
+                    is AddonResourceResult.Success -> return@coroutineScope result.value
                     is AddonResourceResult.Empty,
                     is AddonResourceResult.AddonUnsupported -> Unit
                     is AddonResourceResult.NetworkError -> Log.w(
@@ -116,8 +95,7 @@ class AddonRepository @Inject constructor(
                     )
                 }
             }
-            pending.forEach { it.cancel() }
-            found
+            null
         }
     }
 
