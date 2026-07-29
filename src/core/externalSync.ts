@@ -23,6 +23,7 @@ import {
 import { saveProfile } from './profiles';
 import { loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistProgressMerge, profileStorageKey } from './libraryOps';
 import type { UserProfile } from './types';
+import type { ImportCategory } from './importCategories';
 
 export { enqueueTraktScrobble } from './traktSync';
 export { replaceExternalContinueWatching } from './externalSyncUtils';
@@ -342,7 +343,8 @@ async function syncNuvioNow(payload: Record<string, unknown>): Promise<unknown> 
   const profile = payload.profile as UserProfile | undefined;
   if (!profile?.nuvioAccessToken) return { synced: false, error: 'Nuvio is not connected' };
   const { importNuvioProfileData } = await import('./nuvioSync');
-  const report = await importNuvioProfileData(profile);
+  const categories = payload.categories as ImportCategory[] | undefined;
+  const report = await importNuvioProfileData(profile, undefined, undefined, categories);
   const failures = Object.entries(report.errors);
   if (failures.length > 0) {
     return { synced: false, error: failures.map(([step, msg]) => `${step}: ${msg}`).join('; ') };

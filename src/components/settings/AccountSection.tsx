@@ -6,6 +6,8 @@ import { storageRead, storageWrite } from '../../core/engine';
 import type { UserProfile } from '../../core/types';
 import { t } from '../../i18n';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { ImportDialog } from '../ImportDialog';
+import { PROVIDER_IMPORT_CATEGORIES, type ImportCategory } from '../../core/importCategories';
 import { profileConnectionState, profileColor, saveProfile } from '../../core/profiles';
 import { AvatarPreview } from '../../screens/ProfileForm';
 import { syncExternalIntegrationNow } from '../../core/effectRunner';
@@ -271,6 +273,7 @@ export function AccountSection({
   const [authUrls, setAuthUrls] = useState<Partial<Record<OAuthService, string>>>({});
   const [selectedIntegration, setSelectedIntegration] = useState<IntegrationService | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState<{ title: string; onConfirm: () => void } | null>(null);
+  const [importDialog, setImportDialog] = useState<IntegrationService | null>(null);
 
   useEffect(() => {
     if (prefs.syncCwSourceOfTruth === 'most_recent') setPref('syncCwSourceOfTruth', '');
@@ -619,7 +622,7 @@ export function AccountSection({
     onProfileUpdated(updated);
   };
 
-  const handleTraktSyncNow = async () => {
+  const handleTraktSyncNow = async (categories?: ImportCategory[]) => {
     if (!activeProfile?.traktAccessToken) return;
     setTraktBusy(true);
     setTraktError(null);
@@ -630,6 +633,7 @@ export function AccountSection({
         profile: activeProfile,
         token: activeProfile.traktAccessToken,
         clientId: traktClientId,
+        ...(categories ? { categories } : {}),
       }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
       if (!result.synced) {
         setTraktError(result.error ?? t('toast.trakt_sync_failed'));
@@ -647,7 +651,7 @@ export function AccountSection({
     onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
   };
 
-  const handleSimklSyncNow = async () => {
+  const handleSimklSyncNow = async (categories?: ImportCategory[]) => {
     if (!activeProfile?.simklAccessToken) return;
     setSimklBusy(true);
     setSimklError(null);
@@ -658,6 +662,7 @@ export function AccountSection({
         profile: activeProfile,
         token: activeProfile.simklAccessToken,
         clientId: simklClientId,
+        ...(categories ? { categories } : {}),
       }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
       if (!result.synced) {
         setSimklError(result.error ?? 'Simkl sync failed');
@@ -675,7 +680,7 @@ export function AccountSection({
     onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
   };
 
-  const handleNuvioSyncNow = async () => {
+  const handleNuvioSyncNow = async (categories?: ImportCategory[]) => {
     if (!activeProfile?.nuvioAccessToken && !activeProfile?.nuvioRefreshToken) return;
     setNuvioBusy(true);
     setNuvioError(null);
@@ -683,6 +688,7 @@ export function AccountSection({
       const result = await syncExternalIntegrationNow({
         provider: 'nuvio',
         profile: activeProfile,
+        ...(categories ? { categories } : {}),
       }) as { synced?: boolean; error?: string };
       const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: 0, watchlistCount: 0, error: result.synced ? undefined : (result.error ?? 'Nuvio sync failed') };
       setNuvioSyncMeta(meta);
@@ -708,7 +714,7 @@ export function AccountSection({
     await onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
   };
 
-  const handleStremioSyncNow = async () => {
+  const handleStremioSyncNow = async (categories?: ImportCategory[]) => {
     if (!activeProfile?.stremioAuthKey) return;
     setStremioBusy(true);
     setStremioError(null);
@@ -717,6 +723,7 @@ export function AccountSection({
         provider: 'stremio',
         profile: activeProfile,
         token: activeProfile.stremioAuthKey,
+        ...(categories ? { categories } : {}),
       }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
       if (!result.synced) {
         setStremioError(result.error ?? 'Stremio sync failed');
@@ -734,7 +741,7 @@ export function AccountSection({
     onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
   };
 
-  const handleAnilistSyncNow = async () => {
+  const handleAnilistSyncNow = async (categories?: ImportCategory[]) => {
     if (!activeProfile?.anilistAccessToken) return;
     setAnilistBusy(true);
     setAnilistError(null);
@@ -745,6 +752,7 @@ export function AccountSection({
         provider: 'anilist',
         profile: updated,
         token: updated.anilistAccessToken,
+        ...(categories ? { categories } : {}),
       }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
       if (!result.synced) {
         setAnilistError(result.error ?? 'AniList sync failed');
@@ -795,6 +803,7 @@ export function AccountSection({
       </SettingsSection>
       {page.connected && <SettingsSection title={page.title} subtitle={t('settings.sync_with_desc')}>
         <SyncServiceRow icon={null} title={t('settings.sync_now')} value={page.meta ? new Date(page.meta.lastSyncAt).toLocaleString() : ''} onClick={page.sync} busy={page.busy} />
+        <SyncServiceRow icon={null} title={t('settings.import')} value="" onClick={() => setImportDialog(selectedIntegration)} busy={page.busy} />
         <SyncServiceRow icon={null} title={t('auto.disconnect')} value="" onClick={() => setConfirmDisconnect({ title: page.title, onConfirm: page.disconnect })} destructive />
       </SettingsSection>}
       {page.connected && <SettingsSection title={t('settings.provider_library')} subtitle={page.title}>
@@ -815,6 +824,23 @@ export function AccountSection({
           destructive
           onCancel={() => setConfirmDisconnect(null)}
           onConfirm={() => { const { onConfirm } = confirmDisconnect; setConfirmDisconnect(null); onConfirm(); }}
+        />
+      )}
+      {importDialog && (
+        <ImportDialog
+          title={t('settings.import_title', page.title)}
+          items={PROVIDER_IMPORT_CATEGORIES[importDialog].map((key) => ({ key, label: t(`settings.import_category.${key}`) }))}
+          confirmLabel={t('settings.import')}
+          cancelLabel={t('common.cancel')}
+          onCancel={() => setImportDialog(null)}
+          onConfirm={(selected) => {
+            setImportDialog(null);
+            if (importDialog === 'trakt') void handleTraktSyncNow(selected);
+            else if (importDialog === 'simkl') void handleSimklSyncNow(selected);
+            else if (importDialog === 'anilist') void handleAnilistSyncNow(selected);
+            else if (importDialog === 'stremio') void handleStremioSyncNow(selected);
+            else if (importDialog === 'nuvio') void handleNuvioSyncNow(selected);
+          }}
         />
       )}
     </>;

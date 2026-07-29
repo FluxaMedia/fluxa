@@ -19,6 +19,7 @@ import { platformFetch } from './httpClient';
 import { refreshTraktProfile, traktHeaders } from './traktSync';
 import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
 import { saveProviderLibrary } from './providerLibraries';
+import type { ImportCategory } from './importCategories';
 
 type TraktDeltaCache = {
   activities?: Record<string, unknown>;
@@ -78,6 +79,8 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   let token = refreshedProfile?.traktAccessToken ?? (typeof payload.token === 'string' ? payload.token : undefined);
   const clientId = typeof payload.clientId === 'string' ? payload.clientId : '';
   if (!token) return { synced: false, error: 'Trakt is not connected' };
+  const categories = payload.categories as ImportCategory[] | undefined;
+  const wants = (category: ImportCategory) => !categories || categories.includes(category);
 
   let headers = traktHeaders(token, clientId);
   const activeToken = token;
@@ -151,22 +154,24 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
 
     const watchlistItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
     watchlistCount = watchlistItems.length;
-    await mergeExternalWatchlist(watchlistItems, profileKey);
+    if (wants('watchlist')) await mergeExternalWatchlist(watchlistItems, profileKey);
 
     await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
 
     const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
     watchedCount = Object.keys(watchedIds).length;
-    await mergeExternalWatched(watchedIds, profileKey);
+    if (wants('watched')) await mergeExternalWatched(watchedIds, profileKey);
 
     if (activities) {
       await storageWrite(cacheKey, { activities, playbackItems, watchlistMovies, watchlistShows, watchedMovies, watchedShows } satisfies TraktDeltaCache);
     }
   } catch {}
 
-  await replaceExternalContinueWatching({ items, provider: 'trakt', profileKey });
-  const { promoteExternalProgress } = await import('./externalSync');
-  await promoteExternalProgress(items, 'trakt', refreshedProfile ?? null);
+  if (wants('continueWatching')) {
+    await replaceExternalContinueWatching({ items, provider: 'trakt', profileKey });
+    const { promoteExternalProgress } = await import('./externalSync');
+    await promoteExternalProgress(items, 'trakt', refreshedProfile ?? null);
+  }
 
   return { synced: true, provider: 'trakt', continueWatchingCount: items.length, watchlistCount, watchedCount };
 }

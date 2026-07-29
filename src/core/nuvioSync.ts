@@ -35,6 +35,7 @@ import type { UserProfile } from './types';
 import { loadProfiles, saveProfile, saveProfiles } from './profiles';
 import { fetchPlannedResources } from './fetchPlanning';
 import { saveProviderLibrary } from './providerLibraries';
+import type { ImportCategory } from './importCategories';
 
 export type NuvioImportStep = 'addons' | 'library' | 'progress' | 'history' | 'collections';
 
@@ -264,7 +265,9 @@ export async function importNuvioProfileData(
   profile: UserProfile,
   onStep?: (step: NuvioImportStep, ok: boolean, error?: string) => void,
   onItemProgress?: (index: number, total: number | null, title: string) => void,
+  categories?: ImportCategory[],
 ): Promise<NuvioImportReport> {
+  const wants = (category: ImportCategory) => !categories || categories.includes(category);
   const freshProfile = await freshNuvioProfile(profile).catch(() => profile);
   const token = freshProfile.nuvioAccessToken;
   const profileIdx = freshProfile.nuvioProfileIndex ?? 1;
@@ -290,45 +293,51 @@ export async function importNuvioProfileData(
   const errors: Partial<Record<NuvioImportStep, string>> = {};
 
   let addonDescriptors: Array<Record<string, unknown>> = [];
-  try {
-    const addons = await nuvioPullAddons(token, profileIdx);
-    const fetched = await fetchAddonManifests(addons, onItemProgress);
-    addonDescriptors = fetched.descriptors;
-    await storageWrite(`addons_${suffix}`, fetched.descriptors);
-    onStep?.('addons', true);
-  } catch (err) {
-    errors.addons = err instanceof Error ? err.message : String(err);
-    onStep?.('addons', false, errors.addons);
+  if (wants('addons')) {
+    try {
+      const addons = await nuvioPullAddons(token, profileIdx);
+      const fetched = await fetchAddonManifests(addons, onItemProgress);
+      addonDescriptors = fetched.descriptors;
+      await storageWrite(`addons_${suffix}`, fetched.descriptors);
+      onStep?.('addons', true);
+    } catch (err) {
+      errors.addons = err instanceof Error ? err.message : String(err);
+      onStep?.('addons', false, errors.addons);
+    }
   }
 
   let library: unknown[] = [];
-  try {
-    library = await pullAllNuvioLibrary(token, profileIdx, onItemProgress);
-    libDoc.watchlist = (await coreNuvioLibraryToWatchlist(library)) ?? libDoc.watchlist;
-    onStep?.('library', true);
-  } catch (err) {
-    errors.library = err instanceof Error ? err.message : String(err);
-    onStep?.('library', false, errors.library);
+  if (wants('watchlist')) {
+    try {
+      library = await pullAllNuvioLibrary(token, profileIdx, onItemProgress);
+      libDoc.watchlist = (await coreNuvioLibraryToWatchlist(library)) ?? libDoc.watchlist;
+      onStep?.('library', true);
+    } catch (err) {
+      errors.library = err instanceof Error ? err.message : String(err);
+      onStep?.('library', false, errors.library);
+    }
   }
 
   let watchProgress: NuvioWatchProgress[] | null = null;
   let progressCursor: number | null = null;
-  try {
-    const cursor = await storageRead<number>(deltaCursorKey(profile, 'progress'));
-    const cached = await storageRead<NuvioWatchProgress[]>(deltaCacheKey(profile, 'progress'));
-    if (typeof cursor === 'number' && Array.isArray(cached)) {
-      const events = await pullAllProgressDelta(token, profileIdx, cursor);
-      watchProgress = applyProgressDelta(cached, events);
-      if (events.length > 0) {
-        progressCursor = Math.max(cursor, ...events.map((event) => event.event_id));
+  if (wants('continueWatching')) {
+    try {
+      const cursor = await storageRead<number>(deltaCursorKey(profile, 'progress'));
+      const cached = await storageRead<NuvioWatchProgress[]>(deltaCacheKey(profile, 'progress'));
+      if (typeof cursor === 'number' && Array.isArray(cached)) {
+        const events = await pullAllProgressDelta(token, profileIdx, cursor);
+        watchProgress = applyProgressDelta(cached, events);
+        if (events.length > 0) {
+          progressCursor = Math.max(cursor, ...events.map((event) => event.event_id));
+        }
+      } else {
+        watchProgress = await nuvioPullWatchProgress(token, profileIdx, 1_000);
+        progressCursor = await nuvioGetWatchProgressDeltaCursor(token, profileIdx);
       }
-    } else {
-      watchProgress = await nuvioPullWatchProgress(token, profileIdx, 1_000);
-      progressCursor = await nuvioGetWatchProgressDeltaCursor(token, profileIdx);
+    } catch (err) {
+      errors.progress = err instanceof Error ? err.message : String(err);
+      onStep?.('progress', false, errors.progress);
     }
-  } catch (err) {
-    errors.progress = err instanceof Error ? err.message : String(err);
-    onStep?.('progress', false, errors.progress);
   }
 
   let addonMetas: Record<string, unknown> = {};
@@ -339,22 +348,24 @@ export async function importNuvioProfileData(
 
   let watchHistory: NuvioWatchedItem[] | null = null;
   let historyCursor: number | null = null;
-  try {
-    const cursor = await storageRead<number>(deltaCursorKey(profile, 'history'));
-    const cached = await storageRead<NuvioWatchedItem[]>(deltaCacheKey(profile, 'history'));
-    if (typeof cursor === 'number' && Array.isArray(cached)) {
-      const events = await pullAllHistoryDelta(token, profileIdx, cursor);
-      watchHistory = applyHistoryDelta(cached, events);
-      if (events.length > 0) {
-        historyCursor = Math.max(cursor, ...events.map((event) => event.event_id));
+  if (wants('watched')) {
+    try {
+      const cursor = await storageRead<number>(deltaCursorKey(profile, 'history'));
+      const cached = await storageRead<NuvioWatchedItem[]>(deltaCacheKey(profile, 'history'));
+      if (typeof cursor === 'number' && Array.isArray(cached)) {
+        const events = await pullAllHistoryDelta(token, profileIdx, cursor);
+        watchHistory = applyHistoryDelta(cached, events);
+        if (events.length > 0) {
+          historyCursor = Math.max(cursor, ...events.map((event) => event.event_id));
+        }
+      } else {
+        watchHistory = await pullAllNuvioWatchHistory(token, profileIdx);
+        historyCursor = await nuvioGetWatchHistoryDeltaCursor(token, profileIdx);
       }
-    } else {
-      watchHistory = await pullAllNuvioWatchHistory(token, profileIdx);
-      historyCursor = await nuvioGetWatchHistoryDeltaCursor(token, profileIdx);
+    } catch (err) {
+      errors.history = err instanceof Error ? err.message : String(err);
+      onStep?.('history', false, errors.history);
     }
-  } catch (err) {
-    errors.history = err instanceof Error ? err.message : String(err);
-    onStep?.('history', false, errors.history);
   }
 
   const plan = await coreNuvioImportMergePlan({
@@ -367,9 +378,11 @@ export async function importNuvioProfileData(
   });
   let appliedRemoteWatchState = false;
   if (plan) {
-    libDoc.progress = plan.progress;
-    libDoc.watched = plan.watched;
-    libDoc.continueWatching = await buildContinueWatching(plan.progress);
+    if (wants('continueWatching')) {
+      libDoc.progress = plan.progress;
+      libDoc.continueWatching = await buildContinueWatching(plan.progress);
+    }
+    if (wants('watched')) libDoc.watched = plan.watched;
     await saveProviderLibrary('nuvio', {
       watchlist: (libDoc.watchlist as Record<string, unknown>[]) ?? [],
       watching: libDoc.continueWatching as Record<string, unknown>[],
@@ -394,18 +407,20 @@ export async function importNuvioProfileData(
     if (historyCursor != null) await storageWrite(deltaCursorKey(profile, 'history'), historyCursor);
   }
 
-  try {
-    const collections = await nuvioPullCollections(token, profileIdx);
-    if (collections.length > 0) {
-      const raw = (collections[0]?.collections_json ?? []) as unknown[];
-      const mapped = (await coreNuvioMapCollections(raw)) ?? [];
-      const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
-      await storageWrite('profiles', profiles.map((p) => p.id === profile.id ? { ...p, libraryCollections: mapped as UserProfile['libraryCollections'] } : p));
+  if (wants('collections')) {
+    try {
+      const collections = await nuvioPullCollections(token, profileIdx);
+      if (collections.length > 0) {
+        const raw = (collections[0]?.collections_json ?? []) as unknown[];
+        const mapped = (await coreNuvioMapCollections(raw)) ?? [];
+        const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
+        await storageWrite('profiles', profiles.map((p) => p.id === profile.id ? { ...p, libraryCollections: mapped as UserProfile['libraryCollections'] } : p));
+      }
+      onStep?.('collections', true);
+    } catch (err) {
+      errors.collections = err instanceof Error ? err.message : String(err);
+      onStep?.('collections', false, errors.collections);
     }
-    onStep?.('collections', true);
-  } catch (err) {
-    errors.collections = err instanceof Error ? err.message : String(err);
-    onStep?.('collections', false, errors.collections);
   }
 
   const changed = JSON.stringify(continueWatchingBefore) !== JSON.stringify(libDoc.continueWatching)

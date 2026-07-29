@@ -12,6 +12,7 @@ import { normalizeAddonDescriptor } from './addons';
 import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
 import { saveProviderLibrary } from './providerLibraries';
 import type { AddonDescriptor, UserProfile } from './types';
+import type { ImportCategory } from './importCategories';
 
 type WatchedEpisode = {
   contentId: string;
@@ -98,6 +99,8 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
   if (!authKey) return { synced: false, error: 'Stremio is not connected' };
   const profile = payload.profile as UserProfile | undefined;
   const profileKey = profile ? profileStorageKey(profile) : undefined;
+  const categories = payload.categories as ImportCategory[] | undefined;
+  const wants = (category: ImportCategory) => !categories || categories.includes(category);
 
   let libraryItems: Record<string, unknown>[];
   try {
@@ -108,26 +111,32 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
 
   const rawItems = ((await coreLibraryContinueWatchingItems(libraryItems)) ?? []) as Record<string, unknown>[];
   const items = await enrichWithAddonMeta(rawItems);
-  await replaceExternalContinueWatching({ items, provider: 'stremio', profileKey });
+  if (wants('continueWatching')) await replaceExternalContinueWatching({ items, provider: 'stremio', profileKey });
 
   let watchlistCount = 0;
-  try {
-    const watchlistItems = ((await coreStremioWatchlistToItems(libraryItems)) ?? []) as Record<string, unknown>[];
-    watchlistCount = await mergeExternalWatchlist(watchlistItems, profileKey);
-    await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
-  } catch {}
+  if (wants('watchlist')) {
+    try {
+      const watchlistItems = ((await coreStremioWatchlistToItems(libraryItems)) ?? []) as Record<string, unknown>[];
+      watchlistCount = await mergeExternalWatchlist(watchlistItems, profileKey);
+      await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
+    } catch {}
+  }
 
-  try {
-    const watchedIds = ((await coreStremioWatchedToIds(libraryItems)) ?? {}) as Record<string, boolean>;
-    await mergeExternalWatched(watchedIds, profileKey);
-  } catch {}
+  if (wants('watched')) {
+    try {
+      const watchedIds = ((await coreStremioWatchedToIds(libraryItems)) ?? {}) as Record<string, boolean>;
+      await mergeExternalWatched(watchedIds, profileKey);
+    } catch {}
+  }
 
   let addonCount = 0;
-  try {
-    const addons = await stremioPullAddons(authKey);
-    await saveAddons(await Promise.all(addons.map(normalizeAddonDescriptor)));
-    addonCount = addons.length;
-  } catch {}
+  if (wants('addons')) {
+    try {
+      const addons = await stremioPullAddons(authKey);
+      await saveAddons(await Promise.all(addons.map(normalizeAddonDescriptor)));
+      addonCount = addons.length;
+    } catch {}
+  }
 
   return { synced: true, provider: 'stremio', continueWatchingCount: items.length, watchlistCount, addonCount };
 }
