@@ -57,6 +57,7 @@ data class UserProfile(
     val anilistRefreshToken: String? = null,
     val anilistTokenExpiresAt: Long? = null,
     val tmdbApiKey: String? = null,
+    val mdblistApiKey: String? = null,
     val introDbApiKey: String? = null,
     val tmdbCastImagesEnabled: Boolean? = true,
     val tmdbSimilarResultsEnabled: Boolean? = true,

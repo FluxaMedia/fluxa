@@ -6,6 +6,7 @@ import com.fluxa.app.data.remote.Video
 import com.fluxa.app.shared.feature.detail.DetailDataSource
 import com.fluxa.app.shared.feature.detail.DetailEpisodeUiModel
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
+import com.fluxa.app.shared.feature.detail.DetailRatingUiModel
 import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState as SharedDetailUiState
@@ -55,6 +56,9 @@ class AndroidDetailDataSource(
                         trailerUrl = state.trailerUrl,
                         releaseLabel = detail.releaseInfo.orEmpty(),
                         ratingLabel = detail.imdbRating.orEmpty(),
+                        ratings = detail.ratings.orEmpty().mapNotNull { rating ->
+                            rating.value?.takeIf(String::isNotBlank)?.let { DetailRatingUiModel(rating.source, it) }
+                        },
                         runtimeLabel = detail.runtime,
                         ageRating = detail.ageRating,
                         castNames = detail.cast.orEmpty().mapNotNull { it.name.takeIf { name -> name.isNotBlank() } },

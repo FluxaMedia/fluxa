@@ -31,6 +31,7 @@ data class SettingsAccountUiModel(
     val traktLibraryCount: Int = 0,
     val addonCount: Int = 0,
     val tmdbApiKey: String? = null,
+    val mdblistApiKey: String? = null,
     val tmdbCastImagesEnabled: Boolean = true,
     val tmdbSimilarResultsEnabled: Boolean = true,
     val tmdbTrailersEnabled: Boolean = true,

@@ -37,6 +37,7 @@ import com.fluxa.app.player.TorrentStreamManager
 import com.fluxa.app.player.TorrentStreamResult
 import com.fluxa.app.data.repository.CloudStreamCatalogClient
 import com.fluxa.app.data.repository.HttpEffectExecutor
+import com.fluxa.app.data.repository.MdblistRatingsClient
 import com.fluxa.app.data.repository.toStremioType
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.plugins.PluginRepositoryManager
@@ -116,6 +117,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal val profileManager: ProfileManager,
     internal val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
     internal val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,
+    internal val mdblistRatingsClient: MdblistRatingsClient,
     internal val httpEffectExecutor: HttpEffectExecutor,
     @param:Named("PluginScraperClient") internal val pluginScraperHttpClient: OkHttpClient
 ) : HeadlessPlatformEnvironment {
@@ -294,7 +296,19 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         } else {
             emptyList()
         }
-        return ok(effect, mapOf("watchedVideoIds" to watchedIds.toList(), "similarItems" to similarItems, "trailers" to trailers))
+        val mdblistRatings = profile?.mdblistApiKey
+            ?.takeIf(String::isNotBlank)
+            ?.let { mdblistRatingsClient.fetch(type, id, it) }
+            .orEmpty()
+        return ok(
+            effect,
+            mapOf(
+                "watchedVideoIds" to watchedIds.toList(),
+                "similarItems" to similarItems,
+                "trailers" to trailers,
+                "mdblistRatings" to mdblistRatings
+            )
+        )
     }
 
     private suspend fun prefetchDetailStreams(effect: NativeHeadlessEffect): HeadlessEffectCompletion {

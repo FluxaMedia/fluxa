@@ -507,6 +507,17 @@ private fun SettingsAccountContent(
         }
     }
 
+    SettingsSectionHeader(AppStrings.t(lang, "settings.mdblist_api"))
+    SettingsGroupCard {
+        SettingsSecretFieldRow(
+            AppStrings.t(lang, "settings.mdblist_api_key"),
+            model.mdblistApiKey.orEmpty(),
+            placeholder = AppStrings.t(lang, "settings.mdblist_api_key_placeholder")
+        ) {
+            onAction(SettingsAction.TmdbAccountChanged(model.copy(mdblistApiKey = it)))
+        }
+    }
+
     selectedProvider?.let { provider ->
         key(provider) {
             SettingsAccountSheet(provider, model, lang, onDismiss = { selectedProvider = null }) {

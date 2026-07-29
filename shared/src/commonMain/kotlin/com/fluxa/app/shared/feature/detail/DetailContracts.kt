@@ -40,6 +40,11 @@ data class DetailStreamUiModel(
     val name: String = ""
 )
 
+data class DetailRatingUiModel(
+    val source: String,
+    val value: String
+)
+
 data class DetailUiModel(
     val id: String,
     val type: String,
@@ -51,6 +56,7 @@ data class DetailUiModel(
     val trailerUrl: String? = null,
     val releaseLabel: String,
     val ratingLabel: String,
+    val ratings: List<DetailRatingUiModel> = emptyList(),
     val runtimeLabel: String?,
     val ageRating: String? = null,
     val castNames: List<String> = emptyList(),

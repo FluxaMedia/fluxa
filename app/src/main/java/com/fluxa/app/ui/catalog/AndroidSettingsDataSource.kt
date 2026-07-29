@@ -147,6 +147,7 @@ class AndroidSettingsDataSource(
                 traktLibraryCount = profile.safeTraktLastWatchlistCount,
                 addonCount = profile.safeLocalAddons.size,
                 tmdbApiKey = profile.tmdbApiKey,
+                mdblistApiKey = profile.mdblistApiKey,
                 tmdbCastImagesEnabled = profile.safeTmdbCastImagesEnabled,
                 tmdbSimilarResultsEnabled = profile.safeTmdbSimilarResultsEnabled,
                 tmdbTrailersEnabled = profile.safeTmdbTrailersEnabled,
@@ -408,6 +409,7 @@ class AndroidSettingsDataSource(
     override suspend fun updateTmdbAccount(value: SettingsAccountUiModel) = update {
         it.copy(
             tmdbApiKey = value.tmdbApiKey,
+            mdblistApiKey = value.mdblistApiKey,
             tmdbCastImagesEnabled = value.tmdbCastImagesEnabled,
             tmdbSimilarResultsEnabled = value.tmdbSimilarResultsEnabled,
             tmdbTrailersEnabled = value.tmdbTrailersEnabled,

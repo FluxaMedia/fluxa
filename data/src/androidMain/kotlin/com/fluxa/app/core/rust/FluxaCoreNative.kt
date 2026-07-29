@@ -1368,6 +1368,22 @@ object FluxaCoreNative {
         return FluxaCoreUniFfi.coreInvokeValue("scrobbleCloseAction", args.toString()).asString
     }
 
+    fun mdblistMediaInfoUrl(provider: String, mediaType: String, mediaId: String): String {
+        val args = JsonObject().apply {
+            addProperty("provider", provider)
+            addProperty("mediaType", mediaType)
+            addProperty("mediaId", mediaId)
+            addProperty("appendToResponse", "ratings")
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("mdblistMediaInfoUrl", args.toString()).asString
+    }
+
+    fun mdblistMediaRatingsFromResponse(responseJson: String): Map<String, String> {
+        val value = FluxaCoreUniFfi.coreInvokeValue("mdblistMediaRatingsFromResponse", responseJson)
+        if (value.isJsonNull) return emptyMap()
+        return gson.fromJson(value, object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type)
+    }
+
     fun subtitleLanguageDedupKeepIndices(languages: List<String?>, maxPerLanguage: Int = 2): List<Int> {
         val args = JsonObject().apply {
             add("languages", gson.toJsonTree(languages))

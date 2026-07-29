@@ -417,6 +417,27 @@ private fun Hero(content: DetailUiModel, language: String?) {
                     }
                 }
             }
+            val ratings = content.ratings.ifEmpty {
+                content.ratingLabel.takeIf { it.isNotBlank() }?.let { listOf(DetailRatingUiModel("IMDb", it)) }.orEmpty()
+            }
+            if (ratings.isNotEmpty()) {
+                LazyRow(
+                    modifier = Modifier.padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(ratings, key = { "${it.source}:${it.value}" }) { rating ->
+                        Text(
+                            text = "${rating.source} ${rating.value}",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

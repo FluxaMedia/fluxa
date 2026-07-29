@@ -158,10 +158,15 @@ class DetailViewModel @Inject constructor(
                     ).state["detail"] as? Map<*, *>
                     if (generation != detailLoadGeneration) return@launch
                     _uiState.update {
+                        val mdblistRatings = gson.fromStateList<MetaRating>(secondary?.get("mdblistRatings"))
                         it.copy(
                             watchedVideoIds = gson.fromStateList(secondary?.get("watchedVideoIds")),
                             similarItems = gson.fromStateList(secondary?.get("similarItems")),
-                            trailers = if (it.trailers.isEmpty()) gson.fromStateList(secondary?.get("trailers")) else it.trailers
+                            trailers = if (it.trailers.isEmpty()) gson.fromStateList(secondary?.get("trailers")) else it.trailers,
+                            detail = it.detail?.copy(
+                                ratings = (it.detail.ratings.orEmpty() + mdblistRatings)
+                                    .distinctBy { rating -> rating.source.lowercase() }
+                            )
                         )
                     }
                     maybeAutoPlayDetailTrailer(generation, profile)
