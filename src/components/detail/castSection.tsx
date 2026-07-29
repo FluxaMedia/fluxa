@@ -103,7 +103,7 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
         style={{
           width: '4.375rem',
           height: '4.375rem',
-          borderRadius: showImage ? 8 : '50%',
+          borderRadius: '50%',
           background: showImage ? 'transparent' : 'rgba(255,255,255,0.1)',
           display: 'flex',
           alignItems: 'center',
