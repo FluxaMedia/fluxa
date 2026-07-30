@@ -56,6 +56,7 @@ export const HeroSection = React.memo(function HeroSection({
   const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeIndexRef = useRef(activeIndex);
   activeIndexRef.current = activeIndex;
+  const indicatorFillRef = useRef<HTMLSpanElement | null>(null);
 
   const activeMeta = items[activeIndex] ?? meta;
   const canSlide = items.length > 1;
@@ -139,6 +140,20 @@ export const HeroSection = React.memo(function HeroSection({
     }, slideIntervalMs);
     return () => window.clearInterval(id);
   }, [canSlide, items.length, isActive, trailerPending, slideIntervalMs]);
+
+  useEffect(() => {
+    const el = indicatorFillRef.current;
+    if (!el) return;
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = `heroIndicatorFill ${slideIntervalMs}ms linear forwards`;
+    el.style.animationPlayState = trailerPending || !isActive ? 'paused' : 'running';
+  }, [activeIndex, slideIntervalMs]);
+
+  useEffect(() => {
+    const el = indicatorFillRef.current;
+    if (el) el.style.animationPlayState = trailerPending || !isActive ? 'paused' : 'running';
+  }, [trailerPending, isActive]);
 
   useEffect(() => {
     if (!canSlide) return;
@@ -346,16 +361,10 @@ export const HeroSection = React.memo(function HeroSection({
                   onClick={() => goTo(i)}
                 >
                   <span
-                    key={i === activeIndex ? `${activeIndex}` : `${i}-static`}
+                    ref={i === activeIndex ? indicatorFillRef : undefined}
                     style={{
                       ...styles.indicatorFill,
                       ...(i < activeIndex ? styles.indicatorFillDone : null),
-                      ...(i === activeIndex
-                        ? {
-                            animation: `heroIndicatorFill ${slideIntervalMs}ms linear forwards`,
-                            animationPlayState: trailerPending || !isActive ? 'paused' : 'running',
-                          }
-                        : null),
                     }}
                   />
                 </button>
