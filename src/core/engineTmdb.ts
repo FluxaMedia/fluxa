@@ -1,4 +1,4 @@
-import { coreInvoke } from './engine';
+import { coreInvoke } from './engineCoreClient';
 
 export async function coreTmdbContentType(
   contentType: string,
@@ -112,4 +112,3 @@ export async function coreTmdbEpisodesToVideos(
     JSON.stringify({ seasonJson, seriesId }),
   );
 }
-

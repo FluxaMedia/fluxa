@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/react';
 import { completeEffect, coreInvoke, coreMergeContinueWatchingLists, dispatchAction, enqueueOfflineDownload, httpExecuteText, libraryContinueWatchingDelete, libraryProgressDelete, registerTrailerProxyUrl } from './engine';
 import { startTorrentStream, stopTorrentStream } from './mpvPlayer';
-import { effectRunnerLibraryKey, loadActiveProfile, loadAddons, loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistLastWatchedEpisode } from './libraryOps';
+import { effectRunnerLibraryKey, loadActiveProfile, loadAddons, loadLibrary, loadPrefs, saveLibrary, persistLastWatchedEpisode } from './libraryOps';
 import { readHomeBootstrap, refreshReleasedContinueWatching } from './homeEffects';
 import { invalidateCalendarCache } from './libraryEffects';
 import {
@@ -131,30 +131,8 @@ async function runEffect(
         prefs.syncCwRanking as string | undefined,
       );
       const mergedCW = (mergedCWRaw ?? []) as Record<string, unknown>[];
-      const lastWatched = (lib.lastWatchedEpisodes as Record<string, unknown> | undefined) ?? {};
-      const mergedIds = new Set(mergedCW.map((item) => String(item.id ?? item._id ?? '')));
-      const lastWatchedItems = Object.entries(lastWatched)
-        .filter(([id]) => !mergedIds.has(id))
-        .map(([id, entry]) => {
-          const e = entry as Record<string, unknown>;
-          const meta = (e.meta as Record<string, unknown> | undefined) ?? {};
-          return {
-            id,
-            _id: id,
-            type: 'series',
-            name: meta.name,
-            poster: meta.poster,
-            background: meta.background,
-            lastVideoId: e.lastVideoId,
-            lastEpisodeSeason: e.lastEpisodeSeason,
-            lastEpisodeNumber: e.lastEpisodeNumber,
-            timeOffset: 0,
-            duration: 0,
-            savedAt: e.savedAt,
-          };
-        });
       const continueWatching = await refreshReleasedContinueWatching(
-        [...mergedCW, ...lastWatchedItems],
+        mergedCW,
         lib as Record<string, unknown>,
         addons,
       );
@@ -190,50 +168,28 @@ async function runEffect(
     case 'clearPlaybackProgress': {
       const lib = await loadLibrary();
       const metaObj = (p.meta as Record<string, unknown>) ?? {};
-      const id = metaObj.id as string | undefined;
       const preserveLastWatched = Boolean(metaObj._preserveLastWatched);
       const dropContinueWatching = Boolean(metaObj._dropContinueWatching);
-      if (id) {
-        const progressMap = (lib.progress as Record<string, unknown> | undefined) ?? {};
-        delete progressMap[id];
-        lib.progress = progressMap;
-        await libraryProgressDelete(await effectRunnerLibraryKey(), id);
-        lib.continueWatching = await buildContinueWatching(progressMap);
-        const extCW = (lib.externalContinueWatching as Record<string, unknown>[] | undefined) ?? [];
-        const droppedExternal = extCW.find((item) => item.id === id);
-        lib.externalContinueWatching = extCW.filter((item) => item.id !== id);
-        const dismissed = (lib.dismissedContinueWatching as Record<string, string> | undefined) ?? {};
-        if (dropContinueWatching) dismissed[id] = new Date().toISOString();
-        lib.dismissedContinueWatching = dismissed;
-        if (droppedExternal) await libraryContinueWatchingDelete(await effectRunnerLibraryKey(), id);
-        const lastWatched = (lib.lastWatchedEpisodes as Record<string, unknown> | undefined) ?? {};
-        if (preserveLastWatched) {
-          if (metaObj.lastVideoId != null) {
-            const entry = {
-              meta: {
-                id,
-                type: metaObj.type ?? 'series',
-                name: metaObj.name,
-                poster: metaObj.poster,
-                background: metaObj.background,
-              },
-              lastVideoId: metaObj.lastVideoId,
-              lastEpisodeSeason: metaObj.lastEpisodeSeason,
-              lastEpisodeNumber: metaObj.lastEpisodeNumber,
-              lastEpisodeName: metaObj.lastEpisodeName,
-              lastEpisodeThumbnail: metaObj.lastEpisodeThumbnail,
-              savedAt: new Date().toISOString(),
-            };
-            lastWatched[id] = entry;
-            lib.lastWatchedEpisodes = lastWatched;
-            await persistLastWatchedEpisode(id, entry);
-          }
-        } else {
-          delete lastWatched[id];
-          lib.lastWatchedEpisodes = lastWatched;
-          await persistLastWatchedEpisode(id, null);
+      const plan = await coreInvoke<{
+        library: Record<string, unknown>;
+        contentId: string;
+        lastWatchedEntry: Record<string, unknown> | null;
+        removedExternalContinueWatching: boolean;
+        droppedExternalContinueWatching: Record<string, unknown> | null;
+      }>('clearPlaybackProgressPlan', JSON.stringify({
+        library: lib,
+        meta: metaObj,
+        preserveLastWatched,
+        dropContinueWatching,
+        nowIso: new Date().toISOString(),
+      }));
+      if (plan) {
+        await libraryProgressDelete(await effectRunnerLibraryKey(), plan.contentId);
+        if (plan.removedExternalContinueWatching) {
+          await libraryContinueWatchingDelete(await effectRunnerLibraryKey(), plan.contentId);
         }
-        await saveLibrary(lib);
+        await persistLastWatchedEpisode(plan.contentId, plan.lastWatchedEntry);
+        await saveLibrary(plan.library);
         invalidateCalendarCache();
         if (preserveLastWatched && metaObj.lastVideoId != null) {
           const profile = await loadActiveProfile();
@@ -244,7 +200,7 @@ async function runEffect(
             metaObj,
             profile,
             {
-              contentId: id,
+              contentId: plan.contentId,
               contentType: String(metaObj.type ?? 'series'),
               season: metaObj.lastEpisodeSeason as number | undefined,
               episode: metaObj.lastEpisodeNumber as number | undefined,
@@ -253,11 +209,11 @@ async function runEffect(
             nextProgress,
           ).catch(() => undefined);
         }
-        if (droppedExternal) {
-          void dropExternalPlaybackProgress(droppedExternal);
+        if (plan.droppedExternalContinueWatching) {
+          void dropExternalPlaybackProgress(plan.droppedExternalContinueWatching);
         }
       }
-      value = (id && !preserveLastWatched) ? { droppedId: id } : {};
+      value = (plan && !preserveLastWatched) ? { droppedId: plan.contentId } : {};
       break;
     }
     case 'writeSettings':

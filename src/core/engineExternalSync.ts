@@ -1,4 +1,4 @@
-import { coreInvoke } from './engine';
+import { coreInvoke } from './engineCoreClient';
 
 export interface CoreImportApplyPlan {
   watchlist: Record<string, unknown>[] | null;

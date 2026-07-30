@@ -1,6 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
 import { coreInvoke } from './engine';
-import { dropTraktPlaybackProgress, refreshTraktProfile } from './traktSync';
+import { dropTraktPlaybackProgress, getOAuthClientId, refreshTraktProfile } from './traktSync';
 import { syncTraktNow, pushMarkWatchedTrakt, pushWatchlistTrakt } from './traktExternalSync';
 import { syncSimklNow, pushMarkWatchedSimkl, pushWatchlistSimkl } from './simklExternalSync';
 import {
@@ -112,14 +111,6 @@ function queueNuvioLibraryMutation(key: string, mutation: () => Promise<void>): 
     if (nuvioLibraryMutationQueues.get(key) === next) nuvioLibraryMutationQueues.delete(key);
   });
   return next;
-}
-
-async function getOAuthClientId(service: string): Promise<string> {
-  try {
-    return await invoke<string>('get_oauth_client_id', { service });
-  } catch {
-    return '';
-  }
 }
 
 function isAuthFailure(err: unknown): boolean {

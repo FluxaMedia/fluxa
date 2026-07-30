@@ -403,11 +403,6 @@ export async function writePlaybackProgress(
     }),
   );
   if (!plan) return {};
-  const dismissed = (before.dismissedContinueWatching as Record<string, string> | undefined) ?? {};
-  if (dismissed[plan.contentId]) {
-    delete dismissed[plan.contentId];
-    plan.library.dismissedContinueWatching = dismissed;
-  }
   await libraryProgressUpsert(
     await effectRunnerLibraryKey(),
     plan.contentId,

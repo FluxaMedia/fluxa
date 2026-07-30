@@ -6,13 +6,13 @@ import {
   coreTmdbBulkVideosToTrailers,
   coreMdblistMediaInfoUrl,
   coreMdblistMediaRatingsFromResponse,
+  coreInvoke,
   dispatchAction,
 } from './engine';
 import { loadAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
 import { tryFetchJson } from './httpClient';
 import { fetchPluginStreams } from './pluginRuntime';
-import { resolveTmdbId, tmdbContentType, tmdbUrl } from './tmdbShared';
 import { fetchTraktSimilarItems, fetchSimklSimilarItems } from './similarTitles';
 import type { AppState, Video } from './types';
 import { DEFAULT_APP_PREFS, prefBool, prefString } from './appPrefs';
@@ -45,6 +45,30 @@ interface TmdbVideoResult {
   type?: string;
 }
 
+interface TmdbDetailRequestPlan {
+  tmdbId: string;
+  urls: Record<string, string>;
+}
+
+async function tmdbDetailRequests(
+  { contentType, id, language, apiKey }: TmdbRequest,
+  endpoints: string[],
+): Promise<TmdbDetailRequestPlan | null> {
+  const plan = await coreInvoke<Partial<TmdbDetailRequestPlan> & { findUrl?: string }>(
+    'tmdbDetailRequestPlan',
+    JSON.stringify({ contentType, contentId: id, language, apiKey, endpoints }),
+  );
+  if (!plan) return null;
+  if (plan.tmdbId && plan.urls) return plan as TmdbDetailRequestPlan;
+  if (!plan.findUrl) return null;
+  const find = await tryFetchJson(plan.findUrl);
+  if (!find) return null;
+  return coreInvoke<TmdbDetailRequestPlan>(
+    'tmdbDetailRequestUrlsFromFind',
+    JSON.stringify({ find, contentType, language, apiKey, endpoints }),
+  );
+}
+
 async function fetchTmdbSimilarItems({
   contentType,
   id,
@@ -54,16 +78,15 @@ async function fetchTmdbSimilarItems({
   similarEnabled,
 }: TmdbRequest & { recommendationsEnabled: boolean; similarEnabled: boolean }): Promise<unknown[]> {
   if (!apiKey || (!recommendationsEnabled && !similarEnabled)) return [];
-  const tmdbId = await resolveTmdbId({ contentType, id, language, apiKey });
-  if (!tmdbId) return [];
-  const tmdbType = tmdbContentType(contentType);
   const calls = [
     recommendationsEnabled ? `recommendations` : null,
     similarEnabled ? `similar` : null,
   ].filter(Boolean) as string[];
+  const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, calls);
+  if (!plan) return [];
 
   for (const path of calls) {
-    const response = await tryFetchJson(tmdbUrl(`3/${tmdbType}/${tmdbId}/${path}`, apiKey, language));
+    const response = await tryFetchJson(plan.urls[path]);
     const rawItems = (response as { results?: TmdbMetaResult[] } | null)?.results ?? [];
     if (!rawItems.length) continue;
     const results = (await coreTmdbBulkMetas(JSON.stringify(rawItems), contentType, language)) ?? [];
@@ -74,9 +97,9 @@ async function fetchTmdbSimilarItems({
 
 export async function fetchTmdbTrailers({ contentType, id, language, apiKey }: TmdbRequest): Promise<unknown[]> {
   if (!apiKey) return [];
-  const tmdbId = await resolveTmdbId({ contentType, id, language, apiKey });
-  if (!tmdbId) return [];
-  const response = await tryFetchJson(tmdbUrl(`3/${tmdbContentType(contentType)}/${tmdbId}/videos`, apiKey, language));
+  const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, ['videos']);
+  if (!plan) return [];
+  const response = await tryFetchJson(plan.urls.videos);
   const rawVideos = (response as { results?: TmdbVideoResult[] } | null)?.results ?? [];
   if (!rawVideos.length) return [];
   return (await coreTmdbBulkVideosToTrailers(JSON.stringify(rawVideos))) ?? [];
@@ -89,11 +112,9 @@ export async function fetchTmdbPosterFallback({
   apiKey,
 }: TmdbRequest): Promise<{ poster?: string; background?: string } | null> {
   if (!apiKey) return null;
-  const tmdbId = await resolveTmdbId({ contentType, id, language, apiKey });
-  if (!tmdbId) return null;
-  const response = await tryFetchJson(
-    tmdbUrl(`3/${tmdbContentType(contentType)}/${tmdbId}`, apiKey, language),
-  ) as TmdbMetaResult | null;
+  const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, ['details']);
+  if (!plan) return null;
+  const response = await tryFetchJson(plan.urls.details) as TmdbMetaResult | null;
   if (!response) return null;
   const poster = await coreTmdbImageUrl(response.poster_path ?? null, 'w500');
   const background = await coreTmdbImageUrl(response.backdrop_path ?? null, 'w1280');
@@ -105,11 +126,9 @@ async function resolveImdbId({ contentType, id, language, apiKey }: TmdbRequest)
   const parsed = await coreParseVideoId(id);
   if (parsed.imdb) return parsed.imdb;
   if (!apiKey) return undefined;
-  const tmdbId = await resolveTmdbId({ contentType, id, language, apiKey });
-  if (!tmdbId) return undefined;
-  const response = await tryFetchJson(
-    tmdbUrl(`3/${tmdbContentType(contentType)}/${tmdbId}/external_ids`, apiKey, language),
-  ) as { imdb_id?: string | null } | null;
+  const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, ['external_ids']);
+  if (!plan) return undefined;
+  const response = await tryFetchJson(plan.urls.external_ids) as { imdb_id?: string | null } | null;
   return response?.imdb_id ?? undefined;
 }
 
@@ -150,11 +169,11 @@ async function fetchPluginStreamsForDetail(
     const embeddedTmdbId = [detailRecord.tmdbId, detailRecord.tmdb_id, detailIds.tmdb]
       .map((value) => typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '')
       .find((value) => /^\d+$/.test(value));
-    const [parsed, resolvedTmdbId] = await Promise.all([
+    const [parsed, tmdbPlan] = await Promise.all([
       coreParseVideoId(id),
-      resolveTmdbId({ contentType, id, language, apiKey }),
+      tmdbDetailRequests({ contentType, id, language, apiKey }, []),
     ]);
-    const pluginContentId = embeddedTmdbId || resolvedTmdbId || parsed.imdb;
+    const pluginContentId = embeddedTmdbId || tmdbPlan?.tmdbId || parsed.imdb;
     if (!pluginContentId) return [];
     return await fetchPluginStreams(contentType, pluginContentId, parsed.season, parsed.episode);
   } catch {
@@ -292,9 +311,11 @@ interface FanartArtwork {
 }
 
 async function resolveTvdbId(tmdbId: string, apiKey: string, language: string): Promise<string | null> {
-  const response = await tryFetchJson(
-    tmdbUrl(`3/tv/${tmdbId}/external_ids`, apiKey, language),
-  ) as { tvdb_id?: number | null } | null;
+  const plan = await tmdbDetailRequests({
+    contentType: 'series', id: `tmdb:${tmdbId}`, apiKey, language,
+  }, ['external_ids']);
+  if (!plan) return null;
+  const response = await tryFetchJson(plan.urls.external_ids) as { tvdb_id?: number | null } | null;
   return response?.tvdb_id != null ? String(response.tvdb_id) : null;
 }
 
@@ -303,8 +324,9 @@ async function fetchFanartArtwork(
   fanartApiKey: string,
 ): Promise<FanartArtwork | null> {
   if (!fanartApiKey || !apiKey) return null;
-  const tmdbId = await resolveTmdbId({ contentType, id, language, apiKey });
-  if (!tmdbId) return null;
+  const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, []);
+  if (!plan) return null;
+  const tmdbId = plan.tmdbId;
 
   if (contentType === 'series') {
     const tvdbId = await resolveTvdbId(tmdbId, apiKey, language);

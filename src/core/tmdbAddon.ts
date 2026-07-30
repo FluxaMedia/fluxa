@@ -4,9 +4,10 @@ import {
   coreTmdbBulkMetas,
   coreTmdbEpisodesToVideos,
   coreTmdbFullMetaToMeta,
+  coreInvoke,
 } from './engine';
 import { tryFetchJson } from './httpClient';
-import { resolveTmdbId, tmdbContentType, tmdbUrl } from './tmdbShared';
+import { runWithConcurrency } from './fetchPlanning';
 import type { AddonDescriptor } from './types';
 
 export const BUILTIN_TMDB_TRANSPORT_URL = 'tmdb://builtin';
@@ -33,19 +34,6 @@ export async function withBuiltinTmdbAddon(
   return prefs.tmdbPreferOverAddons ? [descriptor, ...addons] : [...addons, descriptor];
 }
 
-async function mapWithConcurrency<T, R>(items: T[], limit: number, task: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let cursor = 0;
-  async function worker() {
-    while (cursor < items.length) {
-      const index = cursor++;
-      results[index] = await task(items[index]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
-}
-
 export async function fetchBuiltinCatalog(
   type: string,
   extra: Record<string, unknown>,
@@ -65,21 +53,51 @@ interface TmdbSeasonSummary {
   season_number?: number;
 }
 
+interface TmdbMetaUrls {
+  tmdbId: string;
+  detailsUrl: string;
+  creditsUrl: string;
+  imagesUrl: string;
+  externalIdsUrl: string;
+}
+
+async function fetchBuiltinMetaUrls(
+  type: string,
+  id: string,
+  apiKey: string,
+  language: string,
+): Promise<TmdbMetaUrls | null> {
+  const plan = await coreInvoke<{ findUrl?: string } & Partial<TmdbMetaUrls>>(
+    'tmdbBuiltinMetaRequestPlan',
+    JSON.stringify({ contentType: type, contentId: id, apiKey, language }),
+  );
+  if (!plan) return null;
+  if (plan.detailsUrl && plan.creditsUrl && plan.imagesUrl && plan.externalIdsUrl && plan.tmdbId) {
+    return plan as TmdbMetaUrls;
+  }
+  if (!plan.findUrl) return null;
+  const find = await tryFetchJson(plan.findUrl);
+  if (!find) return null;
+  return coreInvoke<TmdbMetaUrls>(
+    'tmdbBuiltinMetaUrlsFromFind',
+    JSON.stringify({ find, contentType: type, apiKey, language }),
+  );
+}
+
 export async function fetchBuiltinMeta(
   type: string,
   id: string,
   apiKey: string,
   language: string,
 ): Promise<{ meta: unknown } | null> {
-  const tmdbId = await resolveTmdbId({ contentType: type, id, language, apiKey });
-  if (!tmdbId) return null;
-  const tmdbType = tmdbContentType(type);
+  const urls = await fetchBuiltinMetaUrls(type, id, apiKey, language);
+  if (!urls) return null;
 
   const [details, credits, images, externalIds] = await Promise.all([
-    tryFetchJson(tmdbUrl(`3/${tmdbType}/${tmdbId}`, apiKey, language)),
-    tryFetchJson(tmdbUrl(`3/${tmdbType}/${tmdbId}/credits`, apiKey, language)),
-    tryFetchJson(tmdbUrl(`3/${tmdbType}/${tmdbId}/images`, apiKey, language, { include_image_language: 'en,null' })),
-    tryFetchJson(tmdbUrl(`3/${tmdbType}/${tmdbId}/external_ids`, apiKey, language)),
+    tryFetchJson(urls.detailsUrl),
+    tryFetchJson(urls.creditsUrl),
+    tryFetchJson(urls.imagesUrl),
+    tryFetchJson(urls.externalIdsUrl),
   ]);
   if (!details) return null;
 
@@ -94,8 +112,8 @@ export async function fetchBuiltinMeta(
       .map((s) => s.season_number)
       .filter((n): n is number => typeof n === 'number' && n > 0);
     const seriesId = String(meta.id ?? id);
-    const videoLists = await mapWithConcurrency(seasons, 4, (seasonNumber) =>
-      fetchBuiltinSeasonVideos(tmdbId, seasonNumber, seriesId, apiKey, language));
+    const videoLists = await runWithConcurrency(seasons, 4, (seasonNumber) =>
+      fetchBuiltinSeasonVideos(urls.tmdbId, seasonNumber, seriesId, apiKey, language));
     meta.videos = videoLists.flat();
   }
 
@@ -105,7 +123,14 @@ export async function fetchBuiltinMeta(
 async function fetchBuiltinSeasonVideos(
   tmdbId: string, season: number, seriesId: string, apiKey: string, language: string,
 ): Promise<unknown[]> {
-  const seasonData = await tryFetchJson(tmdbUrl(`3/tv/${tmdbId}/season/${season}`, apiKey, language));
+  const url = await coreInvoke<string>('tmdbSeasonRequestUrl', JSON.stringify({
+    contentId: `tmdb:${tmdbId}`,
+    season,
+    apiKey,
+    language,
+  }));
+  if (!url) return [];
+  const seasonData = await tryFetchJson(url);
   if (!seasonData) return [];
   return (await coreTmdbEpisodesToVideos(JSON.stringify(seasonData), seriesId)) ?? [];
 }
@@ -113,8 +138,8 @@ async function fetchBuiltinSeasonVideos(
 export async function fetchBuiltinSeasonEpisodes(
   seriesId: string, season: number, apiKey: string, language: string,
 ): Promise<{ episodes: unknown[] }> {
-  const tmdbId = await resolveTmdbId({ contentType: 'series', id: seriesId, language, apiKey });
-  if (!tmdbId) return { episodes: [] };
-  const videos = await fetchBuiltinSeasonVideos(tmdbId, season, seriesId, apiKey, language);
+  const urls = await fetchBuiltinMetaUrls('series', seriesId, apiKey, language);
+  if (!urls) return { episodes: [] };
+  const videos = await fetchBuiltinSeasonVideos(urls.tmdbId, season, seriesId, apiKey, language);
   return { episodes: videos };
 }

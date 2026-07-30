@@ -7,6 +7,7 @@ interface PluginScraperState {
   filename: string;
   enabled: boolean;
   supportedTypes?: string[];
+  settings?: Record<string, unknown>;
 }
 
 const codeCache = new Map<string, string>();
@@ -31,22 +32,6 @@ async function loadScraperCode(scraper: PluginScraperState): Promise<string | nu
   }
 }
 
-function normalizeMediaType(contentType: string): string {
-  return contentType === 'series' || contentType === 'show' ? 'tv' : contentType;
-}
-
-export async function enabledPluginScrapers(mediaType: string): Promise<PluginScraperState[]> {
-  try {
-    const snapshot = (await getSnapshot()) as { plugins?: { scrapers?: PluginScraperState[] } } | null;
-    const scrapers = snapshot?.plugins?.scrapers ?? [];
-    return scrapers.filter(
-      (scraper) => scraper.enabled && (!scraper.supportedTypes || scraper.supportedTypes.includes(mediaType)),
-    );
-  } catch {
-    return [];
-  }
-}
-
 export async function fetchPluginStreams(
   contentType: string,
   tmdbId: string | undefined,
@@ -54,15 +39,35 @@ export async function fetchPluginStreams(
   episode: number | undefined,
 ): Promise<Array<Record<string, unknown>>> {
   if (!tmdbId) return [];
-  const mediaType = normalizeMediaType(contentType);
-  const scrapers = await enabledPluginScrapers(mediaType);
-  if (scrapers.length === 0) return [];
+  const snapshot = (await getSnapshot()) as { plugins?: { scrapers?: PluginScraperState[] } } | null;
+  const plan = await coreInvoke<{
+    contentId: string;
+    mediaType: string;
+    season?: number;
+    episode?: number;
+    scrapers: PluginScraperState[];
+  }>('pluginExecutionPlan', JSON.stringify({
+    contentId: tmdbId,
+    mediaType: contentType,
+    season,
+    episode,
+    scrapers: snapshot?.plugins?.scrapers ?? [],
+  }));
+  if (!plan?.scrapers.length) return [];
 
   const results = await Promise.allSettled(
-    scrapers.map(async (scraper) => {
+    plan.scrapers.map(async (scraper) => {
       const code = await loadScraperCode(scraper);
       if (!code) return [];
-      const raw = await runPluginScraper(code, tmdbId, mediaType, season ?? null, episode ?? null);
+      const raw = await runPluginScraper(
+        code,
+        scraper.id,
+        JSON.stringify(scraper.settings ?? {}),
+        plan.contentId,
+        plan.mediaType,
+        plan.season ?? null,
+        plan.episode ?? null,
+      );
       const streams = (await coreInvoke<Array<Record<string, unknown>>>('pluginStreamResultsToStreams', raw)) ?? [];
       return streams.map((stream) => ({ ...stream, addonName: scraper.name }));
     }),
