@@ -96,7 +96,7 @@ jobs:
           $version = "3.0.23"
           $archive = "$env:RUNNER_TEMP/vlc-win64.zip"
           Invoke-WebRequest "https://get.videolan.org/vlc/$version/win64/vlc-$version-win64.zip" -OutFile $archive
-          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne "26D556648D4A67E8938D6D4B4D99BA0359F1979BFEF985C8F6710882C7ED5975") { throw "Unexpected VLC archive checksum" }
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne "992D19DBD0B8A7CDE9167D2F7780B1EF6F92ACC8A71ACFA736101A21F35181E1") { throw "Unexpected VLC archive checksum" }
           $extract = "$env:RUNNER_TEMP/vlc-win64"
           Expand-Archive $archive -DestinationPath $extract
           $root = Get-ChildItem $extract -Directory | Select-Object -First 1
@@ -188,7 +188,7 @@ jobs:
           VERSION="3.0.23"
           DMG="$RUNNER_TEMP/vlc-universal.dmg"
           curl -fL "https://get.videolan.org/vlc/$VERSION/macosx/vlc-$VERSION-universal.dmg" -o "$DMG"
-          echo "88f23b219e0ec238f6e5791694838d87bbbb3a46bd2f7fa452027122e40790f3  $DMG" | shasum -a 256 -c -
+          echo "56ee657c3aaf5c71b4ab7d6e4f4a77f6eca54633e0bf42a93b8116eb1d1f6ec9  $DMG" | shasum -a 256 -c -
           MOUNT="$RUNNER_TEMP/vlc-mount"
           mkdir -p "$MOUNT"
           hdiutil attach "$DMG" -nobrowse -mountpoint "$MOUNT"
@@ -334,11 +334,15 @@ jobs:
 
       - name: Bundle libVLC runtime
         run: |
+          set -x
           sudo apt-get install -y libvlc5 vlc-plugin-base vlc-plugin-access-extra vlc-plugin-video-output
           VLC_LIB="/usr/lib/x86_64-linux-gnu"
           mkdir -p src-tauri/lib/vlc
+          ls -la "$VLC_LIB" | grep -i vlc || true
+          ls -la "$VLC_LIB/vlc" || true
           cp -a "$VLC_LIB/libvlc.so.5" "$VLC_LIB/libvlccore.so.9" src-tauri/lib/vlc/
           cp -a "$VLC_LIB/vlc/plugins" src-tauri/lib/vlc/plugins
+          ls -la src-tauri/lib/vlc
           test -f src-tauri/lib/vlc/libvlc.so.5
           test -d src-tauri/lib/vlc/plugins
 
