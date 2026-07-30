@@ -1,12 +1,28 @@
 import React, { useRef, useState } from 'react';
 import { ImagePlus, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import {
+  AvatarPackDiscoveryError,
   discoverProfileAvatarPacks,
   refreshAvatarPackRepository,
   type ProfilePickerSettings,
   saveProfilePickerSettings,
 } from '../core/profileAvatarPacks';
+import { Toast } from '../components/Toast';
 import { t } from '../i18n';
+
+const AVATAR_PACK_ERROR_MESSAGE_KEYS: Record<string, string> = {
+  invalid_url: 'profiles.avatar_pack_error_invalid_url',
+  repository_not_found: 'profiles.avatar_pack_error_repository_not_found',
+  no_packs_found: 'profiles.avatar_pack_error_no_packs_found',
+  no_valid_avatars: 'profiles.avatar_pack_error_no_valid_avatars',
+};
+
+function avatarPackErrorMessage(error: unknown): string {
+  if (error instanceof AvatarPackDiscoveryError) {
+    return t(AVATAR_PACK_ERROR_MESSAGE_KEYS[error.reason] ?? 'profiles.avatar_pack_error_generic');
+  }
+  return t('profiles.avatar_pack_error_generic');
+}
 
 export function ProfilePickerSettings({
   settings,
@@ -22,6 +38,7 @@ export function ProfilePickerSettings({
   const [packs, setPacks] = useState(settings.avatarPacks);
   const [busy, setBusy] = useState(false);
   const [refreshingRepo, setRefreshingRepo] = useState<string | null>(null);
+  const [avatarPackError, setAvatarPackError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const save = async (next: ProfilePickerSettings) => {
@@ -39,6 +56,8 @@ export function ProfilePickerSettings({
       setPacks(nextPacks);
       setRepositoryUrl('');
       await save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks });
+    } catch (error) {
+      setAvatarPackError(avatarPackErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -51,6 +70,8 @@ export function ProfilePickerSettings({
       const next = await refreshAvatarPackRepository(repositoryUrl);
       setPacks(next.avatarPacks);
       onSaved(next);
+    } catch (error) {
+      setAvatarPackError(avatarPackErrorMessage(error));
     } finally {
       setRefreshingRepo(null);
     }
@@ -107,6 +128,16 @@ export function ProfilePickerSettings({
       </div>
       <button onClick={onBack} style={S.backButton}>{t('common.back')}</button>
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadBackground} />
+      {avatarPackError && (
+        <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 100 }}>
+          <Toast
+            variant="error"
+            title={t('profiles.avatar_pack_error_title')}
+            message={avatarPackError}
+            onClose={() => setAvatarPackError(null)}
+          />
+        </div>
+      )}
     </section>
   );
 }

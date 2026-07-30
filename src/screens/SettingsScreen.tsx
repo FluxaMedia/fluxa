@@ -46,6 +46,7 @@ import { AddonsSection } from '../components/settings/AddonsSection';
 import { PluginsSection } from '../components/settings/PluginsSection';
 import { DownloadsSection } from '../components/settings/DownloadsSection';
 import { AddonAddedDialog } from '../components/AddonAddedDialog';
+import { Toast } from '../components/Toast';
 
 async function settingsFetchJson(url: string): Promise<unknown> {
   const response = await httpFetchText(url);
@@ -486,6 +487,19 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       </div>
       {addedAddonName && (
         <AddonAddedDialog addonName={addedAddonName} onConfirm={() => setAddedAddonName(null)} />
+      )}
+      {addonInstallStatus.error && (
+        <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 100 }}>
+          <Toast
+            variant="error"
+            title={t('addons.install_failed_title')}
+            message={t('addons.install_failed_message')}
+            details={addonInstallStatus.error}
+            detailsLabel={t('player.error_show_details')}
+            detailsHideLabel={t('player.error_hide_details')}
+            onClose={() => setAddonInstallStatus((prev) => ({ ...prev, error: null }))}
+          />
+        </div>
       )}
     </div>
   );

@@ -282,6 +282,7 @@ export const CORE_METHODS = [
   'profileAvatarDefault',
   'profileAvatarPackCatalog',
   'profileAvatarPackDiscoveryPlan',
+  'profileAvatarPackManifestPlan',
   'profileAvatarPackParse',
   'profileAvatarPackRepositoryPlan',
   'profileConnectionState',
