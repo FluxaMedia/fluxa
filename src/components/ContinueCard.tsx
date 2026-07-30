@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Info, Play, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, Info, Play, RotateCcw, Trash2 } from "lucide-react";
 import type { LibraryItem, Meta } from "../core/types";
 import {
   formatAirDay,
@@ -304,38 +304,6 @@ export function ContinueCard({
             {episodeLine ?? (meta.type === "series" ? t("auto.up_next") : "")}
           </p>
         </div>
-        {!hideActions && (
-          <div
-            style={{
-              ...cwStyles.hoverActions,
-              opacity: hovered && !dismissing && !pending ? 1 : 0,
-              pointerEvents: hovered && !dismissing && !pending
-                ? "auto"
-                : "none",
-              transition: "opacity 0.16s ease",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              title={t("detail.mark_watched")}
-              style={cwStyles.actionBtn}
-              onClick={() => onMarkWatched(meta)}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              <Check size={14} />
-            </button>
-            <button
-              type="button"
-              title={t("home.drop_continue_watching")}
-              style={cwStyles.actionBtn}
-              onClick={() => onDrop(meta)}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
       </div>
       <ContextMenu
         point={menuPoint}
@@ -360,6 +328,11 @@ export function ContinueCard({
             icon: <RotateCcw size={15} />,
             label: t("detail.resume_dialog_start_over"),
             onSelect: () => onStartOver(meta),
+          },
+          {
+            icon: <Check size={15} />,
+            label: t("detail.mark_watched"),
+            onSelect: () => onMarkWatched(meta),
           },
           {
             icon: <Trash2 size={15} />,
@@ -533,27 +506,5 @@ const cwStyles: Record<string, React.CSSProperties> = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     lineHeight: 1.12,
-  },
-  hoverActions: {
-    position: "absolute",
-    right: "0.75rem",
-    bottom: "1rem",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.375rem",
-    flexShrink: 0,
-  },
-  actionBtn: {
-    width: "1.6875rem",
-    height: "1.6875rem",
-    borderRadius: "62.4375rem",
-    border: "0.0938rem solid rgba(255,255,255,0.5)",
-    background: "transparent",
-    color: "#FFFFFF",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    padding: 0,
   },
 };
