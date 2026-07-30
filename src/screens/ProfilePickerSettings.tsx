@@ -39,6 +39,7 @@ export function ProfilePickerSettings({
   const [busy, setBusy] = useState(false);
   const [refreshingRepo, setRefreshingRepo] = useState<string | null>(null);
   const [avatarPackError, setAvatarPackError] = useState<string | null>(null);
+  const [avatarPackAddedCount, setAvatarPackAddedCount] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const save = async (next: ProfilePickerSettings) => {
@@ -52,10 +53,12 @@ export function ProfilePickerSettings({
     try {
       const discovered = await discoverProfileAvatarPacks(repositoryUrl.trim());
       const existing = new Set(packs.map((pack) => pack.id));
-      const nextPacks = [...packs, ...discovered.filter((pack) => !existing.has(pack.id))];
+      const added = discovered.filter((pack) => !existing.has(pack.id));
+      const nextPacks = [...packs, ...added];
       setPacks(nextPacks);
       setRepositoryUrl('');
       await save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks });
+      if (added.length > 0) setAvatarPackAddedCount(added.length);
     } catch (error) {
       setAvatarPackError(avatarPackErrorMessage(error));
     } finally {
@@ -135,6 +138,16 @@ export function ProfilePickerSettings({
             title={t('profiles.avatar_pack_error_title')}
             message={avatarPackError}
             onClose={() => setAvatarPackError(null)}
+          />
+        </div>
+      )}
+      {avatarPackAddedCount !== null && (
+        <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 100 }}>
+          <Toast
+            variant="success"
+            title={t('profiles.avatar_pack_added_title')}
+            message={t('profiles.avatar_pack_added_message', avatarPackAddedCount)}
+            onClose={() => setAvatarPackAddedCount(null)}
           />
         </div>
       )}

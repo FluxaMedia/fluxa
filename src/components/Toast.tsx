@@ -1,4 +1,4 @@
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, Check, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface ToastAction {
@@ -8,7 +8,7 @@ interface ToastAction {
 }
 
 interface ToastProps {
-  variant?: 'warning' | 'error';
+  variant?: 'warning' | 'error' | 'success';
   title: string;
   message: string;
   details?: string;
@@ -21,11 +21,13 @@ interface ToastProps {
 const VARIANT_COLORS: Record<NonNullable<ToastProps['variant']>, { icon: string; iconBg: string }> = {
   warning: { icon: '#f0b74a', iconBg: 'rgba(240,183,74,0.13)' },
   error: { icon: '#ff7b7b', iconBg: 'rgba(255,90,90,0.13)' },
+  success: { icon: '#8fd19e', iconBg: 'rgba(143,209,158,0.13)' },
 };
 
 export function Toast({ variant = 'warning', title, message, details, detailsLabel, detailsHideLabel, actions, onClose }: ToastProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const colors = VARIANT_COLORS[variant];
+  const Icon = variant === 'success' ? Check : AlertTriangle;
 
   return (
     <div
@@ -54,7 +56,7 @@ export function Toast({ variant = 'warning', title, message, details, detailsLab
             flexShrink: 0,
           }}
         >
-          <AlertTriangle size={16} color={colors.icon} />
+          <Icon size={16} color={colors.icon} />
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 700, margin: 0 }}>{title}</p>

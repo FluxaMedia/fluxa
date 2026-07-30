@@ -1294,6 +1294,8 @@
   "profiles.avatar_pack_error_no_packs_found": "Bu depoda pack.json dosyası bulunamadı.",
   "profiles.avatar_pack_error_no_valid_avatars": "Bulunan pack.json dosyalarında kullanılabilir görsel yoktu.",
   "profiles.avatar_pack_error_generic": "Bu paket eklenirken bir sorun oluştu.",
+  "profiles.avatar_pack_added_title": "Paket eklendi",
+  "profiles.avatar_pack_added_message": "%s profil görseli paketi eklendi.",
   "detail.similar_source": "Öneri kaynağı",
   "detail.similar_source_auto": "Otomatik",
   "detail.similar_source_trakt": "Trakt Önerileri",

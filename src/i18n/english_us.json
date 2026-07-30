@@ -1294,6 +1294,8 @@
   "profiles.avatar_pack_error_no_packs_found": "No pack.json files were found in that repository.",
   "profiles.avatar_pack_error_no_valid_avatars": "The pack.json files found didn't contain any usable images.",
   "profiles.avatar_pack_error_generic": "Something went wrong while adding this pack.",
+  "profiles.avatar_pack_added_title": "Pack added",
+  "profiles.avatar_pack_added_message": "%s profile image pack(s) added.",
   "detail.similar_source": "Recommendations from",
   "detail.similar_source_auto": "Automatic",
   "detail.similar_source_trakt": "Trakt Recommendations",
