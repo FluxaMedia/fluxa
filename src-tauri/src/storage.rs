@@ -5,6 +5,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+#[cfg(target_os = "windows")]
+use crate::DesktopState;
+
 #[path = "library_storage.rs"]
 mod library_storage;
 #[path = "library_storage_migrations.rs"]
