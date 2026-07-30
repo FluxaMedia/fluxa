@@ -93,11 +93,20 @@ jobs:
       - name: Fetch libVLC runtime
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           $version = "3.0.23"
           $archive = "$env:RUNNER_TEMP/vlc-win64.zip"
           Invoke-WebRequest "https://get.videolan.org/vlc/$version/win64/vlc-$version-win64.zip" -OutFile $archive
+          Get-Item $archive | Format-List Name, Length
           $extract = "$env:RUNNER_TEMP/vlc-win64"
-          Expand-Archive $archive -DestinationPath $extract
+          try {
+            Expand-Archive $archive -DestinationPath $extract
+          } catch {
+            Write-Host "Expand-Archive failed:"
+            $_ | Format-List * -Force
+            $_.Exception | Format-List * -Force
+            throw
+          }
           $root = Get-ChildItem $extract -Directory | Select-Object -First 1
           New-Item -ItemType Directory -Force src-tauri/lib/vlc | Out-Null
           Copy-Item "$($root.FullName)/libvlc.dll" src-tauri/lib/vlc/
