@@ -59,11 +59,9 @@ export function SeekPreview({ barRef, durRef, chaptersRef }: {
 
   return (
     <div style={{ position: 'absolute', bottom: '1.375rem', left: preview.x, transform: 'translateX(-50%)', pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-      {thumbImg && (
-        <div style={{ width: '10rem', height: '5.625rem', borderRadius: '0.25rem', overflow: 'hidden', boxShadow: '0 0.125rem 0.75rem rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.12)', flexShrink: 0 }}>
-          <img src={thumbImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        </div>
-      )}
+      <div style={{ width: '10rem', height: '5.625rem', borderRadius: '0.25rem', overflow: 'hidden', boxShadow: '0 0.125rem 0.75rem rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', flexShrink: 0 }}>
+        {thumbImg && <img src={thumbImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+      </div>
       <div style={{ whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.125rem' }}>
         {preview.chapter && (
           <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.0125rem', textShadow: '0 1px 0.375rem rgba(0,0,0,1), 0 0 0.75rem rgba(0,0,0,0.9)' }}>

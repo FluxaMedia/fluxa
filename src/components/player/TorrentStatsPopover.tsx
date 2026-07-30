@@ -35,8 +35,7 @@ export function TorrentStatsPopover({ stats, anchorRef, onClose }: TorrentStatsP
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <Row label={t('player.torrent_seeders')} value={`${stats.active_peers} / ${stats.total_peers}`} />
           <Row label={t('player.torrent_download_speed')} value={formatSpeed(stats.download_speed)} />
-          <Row label={t('player.torrent_buffered')} value={`${stats.preload}%`} />
-          <Row label={t('player.torrent_progress')} value={`${stats.progress}%`} />
+          <Row label={t('player.torrent_progress')} value={`${stats.progress.toFixed(1)}%`} />
         </div>
       )}
     </Popover>
