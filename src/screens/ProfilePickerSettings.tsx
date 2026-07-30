@@ -40,6 +40,7 @@ export function ProfilePickerSettings({
   const [refreshingRepo, setRefreshingRepo] = useState<string | null>(null);
   const [avatarPackError, setAvatarPackError] = useState<string | null>(null);
   const [avatarPackAddedCount, setAvatarPackAddedCount] = useState<number | null>(null);
+  const [avatarPackAlreadyAdded, setAvatarPackAlreadyAdded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const save = async (next: ProfilePickerSettings) => {
@@ -59,6 +60,7 @@ export function ProfilePickerSettings({
       setRepositoryUrl('');
       await save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks });
       if (added.length > 0) setAvatarPackAddedCount(added.length);
+      else setAvatarPackAlreadyAdded(true);
     } catch (error) {
       setAvatarPackError(avatarPackErrorMessage(error));
     } finally {
@@ -148,6 +150,16 @@ export function ProfilePickerSettings({
             title={t('profiles.avatar_pack_added_title')}
             message={t('profiles.avatar_pack_added_message', avatarPackAddedCount)}
             onClose={() => setAvatarPackAddedCount(null)}
+          />
+        </div>
+      )}
+      {avatarPackAlreadyAdded && (
+        <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 100 }}>
+          <Toast
+            variant="warning"
+            title={t('profiles.avatar_pack_already_added_title')}
+            message={t('profiles.avatar_pack_already_added_message')}
+            onClose={() => setAvatarPackAlreadyAdded(false)}
           />
         </div>
       )}
