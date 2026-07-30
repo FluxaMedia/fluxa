@@ -99,7 +99,7 @@ raw-window-handle = "0.6"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 
 [patch.crates-io]
-tauri-runtime-wry = { path = "patches/tauri-runtime-wry-2.11.2" }
+tauri-runtime-wry = { path = "patches/tauri-runtime-wry-2.11.4" }
 
 [profile.release]
 # Must stay "unwind" — fluxa_core's ffi::core_invoke (and the FluxaCore calls

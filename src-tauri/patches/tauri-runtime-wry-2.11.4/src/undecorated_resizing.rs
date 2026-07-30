@@ -540,22 +540,10 @@ mod gtk {
     webview.connect_button_press_event(
       move |webview: &webkit2gtk::WebView, event: &gtk::gdk::EventButton| {
         if event.button() == 1 {
-          // Walk up the widget tree to find the GtkWindow (depth may vary with transparent windows)
-          let gtk_window = {
-            let mut w = webview.parent();
-            loop {
-              match w {
-                None => break None,
-                Some(ref widget) => {
-                  if let Ok(win) = widget.clone().downcast::<gtk::Window>() {
-                    break Some(win);
-                  }
-                  w = widget.parent();
-                }
-              }
-            }
-          };
-          if let Some(window) = gtk_window {
+          // This one should be GtkBox
+          if let Some(window) = webview.parent().and_then(|w| w.parent()) {
+            // Safe to unwrap unless this is not from tao
+            let window: gtk::Window = window.downcast().unwrap();
             if !window.is_decorated() && window.is_resizable() && !window.is_maximized() {
               if let Some(window) = window.window() {
                 let (root_x, root_y) = event.root();
