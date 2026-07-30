@@ -1,29 +1,25 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CheckSquare2, Search, Square, X } from 'lucide-react';
 import { VirtualizedPosterGrid } from '../components/VirtualizedPosterGrid';
 import { FilterDropdown } from '../components/FilterDropdown';
 import { posterPrefsFromState } from '../core/posterPrefs';
 import { appPrefs, prefString } from '../core/appPrefs';
-import { exportCollectionsJson, importCollectionsJson } from '../core/collections';
 import { getViewPrefs, setViewPref, whenViewPrefsReady } from '../core/viewPrefs';
-import { saveProfile } from '../core/profiles';
-import { nuvioPushCollections } from '../core/nuvioApi';
-import { freshNuvioProfile } from '../core/nuvioSync';
-import type { AppState, HomeCategory, LibraryItem, Meta, NuvioRemoteCollectionSource, UserCollection, UserCollectionFolder, UserProfile } from '../core/types';
+import type { AppState, HomeCategory, LibraryItem, Meta, UserProfile } from '../core/types';
 import { t } from '../i18n';
 import { CategoryGridScreen } from './CategoryGridScreen';
 import { CollectionEditorScreen } from './CollectionEditorScreen';
 import { CollectionsTab } from '../components/library/CollectionsTab';
-import { loadNuvioCollectionSource } from '../core/collectionSources';
 import { coreInvoke } from '../core/engine';
 import { loadProviderLibraries, PROVIDER_LIBRARIES_CHANGED, type LibraryProvider, type ProviderLibrarySnapshot } from '../core/providerLibraries';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useLibraryBulkSelection } from '../hooks/useLibraryBulkSelection';
+import { useLibraryCollections } from '../hooks/useLibraryCollections';
+import { NAV_RAIL_WIDTH, PX, styles } from './libraryScreenStyles';
+import { CircleBtn, HistoryTimeline, TabChip } from './LibraryScreenParts';
 
 type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 'airing' | 'rated' | 'history';
 type LibrarySource = 'local' | LibraryProvider;
-
-const NAV_RAIL_WIDTH = 6.5;
-const PX = 58;
 
 interface Props {
   state: AppState;
@@ -47,9 +43,6 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'rating'>(() => (getViewPrefs().librarySort as 'recent' | 'title' | 'rating') ?? 'recent');
   const [librarySource, setLibrarySource] = useState<LibrarySource>(() => (getViewPrefs().librarySource as LibrarySource) ?? 'local');
   const [providerLibraries, setProviderLibraries] = useState<Partial<Record<LibraryProvider, ProviderLibrarySnapshot>>>({});
-  const [bulkMode, setBulkMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
 
   useEffect(() => {
     void whenViewPrefsReady().then(() => {
@@ -101,14 +94,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [tab]);
-  const [viewAllFolder, setViewAllFolder] = useState<{ title: string; items: Meta[]; groups: Array<{ type: string; items: Meta[] }> } | null>(null);
-  const collectionsScrollRef = useRef<HTMLDivElement>(null);
-  const savedScrollRef = useRef(0);
 
-  useLayoutEffect(() => {
-    if (!viewAllFolder && collectionsScrollRef.current) collectionsScrollRef.current.scrollTop = savedScrollRef.current;
-  }, [viewAllFolder]);
-  const [editingCollection, setEditingCollection] = useState<UserCollection | 'new' | null>(null);
   const library = state.library;
 
   useEffect(() => {
@@ -126,66 +112,20 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
   const accent = prefString(prefs, 'accentColorArgb', '#FFFFFF');
 
-  const collections: UserCollection[] = activeProfile?.libraryCollections ?? [];
   const homeCategories: HomeCategory[] = state.home.categories ?? [];
 
-  async function getItemsForFolder(folder: UserCollectionFolder): Promise<{ items: Meta[]; groups: Array<{ type: string; items: Meta[] }>; remoteSources: NuvioRemoteCollectionSource[] }> {
-    return ((await coreInvoke('collectionFolderItemsPlan', JSON.stringify({ folder, categories: homeCategories }))) as { items: Meta[]; groups: Array<{ type: string; items: Meta[] }>; remoteSources: NuvioRemoteCollectionSource[] } | null) ?? { items: [], groups: [], remoteSources: [] };
-  }
-
-  async function openFolder(folder: UserCollectionFolder, title: string) {
-    savedScrollRef.current = collectionsScrollRef.current?.scrollTop ?? 0;
-    const local = await getItemsForFolder(folder);
-    setViewAllFolder({ title, ...local });
-    const specialSources = local.remoteSources;
-    if (!specialSources.length) return;
-    const batches = await Promise.all(specialSources.map((source) => loadNuvioCollectionSource(source)));
-    const merged = (await coreInvoke<{ items: Meta[]; groups: Array<{ type: string; items: Meta[] }> }>('mergeFolderSources', JSON.stringify([local.items, ...batches]))) ?? local;
-    setViewAllFolder({ title, ...merged });
-  }
-
-  async function saveCollections(next: UserCollection[]) {
-    if (!activeProfile) return;
-    const updated: UserProfile = { ...activeProfile, libraryCollections: next };
-    await saveProfile(updated);
-    onProfileUpdated?.(updated);
-    if (!updated.nuvioAccessToken) return;
-
-    try {
-      const freshProfile = await freshNuvioProfile(updated);
-      const token = freshProfile.nuvioAccessToken;
-      if (!token) return;
-      await nuvioPushCollections(token, freshProfile.nuvioProfileIndex ?? 1, next);
-      if (freshProfile !== updated) onProfileUpdated?.(freshProfile);
-    } catch {
-    }
-  }
-
-  async function handleSaveCollection(col: UserCollection) {
-    const existing = collections.findIndex((c) => c.id === col.id);
-    const next = existing >= 0
-      ? collections.map((c) => (c.id === col.id ? col : c))
-      : [...collections, col];
-    await saveCollections(next);
-    setEditingCollection(null);
-  }
-
-  async function handleDeleteCollection(id: string) {
-    await saveCollections(collections.filter((c) => c.id !== id));
-  }
-
-  async function handleImportJson(json: string) {
-    const imported = await importCollectionsJson(json);
-    if (!imported.length) return;
-    const merged = (await coreInvoke<UserCollection[]>('collectionMergePlan', JSON.stringify({ existing: collections, incoming: imported }))) ?? collections;
-    await saveCollections(merged);
-    setEditingCollection(null);
-  }
-
-  async function handleExportAll() {
-    const json = await exportCollectionsJson(collections);
-    await navigator.clipboard.writeText(json);
-  }
+  const {
+    collections,
+    viewAllFolder, setViewAllFolder,
+    editingCollection, setEditingCollection,
+    collectionsScrollRef,
+    openFolder,
+    saveCollections,
+    handleSaveCollection,
+    handleDeleteCollection,
+    handleImportJson,
+    handleExportAll,
+  } = useLibraryCollections({ activeProfile, onProfileUpdated, homeCategories });
 
   const [viewPlan, setViewPlan] = useState<{
     completed: LibraryItem[];
@@ -206,17 +146,16 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const dropped = viewPlan.dropped;
   const smartLists = viewPlan.smartLists;
   const items = viewPlan.tabItems;
-
-  useEffect(() => {
-    setSelectedIds((current) => {
-      if (current.size === 0) return current;
-      const visibleIds = new Set(items.map((item) => item.id));
-      const next = new Set([...current].filter((id) => visibleIds.has(id)));
-      return next.size === current.size ? current : next;
-    });
-  }, [items]);
-
   const sorted = viewPlan.items;
+
+  const {
+    bulkMode, setBulkMode,
+    selectedIds, setSelectedIds,
+    confirmBulkRemove, setConfirmBulkRemove,
+    canRemoveFromCurrentList,
+    toggleSelected, clearSelection,
+    markSelectedWatched, moveSelectedToStatus, removeSelectedFromCurrentList,
+  } = useLibraryBulkSelection({ items, tab, completed, dropped, onDispatch });
 
   const subtitle = tab === 'watchlist' ? t('auto.movies_and_shows_you_saved_to_watch_later')
     : tab === 'watching' ? t('library.subtitle_watching')
@@ -229,59 +168,6 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const libraryTitle = librarySource === 'local'
     ? t('auto.my_library_a6c93797')
     : t(`library.source_${librarySource}`);
-
-  const selectedItems = useMemo(
-    () => items.filter((item) => selectedIds.has(item.id)),
-    [items, selectedIds],
-  );
-  const canRemoveFromCurrentList = tab === 'watchlist' || tab === 'completed' || tab === 'dropped';
-  const toggleSelected = (id: string) => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-  const clearSelection = () => setSelectedIds(new Set());
-  const runForSelected = async (buildAction: (item: LibraryItem) => Record<string, unknown> | null) => {
-    const batch = [...selectedItems];
-    clearSelection();
-    for (const item of batch) {
-      const action = buildAction(item);
-      if (action) await Promise.resolve(onDispatch(JSON.stringify(action)));
-    }
-  };
-  const markSelectedWatched = (watched: boolean) => {
-    void runForSelected((item) => ({
-      type: 'markWatchedRequested',
-      seriesId: item.id,
-      videoIds: [item.lastVideoId ?? item.id],
-      watched,
-      meta: item,
-      episodes: item.lastVideoId ? [{
-        id: item.lastVideoId,
-        name: item.lastEpisodeName,
-        season: item.lastEpisodeSeason,
-        number: item.lastEpisodeNumber,
-        thumbnail: item.lastEpisodeThumbnail,
-      }] : [],
-    }));
-  };
-  const moveSelectedToStatus = (list: 'completed' | 'dropped') => {
-    const existingIds = new Set((list === 'completed' ? completed : dropped).map((item) => item.id));
-    void runForSelected((item) => existingIds.has(item.id) ? null : ({
-      type: 'toggleLibraryStatusRequested',
-      list,
-      item,
-    }));
-  };
-  const removeSelectedFromCurrentList = () => {
-    if (!canRemoveFromCurrentList) return;
-    void runForSelected((item) => tab === 'watchlist'
-      ? { type: 'toggleWatchlistRequested', item }
-      : { type: 'toggleLibraryStatusRequested', list: tab, item });
-  };
 
   if (viewAllFolder) {
     return (
@@ -507,231 +393,3 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   prev.onBack === next.onBack &&
   prev.onProfileUpdated === next.onProfileUpdated,
 );
-
-function itemActivityTime(item: LibraryItem): number {
-  const raw = (item as LibraryItem & { savedAt?: string; updatedAt?: string; lastWatchedAt?: string }).savedAt
-    ?? (item as LibraryItem & { savedAt?: string; updatedAt?: string; lastWatchedAt?: string }).lastWatchedAt
-    ?? item.statusChangedAt
-    ?? item.newEpisodeReleasedAt
-    ?? item.lastAirDateCheckedAt
-    ?? (item as LibraryItem & { updatedAt?: string }).updatedAt;
-  const parsed = raw ? Date.parse(raw) : 0;
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function HistoryTimeline({ items, onNavigateDetail }: { items: LibraryItem[]; onNavigateDetail: (meta: Meta) => void }) {
-  return (
-    <div style={styles.historyScroll}>
-      {items.map((item) => {
-        const at = itemActivityTime(item);
-        const progress = (item.timeOffset ?? 0) > 0 && (item.duration ?? 0) > 0
-          ? Math.min(100, Math.round(((item.timeOffset ?? 0) / (item.duration ?? 1)) * 100))
-          : null;
-        const label = item.statusChangedAt
-          ? t('library.history_status_changed')
-          : item.lastVideoId
-            ? t('library.history_watched_episode', item.lastEpisodeSeason ?? 1, item.lastEpisodeNumber ?? '')
-            : t('library.history_updated');
-        return (
-          <button key={`${item.id}:${at}`} style={styles.historyRow} onClick={() => onNavigateDetail(item as unknown as Meta)}>
-            <div style={styles.historyDate}>
-              <span style={styles.historyDay}>{at ? new Date(at).toLocaleDateString(undefined, { day: '2-digit' }) : '--'}</span>
-              <span style={styles.historyMonth}>{at ? new Date(at).toLocaleDateString(undefined, { month: 'short' }) : ''}</span>
-            </div>
-            {item.poster && <img src={item.poster} alt="" style={styles.historyPoster} />}
-            <div style={styles.historyInfo}>
-              <p style={styles.historyTitle}>{item.name}</p>
-              <p style={styles.historyMeta}>{label}</p>
-              {progress != null && progress > 0 && progress < 100 && (
-                <div style={styles.historyProgressTrack}>
-                  <div style={{ ...styles.historyProgressFill, width: `${progress}%` }} />
-                </div>
-              )}
-            </div>
-            <span style={styles.historyTime}>{at ? new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function CircleBtn({ onClick, size, children }: { onClick: () => void; size: number; children: React.ReactNode }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      style={{
-        width: size, height: size, minWidth: size, borderRadius: '50%',
-        background: hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)',
-        border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', flexShrink: 0, transition: 'background 0.15s',
-      }}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {children}
-    </button>
-  );
-}
-
-function TabChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      style={{
-        background: active ? '#FFFFFF' : hovered ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
-        color: active ? '#000000' : '#FFFFFF',
-        border: 'none', borderRadius: '1.25rem', padding: '0.5rem 1.25rem',
-        fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
-        transition: 'background 0.15s, color 0.15s',
-      }}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {children}
-    </button>
-  );
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  screen: { background: '#040508', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingLeft: `${NAV_RAIL_WIDTH}rem` },
-  header: { display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2.5rem 3.625rem', flexShrink: 0 },
-  controls: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.625rem' },
-  bulkToggle: {
-    height: '2.25rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.4375rem',
-    padding: '0 0.75rem',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '0.5rem',
-    fontSize: '0.8125rem',
-    fontWeight: 800,
-    cursor: 'pointer',
-  },
-  searchWrap: {
-    display: 'flex', alignItems: 'center', gap: '0.4375rem', height: '2.25rem', padding: '0 0.75rem', width: '13.75rem',
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem',
-  },
-  searchInput: {
-    flex: 1, minWidth: 0, background: 'none', border: 'none', outline: 'none',
-    color: '#fff', fontSize: '0.8125rem', fontWeight: 600,
-  },
-  collectionsScroll: { flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: '5rem' },
-  title: { color: '#FFFFFF', fontSize: '2rem', fontWeight: 900, margin: '0 0 0.25rem', letterSpacing: '0.125rem' },
-  subtitle: { color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem', margin: 0, lineHeight: 1.4 },
-  tabRow: { display: 'flex', alignItems: 'center', gap: '0.625rem', paddingLeft: PX, paddingRight: PX, flexShrink: 0, flexWrap: 'wrap' },
-  bulkBar: {
-    margin: '0.875rem 3.625rem 0',
-    minHeight: '2.75rem',
-    padding: '0.4375rem 0.5rem',
-    borderRadius: '0.625rem',
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(255,255,255,0.06)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    flexShrink: 0,
-  },
-  bulkCount: { color: 'rgba(255,255,255,0.62)', fontSize: '0.8125rem', fontWeight: 800 },
-  bulkBtn: {
-    height: '1.875rem',
-    padding: '0 0.625rem',
-    borderRadius: '0.4375rem',
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(255,255,255,0.08)',
-    color: '#FFFFFF',
-    fontSize: '0.75rem',
-    fontWeight: 800,
-    cursor: 'pointer',
-  },
-  bulkDangerBtn: {
-    height: '1.875rem',
-    padding: '0 0.625rem',
-    borderRadius: '0.4375rem',
-    border: '1px solid rgba(255,80,80,0.22)',
-    background: 'rgba(255,80,80,0.14)',
-    color: '#FFFFFF',
-    fontSize: '0.75rem',
-    fontWeight: 800,
-    cursor: 'pointer',
-  },
-  bulkGhostBtn: {
-    height: '1.875rem',
-    padding: '0 0.625rem',
-    borderRadius: '0.4375rem',
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'transparent',
-    color: 'rgba(255,255,255,0.78)',
-    fontSize: '0.75rem',
-    fontWeight: 800,
-    cursor: 'pointer',
-  },
-  bulkIconBtn: {
-    width: '1.875rem',
-    height: '1.875rem',
-    borderRadius: '0.4375rem',
-    border: 'none',
-    background: 'transparent',
-    color: 'rgba(255,255,255,0.7)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-  },
-  errorBanner: {
-    margin: '0.875rem 3.625rem 0',
-    padding: '0.75rem 0.875rem',
-    borderRadius: '0.625rem',
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(255,255,255,0.055)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '1rem',
-    flexShrink: 0,
-  },
-  errorTitle: { color: '#FFFFFF', fontSize: '0.8125rem', fontWeight: 850, margin: '0 0 0.1875rem' },
-  errorText: { color: 'rgba(255,255,255,0.52)', fontSize: '0.75rem', fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  errorBtn: {
-    height: '2rem',
-    padding: '0 0.75rem',
-    borderRadius: '62.4375rem',
-    border: '1px solid rgba(255,255,255,0.14)',
-    background: '#FFFFFF',
-    color: '#000000',
-    fontSize: '0.75rem',
-    fontWeight: 850,
-    cursor: 'pointer',
-    flexShrink: 0,
-  },
-  empty: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: '5rem', gap: '0.625rem' },
-  emptyTitle: { color: '#FFFFFF', fontSize: '1.25rem', fontWeight: 700, margin: 0 },
-  emptyHint: { color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem', margin: 0, textAlign: 'center', maxWidth: '20rem', lineHeight: 1.5 },
-  historyScroll: { flex: 1, overflowY: 'auto', padding: '0.625rem 3.625rem 5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' },
-  historyRow: {
-    width: '100%',
-    minHeight: '4.75rem',
-    border: '1px solid rgba(255,255,255,0.08)',
-    background: 'rgba(255,255,255,0.035)',
-    borderRadius: '0.625rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    padding: '0.625rem 0.75rem',
-    cursor: 'pointer',
-    textAlign: 'left',
-  },
-  historyDate: { width: '2.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 },
-  historyDay: { color: '#FFFFFF', fontSize: '1.125rem', fontWeight: 900, lineHeight: '1.25rem' },
-  historyMonth: { color: 'rgba(255,255,255,0.42)', fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase' },
-  historyPoster: { width: '2.375rem', height: '3.5rem', objectFit: 'cover', borderRadius: '0.375rem', flexShrink: 0 },
-  historyInfo: { flex: 1, minWidth: 0 },
-  historyTitle: { color: '#FFFFFF', fontSize: '0.9375rem', fontWeight: 850, margin: '0 0 0.3125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  historyMeta: { color: 'rgba(255,255,255,0.48)', fontSize: '0.75rem', fontWeight: 650, margin: 0 },
-  historyTime: { color: 'rgba(255,255,255,0.38)', fontSize: '0.75rem', fontWeight: 750, flexShrink: 0 },
-  historyProgressTrack: { width: '10rem', maxWidth: '100%', height: '0.25rem', borderRadius: '62.4375rem', background: 'rgba(255,255,255,0.1)', marginTop: '0.5625rem', overflow: 'hidden' },
-  historyProgressFill: { height: '100%', borderRadius: '62.4375rem', background: 'var(--primary-accent-color)' },
-};
