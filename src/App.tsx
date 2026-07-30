@@ -7,59 +7,38 @@ import { ReactPlayerOverlay } from './components/ReactPlayerOverlay';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { setBrowsingDiscordPresence } from './core/discordPresence';
-import { appStyles, accentForegroundColor, computeAutoUiScale, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
+import { appStyles, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
 import { useNativePlayerEvents } from './hooks/useNativePlayerEvents';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
-import * as Sentry from '@sentry/react';
+import { useDetailNavigation } from './hooks/useDetailNavigation';
+import { useAppLayoutPrefs } from './hooks/useAppLayoutPrefs';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UpdateModal, startUpdateCheck } from './components/UpdateModal';
-import { HomeScreen as HomeScreenBase } from './screens/HomeScreen';
-import { SearchScreen as SearchScreenBase } from './screens/SearchScreen';
-import { DetailScreen as DetailScreenBase } from './screens/DetailScreen';
-import { LibraryScreen as LibraryScreenBase } from './screens/LibraryScreen';
-import { SettingsScreen as SettingsScreenBase } from './screens/SettingsScreen';
-const HomeScreen = Sentry.withProfiler(HomeScreenBase, { name: 'HomeScreen' });
-const SearchScreen = Sentry.withProfiler(SearchScreenBase, { name: 'SearchScreen' });
-const DetailScreen = Sentry.withProfiler(DetailScreenBase, { name: 'DetailScreen' });
-const LibraryScreen = Sentry.withProfiler(LibraryScreenBase, { name: 'LibraryScreen' });
-const SettingsScreen = Sentry.withProfiler(SettingsScreenBase, { name: 'SettingsScreen' });
-const DiscoverScreen = React.lazy(() => import('./screens/DiscoverScreen').then((m) => ({ default: Sentry.withProfiler(m.DiscoverScreen, { name: 'DiscoverScreen' }) })));
-const CalendarScreen = React.lazy(() => import('./screens/CalendarScreen').then((m) => ({ default: Sentry.withProfiler(m.CalendarScreen, { name: 'CalendarScreen' }) })));
-const ProfileSelectionScreen = React.lazy(() => import('./screens/ProfileSelectionScreen').then((m) => ({ default: m.ProfileSelectionScreen })));
-const WelcomeScreen = React.lazy(() => import('./screens/WelcomeScreen').then((m) => ({ default: m.WelcomeScreen })));
+import { CalendarScreen, DetailScreen, DiscoverScreen, HomeScreen, LibraryScreen, SearchScreen, SettingsScreen } from './appScreens';
+import { AppProfileGate, AppWelcomeGate } from './AppGateScreens';
 import { NuvioStatusBanner } from './components/NuvioStatusBanner';
 import { OfflineBanner } from './components/OfflineBanner';
 import { P2PDialog } from './components/P2PDialog';
 import { useNuvioConnectivity } from './hooks/useNuvioConnectivity';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
-import { setActiveProfileId, createProfileObject, saveProfile, loadProfiles } from './core/profiles';
-import { invalidateLibraryKeyCache, loadPrefs, prefsOwnerId, savePrefs } from './core/libraryOps';
-import { clearEnginePlugins, hydratePluginsFromStorage } from './core/pluginsStorage';
+import { setActiveProfileId, loadProfiles } from './core/profiles';
+import { invalidateLibraryKeyCache, loadPrefs } from './core/libraryOps';
 import { storageWrite, storageRead } from './core/engine';
 import { getLanguage, setLanguage } from './i18n';
 import { dispatchAction } from './core/engine';
-import { prefetchPlayerArtwork } from './core/mpvPlayer';
 import { pumpEffects } from './core/effectRunner';
 import { appPrefs, prefBool, prefString } from './core/appPrefs';
 import { setRpdbApiKey } from './core/rpdb';
-import { playerArtwork } from './core/playerUtils';
-import { readStoredPlaybackSource } from './core/libraryStorage';
 import { mergeAppState } from './core/mergeState';
 import { usePlayer } from './hooks/usePlayer';
 import { useAppInit } from './hooks/useAppInit';
-import type { AppState, LibraryItem, Meta, Stream, Video, UserProfile } from './core/types';
+import type { AppState, Meta, Stream, Video, UserProfile } from './core/types';
 
 export default function App() {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [activeRoute, setActiveRoute] = useState<NavRoute>('home');
   const [homeScrolled, setHomeScrolled] = useState(false);
-  const [detailMeta, setDetailMeta] = useState<Meta | null>(null);
-  const [detailInitialEpisode, setDetailInitialEpisode] = useState<Video | null>(null);
-  const [detailAutoShowStreams, setDetailAutoShowStreams] = useState(false);
-  const [detailResumeAt, setDetailResumeAt] = useState<number | undefined>(undefined);
-  const [detailPlaybackError, setDetailPlaybackError] = useState<string | null>(null);
-  const [discoverInitialGenre, setDiscoverInitialGenre] = useState<string | null>(null);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [pendingAddonUrl, setPendingAddonUrl] = useState<string | null>(null);
   const [p2pDialog, setP2PDialog] = useState<{ mode: 'first-time' | 'disabled'; pendingPlay: () => void } | null>(null);
@@ -68,14 +47,19 @@ export default function App() {
   const lastNonSettingsRouteRef = useRef<NavRoute>('home');
   const lastNonSearchRouteRef = useRef<NavRoute>('home');
   const episodePlaybackFailureRef = useRef<(meta: Meta, episode: Video, message: string) => Promise<void>>(async () => {});
-  const artworkPrefetchRef = useRef<Promise<unknown> | null>(null);
   const handleEpisodePlaybackFailed = useCallback((meta: Meta, episode: Video, message: string) => episodePlaybackFailureRef.current(meta, episode, message), []);
+
+  const detailNav = useDetailNavigation();
+  const {
+    detailMeta, setDetailMeta, detailInitialEpisode, setDetailInitialEpisode,
+    detailAutoShowStreams, setDetailAutoShowStreams, detailResumeAt, setDetailResumeAt,
+    detailPlaybackError, setDetailPlaybackError, discoverInitialGenre, setDiscoverInitialGenre,
+    guardedPlayRef, handleNavigateDetail, handleResumeFromContinueWatching,
+    handleStartOverContinueWatching, handlePlayManually, resetDetail,
+  } = detailNav;
 
   const overlayPrefs = useCallback((merged: AppState): AppState => {
     const prefs = storedPrefsRef.current;
-    // Only every screen's memo comparator checks state.settings by reference — skip
-    // rebuilding it when prefs haven't actually changed, or every dispatch/effect
-    // completion forces every screen to re-render regardless of relevance.
     if (Object.keys(prefs).length === 0 || merged.settings.values === prefs) return merged;
     return { ...merged, settings: { ...merged.settings, values: prefs } };
   }, []);
@@ -121,7 +105,7 @@ export default function App() {
     setDetailResumeAt(undefined);
     setDetailPlaybackError(message);
     setDetailMeta(meta);
-  }, [closePlayer]);
+  }, [closePlayer, setDetailInitialEpisode, setDetailAutoShowStreams, setDetailResumeAt, setDetailPlaybackError, setDetailMeta]);
 
   useEffect(() => {
     episodePlaybackFailureRef.current = openEpisodeSourcePicker;
@@ -160,7 +144,11 @@ export default function App() {
     }
 
     proceed();
-  }, [handlePlay, stateRef]);
+  }, [handlePlay, stateRef, setDetailPlaybackError]);
+
+  useEffect(() => {
+    guardedPlayRef.current = guardedPlay;
+  }, [guardedPlay, guardedPlayRef]);
 
   const [homeResetKey, setHomeResetKey] = useState(0);
 
@@ -180,7 +168,7 @@ export default function App() {
     }
     setActiveRoute(route);
     setDetailMeta(null);
-  }, [activeRoute]);
+  }, [activeRoute, setDetailMeta]);
 
   useEffect(() => {
     const unlisten = listen<{ url?: string }>('deep-link-opened', (e) => {
@@ -199,15 +187,12 @@ export default function App() {
   const goBack = useCallback(() => {
     if (detailMeta) {
       void closePlayer();
-      setDetailMeta(null);
-      setDetailInitialEpisode(null);
-      setDetailAutoShowStreams(false);
-      setDetailResumeAt(undefined);
+      resetDetail();
       return;
     }
     if (activeRoute === 'settings') { navigateRoute(lastNonSettingsRouteRef.current); return; }
     if (activeRoute === 'search') { navigateRoute(lastNonSearchRouteRef.current); }
-  }, [detailMeta, activeRoute, navigateRoute, closePlayer]);
+  }, [detailMeta, activeRoute, navigateRoute, closePlayer, resetDetail]);
 
   const { searchFocusSignal, setSearchFocusSignal } = useGlobalShortcuts({ nativePlayerActive, navigateRoute, goBack });
 
@@ -241,7 +226,7 @@ export default function App() {
     setActiveProfile(null);
     await setActiveProfileId('');
     await applyStoredPrefs();
-  }, [applyStoredPrefs]);
+  }, [applyStoredPrefs, setActiveProfile]);
 
   const activeProfileId = activeProfile?.id;
   const handleNuvioSynced = useCallback(async (changed: boolean) => {
@@ -264,116 +249,20 @@ export default function App() {
   const { serverDown, justRecovered, dismissed, dismiss } = useNuvioConnectivity(activeProfile, handleNuvioSynced);
   const isOnline = useOnlineStatus();
 
-  const handleNavigateDetail = useCallback((meta: Meta) => {
-    setDetailInitialEpisode(null);
-    setDetailAutoShowStreams(false);
-    setDetailMeta(meta);
-    const art = playerArtwork(meta, null);
-    artworkPrefetchRef.current = prefetchPlayerArtwork(art.background, art.logo).catch(() => undefined);
-    if (art.background) { const i = new Image(); i.src = art.background; }
-    if (art.logo) { const i = new Image(); i.src = art.logo; }
-  }, []);
-
   const leaveSearch = useCallback(() => {
     setGlobalSearchQuery('');
     navigateRoute(lastNonSearchRouteRef.current);
   }, [navigateRoute]);
 
-  const handleHomePlay = useCallback((meta: Meta) => { setDetailMeta(meta); }, []);
   const handleLibraryBack = useCallback(() => { setActiveRoute('home'); }, []);
   const handleProfileUpdated = useCallback((updated: UserProfile) => { setActiveProfile(updated); }, [setActiveProfile]);
   const handleSearchQueryChange = useCallback((query: string) => { setGlobalSearchQuery(query); }, []);
-  const handleDiscoverBack = useCallback(() => { setDiscoverInitialGenre(null); setActiveRoute('home'); }, []);
-
-  const handleResumeFromContinueWatching = useCallback((meta: Meta, resumeAtOverride?: number) => {
-    const item = meta as LibraryItem;
-    const matchedVideo = item.lastVideoId ? meta.videos?.find((v) => v.id === item.lastVideoId) : undefined;
-    const episode: Video | null = item.lastVideoId ? {
-      id: item.lastVideoId,
-      name: matchedVideo?.name ?? matchedVideo?.title ?? item.lastEpisodeName,
-      season: matchedVideo?.season ?? item.lastEpisodeSeason,
-      episode: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
-      number: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
-      thumbnail: matchedVideo?.thumbnail ?? item.lastEpisodeThumbnail,
-    } : null;
-    const resumeAt = resumeAtOverride ?? item.timeOffset;
-
-    const art = playerArtwork(meta, episode);
-    artworkPrefetchRef.current = prefetchPlayerArtwork(art.background, art.logo).catch(() => undefined);
-    if (art.background) { const i = new Image(); i.src = art.background; }
-    if (art.logo) { const i = new Image(); i.src = art.logo; }
-
-    void (async () => {
-      const stream = item.lastStream ?? await readStoredPlaybackSource(meta.id);
-      const url = item.lastStreamUrl?.trim();
-      const resumeStream: Stream | null = stream ?? (url
-        ? { url, title: item.lastStreamTitle, name: item.lastStreamTitle }
-        : null);
-
-      if (!resumeStream) {
-        setDetailInitialEpisode(episode);
-        setDetailAutoShowStreams(true);
-        setDetailResumeAt(resumeAt ?? undefined);
-        setDetailMeta(meta);
-        return;
-      }
-      await guardedPlay(resumeStream, meta, episode, resumeAt, item.duration);
-    })();
-  }, [guardedPlay]);
-
-  const handleStartOverContinueWatching = useCallback((meta: Meta) => {
-    handleResumeFromContinueWatching(meta, 0);
-  }, [handleResumeFromContinueWatching]);
-
-  const handlePlayManually = useCallback((meta: Meta) => {
-    const item = meta as LibraryItem;
-    const episode: Video | null = item.lastVideoId ? {
-      id: item.lastVideoId,
-      name: item.lastEpisodeName,
-      season: item.lastEpisodeSeason,
-      episode: item.lastEpisodeNumber,
-      number: item.lastEpisodeNumber,
-      thumbnail: item.lastEpisodeThumbnail,
-    } : null;
-    setDetailInitialEpisode(episode);
-    setDetailAutoShowStreams(true);
-    setDetailResumeAt(item.timeOffset ?? undefined);
-    setDetailMeta(meta);
-  }, []);
+  const handleDiscoverBack = useCallback(() => { setDiscoverInitialGenre(null); setActiveRoute('home'); }, [setDiscoverInitialGenre]);
 
   const prefs = React.useMemo(() => appPrefs(state), [state.settings?.values]);
-  const uiScale = prefString(prefs, 'uiScale', '100');
-  useEffect(() => {
-    const scale = (Number(uiScale) || 100) / 100;
-    document.documentElement.style.fontSize = `${scale * 16}px`;
-  }, [uiScale]);
-  useEffect(() => {
-    void (async () => {
-      const flagKey = `ui_scale_auto_applied_${await prefsOwnerId()}`;
-      const applied = await storageRead<boolean>(flagKey).catch(() => false);
-      if (applied) return;
-      const current = await loadPrefs().catch(() => ({} as Record<string, unknown>));
-      if (typeof current.uiScale !== 'string') {
-        const updated = { ...current, uiScale: String(computeAutoUiScale()) };
-        await savePrefs(updated);
-        storedPrefsRef.current = updated;
-        updateState({ settings: { values: updated } });
-      }
-      await storageWrite(flagKey, true);
-    })();
-  }, [updateState]);
-  const accentColor = prefString(prefs, 'accentColorArgb', '#FFFFFF');
-  const rootStyle = React.useMemo(() => ({
-    ...appStyles.root,
-    background: nativePlayerActive ? 'transparent' : '#040508',
-    ['--primary-accent-color' as string]: accentColor,
-    ['--primary-accent-foreground-color' as string]: accentForegroundColor(accentColor),
-  } as React.CSSProperties), [nativePlayerActive, prefs, accentColor]);
-
-  React.useEffect(() => {
-    document.documentElement.style.setProperty('--primary-accent-color', accentColor);
-    document.documentElement.style.setProperty('--primary-accent-foreground-color', accentForegroundColor(accentColor));
-  }, [accentColor]);
+  const { rootStyle, isTopBar, navBarPosition, navItemsAlign, sidebarAlwaysOpen, sidebarOffset, mirrorSearchToLeft } = useAppLayoutPrefs({
+    state, prefs, nativePlayerActive, updateState, storedPrefsRef,
+  });
 
   React.useEffect(() => {
     if (detailMeta || nativePlayerActive) return;
@@ -390,88 +279,35 @@ export default function App() {
 
   if (!welcomeCompleted) {
     return (
-      <React.Suspense fallback={null}>
-      <WelcomeScreen
-        onProfileCreated={async (profile) => {
-          await storageWrite('welcome_done', true);
-          const profiles = await loadProfiles();
-          invalidateLibraryKeyCache();
-          setAllProfiles(profiles);
-          setActiveProfile(profile);
-          void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-          setWelcomeCompleted(true);
-        }}
-        onContinueLocal={async () => {
-          await storageWrite('welcome_done', true);
-          const profile = await createProfileObject('Local', '#FFFFFF');
-          const profiles = await saveProfile(profile);
-          await setActiveProfileId(profile.id);
-          invalidateLibraryKeyCache();
-          setAllProfiles(profiles);
-          setWelcomeCompleted(true);
-          setActiveProfile(profile);
-          void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-        }}
-        onNuvioLogin={async (profile) => {
-          await storageWrite('welcome_done', true);
-          const profiles = await loadProfiles();
-          setAllProfiles(profiles);
-          setActiveProfile(profile);
-          await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
-          await applyStoredPrefs();
-          await dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-          void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
-          setWelcomeCompleted(true);
-        }}
+      <AppWelcomeGate
+        dispatch={dispatch}
+        applyStoredPrefs={applyStoredPrefs}
+        setAllProfiles={setAllProfiles}
+        setActiveProfile={setActiveProfile}
+        setWelcomeCompleted={setWelcomeCompleted}
       />
-      </React.Suspense>
     );
   }
 
   if (!activeProfile || editProfileOpen) {
     return (
-      <React.Suspense fallback={null}>
-      <ProfileSelectionScreen
-        onProfileSelected={async (profile) => {
-          const outgoingRepositories = state.plugins?.repositories ?? [];
-          invalidateLibraryKeyCache();
-          stateRef.current = DEFAULT_STATE;
-          setState(DEFAULT_STATE);
-          setActiveProfile(profile);
-          setEditProfileOpen(false);
-          setHomeResetKey((k) => k + 1);
-          await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
-          await applyStoredPrefs();
-          void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-          void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
-          await clearEnginePlugins(outgoingRepositories, updateState);
-          void hydratePluginsFromStorage(updateState);
-        }}
-        onProfilesChanged={setAllProfiles}
+      <AppProfileGate
+        state={state}
+        stateRef={stateRef}
+        setState={setState}
+        dispatch={dispatch}
+        applyStoredPrefs={applyStoredPrefs}
+        updateState={updateState}
+        setAllProfiles={setAllProfiles}
+        setActiveProfile={setActiveProfile}
+        setEditProfileOpen={setEditProfileOpen}
+        setHomeResetKey={setHomeResetKey}
       />
-      </React.Suspense>
     );
   }
 
   const showDetail = detailMeta !== null;
   const bannerOffset = (serverDown && !dismissed) || justRecovered ? 36 : 0;
-  const storedPrefs = (state.settings?.values ?? {}) as Record<string, unknown>;
-  const navLayout = prefString(prefs, 'navLayout', 'sidebar');
-  const rawNavBarPosition = typeof storedPrefs.navBarPosition === 'string'
-    ? prefString(storedPrefs, 'navBarPosition', navLayout === 'topbar' ? 'top' : 'left')
-    : (navLayout === 'topbar' ? 'top' : 'left');
-  const isTopBar = navLayout === 'topbar';
-  const navBarPosition = isTopBar && (rawNavBarPosition === 'left' || rawNavBarPosition === 'right')
-    ? 'top'
-    : rawNavBarPosition;
-  const navItemsAlign = prefString(prefs, 'navItemsAlign', 'center');
-  const navSidebarMode = prefString(prefs, 'navSidebarMode', 'hover');
-  const sidebarAlwaysOpen = !isTopBar && navSidebarMode === 'always';
-  const sidebarOffset = sidebarAlwaysOpen ? 112 : 0;
-  const mirrorSearchToLeft = isTopBar && (
-    navBarPosition === 'right' ||
-    (navBarPosition === 'top' && navItemsAlign === 'end')
-  );
 
   return (
     <div
@@ -562,7 +398,7 @@ export default function App() {
             onPlay={(stream, meta, episode, resumeAt, sourceCandidates) => void guardedPlay(stream, meta, episode, resumeAt !== undefined ? resumeAt : (detailAutoShowStreams ? detailResumeAt : undefined), undefined, sourceCandidates)}
             onNavigateDetail={handleNavigateDetail}
             onNavigateGenre={(genre) => { setDiscoverInitialGenre(genre); setDetailMeta(null); navigateRoute('discover'); }}
-            onBack={() => { void closePlayer(); setDetailMeta(null); setDetailInitialEpisode(null); setDetailAutoShowStreams(false); setDetailResumeAt(undefined); }}
+            onBack={() => { void closePlayer(); resetDetail(); }}
             initialEpisode={detailInitialEpisode}
             autoShowStreams={detailAutoShowStreams}
             playbackFailure={detailPlaybackError}
@@ -573,7 +409,7 @@ export default function App() {
             state={state}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
-            onPlay={handleHomePlay}
+            onPlay={setDetailMeta}
             onResume={handleResumeFromContinueWatching}
             onStartOver={handleStartOverContinueWatching}
             onPlayManually={handlePlayManually}

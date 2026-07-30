@@ -1,0 +1,107 @@
+import React from 'react';
+import { WelcomeScreen, ProfileSelectionScreen } from './appScreens';
+import { setActiveProfileId, createProfileObject, saveProfile, loadProfiles } from './core/profiles';
+import { invalidateLibraryKeyCache } from './core/libraryOps';
+import { clearEnginePlugins, hydratePluginsFromStorage } from './core/pluginsStorage';
+import { storageWrite } from './core/engine';
+import { DEFAULT_STATE } from './appConstants';
+import type { AppState, UserProfile } from './core/types';
+
+export function AppWelcomeGate({
+  dispatch,
+  applyStoredPrefs,
+  setAllProfiles,
+  setActiveProfile,
+  setWelcomeCompleted,
+}: {
+  dispatch: (actionJson: string) => Promise<void> | void;
+  applyStoredPrefs: () => Promise<void>;
+  setAllProfiles: (profiles: UserProfile[]) => void;
+  setActiveProfile: (profile: UserProfile) => void;
+  setWelcomeCompleted: (done: boolean) => void;
+}) {
+  return (
+    <React.Suspense fallback={null}>
+      <WelcomeScreen
+        onProfileCreated={async (profile) => {
+          await storageWrite('welcome_done', true);
+          const profiles = await loadProfiles();
+          invalidateLibraryKeyCache();
+          setAllProfiles(profiles);
+          setActiveProfile(profile);
+          void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+          setWelcomeCompleted(true);
+        }}
+        onContinueLocal={async () => {
+          await storageWrite('welcome_done', true);
+          const profile = await createProfileObject('Local', '#FFFFFF');
+          const profiles = await saveProfile(profile);
+          await setActiveProfileId(profile.id);
+          invalidateLibraryKeyCache();
+          setAllProfiles(profiles);
+          setWelcomeCompleted(true);
+          setActiveProfile(profile);
+          void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+        }}
+        onNuvioLogin={async (profile) => {
+          await storageWrite('welcome_done', true);
+          const profiles = await loadProfiles();
+          setAllProfiles(profiles);
+          setActiveProfile(profile);
+          await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
+          await applyStoredPrefs();
+          await dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+          void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
+          setWelcomeCompleted(true);
+        }}
+      />
+    </React.Suspense>
+  );
+}
+
+export function AppProfileGate({
+  state,
+  stateRef,
+  setState,
+  dispatch,
+  applyStoredPrefs,
+  updateState,
+  setAllProfiles,
+  setActiveProfile,
+  setEditProfileOpen,
+  setHomeResetKey,
+}: {
+  state: AppState;
+  stateRef: React.MutableRefObject<AppState>;
+  setState: (state: AppState) => void;
+  dispatch: (actionJson: string) => Promise<void> | void;
+  applyStoredPrefs: () => Promise<void>;
+  updateState: (s: Partial<AppState>) => void;
+  setAllProfiles: (profiles: UserProfile[]) => void;
+  setActiveProfile: (profile: UserProfile) => void;
+  setEditProfileOpen: (open: boolean) => void;
+  setHomeResetKey: (updater: (k: number) => number) => void;
+}) {
+  return (
+    <React.Suspense fallback={null}>
+      <ProfileSelectionScreen
+        onProfileSelected={async (profile) => {
+          const outgoingRepositories = state.plugins?.repositories ?? [];
+          invalidateLibraryKeyCache();
+          stateRef.current = DEFAULT_STATE;
+          setState(DEFAULT_STATE);
+          setActiveProfile(profile);
+          setEditProfileOpen(false);
+          setHomeResetKey((k) => k + 1);
+          await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
+          await applyStoredPrefs();
+          void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+          void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
+          await clearEnginePlugins(outgoingRepositories, updateState);
+          void hydratePluginsFromStorage(updateState);
+        }}
+        onProfilesChanged={setAllProfiles}
+      />
+    </React.Suspense>
+  );
+}
