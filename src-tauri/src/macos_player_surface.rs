@@ -15,7 +15,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 
 #[link(name = "QuartzCore", kind = "framework")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum RenderBackend {
@@ -36,7 +36,7 @@ fn read_render_backend(app: &AppHandle) -> RenderBackend {
 type Id = *mut c_void;
 
 // All ObjC calls go through these two entry points.
-extern "C" {
+unsafe extern "C" {
     fn objc_getClass(name: *const i8) -> Id;
     fn objc_msgSend(receiver: Id, sel: Id, ...) -> Id;
     fn sel_registerName(name: *const i8) -> Id;
@@ -158,13 +158,13 @@ unsafe impl Sync for SendId {}
 // ColorSync / CoreGraphics: ICC profile of the main display
 
 #[link(name = "CoreGraphics", kind = "framework")]
-extern "C" {
+unsafe extern "C" {
     fn CGMainDisplayID() -> u32;
     fn CGDisplayCopyColorSpace(display: u32) -> Id;
 }
 
 #[link(name = "CoreFoundation", kind = "framework")]
-extern "C" {
+unsafe extern "C" {
     fn CGColorSpaceCopyICCData(space: Id) -> Id; // CFDataRef
     fn CFDataGetLength(data: Id) -> isize;
     fn CFDataGetBytePtr(data: Id) -> *const u8;
@@ -538,7 +538,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                                 visible = false;
                                 let view = rv as usize;
                                 run_on_main(move || unsafe {
-                                    msg1_bool(view as Id, "setHidden:", 1)
+                                    msg1_bool(view as Id, "setHidden:", 1);
                                 });
                             }
                             continue;
