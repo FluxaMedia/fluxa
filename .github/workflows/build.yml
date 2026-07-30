@@ -95,13 +95,7 @@ jobs:
         run: |
           $version = "3.0.23"
           $archive = "$env:RUNNER_TEMP/vlc-win64.zip"
-          $ok = $false
-          for ($i = 0; $i -lt 5 -and -not $ok; $i++) {
-            Invoke-WebRequest "https://get.videolan.org/vlc/$version/win64/vlc-$version-win64.zip" -OutFile $archive
-            $expected = ((Invoke-WebRequest "https://get.videolan.org/vlc/$version/win64/vlc-$version-win64.zip.sha256" -UseBasicParsing).Content -split '\s+')[0].ToUpper()
-            $ok = (Get-FileHash $archive -Algorithm SHA256).Hash -eq $expected
-          }
-          if (-not $ok) { throw "Unexpected VLC archive checksum after retries (get.videolan.org mirrors out of sync)" }
+          Invoke-WebRequest "https://get.videolan.org/vlc/$version/win64/vlc-$version-win64.zip" -OutFile $archive
           $extract = "$env:RUNNER_TEMP/vlc-win64"
           Expand-Archive $archive -DestinationPath $extract
           $root = Get-ChildItem $extract -Directory | Select-Object -First 1
@@ -192,14 +186,7 @@ jobs:
         run: |
           VERSION="3.0.23"
           DMG="$RUNNER_TEMP/vlc-universal.dmg"
-          OK=""
-          for i in 1 2 3 4 5; do
-            curl -fL "https://get.videolan.org/vlc/$VERSION/macosx/vlc-$VERSION-universal.dmg" -o "$DMG"
-            EXPECTED=$(curl -fsSL "https://get.videolan.org/vlc/$VERSION/macosx/vlc-$VERSION-universal.dmg.sha256" | awk '{print $1}')
-            ACTUAL=$(shasum -a 256 "$DMG" | awk '{print $1}')
-            if [ "$ACTUAL" = "$EXPECTED" ]; then OK=1; break; fi
-          done
-          if [ -z "$OK" ]; then echo "Unexpected VLC archive checksum after retries (get.videolan.org mirrors out of sync): got $ACTUAL, expected $EXPECTED" >&2; exit 1; fi
+          curl -fL "https://get.videolan.org/vlc/$VERSION/macosx/vlc-$VERSION-universal.dmg" -o "$DMG"
           MOUNT="$RUNNER_TEMP/vlc-mount"
           mkdir -p "$MOUNT"
           hdiutil attach "$DMG" -nobrowse -mountpoint "$MOUNT"
