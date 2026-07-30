@@ -132,9 +132,9 @@ impl MpvRenderer {
         renderer.set_option("hr-seek", "yes")?;
         renderer.set_option("pause", "yes")?;
         renderer.set_option("cache", "yes")?;
-        renderer.set_option("cache-secs", "10")?;
-        renderer.set_option("demuxer-max-bytes", "50MiB")?;
-        renderer.set_option("demuxer-readahead-secs", "2")?;
+        renderer.set_option("cache-secs", "2")?;
+        renderer.set_option("demuxer-max-bytes", "8MiB")?;
+        renderer.set_option("demuxer-readahead-secs", "1")?;
 
         let init_result = unsafe { (renderer.api.mpv_initialize)(renderer.handle) };
         if init_result < 0 {

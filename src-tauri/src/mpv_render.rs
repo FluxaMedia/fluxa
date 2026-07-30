@@ -261,6 +261,7 @@ pub struct PlayerStatus {
     pub vo_delayed_frame_count: Option<String>,
     pub paused_for_cache: Option<String>,
     pub cache_buffering_state: Option<String>,
+    pub seeking: Option<String>,
     pub file_format: Option<String>,
     pub frames_rendered: u64,
     pub first_frame_presented: bool,

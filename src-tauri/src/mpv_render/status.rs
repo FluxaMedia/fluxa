@@ -215,6 +215,7 @@ impl MpvRenderer {
             vo_delayed_frame_count: self.get_string_property("vo-delayed-frame-count"),
             paused_for_cache: self.get_string_property("paused-for-cache"),
             cache_buffering_state: self.get_string_property("cache-buffering-state"),
+            seeking: self.get_string_property("seeking"),
             file_format: self.get_string_property("file-format"),
             frames_rendered: self.frames_rendered,
             first_frame_presented: self.first_frame_presented,

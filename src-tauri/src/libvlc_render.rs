@@ -842,6 +842,7 @@ impl PlaybackEngine for LibvlcPlayer {
             vo_delayed_frame_count: None,
             paused_for_cache: None,
             cache_buffering_state: None,
+            seeking: None,
             file_format: None,
             frames_rendered: if first_frame_presented { 2 } else { 0 },
             first_frame_presented,
