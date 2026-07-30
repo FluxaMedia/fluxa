@@ -133,14 +133,14 @@ impl MpvRenderer {
                     if let Some(secs) = self.pending_seek_seconds.take() {
                         self.waiting_for_seek_restart = true;
                         self.frame_ready_to_restore_audio = false;
-                        let _ = self.command_string(&format!("seek {secs:.3} absolute+exact"));
+                        let _ = self.command_args(&["seek", &format!("{secs:.3}"), "absolute+exact"]);
                     } else if self.waiting_for_seek_restart {
                         self.waiting_for_seek_restart = false;
                         self.frame_ready_to_restore_audio = false;
                     }
                     if self.pending_unpause && !self.waiting_for_seek_restart {
                         self.pending_unpause = false;
-                        let _ = self.command_string("set pause no");
+                        let _ = self.command_args(&["set", "pause", "no"]);
                     }
                 }
                 _ => {}

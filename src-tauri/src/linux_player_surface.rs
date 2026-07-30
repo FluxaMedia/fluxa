@@ -647,7 +647,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                             let _ = command_app.emit("native-player-hide", ());
                             if let Ok(guard) = command_app.state::<DesktopState>().player_renderer.try_lock() {
                                 if let Some(r) = guard.as_ref() {
-                                    let _ = r.command_string("stop");
+                                    let _ = r.command_args(&["stop"]);
                                 }
                             }
                         }
@@ -848,7 +848,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                                 if let Some(r) = guard.as_ref() {
                                     screenshot_seq += 1;
                                     let path = format!("/tmp/fluxa_mpv_screenshot_{screenshot_seq}.png");
-                                    let _ = r.command_string(&format!("screenshot-to-file \"{path}\""));
+                                    let _ = r.command_args(&["screenshot-to-file", &path]);
                                     log::debug!("linux_player_surface: mpv screenshot-to-file requested at {path}");
                                 }
                             }

@@ -567,7 +567,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
 
                         let guard = state.player_renderer.lock().unwrap();
                         if let Some(r) = guard.as_ref() {
-                            let _ = r.command_string("stop");
+                            let _ = r.command_args(&["stop"]);
                         }
                     }
                     SurfaceCommand::ShowLoading {

@@ -284,7 +284,7 @@ impl MpvRenderer {
             } else {
                 "no"
             };
-            let _ = self.command_string(&format!("set mute {mute}"));
+            let _ = self.command_args(&["set", "mute", mute]);
         }
     }
 
@@ -305,7 +305,7 @@ impl MpvRenderer {
                 } else {
                     "no"
                 };
-                let _ = self.command_string(&format!("set mute {mute}"));
+                let _ = self.command_args(&["set", "mute", mute]);
             }
         }
     }
