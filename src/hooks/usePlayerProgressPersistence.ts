@@ -3,6 +3,7 @@ import { coreInvoke, dispatchAction } from '../core/engine';
 import { pumpEffects } from '../core/effectRunner';
 import { appPrefs } from '../core/appPrefs';
 import { embeddedMpvStatus, type EmbeddedMpvStatus } from '../core/mpvPlayer';
+import { persistLastPlaybackSource } from '../core/libraryStorage';
 import type { AppState, Meta, Stream, Video } from '../core/types';
 
 type Options = {
@@ -21,6 +22,7 @@ export function usePlayerProgressPersistence(options: Options) {
   const { playerUrl, stateRef, closingPlayerRef, inNativePlayerRef, playingMetaRef, playingEpisodeRef, playingStreamRef, lastPlaybackStatusRef, updateState } = options;
   const saveProgressTick = useCallback(async () => {
     if (closingPlayerRef.current || !inNativePlayerRef.current || !playingMetaRef.current) return;
+    await persistLastPlaybackSource(playingMetaRef.current, playingStreamRef.current).catch(() => undefined);
     const status = await embeddedMpvStatus().catch(() => null);
     if (!status) return;
     lastPlaybackStatusRef.current = status;
