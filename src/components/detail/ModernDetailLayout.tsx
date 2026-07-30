@@ -1,21 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Bookmark, BookmarkCheck, CheckCircle2, Circle, Film, Maximize2, MessageCircle, Volume2, VolumeX, XCircle } from 'lucide-react';
-import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { getLanguage, t } from '../../i18n';
 import type { DetailState, LibraryItem, Meta, MetaLink, Stream, Trailer, Video } from '../../core/types';
 import type { posterPrefsFromState } from '../../core/posterPrefs';
-import { MS, spinnerStyle } from './detailStyles';
+import { MS } from './detailStyles';
 import { type NormalizedCastMember } from './castSection';
 import { youtubeVideoId, type TrailerMetadata } from './TrailerCarousel';
 import { InlineSourceList, MovieSourcePanel } from './SourcePanel';
-import { SeasonDropdown, seasonLabel, type ProgressEntry } from './EpisodePanel';
-import { ModernIconBtn, ModernPlayButton, ModernTabBar } from './DetailButtons';
-import { ModernEpisodeCard } from './ModernEpisodeCard';
+import { type ProgressEntry } from './EpisodePanel';
+import { ModernTabBar } from './DetailButtons';
 import { useSeasonWatched } from '../../hooks/useSeasonWatched';
-import { RatingsRow } from './RatingBadge';
-import { GenreTag, SimilarSourcePicker } from './ModernDetailParts';
-import { DetailsTabContent, RelatedTabContent } from './ModernDetailTabs';
+import { DetailsTabContent, EpisodesTabContent, RelatedTabContent } from './ModernDetailTabs';
 import { useModernDetailTrailer } from './useModernDetailTrailer';
+import { ModernDetailHero } from './ModernDetailHero';
+import { ModernDetailActionRow } from './ModernDetailActionRow';
+import { ModernDetailMetaBlock } from './ModernDetailMetaBlock';
+import { ModernDetailSeasonSection } from './ModernDetailSeasonSection';
 
 export type ModernDetailProps = {
   displayMeta: Meta;
@@ -147,11 +146,7 @@ export function ModernDetailLayout({
     return ids;
   }, [displayTrailers]);
 
-  const {
-    trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerProgress, trailerMuted, activeTrailerSubtitle,
-    handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
-  } = useModernDetailTrailer({
+  const trailer = useModernDetailTrailer({
     displayMetaId: displayMeta.id,
     trailerVideoIds,
     detailHeroAutoplayTrailer,
@@ -218,183 +213,63 @@ export function ModernDetailLayout({
 
   return (
     <div style={MS.screen} ref={screenRef}>
-      {bgUrl ? (
-        <div style={MS.pageBgWrap}>
-          {bgLayers.map((layer, index) => (
-            <img
-              key={layer.key}
-              src={layer.url}
-              alt=""
-              style={{
-                ...MS.pageBgImg,
-                position: 'absolute',
-                inset: 0,
-                opacity: index === 0 || bgLoadedKeys.has(layer.key) ? 1 : 0,
-              }}
-              onLoad={() => handleBgLayerLoad(layer.key)}
-              onError={onBgError}
-            />
-          ))}
-
-          <div ref={trailerContainerRef} style={MS.heroTrailerContainer}>
-            {trailerStreamUrl && (
-              <video
-                ref={trailerVideoRef}
-                key={trailerStreamUrl}
-                style={{ ...MS.heroTrailerFrame, opacity: trailerReady ? 1 : 0, transition: 'opacity 0.6s ease' }}
-                src={trailerStreamUrl}
-                autoPlay
-                playsInline
-                onPlaying={handleTrailerPlaying}
-                onTimeUpdate={(e) => handleTrailerTimeUpdate(e.currentTarget)}
-                onEnded={handleTrailerStopped}
-                onError={handleTrailerStopped}
-              />
-            )}
-            {trailerAudioUrl && (
-              <audio ref={trailerAudioRef} key={trailerAudioUrl} src={trailerAudioUrl} preload="auto" />
-            )}
-          </div>
-
-          <div style={MS.pageBgGradLeft} />
-          <div style={MS.pageBgGradBottom} />
-        </div>
-      ) : (
-        <div style={MS.heroPlaceholder} />
-      )}
-
-      {trailerActive && heroInView && (
-        <div style={MS.trailerOverlayWrap}>
-          {activeTrailerSubtitle && (
-            <div style={MS.heroTrailerSubtitleOverlay}>{activeTrailerSubtitle}</div>
-          )}
-
-          <button
-            style={{ ...MS.heroTrailerFullscreenButton, pointerEvents: 'auto' }}
-            onClick={fullscreenTrailer}
-            aria-label="Fullscreen trailer"
-            title="Fullscreen trailer"
-          >
-            <Maximize2 size={16} />
-          </button>
-
-          <button
-            style={{ ...MS.heroTrailerMuteButton, pointerEvents: 'auto' }}
-            onClick={toggleTrailerMute}
-            aria-label={trailerMuted ? 'Unmute' : 'Mute'}
-          >
-            {trailerMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-          </button>
-          <div style={MS.heroTrailerProgressTrack}>
-            <span style={{ ...MS.heroTrailerProgressFill, width: `${trailerProgress * 100}%` }} />
-          </div>
-        </div>
-      )}
-
-      <div style={MS.heroWrap}>
-        <button style={MS.backBtn} onClick={onBack}>
-          <ArrowLeft size={18} color="rgba(255,255,255,0.85)" />
-        </button>
-
-        <div style={{ ...MS.logoWrap, opacity: trailerActive ? 0 : 1, transition: 'opacity 0.4s ease' }}>
-          {heroLogo ? (
-            <img src={heroLogo} alt={displayMeta.name} style={MS.logo} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-          ) : (
-            <h1 style={MS.titleHero}>{displayMeta.name}</h1>
-          )}
-        </div>
-      </div>
+      <ModernDetailHero
+        bgUrl={bgUrl}
+        bgLayers={bgLayers}
+        bgLoadedKeys={bgLoadedKeys}
+        onBgLayerLoad={handleBgLayerLoad}
+        onBgError={onBgError}
+        trailer={trailer}
+        heroInView={heroInView}
+        onBack={onBack}
+        heroLogo={heroLogo}
+        displayMetaName={displayMeta.name}
+      />
 
       <div style={MS.content}>
         <>
-          <div style={MS.actionRow}>
-            <ModernPlayButton
-              continueLabel={isSeries ? continueLabel : null}
-              hasProgress={isSeries ? hasProgress : false}
-              onClick={() => {
-                if (isSeries) { if (continueEp) onEpisodeClick(continueEp); }
-                else onMovieSources();
-              }}
-            />
-            {trailerOnHero && displayTrailers.length > 0 && (
-              <ModernIconBtn title={t('detail.watch_trailer')} onClick={() => shellOpen(displayTrailers[0].url).catch(() => {})}>
-                <Film size={18} />
-              </ModernIconBtn>
-            )}
-            <ModernIconBtn title={isInWatchlist ? t('detail.in_library') : t('detail.add_to_library')} active={isInWatchlist} onClick={onToggleWatchlist}>
-              {isInWatchlist ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
-            </ModernIconBtn>
-            <ModernIconBtn title={isCompleted ? t('library.unmark_completed') : t('library.mark_completed')} active={isCompleted} onClick={onToggleCompleted}>
-              <CheckCircle2 size={18} />
-            </ModernIconBtn>
-            <ModernIconBtn title={isDropped ? t('library.unmark_dropped') : t('library.mark_dropped')} active={isDropped} onClick={onToggleDropped}>
-              <XCircle size={18} />
-            </ModernIconBtn>
-            {onOpenComments && <ModernIconBtn title={t('detail.trakt_comments')} onClick={onOpenComments}>
-              <MessageCircle size={18} />
-            </ModernIconBtn>}
-          </div>
+          <ModernDetailActionRow
+            continueLabel={isSeries ? continueLabel : null}
+            hasProgress={isSeries ? hasProgress : false}
+            onPlayClick={() => {
+              if (isSeries) { if (continueEp) onEpisodeClick(continueEp); }
+              else onMovieSources();
+            }}
+            trailerUrl={trailerOnHero && displayTrailers.length > 0 ? displayTrailers[0].url : undefined}
+            isInWatchlist={isInWatchlist}
+            onToggleWatchlist={onToggleWatchlist}
+            isCompleted={isCompleted}
+            onToggleCompleted={onToggleCompleted}
+            isDropped={isDropped}
+            onToggleDropped={onToggleDropped}
+            onOpenComments={onOpenComments}
+          />
 
-          <div style={MS.metaBlock}>
-            {hasMdblistRatings && (
-              <div style={{ marginBottom: '0.625rem' }}>
-                <RatingsRow ratings={mdblistRatings} />
-              </div>
-            )}
-            {(metaGenres.length > 0 || modernMetaDetails.length > 0) && (
-              <p style={MS.metaInfoLine}>
-                {metaGenres.map((g, i) => (
-                  <React.Fragment key={g}>
-                    <GenreTag label={g} onClick={() => onNavigateGenre?.(g)} />
-                    {(i < metaGenres.length - 1 || modernMetaDetails.length > 0) && <span style={MS.metaDot}> • </span>}
-                  </React.Fragment>
-                ))}
-                {modernMetaDetails.length > 0 && <span style={MS.metaDetailsText}>{modernMetaDetails.join(' • ')}</span>}
-              </p>
-            )}
-            {displayMeta.description && <p style={MS.descText}>{displayMeta.description}</p>}
-          </div>
+          <ModernDetailMetaBlock
+            mdblistRatings={mdblistRatings}
+            metaGenres={metaGenres}
+            onNavigateGenre={onNavigateGenre}
+            metaDetails={modernMetaDetails}
+            description={displayMeta.description}
+          />
 
           {isSeries && (
             <>
-              <div style={MS.seasonRowModern}>
-                <SeasonDropdown seasons={seasonNumbers} selected={selectedSeason} onChange={onSeasonChange} buttonStyle={MS.seasonBtn} seasonWatched={seasonWatchedMap} hideButtonIndicator />
-                <button
-                  onClick={toggleSeasonWatched}
-                  title={seasonWatchedMap[selectedSeason] ? t('detail.mark_season_unwatched') : t('detail.mark_season_watched')}
-                  style={MS.seasonWatchedBtn}
-                >
-                  {seasonWatchedMap[selectedSeason] ? (
-                    <CheckCircle2 size={18} color="rgba(255,255,255,0.75)" />
-                  ) : (
-                    <Circle size={18} color="rgba(255,255,255,0.28)" />
-                  )}
-                  <span style={MS.seasonWatchedLabel}>
-                    {t(seasonWatchedMap[selectedSeason] ? 'detail.mark_season_unwatched' : 'detail.mark_season_watched')}
-                  </span>
-                </button>
-              </div>
-
-              {prevSeasonDialog && (
-                <div style={MS.overlayBackdrop} onClick={() => setPrevSeasonDialog(null)}>
-                  <div style={{ ...MS.overlaySheet, maxWidth: '25rem', padding: '1.75rem' }} onClick={(e) => e.stopPropagation()}>
-                    <p style={{ color: '#fff', fontSize: '0.9375rem', fontWeight: 700, margin: '0 0 0.625rem' }}>
-                      {t('detail.prev_seasons_dialog_title')}
-                    </p>
-                    <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', margin: '0 0 1.5rem', lineHeight: '1.25rem' }}>
-                      {t('detail.prev_seasons_dialog_body', prevSeasonDialog.unwatchedPrev.map((s) => seasonLabel(s)).join(', '))}
-                    </p>
-                    <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'flex-end' }}>
-                      <button style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '0.5rem', padding: '0.5625rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }} onClick={() => { dispatchMarkSeason([prevSeasonDialog.season], true); setPrevSeasonDialog(null); }}>
-                        {t('detail.prev_seasons_dialog_no')}
-                      </button>
-                      <button style={{ background: 'var(--primary-accent-color)', border: 'none', color: 'var(--primary-accent-foreground-color, #fff)', borderRadius: '0.5rem', padding: '0.5625rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }} onClick={() => { dispatchMarkSeason([...prevSeasonDialog.unwatchedPrev, prevSeasonDialog.season], true); setPrevSeasonDialog(null); }}>
-                        {t('detail.prev_seasons_dialog_yes')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <ModernDetailSeasonSection
+                seasonNumbers={seasonNumbers}
+                selectedSeason={selectedSeason}
+                onSeasonChange={onSeasonChange}
+                seasonWatchedMap={seasonWatchedMap}
+                toggleSeasonWatched={toggleSeasonWatched}
+                prevSeasonDialog={prevSeasonDialog}
+                onDismissPrevSeasonDialog={() => setPrevSeasonDialog(null)}
+                onConfirmPrevSeasonDialog={(includePrev) => {
+                  if (!prevSeasonDialog) return;
+                  const seasons = includePrev ? [...prevSeasonDialog.unwatchedPrev, prevSeasonDialog.season] : [prevSeasonDialog.season];
+                  dispatchMarkSeason(seasons, true);
+                  setPrevSeasonDialog(null);
+                }}
+              />
 
               <ModernTabBar
                 tabs={seriesTabs}
@@ -403,43 +278,19 @@ export function ModernDetailLayout({
               />
 
               {activeTab === 'episodes' && (
-                <div style={{ ...MS.episodeSection, minHeight: '12.5rem' }}>
-                  {detail.isLoading && filteredEps.length === 0 ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '2.5rem' }}><div style={spinnerStyle} /></div>
-                  ) : (
-                    <>
-                      <p style={MS.episodeCount}>{t('format.episode_count', filteredEps.length)}</p>
-                      <div style={episodeGridStyle}>
-                        {filteredEps.map((ep, i) => {
-                          const isWatched = watchedMap[ep.id] === true;
-                          const metaProgress = progressMap[meta.id];
-                          const showProg = !isWatched && metaProgress?.lastVideoId === ep.id && (metaProgress.duration ?? 0) > 0;
-                          const progressPct = isWatched ? 100 : (showProg ? Math.min(99, Math.round((metaProgress!.timeOffset / metaProgress!.duration) * 100)) : 0);
-                          const minutesRemaining = showProg ? Math.max(0, Math.round((metaProgress!.duration - metaProgress!.timeOffset) / 60)) : 0;
-                          const isCwEp = continueWatchingEntry?.lastVideoId === ep.id;
-                          const cwBadge = isCwEp ? (continueWatchingEntry?.continueWatchingBadge ?? null) : null;
-                          const cwScheduledDate = cwBadge === 'scheduledEpisode' ? (continueWatchingEntry as LibraryItem & { newEpisodeReleasedAt?: string })?.newEpisodeReleasedAt : undefined;
-                          return (
-                            <ModernEpisodeCard
-                              key={ep.id}
-                              episode={ep}
-                              number={i + 1}
-                              isWatched={isWatched}
-                              progressPct={progressPct}
-                              minutesRemaining={minutesRemaining}
-                              cwBadge={cwBadge}
-                              cwScheduledDate={cwScheduledDate}
-                              blurUnwatched={blurUnwatchedEpisodes}
-                              spoilerHide={spoilerHideEpisodeInfo}
-                              onClick={() => onEpisodeClick(ep)}
-                              onToggleWatched={() => toggleEpisodeWatched(ep, isWatched)}
-                            />
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
+                <EpisodesTabContent
+                  detail={detail}
+                  filteredEps={filteredEps}
+                  watchedMap={watchedMap}
+                  progressMap={progressMap}
+                  metaId={meta.id}
+                  continueWatchingEntry={continueWatchingEntry}
+                  episodeGridStyle={episodeGridStyle}
+                  blurUnwatchedEpisodes={blurUnwatchedEpisodes}
+                  spoilerHideEpisodeInfo={spoilerHideEpisodeInfo}
+                  onEpisodeClick={onEpisodeClick}
+                  toggleEpisodeWatched={toggleEpisodeWatched}
+                />
               )}
 
               {activeTab === 'related' && (
