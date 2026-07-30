@@ -15,7 +15,7 @@ use crate::DesktopState;
 use fluxa_core::FluxaCore;
 use glib::ControlFlow;
 use gtk::prelude::*;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{mpsc, Arc};
@@ -458,6 +458,320 @@ impl NativePlayerSurface {
     }
 }
 
+// Per-tick state for the GTK main-loop timer that drives surface commands,
+// render-context warmup, deferred loads, and playing-state housekeeping.
+// Bundled into a struct (rather than closure-captured locals) so each
+// concern below is a named, independently readable method.
+struct SurfaceTick {
+    receiver: mpsc::Receiver<SurfaceCommand>,
+    app: AppHandle,
+    gl_area: gtk::GLArea,
+    webview_widget: gtk::Widget,
+    backend: RenderBackend,
+    visible: Rc<Cell<bool>>,
+    vulkan_state: Rc<RefCell<Option<VulkanState>>>,
+    pending_load: Option<(String, Option<u64>)>,
+    pending_load_retries: u32,
+    latch_grace_ticks: u32,
+    chapters_native_loaded: bool,
+    transparency_reassert_ticks: u32,
+    screenshot_countdown_ticks: i32,
+    screenshot_seq: u32,
+}
+
+impl SurfaceTick {
+    fn on_tick(&mut self) -> ControlFlow {
+        self.drain_commands();
+        self.warm_up_render_context();
+        self.retry_pending_load();
+        if self.visible.get() {
+            self.run_frame_tasks();
+        }
+        ControlFlow::Continue
+    }
+
+    fn drain_commands(&mut self) {
+        while let Ok(command) = self.receiver.try_recv() {
+            match command {
+                SurfaceCommand::Load { url, start_at } => {
+                    self.app.state::<DesktopState>().pending_hide
+                        .store(false, std::sync::atomic::Ordering::Release);
+                    *self.app.state::<DesktopState>().eof_next_fired.lock().unwrap() = false;
+                    *self.app.state::<DesktopState>().chapters_json.lock().unwrap() = None;
+                    if *self.app.state::<DesktopState>().active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
+                        self.gl_area.set_auto_render(false);
+                        self.gl_area.show();
+                        let gl_area = &self.gl_area;
+                        let app = &self.app;
+                        let result = (|| {
+                            use glib::translate::ToGlibPtr;
+                            let window = gl_area.window().ok_or_else(|| "libVLC requires a realized X11 video surface".to_string())?;
+                            let x11_window = window.downcast::<gdkx11::X11Window>().map_err(|_| "embedded libVLC currently requires an X11 session; Wayland needs the libVLC video-callback renderer".to_string())?;
+                            let xid = unsafe { gdkx11::ffi::gdk_x11_window_get_xid(x11_window.to_glib_none().0) };
+                            let state = app.state::<DesktopState>();
+                            let mut players = state.player_renderer_vlc.lock().unwrap();
+                            if players.is_none() {
+                                *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
+                            }
+                            let player = players.as_mut().ok_or_else(|| "libVLC player is unavailable".to_string())?;
+                            player.attach_xwindow(xid as u32)?;
+                            player.load(&url, start_at)
+                        })();
+                        if let Err(error) = result {
+                            self.visible.set(false);
+                            self.gl_area.hide();
+                            let _ = self.app.emit("native-player-error", error);
+                        } else {
+                            self.visible.set(true);
+                            let _ = self.app.emit("native-player-show", ());
+                        }
+                        continue;
+                    }
+                    if self.backend == RenderBackend::OpenGl {
+                        self.gl_area.set_auto_render(true);
+                        self.gl_area.show();
+                    } else if let Some(state) = self.vulkan_state.borrow().as_ref() {
+                        state.surface_handle.show();
+                    }
+                    self.visible.set(true);
+                    self.latch_grace_ticks = 10;
+                    self.chapters_native_loaded = false;
+                    self.pending_load = Some((url, start_at));
+                    self.pending_load_retries = 0;
+                    let emit_result = self.app.emit("native-player-show", ());
+                    log::info!("linux_player_surface: emitted native-player-show, result={emit_result:?}");
+                }
+                SurfaceCommand::Hide => {
+                    self.visible.set(false);
+                    self.pending_load = None;
+                    self.pending_load_retries = 0;
+                    self.app.state::<DesktopState>().pending_hide
+                        .store(true, std::sync::atomic::Ordering::Release);
+                    if self.backend == RenderBackend::OpenGl {
+                        self.gl_area.set_auto_render(false);
+                        self.gl_area.hide();
+                    } else if let Some(state) = self.vulkan_state.borrow().as_ref() {
+                        state.surface_handle.hide();
+                    }
+                    let _ = self.app.emit("native-player-hide", ());
+                    if let Ok(guard) = self.app.state::<DesktopState>().player_renderer.try_lock() {
+                        if let Some(r) = guard.as_ref() {
+                            let _ = r.command_args(&["stop"]);
+                        }
+                    }
+                }
+                SurfaceCommand::ShowLoading { title, episode_title } => {
+                    self.app.state::<DesktopState>().pending_hide
+                        .store(false, std::sync::atomic::Ordering::Release);
+                    let _ = self.app.emit(
+                        "native-player-title",
+                        serde_json::json!({ "title": title, "episodeTitle": episode_title }),
+                    );
+                }
+                SurfaceCommand::SetTitle { title, episode_title } => {
+                    let _ = self.app.emit(
+                        "native-player-title",
+                        serde_json::json!({ "title": title, "episodeTitle": episode_title }),
+                    );
+                }
+                SurfaceCommand::SetArtwork { title, episode_title } => {
+                    // Artwork display is handled by PlayerLoadingOverlay in the WebView.
+                    // We just forward the title so ReactPlayerOverlay can show it.
+                    let _ = self.app.emit(
+                        "native-player-title",
+                        serde_json::json!({ "title": title, "episodeTitle": episode_title }),
+                    );
+                }
+            }
+        }
+    }
+
+    // Warm up the render context before first play. Blocking work here (idle,
+    // no user waiting) is better than doing it inside prepare_and_load when the
+    // loading screen is shown.
+    fn warm_up_render_context(&mut self) {
+        let warmup_ready = match self.backend {
+            RenderBackend::OpenGl => self.gl_area.is_realized(),
+            RenderBackend::Vulkan => self.gl_area
+                .toplevel()
+                .map(|t| t.is_realized())
+                .unwrap_or(false),
+        };
+        if self.pending_load.is_none() && warmup_ready {
+            match self.backend {
+                RenderBackend::OpenGl => {
+                    if let Ok(mut guard) = self.app.state::<DesktopState>().player_renderer.try_lock() {
+                        if let Some(renderer) = guard.as_mut() {
+                            if renderer.needs_opengl_context() {
+                                self.gl_area.make_current();
+                                if self.gl_area.error().is_none() {
+                                    let _ = renderer.prepare_opengl_context();
+                                }
+                            }
+                        }
+                    }
+                }
+                RenderBackend::Vulkan => {
+                    if self.vulkan_state.borrow().is_none() {
+                        let (w, h) = vulkan_surface_size(&self.gl_area, &self.webview_widget);
+                        match create_vulkan_surface(&self.gl_area, w, h) {
+                            Ok((surface_handle, native_surface)) => {
+                                match VulkanContext::new(native_surface, w, h) {
+                                    Ok(ctx) => {
+                                        let shared = Arc::new(VulkanShared {
+                                            width: AtomicI32::new(w),
+                                            height: AtomicI32::new(h),
+                                            hdr: AtomicBool::new(false),
+                                            mpv_context_ready: AtomicBool::new(false),
+                                        });
+                                        spawn_vulkan_render_thread(
+                                            self.app.clone(),
+                                            ctx,
+                                            shared.clone(),
+                                        );
+                                        *self.vulkan_state.borrow_mut() =
+                                            Some(VulkanState { shared, surface_handle })
+                                    }
+                                    Err(e) => log::error!(
+                                        "linux_player_surface: Vulkan context creation failed: {e}"
+                                    ),
+                                }
+                            }
+                            Err(e) => log::error!("linux_player_surface: {e}"),
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn retry_pending_load(&mut self) {
+        let Some((url, start_at)) = self.pending_load.clone() else {
+            return;
+        };
+        let state = self.app.state::<DesktopState>();
+        if state.player_renderer.try_lock().is_ok() {
+            match prepare_and_load(&self.app, &self.gl_area, self.backend, &self.vulkan_state, &url, start_at) {
+                Ok(()) => {
+                    self.pending_load = None;
+                    self.latch_grace_ticks = 10;
+                    let hide_pending = self.app.state::<DesktopState>()
+                        .pending_hide.load(std::sync::atomic::Ordering::Acquire);
+                    if hide_pending {
+                        self.visible.set(false);
+                        self.gl_area.hide();
+                    }
+                }
+                Err(e) if e == VULKAN_CONTEXT_PENDING => {
+                    self.pending_load_retries += 1;
+                    if self.pending_load_retries > 300 {
+                        self.pending_load = None;
+                        self.visible.set(false);
+                        self.gl_area.hide();
+                        let _ = self.app.emit("native-player-error", e);
+                    }
+                }
+                Err(e) => {
+                    self.pending_load = None;
+                    self.visible.set(false);
+                    self.gl_area.hide();
+                    log::warn!("native player load failed: {e}");
+                    let _ = self.app.emit("native-player-error", e);
+                }
+            }
+        } else {
+            self.pending_load_retries += 1;
+            if self.pending_load_retries > 300 {
+                self.pending_load = None;
+                self.visible.set(false);
+                self.gl_area.hide();
+                let _ = self.app.emit("native-player-error", "player renderer busy".to_string());
+            }
+        }
+    }
+
+    fn run_frame_tasks(&mut self) {
+        let in_grace = if self.latch_grace_ticks > 0 {
+            self.latch_grace_ticks -= 1;
+            true
+        } else {
+            false
+        };
+
+        // Read native chapters from mpv once playback has started.
+        // Stored in DesktopState so player_get_playback_info() can return them
+        // to the React overlay for chapter-segmented seekbar rendering.
+        if !in_grace && !self.chapters_native_loaded {
+            let state = self.app.state::<DesktopState>();
+            let pos = state.player_renderer.try_lock().ok()
+                .and_then(|g| g.as_ref()
+                    .and_then(|r| r.query_property("time-pos")
+                        .and_then(|v| v.trim().parse::<f64>().ok())))
+                .unwrap_or(0.0);
+            if pos > 0.05 {
+                self.chapters_native_loaded = true;
+                let chapters_already_set = state.chapters_json.lock().unwrap().is_some();
+                if !chapters_already_set {
+                    if let Ok(guard) = state.player_renderer.try_lock() {
+                        if let Some(renderer) = guard.as_ref() {
+                            let native = read_mpv_chapters(renderer);
+                            if !native.is_empty() {
+                                let chapters_json = chapters_to_json(&native);
+                                *state.chapters_json.lock().unwrap() =
+                                    Some(chapters_json.clone());
+                                let skip_already_set =
+                                    state.skip_segments_json.lock().unwrap().is_some();
+                                let chapter_skip_enabled =
+                                    *state.use_chapter_skip.lock().unwrap();
+                                if !skip_already_set && chapter_skip_enabled {
+                                    let derived = FluxaCore::chapter_skip_segments_json(&chapters_json);
+                                    if derived != "[]" {
+                                        *state.skip_segments_json.lock().unwrap() = Some(derived);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if self.backend == RenderBackend::Vulkan {
+            let (w, h) = vulkan_surface_size(&self.gl_area, &self.webview_widget);
+            if let Some(state) = self.vulkan_state.borrow().as_ref() {
+                state.surface_handle.resize(w, h);
+                let prev_w = state.shared.width.swap(w, Ordering::AcqRel);
+                let prev_h = state.shared.height.swap(h, Ordering::AcqRel);
+                self.transparency_reassert_ticks += 1;
+                if prev_w != w || prev_h != h || self.transparency_reassert_ticks >= 60 {
+                    self.transparency_reassert_ticks = 0;
+                    reassert_webview_transparency(&self.webview_widget);
+                }
+                if prev_w != w || prev_h != h {
+                    log_current_toplevel_wl_surface(&self.gl_area, "resize");
+                    self.screenshot_countdown_ticks = 30;
+                }
+            }
+        }
+
+        if self.screenshot_countdown_ticks >= 0 {
+            self.screenshot_countdown_ticks -= 1;
+            if self.screenshot_countdown_ticks == 0 {
+                if let Ok(guard) = self.app.state::<DesktopState>().player_renderer.try_lock() {
+                    if let Some(r) = guard.as_ref() {
+                        self.screenshot_seq += 1;
+                        let path = format!("/tmp/fluxa_mpv_screenshot_{}.png", self.screenshot_seq);
+                        let _ = r.command_args(&["screenshot-to-file", &path]);
+                        log::debug!("linux_player_surface: mpv screenshot-to-file requested at {path}");
+                    }
+                }
+            }
+        }
+
+        check_player_events(&self.app);
+    }
+}
+
 // Install
 
 pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
@@ -560,12 +874,8 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
             }
 
             let _ = setup_tx.send(Ok(()));
-
-            let command_app = app_handle.clone();
-            let command_gl_area = gl_area.clone();
-            let command_webview_widget = webview_widget.clone();
             // Shared with the GdkFrameClock tick callback below, both on the GTK main thread.
-            let visible = std::rc::Rc::new(std::cell::Cell::new(false));
+            let visible = Rc::new(Cell::new(false));
             let tick_visible = visible.clone();
             let tick_gl_area = gl_area.clone();
             gl_area.add_tick_callback(move |_area, _frame_clock| {
@@ -574,292 +884,24 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                 }
                 glib::ControlFlow::Continue
             });
-            let vulkan_state: Rc<RefCell<Option<VulkanState>>> = Rc::new(RefCell::new(None));
-            let mut pending_load: Option<(String, Option<u64>)> = None;
-            let mut pending_load_retries: u32 = 0;
-            let mut latch_grace_ticks: u32 = 0;
-            let mut chapters_native_loaded = false;
-            let mut transparency_reassert_ticks: u32 = 0;
-            let mut screenshot_countdown_ticks: i32 = -1;
-            let mut screenshot_seq: u32 = 0;
 
-            glib::timeout_add_local(Duration::from_millis(16), move || {
-                // Drain surface commands
-                while let Ok(command) = receiver.try_recv() {
-                    match command {
-                        SurfaceCommand::Load { url, start_at } => {
-                            command_app.state::<DesktopState>().pending_hide
-                                .store(false, std::sync::atomic::Ordering::Release);
-                            *command_app.state::<DesktopState>().eof_next_fired.lock().unwrap() = false;
-                            *command_app.state::<DesktopState>().chapters_json.lock().unwrap() = None;
-                                                        if *command_app.state::<DesktopState>().active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
-                                command_gl_area.set_auto_render(false);
-                                command_gl_area.show();
-                                let result = (|| {
-                                    use glib::translate::ToGlibPtr;
-                                    let window = command_gl_area.window().ok_or_else(|| "libVLC requires a realized X11 video surface".to_string())?;
-                                    let x11_window = window.downcast::<gdkx11::X11Window>().map_err(|_| "embedded libVLC currently requires an X11 session; Wayland needs the libVLC video-callback renderer".to_string())?;
-                                    let xid = unsafe { gdkx11::ffi::gdk_x11_window_get_xid(x11_window.to_glib_none().0) };
-                                    let state = command_app.state::<DesktopState>();
-                                    let mut players = state.player_renderer_vlc.lock().unwrap();
-                                    if players.is_none() {
-                                        *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
-                                    }
-                                    let player = players.as_mut().ok_or_else(|| "libVLC player is unavailable".to_string())?;
-                                    player.attach_xwindow(xid as u32)?;
-                                    player.load(&url, start_at)
-                                })();
-                                if let Err(error) = result {
-                                    visible.set(false);
-                                    command_gl_area.hide();
-                                    let _ = command_app.emit("native-player-error", error);
-                                } else {
-                                    visible.set(true);
-                                    let _ = command_app.emit("native-player-show", ());
-                                }
-                                continue;
-                            }if backend == RenderBackend::OpenGl {
-                                command_gl_area.set_auto_render(true);
-                                command_gl_area.show();
-                            } else if let Some(state) = vulkan_state.borrow().as_ref() {
-                                state.surface_handle.show();
-                            }
-                            visible.set(true);
-                            latch_grace_ticks = 10;
-                            chapters_native_loaded = false;
-                            pending_load = Some((url, start_at));
-                            pending_load_retries = 0;
-                            let emit_result = command_app.emit("native-player-show", ());
-                            log::info!("linux_player_surface: emitted native-player-show, result={emit_result:?}");
-                        }
-                        SurfaceCommand::Hide => {
-                            visible.set(false);
-                            pending_load = None;
-                            pending_load_retries = 0;
-                            command_app.state::<DesktopState>().pending_hide
-                                .store(true, std::sync::atomic::Ordering::Release);
-                            if backend == RenderBackend::OpenGl {
-                                command_gl_area.set_auto_render(false);
-                                command_gl_area.hide();
-                            } else if let Some(state) = vulkan_state.borrow().as_ref() {
-                                state.surface_handle.hide();
-                            }
-                            let _ = command_app.emit("native-player-hide", ());
-                            if let Ok(guard) = command_app.state::<DesktopState>().player_renderer.try_lock() {
-                                if let Some(r) = guard.as_ref() {
-                                    let _ = r.command_args(&["stop"]);
-                                }
-                            }
-                        }
-                        SurfaceCommand::ShowLoading { title, episode_title } => {
-                            command_app.state::<DesktopState>().pending_hide
-                                .store(false, std::sync::atomic::Ordering::Release);
-                            let _ = command_app.emit(
-                                "native-player-title",
-                                serde_json::json!({ "title": title, "episodeTitle": episode_title }),
-                            );
-                        }
-                        SurfaceCommand::SetTitle { title, episode_title } => {
-                            let _ = command_app.emit(
-                                "native-player-title",
-                                serde_json::json!({ "title": title, "episodeTitle": episode_title }),
-                            );
-                        }
-                        SurfaceCommand::SetArtwork { title, episode_title } => {
-                            // Artwork display is handled by PlayerLoadingOverlay in the WebView.
-                            // We just forward the title so ReactPlayerOverlay can show it.
-                            let _ = command_app.emit(
-                                "native-player-title",
-                                serde_json::json!({ "title": title, "episodeTitle": episode_title }),
-                            );
-                        }
-                    }
-                }
-
-                // Warm up the render context before first play. Blocking work here (idle,
-                // no user waiting) is better than doing it inside prepare_and_load when the
-                // loading screen is shown.
-                let warmup_ready = match backend {
-                    RenderBackend::OpenGl => command_gl_area.is_realized(),
-                    RenderBackend::Vulkan => command_gl_area
-                        .toplevel()
-                        .map(|t| t.is_realized())
-                        .unwrap_or(false),
-                };
-                if pending_load.is_none() && warmup_ready {
-                    match backend {
-                        RenderBackend::OpenGl => {
-                            if let Ok(mut guard) = command_app.state::<DesktopState>().player_renderer.try_lock() {
-                                if let Some(renderer) = guard.as_mut() {
-                                    if renderer.needs_opengl_context() {
-                                        command_gl_area.make_current();
-                                        if command_gl_area.error().is_none() {
-                                            let _ = renderer.prepare_opengl_context();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        RenderBackend::Vulkan => {
-                            if vulkan_state.borrow().is_none() {
-                                let (w, h) = vulkan_surface_size(&command_gl_area, &command_webview_widget);
-                                match create_vulkan_surface(&command_gl_area, w, h) {
-                                    Ok((surface_handle, native_surface)) => {
-                                        match VulkanContext::new(native_surface, w, h) {
-                                            Ok(ctx) => {
-                                                let shared = Arc::new(VulkanShared {
-                                                    width: AtomicI32::new(w),
-                                                    height: AtomicI32::new(h),
-                                                    hdr: AtomicBool::new(false),
-                                                    mpv_context_ready: AtomicBool::new(false),
-                                                });
-                                                spawn_vulkan_render_thread(
-                                                    command_app.clone(),
-                                                    ctx,
-                                                    shared.clone(),
-                                                );
-                                                *vulkan_state.borrow_mut() =
-                                                    Some(VulkanState { shared, surface_handle })
-                                            }
-                                            Err(e) => log::error!(
-                                                "linux_player_surface: Vulkan context creation failed: {e}"
-                                            ),
-                                        }
-                                    }
-                                    Err(e) => log::error!("linux_player_surface: {e}"),
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Retry deferred load
-                if let Some((ref url, start_at)) = pending_load.clone() {
-                    let state = command_app.state::<DesktopState>();
-                    if state.player_renderer.try_lock().is_ok() {
-                        match prepare_and_load(&command_app, &command_gl_area, backend, &vulkan_state, url, start_at) {
-                            Ok(()) => {
-                                pending_load = None;
-                                latch_grace_ticks = 10;
-                                let hide_pending = command_app.state::<DesktopState>()
-                                    .pending_hide.load(std::sync::atomic::Ordering::Acquire);
-                                if hide_pending {
-                                    visible.set(false);
-                                    command_gl_area.hide();
-                                }
-                            }
-                            Err(e) if e == VULKAN_CONTEXT_PENDING => {
-                                pending_load_retries += 1;
-                                if pending_load_retries > 300 {
-                                    pending_load = None;
-                                    visible.set(false);
-                                    command_gl_area.hide();
-                                    let _ = command_app.emit("native-player-error", e);
-                                }
-                            }
-                            Err(e) => {
-                                pending_load = None;
-                                visible.set(false);
-                                command_gl_area.hide();
-                                log::warn!("native player load failed: {e}");
-                                let _ = command_app.emit("native-player-error", e);
-                            }
-                        }
-                    } else {
-                        pending_load_retries += 1;
-                        if pending_load_retries > 300 {
-                            pending_load = None;
-                            visible.set(false);
-                            command_gl_area.hide();
-                            let _ = command_app.emit("native-player-error", "player renderer busy".to_string());
-                        }
-                    }
-                }
-
-                // Per-frame tasks while playing
-                if visible.get() {
-                    let in_grace = if latch_grace_ticks > 0 {
-                        latch_grace_ticks -= 1;
-                        true
-                    } else {
-                        false
-                    };
-
-                    // Read native chapters from mpv once playback has started.
-                    // Stored in DesktopState so player_get_playback_info() can return them
-                    // to the React overlay for chapter-segmented seekbar rendering.
-                    if !in_grace && !chapters_native_loaded {
-                        let state = command_app.state::<DesktopState>();
-                        let pos = state.player_renderer.try_lock().ok()
-                            .and_then(|g| g.as_ref()
-                                .and_then(|r| r.query_property("time-pos")
-                                    .and_then(|v| v.trim().parse::<f64>().ok())))
-                            .unwrap_or(0.0);
-                        if pos > 0.05 {
-                            chapters_native_loaded = true;
-                            let chapters_already_set = state.chapters_json.lock().unwrap().is_some();
-                            if !chapters_already_set {
-                                if let Ok(guard) = state.player_renderer.try_lock() {
-                                    if let Some(renderer) = guard.as_ref() {
-                                        let native = read_mpv_chapters(renderer);
-                                        if !native.is_empty() {
-                                            let chapters_json = chapters_to_json(&native);
-                                            *state.chapters_json.lock().unwrap() =
-                                                Some(chapters_json.clone());
-                                            let skip_already_set =
-                                                state.skip_segments_json.lock().unwrap().is_some();
-                                            let chapter_skip_enabled =
-                                                *state.use_chapter_skip.lock().unwrap();
-                                            if !skip_already_set && chapter_skip_enabled {
-                                                let derived = FluxaCore::chapter_skip_segments_json(&chapters_json);
-                                                if derived != "[]" {
-                                                    *state.skip_segments_json.lock().unwrap() = Some(derived);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if backend == RenderBackend::Vulkan {
-                        let (w, h) = vulkan_surface_size(&command_gl_area, &command_webview_widget);
-                        if let Some(state) = vulkan_state.borrow().as_ref() {
-                            state.surface_handle.resize(w, h);
-                            let prev_w = state.shared.width.swap(w, Ordering::AcqRel);
-                            let prev_h = state.shared.height.swap(h, Ordering::AcqRel);
-                            transparency_reassert_ticks += 1;
-                            if prev_w != w || prev_h != h || transparency_reassert_ticks >= 60 {
-                                transparency_reassert_ticks = 0;
-                                reassert_webview_transparency(&command_webview_widget);
-                            }
-                            if prev_w != w || prev_h != h {
-                                log_current_toplevel_wl_surface(&command_gl_area, "resize");
-                                screenshot_countdown_ticks = 30;
-                            }
-                        }
-                    }
-
-                    if screenshot_countdown_ticks >= 0 {
-                        screenshot_countdown_ticks -= 1;
-                        if screenshot_countdown_ticks == 0 {
-                            if let Ok(guard) = command_app.state::<DesktopState>().player_renderer.try_lock() {
-                                if let Some(r) = guard.as_ref() {
-                                    screenshot_seq += 1;
-                                    let path = format!("/tmp/fluxa_mpv_screenshot_{screenshot_seq}.png");
-                                    let _ = r.command_args(&["screenshot-to-file", &path]);
-                                    log::debug!("linux_player_surface: mpv screenshot-to-file requested at {path}");
-                                }
-                            }
-                        }
-                    }
-
-                    check_player_events(&command_app);
-                }
-
-                ControlFlow::Continue
-            });
+            let mut tick = SurfaceTick {
+                receiver,
+                app: app_handle.clone(),
+                gl_area: gl_area.clone(),
+                webview_widget: webview_widget.clone(),
+                backend,
+                visible,
+                vulkan_state: Rc::new(RefCell::new(None)),
+                pending_load: None,
+                pending_load_retries: 0,
+                latch_grace_ticks: 0,
+                chapters_native_loaded: false,
+                transparency_reassert_ticks: 0,
+                screenshot_countdown_ticks: -1,
+                screenshot_seq: 0,
+            };
+            glib::timeout_add_local(Duration::from_millis(16), move || tick.on_tick());
         })
         .map_err(|e| e.to_string())?;
 
