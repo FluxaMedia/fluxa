@@ -261,7 +261,10 @@ impl MpvRenderer {
         unsafe {
             (self.api.mpv_render_context_report_swap)(self.render_context);
         }
-        if self.frame_ready_to_restore_audio {
+        if self.frame_ready_to_restore_audio
+            && self.pending_seek_seconds.is_none()
+            && !self.waiting_for_seek_restart
+        {
             self.first_frame_presented = true;
         }
         self.restore_audio_after_first_presented_frame();
