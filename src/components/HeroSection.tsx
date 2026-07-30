@@ -5,7 +5,8 @@ import type { Meta } from '../core/types';
 import { t } from '../i18n';
 import { heroKeyframes, heroStyles as styles } from './heroStyles';
 import { HeroIconBtn, NavArrow, parseReleaseYear, readOptionalString } from './HeroSectionParts';
-import { useHeroTrailer } from './useHeroTrailer';
+import { youtubeVideoId } from './detail/TrailerCarousel';
+import { useTrailerPlayback } from '../hooks/useTrailerPlayback';
 
 interface Props {
   meta: Meta;
@@ -59,11 +60,34 @@ export const HeroSection = React.memo(function HeroSection({
   const activeMeta = items[activeIndex] ?? meta;
   const canSlide = items.length > 1;
 
+  const trailerVideoIdsRef = useRef<string[]>([]);
+  const trailerVideoIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const trailer of activeMeta.trailers ?? []) {
+      const id = youtubeVideoId(trailer.url);
+      if (id && !ids.includes(id)) ids.push(id);
+    }
+    const previous = trailerVideoIdsRef.current;
+    if (previous.length === ids.length && previous.every((id, index) => id === ids[index])) {
+      return previous;
+    }
+    trailerVideoIdsRef.current = ids;
+    return ids;
+  }, [activeMeta.trailers]);
+
   const {
     trailerContainerRef, trailerVideoRef, trailerAudioRef,
     trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerProgress, trailerMuted, activeTrailerSubtitle,
     handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
-  } = useHeroTrailer({ activeMeta, isActive, autoplayTrailer, autoplayTrailerDelaySecs, preferredSubtitleLanguage, secondarySubtitleLanguage });
+  } = useTrailerPlayback({
+    metaId: activeMeta.id,
+    trailerVideoIds,
+    autoplay: autoplayTrailer,
+    autoplayDelaySecs: autoplayTrailerDelaySecs,
+    preferredSubtitleLanguage,
+    secondarySubtitleLanguage,
+    isActive,
+  });
 
   const slideIntervalMs = autoplayTrailer ? Math.max(DEFAULT_SLIDE_INTERVAL_MS, autoplayTrailerDelaySecs * 1000 + 3000) : DEFAULT_SLIDE_INTERVAL_MS;
   const imageUrl = (preferSeasonPosters ? seasonPosterUrl(activeMeta) : undefined) ?? activeMeta.background ?? activeMeta.poster;

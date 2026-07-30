@@ -10,7 +10,7 @@ import { type ProgressEntry } from './EpisodePanel';
 import { ModernTabBar } from './DetailButtons';
 import { useSeasonWatched } from '../../hooks/useSeasonWatched';
 import { DetailsTabContent, EpisodesTabContent, RelatedTabContent } from './ModernDetailTabs';
-import { useModernDetailTrailer } from './useModernDetailTrailer';
+import { useTrailerPlayback } from '../../hooks/useTrailerPlayback';
 import { ModernDetailHero } from './ModernDetailHero';
 import { ModernDetailActionRow } from './ModernDetailActionRow';
 import { ModernDetailMetaBlock } from './ModernDetailMetaBlock';
@@ -146,11 +146,11 @@ export function ModernDetailLayout({
     return ids;
   }, [displayTrailers]);
 
-  const trailer = useModernDetailTrailer({
-    displayMetaId: displayMeta.id,
+  const trailer = useTrailerPlayback({
+    metaId: displayMeta.id,
     trailerVideoIds,
-    detailHeroAutoplayTrailer,
-    detailHeroAutoplayTrailerDelaySecs,
+    autoplay: detailHeroAutoplayTrailer,
+    autoplayDelaySecs: detailHeroAutoplayTrailerDelaySecs,
     preferredSubtitleLanguage,
     secondarySubtitleLanguage,
   });

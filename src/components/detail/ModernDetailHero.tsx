@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Maximize2, Volume2, VolumeX } from 'lucide-react';
 import { MS } from './detailStyles';
-import type { useModernDetailTrailer } from './useModernDetailTrailer';
+import type { useTrailerPlayback } from '../../hooks/useTrailerPlayback';
 
 export function ModernDetailHero({
   bgUrl,
@@ -20,7 +20,7 @@ export function ModernDetailHero({
   bgLoadedKeys: Set<number>;
   onBgLayerLoad: (key: number) => void;
   onBgError: () => void;
-  trailer: ReturnType<typeof useModernDetailTrailer>;
+  trailer: ReturnType<typeof useTrailerPlayback>;
   heroInView: boolean;
   onBack: () => void;
   heroLogo?: string;

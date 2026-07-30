@@ -1,24 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
-import { httpFetchText } from '../../core/engine';
-import { resolveYoutubeTrailer, type YoutubeTrailerSubtitleTrack } from '../../core/effectRunner';
-import { normalizeTrailerSubtitleUrl, parseTrailerSubtitleCues, selectTrailerSubtitle, type TrailerCue } from '../../core/trailerSubtitles';
+import { httpFetchText } from '../core/engine';
+import { resolveYoutubeTrailer, type YoutubeTrailerSubtitleTrack } from '../core/effectRunner';
+import { normalizeTrailerSubtitleUrl, parseTrailerSubtitleCues, selectTrailerSubtitle, type TrailerCue } from '../core/trailerSubtitles';
 
 const STALL_TIMEOUT_MS = 7000;
 
-export function useModernDetailTrailer({
-  displayMetaId,
+export function useTrailerPlayback({
+  metaId,
   trailerVideoIds,
-  detailHeroAutoplayTrailer,
-  detailHeroAutoplayTrailerDelaySecs,
+  autoplay,
+  autoplayDelaySecs,
   preferredSubtitleLanguage,
   secondarySubtitleLanguage,
+  isActive = true,
 }: {
-  displayMetaId: string;
+  metaId: string;
   trailerVideoIds: string[];
-  detailHeroAutoplayTrailer: boolean;
-  detailHeroAutoplayTrailerDelaySecs: number;
+  autoplay: boolean;
+  autoplayDelaySecs: number;
   preferredSubtitleLanguage?: string;
   secondarySubtitleLanguage?: string;
+  isActive?: boolean;
 }) {
   const [trailerStreamUrl, setTrailerStreamUrl] = useState<string | null>(null);
   const [trailerAudioUrl, setTrailerAudioUrl] = useState<string | null>(null);
@@ -26,6 +28,8 @@ export function useModernDetailTrailer({
   const [trailerSubtitleCues, setTrailerSubtitleCues] = useState<TrailerCue[]>([]);
   const [activeTrailerSubtitle, setActiveTrailerSubtitle] = useState('');
   const [trailerReady, setTrailerReady] = useState(false);
+  const [trailerResolving, setTrailerResolving] = useState(false);
+  const [trailerLoading, setTrailerLoading] = useState(false);
   const [trailerProgress, setTrailerProgress] = useState(0);
   const [trailerMuted, setTrailerMuted] = useState(true);
   const lastTrailerProgressAtRef = useRef(0);
@@ -34,6 +38,7 @@ export function useModernDetailTrailer({
   const trailerContainerRef = useRef<HTMLDivElement | null>(null);
   const activeTrailerSubtitleRef = useRef('');
   const trailerActive = !!trailerStreamUrl && trailerReady;
+  const trailerPending = trailerResolving || trailerLoading || !!trailerStreamUrl;
   const [selectedTrailerSubtitle, setSelectedTrailerSubtitle] = useState<YoutubeTrailerSubtitleTrack | null>(null);
 
   useEffect(() => {
@@ -55,15 +60,18 @@ export function useModernDetailTrailer({
     activeTrailerSubtitleRef.current = '';
     setTrailerReady(false);
     setTrailerProgress(0);
+    setTrailerResolving(false);
+    setTrailerLoading(false);
     setTrailerMuted(true);
-  }, [displayMetaId]);
+  }, [metaId]);
 
   useEffect(() => {
-    if (!detailHeroAutoplayTrailer || trailerVideoIds.length === 0) return;
+    if (!autoplay || !isActive || trailerVideoIds.length === 0) return;
     let cancelled = false;
-    let delayElapsed = detailHeroAutoplayTrailerDelaySecs <= 0;
+    let delayElapsed = autoplayDelaySecs <= 0;
     let resolvedTrailer: Awaited<ReturnType<typeof resolveYoutubeTrailer>> | null = null;
     let resolveFinished = false;
+    setTrailerResolving(true);
 
     const applyResolvedTrailer = () => {
       if (cancelled || !delayElapsed || !resolveFinished) return;
@@ -71,14 +79,18 @@ export function useModernDetailTrailer({
         setTrailerSubtitles(resolvedTrailer.subtitles ?? []);
         setTrailerAudioUrl(resolvedTrailer.audioUrl ?? null);
         setTrailerReady(false);
+        setTrailerLoading(true);
         setTrailerStreamUrl(resolvedTrailer.streamUrl);
       }
+      setTrailerResolving(false);
+      if (!resolvedTrailer?.streamUrl) setTrailerLoading(false);
     };
 
     const delayId = window.setTimeout(() => {
       delayElapsed = true;
+      if (!resolveFinished) setTrailerLoading(true);
       applyResolvedTrailer();
-    }, detailHeroAutoplayTrailerDelaySecs * 1000);
+    }, autoplayDelaySecs * 1000);
 
     (async () => {
       for (const id of trailerVideoIds) {
@@ -101,9 +113,10 @@ export function useModernDetailTrailer({
 
     return () => {
       cancelled = true;
+      setTrailerResolving(false);
       window.clearTimeout(delayId);
     };
-  }, [trailerVideoIds, detailHeroAutoplayTrailer, detailHeroAutoplayTrailerDelaySecs]);
+  }, [trailerVideoIds, autoplay, autoplayDelaySecs, isActive]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,9 +169,24 @@ export function useModernDetailTrailer({
     const id = window.setInterval(() => {
       if (Date.now() - lastTrailerProgressAtRef.current > STALL_TIMEOUT_MS) {
         setTrailerStreamUrl(null);
+        setTrailerLoading(false);
       }
     }, 2000);
     return () => window.clearInterval(id);
+  }, [trailerStreamUrl]);
+
+  useEffect(() => {
+    if (!trailerStreamUrl) return;
+    const el = trailerVideoRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry?.isIntersecting && el.paused && !el.ended) {
+        el.play().catch(() => {});
+      }
+    }, { threshold: 0.05 });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [trailerStreamUrl]);
 
   useEffect(() => {
@@ -171,6 +199,7 @@ export function useModernDetailTrailer({
 
   const handleTrailerPlaying = () => {
     setTrailerReady(true);
+    setTrailerLoading(false);
     lastTrailerProgressAtRef.current = Date.now();
     if (trailerVideoRef.current) {
       trailerVideoRef.current.muted = trailerMuted;
@@ -191,6 +220,7 @@ export function useModernDetailTrailer({
     trailerAudioRef.current?.pause();
     setTrailerStreamUrl(null);
     setTrailerAudioUrl(null);
+    setTrailerLoading(false);
   };
 
   const toggleTrailerMute = () => {
@@ -231,7 +261,7 @@ export function useModernDetailTrailer({
 
   return {
     trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerProgress, trailerMuted, activeTrailerSubtitle,
+    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerProgress, trailerMuted, activeTrailerSubtitle,
     handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
   };
 }
