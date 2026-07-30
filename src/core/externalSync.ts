@@ -1,7 +1,7 @@
 import { coreInvoke } from './engine';
 import { dropTraktPlaybackProgress, getOAuthClientId, refreshTraktProfile } from './traktSync';
 import { syncTraktNow, pushMarkWatchedTrakt, pushWatchlistTrakt } from './traktExternalSync';
-import { syncSimklNow, pushMarkWatchedSimkl, pushWatchlistSimkl } from './simklExternalSync';
+import { syncSimklNow, pushMarkWatchedSimkl, pushWatchlistSimkl, dropSimklPlaybackProgress } from './simklExternalSync';
 import {
   pushStremioPlaybackProgress,
   pushStremioWatched,
@@ -312,9 +312,12 @@ export async function pushLibraryStatusExternal(
 export async function dropExternalPlaybackProgress(item: Record<string, unknown>): Promise<void> {
   const id = String(item.id ?? '');
   if (!id) return;
-  const plan = await coreInvoke<{ dropTrakt: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'dropProgress', profile: {}, item, nowMs: Date.now() }));
+  const plan = await coreInvoke<{ dropTrakt: boolean; dropSimkl: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'dropProgress', profile: {}, item, nowMs: Date.now() }));
   if (plan?.dropTrakt) {
     await dropTraktPlaybackProgress(id);
+  }
+  if (plan?.dropSimkl) {
+    await dropSimklPlaybackProgress(id);
   }
 }
 

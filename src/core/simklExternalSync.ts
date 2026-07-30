@@ -9,10 +9,11 @@ import {
   storageRead,
   storageWrite,
 } from './engine';
-import { loadLibrary, saveLibrary, persistStatusListMerge, persistWatchedMerge, profileStorageKey } from './libraryOps';
+import { loadActiveProfile, loadLibrary, saveLibrary, persistStatusListMerge, persistWatchedMerge, profileStorageKey } from './libraryOps';
 import { _appVersion, platformFetch } from './httpClient';
 import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
 import { saveProviderLibrary } from './providerLibraries';
+import { getOAuthClientId } from './traktSync';
 import type { ImportCategory } from './importCategories';
 
 type SimklDeltaCache = {
@@ -130,6 +131,35 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   if (applyPlan.watched != null) await applyWatchedMerge(applyPlan.watched, localWatched as Record<string, boolean>, profileKey);
 
   return { synced: true, provider: 'simkl', continueWatchingCount: items.length, watchlistCount: applyPlan.watchlistCount, watchedCount: applyPlan.watchedCount };
+}
+
+export async function dropSimklPlaybackProgress(showId: string): Promise<void> {
+  const profile = await loadActiveProfile();
+  const token = profile?.simklAccessToken;
+  if (!token) return;
+
+  const clientId = await getOAuthClientId('simkl');
+  const query = `client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`;
+  const headers: HeadersInit = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'User-Agent': `Fluxa Desktop/${_appVersion}`,
+  };
+
+  try {
+    const response = await platformFetch(`https://api.simkl.com/sync/playback?${query}`, { headers });
+    if (!response.ok) return;
+    const playbackItems = await response.json().catch(() => []);
+
+    const deleteIds = await coreInvoke<number[]>('simklPlaybackDeleteIds', JSON.stringify({ contentId: showId, items: Array.isArray(playbackItems) ? playbackItems : [] })) ?? [];
+    await Promise.all(deleteIds.map((id) =>
+      platformFetch(`https://api.simkl.com/sync/playback/${id}?${query}`, {
+        method: 'DELETE',
+        headers,
+      }).then(() => undefined).catch(() => undefined),
+    ));
+  } catch {
+  }
 }
 
 export async function fetchSimklCalendarItems(

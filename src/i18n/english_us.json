@@ -1164,6 +1164,7 @@
   "home.drop_continue_watching": "Drop it",
   "home.drop_continue_watching_confirm_title": "Drop %s?",
   "home.drop_continue_watching_confirm_body": "This removes it from Continue Watching and clears its saved progress. This can't be undone.",
+  "home.drop_continue_watching_confirm_body_external": "This removes it from Continue Watching and clears its saved progress on %s too. This can't be undone.",
   "home.go_to_addons": "Go to Settings → Addons.",
   "home.install_addon_start": "Install an addon to get started.",
   "home.see_all": "See All",

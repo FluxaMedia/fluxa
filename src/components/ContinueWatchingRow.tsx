@@ -12,6 +12,14 @@ const ROW_PADDING_LEFT = '2rem';
 let lastCardFieldsKey: string | null = null;
 let lastCardFields: Map<string, { artwork: string | null; episodeLine: string }> = new Map();
 
+function externalSourceLabel(meta: Meta): string {
+  const item = meta as unknown as Record<string, unknown>;
+  const rawSource = typeof item.reason === 'string' ? item.reason : typeof item.source === 'string' ? item.source : '';
+  if (rawSource === 'trakt') return t('brand.trakt');
+  if (rawSource === 'simkl') return t('brand.simkl');
+  return rawSource;
+}
+
 function liveEpisodeLine(meta: Meta): string | null {
   const item = meta as unknown as {
     lastEpisodeName?: string;
@@ -238,7 +246,9 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
       {dropTarget && (
         <ConfirmDialog
           title={t('home.drop_continue_watching_confirm_title', dropTarget.name)}
-          body={t('home.drop_continue_watching_confirm_body')}
+          body={externalSourceLabel(dropTarget)
+            ? t('home.drop_continue_watching_confirm_body_external', externalSourceLabel(dropTarget))
+            : t('home.drop_continue_watching_confirm_body')}
           confirmLabel={t('home.drop_continue_watching')}
           cancelLabel={t('common.cancel')}
           destructive
@@ -275,12 +285,7 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
 
 function ContinueWatchingAboutDialog({ meta, artwork, onClose }: { meta: Meta; artwork: string | null; onClose: () => void }) {
   const item = meta as unknown as Record<string, unknown>;
-  const rawSource = typeof item.reason === 'string' ? item.reason : typeof item.source === 'string' ? item.source : '';
-  const source = rawSource === 'trakt'
-    ? t('brand.trakt')
-    : rawSource === 'simkl'
-    ? t('brand.simkl')
-    : rawSource || t('home.continue_watching_about_source_unknown');
+  const source = externalSourceLabel(meta) || t('home.continue_watching_about_source_unknown');
   const rows = [
     [t('home.continue_watching_about_id'), meta.id],
     [t('home.continue_watching_about_video_id'), item.lastVideoId],

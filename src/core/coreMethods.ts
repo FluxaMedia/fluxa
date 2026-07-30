@@ -336,6 +336,7 @@ export const CORE_METHODS = [
   'simklMarkWatchedBody',
   'simklMatchEpisode',
   'simklMergeDelta',
+  'simklPlaybackDeleteIds',
   'simklRecommendationCandidates',
   'simklRecommendationToMeta',
   'simklResourceSyncPlan',

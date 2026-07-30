@@ -1164,6 +1164,7 @@
   "home.drop_continue_watching": "Kaldır",
   "home.drop_continue_watching_confirm_title": "%s kaldırılsın mı?",
   "home.drop_continue_watching_confirm_body": "Bu, öğeyi İzlemeye Devam Et listesinden kaldırır ve kayıtlı ilerlemesini temizler. Bu işlem geri alınamaz.",
+  "home.drop_continue_watching_confirm_body_external": "Bu, öğeyi İzlemeye Devam Et listesinden kaldırır ve %s üzerindeki kayıtlı ilerlemesini de temizler. Bu işlem geri alınamaz.",
   "home.go_to_addons": "Ayarlar → Addons bölümüne git.",
   "home.install_addon_start": "Başlamak için bir addon kur.",
   "home.see_all": "Tümünü Gör",
