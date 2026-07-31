@@ -270,6 +270,65 @@ pub struct PlayerStatus {
     pub resuming: bool,
 }
 
+#[derive(Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerStaticStatus {
+    pub loaded: bool,
+    pub path: Option<String>,
+    pub media_title: Option<String>,
+    pub duration: Option<String>,
+    pub pause: Option<String>,
+    pub mute: Option<String>,
+    pub volume: Option<String>,
+    pub core_idle: Option<String>,
+    pub eof_reached: Option<String>,
+    pub vo_configured: Option<String>,
+    pub video_codec: Option<String>,
+    pub video_format: Option<String>,
+    pub width: Option<String>,
+    pub height: Option<String>,
+    pub hwdec_current: Option<String>,
+    pub fps: Option<String>,
+    pub audio_codec: Option<String>,
+    pub audio_samplerate: Option<String>,
+    pub audio_channels: Option<String>,
+    pub color_primaries: Option<String>,
+    pub color_matrix: Option<String>,
+    pub color_gamma: Option<String>,
+    pub video_out_primaries: Option<String>,
+    pub video_out_matrix: Option<String>,
+    pub video_out_gamma: Option<String>,
+    pub sig_peak: Option<String>,
+    pub hdr_active: bool,
+    pub container_fps: Option<String>,
+    pub display_fps: Option<String>,
+    pub file_format: Option<String>,
+    pub first_frame_presented: bool,
+    pub has_video_track: bool,
+    pub track_list_ready: bool,
+    pub resuming: bool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerPositionStatus {
+    pub time_pos: Option<String>,
+    pub percent_pos: Option<String>,
+    pub cache_speed: Option<String>,
+    pub demuxer_cache_duration: Option<String>,
+    pub frame_drop_count: Option<String>,
+    pub decoder_frame_drop_count: Option<String>,
+    pub avsync: Option<String>,
+    pub video_bitrate: Option<String>,
+    pub audio_bitrate: Option<String>,
+    pub mistimed_frame_count: Option<String>,
+    pub vo_delayed_frame_count: Option<String>,
+    pub paused_for_cache: Option<String>,
+    pub cache_buffering_state: Option<String>,
+    pub seeking: Option<String>,
+    pub frames_rendered: u64,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerTrackOption {
@@ -308,6 +367,65 @@ fn audio_channel_label(channel_count: Option<u32>) -> Option<String> {
 }
 
 impl PlayerStatus {
+    pub fn static_status(&self) -> PlayerStaticStatus {
+        PlayerStaticStatus {
+            loaded: self.loaded,
+            path: self.path.clone(),
+            media_title: self.media_title.clone(),
+            duration: self.duration.clone(),
+            pause: self.pause.clone(),
+            mute: self.mute.clone(),
+            volume: self.volume.clone(),
+            core_idle: self.core_idle.clone(),
+            eof_reached: self.eof_reached.clone(),
+            vo_configured: self.vo_configured.clone(),
+            video_codec: self.video_codec.clone(),
+            video_format: self.video_format.clone(),
+            width: self.width.clone(),
+            height: self.height.clone(),
+            hwdec_current: self.hwdec_current.clone(),
+            fps: self.fps.clone(),
+            audio_codec: self.audio_codec.clone(),
+            audio_samplerate: self.audio_samplerate.clone(),
+            audio_channels: self.audio_channels.clone(),
+            color_primaries: self.color_primaries.clone(),
+            color_matrix: self.color_matrix.clone(),
+            color_gamma: self.color_gamma.clone(),
+            video_out_primaries: self.video_out_primaries.clone(),
+            video_out_matrix: self.video_out_matrix.clone(),
+            video_out_gamma: self.video_out_gamma.clone(),
+            sig_peak: self.sig_peak.clone(),
+            hdr_active: self.hdr_active,
+            container_fps: self.container_fps.clone(),
+            display_fps: self.display_fps.clone(),
+            file_format: self.file_format.clone(),
+            first_frame_presented: self.first_frame_presented,
+            has_video_track: self.has_video_track,
+            track_list_ready: self.track_list_ready,
+            resuming: self.resuming,
+        }
+    }
+
+    pub fn position_status(&self) -> PlayerPositionStatus {
+        PlayerPositionStatus {
+            time_pos: self.time_pos.clone(),
+            percent_pos: self.percent_pos.clone(),
+            cache_speed: self.cache_speed.clone(),
+            demuxer_cache_duration: self.demuxer_cache_duration.clone(),
+            frame_drop_count: self.frame_drop_count.clone(),
+            decoder_frame_drop_count: self.decoder_frame_drop_count.clone(),
+            avsync: self.avsync.clone(),
+            video_bitrate: self.video_bitrate.clone(),
+            audio_bitrate: self.audio_bitrate.clone(),
+            mistimed_frame_count: self.mistimed_frame_count.clone(),
+            vo_delayed_frame_count: self.vo_delayed_frame_count.clone(),
+            paused_for_cache: self.paused_for_cache.clone(),
+            cache_buffering_state: self.cache_buffering_state.clone(),
+            seeking: self.seeking.clone(),
+            frames_rendered: self.frames_rendered,
+        }
+    }
+
     pub fn time_pos(&self) -> Option<&str> {
         self.time_pos.as_deref()
     }

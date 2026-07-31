@@ -309,6 +309,11 @@ export interface Effect {
   type: EffectType;
   generation: number;
   payload: Record<string, unknown>;
+  groupId?: string;
+  priority?: number;
+  dedupeKey?: string;
+  cachePolicy?: string;
+  timeoutMs?: number;
 }
 
 export interface EffectResult {
@@ -319,6 +324,7 @@ export interface EffectResult {
 }
 
 export interface DispatchResult {
+  revision?: number;
   // Only the domains that changed since the previous dispatch are present —
   // see mergeAppState, which merges this onto existing state instead of replacing it.
   state: Partial<AppState>;

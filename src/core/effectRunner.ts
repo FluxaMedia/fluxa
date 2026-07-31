@@ -345,10 +345,16 @@ export async function executeEffect(
   onStateUpdate?: (state: Partial<AppState>) => void,
 ): Promise<EffectResult> {
   try {
-    const value = await Sentry.startSpan(
+    const run = Sentry.startSpan(
       { name: effect.type, op: 'fluxa.effect' },
       () => runEffect(effect, onStateUpdate),
     );
+    const value = effect.timeoutMs && effect.timeoutMs > 0
+      ? await Promise.race([
+          run,
+          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error(`effect timed out after ${effect.timeoutMs}ms`)), effect.timeoutMs)),
+        ])
+      : await run;
     return { effectId: effect.id, status: 'ok', value };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -363,19 +369,35 @@ export async function executeEffect(
   }
 }
 
+async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      await worker(item);
+    }
+  });
+  await Promise.all(workers);
+}
+
 export async function pumpEffects(
   effects: Effect[],
   onStateUpdate: (state: Partial<AppState>) => void,
 ): Promise<Partial<AppState> | null> {
   let lastState: Partial<AppState> | null = null;
 
-  // Execute effects concurrently per batch, then feed completions back
-  await Promise.all(
-    effects.map(async (effect) => {
-      const result = await executeEffect(effect, onStateUpdate);
+  const groups = new Map<string, Effect[]>();
+  for (const effect of effects) {
+    const key = effect.dedupeKey ?? effect.id;
+    const group = groups.get(key);
+    if (group) group.push(effect);
+    else groups.set(key, [effect]);
+  }
+
+  const complete = async (effect: Effect, result: EffectResult) => {
       let dispatchResult: Awaited<ReturnType<typeof completeEffect>> = null;
       try {
-        dispatchResult = await completeEffect(result);
+        dispatchResult = await completeEffect({ ...result, effectId: effect.id });
       } catch {
       }
       if (dispatchResult) {
@@ -385,8 +407,24 @@ export async function pumpEffects(
           await pumpEffects(dispatchResult.effects, onStateUpdate);
         }
       }
-    }),
-  );
+  };
+
+  const scheduled = Array.from(groups.values()).sort((left, right) => (left[0].priority ?? 100) - (right[0].priority ?? 100));
+  const scheduledByGroup = new Map<string, Effect[][]>();
+  for (const duplicates of scheduled) {
+    const key = duplicates[0].groupId ?? duplicates[0].type;
+    const group = scheduledByGroup.get(key);
+    if (group) group.push(duplicates);
+    else scheduledByGroup.set(key, [duplicates]);
+  }
+  await Promise.all(Array.from(scheduledByGroup.entries()).map(async ([groupId, entries]) => {
+    const limit = groupId === 'addon' ? 6 : groupId === 'plugin' ? 2 : 4;
+    await runWithConcurrency(entries, limit, async (duplicates) => {
+      const primary = duplicates[0];
+      const result = await executeEffect(primary, onStateUpdate);
+      await Promise.all(duplicates.map((effect) => complete(effect, result)));
+    });
+  }));
 
   return lastState;
 }

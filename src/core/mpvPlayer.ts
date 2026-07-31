@@ -36,6 +36,8 @@ export type EmbeddedMpvStatus = {
   duration?: string | null;
   percentPos?: string | null;
   pause?: string | null;
+  mute?: string | null;
+  volume?: string | null;
   coreIdle?: string | null;
   eofReached?: string | null;
   voConfigured?: string | null;
@@ -77,6 +79,9 @@ export type EmbeddedMpvStatus = {
   trackListReady: boolean;
   resuming: boolean;
 };
+
+export type PlayerStaticStatus = Partial<EmbeddedMpvStatus>;
+export type PlayerPositionStatus = Partial<EmbeddedMpvStatus>;
 
 export type TorrentStats = {
   download_speed: number;

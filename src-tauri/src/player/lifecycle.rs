@@ -78,20 +78,17 @@ fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
                     .and_then(|renderer| renderer.as_ref().map(|renderer| renderer.status())),
             };
             if let Some(status) = status {
-                let mut static_status = serde_json::to_value(&status).unwrap_or_default();
-                if let Some(object) = static_status.as_object_mut() {
-                    object.remove("timePos");
-                    object.remove("percentPos");
-                    object.remove("demuxerCacheDuration");
-                    object.remove("cacheSpeed");
-                }
+                let static_status = status.static_status();
                 let position_due = last_position_sent.elapsed()
                     >= Duration::from_millis(
                         state.player_position_interval_ms.load(Ordering::Acquire),
                     );
-                if last_static.as_ref() != Some(&static_status) || position_due {
-                    let _ = app.emit("player-status", status);
+                if last_static.as_ref() != Some(&static_status) {
+                    let _ = app.emit("player-static-status", static_status.clone());
                     last_static = Some(static_status);
+                }
+                if position_due {
+                    let _ = app.emit("player-position-status", status.position_status());
                     last_position_sent = std::time::Instant::now();
                 }
             }
