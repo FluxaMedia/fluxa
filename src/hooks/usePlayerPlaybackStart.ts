@@ -164,6 +164,7 @@ export function usePlayerPlaybackStart(options: any) {
       autoPlayCountdownSecs: number;
       autoSkipIntro: boolean;
       useIntroDb: boolean;
+      useSkipDb: boolean;
       useAniSkip: boolean;
       useAnimeSkip: boolean;
       animeSkipClientId: string;
@@ -193,13 +194,14 @@ export function usePlayerPlaybackStart(options: any) {
     debugLog(`handlePlay:anime detection confidence=${animeDetection.confidence} isAnime=${animeDetection.isAnime} reasons=${animeDetection.reasons.join(', ')}`);
     const skipSegmentsPromise = (async () => {
       const useIntroDb = playbackPrefs.useIntroDb;
+      const useSkipDb = playbackPrefs.useSkipDb;
       const useAniSkip = playbackPrefs.useAniSkip;
       const useAnimeSkip = playbackPrefs.useAnimeSkip;
-      if ((!useIntroDb && !useAniSkip && !useAnimeSkip) || !episode) return [];
-      const imdbId = useIntroDb && meta?.id ? await corePlaybackIntroLookupContentId(meta.id) : '';
+      if ((!useIntroDb && !useSkipDb && !useAniSkip && !useAnimeSkip) || !episode) return [];
+      const imdbId = (useIntroDb || useSkipDb) && meta?.id ? await corePlaybackIntroLookupContentId(meta.id) : '';
       const season = episode.season ?? 1;
       const epNum = episode.episode ?? episode.number ?? 1;
-      return fetchPlaybackSkipSegments({ imdbId, season, episode: epNum, title: meta?.name ?? '', useIntroDb, useAniSkip, useAnimeSkip, animeSkipClientId: playbackPrefs.animeSkipClientId });
+      return fetchPlaybackSkipSegments({ imdbId, season, episode: epNum, title: meta?.name ?? '', useIntroDb, useSkipDb, useAniSkip, useAnimeSkip, animeSkipClientId: playbackPrefs.animeSkipClientId });
     })();
     void skipSegmentsPromise.then((segments) => {
       if (isCancelled() || segments.length === 0) return;

@@ -102,7 +102,9 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
   const [showSegmentMarker, setShowSegmentMarker] = useState(false);
   const introDbSubmitEnabled = prefs?.introDbSubmitEnabled === true;
   const introDbApiKey = typeof prefs?.introDbApiKey === 'string' ? prefs.introDbApiKey : '';
-  const introDbImdbId = usePlayerIntroDb(metaId, introDbSubmitEnabled);
+  const skipDbSubmitEnabled = prefs?.skipDbSubmitEnabled === true;
+  const skipDbApiKey = typeof prefs?.skipDbApiKey === 'string' ? prefs.skipDbApiKey : '';
+  const introDbImdbId = usePlayerIntroDb(metaId, introDbSubmitEnabled || skipDbSubmitEnabled);
   const [showTorrentPopover, setShowTorrentPopover] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackFlash | null>(null);
   const [showSeekOverlay, setShowSeekOverlay] = useState(false);
@@ -294,7 +296,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
         streamLinksButtonRef={streamLinksBtnRef}
         settingsButtonRef={playerSettingsBtnRef}
         showSegmentMarker={showSegmentMarker}
-        canMarkSegments={introDbSubmitEnabled && Boolean(introDbApiKey)}
+        canMarkSegments={(introDbSubmitEnabled && Boolean(introDbApiKey)) || (skipDbSubmitEnabled && Boolean(skipDbApiKey))}
         onClose={() => { void closePlayer(); }}
         onResetActivity={resetActivity}
         onToggleCastPause={toggleCastPause}
@@ -318,7 +320,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
       <PlayerSupplementalPanels
         cast={castPopoverOpen ? { devices: castDevices, discovering: castDiscovering, activeDeviceId: activeCastDeviceId, anchorRef: castBtnRef, onClose: () => setCastPopoverOpen(false), onSelectDevice: (device) => void selectCastDevice(device), onDisconnect: disconnectCast } : undefined}
         torrent={showTorrentPopover ? { stats: torrentStatsSnap, anchorRef: torrentBtnRef, onClose: () => setShowTorrentPopover(false) } : undefined}
-        marker={showSegmentMarker && introDbSubmitEnabled && introDbApiKey ? { onClose: () => setShowSegmentMarker(false), getPosMs: () => posRef.current * 1000, imdbId: introDbImdbId, season: currentEpisode?.season ?? null, episode: currentEpisode?.episode ?? currentEpisode?.number ?? null, apiKey: introDbApiKey } : undefined}
+        marker={showSegmentMarker && ((introDbSubmitEnabled && introDbApiKey) || (skipDbSubmitEnabled && skipDbApiKey)) ? { onClose: () => setShowSegmentMarker(false), getPosMs: () => posRef.current * 1000, imdbId: introDbImdbId, season: currentEpisode?.season ?? null, episode: currentEpisode?.episode ?? currentEpisode?.number ?? null, introDbApiKey: introDbSubmitEnabled ? introDbApiKey : '', skipDbApiKey: skipDbSubmitEnabled ? skipDbApiKey : '' } : undefined}
         settings={showPlayerSettings ? { anchorRef: playerSettingsBtnRef, onClose: () => setShowPlayerSettings(false), anime4kEnabled, onToggleAnime4k: toggleAnime4k } : undefined}
         shortcuts={showShortcutsHelp ? { overrides: shortcutOverrides, onClose: () => setShowShortcutsHelp(false) } : undefined}
         stats={showStats ? { stats: statsSnap, torrentStats: torrentStatsSnap, bufferHistory: bufferHistoryRef.current, networkSpeedHistory: netSpeedHistoryRef.current, torrentSpeedHistory, stallCount: stallCountRef.current } : undefined}

@@ -2,9 +2,9 @@ import { useState, type CSSProperties } from 'react';
 import { X, Play, Square, Send, Trash2 } from 'lucide-react';
 import { t } from '../../i18n';
 import { POPOVER_SURFACE } from '../ui/Popover';
-import { submitIntroDbSegments } from '../../core/introEffects';
+import { submitIntroDbSegments, submitSkipDbSegments } from '../../core/introEffects';
 
-type SegmentType = 'intro' | 'outro' | 'recap';
+type SegmentType = 'intro' | 'outro' | 'recap' | 'preview';
 
 type PendingSegment = {
   id: string;
@@ -24,6 +24,7 @@ const TYPE_OPTIONS: { value: SegmentType; labelKey: string }[] = [
   { value: 'intro', labelKey: 'player.mark_segment_type_intro' },
   { value: 'outro', labelKey: 'player.mark_segment_type_outro' },
   { value: 'recap', labelKey: 'player.mark_segment_type_recap' },
+  { value: 'preview', labelKey: 'player.mark_segment_type_preview' },
 ];
 
 interface SegmentMarkerPanelProps {
@@ -32,10 +33,11 @@ interface SegmentMarkerPanelProps {
   imdbId: string | null;
   season: number | null;
   episode: number | null;
-  apiKey: string;
+  introDbApiKey: string;
+  skipDbApiKey: string;
 }
 
-export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, season, episode, apiKey }: SegmentMarkerPanelProps) {
+export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, season, episode, introDbApiKey, skipDbApiKey }: SegmentMarkerPanelProps) {
   const [segType, setSegType] = useState<SegmentType>('intro');
   const [draftStartMs, setDraftStartMs] = useState<number | null>(null);
   const [pending, setPending] = useState<PendingSegment[]>([]);
@@ -50,7 +52,8 @@ export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, season, episode,
     if (draftStartMs == null) return;
     const endMs = getPosMs();
     if (endMs <= draftStartMs) { setDraftStartMs(null); return; }
-    if (endMs - draftStartMs < 5_000 || endMs - draftStartMs > 180_000) {
+    const maxDurationMs = segType === 'outro' || segType === 'preview' ? 900_000 : 300_000;
+    if (endMs - draftStartMs < 5_000 || endMs - draftStartMs > maxDurationMs) {
       setError(t('player.mark_segment_duration_error'));
       setDraftStartMs(null);
       return;
@@ -66,13 +69,16 @@ export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, season, episode,
     if (!hasContext || pending.length === 0) return;
     setStatus('submitting');
     try {
-      await submitIntroDbSegments({
-        apiKey,
-        imdbId: imdbId!,
-        season: season!,
-        episode: episode!,
-        segments: pending.map((s) => ({ startTime: s.startMs, endTime: s.endMs, type: s.type })),
-      });
+      const segments = pending.map((s) => ({ startTime: s.startMs, endTime: s.endMs, type: s.type }));
+      const introDbSegments = segments.filter((s) => s.type !== 'preview');
+      await Promise.all([
+        introDbApiKey && introDbSegments.length > 0
+          ? submitIntroDbSegments({ apiKey: introDbApiKey, imdbId: imdbId!, season: season!, episode: episode!, segments: introDbSegments })
+          : Promise.resolve(),
+        skipDbApiKey
+          ? submitSkipDbSegments({ apiKey: skipDbApiKey, imdbId: imdbId!, season: season!, episode: episode!, segments })
+          : Promise.resolve(),
+      ]);
       setStatus('success');
       setPending([]);
     } catch (reason) {

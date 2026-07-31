@@ -58,6 +58,12 @@ export async function coreParseIntroDbSegments(
   return coreInvoke("parseIntroDbSegments", dataJson);
 }
 
+export async function coreParseSkipdbSegments(
+  dataJson: string,
+): Promise<unknown[] | null> {
+  return coreInvoke("parseSkipdbSegments", dataJson);
+}
+
 export async function coreAniListMalId(
   dataJson: string,
 ): Promise<number | null> {

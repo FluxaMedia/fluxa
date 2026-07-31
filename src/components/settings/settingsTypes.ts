@@ -76,11 +76,14 @@ export interface Prefs {
   playerBackBufferSeconds: string;
   autoSkipIntro: boolean;
   useIntroDb: boolean;
+  useSkipDb: boolean;
   useAniSkip: boolean;
   useAnimeSkip: boolean;
   useChapterSkip: boolean;
   introDbSubmitEnabled: boolean;
   introDbApiKey: string;
+  skipDbSubmitEnabled: boolean;
+  skipDbApiKey: string;
   animeSkipClientId: string;
   preferredAudioLanguage: string;
   secondaryAudioLanguage: string;
@@ -222,11 +225,14 @@ export const DEFAULT_PREFS: Prefs = {
   playerBackBufferSeconds: '15',
   autoSkipIntro: false,
   useIntroDb: true,
+  useSkipDb: true,
   useAniSkip: true,
   useAnimeSkip: false,
   useChapterSkip: true,
   introDbSubmitEnabled: false,
   introDbApiKey: '',
+  skipDbSubmitEnabled: false,
+  skipDbApiKey: '',
   animeSkipClientId: '',
   preferredAudioLanguage: 'none',
   secondaryAudioLanguage: 'none',

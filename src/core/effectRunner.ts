@@ -451,6 +451,7 @@ export async function fetchPlaybackSkipSegments(opts: {
   episode: number;
   title: string;
   useIntroDb?: boolean;
+  useSkipDb?: boolean;
   useAniSkip?: boolean;
   useAnimeSkip?: boolean;
   animeSkipClientId?: string;

@@ -7,6 +7,7 @@ import {
   coreParseAnimeSkipResults,
   coreParseAniskipResults,
   coreParseIntroDbSegments,
+  coreParseSkipdbSegments,
   corePlaybackIntroLookupContentId,
 } from './engine';
 import { loadAddons } from './libraryOps';
@@ -40,16 +41,24 @@ export async function fetchIntroSegments(payload: Record<string, unknown>): Prom
   const episode = Number(payload.episode ?? 0);
   const title = typeof payload.title === 'string' ? payload.title : '';
   const useIntroDb = payload.useIntroDb !== false;
+  const useSkipDb = payload.useSkipDb !== false;
   const useAniSkip = payload.useAniSkip !== false;
   const useAnimeSkip = payload.useAnimeSkip === true;
   const animeSkipClientId = typeof payload.animeSkipClientId === 'string' ? payload.animeSkipClientId : '';
 
-  const [introDbSegments, aniSkipSegments, animeSkipSegments] = await Promise.all([
+  const [introDbSegments, skipDbSegments, aniSkipSegments, animeSkipSegments] = await Promise.all([
     useIntroDb && imdbId && season > 0 && episode > 0
       ? (async () => {
           const url = `https://api.introdb.app/segments?imdb_id=${encodeURIComponent(imdbId)}&season=${season}&episode=${episode}`;
           const data = await tryFetchJson(url);
           return coreParseIntroDbSegments(JSON.stringify(data));
+        })()
+      : Promise.resolve(null),
+    useSkipDb && imdbId && season > 0 && episode > 0
+      ? (async () => {
+          const url = `https://api.skipdb.tv/api/segments?imdb_id=${encodeURIComponent(imdbId)}&season=${season}&episode=${episode}`;
+          const data = await tryFetchJson(url);
+          return coreParseSkipdbSegments(JSON.stringify(data));
         })()
       : Promise.resolve(null),
     useAniSkip && title && episode > 0
@@ -66,7 +75,7 @@ export async function fetchIntroSegments(payload: Record<string, unknown>): Prom
       ? fetchAnimeSkipSegments(animeSkipClientId, title, season, episode)
       : Promise.resolve(null),
   ]);
-  const sources = [introDbSegments, aniSkipSegments, animeSkipSegments].filter(
+  const sources = [introDbSegments, skipDbSegments, aniSkipSegments, animeSkipSegments].filter(
     (segments): segments is unknown[] => Array.isArray(segments),
   );
 
@@ -177,6 +186,34 @@ export async function submitIntroDbSegments(payload: {
       segment_type: segment.type,
       start_sec: segment.startTime / 1000,
       end_sec: segment.endTime / 1000,
+    }),
+  })));
+}
+
+export async function submitSkipDbSegments(payload: {
+  apiKey: string;
+  imdbId: string;
+  season: number;
+  episode: number;
+  segments: IntroSegmentResult[];
+}): Promise<void> {
+  const { apiKey, imdbId, season, episode, segments } = payload;
+  if (!apiKey || !imdbId || season <= 0 || episode <= 0 || segments.length === 0) {
+    throw new Error('invalid_submission');
+  }
+  await Promise.all(segments.map((segment) => fetchJson('https://api.skipdb.tv/api/segments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey,
+    },
+    body: JSON.stringify({
+      imdb_id: imdbId,
+      season,
+      episode,
+      segment_type: segment.type,
+      start_ms: segment.startTime,
+      end_ms: segment.endTime,
     }),
   })));
 }

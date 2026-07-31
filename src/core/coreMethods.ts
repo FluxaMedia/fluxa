@@ -244,6 +244,7 @@ export const CORE_METHODS = [
   'parseExtraArgs',
   'parseIntroDbSegments',
   'parseManifest',
+  'parseSkipdbSegments',
   'parseTrailerSubtitleCues',
   'parseVideoId',
   'partitionThisWeek',
