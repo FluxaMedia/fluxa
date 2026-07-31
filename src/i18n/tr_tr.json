@@ -696,6 +696,8 @@
   "settings.playback_speed_desc": "Videolar için normal oynatma hızını belirler.",
   "settings.resume_playback_desc": "Bir içeriği tekrar açtığında son kaydedilen yerden devam eder.",
   "settings.forward_rewind_desc": "İleri ve geri sarma düğmelerinin kaç saniye atlayacağını belirler.",
+  "settings.stable_volume": "Sabit Ses Düzeyi",
+  "settings.stable_volume_desc": "Yüksek ve alçak sesli anları dengeleyerek ses düzeyini tutarlı tutar.",
   "settings.hold_to_speed": "Basılı Tutunca Hızlandır",
   "settings.hold_to_speed_desc": "Videoya basılı tuttuğun sürece oynatmayı geçici olarak hızlandırır.",
   "settings.hold_speed": "Basılı Tutma Hızı",

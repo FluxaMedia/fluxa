@@ -45,6 +45,13 @@ pub(super) fn mpv_options_from_preferences(
     {
         options.push(("ad".to_string(), "lavc".to_string()));
     }
+    if preferences
+        .get("stableVolume")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+    {
+        options.push(("af".to_string(), "dynaudnorm".to_string()));
+    }
     if let Some(size) = get("subtitleSize").and_then(|v| v.parse::<f64>().ok()) {
         options.push((
             "sub-scale".to_string(),

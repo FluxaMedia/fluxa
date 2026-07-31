@@ -696,6 +696,8 @@
   "settings.playback_speed_desc": "Sets the normal playback speed for videos.",
   "settings.resume_playback_desc": "Continues from the last saved position when you reopen a title.",
   "settings.forward_rewind_desc": "Sets how far the seek buttons jump forward or back.",
+  "settings.stable_volume": "Stable Volume",
+  "settings.stable_volume_desc": "Evens out loud and quiet moments so volume stays consistent.",
   "settings.hold_to_speed": "Hold to Speed",
   "settings.hold_to_speed_desc": "Temporarily speeds up playback while you hold the video.",
   "settings.hold_speed": "Hold Speed",

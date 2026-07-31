@@ -71,6 +71,7 @@ export interface Prefs {
   seekSeconds: string;
   holdToSpeedEnabled: boolean;
   holdSpeed: string;
+  stableVolume: boolean;
   playerBufferCacheMb: string;
   playerForwardBufferSeconds: string;
   playerBackBufferSeconds: string;
@@ -220,6 +221,7 @@ export const DEFAULT_PREFS: Prefs = {
   seekSeconds: '10',
   holdToSpeedEnabled: true,
   holdSpeed: '2.0',
+  stableVolume: false,
   playerBufferCacheMb: '100',
   playerForwardBufferSeconds: '60',
   playerBackBufferSeconds: '15',

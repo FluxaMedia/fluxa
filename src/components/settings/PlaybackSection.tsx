@@ -155,6 +155,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
           void invoke('player_set_seek_thumbnail_enabled', { enabled: v });
         }}
       />
+      <ToggleTile title={t('settings.stable_volume')} subtitle={t('settings.stable_volume_desc')} checked={prefs.stableVolume} onToggle={(v) => setPref('stableVolume', v)} />
       <ToggleTile
         title="HDR output"
         subtitle="Use HDR output when the display and renderer support it. Falls back to SDR when unavailable."
