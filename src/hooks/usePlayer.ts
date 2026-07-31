@@ -431,6 +431,8 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     onPlayerError: handleNativePlayerError,
     onEpisodePlaybackFailed,
     showEpisodeTransitionLoading,
+    scrobbleStartedRef,
+    dispatchScrobbleLifecycle,
   });
 
   const notifyFirstFrame = useCallback(() => {

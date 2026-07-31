@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { t } from '../i18n';
 import type { Meta, Stream, Video } from '../core/types';
 import { appPrefs } from '../core/appPrefs';
-import { embeddedMpvSetTitle, embeddedMpvSetLoadingArtwork, embeddedMpvStop, playerLastStreamError } from '../core/mpvPlayer';
+import { embeddedMpvSetTitle, embeddedMpvSetLoadingArtwork, embeddedMpvStatus, embeddedMpvStop, playerLastStreamError, type EmbeddedMpvStatus } from '../core/mpvPlayer';
 import { fetchStreamsForEpisode } from '../core/effectRunner';
 import { playerArtwork, playerDisplayTitle } from '../core/playerUtils';
 import { coreResolveNextEpisode, coreSelectNextEpisodeStream } from '../core/engine';
@@ -27,6 +27,8 @@ export function usePlayerNativeEvents({
   onPlayerError,
   onEpisodePlaybackFailed,
   showEpisodeTransitionLoading,
+  scrobbleStartedRef,
+  dispatchScrobbleLifecycle,
 }: {
   stateRef: React.MutableRefObject<AppState>;
   closingPlayerRef: React.MutableRefObject<boolean>;
@@ -40,8 +42,17 @@ export function usePlayerNativeEvents({
   onPlayerError: (message: string) => Promise<void>;
   onEpisodePlaybackFailed?: (meta: Meta, episode: Video, message: string) => Promise<void> | void;
   showEpisodeTransitionLoading: (meta: Meta, episode: Video, stream: Stream) => void;
+  scrobbleStartedRef: React.MutableRefObject<boolean>;
+  dispatchScrobbleLifecycle: (event: 'start' | 'pause' | 'stop', status: EmbeddedMpvStatus) => Promise<void>;
 }) {
   const episodeTransitionActiveRef = useRef(false);
+
+  const stopScrobbleForOutgoingEpisode = async () => {
+    if (!scrobbleStartedRef.current) return;
+    const status = await embeddedMpvStatus().catch(() => null);
+    if (!status) return;
+    await dispatchScrobbleLifecycle('stop', status).catch(() => undefined);
+  };
 
   useEffect(() => {
     const unlisteners: Array<() => void> = [];
@@ -92,6 +103,7 @@ export function usePlayerNativeEvents({
         if (!nextEp || !meta || !currentStream) return;
 
         showEpisodeTransitionLoading(meta, nextEp, currentStream);
+        await stopScrobbleForOutgoingEpisode();
         await embeddedMpvStop().catch(() => undefined);
         const nextTitle = playerDisplayTitle(meta, nextEp, currentStream);
         const nextArtwork = playerArtwork(meta, nextEp);
@@ -155,6 +167,7 @@ export function usePlayerNativeEvents({
       void (async () => {
         try {
         showEpisodeTransitionLoading(meta, ep, currentStream);
+        await stopScrobbleForOutgoingEpisode();
         await embeddedMpvStop().catch(() => undefined);
         const nextTitle = playerDisplayTitle(meta, ep, currentStream);
         const nextArtwork = playerArtwork(meta, ep);
@@ -192,5 +205,5 @@ export function usePlayerNativeEvents({
       .catch(() => undefined);
 
     return () => { cancelled = true; unlisteners.forEach((fn) => fn()); };
-  }, [handlePlay, stateRef, closingPlayerRef, playingMetaRef, playingStreamRef, playingEpisodeRef, playingNextEpisodeRef, prefetchedNextEpRef, episodeTransitionActiveRef, showEpisodeTransitionLoading, onEpisodePlaybackFailed]);
+  }, [handlePlay, stateRef, closingPlayerRef, playingMetaRef, playingStreamRef, playingEpisodeRef, playingNextEpisodeRef, prefetchedNextEpRef, episodeTransitionActiveRef, showEpisodeTransitionLoading, onEpisodePlaybackFailed, scrobbleStartedRef, dispatchScrobbleLifecycle]);
 }
