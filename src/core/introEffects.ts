@@ -49,35 +49,48 @@ export async function resolveIntroImdbId(payload: Record<string, unknown>): Prom
   return corePlaybackIntroLookupContentId(id);
 }
 
-export async function fetchIntroSegments(payload: Record<string, unknown>): Promise<unknown> {
+export async function fetchIntroSegments(payload: Record<string, unknown>): Promise<{ segments: unknown[]; coverage: Record<string, string[]> }> {
   const imdbId = typeof payload.imdbId === 'string' ? payload.imdbId : '';
   const season = Number(payload.season ?? 0);
   const episode = Number(payload.episode ?? 0);
   const title = typeof payload.title === 'string' ? payload.title : '';
   const tmdbId = typeof payload.tmdbId === 'number' && payload.tmdbId > 0 ? payload.tmdbId : undefined;
-  const useIntroDb = payload.useIntroDb !== false;
-  const useSkipDb = payload.useSkipDb !== false;
-  const useTheIntroDb = payload.useTheIntroDb !== false;
-  const useAniSkip = payload.useAniSkip !== false;
+  const useSkipSegments = payload.useSkipSegments !== false;
   const useAnimeSkip = payload.useAnimeSkip === true;
   const animeSkipClientId = typeof payload.animeSkipClientId === 'string' ? payload.animeSkipClientId : '';
 
   const [introDbSegments, skipDbSegments, theIntroDbSegments, aniSkipSegments, animeSkipSegments] = await Promise.all([
-    useIntroDb && imdbId && season > 0 && episode > 0 ? fetchIntroDbSegments(imdbId, season, episode) : Promise.resolve(null),
-    useSkipDb && imdbId && season > 0 && episode > 0 ? fetchSkipDbSegments(imdbId, season, episode) : Promise.resolve(null),
-    useTheIntroDb && (tmdbId || imdbId) && episode > 0 ? fetchTheIntroDbSegments(tmdbId, imdbId, season, episode) : Promise.resolve(null),
-    useAniSkip && title && episode > 0 ? fetchAniSkipSegments(title, episode) : Promise.resolve(null),
+    useSkipSegments && imdbId && season > 0 && episode > 0 ? fetchIntroDbSegments(imdbId, season, episode) : Promise.resolve(null),
+    useSkipSegments && imdbId && season > 0 && episode > 0 ? fetchSkipDbSegments(imdbId, season, episode) : Promise.resolve(null),
+    useSkipSegments && (tmdbId || imdbId) && episode > 0 ? fetchTheIntroDbSegments(tmdbId, imdbId, season, episode) : Promise.resolve(null),
+    useSkipSegments && title && episode > 0 ? fetchAniSkipSegments(title, episode) : Promise.resolve(null),
     useAnimeSkip && animeSkipClientId && title && episode > 0
       ? fetchAnimeSkipSegments(animeSkipClientId, title, season, episode)
       : Promise.resolve(null),
   ]);
+
+  const coverage: Record<string, string[]> = {
+    introDb: segmentTypes(introDbSegments),
+    skipDb: segmentTypes(skipDbSegments),
+    theIntroDb: segmentTypes(theIntroDbSegments),
+    aniSkip: segmentTypes(aniSkipSegments),
+    animeSkip: segmentTypes(animeSkipSegments),
+  };
+
   const sources = [introDbSegments, skipDbSegments, theIntroDbSegments, aniSkipSegments, animeSkipSegments].filter(
     (segments): segments is unknown[] => Array.isArray(segments),
   );
 
-  if (sources.length === 0) return [];
-  if (sources.length === 1) return sources[0];
-  return (await coreMergeIntroSegments(JSON.stringify(sources))) ?? [];
+  if (sources.length === 0) return { segments: [], coverage };
+  if (sources.length === 1) return { segments: sources[0], coverage };
+  return { segments: (await coreMergeIntroSegments(JSON.stringify(sources))) ?? [], coverage };
+}
+
+function segmentTypes(segments: unknown): string[] {
+  if (!Array.isArray(segments)) return [];
+  return segments
+    .map((s) => (s as { type?: string })?.type)
+    .filter((t): t is string => typeof t === 'string');
 }
 
 async function fetchIntroDbSegments(imdbId: string, season: number, episode: number): Promise<unknown[] | null> {

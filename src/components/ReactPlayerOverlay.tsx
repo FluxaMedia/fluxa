@@ -65,9 +65,10 @@ interface Props {
   bannerOffset?: number;
   prefs?: Record<string, unknown>;
   onDispatch?: (actionJson: string) => Promise<void> | void;
+  skipSegmentCoverage?: Record<string, string[]>;
 }
 
-export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, initialEpisodeTitle, currentEpisode, isTorrentStream = false, initialPosterUrl, initialLogoUrl, metaId, initialSubtitleUrl, initialStreamHeaders, streamRef, metaRef, playbackUrl, playbackError, subtitleWarning, onDismissSubtitleWarning, softwareVideoActive = false, bannerOffset = 0, prefs, onDispatch }: Props) {
+export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, initialEpisodeTitle, currentEpisode, isTorrentStream = false, initialPosterUrl, initialLogoUrl, metaId, initialSubtitleUrl, initialStreamHeaders, streamRef, metaRef, playbackUrl, playbackError, subtitleWarning, onDismissSubtitleWarning, softwareVideoActive = false, bannerOffset = 0, prefs, onDispatch, skipSegmentCoverage }: Props) {
   const playerTelemetry = usePlayerTelemetryState();
   const { paused, muted, volumeLevel, isBuffering, bufferingProgress, hdrLabel, statsSnap, torrentStatsSnap, torrentSpeedHistory, setPaused, setMuted, setVolumeLevel, resetTorrentSpeedHistory } = playerTelemetry;
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -322,7 +323,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
       <PlayerSupplementalPanels
         cast={castPopoverOpen ? { devices: castDevices, discovering: castDiscovering, activeDeviceId: activeCastDeviceId, anchorRef: castBtnRef, onClose: () => setCastPopoverOpen(false), onSelectDevice: (device) => void selectCastDevice(device), onDisconnect: disconnectCast } : undefined}
         torrent={showTorrentPopover ? { stats: torrentStatsSnap, anchorRef: torrentBtnRef, onClose: () => setShowTorrentPopover(false) } : undefined}
-        marker={showSegmentMarker && ((introDbSubmitEnabled && introDbApiKey) || (skipDbSubmitEnabled && skipDbApiKey) || (theIntroDbSubmitEnabled && theIntroDbApiKey)) ? { onClose: () => setShowSegmentMarker(false), getPosMs: () => posRef.current * 1000, imdbId: introDbImdbId, tmdbId: introDbTmdbId, mediaType: metaRef?.current?.type === 'series' ? 'tv' : 'movie', season: currentEpisode?.season ?? null, episode: currentEpisode?.episode ?? currentEpisode?.number ?? null, introDbApiKey: introDbSubmitEnabled ? introDbApiKey : '', skipDbApiKey: skipDbSubmitEnabled ? skipDbApiKey : '', theIntroDbApiKey: theIntroDbSubmitEnabled ? theIntroDbApiKey : '' } : undefined}
+        marker={showSegmentMarker && ((introDbSubmitEnabled && introDbApiKey) || (skipDbSubmitEnabled && skipDbApiKey) || (theIntroDbSubmitEnabled && theIntroDbApiKey)) ? { onClose: () => setShowSegmentMarker(false), getPosMs: () => posRef.current * 1000, imdbId: introDbImdbId, tmdbId: introDbTmdbId, mediaType: metaRef?.current?.type === 'series' ? 'tv' : 'movie', season: currentEpisode?.season ?? null, episode: currentEpisode?.episode ?? currentEpisode?.number ?? null, introDbApiKey: introDbSubmitEnabled ? introDbApiKey : '', skipDbApiKey: skipDbSubmitEnabled ? skipDbApiKey : '', theIntroDbApiKey: theIntroDbSubmitEnabled ? theIntroDbApiKey : '', coverage: skipSegmentCoverage ?? {} } : undefined}
         settings={showPlayerSettings ? { anchorRef: playerSettingsBtnRef, onClose: () => setShowPlayerSettings(false), anime4kEnabled, onToggleAnime4k: toggleAnime4k } : undefined}
         shortcuts={showShortcutsHelp ? { overrides: shortcutOverrides, onClose: () => setShowShortcutsHelp(false) } : undefined}
         stats={showStats ? { stats: statsSnap, torrentStats: torrentStatsSnap, bufferHistory: bufferHistoryRef.current, networkSpeedHistory: netSpeedHistoryRef.current, torrentSpeedHistory, stallCount: stallCountRef.current } : undefined}

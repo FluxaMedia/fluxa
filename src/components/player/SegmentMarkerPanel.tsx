@@ -1,10 +1,11 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { X, Play, Square, Send, Trash2 } from 'lucide-react';
 import { t } from '../../i18n';
 import { POPOVER_SURFACE } from '../ui/Popover';
 import { submitIntroDbSegments, submitSkipDbSegments, submitTheIntroDbSegments } from '../../core/introEffects';
 
 type SegmentType = 'intro' | 'outro' | 'recap' | 'preview';
+type ProviderId = 'introDb' | 'skipDb' | 'theIntroDb';
 
 type PendingSegment = {
   id: string;
@@ -38,16 +39,29 @@ interface SegmentMarkerPanelProps {
   introDbApiKey: string;
   skipDbApiKey: string;
   theIntroDbApiKey: string;
+  coverage: Record<string, string[]>;
 }
 
-export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, tmdbId, mediaType, season, episode, introDbApiKey, skipDbApiKey, theIntroDbApiKey }: SegmentMarkerPanelProps) {
+export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, tmdbId, mediaType, season, episode, introDbApiKey, skipDbApiKey, theIntroDbApiKey, coverage }: SegmentMarkerPanelProps) {
   const [segType, setSegType] = useState<SegmentType>('intro');
   const [draftStartMs, setDraftStartMs] = useState<number | null>(null);
   const [pending, setPending] = useState<PendingSegment[]>([]);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<ProviderId | ''>('');
 
   const hasContext = !!season && !!episode && (!!imdbId || !!tmdbId);
+
+  const availableProviders = useMemo(() => [
+    { id: 'introDb' as const, label: 'IntroDB', enabled: !!introDbApiKey && !!imdbId },
+    { id: 'skipDb' as const, label: 'SkipDB', enabled: !!skipDbApiKey && !!imdbId },
+    { id: 'theIntroDb' as const, label: 'TheIntroDB', enabled: !!theIntroDbApiKey && !!tmdbId },
+  ].filter((p) => p.enabled), [introDbApiKey, skipDbApiKey, theIntroDbApiKey, imdbId, tmdbId]);
+
+  useEffect(() => {
+    if (availableProviders.some((p) => p.id === selectedProvider)) return;
+    setSelectedProvider(availableProviders[0]?.id ?? '');
+  }, [availableProviders, selectedProvider]);
 
   const startDraft = () => { setStatus('idle'); setError(null); setDraftStartMs(getPosMs()); };
   const cancelDraft = () => setDraftStartMs(null);
@@ -69,22 +83,19 @@ export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, tmdbId, mediaTyp
   const removePending = (id: string) => { setStatus('idle'); setError(null); setPending((prev) => prev.filter((s) => s.id !== id)); };
 
   const submit = async () => {
-    if (!hasContext || pending.length === 0) return;
+    if (!hasContext || pending.length === 0 || !selectedProvider) return;
     setStatus('submitting');
     try {
       const segments = pending.map((s) => ({ startTime: s.startMs, endTime: s.endMs, type: s.type }));
-      const introDbSegments = segments.filter((s) => s.type !== 'preview');
-      await Promise.all([
-        introDbApiKey && imdbId && introDbSegments.length > 0
-          ? submitIntroDbSegments({ apiKey: introDbApiKey, imdbId, season: season!, episode: episode!, segments: introDbSegments })
-          : Promise.resolve(),
-        skipDbApiKey && imdbId
-          ? submitSkipDbSegments({ apiKey: skipDbApiKey, imdbId, season: season!, episode: episode!, segments })
-          : Promise.resolve(),
-        theIntroDbApiKey && tmdbId
-          ? submitTheIntroDbSegments({ apiKey: theIntroDbApiKey, tmdbId, mediaType: mediaType ?? 'movie', imdbId: imdbId ?? undefined, season: season!, episode: episode!, segments })
-          : Promise.resolve(),
-      ]);
+      if (selectedProvider === 'introDb') {
+        const introDbSegments = segments.filter((s) => s.type !== 'preview');
+        if (introDbSegments.length === 0) throw new Error(t('player.mark_segment_error_unknown'));
+        await submitIntroDbSegments({ apiKey: introDbApiKey, imdbId: imdbId!, season: season!, episode: episode!, segments: introDbSegments });
+      } else if (selectedProvider === 'skipDb') {
+        await submitSkipDbSegments({ apiKey: skipDbApiKey, imdbId: imdbId!, season: season!, episode: episode!, segments });
+      } else {
+        await submitTheIntroDbSegments({ apiKey: theIntroDbApiKey, tmdbId: tmdbId!, mediaType: mediaType ?? 'movie', imdbId: imdbId ?? undefined, season: season!, episode: episode!, segments });
+      }
       setStatus('success');
       setPending([]);
     } catch (reason) {
@@ -185,9 +196,31 @@ export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, tmdbId, mediaTyp
             </div>
           )}
 
+          {availableProviders.length > 0 && (
+            <select
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value as ProviderId)}
+              style={{
+                padding: '0.5rem',
+                borderRadius: '0.375rem',
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(255,255,255,0.08)',
+                color: '#fff',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+              }}
+            >
+              {availableProviders.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}{coverage[p.id]?.includes(segType) ? ` ✓ ${t('player.mark_segment_already_covered')}` : ''}
+                </option>
+              ))}
+            </select>
+          )}
+
           <button
             onClick={() => void submit()}
-            disabled={pending.length === 0 || status === 'submitting'}
+            disabled={pending.length === 0 || status === 'submitting' || !selectedProvider}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -196,11 +229,11 @@ export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, tmdbId, mediaTyp
               padding: '0.5rem 0',
               borderRadius: '0.375rem',
               border: 'none',
-              background: pending.length === 0 ? 'rgba(255,255,255,0.08)' : '#fff',
-              color: pending.length === 0 ? 'rgba(255,255,255,0.35)' : '#000',
+              background: pending.length === 0 || !selectedProvider ? 'rgba(255,255,255,0.08)' : '#fff',
+              color: pending.length === 0 || !selectedProvider ? 'rgba(255,255,255,0.35)' : '#000',
               fontSize: '0.8125rem',
               fontWeight: 700,
-              cursor: pending.length === 0 ? 'default' : 'pointer',
+              cursor: pending.length === 0 || !selectedProvider ? 'default' : 'pointer',
             }}
           >
             <Send size={14} />

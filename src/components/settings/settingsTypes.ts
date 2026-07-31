@@ -75,10 +75,7 @@ export interface Prefs {
   playerForwardBufferSeconds: string;
   playerBackBufferSeconds: string;
   autoSkipIntro: boolean;
-  useIntroDb: boolean;
-  useSkipDb: boolean;
-  useTheIntroDb: boolean;
-  useAniSkip: boolean;
+  useSkipSegments: boolean;
   useAnimeSkip: boolean;
   useChapterSkip: boolean;
   introDbSubmitEnabled: boolean;
@@ -227,10 +224,7 @@ export const DEFAULT_PREFS: Prefs = {
   playerForwardBufferSeconds: '60',
   playerBackBufferSeconds: '15',
   autoSkipIntro: false,
-  useIntroDb: true,
-  useSkipDb: true,
-  useTheIntroDb: true,
-  useAniSkip: true,
+  useSkipSegments: true,
   useAnimeSkip: false,
   useChapterSkip: true,
   introDbSubmitEnabled: false,

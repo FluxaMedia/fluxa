@@ -525,6 +525,7 @@
   "player.mark_segment_type_outro": "Outro",
   "player.mark_segment_type_recap": "Recap",
   "player.mark_segment_type_preview": "Preview",
+  "player.mark_segment_already_covered": "already have a result",
   "player.mark_segment_start": "Set start",
   "player.mark_segment_stop": "Set end",
   "player.mark_segment_cancel": "Cancel",

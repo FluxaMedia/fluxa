@@ -451,12 +451,9 @@ export async function fetchPlaybackSkipSegments(opts: {
   season: number;
   episode: number;
   title: string;
-  useIntroDb?: boolean;
-  useSkipDb?: boolean;
-  useTheIntroDb?: boolean;
-  useAniSkip?: boolean;
+  useSkipSegments?: boolean;
   useAnimeSkip?: boolean;
   animeSkipClientId?: string;
-}): Promise<IntroSegmentResult[]> {
-  return fetchIntroSegments(opts) as Promise<IntroSegmentResult[]>;
+}): Promise<{ segments: IntroSegmentResult[]; coverage: Record<string, string[]> }> {
+  return fetchIntroSegments(opts) as Promise<{ segments: IntroSegmentResult[]; coverage: Record<string, string[]> }>;
 }

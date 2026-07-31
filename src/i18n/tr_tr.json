@@ -525,6 +525,7 @@
   "player.mark_segment_type_outro": "Outro",
   "player.mark_segment_type_recap": "Özet",
   "player.mark_segment_type_preview": "Önizleme",
+  "player.mark_segment_already_covered": "zaten sonuç var",
   "player.mark_segment_start": "Başlangıcı ayarla",
   "player.mark_segment_stop": "Bitişi ayarla",
   "player.mark_segment_cancel": "İptal",

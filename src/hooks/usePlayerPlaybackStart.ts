@@ -13,7 +13,7 @@ import { embeddedMpvSetLoadingArtwork, embeddedMpvStatus, playerClearChapters, p
 import type { AddonDescriptor, Meta, Stream, Video } from '../core/types';
 
 export function usePlayerPlaybackStart(options: any) {
-  const { stateRef, onEpisodePlaybackFailed, playGenerationRef, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage } = options;
+  const { stateRef, onEpisodePlaybackFailed, playGenerationRef, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage } = options;
   const handlePlay = useCallback(async (
     stream: Stream,
     meta?: Meta,
@@ -163,10 +163,7 @@ export function usePlayerPlaybackStart(options: any) {
       autoPlayNextEpisode: boolean;
       autoPlayCountdownSecs: number;
       autoSkipIntro: boolean;
-      useIntroDb: boolean;
-      useSkipDb: boolean;
-      useTheIntroDb: boolean;
-      useAniSkip: boolean;
+      useSkipSegments: boolean;
       useAnimeSkip: boolean;
       animeSkipClientId: string;
     }>('playbackPreferencesPlan', JSON.stringify(skipPrefs));
@@ -183,6 +180,7 @@ export function usePlayerPlaybackStart(options: any) {
       skipCountdown,
       playbackPrefs.autoSkipIntro,
     );
+    setSkipSegmentCoverage({});
     void playerClearChapters();
     const episodeList = meta?.videos ?? [];
     void playerSetEpisodes(JSON.stringify(episodeList));
@@ -194,21 +192,20 @@ export function usePlayerPlaybackStart(options: any) {
     );
     debugLog(`handlePlay:anime detection confidence=${animeDetection.confidence} isAnime=${animeDetection.isAnime} reasons=${animeDetection.reasons.join(', ')}`);
     const skipSegmentsPromise = (async () => {
-      const useIntroDb = playbackPrefs.useIntroDb;
-      const useSkipDb = playbackPrefs.useSkipDb;
-      const useTheIntroDb = playbackPrefs.useTheIntroDb;
-      const useAniSkip = playbackPrefs.useAniSkip;
+      const useSkipSegments = playbackPrefs.useSkipSegments;
       const useAnimeSkip = playbackPrefs.useAnimeSkip;
-      if ((!useIntroDb && !useSkipDb && !useTheIntroDb && !useAniSkip && !useAnimeSkip) || !episode) return [];
-      const resolvedId = (useIntroDb || useSkipDb || useTheIntroDb) && meta?.id ? await corePlaybackIntroLookupContentId(meta.id) : '';
+      if ((!useSkipSegments && !useAnimeSkip) || !episode) return { segments: [], coverage: {} };
+      const resolvedId = useSkipSegments && meta?.id ? await corePlaybackIntroLookupContentId(meta.id) : '';
       const imdbId = resolvedId.startsWith('tt') ? resolvedId : '';
       const tmdbId = !imdbId && /^\d+$/.test(resolvedId) ? Number(resolvedId) : undefined;
       const season = episode.season ?? 1;
       const epNum = episode.episode ?? episode.number ?? 1;
-      return fetchPlaybackSkipSegments({ imdbId, tmdbId, season, episode: epNum, title: meta?.name ?? '', useIntroDb, useSkipDb, useTheIntroDb, useAniSkip, useAnimeSkip, animeSkipClientId: playbackPrefs.animeSkipClientId });
+      return fetchPlaybackSkipSegments({ imdbId, tmdbId, season, episode: epNum, title: meta?.name ?? '', useSkipSegments, useAnimeSkip, animeSkipClientId: playbackPrefs.animeSkipClientId });
     })();
-    void skipSegmentsPromise.then((segments) => {
-      if (isCancelled() || segments.length === 0) return;
+    void skipSegmentsPromise.then(({ segments, coverage }) => {
+      if (isCancelled()) return;
+      setSkipSegmentCoverage(coverage);
+      if (segments.length === 0) return;
       return playerSetSkipInfo(
         JSON.stringify(segments),
         playableInitialNextEp ? formatNextEpisodeSubtitle(playableInitialNextEp) : undefined,
@@ -347,10 +344,11 @@ export function usePlayerPlaybackStart(options: any) {
         const prefs = appPrefs(stateRef.current);
         const needVideos = !nextEp && !!meta?.id && !!meta?.type && !!episode;
 
-        const [segmentResult, fetchedVideos] = await Promise.all([
+        const [{ segments: segmentResult, coverage: segmentCoverage }, fetchedVideos] = await Promise.all([
           skipSegmentsPromise,
           needVideos ? fetchMetaVideos(meta!.id, meta!.type) : Promise.resolve([] as Video[]),
         ]);
+        setSkipSegmentCoverage(segmentCoverage);
 
         if (fetchedVideos.length > 0) {
           void playerSetEpisodes(JSON.stringify(fetchedVideos));
