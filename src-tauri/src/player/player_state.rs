@@ -1,6 +1,13 @@
 use super::*;
 
 #[tauri::command]
+pub fn player_set_status_interval(state: State<DesktopState>, interval_ms: u64) {
+    state
+        .player_position_interval_ms
+        .store(interval_ms.clamp(250, 1000), Ordering::Release);
+}
+
+#[tauri::command]
 pub fn player_screenshot(
     state: State<DesktopState>,
     suggested_name: String,
@@ -191,6 +198,7 @@ pub fn player_track_options(
 
 #[tauri::command]
 pub fn player_destroy(state: State<DesktopState>) -> bool {
+    state.pending_hide.store(true, Ordering::Release);
     let _ = state.sleep_inhibitor.lock().unwrap().set_enabled(false);
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
         return state.player_renderer_vlc.lock().unwrap().take().is_some();
@@ -349,4 +357,3 @@ pub fn player_get_seek_thumbnail(
         general_purpose::STANDARD.encode(&jpeg)
     ))
 }
-

@@ -46,7 +46,58 @@ pub async fn player_init(app: AppHandle, state: State<'_, DesktopState>) -> Resu
     .map_err(|e| e.to_string())??;
 
     log::info!("player_init: ok");
+    start_telemetry_publisher(app, &state);
     Ok(())
+}
+
+fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
+    if state.player_telemetry_running.swap(true, Ordering::AcqRel) {
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        let mut last_static = None;
+        let mut last_position_sent = std::time::Instant::now() - Duration::from_secs(1);
+        loop {
+            let state = app.state::<DesktopState>();
+            if state.pending_hide.load(Ordering::Acquire) {
+                state
+                    .player_telemetry_running
+                    .store(false, Ordering::Release);
+                break;
+            }
+            let status = match *state.active_player_engine.lock().unwrap() {
+                PlayerEngine::Mpv => state
+                    .player_renderer
+                    .try_lock()
+                    .ok()
+                    .and_then(|renderer| renderer.as_ref().map(|renderer| renderer.status())),
+                PlayerEngine::Vlc => state
+                    .player_renderer_vlc
+                    .try_lock()
+                    .ok()
+                    .and_then(|renderer| renderer.as_ref().map(|renderer| renderer.status())),
+            };
+            if let Some(status) = status {
+                let mut static_status = serde_json::to_value(&status).unwrap_or_default();
+                if let Some(object) = static_status.as_object_mut() {
+                    object.remove("timePos");
+                    object.remove("percentPos");
+                    object.remove("demuxerCacheDuration");
+                    object.remove("cacheSpeed");
+                }
+                let position_due = last_position_sent.elapsed()
+                    >= Duration::from_millis(
+                        state.player_position_interval_ms.load(Ordering::Acquire),
+                    );
+                if last_static.as_ref() != Some(&static_status) || position_due {
+                    let _ = app.emit("player-status", status);
+                    last_static = Some(static_status);
+                    last_position_sent = std::time::Instant::now();
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(250)).await;
+        }
+    });
 }
 
 #[tauri::command]
@@ -64,10 +115,13 @@ pub async fn player_load(
     let url = if !pending_headers.is_empty()
         && (url.starts_with("http://") || url.starts_with("https://"))
     {
-        match crate::stream_proxy::register(&stream_proxy_state, url.clone(), pending_headers).await {
+        match crate::stream_proxy::register(&stream_proxy_state, url.clone(), pending_headers).await
+        {
             Ok(proxied_url) => proxied_url,
             Err(error) => {
-                log::warn!("player_load: stream_proxy registration failed, playing raw url: {error}");
+                log::warn!(
+                    "player_load: stream_proxy registration failed, playing raw url: {error}"
+                );
                 url
             }
         }
@@ -206,4 +260,3 @@ pub fn player_apply_preferences(
     );
     Ok(())
 }
-

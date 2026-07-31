@@ -1,8 +1,8 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useEffect, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
+import { useEffect, useRef, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
 import { imdbButtonFor, updateDiscordPresence } from '../../core/discordPresence';
 import { embeddedMpvSetCursorVisible, playerTorrentStats, type EmbeddedMpvStatus, type TorrentStats } from '../../core/mpvPlayer';
-import { subscribePlayerStatus } from '../../core/playerStatusStore';
+import { setPlayerStatusPositionInterval, subscribePlayerStatus } from '../../core/playerStatusStore';
 import { t } from '../../i18n';
 import { addSparklineSample, fmtTime, sendCmd, skipLabelForType, type ActiveSkip, type FeedbackFlash, type SkipSegment } from './PlayerOverlayPrimitives';
 import type { PlayerTelemetryControls } from './usePlayerTelemetryState';
@@ -51,6 +51,7 @@ type Bindings = {
   seekOverlayTimerRef: MutableRefObject<Timer>;
   lastActivityRef: MutableRefObject<number>;
   controlsVisibleRef: MutableRefObject<boolean>;
+  controlsVisible: boolean;
   overlayRef: RefObject<HTMLDivElement | null>;
   episodePanelOpenRef: MutableRefObject<boolean>;
   isOverControlsRef: MutableRefObject<boolean>;
@@ -63,17 +64,25 @@ type Bindings = {
 };
 
 export function usePlayerLiveTelemetry(options: Bindings) {
-  const {
-    skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, isTorrentStream, playbackUrl, showStats, showTorrentPopover, onFirstFrame, applyFills, flashFeedback, telemetry, setShowSeekOverlay, setControlsVisible, setActiveSkip, setShowNextEpCard, liveStatusRef, torrentStatsRef, prevPausedForCacheRef, stallCountRef, bufferHistoryRef, netSpeedHistoryRef, posRef, durRef, pausedRef, firstFrameFiredRef, hasAppliedInitialFillRef, currentTimeRef, durationRef, lastSeekAtRef, isDraggingRef, seekOverlayTimerRef, lastActivityRef, controlsVisibleRef, overlayRef, episodePanelOpenRef, isOverControlsRef, miniProgressRef, activeSkipKeyRef, autoSkippedKeysRef, skipFillRef, discordPresenceKeyRef, discordPresenceSentAtRef,
-  } = options;
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   useEffect(() => {
+    let lastBufferUpdate = 0;
+    let lastSegmentUpdate = 0;
+    let lastHdrSignature: string | null = null;
     const handleStatus = (status: EmbeddedMpvStatus) => {
+      const {
+        skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, isTorrentStream, showStats: _, showTorrentPopover: __, onFirstFrame, applyFills, flashFeedback, telemetry, setShowSeekOverlay, setControlsVisible, setActiveSkip, setShowNextEpCard, liveStatusRef, torrentStatsRef, prevPausedForCacheRef, stallCountRef, bufferHistoryRef, netSpeedHistoryRef, posRef, durRef, pausedRef, firstFrameFiredRef, hasAppliedInitialFillRef, currentTimeRef, durationRef, lastSeekAtRef, isDraggingRef, seekOverlayTimerRef, lastActivityRef, controlsVisibleRef, overlayRef, episodePanelOpenRef, isOverControlsRef, miniProgressRef, activeSkipKeyRef, autoSkippedKeysRef, skipFillRef, discordPresenceKeyRef, discordPresenceSentAtRef,
+      } = optionsRef.current;
       liveStatusRef.current = status;
+      const now = Date.now();
+      const bufferUpdateDue = now - lastBufferUpdate >= 500;
       const pausedForCache = status.pausedForCache === 'yes';
-      if (!isTorrentStream) {
+      if (!isTorrentStream && bufferUpdateDue) {
         const cacheProgress = parseFloat(status.cacheBufferingState ?? '');
         telemetry.setBuffering(pausedForCache, pausedForCache ? (Number.isFinite(cacheProgress) ? Math.max(0, Math.min(100, cacheProgress)) : 0) : undefined);
+        lastBufferUpdate = now;
       }
       if (pausedForCache && !prevPausedForCacheRef.current) stallCountRef.current++;
       prevPausedForCacheRef.current = pausedForCache;
@@ -81,7 +90,11 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       const gamma = (status.colorGamma ?? '').toLowerCase();
       const sigPeak = parseFloat(status.sigPeak ?? '');
       const contentIsHdr = gamma.includes('hlg') || gamma.includes('pq') || gamma.includes('2084') || (Number.isFinite(sigPeak) && sigPeak > 1);
-      telemetry.setHdrLabel(status.hdrActive && contentIsHdr ? (gamma.includes('hlg') ? 'HLG' : 'HDR10') : null);
+      const hdrSignature = `${status.hdrActive}|${gamma}|${status.sigPeak ?? ''}`;
+      if (hdrSignature !== lastHdrSignature) {
+        lastHdrSignature = hdrSignature;
+        telemetry.setHdrLabel(status.hdrActive && contentIsHdr ? (gamma.includes('hlg') ? 'HLG' : 'HDR10') : null);
+      }
 
       const pos = parseFloat(status.timePos ?? '0');
       const dur = parseFloat(status.duration ?? '0');
@@ -92,14 +105,16 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       posRef.current = pos;
       durRef.current = dur;
       pausedRef.current = isPaused;
-      bufferHistoryRef.current = addSparklineSample(bufferHistoryRef.current, buffered);
-      netSpeedHistoryRef.current = addSparklineSample(netSpeedHistoryRef.current, parseInt(status.cacheSpeed ?? '0') || 0);
+      if (bufferUpdateDue) {
+        bufferHistoryRef.current = addSparklineSample(bufferHistoryRef.current, buffered);
+        netSpeedHistoryRef.current = addSparklineSample(netSpeedHistoryRef.current, parseInt(status.cacheSpeed ?? '0') || 0);
+      }
 
       const presenceKey = `${title}|${episodeTitle}|${isPaused}`;
-      const presenceDue = Date.now() - discordPresenceSentAtRef.current > 25000;
+      const presenceDue = now - discordPresenceSentAtRef.current > 25000;
       if (title && (presenceKey !== discordPresenceKeyRef.current || presenceDue)) {
         discordPresenceKeyRef.current = presenceKey;
-        discordPresenceSentAtRef.current = Date.now();
+        discordPresenceSentAtRef.current = now;
         updateDiscordPresence({ title, detail: episodeTitle || undefined, paused: isPaused, startUnixSecs: isPaused ? undefined : Math.floor(Date.now() / 1000 - pos), endUnixSecs: !isPaused && dur > 0 ? Math.floor(Date.now() / 1000 + (dur - pos)) : undefined, posterUrl: initialPosterUrl, ...imdbButtonFor(metaId) });
       }
 
@@ -115,7 +130,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       const fraction = dur > 0 ? pos / dur : 0;
       const torrentProgress = isTorrentStream ? torrentStatsRef.current?.progress : undefined;
       const bufferFraction = torrentProgress != null ? Math.max(0, Math.min(1, torrentProgress / 100)) : (dur > 0 ? Math.min(1, (pos + buffered) / dur) : 0);
-      const seekSuppressed = Date.now() - lastSeekAtRef.current < 800 || status.seeking === 'yes';
+      const seekSuppressed = now - lastSeekAtRef.current < 800 || status.seeking === 'yes';
       if (!isDraggingRef.current && (!seekSuppressed || !hasAppliedInitialFillRef.current) && dur > 0) {
         applyFills(fraction, bufferFraction);
         hasAppliedInitialFillRef.current = true;
@@ -129,7 +144,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       }
       telemetry.setPlayback(isPaused, isMuted, Math.round(vol));
 
-      const idle = Date.now() - lastActivityRef.current;
+      const idle = now - lastActivityRef.current;
       if (idle > 3000 && !isPaused && !episodePanelOpenRef.current && trackPopover === null && !isOverControlsRef.current && controlsVisibleRef.current) {
         controlsVisibleRef.current = false;
         setControlsVisible(false);
@@ -139,6 +154,8 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       }
       if (miniProgressRef.current) miniProgressRef.current.style.width = `${(fraction * 100).toFixed(3)}%`;
 
+      if (now - lastSegmentUpdate < 1000) return;
+      lastSegmentUpdate = now;
       const posMs = pos * 1000;
       const segment = skipSegments.find((item) => posMs >= item.startTime && posMs < item.endTime);
       const newSkipKey = segment ? `${segment.type}:${segment.endTime}` : null;
@@ -146,7 +163,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
         activeSkipKeyRef.current = newSkipKey;
         if (segment && newSkipKey && autoSkipSegments && !autoSkippedKeysRef.current.has(newSkipKey)) {
           autoSkippedKeysRef.current.add(newSkipKey);
-          lastSeekAtRef.current = Date.now();
+          lastSeekAtRef.current = now;
           sendCmd(`set time-pos ${Math.floor(segment.endTime / 1000)}`);
           flashFeedback('seekFwd', t('player.skipped'));
           setActiveSkip(null);
@@ -167,10 +184,15 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       });
     };
     return subscribePlayerStatus(handleStatus);
-  }, [skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, onFirstFrame, applyFills, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, flashFeedback, isTorrentStream, playbackUrl]);
+  }, []);
+
+  useEffect(() => {
+    setPlayerStatusPositionInterval(options.controlsVisible);
+  }, [options.controlsVisible]);
 
   useEffect(() => {
     const tick = async () => {
+      const { showStats, showTorrentPopover, isTorrentStream, liveStatusRef, telemetry, torrentStatsRef } = optionsRef.current;
       if (showStats && liveStatusRef.current) telemetry.setStatsSnap({ ...liveStatusRef.current });
       const raw = await playerTorrentStats().catch(() => null);
       const stats = raw && typeof raw.stat === 'number' ? raw : null;
@@ -183,7 +205,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       if (stats) telemetry.recordTorrentSpeed(stats.download_speed);
     };
     void tick();
-    const interval = setInterval(() => { void tick(); }, (showStats || showTorrentPopover || isTorrentStream) ? 500 : 1500);
+    const interval = setInterval(() => { void tick(); }, (options.showStats || options.showTorrentPopover || options.isTorrentStream) ? 500 : 1500);
     return () => clearInterval(interval);
-  }, [showStats, showTorrentPopover, isTorrentStream]);
+  }, [options.showStats, options.showTorrentPopover, options.isTorrentStream]);
 }

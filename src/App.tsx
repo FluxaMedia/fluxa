@@ -3,7 +3,6 @@ import { NavSidebar, TopBar, type NavRoute } from './components/NavSidebar';
 import { ProfileChip } from './components/ProfileChip';
 import { GlobalSearchBar } from './components/GlobalSearchBar';
 import { PlayerLoadingOverlay } from './components/PlayerLoadingOverlay';
-import { ReactPlayerOverlay } from './components/ReactPlayerOverlay';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { setBrowsingDiscordPresence } from './core/discordPresence';
@@ -14,7 +13,7 @@ import { useDetailNavigation } from './hooks/useDetailNavigation';
 import { useAppLayoutPrefs } from './hooks/useAppLayoutPrefs';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UpdateModal, startUpdateCheck } from './components/UpdateModal';
-import { CalendarScreen, DetailScreen, DiscoverScreen, HomeScreen, LibraryScreen, SearchScreen, SettingsScreen } from './appScreens';
+import { CalendarScreen, DetailScreen, DiscoverScreen, HomeScreen, LibraryScreen, ReactPlayerOverlay, SearchScreen, SettingsScreen } from './appScreens';
 import { AppProfileGate, AppWelcomeGate } from './AppGateScreens';
 import { NuvioStatusBanner } from './components/NuvioStatusBanner';
 import { OfflineBanner } from './components/OfflineBanner';
@@ -390,7 +389,7 @@ export default function App() {
         onReset={() => { setDetailMeta(null); setActiveRoute('home'); }}
       >
         {showDetail && (
-          <DetailScreen
+          <React.Suspense fallback={null}><DetailScreen
             key={detailMeta!.id}
             meta={detailMeta!}
             state={state}
@@ -402,7 +401,7 @@ export default function App() {
             initialEpisode={detailInitialEpisode}
             autoShowStreams={detailAutoShowStreams}
             playbackFailure={detailPlaybackError}
-          />
+          /></React.Suspense>
         )}
         <div style={{ display: !showDetail && activeRoute === 'home' ? 'contents' : 'none' }}>
           <HomeScreen
@@ -514,7 +513,7 @@ export default function App() {
       )}
       {nativePlayerActive && (
         <ErrorBoundary>
-          <ReactPlayerOverlay
+          <React.Suspense fallback={null}><ReactPlayerOverlay
             closePlayer={closePlayer}
             onFirstFrame={notifyFirstFrame}
             initialTitle={playerTitle}
@@ -537,7 +536,7 @@ export default function App() {
             softwareVideoActive={softwareVideoActive}
             bannerOffset={bannerOffset}
             skipSegmentCoverage={skipSegmentCoverage}
-          />
+          /></React.Suspense>
         </ErrorBoundary>
       )}
     </div>

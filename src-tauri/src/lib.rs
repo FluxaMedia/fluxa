@@ -64,7 +64,7 @@ pub(crate) use torrent_stream::resolve_torrent_download_url;
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -101,6 +101,8 @@ pub struct DesktopState {
     pub thumbnail_loaded_url: Mutex<Option<String>>,
     pub anime4k_enabled: Mutex<bool>,
     pub pending_hide: AtomicBool,
+    pub player_telemetry_running: AtomicBool,
+    pub player_position_interval_ms: AtomicU64,
     #[cfg(target_os = "windows")]
     pub main_window_size: std::sync::atomic::AtomicU64,
     pub downloads: downloads::DownloadsState,
@@ -145,6 +147,8 @@ impl Default for DesktopState {
             thumbnail_loaded_url: Mutex::new(None),
             anime4k_enabled: Mutex::new(false),
             pending_hide: AtomicBool::new(false),
+            player_telemetry_running: AtomicBool::new(false),
+            player_position_interval_ms: AtomicU64::new(750),
             #[cfg(target_os = "windows")]
             main_window_size: std::sync::atomic::AtomicU64::new(0),
             downloads: downloads::DownloadsState::default(),
@@ -560,6 +564,7 @@ pub fn run() {
             player_torrent_sibling_subtitles,
             player_title,
             player_status,
+            player_set_status_interval,
             player_set_sleep_inhibition,
             player_destroy,
             player_get_playback_info,

@@ -205,7 +205,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
   const { applyFills, onSeekMouseDown } = usePlayerSeekInteractions({ durRef, lastSeekAtRef, activeCastDeviceIdRef, seekbarRef, seekFillRef, seekBufferRef, seekDotRef, chapterSegmentsRef, segmentFillRefs: segFillRefs, segmentBufferRefs: segBufRefs, isDraggingRef, dragPosRef, startSeekOverlay, resetActivity });
 
   usePlayerLiveTelemetry({
-    skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, isTorrentStream, playbackUrl, showStats, showTorrentPopover, onFirstFrame, applyFills, flashFeedback,
+    skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, isTorrentStream, playbackUrl, showStats, showTorrentPopover, controlsVisible, onFirstFrame, applyFills, flashFeedback,
     telemetry: playerTelemetry, setShowSeekOverlay, setControlsVisible, setActiveSkip, setShowNextEpCard,
     liveStatusRef, torrentStatsRef, prevPausedForCacheRef, stallCountRef, bufferHistoryRef, netSpeedHistoryRef, posRef, durRef, pausedRef, firstFrameFiredRef, hasAppliedInitialFillRef, currentTimeRef, durationRef, lastSeekAtRef, isDraggingRef, seekOverlayTimerRef, lastActivityRef, controlsVisibleRef, overlayRef, episodePanelOpenRef, isOverControlsRef, miniProgressRef, activeSkipKeyRef, autoSkippedKeysRef, skipFillRef, discordPresenceKeyRef, discordPresenceSentAtRef,
   });
