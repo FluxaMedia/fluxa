@@ -22,7 +22,7 @@ Browse catalogs, track what you watch, and play anything the Stremio addon ecosy
 
 ## What it does
 
-Fluxa connects to any Stremio-compatible addon and turns it into a proper desktop app: a home feed with genre and category browsing, a calendar of upcoming episodes, a library with continue-watching and resume positions, and two-way watch tracking with Trakt, MyAnimeList, and Simkl. Playback runs through `libmpv`, including direct torrent/magnet support, with no telemetry.
+Fluxa connects to any Stremio-compatible addon and turns it into a proper desktop app: a home feed with genre and category browsing, a calendar of upcoming episodes, a library with continue-watching and resume positions, and two-way watch tracking with Trakt, MyAnimeList, and Simkl. Playback runs through `libmpv`, including direct torrent/magnet support.
 
 ## Features
 
@@ -72,7 +72,7 @@ npm run check   # typecheck + cargo check
 
 ## Stack
 
-[Tauri 2](https://tauri.app/) · [React 18](https://react.dev/) · [TypeScript](https://www.typescriptlang.org/) · [Vite](https://vitejs.dev/) · [Rust](https://www.rust-lang.org/) · [mpv](https://mpv.io/) · [librqbit](https://github.com/ikatson/rqbit)
+[Tauri](https://tauri.app/) · [React](https://react.dev/) · [TypeScript](https://www.typescriptlang.org/) · [Vite](https://vitejs.dev/) · [Rust](https://www.rust-lang.org/) · [mpv](https://mpv.io/) · [librqbit](https://github.com/ikatson/rqbit)
 
 ---
 
