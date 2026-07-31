@@ -6,7 +6,7 @@ getVersion().then((v) => { _appVersion = v; }).catch(() => {});
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 
-const NO_CORS_HOSTS = new Set(['api.introdb.app', 'api.aniskip.com', 'api.anime-skip.com', 'api.skipdb.tv']);
+const NO_CORS_HOSTS = new Set(['api.introdb.app', 'api.aniskip.com', 'api.anime-skip.com', 'api.skipdb.tv', 'api.theintrodb.org']);
 const NATIVE_FETCH_HOSTS = new Set(['api.trakt.tv', 'media.trakt.tv', 'api.simkl.com', 'data.simkl.in']);
 
 export async function platformFetch(url: string, init?: RequestInit): Promise<Response> {
@@ -44,6 +44,26 @@ export async function tryFetchJson(url: string, init?: RequestInit): Promise<unk
     return await fetchJson(url, init);
   } catch (err) {
     console.error(`tryFetchJson failed for ${redactSecrets(url)}`, err);
+    return null;
+  }
+}
+
+export type RequestPlan = {
+  url: string;
+  method: 'GET' | 'POST';
+  headers?: Record<string, string>;
+  body?: string | null;
+};
+
+export async function executeRequestPlan(plan: RequestPlan): Promise<unknown> {
+  return fetchJson(plan.url, { method: plan.method, headers: plan.headers, body: plan.body ?? undefined });
+}
+
+export async function tryExecuteRequestPlan(plan: RequestPlan): Promise<unknown | null> {
+  try {
+    return await executeRequestPlan(plan);
+  } catch (err) {
+    console.error(`tryExecuteRequestPlan failed for ${redactSecrets(plan.url)}`, err);
     return null;
   }
 }

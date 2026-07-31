@@ -1,4 +1,5 @@
 import { coreInvoke } from "./engineCoreClient";
+import type { RequestPlan } from "./httpClient";
 
 export async function coreNormalizeLibraryDocument(
   json: string,
@@ -52,10 +53,34 @@ export async function coreComputeContinueWatchingBadges(
 }
 
 
+export async function coreIntroDbSegmentsPlan(
+  args: { imdbId: string; season: number; episode: number },
+): Promise<RequestPlan | null> {
+  return coreInvoke("introDbSegmentsPlan", JSON.stringify(args));
+}
+
+export async function coreIntroDbSubmitPlan(
+  args: { apiKey: string; imdbId: string; season: number; episode: number; segmentType: string; startSec: number; endSec: number },
+): Promise<RequestPlan | null> {
+  return coreInvoke("introDbSubmitPlan", JSON.stringify(args));
+}
+
 export async function coreParseIntroDbSegments(
   dataJson: string,
 ): Promise<unknown[] | null> {
   return coreInvoke("parseIntroDbSegments", dataJson);
+}
+
+export async function coreSkipdbSegmentsPlan(
+  args: { imdbId: string; season: number; episode: number },
+): Promise<RequestPlan | null> {
+  return coreInvoke("skipdbSegmentsPlan", JSON.stringify(args));
+}
+
+export async function coreSkipdbSubmitPlan(
+  args: { apiKey: string; imdbId: string; season: number; episode: number; segmentType: string; startMs: number; endMs: number },
+): Promise<RequestPlan | null> {
+  return coreInvoke("skipdbSubmitPlan", JSON.stringify(args));
 }
 
 export async function coreParseSkipdbSegments(
@@ -70,16 +95,98 @@ export async function coreAniListMalId(
   return coreInvoke("anilistMalId", dataJson);
 }
 
+export async function coreAniListId(
+  dataJson: string,
+): Promise<number | null> {
+  return coreInvoke("anilistId", dataJson);
+}
+
+export async function coreAnilistMediaIdPlan(
+  args: { title: string; field: "id" | "idMal" },
+): Promise<RequestPlan | null> {
+  return coreInvoke("anilistMediaIdPlan", JSON.stringify(args));
+}
+
+export async function coreAniskipSegmentsPlan(
+  args: { malId: number; episode: number },
+): Promise<RequestPlan | null> {
+  return coreInvoke("aniskipSegmentsPlan", JSON.stringify(args));
+}
+
 export async function coreParseAniskipResults(
   resultsJson: string,
 ): Promise<unknown[] | null> {
   return coreInvoke("parseAniskipResults", resultsJson);
 }
 
+export async function coreAnimeSkipFindShowPlan(
+  args: { clientId: string; anilistId: number },
+): Promise<RequestPlan | null> {
+  return coreInvoke("animeSkipFindShowPlan", JSON.stringify(args));
+}
+
+export async function coreAnimeSkipShowId(
+  dataJson: string,
+): Promise<string | null> {
+  return coreInvoke("animeSkipShowId", dataJson);
+}
+
+export async function coreAnimeSkipFindEpisodesPlan(
+  args: { clientId: string; showId: string },
+): Promise<RequestPlan | null> {
+  return coreInvoke("animeSkipFindEpisodesPlan", JSON.stringify(args));
+}
+
+export async function coreAnimeSkipFindTimestampsPlan(
+  args: { clientId: string; episodeId: string },
+): Promise<RequestPlan | null> {
+  return coreInvoke("animeSkipFindTimestampsPlan", JSON.stringify(args));
+}
+
 export async function coreParseAnimeSkipResults(
   resultsJson: string,
 ): Promise<unknown[] | null> {
   return coreInvoke("parseAnimeSkipResults", resultsJson);
+}
+
+export async function coreTheIntroDbMediaPlan(
+  args: { tmdbId?: number; imdbId?: string; season?: number; episode?: number; durationMs?: number },
+): Promise<RequestPlan | null> {
+  return coreInvoke("theIntroDbMediaPlan", JSON.stringify(args));
+}
+
+export async function coreParseTheIntroDbSegments(
+  args: { responseJson: string; durationMs?: number },
+): Promise<unknown[] | null> {
+  return coreInvoke("parseTheIntroDbSegments", JSON.stringify(args));
+}
+
+export async function coreTheIntroDbSubmitPlan(
+  args: {
+    apiKey: string;
+    tmdbId: number;
+    mediaType: "movie" | "tv";
+    season?: number;
+    episode?: number;
+    segment: string;
+    startSec?: number;
+    endSec?: number;
+    videoDurationMs?: number;
+    imdbId?: string;
+  },
+): Promise<RequestPlan | null> {
+  return coreInvoke("theIntroDbSubmitPlan", JSON.stringify(args));
+}
+
+export async function matchAnimeSkipEpisodeId(
+  episodesJson: string,
+  season: number,
+  episode: number,
+): Promise<string | null> {
+  return coreInvoke(
+    "matchAnimeSkipEpisodeId",
+    JSON.stringify({ episodesJson, season, episode }),
+  );
 }
 
 export async function coreUniqueIntroSegments(

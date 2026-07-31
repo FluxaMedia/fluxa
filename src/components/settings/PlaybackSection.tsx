@@ -219,7 +219,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
         onSelect={(v) => setPref('playerEngine', v)}
       />    </SettingsSection>
     <SettingsSection title={t('settings.skip_segments')} subtitle={t('settings.use_introdb_desc')}>
-      <ToggleTile title={t('settings.skip_intro_outro_recap')} subtitle={t('settings.skip_intro_outro_recap_desc')} checked={prefs.useIntroDb || prefs.useAniSkip || prefs.useSkipDb} onToggle={(v) => { setPref('useIntroDb', v); setPref('useAniSkip', v); setPref('useSkipDb', v); }} />
+      <ToggleTile title={t('settings.skip_intro_outro_recap')} subtitle={t('settings.skip_intro_outro_recap_desc')} checked={prefs.useIntroDb || prefs.useAniSkip || prefs.useSkipDb || prefs.useTheIntroDb} onToggle={(v) => { setPref('useIntroDb', v); setPref('useAniSkip', v); setPref('useSkipDb', v); setPref('useTheIntroDb', v); }} />
       <ToggleTile title={t('settings.use_animeskip')} subtitle={t('settings.use_animeskip_desc')} checked={prefs.useAnimeSkip} onToggle={(v) => setPref('useAnimeSkip', v)} />
       {prefs.useAnimeSkip && (
         <InputTile
@@ -231,7 +231,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
         />
       )}
       <ToggleTile title={t('settings.use_chapter_skip')} subtitle={t('settings.use_chapter_skip_desc')} checked={prefs.useChapterSkip} onToggle={(v) => setPref('useChapterSkip', v)} />
-      {(prefs.useIntroDb || prefs.useAniSkip || prefs.useSkipDb || prefs.useAnimeSkip) && (
+      {(prefs.useIntroDb || prefs.useAniSkip || prefs.useSkipDb || prefs.useTheIntroDb || prefs.useAnimeSkip) && (
         <ToggleTile title={t('settings.auto_skip')} subtitle={t('settings.auto_skip_desc')} checked={prefs.autoSkipIntro} onToggle={(v) => setPref('autoSkipIntro', v)} />
       )}
       {prefs.useIntroDb && (
@@ -256,6 +256,18 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
           value={prefs.skipDbApiKey}
           placeholder={t('settings.api_key_placeholder')}
           onChange={(v) => setPref('skipDbApiKey', v)}
+        />
+      )}
+      {prefs.useTheIntroDb && (
+        <ToggleTile title={t('settings.theintrodb_submit')} subtitle={t('settings.theintrodb_submit_desc')} checked={prefs.theIntroDbSubmitEnabled} onToggle={(v) => setPref('theIntroDbSubmitEnabled', v)} />
+      )}
+      {prefs.useTheIntroDb && prefs.theIntroDbSubmitEnabled && (
+        <InputTile
+          title={t('settings.theintrodb_api_key')}
+          subtitle={t('settings.theintrodb_api_key_desc')}
+          value={prefs.theIntroDbApiKey}
+          placeholder={t('settings.api_key_placeholder')}
+          onChange={(v) => setPref('theIntroDbApiKey', v)}
         />
       )}
     </SettingsSection>

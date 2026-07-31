@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { X, Play, Square, Send, Trash2 } from 'lucide-react';
 import { t } from '../../i18n';
 import { POPOVER_SURFACE } from '../ui/Popover';
-import { submitIntroDbSegments, submitSkipDbSegments } from '../../core/introEffects';
+import { submitIntroDbSegments, submitSkipDbSegments, submitTheIntroDbSegments } from '../../core/introEffects';
 
 type SegmentType = 'intro' | 'outro' | 'recap' | 'preview';
 
@@ -31,20 +31,23 @@ interface SegmentMarkerPanelProps {
   onClose: () => void;
   getPosMs: () => number;
   imdbId: string | null;
+  tmdbId?: number | null;
+  mediaType?: 'movie' | 'tv';
   season: number | null;
   episode: number | null;
   introDbApiKey: string;
   skipDbApiKey: string;
+  theIntroDbApiKey: string;
 }
 
-export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, season, episode, introDbApiKey, skipDbApiKey }: SegmentMarkerPanelProps) {
+export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, tmdbId, mediaType, season, episode, introDbApiKey, skipDbApiKey, theIntroDbApiKey }: SegmentMarkerPanelProps) {
   const [segType, setSegType] = useState<SegmentType>('intro');
   const [draftStartMs, setDraftStartMs] = useState<number | null>(null);
   const [pending, setPending] = useState<PendingSegment[]>([]);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  const hasContext = !!imdbId && !!season && !!episode;
+  const hasContext = !!season && !!episode && (!!imdbId || !!tmdbId);
 
   const startDraft = () => { setStatus('idle'); setError(null); setDraftStartMs(getPosMs()); };
   const cancelDraft = () => setDraftStartMs(null);
@@ -72,11 +75,14 @@ export function SegmentMarkerPanel({ onClose, getPosMs, imdbId, season, episode,
       const segments = pending.map((s) => ({ startTime: s.startMs, endTime: s.endMs, type: s.type }));
       const introDbSegments = segments.filter((s) => s.type !== 'preview');
       await Promise.all([
-        introDbApiKey && introDbSegments.length > 0
-          ? submitIntroDbSegments({ apiKey: introDbApiKey, imdbId: imdbId!, season: season!, episode: episode!, segments: introDbSegments })
+        introDbApiKey && imdbId && introDbSegments.length > 0
+          ? submitIntroDbSegments({ apiKey: introDbApiKey, imdbId, season: season!, episode: episode!, segments: introDbSegments })
           : Promise.resolve(),
-        skipDbApiKey
-          ? submitSkipDbSegments({ apiKey: skipDbApiKey, imdbId: imdbId!, season: season!, episode: episode!, segments })
+        skipDbApiKey && imdbId
+          ? submitSkipDbSegments({ apiKey: skipDbApiKey, imdbId, season: season!, episode: episode!, segments })
+          : Promise.resolve(),
+        theIntroDbApiKey && tmdbId
+          ? submitTheIntroDbSegments({ apiKey: theIntroDbApiKey, tmdbId, mediaType: mediaType ?? 'movie', imdbId: imdbId ?? undefined, season: season!, episode: episode!, segments })
           : Promise.resolve(),
       ]);
       setStatus('success');

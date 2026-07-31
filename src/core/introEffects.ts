@@ -1,18 +1,32 @@
 export type IntroSegmentResult = { startTime: number; endTime: number; type: string };
 
 import {
-  coreInvoke,
   coreMergeIntroSegments,
   coreAniListMalId,
+  coreAniListId,
+  coreAnilistMediaIdPlan,
+  coreAniskipSegmentsPlan,
+  coreAnimeSkipFindShowPlan,
+  coreAnimeSkipShowId,
+  coreAnimeSkipFindEpisodesPlan,
+  coreAnimeSkipFindTimestampsPlan,
   coreParseAnimeSkipResults,
   coreParseAniskipResults,
+  coreIntroDbSegmentsPlan,
+  coreIntroDbSubmitPlan,
   coreParseIntroDbSegments,
+  coreSkipdbSegmentsPlan,
+  coreSkipdbSubmitPlan,
   coreParseSkipdbSegments,
+  coreTheIntroDbMediaPlan,
+  coreTheIntroDbSubmitPlan,
+  coreParseTheIntroDbSegments,
+  matchAnimeSkipEpisodeId,
   corePlaybackIntroLookupContentId,
 } from './engine';
 import { loadAddons } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
-import { fetchJson, tryFetchJson } from './httpClient';
+import { tryExecuteRequestPlan, executeRequestPlan, type RequestPlan } from './httpClient';
 
 export async function fetchSubtitles(payload: Record<string, unknown>): Promise<unknown> {
   const addons = await loadAddons();
@@ -40,48 +54,71 @@ export async function fetchIntroSegments(payload: Record<string, unknown>): Prom
   const season = Number(payload.season ?? 0);
   const episode = Number(payload.episode ?? 0);
   const title = typeof payload.title === 'string' ? payload.title : '';
+  const tmdbId = typeof payload.tmdbId === 'number' && payload.tmdbId > 0 ? payload.tmdbId : undefined;
   const useIntroDb = payload.useIntroDb !== false;
   const useSkipDb = payload.useSkipDb !== false;
+  const useTheIntroDb = payload.useTheIntroDb !== false;
   const useAniSkip = payload.useAniSkip !== false;
   const useAnimeSkip = payload.useAnimeSkip === true;
   const animeSkipClientId = typeof payload.animeSkipClientId === 'string' ? payload.animeSkipClientId : '';
 
-  const [introDbSegments, skipDbSegments, aniSkipSegments, animeSkipSegments] = await Promise.all([
-    useIntroDb && imdbId && season > 0 && episode > 0
-      ? (async () => {
-          const url = `https://api.introdb.app/segments?imdb_id=${encodeURIComponent(imdbId)}&season=${season}&episode=${episode}`;
-          const data = await tryFetchJson(url);
-          return coreParseIntroDbSegments(JSON.stringify(data));
-        })()
-      : Promise.resolve(null),
-    useSkipDb && imdbId && season > 0 && episode > 0
-      ? (async () => {
-          const url = `https://api.skipdb.tv/api/segments?imdb_id=${encodeURIComponent(imdbId)}&season=${season}&episode=${episode}`;
-          const data = await tryFetchJson(url);
-          return coreParseSkipdbSegments(JSON.stringify(data));
-        })()
-      : Promise.resolve(null),
-    useAniSkip && title && episode > 0
-      ? (async () => {
-          const malId = await resolveMalId(title);
-          if (!malId) return null;
-          const params = new URLSearchParams({ episodeLength: '0' });
-          for (const type of ['op', 'ed', 'recap']) params.append('types', type);
-          const data = await tryFetchJson(`https://api.aniskip.com/v2/skip-times/${malId}/${episode}?${params}`);
-          return coreParseAniskipResults(JSON.stringify(data));
-        })()
-      : Promise.resolve(null),
+  const [introDbSegments, skipDbSegments, theIntroDbSegments, aniSkipSegments, animeSkipSegments] = await Promise.all([
+    useIntroDb && imdbId && season > 0 && episode > 0 ? fetchIntroDbSegments(imdbId, season, episode) : Promise.resolve(null),
+    useSkipDb && imdbId && season > 0 && episode > 0 ? fetchSkipDbSegments(imdbId, season, episode) : Promise.resolve(null),
+    useTheIntroDb && (tmdbId || imdbId) && episode > 0 ? fetchTheIntroDbSegments(tmdbId, imdbId, season, episode) : Promise.resolve(null),
+    useAniSkip && title && episode > 0 ? fetchAniSkipSegments(title, episode) : Promise.resolve(null),
     useAnimeSkip && animeSkipClientId && title && episode > 0
       ? fetchAnimeSkipSegments(animeSkipClientId, title, season, episode)
       : Promise.resolve(null),
   ]);
-  const sources = [introDbSegments, skipDbSegments, aniSkipSegments, animeSkipSegments].filter(
+  const sources = [introDbSegments, skipDbSegments, theIntroDbSegments, aniSkipSegments, animeSkipSegments].filter(
     (segments): segments is unknown[] => Array.isArray(segments),
   );
 
   if (sources.length === 0) return [];
   if (sources.length === 1) return sources[0];
   return (await coreMergeIntroSegments(JSON.stringify(sources))) ?? [];
+}
+
+async function fetchIntroDbSegments(imdbId: string, season: number, episode: number): Promise<unknown[] | null> {
+  const plan = await coreIntroDbSegmentsPlan({ imdbId, season, episode });
+  if (!plan) return null;
+  const data = await tryExecuteRequestPlan(plan);
+  return coreParseIntroDbSegments(JSON.stringify(data));
+}
+
+async function fetchSkipDbSegments(imdbId: string, season: number, episode: number): Promise<unknown[] | null> {
+  const plan = await coreSkipdbSegmentsPlan({ imdbId, season, episode });
+  if (!plan) return null;
+  const data = await tryExecuteRequestPlan(plan);
+  return coreParseSkipdbSegments(JSON.stringify(data));
+}
+
+async function fetchTheIntroDbSegments(
+  tmdbId: number | undefined,
+  imdbId: string,
+  season: number,
+  episode: number,
+): Promise<unknown[] | null> {
+  const plan = await coreTheIntroDbMediaPlan({
+    tmdbId,
+    imdbId: tmdbId ? undefined : imdbId,
+    season,
+    episode,
+  });
+  if (!plan) return null;
+  const data = await tryExecuteRequestPlan(plan);
+  if (!data) return null;
+  return coreParseTheIntroDbSegments({ responseJson: JSON.stringify(data) });
+}
+
+async function fetchAniSkipSegments(title: string, episode: number): Promise<unknown[] | null> {
+  const malId = await resolveMalId(title);
+  if (!malId) return null;
+  const plan = await coreAniskipSegmentsPlan({ malId, episode });
+  if (!plan) return null;
+  const data = await tryExecuteRequestPlan(plan);
+  return coreParseAniskipResults(JSON.stringify(data));
 }
 
 async function fetchAnimeSkipSegments(
@@ -91,75 +128,40 @@ async function fetchAnimeSkipSegments(
   episode: number,
 ): Promise<unknown[] | null> {
   const anilistId = await resolveAnilistId(title);
-  const show = anilistId
-    ? await animeSkipGraphql<{ findShowsByExternalId?: Array<{ id?: string }> }>(
-        clientId,
-        `query ($service: String!, $serviceId: String!) {
-          findShowsByExternalId(service: $service, serviceId: $serviceId) { id }
-        }`,
-        { service: 'anilist.co', serviceId: String(anilistId) },
-      )
-    : null;
-  const showId = show?.findShowsByExternalId?.[0]?.id;
+  if (!anilistId) return null;
+
+  const showPlan = await coreAnimeSkipFindShowPlan({ clientId, anilistId });
+  if (!showPlan) return null;
+  const showData = await tryExecuteRequestPlan(showPlan);
+  const showId = showData ? await coreAnimeSkipShowId(JSON.stringify(showData)) : null;
   if (!showId) return null;
 
-  const episodesData = await animeSkipGraphql<{
-    findEpisodesByShowId?: Array<{ id?: string; season?: string | null; number?: string | null; absoluteNumber?: string | null }>;
-  }>(
-    clientId,
-    `query ($showId: ID!) {
-      findEpisodesByShowId(showId: $showId) { id season number absoluteNumber }
-    }`,
-    { showId },
-  );
-  const episodes = episodesData?.findEpisodesByShowId ?? [];
-  const matchedId = await coreInvoke<string | null>('matchAnimeSkipEpisodeId', JSON.stringify({
-    episodesJson: JSON.stringify(episodes),
-    season,
-    episode,
-  }));
+  const episodesPlan = await coreAnimeSkipFindEpisodesPlan({ clientId, showId });
+  if (!episodesPlan) return null;
+  const episodesData = await tryExecuteRequestPlan(episodesPlan);
+  if (!episodesData) return null;
+  const matchedId = await matchAnimeSkipEpisodeId(JSON.stringify(episodesData), season, episode);
   if (!matchedId) return null;
 
-  const timestampsData = await animeSkipGraphql<{
-    findTimestampsByEpisodeId?: Array<{ at?: number; type?: { name?: string } }>;
-  }>(
-    clientId,
-    `query ($episodeId: ID!) {
-      findTimestampsByEpisodeId(episodeId: $episodeId) { at type { name } }
-    }`,
-    { episodeId: matchedId },
-  );
-  const timestamps = timestampsData?.findTimestampsByEpisodeId ?? [];
-  if (timestamps.length === 0) return null;
-  return coreParseAnimeSkipResults(JSON.stringify(timestamps));
-}
-
-async function animeSkipGraphql<T>(
-  clientId: string,
-  query: string,
-  variables: Record<string, unknown>,
-): Promise<T | null> {
-  const data = await tryFetchJson('https://api.anime-skip.com/graphql', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Client-ID': clientId },
-    body: JSON.stringify({ query, variables }),
-  });
-  return (data as { data?: T } | null)?.data ?? null;
+  const timestampsPlan = await coreAnimeSkipFindTimestampsPlan({ clientId, episodeId: matchedId });
+  if (!timestampsPlan) return null;
+  const timestampsData = await tryExecuteRequestPlan(timestampsPlan);
+  if (!timestampsData) return null;
+  return coreParseAnimeSkipResults(JSON.stringify(timestampsData));
 }
 
 async function resolveAnilistId(title: string): Promise<number | null> {
-  const query = title.replace(/\s+\(\d{4}\)$/, '').trim();
-  if (query.length < 2) return null;
-  const data = await tryFetchJson('https://graphql.anilist.co', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: `query ($search: String) { Media(search: $search, type: ANIME) { id } }`,
-      variables: { search: query },
-    }),
-  });
-  const id = (data as { data?: { Media?: { id?: number } } } | null)?.data?.Media?.id;
-  return typeof id === 'number' && id > 0 ? id : null;
+  const plan = await coreAnilistMediaIdPlan({ title, field: 'id' });
+  if (!plan) return null;
+  const data = await tryExecuteRequestPlan(plan);
+  return data ? coreAniListId(JSON.stringify(data)) : null;
+}
+
+async function resolveMalId(title: string): Promise<number | null> {
+  const plan = await coreAnilistMediaIdPlan({ title, field: 'idMal' });
+  if (!plan) return null;
+  const data = await tryExecuteRequestPlan(plan);
+  return data ? coreAniListMalId(JSON.stringify(data)) : null;
 }
 
 export async function submitIntroDbSegments(payload: {
@@ -173,21 +175,16 @@ export async function submitIntroDbSegments(payload: {
   if (!apiKey || !imdbId || season <= 0 || episode <= 0 || segments.length === 0) {
     throw new Error('invalid_submission');
   }
-  await Promise.all(segments.map((segment) => fetchJson('https://api.introdb.app/submit', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
-    },
-    body: JSON.stringify({
-      imdb_id: imdbId,
-      season,
-      episode,
-      segment_type: segment.type,
-      start_sec: segment.startTime / 1000,
-      end_sec: segment.endTime / 1000,
-    }),
+  const plans = await Promise.all(segments.map((segment) => coreIntroDbSubmitPlan({
+    apiKey,
+    imdbId,
+    season,
+    episode,
+    segmentType: segment.type,
+    startSec: segment.startTime / 1000,
+    endSec: segment.endTime / 1000,
   })));
+  await Promise.all(plans.filter((plan): plan is RequestPlan => !!plan).map((plan) => executeRequestPlan(plan)));
 }
 
 export async function submitSkipDbSegments(payload: {
@@ -201,33 +198,41 @@ export async function submitSkipDbSegments(payload: {
   if (!apiKey || !imdbId || season <= 0 || episode <= 0 || segments.length === 0) {
     throw new Error('invalid_submission');
   }
-  await Promise.all(segments.map((segment) => fetchJson('https://api.skipdb.tv/api/segments', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
-    },
-    body: JSON.stringify({
-      imdb_id: imdbId,
-      season,
-      episode,
-      segment_type: segment.type,
-      start_ms: segment.startTime,
-      end_ms: segment.endTime,
-    }),
+  const plans = await Promise.all(segments.map((segment) => coreSkipdbSubmitPlan({
+    apiKey,
+    imdbId,
+    season,
+    episode,
+    segmentType: segment.type,
+    startMs: segment.startTime,
+    endMs: segment.endTime,
   })));
+  await Promise.all(plans.filter((plan): plan is RequestPlan => !!plan).map((plan) => executeRequestPlan(plan)));
 }
 
-async function resolveMalId(title: string): Promise<number | null> {
-  const query = title.replace(/\s+\(\d{4}\)$/, '').trim();
-  if (query.length < 2) return null;
-  const data = await tryFetchJson('https://graphql.anilist.co', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: `query ($search: String) { Media(search: $search, type: ANIME) { idMal } }`,
-      variables: { search: query },
-    }),
-  });
-  return data ? coreAniListMalId(JSON.stringify(data)) : null;
+export async function submitTheIntroDbSegments(payload: {
+  apiKey: string;
+  tmdbId: number;
+  mediaType: 'movie' | 'tv';
+  imdbId?: string;
+  season: number;
+  episode: number;
+  segments: IntroSegmentResult[];
+}): Promise<void> {
+  const { apiKey, tmdbId, mediaType, imdbId, season, episode, segments } = payload;
+  if (!apiKey || !tmdbId || (mediaType === 'tv' && (season <= 0 || episode <= 0)) || segments.length === 0) {
+    throw new Error('invalid_submission');
+  }
+  const plans = await Promise.all(segments.map((segment) => coreTheIntroDbSubmitPlan({
+    apiKey,
+    tmdbId,
+    mediaType,
+    imdbId,
+    season: mediaType === 'tv' ? season : undefined,
+    episode: mediaType === 'tv' ? episode : undefined,
+    segment: segment.type,
+    startSec: segment.startTime / 1000,
+    endSec: segment.endTime / 1000,
+  })));
+  await Promise.all(plans.filter((plan): plan is RequestPlan => !!plan).map((plan) => executeRequestPlan(plan)));
 }

@@ -77,6 +77,7 @@ export interface Prefs {
   autoSkipIntro: boolean;
   useIntroDb: boolean;
   useSkipDb: boolean;
+  useTheIntroDb: boolean;
   useAniSkip: boolean;
   useAnimeSkip: boolean;
   useChapterSkip: boolean;
@@ -84,6 +85,8 @@ export interface Prefs {
   introDbApiKey: string;
   skipDbSubmitEnabled: boolean;
   skipDbApiKey: string;
+  theIntroDbSubmitEnabled: boolean;
+  theIntroDbApiKey: string;
   animeSkipClientId: string;
   preferredAudioLanguage: string;
   secondaryAudioLanguage: string;
@@ -226,6 +229,7 @@ export const DEFAULT_PREFS: Prefs = {
   autoSkipIntro: false,
   useIntroDb: true,
   useSkipDb: true,
+  useTheIntroDb: true,
   useAniSkip: true,
   useAnimeSkip: false,
   useChapterSkip: true,
@@ -233,6 +237,8 @@ export const DEFAULT_PREFS: Prefs = {
   introDbApiKey: '',
   skipDbSubmitEnabled: false,
   skipDbApiKey: '',
+  theIntroDbSubmitEnabled: false,
+  theIntroDbApiKey: '',
   animeSkipClientId: '',
   preferredAudioLanguage: 'none',
   secondaryAudioLanguage: 'none',

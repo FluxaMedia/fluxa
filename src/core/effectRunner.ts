@@ -447,11 +447,13 @@ export async function fetchStreamsForEpisode(
 
 export async function fetchPlaybackSkipSegments(opts: {
   imdbId: string;
+  tmdbId?: number;
   season: number;
   episode: number;
   title: string;
   useIntroDb?: boolean;
   useSkipDb?: boolean;
+  useTheIntroDb?: boolean;
   useAniSkip?: boolean;
   useAnimeSkip?: boolean;
   animeSkipClientId?: string;
