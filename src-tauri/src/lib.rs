@@ -160,6 +160,13 @@ impl Default for DesktopState {
 }
 
 static DIAGNOSTIC_MODE: AtomicBool = AtomicBool::new(false);
+static SENTRY_GUARD: Mutex<Option<sentry::ClientInitGuard>> = Mutex::new(None);
+
+fn sentry_dsn() -> Option<sentry::types::Dsn> {
+    "https://7fe8e82cf7ea0eed65175d3d43afb1c0@o4511704565678080.ingest.de.sentry.io/4511706871693392"
+        .parse()
+        .ok()
+}
 
 #[tauri::command]
 fn is_linux() -> bool {
@@ -199,8 +206,19 @@ fn set_diagnostic_mode(enabled: bool) {
             std::env::consts::OS,
             std::env::consts::ARCH
         );
+        if !cfg!(debug_assertions) {
+            let mut guard = SENTRY_GUARD.lock().unwrap();
+            if guard.is_none() {
+                *guard = Some(sentry::init(sentry::ClientOptions {
+                    dsn: sentry_dsn(),
+                    release: sentry::release_name!(),
+                    ..Default::default()
+                }));
+            }
+        }
     } else if !enabled && was {
         log::warn!("diagnostic mode disabled");
+        SENTRY_GUARD.lock().unwrap().take();
     }
 }
 
@@ -267,18 +285,6 @@ fn in_app_updates_supported() -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let _sentry_guard = sentry::init(sentry::ClientOptions {
-        dsn: if cfg!(debug_assertions) {
-            None
-        } else {
-            "https://7fe8e82cf7ea0eed65175d3d43afb1c0@o4511704565678080.ingest.de.sentry.io/4511706871693392"
-                .parse()
-                .ok()
-        },
-        release: sentry::release_name!(),
-        ..Default::default()
-    });
-
     // TODO: Audit that the environment access only happens in single-threaded code.
     unsafe { std::env::set_var("MPV_LIBMPV_RENDER_BACKEND", "gpu-next") };
     tauri::Builder::default()
@@ -350,12 +356,17 @@ pub fn run() {
                 .level_for("librqbit_core", librqbit_log_level)
                 .level_for("librqbit_peer_protocol", librqbit_log_level)
                 .level_for("tracing::span", log::LevelFilter::Off)
-                .targets([
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
-                        file_name: None,
-                    }),
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                ])
+                .targets({
+                    let mut targets = vec![tauri_plugin_log::Target::new(
+                        tauri_plugin_log::TargetKind::LogDir { file_name: None },
+                    )];
+                    if cfg!(debug_assertions) {
+                        targets.push(tauri_plugin_log::Target::new(
+                            tauri_plugin_log::TargetKind::Stdout,
+                        ));
+                    }
+                    targets
+                })
                 .build()
         })
         .plugin(tauri_plugin_updater::Builder::new().build())

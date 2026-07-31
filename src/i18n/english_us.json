@@ -1259,7 +1259,7 @@
   "settings.diagnostics": "Diagnostics",
   "settings.diagnostics_desc": "Troubleshooting and support",
   "settings.diagnostic_mode": "Diagnostic Mode",
-  "settings.diagnostic_mode_desc": "Record detailed app and player activity to a log file to help track down problems",
+  "settings.diagnostic_mode_desc": "Record detailed app and player activity to a log file and send anonymous crash reports, to help track down problems. Off by default.",
   "settings.diagnostic_export": "Export Diagnostic File",
   "settings.diagnostic_export_desc": "Save the diagnostic log as a file you can share with the developer",
   "settings.diagnostic_export_saved": "Diagnostic file saved",

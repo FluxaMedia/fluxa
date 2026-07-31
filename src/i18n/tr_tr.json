@@ -1259,7 +1259,7 @@
   "settings.diagnostics": "Tanılama",
   "settings.diagnostics_desc": "Sorun giderme ve destek",
   "settings.diagnostic_mode": "Tanılama Modu",
-  "settings.diagnostic_mode_desc": "Sorunları bulmaya yardımcı olmak için ayrıntılı uygulama ve oynatıcı etkinliğini günlük dosyasına kaydeder",
+  "settings.diagnostic_mode_desc": "Sorunları bulmaya yardımcı olmak için ayrıntılı uygulama ve oynatıcı etkinliğini günlük dosyasına kaydeder ve anonim çökme raporları gönderir. Varsayılan olarak kapalıdır.",
   "settings.diagnostic_export": "Tanılama Dosyasını Dışa Aktar",
   "settings.diagnostic_export_desc": "Tanılama günlüğünü geliştiriciyle paylaşabileceğin bir dosya olarak kaydet",
   "settings.diagnostic_export_saved": "Tanılama dosyası kaydedildi",
