@@ -237,6 +237,13 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
 
   const { anime4kEnabled, toggleAnime4k, cycleAnime4kMode } = usePlayerAnime4k({ prefs, persistPreference: setSubtitlePref, flashFeedback });
 
+  const [stableVolumeEnabled, setStableVolumeEnabled] = useState(() => prefs?.stableVolume === true);
+  const toggleStableVolume = useCallback((enabled: boolean) => {
+    sendCmd(`set af ${enabled ? 'dynaudnorm' : '""'}`);
+    setStableVolumeEnabled(enabled);
+    setSubtitlePref('stableVolume', enabled);
+  }, [setSubtitlePref]);
+
   const subtitleControls = usePlayerSubtitleControls({ prefs, persistPreference: setSubtitlePref, flashFeedback });
   useEffect(() => { cycleAnime4kModeRef.current = cycleAnime4kMode; }, [cycleAnime4kMode]);
 
@@ -324,7 +331,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
         cast={castPopoverOpen ? { devices: castDevices, discovering: castDiscovering, activeDeviceId: activeCastDeviceId, anchorRef: castBtnRef, onClose: () => setCastPopoverOpen(false), onSelectDevice: (device) => void selectCastDevice(device), onDisconnect: disconnectCast } : undefined}
         torrent={showTorrentPopover ? { stats: torrentStatsSnap, anchorRef: torrentBtnRef, onClose: () => setShowTorrentPopover(false) } : undefined}
         marker={showSegmentMarker && ((introDbSubmitEnabled && introDbApiKey) || (skipDbSubmitEnabled && skipDbApiKey) || (theIntroDbSubmitEnabled && theIntroDbApiKey)) ? { onClose: () => setShowSegmentMarker(false), getPosMs: () => posRef.current * 1000, imdbId: introDbImdbId, tmdbId: introDbTmdbId, mediaType: metaRef?.current?.type === 'series' ? 'tv' : 'movie', season: currentEpisode?.season ?? null, episode: currentEpisode?.episode ?? currentEpisode?.number ?? null, introDbApiKey: introDbSubmitEnabled ? introDbApiKey : '', skipDbApiKey: skipDbSubmitEnabled ? skipDbApiKey : '', theIntroDbApiKey: theIntroDbSubmitEnabled ? theIntroDbApiKey : '', coverage: skipSegmentCoverage ?? {} } : undefined}
-        settings={showPlayerSettings ? { anchorRef: playerSettingsBtnRef, onClose: () => setShowPlayerSettings(false), anime4kEnabled, onToggleAnime4k: toggleAnime4k } : undefined}
+        settings={showPlayerSettings ? { anchorRef: playerSettingsBtnRef, onClose: () => setShowPlayerSettings(false), anime4kEnabled, onToggleAnime4k: toggleAnime4k, stableVolumeEnabled, onToggleStableVolume: toggleStableVolume } : undefined}
         shortcuts={showShortcutsHelp ? { overrides: shortcutOverrides, onClose: () => setShowShortcutsHelp(false) } : undefined}
         stats={showStats ? { stats: statsSnap, torrentStats: torrentStatsSnap, bufferHistory: bufferHistoryRef.current, networkSpeedHistory: netSpeedHistoryRef.current, torrentSpeedHistory, stallCount: stallCountRef.current } : undefined}
       />
