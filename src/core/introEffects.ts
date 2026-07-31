@@ -24,12 +24,12 @@ import {
   matchAnimeSkipEpisodeId,
   corePlaybackIntroLookupContentId,
 } from './engine';
-import { loadAddons } from './libraryOps';
+import { loadEnabledAddons } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
 import { tryExecuteRequestPlan, executeRequestPlan, type RequestPlan } from './httpClient';
 
 export async function fetchSubtitles(payload: Record<string, unknown>): Promise<unknown> {
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const values = await fetchPlannedResources({
     kind: 'subtitles',
     addons,

@@ -9,7 +9,7 @@ import {
   coreInvoke,
   dispatchAction,
 } from './engine';
-import { loadAddons, loadPrefs } from './libraryOps';
+import { loadEnabledAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
 import { tryFetchJson } from './httpClient';
 import { fetchPluginStreams } from './pluginRuntime';
@@ -136,7 +136,7 @@ export async function fetchMetaDetail(payload: Record<string, unknown>): Promise
   const id = payload.id as string;
   const contentType = payload.contentType as string;
   const transportUrl = typeof payload.sourceAddonTransportUrl === 'string' ? payload.sourceAddonTransportUrl : undefined;
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const values = await fetchPlannedResources({ kind: 'metaDetail', addons, contentType, id, transportUrl });
   return (values.find((value) => (value as { meta?: unknown }).meta) as { meta?: unknown } | undefined)?.meta ?? null;
 }
@@ -188,7 +188,7 @@ export async function fetchDetailStreams(
 ): Promise<unknown> {
   const requestIds = (payload.requestIds as string[] | undefined) ?? (typeof payload.id === 'string' ? [payload.id] : []);
   const idField = (typeof payload.id === 'string' ? payload.id : undefined) ?? requestIds[0];
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const contentType = payload.contentType as string;
 
   const partialDispatches: Promise<void>[] = [];
@@ -244,7 +244,7 @@ export async function fetchDetailStreams(
 }
 
 export async function fetchSeasonEpisodes(payload: Record<string, unknown>): Promise<unknown> {
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const seriesId = await coreDetailSeriesLookupId(payload.seriesId as string);
   const season = payload.season as number;
   const values = await fetchPlannedResources({ kind: 'seasonEpisodes', addons, id: seriesId, season });

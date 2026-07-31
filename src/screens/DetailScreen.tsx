@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { coreDetailEpisodePlan, coreInvoke } from '../core/engine';
 import { prewarmYoutubeTrailerConfig } from '../core/effectRunner';
 import { coreSupportsResource } from '../core/addonManifest';
-import { loadAddons } from '../core/libraryOps';
+import { loadEnabledAddons } from '../core/libraryOps';
 import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { posterPrefsFromState } from '../core/posterPrefs';
 import { seasonPosterUrl } from '../core/seasonPosters';
@@ -175,7 +175,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
 
   useEffect(() => {
     let active = true;
-    void loadAddons()
+    void loadEnabledAddons()
       .then(async (addons) => {
         const supported = await Promise.all(addons.map((addon) => coreSupportsResource(addon.manifest, 'stream', meta.type, meta.id)));
         if (active) setStreamAddonCount(supported.filter(Boolean).length);

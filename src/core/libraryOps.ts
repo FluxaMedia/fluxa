@@ -19,6 +19,7 @@ import {
   storageWrite,
 } from './engine';
 import { normalizeAddonDescriptor } from './addons';
+import { coreFilterEnabledAddons } from './engineCoreLibrary';
 import type { AddonDescriptor, UserProfile } from './types';
 
 let _cachedLibraryKey: string | null = null;
@@ -132,6 +133,14 @@ export async function loadActiveProfile(): Promise<UserProfile | null> {
   if (!profileId) return null;
   const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
   return profiles.find((profile) => profile.id === profileId) ?? null;
+}
+
+export async function loadEnabledAddons(): Promise<AddonDescriptor[]> {
+  const addons = await loadAddons();
+  const profile = await loadActiveProfile();
+  const disabledAddonKeys = profile?.addonSettings?.disabledLocalAddons ?? profile?.disabledLocalAddons ?? [];
+  if (!disabledAddonKeys.length) return addons;
+  return (await coreFilterEnabledAddons(addons, disabledAddonKeys)) ?? addons;
 }
 
 export async function buildContinueWatching(progressMap: Record<string, unknown>): Promise<unknown[]> {

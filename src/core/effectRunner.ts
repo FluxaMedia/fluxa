@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/react';
 import { completeEffect, coreInvoke, coreMergeContinueWatchingLists, dispatchAction, enqueueOfflineDownload, httpExecuteText, libraryContinueWatchingDelete, libraryProgressDelete, registerTrailerProxyUrl } from './engine';
 import { startTorrentStream, stopTorrentStream } from './mpvPlayer';
-import { effectRunnerLibraryKey, loadActiveProfile, loadAddons, loadLibrary, loadPrefs, saveLibrary, persistLastWatchedEpisode } from './libraryOps';
+import { effectRunnerLibraryKey, loadActiveProfile, loadEnabledAddons, loadLibrary, loadPrefs, saveLibrary, persistLastWatchedEpisode } from './libraryOps';
 import { readHomeBootstrap, refreshReleasedContinueWatching } from './homeEffects';
 import { invalidateCalendarCache } from './libraryEffects';
 import {
@@ -94,7 +94,7 @@ async function deriveNextProgressFromLastWatched(metaObj: Record<string, unknown
   const currentSeason = metaObj.lastEpisodeSeason as number | undefined;
   const currentEpisode = metaObj.lastEpisodeNumber as number | undefined;
   if (currentSeason == null || currentEpisode == null) return undefined;
-  const videos = await fetchVideosForSeries(id, await loadAddons());
+  const videos = await fetchVideosForSeries(id, await loadEnabledAddons());
   return (await coreInvoke<WatchProgressInfo>('nextProgressInfoPlan', JSON.stringify({
     contentId: id,
     contentType: 'series',
@@ -118,7 +118,7 @@ async function runEffect(
 
     case 'refreshContinueWatching': {
       const lib = await loadLibrary();
-      const addons = await loadAddons();
+      const addons = await loadEnabledAddons();
       const prefs = await loadPrefs();
       const localCW = (lib.continueWatching as Record<string, unknown>[] | undefined) ?? [];
       const externalCW = (lib.externalContinueWatching as Record<string, unknown>[] | undefined) ?? [];

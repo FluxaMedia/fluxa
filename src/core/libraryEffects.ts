@@ -19,7 +19,7 @@ import {
   buildContinueWatching,
   effectRunnerLibraryKey,
   loadActiveProfile,
-  loadAddons,
+  loadEnabledAddons,
   loadLibrary,
   persistContinueWatchingMerge,
   persistProgressMerge,
@@ -61,7 +61,7 @@ export async function refreshCalendarMonth(year: number, month: number): Promise
     ...((library.continueWatching as LibraryItem[] | undefined) ?? []),
   ];
   const series = libraryItems.filter((item) => item.type === "series" && item.id);
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const localItems = (await runWithConcurrency(
     series,
     AIR_DATE_REFRESH_CONCURRENCY,
@@ -123,7 +123,7 @@ export async function refreshWatchlistAirDates(): Promise<void> {
   )) ?? [];
   if (candidates.length === 0) return;
 
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const nowIso = new Date(nowMs).toISOString();
 
   const updates = await runWithConcurrency(
@@ -229,7 +229,7 @@ async function deriveNextProgressInfo(
   >,
 ): Promise<WatchProgressInfo | undefined> {
   if (!seriesId || watchedEpisodes.length === 0) return undefined;
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const videos = await fetchVideosForSeries(seriesId, addons);
   return (await coreInvoke<WatchProgressInfo>(
     "nextProgressInfoPlan",

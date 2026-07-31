@@ -3,7 +3,7 @@ import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { coreCanPrefetchNextEpisode, coreDetectAnimePlayback, coreInvoke, corePlaybackIntroLookupContentId, corePlaybackPreparePlan, coreResolveNextEpisode, coreSelectNextEpisodeStream, coreStreamShellPlan, coreTorrentReadyBudget, coreTorrentStatusInfo } from '../core/engine';
 import { fetchMetaVideos, fetchPlaybackSkipSegments, fetchStreamsForEpisode } from '../core/effectRunner';
 import { fetchContentLogo } from '../core/detailEffects';
-import { loadAddons } from '../core/libraryOps';
+import { loadEnabledAddons } from '../core/libraryOps';
 import { appPrefs, prefString } from '../core/appPrefs';
 import { getLanguage, t } from '../i18n';
 import { formatNextEpisodeSubtitle } from '../core/playerUtils';
@@ -147,7 +147,7 @@ export function usePlayerPlaybackStart(options: any) {
       }
     }
 
-    const playbackAddons = await loadAddons().catch(() => stateRef.current.addons.installed ?? [] as AddonDescriptor[]);
+    const playbackAddons = await loadEnabledAddons().catch(() => stateRef.current.addons.installed ?? [] as AddonDescriptor[]);
     const subtitlesPromise = resolvePlaybackSubtitles(
       stream,
       meta,

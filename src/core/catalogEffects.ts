@@ -1,6 +1,6 @@
 import { coreInvoke, coreSearchResultGrouping } from './engine';
 import { coreResourceFetchPlan } from './addonManifest';
-import { loadAddons, loadPrefs } from './libraryOps';
+import { loadEnabledAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources, fetchParsedAddonResource, resourceForPlannedRequest } from './fetchPlanning';
 import { discoverCatalogOptions } from './homeEffects';
 import { fetchBuiltinCatalog, isBuiltinTmdbAddon } from './tmdbAddon';
@@ -38,7 +38,7 @@ export async function runSearch(payload: Record<string, unknown>): Promise<unkno
   const abortController = new AbortController();
   searchAbortController = abortController;
 
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const plan = await coreResourceFetchPlan({ kind: 'search', query, addons });
   const sources: Array<{
     id: string;
@@ -122,7 +122,7 @@ export async function runDiscover(payload: Record<string, unknown>): Promise<unk
   }
 
   const catalogKey = filters?.catalogKey;
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const values = await fetchPlannedResources(
     { kind: 'discover', contentType, catalogKey, extra, addons },
     undefined,
@@ -142,7 +142,7 @@ export async function runDiscover(payload: Record<string, unknown>): Promise<unk
 
 export async function readDiscoverCatalogFilters(payload: Record<string, unknown>): Promise<unknown> {
   const contentType = payload.contentType as string;
-  const addons = await loadAddons();
+  const addons = await loadEnabledAddons();
   const catalogOptions = await discoverCatalogOptions(addons, contentType);
   const catalogs = catalogOptions.map((catalog) => ({
     key: catalog.key,
