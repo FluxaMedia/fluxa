@@ -1,7 +1,6 @@
 use crate::{torrent_transport, DesktopState};
 use fluxa_core::FluxaCore;
 use serde_json::{json, Value};
-use std::fs;
 use tauri::State;
 
 fn start_torrent_stream_inner(
@@ -106,7 +105,6 @@ pub fn stream_magnet_link(stream_json: String) -> Option<String> {
 
 async fn ensure_healthy_torrent_base_url(
     state: &State<'_, DesktopState>,
-    data_dir: &std::path::Path,
 ) -> Option<String> {
     let base_url = state.torrent.lock().unwrap().server_base_url.clone()?;
     let healthy = tauri::async_runtime::spawn_blocking({
@@ -126,11 +124,10 @@ async fn ensure_healthy_torrent_base_url(
         torrent.stream_file_id = None;
         generation
     };
-    let cleanup_dir = data_dir.to_path_buf();
     let _ = tauri::async_runtime::spawn_blocking(move || {
-        let stopped = fluxa_streaming_engine::stop_torrent_server(previous_generation);
-        let _ = fs::remove_dir_all(cleanup_dir.join("torrent-cache"));
-        stopped
+        // A transient server failure must not discard completed pieces or
+        // librqbit's fast-resume/session state. Cache removal is explicit.
+        fluxa_streaming_engine::stop_torrent_server(previous_generation)
     })
     .await;
     None
@@ -158,7 +155,7 @@ pub async fn start_torrent_stream(
                 .map(str::to_ascii_lowercase)
         });
     let existing_link = state.torrent.lock().unwrap().stream_link.clone();
-    let existing_base_url = ensure_healthy_torrent_base_url(&state, &data_dir).await;
+    let existing_base_url = ensure_healthy_torrent_base_url(&state).await;
     let reuse_existing_server = existing_base_url.is_some();
     let same_torrent = info_hash.as_ref().is_some_and(|hash| {
         existing_link
@@ -199,7 +196,7 @@ pub(crate) async fn resolve_torrent_download_url(
         .unwrap()
         .clone()
         .ok_or_else(|| "app data dir is not ready".to_string())?;
-    let existing_base_url = ensure_healthy_torrent_base_url(state, &data_dir).await;
+    let existing_base_url = ensure_healthy_torrent_base_url(state).await;
     let (stream_url, base_url, _link, generation, _file_id) =
         tauri::async_runtime::spawn_blocking(move || {
             start_torrent_stream_inner(data_dir, stream_json, None, None, existing_base_url)

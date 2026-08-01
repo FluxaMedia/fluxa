@@ -441,11 +441,6 @@ pub fn run() {
             *state.data_dir.lock().unwrap() = Some(data_dir.clone());
             let _ = fs::create_dir_all(&data_dir);
 
-            let torrent_cache_dir = data_dir.join("torrent-cache");
-            std::thread::spawn(move || {
-                let _ = fs::remove_dir_all(&torrent_cache_dir);
-            });
-
             if let Ok(cache_dir) = app.path().app_cache_dir() {
                 std::thread::spawn(move || {
                     if let Ok(entries) = fs::read_dir(&cache_dir) {

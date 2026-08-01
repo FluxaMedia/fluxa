@@ -170,7 +170,7 @@ fn torrent_sibling_subtitles(state: &DesktopState) -> Vec<(String, String, Optio
             continue;
         };
         let url = format!(
-            "{}/stream/fname?link={}&index={}&play&title={}",
+            "{}/stream/fname?link={}&index={}&role=subtitle&play&title={}",
             base_url.trim_end_matches('/'),
             encode_query_component(&link),
             id,
