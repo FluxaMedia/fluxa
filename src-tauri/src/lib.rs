@@ -125,6 +125,7 @@ pub struct TorrentRuntimeState {
     pub stream_link: Option<String>,
     pub stream_file_id: Option<usize>,
     pub generation: Option<u64>,
+    pub telemetry_generation: u64,
 }
 
 pub struct DesktopState {

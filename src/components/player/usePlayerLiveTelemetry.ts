@@ -78,7 +78,6 @@ export function usePlayerLiveTelemetry(options: Bindings) {
     options.firstFrameFiredRef.current = false;
     options.prevPausedForCacheRef.current = false;
     options.stallCountRef.current = 0;
-    if (options.isTorrentStream) void playerTorrentTelemetry('sessionStarted', undefined, sessionId);
   }, [options.playbackUrl]);
 
   useEffect(() => {

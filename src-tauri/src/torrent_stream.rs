@@ -183,6 +183,7 @@ pub async fn start_torrent_stream(
     torrent.server_base_url = Some(base_url);
     torrent.stream_link = Some(link);
     torrent.stream_file_id = file_id;
+    torrent.telemetry_generation = torrent.telemetry_generation.saturating_add(1);
     if let Some(generation) = generation {
         torrent.generation = Some(generation);
     }
@@ -263,16 +264,20 @@ pub async fn player_torrent_telemetry(
     elapsed_ms: Option<u64>,
     session_id: String,
 ) -> Result<bool, String> {
-    let (base_url, link) = {
+    let (base_url, link, telemetry_generation) = {
         let torrent = state.torrent.lock().map_err(|_| "torrent state unavailable")?;
-        (torrent.server_base_url.clone(), torrent.stream_link.clone())
+        (
+            torrent.server_base_url.clone(),
+            torrent.stream_link.clone(),
+            torrent.telemetry_generation,
+        )
     };
     let (Some(base_url), Some(link)) = (base_url, link) else {
         return Ok(false);
     };
     let response = reqwest::Client::new()
         .post(format!("{}/telemetry", base_url.trim_end_matches('/')))
-        .json(&json!({ "link": link, "sessionId": session_id, "event": event, "elapsedMs": elapsed_ms }))
+        .json(&json!({ "link": link, "sessionId": session_id, "sessionGeneration": telemetry_generation, "event": event, "elapsedMs": elapsed_ms }))
         .timeout(std::time::Duration::from_secs(3))
         .send()
         .await
