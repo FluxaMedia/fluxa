@@ -80,10 +80,6 @@ pub struct PlayerOverlayState {
     pub use_chapter_skip: bool,
     pub eof_next_fired: bool,
     pub episodes_json: Option<String>,
-    pub thumb_url: Option<String>,
-    pub seek_thumbnail_enabled: bool,
-    pub thumbnail_renderer: Option<mpv_render::MpvRenderer>,
-    pub thumbnail_loaded_url: Option<String>,
     pub anime4k_enabled: bool,
 }
 
@@ -100,13 +96,17 @@ impl Default for PlayerOverlayState {
             use_chapter_skip: true,
             eof_next_fired: false,
             episodes_json: None,
-            thumb_url: None,
-            seek_thumbnail_enabled: false,
-            thumbnail_renderer: None,
-            thumbnail_loaded_url: None,
             anime4k_enabled: false,
         }
     }
+}
+
+#[derive(Default)]
+pub struct ThumbnailRuntimeState {
+    pub enabled: bool,
+    pub url: Option<String>,
+    pub renderer: Option<mpv_render::MpvRenderer>,
+    pub loaded_url: Option<String>,
 }
 
 impl PlayerOverlayState {
@@ -144,6 +144,7 @@ pub struct DesktopState {
     #[cfg(target_os = "macos")]
     pub native_player_surface: Mutex<Option<macos_player_surface::NativePlayerSurface>>,
     pub player_overlay: Mutex<PlayerOverlayState>,
+    pub thumbnail: Mutex<ThumbnailRuntimeState>,
     pub pending_hide: AtomicBool,
     pub player_telemetry_running: AtomicBool,
     pub player_position_interval_ms: AtomicU64,
@@ -173,6 +174,7 @@ impl Default for DesktopState {
             #[cfg(target_os = "macos")]
             native_player_surface: Mutex::new(None),
             player_overlay: Mutex::new(PlayerOverlayState::default()),
+            thumbnail: Mutex::new(ThumbnailRuntimeState::default()),
             pending_hide: AtomicBool::new(false),
             player_telemetry_running: AtomicBool::new(false),
             player_position_interval_ms: AtomicU64::new(750),

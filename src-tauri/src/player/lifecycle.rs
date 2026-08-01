@@ -126,7 +126,7 @@ pub async fn player_load(
         url
     };
 
-    state.player_overlay.lock().unwrap().thumb_url = Some(url.clone());
+    state.thumbnail.lock().unwrap().url = Some(url.clone());
 
     let engine = playback_engine::read_player_engine(&app);
     *state.active_player_engine.lock().unwrap() = engine;

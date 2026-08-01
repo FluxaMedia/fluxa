@@ -294,7 +294,7 @@ pub fn player_clear_episodes(state: State<DesktopState>) {
 
 #[tauri::command]
 pub fn player_set_seek_thumbnail_enabled(state: State<DesktopState>, enabled: bool) {
-    state.player_overlay.lock().unwrap().seek_thumbnail_enabled = enabled;
+    state.thumbnail.lock().unwrap().enabled = enabled;
 }
 
 #[tauri::command]
@@ -304,27 +304,20 @@ pub fn player_get_seek_thumbnail(
 ) -> Result<String, String> {
     use base64::{engine::general_purpose, Engine as _};
 
-    if !state.player_overlay.lock().unwrap().seek_thumbnail_enabled {
+    let mut thumbnail = state.thumbnail.lock().unwrap();
+    if !thumbnail.enabled {
         return Ok(String::new());
     }
-    let url = state
-        .player_overlay
-        .lock()
-        .unwrap()
-        .thumb_url
-        .clone()
-        .ok_or_else(|| "no url".to_string())?;
+    let url = thumbnail.url.clone().ok_or_else(|| "no url".to_string())?;
 
-    let mut overlay = state.player_overlay.lock().unwrap();
-
-    if overlay.thumbnail_renderer.is_none() {
-        overlay.thumbnail_renderer = Some(mpv_render::MpvRenderer::new_thumbnail()?);
+    if thumbnail.renderer.is_none() {
+        thumbnail.renderer = Some(mpv_render::MpvRenderer::new_thumbnail()?);
     }
-    let reload_thumbnail = overlay.thumbnail_loaded_url.as_deref() != Some(url.as_str());
+    let reload_thumbnail = thumbnail.loaded_url.as_deref() != Some(url.as_str());
     if reload_thumbnail {
-        overlay.thumbnail_loaded_url = Some(url.clone());
+        thumbnail.loaded_url = Some(url.clone());
     }
-    let renderer = overlay.thumbnail_renderer.as_mut().unwrap();
+    let renderer = thumbnail.renderer.as_mut().unwrap();
 
     if reload_thumbnail {
         renderer.load_thumbnail(&url)?;
@@ -350,7 +343,7 @@ pub fn player_get_seek_thumbnail(
     }
 
     let pixels = renderer.render_thumbnail(320, 180)?;
-    drop(overlay);
+    drop(thumbnail);
 
     let img = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(320, 180, pixels)
         .ok_or_else(|| "frame buffer mismatch".to_string())?;
