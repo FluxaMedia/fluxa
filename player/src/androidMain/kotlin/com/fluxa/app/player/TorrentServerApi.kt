@@ -13,7 +13,10 @@ data class TorrentRequest(
     val hash: String? = null,
     val title: String? = null,
     @SerializedName("save_to_db") val saveToDb: Boolean = false,
-    @SerializedName("file_id") val fileId: Int? = null
+    @SerializedName("file_id") val fileId: Int? = null,
+    // Defaults to video for old callers. Subtitle selection can opt in
+    // without replacing the torrent's current primary video focus.
+    val role: String = "video"
 )
 
 data class TorrentSettings(

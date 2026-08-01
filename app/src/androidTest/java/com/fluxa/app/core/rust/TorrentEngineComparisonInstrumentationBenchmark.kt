@@ -8,7 +8,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
-import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -23,47 +22,41 @@ class TorrentEngineComparisonInstrumentationBenchmark {
     @After
     fun tearDown() {
         torrentServerEngine?.stop()
-        FluxaStreamingNative.stopTorrentServer()
     }
 
     @Test
-    fun compareTorrentServerAndRustEngineFirstRangeRead() {
+    fun measureRustEnginePlaybackScenarios() {
         val args = InstrumentationRegistry.getArguments()
         val torrentLink = args.getString("torrentLink").orEmpty()
         assumeTrue("Pass -e torrentLink <magnet-or-torrent-url> to run this benchmark.", torrentLink.isNotBlank())
 
-        val rustInfo = JSONObject(
-            FluxaStreamingNative.startTorrentServer(
-                cacheDir = context.cacheDir.resolve("rust_torrent_benchmark").absolutePath,
-                preferredPort = 0
-            )
-        )
-        val rustBaseUrl = rustInfo.getString("url")
-        val rustUrl = torrentStreamUrl(rustBaseUrl, torrentLink)
-
         torrentServerEngine = TorrentServerEngine(context).also { it.start() }
         waitForHttp(Constants.LocalServer.TORRENT_SERVER_BASE_URL)
-        val torrentServerUrl = torrentStreamUrl(Constants.LocalServer.TORRENT_SERVER_BASE_URL, torrentLink)
+        val streamUrl = torrentStreamUrl(Constants.LocalServer.TORRENT_SERVER_BASE_URL, torrentLink)
 
-        val rustDelayMs = measureFirstRangeMs(rustUrl)
-        val torrentServerDelayMs = measureFirstRangeMs(torrentServerUrl)
+        val firstByteMs = measureFirstRangeMs(streamUrl, 0)
+        val length = streamLength(streamUrl)
+        val middleSeekMs = measureFirstRangeMs(streamUrl, length / 2)
+        val tailSeekMs = measureFirstRangeMs(streamUrl, (length - 262_144L).coerceAtLeast(0L))
 
-        println("torrent-rust-engine-first-range-ms=$rustDelayMs")
-        println("torrent-torrserver-first-range-ms=$torrentServerDelayMs")
-        assertTrue(rustDelayMs > 0)
-        assertTrue(torrentServerDelayMs > 0)
+        println("torrent-rust-engine-first-byte-ms=$firstByteMs")
+        println("torrent-rust-engine-middle-seek-first-byte-ms=$middleSeekMs")
+        println("torrent-rust-engine-tail-seek-first-byte-ms=$tailSeekMs")
+        assertTrue(firstByteMs > 0)
+        assertTrue(middleSeekMs > 0)
+        assertTrue(tailSeekMs > 0)
     }
 
     private fun torrentStreamUrl(baseUrl: String, torrentLink: String): String {
         return "$baseUrl/stream/fname?link=${URLEncoder.encode(torrentLink, "UTF-8")}&title=benchmark"
     }
 
-    private fun measureFirstRangeMs(url: String): Long {
+    private fun measureFirstRangeMs(url: String, startByte: Long): Long {
         val start = System.nanoTime()
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 30_000
         connection.readTimeout = 120_000
-        connection.setRequestProperty("Range", "bytes=0-262143")
+        connection.setRequestProperty("Range", "bytes=$startByte-${startByte + 262_143L}")
         val bytes = connection.inputStream.use { stream ->
             val buffer = ByteArray(32 * 1024)
             var total = 0
@@ -76,6 +69,18 @@ class TorrentEngineComparisonInstrumentationBenchmark {
         }
         assertTrue("Expected at least one torrent byte from $url", bytes > 0)
         return (System.nanoTime() - start) / 1_000_000L
+    }
+
+    private fun streamLength(url: String): Long {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = 30_000
+        connection.readTimeout = 120_000
+        connection.setRequestProperty("Range", "bytes=0-0")
+        connection.inputStream.use { it.read() }
+        return connection.getHeaderField("Content-Range")
+            ?.substringAfter('/')
+            ?.toLongOrNull()
+            ?: error("Torrent server did not return Content-Range")
     }
 
     private fun waitForHttp(baseUrl: String) {

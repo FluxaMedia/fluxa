@@ -29,7 +29,9 @@ object FluxaStreamingNative {
         startTorrentServerNative(cacheDir, preferredPort, accessToken)
     }
 
-    fun stopTorrentServer(): Boolean = call { stopTorrentServerNative() }
+    fun stopTorrentServer(expectedGeneration: Long? = null): Boolean = call {
+        stopTorrentServerNative(expectedGeneration ?: -1L)
+    }
 
     fun dvRpuSelfTest(): Boolean = call { dvRpuSelfTestNative() }
 
@@ -59,7 +61,7 @@ object FluxaStreamingNative {
     private external fun startDvRewriteLocalStreamServerNative(targetUrl: String, headersJson: String, dvConfigJson: String, preferredPort: Int): String
     private external fun stopLocalStreamServerNative(serverId: String): Boolean
     private external fun startTorrentServerNative(cacheDir: String, preferredPort: Int, accessToken: String): String
-    private external fun stopTorrentServerNative(): Boolean
+    private external fun stopTorrentServerNative(expectedGeneration: Long): Boolean
     private external fun dvRpuSelfTestNative(): Boolean
     private external fun dvAutoDetectWasIptPqc2Native(): Boolean
     private external fun dvRewriteSegmentBytesNative(data: ByteArray, rpuMode: Int, zeroLevel5: Boolean, removeHdr10Plus: Boolean): ByteArray

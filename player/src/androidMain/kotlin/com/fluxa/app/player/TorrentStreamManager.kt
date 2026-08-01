@@ -276,11 +276,15 @@ class TorrentStreamManager private constructor() {
         }.getOrDefault(false)
     }
 
-    // 1% of file size, clamped between 3 MB and 24 MB.
-    // Falls back to the speed-preset default when file size is unknown.
+    // Target ~20 seconds of media rather than a fixed fraction of a file.
+    // A size-only target makes high-bitrate remuxes start with just a couple
+    // of seconds buffered while over-buffering low-bitrate content.
     private fun estimatePreloadMb(fileSizeBytes: Long, durationMs: Long): Long {
-        if (fileSizeBytes > 0L) {
-            return (fileSizeBytes / 100L / (1024L * 1024L)).coerceIn(3L, 24L)
+        if (fileSizeBytes > 0L && durationMs > 0L) {
+            val bytesPerSecond = fileSizeBytes.toDouble() / (durationMs / 1_000.0)
+            return (bytesPerSecond * 20.0 / (1024.0 * 1024.0))
+                .toLong()
+                .coerceIn(4L, 256L)
         }
         return pendingSettings.preloadSize
     }
