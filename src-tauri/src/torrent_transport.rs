@@ -35,13 +35,20 @@ pub(crate) fn remove(base_url: &str, link: &str) {
     post_async(base_url, "torrents", json!({ "action": "rem", "link": link }).to_string(), 15);
 }
 
+pub(crate) fn deactivate(base_url: &str, link: &str) {
+    post_async(base_url, "torrents", json!({ "action": "deactivate", "link": link }).to_string(), 15);
+}
+
 pub(crate) fn apply_preferences(base_url: &str, preferences: Option<&Value>) {
     let preload_size = match preferences.and_then(|value| value.get("torrentSpeedPreset")).and_then(Value::as_str) {
         Some("fast") => 32,
         Some("ultra_fast") => 64,
         _ => 16,
     };
-    post_async(base_url, "settings", json!({ "PreloadSize": preload_size }).to_string(), 5);
+    let cache_limit_mb = preferences
+        .and_then(|value| value.get("torrentCacheLimitMb"))
+        .and_then(Value::as_u64);
+    post_async(base_url, "settings", json!({ "PreloadSize": preload_size, "CacheLimitMb": cache_limit_mb }).to_string(), 5);
 }
 
 fn post_async(base_url: &str, endpoint: &str, body: String, timeout_seconds: u64) {

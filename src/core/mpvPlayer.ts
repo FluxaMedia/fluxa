@@ -4,8 +4,9 @@ export async function startTorrentStream(
   streamJson: string,
   title?: string,
   preferences?: Record<string, unknown>,
+  durationMs?: number,
 ): Promise<string> {
-  return invoke<string>('start_torrent_stream', { streamJson, title: title ?? null, preferences: preferences ?? null });
+  return invoke<string>('start_torrent_stream', { streamJson, title: title ?? null, preferences: preferences ?? null, durationMs: durationMs ?? null });
 }
 
 export async function stopTorrentStream(): Promise<boolean> {

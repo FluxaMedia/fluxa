@@ -9,6 +9,7 @@ fn start_torrent_stream_inner(
     title: Option<String>,
     preferences: Option<Value>,
     existing_base_url: Option<String>,
+    duration_ms: Option<u64>,
 ) -> Result<(String, String, String, Option<u64>, Option<usize>), String> {
     let (base_url, generation) = if let Some(base_url) = existing_base_url {
         torrent_transport::apply_preferences(&base_url, preferences.as_ref());
@@ -69,7 +70,7 @@ fn start_torrent_stream_inner(
         "baseUrl": base_url,
         "play": true,
         "stat": false,
-        "durationMs": stream.get("durationMs").and_then(Value::as_u64)
+        "durationMs": duration_ms.or_else(|| stream.get("durationMs").and_then(Value::as_u64))
     });
     let runtime_json = FluxaCore::torrent_runtime_info_json(&runtime_request.to_string())
         .ok_or_else(|| "torrent runtime info could not be resolved".to_string())?;
@@ -140,6 +141,7 @@ pub async fn start_torrent_stream(
     stream_json: String,
     title: Option<String>,
     preferences: Option<Value>,
+    duration_ms: Option<u64>,
 ) -> Result<String, String> {
     let data_dir = state
         .data_dir
@@ -165,7 +167,7 @@ pub async fn start_torrent_stream(
     });
     if reuse_existing_server && !same_torrent {
         if let (Some(base_url), Some(old_link)) = (existing_base_url.clone(), existing_link) {
-            torrent_transport::remove(&base_url, &old_link);
+            torrent_transport::deactivate(&base_url, &old_link);
         }
         let mut torrent = state.torrent.lock().unwrap();
         torrent.stream_link = None;
@@ -173,7 +175,7 @@ pub async fn start_torrent_stream(
     }
     let (stream_url, base_url, link, generation, file_id) =
         tauri::async_runtime::spawn_blocking(move || {
-            start_torrent_stream_inner(data_dir, stream_json, title, preferences, existing_base_url)
+            start_torrent_stream_inner(data_dir, stream_json, title, preferences, existing_base_url, duration_ms)
         })
         .await
         .map_err(|e| e.to_string())??;
@@ -200,7 +202,7 @@ pub(crate) async fn resolve_torrent_download_url(
     let existing_base_url = ensure_healthy_torrent_base_url(state).await;
     let (stream_url, base_url, _link, generation, _file_id) =
         tauri::async_runtime::spawn_blocking(move || {
-            start_torrent_stream_inner(data_dir, stream_json, None, None, existing_base_url)
+            start_torrent_stream_inner(data_dir, stream_json, None, None, existing_base_url, None)
         })
         .await
         .map_err(|e| e.to_string())??;
@@ -214,9 +216,17 @@ pub(crate) async fn resolve_torrent_download_url(
 
 #[tauri::command]
 pub async fn stop_torrent_stream(state: State<'_, DesktopState>) -> Result<bool, String> {
-    let mut torrent = state.torrent.lock().unwrap();
-    let was_playing = torrent.stream_link.take().is_some();
-    torrent.stream_file_id = None;
+    let (base_url, link) = {
+        let mut torrent = state.torrent.lock().unwrap();
+        let base_url = torrent.server_base_url.clone();
+        let link = torrent.stream_link.take();
+        torrent.stream_file_id = None;
+        (base_url, link)
+    };
+    let was_playing = link.is_some();
+    if let (Some(base_url), Some(link)) = (base_url, link) {
+        tauri::async_runtime::spawn_blocking(move || torrent_transport::deactivate(&base_url, &link));
+    }
     Ok(was_playing)
 }
 
