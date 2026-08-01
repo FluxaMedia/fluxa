@@ -50,6 +50,7 @@ class TorrentStreamManager private constructor() {
     @Volatile private var pendingSettings = defaultSettings()
     @Volatile private var appContext: Context? = null
     @Volatile private var engine: TorrentServerEngine? = null
+    @Volatile private var activeTorrentLink: String? = null
 
     private val _status = MutableStateFlow(TorrentStreamStatus())
     val status: StateFlow<TorrentStreamStatus> = _status.asStateFlow()
@@ -65,8 +66,8 @@ class TorrentStreamManager private constructor() {
         }
     }
 
-    fun configurePreferences(speedPreset: String?) {
-        val newSettings = TorrentSettings(preloadSize = speedPreset.toPreloadSizeMb())
+    fun configurePreferences(speedPreset: String?, cacheLimitMb: Long? = null) {
+        val newSettings = TorrentSettings(preloadSize = speedPreset.toPreloadSizeMb(), cacheLimitMb = cacheLimitMb)
         if (newSettings == pendingSettings) return
         pendingSettings = newSettings
         scope.launch {
@@ -155,6 +156,7 @@ class TorrentStreamManager private constructor() {
                     }.onFailure { Log.w(TAG, "background addTorrent failed", it) }
                 }
                 startStatusPolling(plan.normalizedLink, videoId)
+                activeTorrentLink = plan.normalizedLink
                 callback(TorrentStreamResult.Success(plan.streamUrl))
             } catch (e: Exception) {
                 Log.e(TAG, "Torrent stream failed", e)
@@ -167,6 +169,12 @@ class TorrentStreamManager private constructor() {
         statusJob?.cancel()
         statusJob = null
         _status.value = TorrentStreamStatus()
+        activeTorrentLink?.let { link ->
+            scope.launch {
+                runCatching { api.removeTorrent(TorrentRequest(action = "deactivate", link = link)) }
+            }
+        }
+        activeTorrentLink = null
     }
 
     fun shutdown() {
