@@ -1,5 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useEffect, useRef, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
+import { useEffect, useLayoutEffect, useRef, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
 import { imdbButtonFor, updateDiscordPresence } from '../../core/discordPresence';
 import { embeddedMpvSetCursorVisible, playerTorrentStats, playerTorrentTelemetry, type EmbeddedMpvStatus, type TorrentStats, type TorrentTelemetryContext } from '../../core/mpvPlayer';
 import { setPlayerStatusPositionInterval, subscribePlayerStatus } from '../../core/playerStatusStore';
@@ -9,6 +9,12 @@ import type { PlayerTelemetryControls } from './usePlayerTelemetryState';
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
 type Timer = ReturnType<typeof setTimeout> | null;
+
+type PlaybackTelemetrySession = {
+  id: string;
+  startedAt: number;
+  context: TorrentTelemetryContext | null;
+};
 
 type Bindings = {
   skipSegments: SkipSegment[];
@@ -67,15 +73,21 @@ type Bindings = {
 export function usePlayerLiveTelemetry(options: Bindings) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
-  const playbackStartedAtRef = useRef(Date.now());
   const stallStartedAtRef = useRef<number | null>(null);
-  const telemetrySessionIdRef = useRef('');
+  const telemetrySessionRef = useRef<PlaybackTelemetrySession>({
+    id: '',
+    startedAt: Date.now(),
+    context: null,
+  });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const sessionId = globalThis.crypto?.randomUUID?.() ?? `fx-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    playbackStartedAtRef.current = Date.now();
+    telemetrySessionRef.current = {
+      id: sessionId,
+      startedAt: Date.now(),
+      context: options.torrentTelemetryContext ?? null,
+    };
     stallStartedAtRef.current = null;
-    telemetrySessionIdRef.current = sessionId;
     options.firstFrameFiredRef.current = false;
     options.prevPausedForCacheRef.current = false;
     options.stallCountRef.current = 0;
@@ -91,6 +103,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       } = optionsRef.current;
       liveStatusRef.current = status;
       const now = Date.now();
+      const telemetrySession = telemetrySessionRef.current;
       const bufferUpdateDue = now - lastBufferUpdate >= 500;
       const pausedForCache = status.pausedForCache === 'yes';
       if (!isTorrentStream && bufferUpdateDue) {
@@ -101,9 +114,9 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       if (pausedForCache && !prevPausedForCacheRef.current) {
         stallCountRef.current++;
         stallStartedAtRef.current = now;
-        if (isTorrentStream && optionsRef.current.torrentTelemetryContext) void playerTorrentTelemetry('stallStarted', undefined, telemetrySessionIdRef.current, optionsRef.current.torrentTelemetryContext);
+        if (isTorrentStream && telemetrySession.context) void playerTorrentTelemetry('stallStarted', undefined, telemetrySession.id, telemetrySession.context);
       } else if (!pausedForCache && prevPausedForCacheRef.current && stallStartedAtRef.current != null) {
-        if (isTorrentStream && optionsRef.current.torrentTelemetryContext) void playerTorrentTelemetry('stallEnded', now - stallStartedAtRef.current, telemetrySessionIdRef.current, optionsRef.current.torrentTelemetryContext);
+        if (isTorrentStream && telemetrySession.context) void playerTorrentTelemetry('stallEnded', now - stallStartedAtRef.current, telemetrySession.id, telemetrySession.context);
         stallStartedAtRef.current = null;
       }
       prevPausedForCacheRef.current = pausedForCache;
@@ -145,7 +158,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
         const activeAudioOnlyPlayback = status.loaded && status.trackListReady && !status.hasVideoTrack && status.pausedForCache !== 'yes' && pos > 0.05;
         if (renderedVideo || activeAudioOnlyPlayback) {
           firstFrameFiredRef.current = true;
-          if (isTorrentStream && optionsRef.current.torrentTelemetryContext) void playerTorrentTelemetry('firstFrame', now - playbackStartedAtRef.current, telemetrySessionIdRef.current, optionsRef.current.torrentTelemetryContext);
+          if (isTorrentStream && telemetrySession.context) void playerTorrentTelemetry('firstFrame', now - telemetrySession.startedAt, telemetrySession.id, telemetrySession.context);
           onFirstFrame();
         }
       }
