@@ -417,13 +417,16 @@ export async function pumpEffects(
       try {
         dispatchResult = await completeEffect({ ...result, effectId: effect.id });
       } catch {
+        return;
       }
-      if (dispatchResult) {
-        lastState = dispatchResult.state;
-        onStateUpdate(dispatchResult.state);
-        if (dispatchResult.effects.length > 0) {
-          await pumpEffects(dispatchResult.effects, onStateUpdate, signal);
-        }
+      // The request may have belonged to a profile/session that was replaced
+      // while completeEffect was in flight. Never publish that stale result.
+      if (signal?.aborted || !dispatchResult) return;
+
+      lastState = dispatchResult.state;
+      onStateUpdate(dispatchResult.state);
+      if (dispatchResult.effects.length > 0) {
+        await pumpEffects(dispatchResult.effects, onStateUpdate, signal);
       }
   };
 
