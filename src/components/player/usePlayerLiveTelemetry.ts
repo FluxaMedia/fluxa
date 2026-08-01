@@ -1,7 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
 import { imdbButtonFor, updateDiscordPresence } from '../../core/discordPresence';
-import { embeddedMpvSetCursorVisible, playerTorrentStats, type EmbeddedMpvStatus, type TorrentStats } from '../../core/mpvPlayer';
+import { embeddedMpvSetCursorVisible, playerTorrentStats, playerTorrentTelemetry, type EmbeddedMpvStatus, type TorrentStats } from '../../core/mpvPlayer';
 import { setPlayerStatusPositionInterval, subscribePlayerStatus } from '../../core/playerStatusStore';
 import { t } from '../../i18n';
 import { addSparklineSample, fmtTime, sendCmd, skipLabelForType, type ActiveSkip, type FeedbackFlash, type SkipSegment } from './PlayerOverlayPrimitives';
@@ -68,6 +68,8 @@ export function usePlayerLiveTelemetry(options: Bindings) {
   optionsRef.current = options;
 
   useEffect(() => {
+    const playbackStartedAt = Date.now();
+    let stallStartedAt: number | null = null;
     let lastBufferUpdate = 0;
     let lastSegmentUpdate = 0;
     let lastHdrSignature: string | null = null;
@@ -84,7 +86,14 @@ export function usePlayerLiveTelemetry(options: Bindings) {
         telemetry.setBuffering(pausedForCache, pausedForCache ? (Number.isFinite(cacheProgress) ? Math.max(0, Math.min(100, cacheProgress)) : 0) : undefined);
         lastBufferUpdate = now;
       }
-      if (pausedForCache && !prevPausedForCacheRef.current) stallCountRef.current++;
+      if (pausedForCache && !prevPausedForCacheRef.current) {
+        stallCountRef.current++;
+        stallStartedAt = now;
+        if (isTorrentStream) void playerTorrentTelemetry('stallStarted');
+      } else if (!pausedForCache && prevPausedForCacheRef.current && stallStartedAt != null) {
+        if (isTorrentStream) void playerTorrentTelemetry('stallEnded', now - stallStartedAt);
+        stallStartedAt = null;
+      }
       prevPausedForCacheRef.current = pausedForCache;
 
       const gamma = (status.colorGamma ?? '').toLowerCase();
@@ -122,7 +131,11 @@ export function usePlayerLiveTelemetry(options: Bindings) {
         const hasVideoDimensions = (parseFloat(status.width ?? '0') || 0) > 0 && (parseFloat(status.height ?? '0') || 0) > 0;
         const renderedVideo = status.loaded && status.hasVideoTrack && (status.firstFramePresented || (hasVideoDimensions && status.voConfigured === 'yes' && status.framesRendered >= 2 && status.pausedForCache !== 'yes' && pos > 0.15));
         const activeAudioOnlyPlayback = status.loaded && status.trackListReady && !status.hasVideoTrack && status.pausedForCache !== 'yes' && pos > 0.05;
-        if (renderedVideo || activeAudioOnlyPlayback) { firstFrameFiredRef.current = true; onFirstFrame(); }
+        if (renderedVideo || activeAudioOnlyPlayback) {
+          firstFrameFiredRef.current = true;
+          if (isTorrentStream) void playerTorrentTelemetry('firstFrame', now - playbackStartedAt);
+          onFirstFrame();
+        }
       }
 
       if (currentTimeRef.current) currentTimeRef.current.textContent = fmtTime(pos);

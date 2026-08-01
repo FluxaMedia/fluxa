@@ -255,3 +255,26 @@ pub async fn player_torrent_stats(state: State<'_, DesktopState>) -> Result<Opti
     let json_val = response.json::<Value>().await.map_err(|e| e.to_string())?;
     Ok(Some(json_val))
 }
+
+#[tauri::command]
+pub async fn player_torrent_telemetry(
+    state: State<'_, DesktopState>,
+    event: String,
+    elapsed_ms: Option<u64>,
+) -> Result<bool, String> {
+    let (base_url, link) = {
+        let torrent = state.torrent.lock().map_err(|_| "torrent state unavailable")?;
+        (torrent.server_base_url.clone(), torrent.stream_link.clone())
+    };
+    let (Some(base_url), Some(link)) = (base_url, link) else {
+        return Ok(false);
+    };
+    let response = reqwest::Client::new()
+        .post(format!("{}/telemetry", base_url.trim_end_matches('/')))
+        .json(&json!({ "link": link, "event": event, "elapsedMs": elapsed_ms }))
+        .timeout(std::time::Duration::from_secs(3))
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(response.status().is_success())
+}

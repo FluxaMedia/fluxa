@@ -57,7 +57,7 @@ use poster_cache::*;
 use roku::*;
 use storage::*;
 use torrent_stream::{
-    player_torrent_stats, start_torrent_stream, stop_torrent_stream, stream_magnet_link,
+    player_torrent_stats, player_torrent_telemetry, start_torrent_stream, stop_torrent_stream, stream_magnet_link,
 };
 pub(crate) use torrent_stream::resolve_torrent_download_url;
 
@@ -668,6 +668,7 @@ pub fn run() {
             roku_disconnect,
             cast_proxy_serve,
             player_torrent_stats,
+            player_torrent_telemetry,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Fluxa Desktop")
