@@ -55,6 +55,7 @@ internal class PlayerScreenState(
     )
 
     var currentUrl by mutableStateOf<String?>(null)
+    var telemetryAttemptGeneration by mutableLongStateOf(0L)
     var resolvedUrl by mutableStateOf<String?>(null)
     var currentVideoId by mutableStateOf(initialVideoId)
     var currentStreams by mutableStateOf<List<Stream>>(emptyList())

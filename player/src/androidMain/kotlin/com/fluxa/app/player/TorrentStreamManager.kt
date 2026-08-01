@@ -54,6 +54,7 @@ class TorrentStreamManager private constructor() {
     @Volatile private var engine: TorrentServerEngine? = null
     @Volatile private var activeTorrentLink: String? = null
     @Volatile private var activeTelemetrySessionId: String? = null
+    @Volatile private var activeTelemetryGeneration: Long = 0L
 
     private val _status = MutableStateFlow(TorrentStreamStatus())
     val status: StateFlow<TorrentStreamStatus> = _status.asStateFlow()
@@ -160,6 +161,7 @@ class TorrentStreamManager private constructor() {
                 }
                 startStatusPolling(plan.normalizedLink, videoId)
                 activeTorrentLink = plan.normalizedLink
+                activeTelemetryGeneration += 1L
                 callback(TorrentStreamResult.Success(plan.streamUrl))
             } catch (e: Exception) {
                 Log.e(TAG, "Torrent stream failed", e)
@@ -188,18 +190,19 @@ class TorrentStreamManager private constructor() {
     fun beginPlaybackTelemetry(sessionId: String) {
         if (sessionId.isBlank() || activeTorrentLink == null) return
         activeTelemetrySessionId = sessionId
-        recordPlaybackTelemetry("sessionStarted", sessionId = sessionId)
     }
 
     fun recordPlaybackTelemetry(event: String, elapsedMs: Long? = null, sessionId: String) {
         val link = activeTorrentLink ?: return
         if (activeTelemetrySessionId != sessionId) return
+        val generation = activeTelemetryGeneration
         scope.launch {
             runCatching {
                 val payload = gson.toJson(
                     mapOf(
                         "link" to link,
                         "sessionId" to sessionId,
+                        "sessionGeneration" to generation,
                         "event" to event,
                         "elapsedMs" to elapsedMs
                     )

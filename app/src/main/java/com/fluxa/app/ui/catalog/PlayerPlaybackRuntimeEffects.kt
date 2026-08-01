@@ -45,6 +45,7 @@ internal fun ExoPlayerListenerEffect(
     exoEngine: ExoPlayerEngine,
     useMpvBackend: Boolean,
     currentUrl: String?,
+    telemetryAttemptGeneration: Long,
     currentStreamIndex: Int,
     currentStreamsSize: Int,
     autoFallbackOnStreamError: Boolean,
@@ -65,7 +66,7 @@ internal fun ExoPlayerListenerEffect(
     val latestAutoFallbackOnStreamError by rememberUpdatedState(autoFallbackOnStreamError)
     val latestCurrentStreamIndex by rememberUpdatedState(currentStreamIndex)
     val latestCurrentStreamsSize by rememberUpdatedState(currentStreamsSize)
-    val telemetrySession = remember(currentUrl) {
+    val telemetrySession = remember(currentUrl, telemetryAttemptGeneration) {
         PlaybackTelemetrySession(
             id = currentUrl.takeIf { it.isTorrentPlaybackUrl() }?.let { UUID.randomUUID().toString() },
             startedAtMs = android.os.SystemClock.elapsedRealtime()

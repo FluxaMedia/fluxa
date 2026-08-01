@@ -459,7 +459,10 @@ fun PlayerScreen(
         preferredBingeGroup = state.preferredBingeGroupForNextEpisode,
         viewModel = viewModel,
         lang = lang,
-        setCurrentUrl = { state.currentUrl = it },
+        setCurrentUrl = {
+            if (state.currentUrl != it) state.telemetryAttemptGeneration++
+            state.currentUrl = it
+        },
         setCurrentStreams = { state.currentStreams = it },
         setCurrentStreamIndex = { state.currentStreamIndex = it },
         setZeroSpeedTicks = { state.zeroSpeedTicks = it },
@@ -501,6 +504,7 @@ fun PlayerScreen(
         exoEngine = exoEngine,
         useMpvBackend = useMpvBackend,
         currentUrl = state.currentUrl,
+        telemetryAttemptGeneration = state.telemetryAttemptGeneration,
         currentStreamIndex = state.currentStreamIndex,
         currentStreamsSize = state.currentStreams.size,
         autoFallbackOnStreamError = isCloudstreamPlayback() || activeProfile?.safeAutoRetryNextSource == true,
@@ -517,6 +521,7 @@ fun PlayerScreen(
             val savedUrl = state.resolvedUrl
             if (savedUrl != null && torrentParseRetryCount.intValue < 2) {
                 torrentParseRetryCount.intValue++
+                state.telemetryAttemptGeneration++
                 scope.launch {
                     exoEngine.clear()
                     state.resolvedUrl = null
