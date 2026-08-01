@@ -161,7 +161,6 @@ class TorrentStreamManager private constructor() {
                 }
                 startStatusPolling(plan.normalizedLink, videoId)
                 activeTorrentLink = plan.normalizedLink
-                activeTelemetryGeneration += 1L
                 callback(TorrentStreamResult.Success(plan.streamUrl))
             } catch (e: Exception) {
                 Log.e(TAG, "Torrent stream failed", e)
@@ -187,8 +186,10 @@ class TorrentStreamManager private constructor() {
      * Reports player-side milestones to the local streaming engine. This is
      * best-effort telemetry: a failed report must never affect playback.
      */
+    @Synchronized
     fun beginPlaybackTelemetry(sessionId: String) {
-        if (sessionId.isBlank() || activeTorrentLink == null) return
+        if (sessionId.isBlank()) return
+        activeTelemetryGeneration += 1L
         activeTelemetrySessionId = sessionId
     }
 
