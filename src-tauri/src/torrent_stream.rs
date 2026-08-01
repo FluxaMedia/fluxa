@@ -261,6 +261,7 @@ pub async fn player_torrent_telemetry(
     state: State<'_, DesktopState>,
     event: String,
     elapsed_ms: Option<u64>,
+    session_id: String,
 ) -> Result<bool, String> {
     let (base_url, link) = {
         let torrent = state.torrent.lock().map_err(|_| "torrent state unavailable")?;
@@ -271,7 +272,7 @@ pub async fn player_torrent_telemetry(
     };
     let response = reqwest::Client::new()
         .post(format!("{}/telemetry", base_url.trim_end_matches('/')))
-        .json(&json!({ "link": link, "event": event, "elapsedMs": elapsed_ms }))
+        .json(&json!({ "link": link, "sessionId": session_id, "event": event, "elapsedMs": elapsed_ms }))
         .timeout(std::time::Duration::from_secs(3))
         .send()
         .await

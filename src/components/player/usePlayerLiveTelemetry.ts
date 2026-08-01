@@ -66,10 +66,22 @@ type Bindings = {
 export function usePlayerLiveTelemetry(options: Bindings) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const playbackStartedAtRef = useRef(Date.now());
+  const stallStartedAtRef = useRef<number | null>(null);
+  const telemetrySessionIdRef = useRef('');
 
   useEffect(() => {
-    const playbackStartedAt = Date.now();
-    let stallStartedAt: number | null = null;
+    const sessionId = globalThis.crypto?.randomUUID?.() ?? `fx-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    playbackStartedAtRef.current = Date.now();
+    stallStartedAtRef.current = null;
+    telemetrySessionIdRef.current = sessionId;
+    options.firstFrameFiredRef.current = false;
+    options.prevPausedForCacheRef.current = false;
+    options.stallCountRef.current = 0;
+    if (options.isTorrentStream) void playerTorrentTelemetry('sessionStarted', undefined, sessionId);
+  }, [options.playbackUrl]);
+
+  useEffect(() => {
     let lastBufferUpdate = 0;
     let lastSegmentUpdate = 0;
     let lastHdrSignature: string | null = null;
@@ -88,11 +100,11 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       }
       if (pausedForCache && !prevPausedForCacheRef.current) {
         stallCountRef.current++;
-        stallStartedAt = now;
-        if (isTorrentStream) void playerTorrentTelemetry('stallStarted');
-      } else if (!pausedForCache && prevPausedForCacheRef.current && stallStartedAt != null) {
-        if (isTorrentStream) void playerTorrentTelemetry('stallEnded', now - stallStartedAt);
-        stallStartedAt = null;
+        stallStartedAtRef.current = now;
+        if (isTorrentStream) void playerTorrentTelemetry('stallStarted', undefined, telemetrySessionIdRef.current);
+      } else if (!pausedForCache && prevPausedForCacheRef.current && stallStartedAtRef.current != null) {
+        if (isTorrentStream) void playerTorrentTelemetry('stallEnded', now - stallStartedAtRef.current, telemetrySessionIdRef.current);
+        stallStartedAtRef.current = null;
       }
       prevPausedForCacheRef.current = pausedForCache;
 
@@ -133,7 +145,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
         const activeAudioOnlyPlayback = status.loaded && status.trackListReady && !status.hasVideoTrack && status.pausedForCache !== 'yes' && pos > 0.05;
         if (renderedVideo || activeAudioOnlyPlayback) {
           firstFrameFiredRef.current = true;
-          if (isTorrentStream) void playerTorrentTelemetry('firstFrame', now - playbackStartedAt);
+          if (isTorrentStream) void playerTorrentTelemetry('firstFrame', now - playbackStartedAtRef.current, telemetrySessionIdRef.current);
           onFirstFrame();
         }
       }

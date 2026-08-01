@@ -102,8 +102,8 @@ export async function playerTorrentStats(): Promise<TorrentStats | null> {
   return invoke<TorrentStats | null>('player_torrent_stats');
 }
 
-export async function playerTorrentTelemetry(event: 'firstFrame' | 'stallStarted' | 'stallEnded', elapsedMs?: number): Promise<boolean> {
-  return invoke<boolean>('player_torrent_telemetry', { event, elapsedMs: elapsedMs ?? null }).catch(() => false);
+export async function playerTorrentTelemetry(event: 'sessionStarted' | 'firstFrame' | 'stallStarted' | 'stallEnded', elapsedMs: number | undefined, sessionId: string): Promise<boolean> {
+  return invoke<boolean>('player_torrent_telemetry', { event, elapsedMs: elapsedMs ?? null, sessionId }).catch(() => false);
 }
 
 export async function initEmbeddedMpv(): Promise<void> {
