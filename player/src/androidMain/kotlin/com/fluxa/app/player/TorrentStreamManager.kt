@@ -33,6 +33,12 @@ sealed class TorrentStreamResult {
 }
 
 class TorrentStreamManager private constructor() {
+    private data class TelemetrySessionContext(
+        val sessionId: String,
+        val generation: Long,
+        val link: String?
+    )
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val client = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -53,8 +59,8 @@ class TorrentStreamManager private constructor() {
     @Volatile private var appContext: Context? = null
     @Volatile private var engine: TorrentServerEngine? = null
     @Volatile private var activeTorrentLink: String? = null
-    @Volatile private var activeTelemetrySessionId: String? = null
-    @Volatile private var activeTelemetryGeneration: Long = 0L
+    private var activeTelemetryGeneration: Long = 0L
+    @Volatile private var activeTelemetryContext: TelemetrySessionContext? = null
 
     private val _status = MutableStateFlow(TorrentStreamStatus())
     val status: StateFlow<TorrentStreamStatus> = _status.asStateFlow()
@@ -160,7 +166,7 @@ class TorrentStreamManager private constructor() {
                     }.onFailure { Log.w(TAG, "background addTorrent failed", it) }
                 }
                 startStatusPolling(plan.normalizedLink, videoId)
-                activeTorrentLink = plan.normalizedLink
+                activateTorrentLink(plan.normalizedLink)
                 callback(TorrentStreamResult.Success(plan.streamUrl))
             } catch (e: Exception) {
                 Log.e(TAG, "Torrent stream failed", e)
@@ -178,8 +184,7 @@ class TorrentStreamManager private constructor() {
                 runCatching { api.removeTorrent(TorrentRequest(action = "deactivate", link = link)) }
             }
         }
-        activeTorrentLink = null
-        activeTelemetrySessionId = null
+        clearActiveTelemetry()
     }
 
     /**
@@ -189,21 +194,40 @@ class TorrentStreamManager private constructor() {
     @Synchronized
     fun beginPlaybackTelemetry(sessionId: String) {
         if (sessionId.isBlank()) return
-        activeTelemetryGeneration += 1L
-        activeTelemetrySessionId = sessionId
+        val nextGeneration = activeTelemetryGeneration + 1L
+        activeTelemetryGeneration = nextGeneration
+        activeTelemetryContext = TelemetrySessionContext(
+            sessionId = sessionId,
+            generation = nextGeneration,
+            link = activeTorrentLink
+        )
+    }
+
+    @Synchronized
+    private fun activateTorrentLink(link: String) {
+        activeTorrentLink = link
+        activeTelemetryContext = activeTelemetryContext?.let { context ->
+            if (context.link == null) context.copy(link = link) else context
+        }
+    }
+
+    @Synchronized
+    private fun clearActiveTelemetry() {
+        activeTorrentLink = null
+        activeTelemetryContext = null
     }
 
     fun recordPlaybackTelemetry(event: String, elapsedMs: Long? = null, sessionId: String) {
-        val link = activeTorrentLink ?: return
-        if (activeTelemetrySessionId != sessionId) return
-        val generation = activeTelemetryGeneration
+        val context = activeTelemetryContext ?: return
+        if (context.sessionId != sessionId) return
+        val link = context.link ?: return
         scope.launch {
             runCatching {
                 val payload = gson.toJson(
                     mapOf(
                         "link" to link,
                         "sessionId" to sessionId,
-                        "sessionGeneration" to generation,
+                        "sessionGeneration" to context.generation,
                         "event" to event,
                         "elapsedMs" to elapsedMs
                     )
