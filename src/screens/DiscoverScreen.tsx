@@ -9,7 +9,7 @@ import { VirtualizedPosterGrid } from '../components/VirtualizedPosterGrid';
 import { coreInvoke } from '../core/engine';
 
 interface Props {
-  state: AppState;
+  state: Pick<AppState, 'addons' | 'discover' | 'settings'>;
   onDispatch: (actionJson: string) => void;
   onNavigateDetail: (meta: Meta) => void;
   onBack: () => void;

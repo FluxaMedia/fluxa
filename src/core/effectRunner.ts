@@ -344,12 +344,14 @@ async function runEffect(
 export async function executeEffect(
   effect: Effect,
   onStateUpdate?: (state: Partial<AppState>) => void,
+  signal?: AbortSignal,
 ): Promise<EffectResult> {
   try {
     const abortController = new AbortController();
+    const effectSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
     const run = Sentry.startSpan(
       { name: effect.type, op: 'fluxa.effect' },
-      () => runEffect(effect, onStateUpdate, abortController.signal),
+      () => runEffect(effect, onStateUpdate, effectSignal),
     );
     const value = effect.timeoutMs && effect.timeoutMs > 0
       ? await new Promise<unknown>((resolve, reject) => {
@@ -397,6 +399,7 @@ async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T
 export async function pumpEffects(
   effects: Effect[],
   onStateUpdate: (state: Partial<AppState>) => void,
+  signal?: AbortSignal,
 ): Promise<Partial<AppState> | null> {
   let lastState: Partial<AppState> | null = null;
 
@@ -409,6 +412,7 @@ export async function pumpEffects(
   }
 
   const complete = async (effect: Effect, result: EffectResult) => {
+      if (signal?.aborted) return;
       let dispatchResult: Awaited<ReturnType<typeof completeEffect>> = null;
       try {
         dispatchResult = await completeEffect({ ...result, effectId: effect.id });
@@ -418,7 +422,7 @@ export async function pumpEffects(
         lastState = dispatchResult.state;
         onStateUpdate(dispatchResult.state);
         if (dispatchResult.effects.length > 0) {
-          await pumpEffects(dispatchResult.effects, onStateUpdate);
+          await pumpEffects(dispatchResult.effects, onStateUpdate, signal);
         }
       }
   };
@@ -434,8 +438,9 @@ export async function pumpEffects(
   await Promise.all(Array.from(scheduledByGroup.entries()).map(async ([groupId, entries]) => {
     const limit = groupId === 'addon' ? 6 : groupId === 'plugin' ? 2 : 4;
     await runWithConcurrency(entries, limit, async (duplicates) => {
+      if (signal?.aborted) return;
       const primary = duplicates[0];
-      const result = await executeEffect(primary, onStateUpdate);
+      const result = await executeEffect(primary, onStateUpdate, signal);
       await Promise.all(duplicates.map((effect) => complete(effect, result)));
     });
   }));

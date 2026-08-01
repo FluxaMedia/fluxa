@@ -3,7 +3,7 @@ import { DEFAULT_PREFS } from '../components/settings/settingsTypes';
 
 export const DEFAULT_APP_PREFS: Record<string, unknown> = DEFAULT_PREFS as unknown as Record<string, unknown>;
 
-export function appPrefs(state: AppState): Record<string, unknown> {
+export function appPrefs(state: Pick<AppState, 'settings'>): Record<string, unknown> {
   return {
     ...DEFAULT_APP_PREFS,
     ...((state.settings?.values ?? {}) as Record<string, unknown>),

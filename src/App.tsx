@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { NavSidebar, TopBar, type NavRoute } from './components/NavSidebar';
 import { ProfileChip } from './components/ProfileChip';
-import { GlobalSearchBar } from './components/GlobalSearchBar';
+import { CalendarRoute, DetailRoute, DiscoverRoute, GlobalSearchRoute, HomeRoute, LibraryRoute, SearchRoute, SettingsRoute } from './components/AppRouteHosts';
 import { PlaybackHost } from './components/PlaybackHost';
 import { AppShell } from './components/AppShell';
 import { AppBootstrap } from './components/AppBootstrap';
@@ -15,7 +15,6 @@ import { useDetailNavigation } from './hooks/useDetailNavigation';
 import { useAppLayoutPrefs } from './hooks/useAppLayoutPrefs';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UpdateModal, startUpdateCheck } from './components/UpdateModal';
-import { CalendarScreen, DetailScreen, DiscoverScreen, HomeScreen, LibraryScreen, SearchScreen, SettingsScreen } from './appScreens';
 import { AppProfileGate, AppWelcomeGate } from './AppGateScreens';
 import { NuvioStatusBanner } from './components/NuvioStatusBanner';
 import { OfflineBanner } from './components/OfflineBanner';
@@ -39,14 +38,6 @@ import type { AppState, Meta, Stream, Video, UserProfile } from './core/types';
 
 const settingsStateEqual = appStateSliceEqual('settings');
 const profileStateEqual = appStateSliceEqual('plugins');
-const searchBarStateEqual = appStateSliceEqual('home', 'search');
-const detailStateEqual = appStateSliceEqual('detail', 'settings', 'library', 'home', 'addons');
-const homeStateEqual = appStateSliceEqual('home', 'settings', 'addons');
-const calendarStateEqual = appStateSliceEqual('calendar', 'library');
-const discoverStateEqual = appStateSliceEqual('discover', 'settings', 'addons');
-const libraryStateEqual = appStateSliceEqual('library', 'settings', 'home');
-const searchStateEqual = appStateSliceEqual('search', 'settings');
-const settingsScreenStateEqual = appStateSliceEqual('addons', 'settings', 'plugins');
 
 export default function App() {
   const storeRef = useRef<AppStateStore | null>(null);
@@ -61,16 +52,9 @@ export default function App() {
   const storedPrefsRef = useRef<Record<string, unknown>>({});
   const stateRef = useRef<AppState>(store.getState());
   const profileScopeRef = useRef(new AsyncScope());
+  const profileAbortControllerRef = useRef(new AbortController());
   const settingsState = useAppStateSelector(store, (appState) => appState, settingsStateEqual);
   const profileState = useAppStateSelector(store, (appState) => appState, profileStateEqual);
-  const searchBarState = useAppStateSelector(store, (appState) => appState, searchBarStateEqual);
-  const detailState = useAppStateSelector(store, (appState) => appState, detailStateEqual);
-  const homeState = useAppStateSelector(store, (appState) => appState, homeStateEqual);
-  const calendarState = useAppStateSelector(store, (appState) => appState, calendarStateEqual);
-  const discoverState = useAppStateSelector(store, (appState) => appState, discoverStateEqual);
-  const libraryState = useAppStateSelector(store, (appState) => appState, libraryStateEqual);
-  const searchState = useAppStateSelector(store, (appState) => appState, searchStateEqual);
-  const settingsScreenState = useAppStateSelector(store, (appState) => appState, settingsScreenStateEqual);
   const lastNonSettingsRouteRef = useRef<NavRoute>('home');
   const lastNonSearchRouteRef = useRef<NavRoute>('home');
   const episodePlaybackFailureRef = useRef<(meta: Meta, episode: Video, message: string) => Promise<void>>(async () => {});
@@ -110,6 +94,8 @@ export default function App() {
 
   const invalidateProfileWork = useCallback(() => {
     profileScopeRef.current.invalidate();
+    profileAbortControllerRef.current.abort();
+    profileAbortControllerRef.current = new AbortController();
   }, []);
 
   const {
@@ -234,6 +220,7 @@ export default function App() {
 
   const dispatch = useCallback(async (actionJson: string) => {
     const profileRevision = profileScopeRef.current.capture();
+    const profileSignal = profileAbortControllerRef.current.signal;
     const result = await dispatchAction(actionJson);
     if (!result || !profileScopeRef.current.isCurrent(profileRevision)) return;
     try {
@@ -247,7 +234,7 @@ export default function App() {
     if (result.effects.length > 0) {
       await pumpEffects(result.effects, (patch) => {
         if (profileScopeRef.current.isCurrent(profileRevision)) updateStateDeferred(patch);
-      }).catch(() => undefined);
+      }, profileSignal).catch(() => undefined);
     }
   }, [updateState, updateStateDeferred]);
 
@@ -373,12 +360,12 @@ export default function App() {
             pointerEvents: 'none',
           }}
         >
-          <GlobalSearchBar
+          <GlobalSearchRoute
+            store={store}
             query={globalSearchQuery}
             onSearch={(query) => { setGlobalSearchQuery(query); navigateRoute('search'); }}
             onBack={leaveSearch}
             focusSignal={searchFocusSignal}
-            state={searchBarState}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
           />
@@ -413,10 +400,10 @@ export default function App() {
         onReset={() => { setDetailMeta(null); setActiveRoute('home'); }}
       >
         {showDetail && (
-          <React.Suspense fallback={null}><DetailScreen
+          <React.Suspense fallback={null}><DetailRoute
+            store={store}
             key={detailMeta!.id}
             meta={detailMeta!}
-            state={detailState}
             onDispatch={dispatch}
             onPlay={(stream, meta, episode, resumeAt, sourceCandidates) => void guardedPlay(stream, meta, episode, resumeAt !== undefined ? resumeAt : (detailAutoShowStreams ? detailResumeAt : undefined), undefined, sourceCandidates)}
             onNavigateDetail={handleNavigateDetail}
@@ -428,8 +415,8 @@ export default function App() {
           /></React.Suspense>
         )}
         <div style={{ display: !showDetail && activeRoute === 'home' ? 'contents' : 'none' }}>
-          <HomeScreen
-            state={homeState}
+          <HomeRoute
+            store={store}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
             onPlay={setDetailMeta}
@@ -444,16 +431,16 @@ export default function App() {
         </div>
         {!showDetail && activeRoute === 'calendar' && (
           <React.Suspense fallback={null}>
-            <CalendarScreen
-              state={calendarState}
+            <CalendarRoute
+              store={store}
               onDispatch={dispatch}
             />
           </React.Suspense>
         )}
         {!showDetail && activeRoute === 'discover' && (
           <React.Suspense fallback={null}>
-            <DiscoverScreen
-              state={discoverState}
+            <DiscoverRoute
+              store={store}
               onDispatch={dispatch}
               onNavigateDetail={handleNavigateDetail}
               onBack={handleDiscoverBack}
@@ -462,8 +449,8 @@ export default function App() {
           </React.Suspense>
         )}
         {!showDetail && activeRoute === 'library' && (
-          <LibraryScreen
-            state={libraryState}
+          <LibraryRoute
+            store={store}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
             onBack={handleLibraryBack}
@@ -472,8 +459,8 @@ export default function App() {
           />
         )}
         {!showDetail && activeRoute === 'search' ? (
-          <SearchScreen
-            state={searchState}
+          <SearchRoute
+            store={store}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
             query={globalSearchQuery}
@@ -482,8 +469,8 @@ export default function App() {
           />
         ) : !showDetail && activeRoute === 'settings' ? (
           <React.Suspense fallback={null}>
-            <SettingsScreen
-              state={settingsScreenState}
+            <SettingsRoute
+              store={store}
               onDispatch={dispatch}
               activeProfile={activeProfile}
               onProfileUpdated={(updated) => setActiveProfile(updated)}

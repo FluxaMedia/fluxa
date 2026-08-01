@@ -12,7 +12,7 @@ interface Props {
   onSearch: (query: string) => void;
   onBack?: () => void;
   focusSignal?: number;
-  state: AppState;
+  state: Pick<AppState, 'home' | 'search' | 'settings'>;
   onDispatch: (actionJson: string) => void;
   onNavigateDetail: (meta: Meta) => void;
 }

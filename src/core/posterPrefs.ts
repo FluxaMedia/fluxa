@@ -10,7 +10,7 @@ export interface PosterPrefs {
   hideTitles: boolean;
 }
 
-export function posterPrefsFromState(state: AppState, scale = 1): PosterPrefs {
+export function posterPrefsFromState(state: Pick<AppState, 'settings'>, scale = 1): PosterPrefs {
   const values = (state.settings?.values ?? {}) as Record<string, unknown>;
   const widthPreset = stringValue(values.posterWidthPreset, 'medium');
   const cornerPreset = stringValue(values.cardCornerPreset, 'soft');

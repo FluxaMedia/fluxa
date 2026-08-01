@@ -22,7 +22,7 @@ type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 
 type LibrarySource = 'local' | LibraryProvider;
 
 interface Props {
-  state: AppState;
+  state: Pick<AppState, 'home' | 'library' | 'settings'>;
   onDispatch: (actionJson: string) => void;
   onNavigateDetail: (meta: Meta) => void;
   onBack: () => void;

@@ -34,7 +34,7 @@ function LazyRow({ children }: { children: React.ReactNode }) {
 }
 
 interface Props {
-  state: AppState;
+  state: Pick<AppState, 'home' | 'settings' | 'addons'>;
   onDispatch: (actionJson: string) => void | Promise<void>;
   onNavigateDetail: (meta: Meta) => void;
   onPlay: (meta: Meta) => void;

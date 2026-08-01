@@ -40,7 +40,7 @@ function useOptimisticToggle(authoritative: boolean): [boolean, () => void] {
 
 interface Props {
   meta: Meta;
-  state: AppState;
+  state: Pick<AppState, 'detail' | 'home' | 'library' | 'settings'>;
   onDispatch: (actionJson: string) => void;
   onPlay: (stream: Stream, meta: Meta, episode?: Video | null, resumeAt?: number, sourceCandidates?: Stream[]) => void;
   onNavigateDetail: (meta: Meta) => void;

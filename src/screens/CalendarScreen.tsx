@@ -36,7 +36,7 @@ const AIR_DATES_REFRESH_THROTTLE_MS = 60_000;
 let lastAirDatesRefreshAt = 0;
 
 interface Props {
-  state: AppState;
+  state: Pick<AppState, 'calendar' | 'library'>;
   onDispatch: (actionJson: string) => void;
 }
 

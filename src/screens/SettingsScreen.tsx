@@ -101,7 +101,7 @@ const SETTINGS_SEARCH_TERMS: Record<Tab, string[]> = {
 };
 
 interface Props {
-  state: AppState;
+  state: Pick<AppState, 'addons' | 'plugins'>;
   onDispatch: (actionJson: string) => void | Promise<void>;
   activeProfile: UserProfile | null;
   onProfileUpdated: (profile: UserProfile) => void;

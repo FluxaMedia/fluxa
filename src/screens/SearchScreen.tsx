@@ -10,7 +10,7 @@ import { styles } from './searchStyles';
 import { LoadingShelves, SearchCategoryRow, RecentSearchChip, formatCatalogTitle, TypeChip, GenreCard } from './SearchScreenParts';
 
 interface Props {
-  state: AppState;
+  state: Pick<AppState, 'search' | 'settings'>;
   onDispatch: (actionJson: string) => void;
   onNavigateDetail: (meta: Meta) => void;
   query: string;
