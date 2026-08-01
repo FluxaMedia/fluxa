@@ -1,7 +1,22 @@
-use crate::{torrent_transport, DesktopState};
+use crate::{DesktopState, torrent_transport};
 use fluxa_core::FluxaCore;
-use serde_json::{json, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use tauri::State;
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TorrentTelemetryContext {
+    link: String,
+    generation: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TorrentStreamStart {
+    url: String,
+    telemetry_context: TorrentTelemetryContext,
+}
 
 fn start_torrent_stream_inner(
     data_dir: std::path::PathBuf,
@@ -105,9 +120,7 @@ pub fn stream_magnet_link(stream_json: String) -> Option<String> {
     FluxaCore::stream_magnet_link_json(&stream_json)
 }
 
-async fn ensure_healthy_torrent_base_url(
-    state: &State<'_, DesktopState>,
-) -> Option<String> {
+async fn ensure_healthy_torrent_base_url(state: &State<'_, DesktopState>) -> Option<String> {
     let base_url = state.torrent.lock().unwrap().server_base_url.clone()?;
     let healthy = tauri::async_runtime::spawn_blocking({
         let base_url = base_url.clone();
@@ -142,7 +155,7 @@ pub async fn start_torrent_stream(
     title: Option<String>,
     preferences: Option<Value>,
     duration_ms: Option<u64>,
-) -> Result<String, String> {
+) -> Result<TorrentStreamStart, String> {
     let data_dir = state
         .data_dir
         .lock()
@@ -175,19 +188,32 @@ pub async fn start_torrent_stream(
     }
     let (stream_url, base_url, link, generation, file_id) =
         tauri::async_runtime::spawn_blocking(move || {
-            start_torrent_stream_inner(data_dir, stream_json, title, preferences, existing_base_url, duration_ms)
+            start_torrent_stream_inner(
+                data_dir,
+                stream_json,
+                title,
+                preferences,
+                existing_base_url,
+                duration_ms,
+            )
         })
         .await
         .map_err(|e| e.to_string())??;
     let mut torrent = state.torrent.lock().unwrap();
     torrent.server_base_url = Some(base_url);
-    torrent.stream_link = Some(link);
+    torrent.stream_link = Some(link.clone());
     torrent.stream_file_id = file_id;
     torrent.telemetry_generation = torrent.telemetry_generation.saturating_add(1);
     if let Some(generation) = generation {
         torrent.generation = Some(generation);
     }
-    Ok(stream_url)
+    Ok(TorrentStreamStart {
+        url: stream_url,
+        telemetry_context: TorrentTelemetryContext {
+            link,
+            generation: torrent.telemetry_generation,
+        },
+    })
 }
 
 pub(crate) async fn resolve_torrent_download_url(
@@ -226,7 +252,9 @@ pub async fn stop_torrent_stream(state: State<'_, DesktopState>) -> Result<bool,
     };
     let was_playing = link.is_some();
     if let (Some(base_url), Some(link)) = (base_url, link) {
-        tauri::async_runtime::spawn_blocking(move || torrent_transport::deactivate(&base_url, &link));
+        tauri::async_runtime::spawn_blocking(move || {
+            torrent_transport::deactivate(&base_url, &link)
+        });
     }
     Ok(was_playing)
 }
@@ -263,21 +291,21 @@ pub async fn player_torrent_telemetry(
     event: String,
     elapsed_ms: Option<u64>,
     session_id: String,
+    context: TorrentTelemetryContext,
 ) -> Result<bool, String> {
-    let (base_url, link, telemetry_generation) = {
-        let torrent = state.torrent.lock().map_err(|_| "torrent state unavailable")?;
-        (
-            torrent.server_base_url.clone(),
-            torrent.stream_link.clone(),
-            torrent.telemetry_generation,
-        )
+    let base_url = {
+        let torrent = state
+            .torrent
+            .lock()
+            .map_err(|_| "torrent state unavailable")?;
+        torrent.server_base_url.clone()
     };
-    let (Some(base_url), Some(link)) = (base_url, link) else {
+    let Some(base_url) = base_url else {
         return Ok(false);
     };
     let response = reqwest::Client::new()
         .post(format!("{}/telemetry", base_url.trim_end_matches('/')))
-        .json(&json!({ "link": link, "sessionId": session_id, "sessionGeneration": telemetry_generation, "event": event, "elapsedMs": elapsed_ms }))
+        .json(&json!({ "link": context.link, "sessionId": session_id, "sessionGeneration": context.generation, "event": event, "elapsedMs": elapsed_ms }))
         .timeout(std::time::Duration::from_secs(3))
         .send()
         .await

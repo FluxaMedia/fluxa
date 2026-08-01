@@ -87,6 +87,7 @@ interface UsePlayerOptions {
 interface UsePlayerResult {
   playerLoadingOverlay: PlayerLoadingOverlayState | null;
   playerUrl: string | null;
+  playerTorrentTelemetryContext: import('../core/mpvPlayer').TorrentTelemetryContext | null;
   playerTitle: string | undefined;
   playerEpisodeTitle: string | undefined;
   playerEpisode: Video | null;
@@ -110,6 +111,7 @@ interface UsePlayerResult {
 
 export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdated, onEpisodePlaybackFailed }: UsePlayerOptions): UsePlayerResult {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
+  const [playerTorrentTelemetryContext, setPlayerTorrentTelemetryContext] = useState<import('../core/mpvPlayer').TorrentTelemetryContext | null>(null);
   const [playerTitle, setPlayerTitle] = useState<string | undefined>();
   const [playerEpisodeTitle, setPlayerEpisodeTitle] = useState<string | undefined>();
   const [playerEpisode, setPlayerEpisode] = useState<Video | null>(null);
@@ -181,6 +183,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     playbackScopeRef.current.invalidate();
     const shouldStopTorrent = playerUsesTorrentRef.current;
     setPlayerUrl(null);
+    setPlayerTorrentTelemetryContext(null);
     setPlayerSubtitleUrl(undefined);
     setPlayerStreamHeaders(undefined);
     setPlayerUsesTorrent(false);
@@ -281,6 +284,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     const captureStream = playingStreamRef.current;
     const shouldStopTorrent = playerUsesTorrentRef.current;
     setPlayerUrl(null);
+    setPlayerTorrentTelemetryContext(null);
     setPlayerTitle(undefined);
     setPlayerEpisode(null);
     setPlayerPosterUrl(undefined);
@@ -452,5 +456,5 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerSubtitleWarning(null);
   }, []);
 
-  return { playerLoadingOverlay, playerUrl, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: saveProgressTick, skipSegmentCoverage };
+  return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: saveProgressTick, skipSegmentCoverage };
 }

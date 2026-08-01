@@ -112,7 +112,7 @@ export default function App() {
     setWelcomeCompleted,
   } = useAppInit(updateState, setActiveRoute, storedPrefsRef);
 
-  const { playerLoadingOverlay, playerUrl, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit, skipSegmentCoverage } = usePlayer({
+  const { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit, skipSegmentCoverage } = usePlayer({
     stateRef,
     activeProfile,
     updateState,
@@ -529,6 +529,7 @@ export default function App() {
         streamRef={playingStreamRef}
         metaRef={playingMetaRef}
         playbackUrl={playerUrl}
+        torrentTelemetryContext={playerTorrentTelemetryContext}
         prefs={prefs}
         playbackError={playerPlaybackError}
         subtitleWarning={playerSubtitleWarning}

@@ -88,6 +88,22 @@ pub async fn vetted_client(
         .map_err(|e| e.to_string())
 }
 
+/// Like [`vetted_client`], but leaves redirect handling to the caller. This is
+/// required when the caller must resolve and pin every redirect target instead
+/// of letting reqwest follow a domain target without another DNS check.
+pub async fn vetted_client_without_redirects(
+    url_str: &str,
+    timeout: std::time::Duration,
+) -> Result<reqwest::Client, String> {
+    let (host, addrs) = resolve_public_host(url_str).await?;
+    reqwest::Client::builder()
+        .timeout(timeout)
+        .redirect(reqwest::redirect::Policy::none())
+        .resolve_to_addrs(&host, &addrs)
+        .build()
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

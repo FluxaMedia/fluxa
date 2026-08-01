@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { EmbeddedMpvStatus, TorrentStats } from '../core/mpvPlayer';
 import { embeddedMpvSetCursorVisible } from '../core/mpvPlayer';
+import type { TorrentTelemetryContext } from '../core/mpvPlayer';
 import type { Meta, Stream, Video } from '../core/types';
 import type { EpisodeInfo } from './player/EpisodePanel';
 import { streamShellPlan } from '../core/streamLinks';
@@ -58,6 +59,7 @@ interface Props {
   streamRef?: RefObject<Stream | null>;
   metaRef?: RefObject<Meta | null>;
   playbackUrl?: string | null;
+  torrentTelemetryContext?: TorrentTelemetryContext | null;
   playbackError?: string | null;
   subtitleWarning?: string[] | null;
   onDismissSubtitleWarning?: () => void;
@@ -68,7 +70,7 @@ interface Props {
   skipSegmentCoverage?: Record<string, string[]>;
 }
 
-export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, initialEpisodeTitle, currentEpisode, isTorrentStream = false, initialPosterUrl, initialLogoUrl, metaId, initialSubtitleUrl, initialStreamHeaders, streamRef, metaRef, playbackUrl, playbackError, subtitleWarning, onDismissSubtitleWarning, softwareVideoActive = false, bannerOffset = 0, prefs, onDispatch, skipSegmentCoverage }: Props) {
+export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, initialEpisodeTitle, currentEpisode, isTorrentStream = false, initialPosterUrl, initialLogoUrl, metaId, initialSubtitleUrl, initialStreamHeaders, streamRef, metaRef, playbackUrl, torrentTelemetryContext, playbackError, subtitleWarning, onDismissSubtitleWarning, softwareVideoActive = false, bannerOffset = 0, prefs, onDispatch, skipSegmentCoverage }: Props) {
   const playerTelemetry = usePlayerTelemetryState();
   const { paused, muted, volumeLevel, isBuffering, bufferingProgress, hdrLabel, statsSnap, torrentStatsSnap, torrentSpeedHistory, setPaused, setMuted, setVolumeLevel, resetTorrentSpeedHistory } = playerTelemetry;
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -205,7 +207,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
   const { applyFills, onSeekMouseDown } = usePlayerSeekInteractions({ durRef, lastSeekAtRef, activeCastDeviceIdRef, seekbarRef, seekFillRef, seekBufferRef, seekDotRef, chapterSegmentsRef, segmentFillRefs: segFillRefs, segmentBufferRefs: segBufRefs, isDraggingRef, dragPosRef, startSeekOverlay, resetActivity });
 
   usePlayerLiveTelemetry({
-    skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, isTorrentStream, playbackUrl, showStats, showTorrentPopover, controlsVisible, onFirstFrame, applyFills, flashFeedback,
+    skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, isTorrentStream, playbackUrl, torrentTelemetryContext, showStats, showTorrentPopover, controlsVisible, onFirstFrame, applyFills, flashFeedback,
     telemetry: playerTelemetry, setShowSeekOverlay, setControlsVisible, setActiveSkip, setShowNextEpCard,
     liveStatusRef, torrentStatsRef, prevPausedForCacheRef, stallCountRef, bufferHistoryRef, netSpeedHistoryRef, posRef, durRef, pausedRef, firstFrameFiredRef, hasAppliedInitialFillRef, currentTimeRef, durationRef, lastSeekAtRef, isDraggingRef, seekOverlayTimerRef, lastActivityRef, controlsVisibleRef, overlayRef, episodePanelOpenRef, isOverControlsRef, miniProgressRef, activeSkipKeyRef, autoSkippedKeysRef, skipFillRef, discordPresenceKeyRef, discordPresenceSentAtRef,
   });

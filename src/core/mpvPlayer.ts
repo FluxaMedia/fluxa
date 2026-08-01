@@ -1,12 +1,22 @@
 import { invoke } from '@tauri-apps/api/core';
 
+export type TorrentTelemetryContext = {
+  link: string;
+  generation: number;
+};
+
+export type TorrentStreamStart = {
+  url: string;
+  telemetryContext: TorrentTelemetryContext;
+};
+
 export async function startTorrentStream(
   streamJson: string,
   title?: string,
   preferences?: Record<string, unknown>,
   durationMs?: number,
-): Promise<string> {
-  return invoke<string>('start_torrent_stream', { streamJson, title: title ?? null, preferences: preferences ?? null, durationMs: durationMs ?? null });
+): Promise<TorrentStreamStart> {
+  return invoke<TorrentStreamStart>('start_torrent_stream', { streamJson, title: title ?? null, preferences: preferences ?? null, durationMs: durationMs ?? null });
 }
 
 export async function stopTorrentStream(): Promise<boolean> {
@@ -102,8 +112,8 @@ export async function playerTorrentStats(): Promise<TorrentStats | null> {
   return invoke<TorrentStats | null>('player_torrent_stats');
 }
 
-export async function playerTorrentTelemetry(event: 'firstFrame' | 'stallStarted' | 'stallEnded', elapsedMs: number | undefined, sessionId: string): Promise<boolean> {
-  return invoke<boolean>('player_torrent_telemetry', { event, elapsedMs: elapsedMs ?? null, sessionId }).catch(() => false);
+export async function playerTorrentTelemetry(event: 'firstFrame' | 'stallStarted' | 'stallEnded', elapsedMs: number | undefined, sessionId: string, context: TorrentTelemetryContext): Promise<boolean> {
+  return invoke<boolean>('player_torrent_telemetry', { event, elapsedMs: elapsedMs ?? null, sessionId, context }).catch(() => false);
 }
 
 export async function initEmbeddedMpv(): Promise<void> {

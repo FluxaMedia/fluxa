@@ -1,7 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
 import { imdbButtonFor, updateDiscordPresence } from '../../core/discordPresence';
-import { embeddedMpvSetCursorVisible, playerTorrentStats, playerTorrentTelemetry, type EmbeddedMpvStatus, type TorrentStats } from '../../core/mpvPlayer';
+import { embeddedMpvSetCursorVisible, playerTorrentStats, playerTorrentTelemetry, type EmbeddedMpvStatus, type TorrentStats, type TorrentTelemetryContext } from '../../core/mpvPlayer';
 import { setPlayerStatusPositionInterval, subscribePlayerStatus } from '../../core/playerStatusStore';
 import { t } from '../../i18n';
 import { addSparklineSample, fmtTime, sendCmd, skipLabelForType, type ActiveSkip, type FeedbackFlash, type SkipSegment } from './PlayerOverlayPrimitives';
@@ -23,6 +23,7 @@ type Bindings = {
   autoSkipSegments: boolean;
   isTorrentStream: boolean;
   playbackUrl?: string | null;
+  torrentTelemetryContext?: TorrentTelemetryContext | null;
   showStats: boolean;
   showTorrentPopover: boolean;
   onFirstFrame?: () => void;
@@ -78,7 +79,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
     options.firstFrameFiredRef.current = false;
     options.prevPausedForCacheRef.current = false;
     options.stallCountRef.current = 0;
-  }, [options.playbackUrl]);
+  }, [options.playbackUrl, options.torrentTelemetryContext?.generation]);
 
   useEffect(() => {
     let lastBufferUpdate = 0;
@@ -100,9 +101,9 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       if (pausedForCache && !prevPausedForCacheRef.current) {
         stallCountRef.current++;
         stallStartedAtRef.current = now;
-        if (isTorrentStream) void playerTorrentTelemetry('stallStarted', undefined, telemetrySessionIdRef.current);
+        if (isTorrentStream && optionsRef.current.torrentTelemetryContext) void playerTorrentTelemetry('stallStarted', undefined, telemetrySessionIdRef.current, optionsRef.current.torrentTelemetryContext);
       } else if (!pausedForCache && prevPausedForCacheRef.current && stallStartedAtRef.current != null) {
-        if (isTorrentStream) void playerTorrentTelemetry('stallEnded', now - stallStartedAtRef.current, telemetrySessionIdRef.current);
+        if (isTorrentStream && optionsRef.current.torrentTelemetryContext) void playerTorrentTelemetry('stallEnded', now - stallStartedAtRef.current, telemetrySessionIdRef.current, optionsRef.current.torrentTelemetryContext);
         stallStartedAtRef.current = null;
       }
       prevPausedForCacheRef.current = pausedForCache;
@@ -144,7 +145,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
         const activeAudioOnlyPlayback = status.loaded && status.trackListReady && !status.hasVideoTrack && status.pausedForCache !== 'yes' && pos > 0.05;
         if (renderedVideo || activeAudioOnlyPlayback) {
           firstFrameFiredRef.current = true;
-          if (isTorrentStream) void playerTorrentTelemetry('firstFrame', now - playbackStartedAtRef.current, telemetrySessionIdRef.current);
+          if (isTorrentStream && optionsRef.current.torrentTelemetryContext) void playerTorrentTelemetry('firstFrame', now - playbackStartedAtRef.current, telemetrySessionIdRef.current, optionsRef.current.torrentTelemetryContext);
           onFirstFrame();
         }
       }

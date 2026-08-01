@@ -4,6 +4,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ReactPlayerOverlay } from '../appScreens';
 import type { Meta, Stream, Video } from '../core/types';
 import type { PlayerLoadingOverlayState } from '../hooks/usePlayer';
+import type { TorrentTelemetryContext } from '../core/mpvPlayer';
 
 interface Props {
   active: boolean;
@@ -22,6 +23,7 @@ interface Props {
   streamRef: RefObject<Stream | null>;
   metaRef: RefObject<Meta | null>;
   playbackUrl: string | null;
+  torrentTelemetryContext: TorrentTelemetryContext | null;
   prefs: Record<string, unknown>;
   playbackError: string | null;
   subtitleWarning: string[] | null;
@@ -49,6 +51,7 @@ export function PlaybackHost({
   streamRef,
   metaRef,
   playbackUrl,
+  torrentTelemetryContext,
   prefs,
   playbackError,
   subtitleWarning,
@@ -92,6 +95,7 @@ export function PlaybackHost({
             streamRef={streamRef}
             metaRef={metaRef}
             playbackUrl={playbackUrl}
+            torrentTelemetryContext={torrentTelemetryContext}
             prefs={prefs}
             onDispatch={dispatch}
             playbackError={playbackError}

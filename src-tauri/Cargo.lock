@@ -2087,6 +2087,7 @@ dependencies = [
  "sha1",
  "sha2 0.11.0",
  "tokio",
+ "url",
  "web-time",
 ]
 

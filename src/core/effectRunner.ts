@@ -73,8 +73,8 @@ async function startTorrentFromEffect(payload: Record<string, unknown>): Promise
   }
   const title = typeof payload.title === 'string' ? payload.title : undefined;
   const prefs = await loadPrefs();
-  const url = await startTorrentStream(JSON.stringify(stream), title, prefs);
-  return { url };
+  const started = await startTorrentStream(JSON.stringify(stream), title, prefs);
+  return { url: started.url };
 }
 
 async function executeYoutubeTrailerRequest(payload: Record<string, unknown>): Promise<unknown> {

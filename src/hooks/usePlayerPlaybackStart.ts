@@ -9,11 +9,11 @@ import { getLanguage, t } from '../i18n';
 import { formatNextEpisodeSubtitle } from '../core/playerUtils';
 import type { PlaybackPreparePlan } from '../core/playerUtils';
 import { resolvePlaybackSubtitles, type ResolvedSubtitles } from '../core/subtitles';
-import { embeddedMpvSetLoadingArtwork, embeddedMpvStatus, playerClearChapters, playerClearSkipInfo, playerSetEpisodes, playerSetSkipInfo, playerTorrentStats, startTorrentStream } from '../core/mpvPlayer';
+import { embeddedMpvSetLoadingArtwork, embeddedMpvStatus, playerClearChapters, playerClearSkipInfo, playerSetEpisodes, playerSetSkipInfo, playerTorrentStats, startTorrentStream, type TorrentTelemetryContext } from '../core/mpvPlayer';
 import type { AddonDescriptor, Meta, Stream, Video } from '../core/types';
 
 export function usePlayerPlaybackStart(options: any) {
-  const { stateRef, onEpisodePlaybackFailed, playbackScope, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage } = options;
+  const { stateRef, onEpisodePlaybackFailed, playbackScope, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage } = options;
   const handlePlay = useCallback(async (
     stream: Stream,
     meta?: Meta,
@@ -47,6 +47,7 @@ export function usePlayerPlaybackStart(options: any) {
 
     openSourcePickerOnFailureRef.current = openSourcePickerOnFailure;
     setPlayerUrl(null);
+    setPlayerTorrentTelemetryContext(null);
     const streamPlan = await coreStreamShellPlan(stream);
     const currentStreamKey = streamPlan?.identityKey ?? '';
     const candidatePlans = await Promise.all(playingSourceCandidatesRef.current.map(coreStreamShellPlan));
@@ -292,6 +293,7 @@ export function usePlayerPlaybackStart(options: any) {
       };
       try {
         let localUrl: string | null = null;
+        let telemetryContext: TorrentTelemetryContext | null = null;
         for (let retryIndex = 0; retryIndex <= MAX_PEER_RETRIES; retryIndex++) {
           try {
             debugLog(`handlePlay:starting torrent stream retryIndex=${retryIndex}`);
@@ -304,7 +306,9 @@ export function usePlayerPlaybackStart(options: any) {
               && effectiveTotalDuration > 0
                 ? Math.round(effectiveTotalDuration * 1000)
                 : undefined;
-            localUrl = await startTorrentStream(JSON.stringify(stream), title.contentTitle, appPrefs(stateRef.current), torrentDurationMs);
+            const started = await startTorrentStream(JSON.stringify(stream), title.contentTitle, appPrefs(stateRef.current), torrentDurationMs);
+            localUrl = started.url;
+            telemetryContext = started.telemetryContext;
             debugLog(`handlePlay:torrent stream started localUrl=${localUrl?.slice(0, 80)}`);
             if (isCancelled()) { statusPollActive = false; return; }
             await waitForTorrentReady(retryIndex === 0 ? TORRENT_READY_FIRST_ATTEMPT_MS : TORRENT_READY_PER_RETRY_MS);
@@ -319,6 +323,7 @@ export function usePlayerPlaybackStart(options: any) {
           }
         }
         if (isCancelled() || !localUrl) return;
+        setPlayerTorrentTelemetryContext(telemetryContext);
         setLoadingStatus(t('player.status_loading_stream'));
         void pollMpvLoadingStatus();
         await playInEmbeddedMpv(generation, localUrl, title, true, subtitlesPromise, loadingArtworkPromise, resumeAtSeconds, effectiveTotalDuration, undefined, animeDetection.isAnime);
