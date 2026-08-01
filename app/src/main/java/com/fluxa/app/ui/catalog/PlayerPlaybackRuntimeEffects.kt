@@ -7,6 +7,7 @@ import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.media3.common.Player
@@ -31,6 +32,12 @@ import com.fluxa.app.shared.feature.player.TorrentStreamStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.UUID
+
+private data class PlaybackTelemetrySession(
+    val id: String?,
+    val startedAtMs: Long
+)
 
 @Composable
 internal fun ExoPlayerListenerEffect(
@@ -58,11 +65,22 @@ internal fun ExoPlayerListenerEffect(
     val latestAutoFallbackOnStreamError by rememberUpdatedState(autoFallbackOnStreamError)
     val latestCurrentStreamIndex by rememberUpdatedState(currentStreamIndex)
     val latestCurrentStreamsSize by rememberUpdatedState(currentStreamsSize)
+    val telemetrySession = remember(currentUrl) {
+        PlaybackTelemetrySession(
+            id = currentUrl.takeIf { it.isTorrentPlaybackUrl() }?.let { UUID.randomUUID().toString() },
+            startedAtMs = android.os.SystemClock.elapsedRealtime()
+        )
+    }
+    val latestTelemetrySession by rememberUpdatedState(telemetrySession)
+
+    LaunchedEffect(telemetrySession) {
+        telemetrySession.id?.let(torrentManager::beginPlaybackTelemetry)
+    }
 
     DisposableEffect(exoPlayer, useMpvBackend) {
-        val playbackStartedAt = android.os.SystemClock.elapsedRealtime()
         var firstFrameReported = false
         var stallStartedAt: Long? = null
+        var listenerSessionId: String? = null
         val listener = object : Player.Listener {
             override fun onMetadata(metadata: androidx.media3.common.Metadata) {
                 if (useMpvBackend) return
@@ -87,14 +105,20 @@ internal fun ExoPlayerListenerEffect(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (useMpvBackend) return
-                if (currentUrl.isTorrentPlaybackUrl() && exoPlayer.currentPosition > 0L) {
+                val telemetry = latestTelemetrySession
+                if (listenerSessionId != telemetry.id) {
+                    listenerSessionId = telemetry.id
+                    firstFrameReported = false
+                    stallStartedAt = null
+                }
+                if (telemetry.id != null && exoPlayer.currentPosition > 0L) {
                     val now = android.os.SystemClock.elapsedRealtime()
                     if (playbackState == Player.STATE_BUFFERING && stallStartedAt == null) {
                         stallStartedAt = now
-                        torrentManager.recordPlaybackTelemetry("stallStarted")
+                        torrentManager.recordPlaybackTelemetry("stallStarted", sessionId = telemetry.id)
                     } else if (playbackState != Player.STATE_BUFFERING) {
                         stallStartedAt?.let { startedAt ->
-                            torrentManager.recordPlaybackTelemetry("stallEnded", now - startedAt)
+                            torrentManager.recordPlaybackTelemetry("stallEnded", now - startedAt, telemetry.id)
                             stallStartedAt = null
                         }
                     }
@@ -132,11 +156,18 @@ internal fun ExoPlayerListenerEffect(
 
             override fun onRenderedFirstFrame() {
                 if (useMpvBackend) return
-                if (!firstFrameReported && currentUrl.isTorrentPlaybackUrl()) {
+                val telemetry = latestTelemetrySession
+                if (listenerSessionId != telemetry.id) {
+                    listenerSessionId = telemetry.id
+                    firstFrameReported = false
+                    stallStartedAt = null
+                }
+                if (!firstFrameReported && telemetry.id != null) {
                     firstFrameReported = true
                     torrentManager.recordPlaybackTelemetry(
                         "firstFrame",
-                        android.os.SystemClock.elapsedRealtime() - playbackStartedAt
+                        android.os.SystemClock.elapsedRealtime() - telemetry.startedAtMs,
+                        telemetry.id
                     )
                 }
                 latestUpdateEngine.value { copy(render = render.copy(isVideoRendered = true), playerError = null) }

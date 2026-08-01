@@ -53,6 +53,7 @@ class TorrentStreamManager private constructor() {
     @Volatile private var appContext: Context? = null
     @Volatile private var engine: TorrentServerEngine? = null
     @Volatile private var activeTorrentLink: String? = null
+    @Volatile private var activeTelemetrySessionId: String? = null
 
     private val _status = MutableStateFlow(TorrentStreamStatus())
     val status: StateFlow<TorrentStreamStatus> = _status.asStateFlow()
@@ -177,18 +178,31 @@ class TorrentStreamManager private constructor() {
             }
         }
         activeTorrentLink = null
+        activeTelemetrySessionId = null
     }
 
     /**
      * Reports player-side milestones to the local streaming engine. This is
      * best-effort telemetry: a failed report must never affect playback.
      */
-    fun recordPlaybackTelemetry(event: String, elapsedMs: Long? = null) {
+    fun beginPlaybackTelemetry(sessionId: String) {
+        if (sessionId.isBlank() || activeTorrentLink == null) return
+        activeTelemetrySessionId = sessionId
+        recordPlaybackTelemetry("sessionStarted", sessionId = sessionId)
+    }
+
+    fun recordPlaybackTelemetry(event: String, elapsedMs: Long? = null, sessionId: String) {
         val link = activeTorrentLink ?: return
+        if (activeTelemetrySessionId != sessionId) return
         scope.launch {
             runCatching {
                 val payload = gson.toJson(
-                    mapOf("link" to link, "event" to event, "elapsedMs" to elapsedMs)
+                    mapOf(
+                        "link" to link,
+                        "sessionId" to sessionId,
+                        "event" to event,
+                        "elapsedMs" to elapsedMs
+                    )
                 )
                 val request = Request.Builder()
                     .url("${Constants.LocalServer.TORRENT_SERVER_BASE_URL}/telemetry")
