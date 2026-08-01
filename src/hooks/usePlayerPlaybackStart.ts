@@ -298,7 +298,13 @@ export function usePlayerPlaybackStart(options: any) {
             statusPollActive = true;
             setLoadingStatus(t('player.status_starting_torrent') + retrySuffix(retryIndex));
             void pollTorrentStatus(retryIndex);
-            localUrl = await startTorrentStream(JSON.stringify(stream), title.contentTitle, appPrefs(stateRef.current), effectiveTotalDuration * 1000);
+            const torrentDurationMs =
+              typeof effectiveTotalDuration === 'number'
+              && Number.isFinite(effectiveTotalDuration)
+              && effectiveTotalDuration > 0
+                ? Math.round(effectiveTotalDuration * 1000)
+                : undefined;
+            localUrl = await startTorrentStream(JSON.stringify(stream), title.contentTitle, appPrefs(stateRef.current), torrentDurationMs);
             debugLog(`handlePlay:torrent stream started localUrl=${localUrl?.slice(0, 80)}`);
             if (isCancelled()) { statusPollActive = false; return; }
             await waitForTorrentReady(retryIndex === 0 ? TORRENT_READY_FIRST_ATTEMPT_MS : TORRENT_READY_PER_RETRY_MS);
