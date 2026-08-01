@@ -4,6 +4,11 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.common.MediaItem
 import okhttp3.OkHttpClient
 import okhttp3.Dns
 import java.net.Inet4Address
@@ -23,6 +28,53 @@ internal object TrailerResolver {
         val upstream = OkHttpDataSource.Factory(httpClient)
             .setUserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
         return DataSource.Factory { TrailerRangeDataSource(upstream.createDataSource()) }
+    }
+
+    fun createMobileTrailerPlayer(context: android.content.Context, url: String): ExoPlayer {
+        val trackSelector = DefaultTrackSelector(context).apply {
+            setParameters(buildUponParameters().setMaxVideoSize(1280, 720))
+        }
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(250, 750, 150, 250)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+        return ExoPlayer.Builder(context)
+            .setTrackSelector(trackSelector)
+            .setLoadControl(loadControl)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(mediaDataSourceFactory()))
+            .build()
+            .apply {
+                setMediaItem(MediaItem.fromUri(url))
+                prepare()
+            }
+    }
+}
+
+internal object DetailTrailerPreloader {
+    private var preparedUrl: String? = null
+    private var preparedPlayer: ExoPlayer? = null
+
+    fun preload(context: android.content.Context, url: String) {
+        if (preparedUrl == url && preparedPlayer != null) return
+        discard()
+        preparedUrl = url
+        preparedPlayer = TrailerResolver.createMobileTrailerPlayer(context.applicationContext, url)
+    }
+
+    fun takeOrCreate(context: android.content.Context, url: String): ExoPlayer {
+        if (preparedUrl == url) {
+            val player = preparedPlayer
+            preparedUrl = null
+            preparedPlayer = null
+            if (player != null) return player
+        }
+        return TrailerResolver.createMobileTrailerPlayer(context.applicationContext, url)
+    }
+
+    fun discard() {
+        preparedUrl = null
+        preparedPlayer?.release()
+        preparedPlayer = null
     }
 }
 

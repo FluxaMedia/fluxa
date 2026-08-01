@@ -395,7 +395,9 @@ private suspend fun resolveYoutubeTrailerViaCore(
     )
 }
 
-private val subtitleHttpClient = OkHttpClient()
+private val subtitleHttpClient = OkHttpClient.Builder()
+    .retryOnConnectionFailure(true)
+    .build()
 private val subtitleGson = Gson()
 
 internal suspend fun resolveTrailerSubtitleCues(
@@ -404,7 +406,7 @@ internal suspend fun resolveTrailerSubtitleCues(
 ): List<TrailerCue> {
     if (subtitles.isEmpty()) return emptyList()
     return withContext(Dispatchers.IO) {
-        runCatching {
+        try {
             val selectedJson = FluxaCoreNative.trailerSubtitleSelectionPlan(
                 tracksJson = subtitleGson.toJson(subtitles),
                 preferred = preferredLanguage,
@@ -412,13 +414,38 @@ internal suspend fun resolveTrailerSubtitleCues(
                 systemLanguage = java.util.Locale.getDefault().toLanguageTag()
             ) ?: return@withContext emptyList()
             val selected = subtitleGson.fromJson(selectedJson, TrailerSubtitle::class.java) ?: return@withContext emptyList()
-            val normalizedUrl = FluxaCoreNative.normalizeTrailerSubtitleUrl(selected.url)
-            val body = subtitleHttpClient.newCall(Request.Builder().url(normalizedUrl).build()).execute().use { response ->
-                if (!response.isSuccessful) return@withContext emptyList()
-                response.body.string()
+            val candidates = listOf(selected) + subtitles.filter { it.url != selected.url }
+            candidates.forEach { candidate ->
+                val body = fetchTrailerSubtitleBody(candidate.url) ?: return@forEach
+                val cuesJson = FluxaCoreNative.parseTrailerSubtitleCues(body)
+                val cues = subtitleGson.fromJson<List<TrailerCue>>(
+                    cuesJson,
+                    object : TypeToken<List<TrailerCue>>() {}.type
+                ).orEmpty()
+                if (cues.isNotEmpty()) return@withContext cues
             }
-            val cuesJson = FluxaCoreNative.parseTrailerSubtitleCues(body)
-            subtitleGson.fromJson<List<TrailerCue>>(cuesJson, object : TypeToken<List<TrailerCue>>() {}.type).orEmpty()
-        }.getOrDefault(emptyList())
+            emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
+}
+
+private suspend fun fetchTrailerSubtitleBody(url: String): String? {
+    val normalizedUrl = FluxaCoreNative.normalizeTrailerSubtitleUrl(url)
+    repeat(2) { attempt ->
+        val body = runCatching {
+            subtitleHttpClient.newCall(
+                Request.Builder()
+                    .url(normalizedUrl)
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14)")
+                    .build()
+            ).execute().use { response ->
+                response.takeIf { it.isSuccessful }?.body?.string()
+            }
+        }.getOrNull()
+        if (!body.isNullOrBlank()) return body
+        if (attempt == 0) delay(250)
+    }
+    return null
 }

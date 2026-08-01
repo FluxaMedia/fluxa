@@ -42,6 +42,7 @@ class SettingsStore(
             SettingsAction.ConnectSimklRequested -> Unit
             SettingsAction.ConnectAnilistRequested -> Unit
             SettingsAction.DisconnectSyncRequested -> dataSource.disconnectSync()
+            is SettingsAction.DisconnectProviderRequested -> dataSource.disconnectProvider(action.provider)
             SettingsAction.SwitchProfilesRequested -> Unit
             SettingsAction.CheckForUpdateRequested -> Unit
         }

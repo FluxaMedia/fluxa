@@ -45,6 +45,19 @@ data class DetailRatingUiModel(
     val value: String
 )
 
+data class DetailDiscussionCommentUiModel(
+    val author: String,
+    val body: String,
+    val likes: Int = 0,
+    val spoiler: Boolean = false
+)
+
+data class DetailCastMemberUiModel(
+    val name: String,
+    val character: String?,
+    val profileUrl: String?
+)
+
 data class DetailUiModel(
     val id: String,
     val type: String,
@@ -57,9 +70,11 @@ data class DetailUiModel(
     val releaseLabel: String,
     val ratingLabel: String,
     val ratings: List<DetailRatingUiModel> = emptyList(),
+    val traktComments: List<DetailDiscussionCommentUiModel> = emptyList(),
+    val mdblistDiscussion: List<DetailDiscussionCommentUiModel> = emptyList(),
     val runtimeLabel: String?,
     val ageRating: String? = null,
-    val castNames: List<String> = emptyList(),
+    val cast: List<DetailCastMemberUiModel> = emptyList(),
     val isInWatchlist: Boolean,
     val relatedItems: List<CatalogItemUiModel>,
     val availableSeasons: List<Int> = emptyList(),

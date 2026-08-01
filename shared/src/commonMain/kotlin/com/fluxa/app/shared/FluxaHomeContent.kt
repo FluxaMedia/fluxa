@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -162,7 +163,15 @@ internal fun FluxaHomeContent(
     val orderedRows = contentRows.filter { it.id == CONTINUE_WATCHING_CATEGORY_ID } +
         contentRows.filterNot { it.id == CONTINUE_WATCHING_CATEGORY_ID }
     val listState = rememberLazyListState()
+    var initialHeroResolved by remember { mutableStateOf(false) }
     var posterActionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
+
+    LaunchedEffect(showHero) {
+        if (showHero && !initialHeroResolved) {
+            listState.scrollToItem(0)
+            initialHeroResolved = true
+        }
+    }
 
     Box(modifier = modifier) {
         LazyColumn(
@@ -390,6 +399,7 @@ private fun FluxaHomeHeroSlide(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .clip(RoundedCornerShape(0.dp))
             .clickable { onCatalogAction(CatalogAction.ItemSelected(item)) }
     ) {
         val heroArtworkUrl = item.backdropUrl ?: item.card.artworkUrl
@@ -407,8 +417,8 @@ private fun FluxaHomeHeroSlide(
             val trailerAlpha by animateFloatAsState(targetValue = 1f, label = "hero-trailer-fade")
             trailerSurface(trailerUrl, trailerSubtitleCues, { activeSubtitle = it }, Modifier.fillMaxSize().alpha(trailerAlpha))
         }
-        val gradientStartY by animateFloatAsState(targetValue = if (trailerActive) 0.94f else 0.35f, label = "hero-gradient-start")
-        val gradientMaxAlpha by animateFloatAsState(targetValue = if (trailerActive) 0.55f else 1f, label = "hero-gradient-alpha")
+        val gradientStartY by animateFloatAsState(targetValue = if (trailerActive) 0.55f else 0.35f, label = "hero-gradient-start")
+        val gradientMaxAlpha by animateFloatAsState(targetValue = if (trailerActive) 0.75f else 1f, label = "hero-gradient-alpha")
         Box(
             modifier = Modifier
                 .fillMaxSize()

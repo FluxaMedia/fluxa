@@ -4,9 +4,11 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.shared.feature.detail.DetailDataSource
+import com.fluxa.app.shared.feature.detail.DetailCastMemberUiModel
 import com.fluxa.app.shared.feature.detail.DetailEpisodeUiModel
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailRatingUiModel
+import com.fluxa.app.shared.feature.detail.DetailDiscussionCommentUiModel
 import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState as SharedDetailUiState
@@ -59,9 +61,19 @@ class AndroidDetailDataSource(
                         ratings = detail.ratings.orEmpty().mapNotNull { rating ->
                             rating.value?.takeIf(String::isNotBlank)?.let { DetailRatingUiModel(rating.source, it) }
                         },
+                        traktComments = state.traktComments.map { DetailDiscussionCommentUiModel(it.author, it.body, it.likes, it.spoiler) },
+                        mdblistDiscussion = state.mdblistDiscussion.map { DetailDiscussionCommentUiModel(it.author, it.body, it.likes, it.spoiler) },
                         runtimeLabel = detail.runtime,
                         ageRating = detail.ageRating,
-                        castNames = detail.cast.orEmpty().mapNotNull { it.name.takeIf { name -> name.isNotBlank() } },
+                        cast = detail.cast.orEmpty().mapNotNull { member ->
+                            member.name.takeIf(String::isNotBlank)?.let { name ->
+                                DetailCastMemberUiModel(
+                                    name = name,
+                                    character = member.character?.takeIf(String::isNotBlank),
+                                    profileUrl = member.profilePath?.takeIf(String::isNotBlank)
+                                )
+                            }
+                        },
                         isInWatchlist = state.isInWatchlist,
                         relatedItems = state.similarItems.toCatalogItems(activeProfile()),
                         availableSeasons = availableSeasons,

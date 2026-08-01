@@ -14,6 +14,7 @@ import com.fluxa.app.core.fromStateList
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
 import com.fluxa.app.core.rust.StreamProgressUpdate
 import com.fluxa.app.core.StremioId
+import com.fluxa.app.data.repository.CommunityDiscussionRepository
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.supportsStremioResource
 import com.google.gson.Gson
@@ -28,12 +29,15 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
+    @ApplicationContext private val applicationContext: android.content.Context,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
-    private val gson: Gson
+    private val gson: Gson,
+    private val communityDiscussionRepository: CommunityDiscussionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetailUiState())
@@ -73,6 +77,7 @@ class DetailViewModel @Inject constructor(
         val generation = ++detailLoadGeneration
         detailLoadJob?.cancel()
         trailerJob?.cancel()
+        DetailTrailerPreloader.discard()
         currentProfile = profile
         currentSeriesLookupId = normalizeSeriesLookupId(id)
         val lang = profile?.language ?: "en"
@@ -87,6 +92,8 @@ class DetailViewModel @Inject constructor(
                     similarItems = emptyList(),
                     trailers = emptyList(),
                     trailerUrl = null,
+                    traktComments = emptyList(),
+                    mdblistDiscussion = emptyList(),
                     hasStreamProviders = true,
                     isLoading = true
                 )
@@ -146,6 +153,18 @@ class DetailViewModel @Inject constructor(
                 }
 
                 launch {
+                    val current = currentProfile ?: return@launch
+                    val content = _uiState.value.detail ?: return@launch
+                    val trakt = if (current.traktCommentsEnabled == true) {
+                        communityDiscussionRepository.traktComments(content.id, content.type)
+                    } else emptyList()
+                    val mdblist = communityDiscussionRepository.mdblistDiscussion(content.id, content.type, current.mdblistApiKey.orEmpty())
+                    if (generation == detailLoadGeneration) {
+                        _uiState.update { it.copy(traktComments = trakt, mdblistDiscussion = mdblist) }
+                    }
+                }
+
+                launch {
                     if (effectiveType == "series") loadSeason(resolvedId, 1)
                     val secondary = headlessRuntime.dispatch(
                         mapOf(
@@ -159,12 +178,13 @@ class DetailViewModel @Inject constructor(
                     if (generation != detailLoadGeneration) return@launch
                     _uiState.update {
                         val mdblistRatings = gson.fromStateList<MetaRating>(secondary?.get("mdblistRatings"))
+                        val currentDetail = it.detail
                         it.copy(
                             watchedVideoIds = gson.fromStateList(secondary?.get("watchedVideoIds")),
                             similarItems = gson.fromStateList(secondary?.get("similarItems")),
                             trailers = if (it.trailers.isEmpty()) gson.fromStateList(secondary?.get("trailers")) else it.trailers,
-                            detail = it.detail?.copy(
-                                ratings = (it.detail.ratings.orEmpty() + mdblistRatings)
+                            detail = currentDetail?.copy(
+                                ratings = (currentDetail.ratings.orEmpty() + mdblistRatings)
                                     .distinctBy { rating -> rating.source.lowercase() }
                             )
                         )
@@ -209,9 +229,13 @@ class DetailViewModel @Inject constructor(
         trailerJob?.cancel()
         val delaySeconds = profile.safeTrailerOnDetailHeroDelaySeconds
         trailerJob = viewModelScope.launch {
+            val trailerResolution = async {
+                resolvePlayableTrailerUrl(_uiState.value.trailers, headlessRuntime::dispatch)
+                    ?.also { resolved -> DetailTrailerPreloader.preload(applicationContext, resolved) }
+            }
             if (delaySeconds > 0) delay(delaySeconds * 1000L)
             if (generation != detailLoadGeneration) return@launch
-            val resolved = resolvePlayableTrailerUrl(_uiState.value.trailers, headlessRuntime::dispatch) ?: return@launch
+            val resolved = trailerResolution.await() ?: return@launch
             if (generation != detailLoadGeneration) return@launch
             _uiState.update { it.copy(trailerUrl = resolved) }
         }
@@ -672,6 +696,7 @@ class DetailViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        DetailTrailerPreloader.discard()
         headlessRuntime.close()
         libraryCommandRuntime.close()
         super.onCleared()

@@ -1,0 +1,34 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="53dp"
+    android:viewportWidth="488"
+    android:viewportHeight="536">
+    <path android:pathData="M29,2C77,-11 120,9 163,34L428,187C503,230 508,335 438,381L141,555C74,598 0,552 0,474V89C0,48 10,13 29,2Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="58" android:startY="42" android:endX="443" android:endY="503">
+                <item android:offset="0" android:color="#FF25C6D8" />
+                <item android:offset="0.48" android:color="#FF5B75E5" />
+                <item android:offset="1" android:color="#FFB63FE9" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M1,41C82,41 205,76 276,185C286,201 288,211 288,217C230,148 175,117 117,104C75,94 36,92 1,93Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="12" android:startY="49" android:endX="292" android:endY="217">
+                <item android:offset="0" android:color="#FF1295D6" />
+                <item android:offset="1" android:color="#FF5D53DF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M1,275C45,230 99,220 117,255V472C117,497 128,522 145,536C72,537 1,511 1,443Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="20" android:startY="261" android:endX="151" android:endY="527">
+                <item android:offset="0" android:color="#FF3E4AC8" />
+                <item android:offset="1" android:color="#FF7234B8" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#FF000000" android:pathData="M151,152C164,144 178,146 192,154L316,229C340,244 340,277 316,292L190,369C164,386 117,367 117,337V188C117,173 131,160 151,152Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M187,220L187,316L266,268Z" />
+</vector>

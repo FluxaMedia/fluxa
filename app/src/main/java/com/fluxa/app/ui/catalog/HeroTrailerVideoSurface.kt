@@ -6,17 +6,21 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.fluxa.app.shared.feature.player.TrailerCue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+
+private const val HERO_TRAILER_CROP_SCALE = 1.32f
 
 @Composable
 internal fun HeroTrailerVideoSurface(
@@ -26,19 +30,34 @@ internal fun HeroTrailerVideoSurface(
     modifier: Modifier
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val exoPlayer = remember(url) {
-        ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(TrailerResolver.mediaDataSourceFactory()))
-            .build().apply {
-                setMediaItem(MediaItem.fromUri(url))
-                volume = 0f
-                repeatMode = Player.REPEAT_MODE_ONE
-                playWhenReady = true
-                prepare()
-            }
+        DetailTrailerPreloader.takeOrCreate(context, url).apply {
+            volume = 0f
+            repeatMode = Player.REPEAT_MODE_ONE
+            playWhenReady = true
+        }
     }
     DisposableEffect(exoPlayer) {
         onDispose { exoPlayer.release() }
+    }
+    DisposableEffect(lifecycleOwner, exoPlayer) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> exoPlayer.pause()
+                Lifecycle.Event.ON_RESUME -> {
+                    exoPlayer.playWhenReady = true
+                    exoPlayer.play()
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(exoPlayer) {
+        exoPlayer.playWhenReady = true
+        exoPlayer.play()
     }
 
     LaunchedEffect(exoPlayer, cues) {
@@ -61,6 +80,7 @@ internal fun HeroTrailerVideoSurface(
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
         },
-        modifier = modifier
+        update = { playerView -> playerView.player = exoPlayer },
+        modifier = modifier.scale(HERO_TRAILER_CROP_SCALE)
     )
 }

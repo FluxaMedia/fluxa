@@ -19,6 +19,10 @@ data class SettingsAccountUiModel(
     val hasTrakt: Boolean = false,
     val hasSimkl: Boolean = false,
     val hasAnilist: Boolean = false,
+    val syncCwSourceOfTruth: String = "",
+    val syncCwRanking: String = "last_watched",
+    val continueWatchingDays: Int = 0,
+    val traktCommentsEnabled: Boolean = false,
     val hasAnySync: Boolean = false,
     val syncFailedProviders: Set<String> = emptySet(),
     val syncingProviders: Set<String> = emptySet(),
@@ -227,6 +231,7 @@ sealed interface SettingsAction {
     data object ConnectSimklRequested : SettingsAction
     data object ConnectAnilistRequested : SettingsAction
     data object DisconnectSyncRequested : SettingsAction
+    data class DisconnectProviderRequested(val provider: String) : SettingsAction
     data object SwitchProfilesRequested : SettingsAction
     data object CheckForUpdateRequested : SettingsAction
 }
@@ -253,4 +258,5 @@ interface SettingsDataSource {
     suspend fun moveHomeFeed(key: String, direction: Int)
     suspend fun toggleTopTenFeed(key: String)
     suspend fun disconnectSync()
+    suspend fun disconnectProvider(provider: String)
 }

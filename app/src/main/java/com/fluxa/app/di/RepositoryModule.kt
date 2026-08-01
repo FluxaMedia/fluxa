@@ -9,6 +9,9 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import com.fluxa.app.data.remote.TraktApi
 import com.fluxa.app.data.remote.TmdbService
+import android.content.Context
+import com.google.gson.Gson
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -26,12 +29,14 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideTraktRepository(
+        @ApplicationContext context: Context,
         traktApi: TraktApi,
         addonRepository: AddonRepository,
         externalLibraryClient: ExternalLibraryClient,
-        traktSyncClient: TraktSyncClient
+        traktSyncClient: TraktSyncClient,
+        gson: Gson
     ): TraktRepository {
-        return TraktRepository(traktApi, addonRepository, externalLibraryClient, traktSyncClient)
+        return TraktRepository(context, traktApi, addonRepository, externalLibraryClient, traktSyncClient, gson)
     }
 
     @Provides

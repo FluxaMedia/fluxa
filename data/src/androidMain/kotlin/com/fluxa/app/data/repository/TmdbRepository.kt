@@ -154,8 +154,18 @@ class TmdbRepository @Inject constructor(
                             profilePath = member.profilePath?.let { tmdbImageUrl(it, "w185") }
                         )
                     }
-                    if (!castList.isNullOrEmpty() && result.cast.isNullOrEmpty())
-                        result = result.copy(cast = castList)
+                    if (!castList.isNullOrEmpty()) {
+                        val tmdbCastByName = castList.associateBy { it.name.trim().lowercase() }
+                        val enrichedCast = result.cast.orEmpty().map { member ->
+                            tmdbCastByName[member.name.trim().lowercase()]?.let { tmdbMember ->
+                                member.copy(
+                                    character = member.character ?: tmdbMember.character,
+                                    profilePath = member.profilePath ?: tmdbMember.profilePath
+                                )
+                            } ?: member
+                        }
+                        result = result.copy(cast = if (enrichedCast.isEmpty()) castList else enrichedCast)
+                    }
                     val directors = credits.crew
                         ?.filter { it.job.equals("Director", ignoreCase = true) }
                         ?.map { it.name }

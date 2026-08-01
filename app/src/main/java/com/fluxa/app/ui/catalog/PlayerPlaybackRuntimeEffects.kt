@@ -60,6 +60,9 @@ internal fun ExoPlayerListenerEffect(
     val latestCurrentStreamsSize by rememberUpdatedState(currentStreamsSize)
 
     DisposableEffect(exoPlayer, useMpvBackend) {
+        val playbackStartedAt = android.os.SystemClock.elapsedRealtime()
+        var firstFrameReported = false
+        var stallStartedAt: Long? = null
         val listener = object : Player.Listener {
             override fun onMetadata(metadata: androidx.media3.common.Metadata) {
                 if (useMpvBackend) return
@@ -84,6 +87,18 @@ internal fun ExoPlayerListenerEffect(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (useMpvBackend) return
+                if (currentUrl.isTorrentPlaybackUrl() && exoPlayer.currentPosition > 0L) {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if (playbackState == Player.STATE_BUFFERING && stallStartedAt == null) {
+                        stallStartedAt = now
+                        torrentManager.recordPlaybackTelemetry("stallStarted")
+                    } else if (playbackState != Player.STATE_BUFFERING) {
+                        stallStartedAt?.let { startedAt ->
+                            torrentManager.recordPlaybackTelemetry("stallEnded", now - startedAt)
+                            stallStartedAt = null
+                        }
+                    }
+                }
                 latestUpdateEngine.value(when (playbackState) {
                     Player.STATE_READY -> { ->
                         copy(
@@ -117,6 +132,13 @@ internal fun ExoPlayerListenerEffect(
 
             override fun onRenderedFirstFrame() {
                 if (useMpvBackend) return
+                if (!firstFrameReported && currentUrl.isTorrentPlaybackUrl()) {
+                    firstFrameReported = true
+                    torrentManager.recordPlaybackTelemetry(
+                        "firstFrame",
+                        android.os.SystemClock.elapsedRealtime() - playbackStartedAt
+                    )
+                }
                 latestUpdateEngine.value { copy(render = render.copy(isVideoRendered = true), playerError = null) }
             }
 

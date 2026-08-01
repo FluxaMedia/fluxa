@@ -50,6 +50,7 @@ import com.fluxa.app.core.rust.models.NativeStreamDiscoveryExecutionPolicy
 import com.fluxa.app.core.rust.models.NativeStreamDiscoveryPlan
 import com.fluxa.app.core.rust.models.NativeStreamPlaybackInfo
 import com.fluxa.app.core.rust.models.NativeTorrentFallbackFilePolicy
+import com.fluxa.app.core.rust.models.NativeTraktCommentsRequest
 import com.fluxa.app.core.rust.models.NativeTraktEpisodeLocator
 import com.fluxa.app.core.rust.models.NativeWatchlistTogglePlan
 import com.fluxa.app.data.remote.AddonCatalog
@@ -718,6 +719,41 @@ object FluxaCoreNative {
         val args = JsonObject().apply { addProperty("itemsJson", gson.toJson(items)) }
         val value = FluxaCoreUniFfi.coreInvokeValue("mergeContinueWatchingDuplicates", args.toString())
         return gson.fromJson(value, metaListType) ?: emptyList()
+    }
+
+    fun mergeContinueWatchingLists(
+        localItems: List<Meta>,
+        externalItems: List<Meta>,
+        sourceOfTruth: String?,
+        rankingMode: String
+    ): List<Meta> {
+        val args = JsonObject().apply {
+            addProperty("localJson", gson.toJson(localItems))
+            addProperty("externalJson", gson.toJson(externalItems))
+            addProperty("progressJson", "{}")
+            sourceOfTruth?.takeIf { it.isNotBlank() }?.let { addProperty("sourceOfTruth", it) }
+            addProperty("rankingMode", rankingMode)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("mergeContinueWatchingLists", args.toString())
+        return gson.fromJson(value, metaListType) ?: emptyList()
+    }
+
+    fun traktCommentsRequest(contentId: String, contentType: String): NativeTraktCommentsRequest? {
+        val args = JsonObject().apply {
+            addProperty("contentId", contentId)
+            addProperty("contentType", contentType)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("traktCommentsRequest", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeTraktCommentsRequest::class.java) }
+    }
+
+    fun mdblistDiscussionUrl(provider: String, targetType: String, targetId: Long): String {
+        val args = JsonObject().apply {
+            addProperty("provider", provider)
+            addProperty("targetType", targetType)
+            addProperty("targetId", targetId)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("mdblistDiscussionUrl", args.toString()).asString
     }
 
     fun filterDiscoverResults(

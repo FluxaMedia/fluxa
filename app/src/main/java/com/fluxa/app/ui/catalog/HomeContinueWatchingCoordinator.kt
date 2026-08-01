@@ -80,12 +80,28 @@ internal class HomeContinueWatchingCoordinator(
             classifyUpcoming(ranked)
             return ranked.map { assignHomeBadge(it, lang) }
         }
-        val sourceItems = externalItems() + localItems()
-        val merged = ContinueWatchingListMerger.mergeDuplicates(sourceItems)
+        val profile = activeProfile()
+        val merged = FluxaCoreNative.mergeContinueWatchingLists(
+            localItems = localItems(),
+            externalItems = externalItems(),
+            sourceOfTruth = profile?.syncCwSourceOfTruth?.toContinueWatchingSourceLabel(),
+            rankingMode = profile?.syncCwRanking ?: "last_watched"
+        )
             .filterNot(playbackController::isForgotten)
         val filtered = FluxaCoreNative.filterHomeContinueWatching(merged, watchedState())
         classifyUpcoming(filtered)
         return filtered.map { assignHomeBadge(it, lang) }
+    }
+
+    private fun String.toContinueWatchingSourceLabel(): String? = when (this) {
+        "" -> null
+        "trakt" -> "Trakt.tv"
+        "simkl" -> "Simkl"
+        "nuvio" -> "Nuvio"
+        "anilist" -> "AniList"
+        "local" -> "local"
+        "stremio" -> "Stremio"
+        else -> null
     }
 
     suspend fun fetchExternal(profile: UserProfile?): List<Meta> {

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -14,15 +16,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -44,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -57,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +80,37 @@ import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.FluxaColors
 
 private enum class DetailTab { Episodes, MoreLikeThis }
+
+val LocalDetailRatingLogo = staticCompositionLocalOf<@Composable (String, String, Modifier) -> Unit> {
+    { source, _, modifier -> Text(source, modifier = modifier, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+}
+
+private val ratingDisplayOrder = listOf("imdb", "tmdb", "trakt", "tomatoes", "popcorn", "metacritic", "metacriticuser", "letterboxd", "myanimelist")
+
+private fun DetailRatingUiModel.normalizedSource(): String = source.lowercase().replace(" ", "")
+
+private fun DetailRatingUiModel.displayValue(): String {
+    val number = value.toFloatOrNull() ?: return value
+    return when (normalizedSource()) {
+        "tmdb", "trakt", "tomatoes", "popcorn" -> "${number.toInt()}%"
+        "metacritic" -> number.toInt().toString()
+        else -> ((number * 10f).toInt() / 10f).toString()
+    }
+}
+
+private fun DetailRatingUiModel.scoreColor(): Color = when (normalizedSource()) {
+    "metacritic" -> when {
+        (value.toFloatOrNull() ?: 0f) >= 61f -> Color(0xFF66CC33)
+        (value.toFloatOrNull() ?: 0f) >= 40f -> Color(0xFFFFCC33)
+        else -> Color(0xFFFF3333)
+    }
+    "metacriticuser" -> when {
+        (value.toFloatOrNull() ?: 0f) >= 7.5f -> Color(0xFF66CC33)
+        (value.toFloatOrNull() ?: 0f) >= 5f -> Color(0xFFFFCC33)
+        else -> Color(0xFFFF3333)
+    }
+    else -> Color.White
+}
 
 @Composable
 fun DetailScreen(
@@ -126,22 +165,29 @@ private fun TopBar(
                     )
                 )
             )
-            .padding(top = 44.dp, bottom = if (showStickyContext) 12.dp else 24.dp, start = 12.dp, end = 12.dp),
+            .then(if (showStickyContext) Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)) else Modifier)
+            .padding(
+                top = if (showStickyContext) 0.dp else 44.dp,
+                bottom = if (showStickyContext) 8.dp else 24.dp,
+                start = if (showStickyContext) 14.dp else 12.dp,
+                end = if (showStickyContext) 14.dp else 12.dp
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = AppStrings.t(language, "common.back"),
             tint = Color.White,
-            modifier = Modifier.size(32.dp).clickable(onClick = onBack)
+            modifier = Modifier.size(if (showStickyContext) 22.dp else 32.dp).clickable(onClick = onBack)
         )
         if (showStickyContext && content != null) {
-            StickyContentIdentity(content = content, modifier = Modifier.weight(1f).padding(horizontal = 16.dp))
+            StickyContentIdentity(content = content, modifier = Modifier.width(130.dp).padding(start = 10.dp, end = 6.dp))
+            Box(modifier = Modifier.weight(1f))
             Icon(
                 imageVector = if (content.isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
                 contentDescription = AppStrings.t(language, if (content.isInWatchlist) "auto.in_list" else "auto.my_list"),
                 tint = Color.White,
-                modifier = Modifier.size(28.dp).clickable { onAction(DetailAction.ToggleWatchlist) }
+                modifier = Modifier.size(22.dp).clickable { onAction(DetailAction.ToggleWatchlist) }
             )
         } else {
             Box(modifier = Modifier.weight(1f))
@@ -150,7 +196,7 @@ private fun TopBar(
             imageVector = Icons.Filled.Share,
             contentDescription = AppStrings.t(language, "common.share"),
             tint = Color.White,
-            modifier = Modifier.padding(start = 18.dp).size(28.dp).clickable(onClick = onShareRequested)
+            modifier = Modifier.padding(start = if (showStickyContext) 12.dp else 18.dp).size(if (showStickyContext) 22.dp else 28.dp).clickable(onClick = onShareRequested)
         )
     }
 }
@@ -296,7 +342,7 @@ private fun DetailBody(
     onAction: (DetailAction) -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
             ResumeButton(content = content, language = language, onAction = onAction)
             if (content.resumeProgress > 0L && content.resumeVideoId != null) {
                 RestartButton(language = language, onClick = { onAction(DetailAction.Play(fromStart = true)) })
@@ -312,8 +358,8 @@ private fun DetailBody(
                 modifier = Modifier.padding(top = 16.dp)
             )
         }
-        if (content.castNames.isNotEmpty()) {
-            CastLine(names = content.castNames, language = language, modifier = Modifier.padding(top = 12.dp))
+        if (content.cast.isNotEmpty()) {
+            CastSection(members = content.cast, language = language, modifier = Modifier.padding(top = 20.dp))
         }
         ActionRow(
             content = content,
@@ -321,12 +367,36 @@ private fun DetailBody(
             onAction = onAction,
             modifier = Modifier.padding(top = 20.dp)
         )
+        DiscussionSection(AppStrings.t(language, "detail.trakt_comments"), content.traktComments, language)
+        DiscussionSection(AppStrings.t(language, "detail.mdblist_discussion"), content.mdblistDiscussion, language)
+    }
+}
+
+@Composable
+private fun DiscussionSection(title: String, comments: List<DetailDiscussionCommentUiModel>, language: String?) {
+    if (comments.isEmpty()) return
+    Column(modifier = Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        comments.forEach { comment ->
+            Column(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.07f)).padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(comment.author, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (comment.spoiler) AppStrings.t(language, "detail.comments_spoiler") else comment.body,
+                    color = Color.White.copy(alpha = 0.78f),
+                    fontSize = 13.sp
+                )
+                if (comment.likes > 0) Text("♥ ${comment.likes}", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+            }
+        }
     }
 }
 
 @Composable
 private fun Hero(content: DetailUiModel, language: String?) {
-    Box(modifier = Modifier.fillMaxWidth().height(560.dp)) {
+    Box(modifier = Modifier.fillMaxWidth().height(560.dp).clip(RoundedCornerShape(0.dp))) {
         FluxaRemoteImage(
             imageUrl = content.backgroundUrl ?: content.posterUrl,
             cacheKey = "detail-hero:${content.id}",
@@ -356,7 +426,7 @@ private fun Hero(content: DetailUiModel, language: String?) {
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 8.dp)
         ) {
             Text(
                 text = if (content.type == "series") AppStrings.t(language, "auto.series") else AppStrings.t(language, "auto.movie"),
@@ -419,22 +489,30 @@ private fun Hero(content: DetailUiModel, language: String?) {
             }
             val ratings = content.ratings.ifEmpty {
                 content.ratingLabel.takeIf { it.isNotBlank() }?.let { listOf(DetailRatingUiModel("IMDb", it)) }.orEmpty()
-            }
+            }.map { rating -> rating.copy(source = rating.normalizedSource()) }
+                .filter { it.source in ratingDisplayOrder }
+                .sortedBy { ratingDisplayOrder.indexOf(it.source) }
             if (ratings.isNotEmpty()) {
+                val ratingLogo = LocalDetailRatingLogo.current
                 LazyRow(
                     modifier = Modifier.padding(top = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(ratings, key = { "${it.source}:${it.value}" }) { rating ->
-                        Text(
-                            text = "${rating.source} ${rating.value}",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
+                        Row(
                             modifier = Modifier
                                 .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ratingLogo(
+                                rating.source,
+                                rating.value,
+                                Modifier.height(if (rating.source == "imdb") 20.dp else 16.dp)
+                            )
+                            Text(rating.displayValue(), color = rating.scoreColor(), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
@@ -544,26 +622,73 @@ private fun DownloadButton(content: DetailUiModel, language: String?, onAction: 
 }
 
 @Composable
-private fun CastLine(names: List<String>, language: String?, modifier: Modifier = Modifier) {
-    var expanded by remember(names) { mutableStateOf(false) }
-    val visibleNames = if (expanded) names else names.take(3)
-    val canExpand = !expanded && names.size > visibleNames.size
-    Text(
-        modifier = modifier.clickable(enabled = canExpand) { expanded = true },
-        fontSize = 13.sp,
-        color = Color.White.copy(alpha = 0.6f),
-        maxLines = if (expanded) Int.MAX_VALUE else 2,
-        overflow = TextOverflow.Ellipsis,
-        text = buildString {
-            append(AppStrings.t(language, "auto.cast"))
-            append(": ")
-            append(visibleNames.joinToString(", "))
-            if (canExpand) {
-                append("  ")
-                append(AppStrings.t(language, "common.more"))
+private fun CastSection(members: List<DetailCastMemberUiModel>, language: String?, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = AppStrings.t(language, "auto.cast"),
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+        LazyRow(
+            contentPadding = PaddingValues(top = 12.dp, end = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(members.take(20), key = { "${it.name}:${it.character.orEmpty()}" }) { member ->
+                CastMemberCard(member)
             }
         }
-    )
+    }
+}
+
+@Composable
+private fun CastMemberCard(member: DetailCastMemberUiModel) {
+    val initials = remember(member.name) {
+        member.name.split(' ').filter(String::isNotBlank).take(2).joinToString("") { it.take(1) }.uppercase()
+    }
+    Box(modifier = Modifier.width(104.dp), contentAlignment = Alignment.TopCenter) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(64.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(initials, color = Color.White.copy(alpha = 0.78f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                FluxaRemoteImage(
+                    imageUrl = member.profileUrl,
+                    cacheKey = "detail-cast:${member.profileUrl}",
+                    contentDescription = member.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Text(
+                text = member.name,
+                color = Color.White,
+                fontSize = 12.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+            )
+            member.character?.takeIf(String::isNotBlank)?.let { character ->
+                Text(
+                    text = character,
+                    color = Color.White.copy(alpha = 0.68f),
+                    fontSize = 11.sp,
+                    lineHeight = 12.sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
 }
 
 @Composable

@@ -133,6 +133,10 @@ class AndroidSettingsDataSource(
                 hasTrakt = !profile.traktAccessToken.isNullOrBlank(),
                 hasSimkl = !profile.simklAccessToken.isNullOrBlank(),
                 hasAnilist = !profile.anilistAccessToken.isNullOrBlank(),
+                syncCwSourceOfTruth = profile.syncCwSourceOfTruth.takeIf { it in setOf("", "local", "nuvio", "trakt", "simkl", "anilist", "stremio") } ?: "",
+                syncCwRanking = profile.syncCwRanking.takeIf { it in setOf("last_watched", "most_recent_episode") } ?: "last_watched",
+                continueWatchingDays = (profile.continueWatchingDays ?: 0).takeIf { it == 0 || it in 1..365 } ?: 0,
+                traktCommentsEnabled = profile.traktCommentsEnabled ?: false,
                 hasAnySync = !profile.traktAccessToken.isNullOrBlank() ||
                     !profile.simklAccessToken.isNullOrBlank() ||
                     !profile.anilistAccessToken.isNullOrBlank(),
@@ -408,6 +412,10 @@ class AndroidSettingsDataSource(
 
     override suspend fun updateTmdbAccount(value: SettingsAccountUiModel) = update {
         it.copy(
+            syncCwSourceOfTruth = value.syncCwSourceOfTruth,
+            syncCwRanking = value.syncCwRanking,
+            continueWatchingDays = value.continueWatchingDays,
+            traktCommentsEnabled = value.traktCommentsEnabled,
             tmdbApiKey = value.tmdbApiKey,
             mdblistApiKey = value.mdblistApiKey,
             tmdbCastImagesEnabled = value.tmdbCastImagesEnabled,
@@ -474,5 +482,16 @@ class AndroidSettingsDataSource(
             anilistRefreshToken = null,
             anilistTokenExpiresAt = null
         )
+    }
+
+    override suspend fun disconnectProvider(provider: String) = update {
+        when (provider) {
+            "stremio" -> it.copy(authKey = "")
+            "nuvio" -> it.copy(nuvioAccessToken = null, nuvioRefreshToken = null, nuvioTokenExpiresAt = null, nuvioUserId = null, nuvioEmail = null, nuvioProfileIndex = null, nuvioLastSyncAt = null)
+            "trakt" -> it.copy(traktAccessToken = null, traktRefreshToken = null, traktTokenExpiresAt = null, traktLastSyncAt = null, traktLastSyncedItems = null, traktLastContinueWatchingCount = null, traktLastWatchlistCount = null)
+            "simkl" -> it.copy(simklAccessToken = null, simklLastSyncAt = null)
+            "anilist" -> it.copy(anilistAccessToken = null, anilistRefreshToken = null, anilistTokenExpiresAt = null)
+            else -> it
+        }
     }
 }

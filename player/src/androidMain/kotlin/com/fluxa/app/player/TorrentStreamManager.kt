@@ -23,6 +23,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaType
 import java.util.concurrent.TimeUnit
 
 sealed class TorrentStreamResult {
@@ -175,6 +177,30 @@ class TorrentStreamManager private constructor() {
             }
         }
         activeTorrentLink = null
+    }
+
+    /**
+     * Reports player-side milestones to the local streaming engine. This is
+     * best-effort telemetry: a failed report must never affect playback.
+     */
+    fun recordPlaybackTelemetry(event: String, elapsedMs: Long? = null) {
+        val link = activeTorrentLink ?: return
+        scope.launch {
+            runCatching {
+                val payload = gson.toJson(
+                    mapOf("link" to link, "event" to event, "elapsedMs" to elapsedMs)
+                )
+                val request = Request.Builder()
+                    .url("${Constants.LocalServer.TORRENT_SERVER_BASE_URL}/telemetry")
+                    .post(payload.toRequestBody("application/json".toMediaType()))
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.d(TAG, "Torrent telemetry rejected: HTTP ${response.code}")
+                    }
+                }
+            }.onFailure { Log.d(TAG, "Torrent telemetry report failed", it) }
+        }
     }
 
     fun shutdown() {

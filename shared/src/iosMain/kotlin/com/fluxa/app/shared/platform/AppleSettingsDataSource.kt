@@ -195,6 +195,7 @@ class AppleSettingsDataSource : SettingsDataSource {
     override suspend fun moveHomeFeed(key: String, direction: Int) = Unit
     override suspend fun toggleTopTenFeed(key: String) = Unit
     override suspend fun disconnectSync() = Unit
+    override suspend fun disconnectProvider(provider: String) = Unit
 
     private fun readState(): SettingsUiState = SettingsUiState(
         account = SettingsAccountUiModel(

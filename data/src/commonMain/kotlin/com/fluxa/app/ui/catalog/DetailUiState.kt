@@ -27,5 +27,14 @@ data class DetailUiState(
     val similarItems: List<Meta> = emptyList(),
     val trailers: List<DetailTrailer> = emptyList(),
     val trailerUrl: String? = null,
+    val traktComments: List<CommunityComment> = emptyList(),
+    val mdblistDiscussion: List<CommunityComment> = emptyList(),
     val userAddons: List<AddonDescriptor> = emptyList()
+)
+
+data class CommunityComment(
+    val author: String,
+    val body: String,
+    val likes: Int = 0,
+    val spoiler: Boolean = false
 )

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -18,8 +19,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.media3.exoplayer.ExoPlayer
 import com.fluxa.app.shared.LocalHeroTrailerSurface
+import com.fluxa.app.shared.feature.detail.LocalDetailRatingLogo
 import com.fluxa.app.ui.catalog.HeroTrailerVideoSurface
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.OfflineDownloadManager
@@ -92,6 +96,22 @@ internal fun AppRoutesHost(
     CompositionLocalProvider(
         LocalHeroTrailerSurface provides { url, cues, onActiveSubtitleChanged, trailerModifier ->
             HeroTrailerVideoSurface(url, cues, onActiveSubtitleChanged, trailerModifier)
+        },
+        LocalDetailRatingLogo provides { source, value, logoModifier ->
+            val resource = when (source) {
+                "imdb" -> com.fluxa.app.R.drawable.rating_imdb
+                "tmdb" -> com.fluxa.app.R.drawable.rating_tmdb
+                "trakt" -> com.fluxa.app.R.drawable.rating_trakt
+                "letterboxd" -> com.fluxa.app.R.drawable.rating_letterboxd
+                "tomatoes" -> if ((value.toFloatOrNull() ?: 0f) >= 60f) com.fluxa.app.R.drawable.rating_rt_tomato_fresh else com.fluxa.app.R.drawable.rating_rt_tomato_rotten
+                "popcorn" -> if ((value.toFloatOrNull() ?: 0f) >= 60f) com.fluxa.app.R.drawable.rating_rt_popcorn_full else com.fluxa.app.R.drawable.rating_rt_popcorn_spilled
+                "metacritic", "metacriticuser" -> com.fluxa.app.R.drawable.rating_metacritic
+                "myanimelist" -> com.fluxa.app.R.drawable.rating_mal
+                else -> null
+            }
+            if (resource != null) {
+                Image(painter = painterResource(resource), contentDescription = null, modifier = logoModifier)
+            }
         }
     ) {
     com.fluxa.app.shared.FluxaAppHost(
