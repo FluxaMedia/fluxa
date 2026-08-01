@@ -53,6 +53,7 @@ interface TmdbDetailRequestPlan {
 async function tmdbDetailRequests(
   { contentType, id, language, apiKey }: TmdbRequest,
   endpoints: string[],
+  signal?: AbortSignal,
 ): Promise<TmdbDetailRequestPlan | null> {
   const plan = await coreInvoke<Partial<TmdbDetailRequestPlan> & { findUrl?: string }>(
     'tmdbDetailRequestPlan',
@@ -61,7 +62,7 @@ async function tmdbDetailRequests(
   if (!plan) return null;
   if (plan.tmdbId && plan.urls) return plan as TmdbDetailRequestPlan;
   if (!plan.findUrl) return null;
-  const find = await tryFetchJson(plan.findUrl);
+  const find = await tryFetchJson(plan.findUrl, { signal });
   if (!find) return null;
   return coreInvoke<TmdbDetailRequestPlan>(
     'tmdbDetailRequestUrlsFromFind',
@@ -154,6 +155,7 @@ async function fetchPluginStreamsForDetail(
   contentType: string,
   id: string | undefined,
   detail: unknown,
+  signal?: AbortSignal,
 ): Promise<Array<Record<string, unknown>>> {
   if (!id) return [];
   try {
@@ -171,11 +173,11 @@ async function fetchPluginStreamsForDetail(
       .find((value) => /^\d+$/.test(value));
     const [parsed, tmdbPlan] = await Promise.all([
       coreParseVideoId(id),
-      tmdbDetailRequests({ contentType, id, language, apiKey }, []),
+      tmdbDetailRequests({ contentType, id, language, apiKey }, [], signal),
     ]);
     const pluginContentId = embeddedTmdbId || tmdbPlan?.tmdbId || parsed.imdb;
     if (!pluginContentId) return [];
-    return await fetchPluginStreams(contentType, pluginContentId, parsed.season, parsed.episode);
+    return await fetchPluginStreams(contentType, pluginContentId, parsed.season, parsed.episode, signal);
   } catch {
     return [];
   }
@@ -185,6 +187,7 @@ export async function fetchDetailStreams(
   payload: Record<string, unknown>,
   onStateUpdate?: (state: Partial<AppState>) => void,
   generation?: number,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const requestIds = (payload.requestIds as string[] | undefined) ?? (typeof payload.id === 'string' ? [payload.id] : []);
   const idField = (typeof payload.id === 'string' ? payload.id : undefined) ?? requestIds[0];
@@ -217,7 +220,7 @@ export async function fetchDetailStreams(
           );
         }
       : undefined,
-    undefined,
+    signal,
     (addonName) => failedAddonNames.add(addonName),
   );
 
@@ -226,7 +229,7 @@ export async function fetchDetailStreams(
 
   const streams = values.flatMap((value) => ((value as { streams?: unknown[] })?.streams ?? []));
 
-  const pluginStreams = await fetchPluginStreamsForDetail(contentType, idField, payload.detail);
+  const pluginStreams = await fetchPluginStreamsForDetail(contentType, idField, payload.detail, signal);
   if (pluginStreams.length > 0) streams.push(...pluginStreams);
 
   const availableAddons = [...new Set(
@@ -458,6 +461,6 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
   };
 }
 
-export async function prefetchDetailStreams(payload: Record<string, unknown>): Promise<unknown> {
-  return fetchDetailStreams(payload);
+export async function prefetchDetailStreams(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+  return fetchDetailStreams(payload, undefined, undefined, signal);
 }

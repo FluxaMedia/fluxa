@@ -107,6 +107,7 @@ async function deriveNextProgressFromLastWatched(metaObj: Record<string, unknown
 async function runEffect(
   effect: Effect,
   onStateUpdate?: (state: Partial<AppState>) => void,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const p = effect.payload;
   let value: unknown;
@@ -224,16 +225,16 @@ async function runEffect(
       break;
 
     case 'fetchAddonManifest':
-      value = await fetchAddonManifest(p);
+      value = await fetchAddonManifest(p, signal);
       break;
     case 'refreshInstalledAddons':
-      value = await refreshInstalledAddons(p);
+      value = await refreshInstalledAddons(p, signal);
       break;
     case 'fetchAddonResource':
-      value = await fetchAddonResource(p);
+      value = await fetchAddonResource(p, signal);
       break;
     case 'fetchPluginManifest':
-      value = await fetchPluginManifestEffect(p);
+      value = await fetchPluginManifestEffect(p, signal);
       break;
 
     case 'fetchYoutubeTrailerWatchConfig':
@@ -243,16 +244,16 @@ async function runEffect(
       break;
 
     case 'fetchCatalogPage':
-      value = await fetchCatalogPage(p);
+      value = await fetchCatalogPage(p, signal);
       break;
     case 'fetchDiscoverPage':
-      value = await fetchCatalogPage(p);
+      value = await fetchCatalogPage(p, signal);
       break;
     case 'runSearch':
-      value = await runSearch(p);
+      value = await runSearch(p, signal);
       break;
     case 'runDiscover':
-      value = await runDiscover(p);
+      value = await runDiscover(p, signal);
       break;
 
     case 'fetchMetaDetail':
@@ -263,16 +264,16 @@ async function runEffect(
       value = await fetchDetailSecondary(p);
       break;
     case 'prefetchDetailStreams':
-      value = await prefetchDetailStreams(p);
+      value = await prefetchDetailStreams(p, signal);
       break;
     case 'fetchDetailStreams':
-      value = await fetchDetailStreams(p, onStateUpdate, effect.generation);
+      value = await fetchDetailStreams(p, onStateUpdate, effect.generation, signal);
       break;
     case 'fetchSeasonEpisodes':
       value = await fetchSeasonEpisodes(p);
       break;
     case 'loadStreams':
-      value = await fetchDetailStreams(p);
+      value = await fetchDetailStreams(p, undefined, undefined, signal);
       break;
 
     case 'fetchSubtitles':
@@ -329,7 +330,7 @@ async function runEffect(
       break;
 
     case 'prepareDirectPlayback':
-      value = await fetchDetailStreams(p);
+      value = await fetchDetailStreams(p, undefined, undefined, signal);
       break;
 
     default:
@@ -345,15 +346,28 @@ export async function executeEffect(
   onStateUpdate?: (state: Partial<AppState>) => void,
 ): Promise<EffectResult> {
   try {
+    const abortController = new AbortController();
     const run = Sentry.startSpan(
       { name: effect.type, op: 'fluxa.effect' },
-      () => runEffect(effect, onStateUpdate),
+      () => runEffect(effect, onStateUpdate, abortController.signal),
     );
     const value = effect.timeoutMs && effect.timeoutMs > 0
-      ? await Promise.race([
-          run,
-          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error(`effect timed out after ${effect.timeoutMs}ms`)), effect.timeoutMs)),
-        ])
+      ? await new Promise<unknown>((resolve, reject) => {
+          const timeoutId = window.setTimeout(() => {
+            abortController.abort();
+            reject(new Error(`effect timed out after ${effect.timeoutMs}ms`));
+          }, effect.timeoutMs);
+          void run.then(
+            (result) => {
+              window.clearTimeout(timeoutId);
+              resolve(result);
+            },
+            (error) => {
+              window.clearTimeout(timeoutId);
+              reject(error);
+            },
+          );
+        })
       : await run;
     return { effectId: effect.id, status: 'ok', value };
   } catch (err) {

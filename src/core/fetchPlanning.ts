@@ -32,7 +32,7 @@ function isBuiltinRequest(item: FetchPlanRequest): item is BuiltinFetchPlanReque
   return typeof (item as Partial<BuiltinFetchPlanRequest>).__builtinResolve === 'function';
 }
 
-async function buildBuiltinRequest(request: Record<string, unknown>): Promise<BuiltinFetchPlanRequest | null> {
+async function buildBuiltinRequest(request: Record<string, unknown>, signal?: AbortSignal): Promise<BuiltinFetchPlanRequest | null> {
   const kind = request.kind;
   if (typeof kind !== 'string' || !BUILTIN_RESOURCE_KINDS.has(kind)) return null;
   if (kind === 'catalogPage' && !isBuiltinTmdbAddon(request.transportUrl as string | undefined)) return null;
@@ -51,7 +51,7 @@ async function buildBuiltinRequest(request: Record<string, unknown>): Promise<Bu
       stopOnFirstResult: false,
       addonName: 'TMDB',
       __builtinResolve: async () => {
-        const { metas } = await fetchBuiltinCatalog(String(request.contentType ?? ''), extra, apiKey, language);
+        const { metas } = await fetchBuiltinCatalog(String(request.contentType ?? ''), extra, apiKey, language, signal);
         return metas.length ? { items: metas } : null;
       },
     };
@@ -62,7 +62,7 @@ async function buildBuiltinRequest(request: Record<string, unknown>): Promise<Bu
       stopOnFirstResult: true,
       addonName: 'TMDB',
       __builtinResolve: async () => {
-        const result = await fetchBuiltinSeasonEpisodes(String(request.id ?? ''), Number(request.season ?? 0), apiKey, language);
+        const result = await fetchBuiltinSeasonEpisodes(String(request.id ?? ''), Number(request.season ?? 0), apiKey, language, signal);
         return result.episodes.length ? result : null;
       },
     };
@@ -72,7 +72,7 @@ async function buildBuiltinRequest(request: Record<string, unknown>): Promise<Bu
     stopOnFirstResult: true,
     addonName: 'TMDB',
     __builtinResolve: async () => {
-      const result = await fetchBuiltinMeta(String(request.contentType ?? ''), String(request.id ?? ''), apiKey, language);
+      const result = await fetchBuiltinMeta(String(request.contentType ?? ''), String(request.id ?? ''), apiKey, language, signal);
       return result ? { meta: result.meta } : null;
     },
   };
@@ -148,7 +148,7 @@ export async function fetchPlannedResources(
   let requests = (policy?.requests ?? []) as FetchPlanRequest[];
   const streamRetry = policy?.streamRetry ?? DEFAULT_STREAM_RETRY;
 
-  const builtinRequest = await buildBuiltinRequest(request);
+  const builtinRequest = await buildBuiltinRequest(request, signal);
   if (builtinRequest) {
     const prefs = await loadPrefs();
     requests = prefs.tmdbPreferOverAddons ? [builtinRequest, ...requests] : [...requests, builtinRequest];

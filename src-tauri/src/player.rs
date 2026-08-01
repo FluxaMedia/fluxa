@@ -115,9 +115,11 @@ fn encode_query_component(value: &str) -> String {
 }
 
 fn torrent_sibling_subtitles(state: &DesktopState) -> Vec<(String, String, Option<String>)> {
-    let base_url = state.torrent_server_base_url.lock().unwrap().clone();
-    let link = state.torrent_stream_link.lock().unwrap().clone();
-    let selected_id = *state.torrent_stream_file_id.lock().unwrap();
+    let torrent = state.torrent.lock().unwrap();
+    let base_url = torrent.server_base_url.clone();
+    let link = torrent.stream_link.clone();
+    let selected_id = torrent.stream_file_id;
+    drop(torrent);
     let (Some(base_url), Some(link), Some(selected_id)) = (base_url, link, selected_id) else {
         return Vec::new();
     };

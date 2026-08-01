@@ -13,7 +13,7 @@ import { embeddedMpvSetLoadingArtwork, embeddedMpvStatus, playerClearChapters, p
 import type { AddonDescriptor, Meta, Stream, Video } from '../core/types';
 
 export function usePlayerPlaybackStart(options: any) {
-  const { stateRef, onEpisodePlaybackFailed, playGenerationRef, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage } = options;
+  const { stateRef, onEpisodePlaybackFailed, playbackScope, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage } = options;
   const handlePlay = useCallback(async (
     stream: Stream,
     meta?: Meta,
@@ -30,8 +30,8 @@ export function usePlayerPlaybackStart(options: any) {
     setPlayerPlaybackError(null);
     setPlayerSubtitleWarning(null);
     try {
-    const generation = ++playGenerationRef.current;
-    const isCancelled = () => generation !== playGenerationRef.current;
+    const generation = playbackScope.advance();
+    const isCancelled = () => !playbackScope.isCurrent(generation);
 
     const playbackPlan = await corePlaybackPreparePlan({
       stream,

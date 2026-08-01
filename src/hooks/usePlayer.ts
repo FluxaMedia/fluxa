@@ -48,6 +48,7 @@ import { usePlayerProgressPersistence } from './usePlayerProgressPersistence';
 import { applyPlayerCloseActions } from './playerCloseActions';
 import { usePlayerRetry } from './usePlayerRetry';
 import { usePlayerPlaybackStart } from './usePlayerPlaybackStart';
+import { AsyncScope } from '../core/asyncScope';
 
 function playbackErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
@@ -126,7 +127,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   const activeProfileRef = useRef<UserProfile | null>(null);
   const mpvInitializedRef = useRef(false);
   const closingPlayerRef = useRef(false);
-  const playGenerationRef = useRef(0);
+  const playbackScopeRef = useRef(new AsyncScope());
   const artworkPrefetchRef = useRef<Promise<unknown> | null>(null);
   const inNativePlayerRef = useRef(false);
   const pendingArtworkRef = useRef<PlayerArtwork | null>(null);
@@ -157,7 +158,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerLoadingOverlay((prev) => (prev ? { ...prev, status } : prev));
   }, []);
 
-  const isPlaybackCancelled = useCallback((generation: number) => playGenerationRef.current !== generation, []);
+  const isPlaybackCancelled = useCallback((generation: number) => !playbackScopeRef.current.isCurrent(generation), []);
 
   const playInEmbeddedMpv = usePlayerMpvLifecycle({
     stateRef,
@@ -177,7 +178,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   });
 
   const failPlayerLoading = useCallback(async (message: string) => {
-    ++playGenerationRef.current;
+    playbackScopeRef.current.invalidate();
     const shouldStopTorrent = playerUsesTorrentRef.current;
     setPlayerUrl(null);
     setPlayerSubtitleUrl(undefined);
@@ -219,7 +220,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     artwork: PlayerArtwork,
     stream: Stream,
   ): Promise<unknown> => {
-    const isCancelled = () => playGenerationRef.current !== generation;
+    const isCancelled = () => !playbackScopeRef.current.isCurrent(generation);
     setPlayerTitle(title.contentTitle);
     setPlayerEpisodeTitle(title.episodeLine ?? undefined);
     pendingArtworkRef.current = artwork;
@@ -274,8 +275,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   const closePlayer = useCallback(async () => {
     if (closingPlayerRef.current) return;
     closingPlayerRef.current = true;
-    ++playGenerationRef.current;
-    const closeGeneration = playGenerationRef.current;
+    const closeGeneration = playbackScopeRef.current.advance();
     const captureMeta = playingMetaRef.current;
     const captureEpisode = playingEpisodeRef.current;
     const captureStream = playingStreamRef.current;
@@ -339,13 +339,13 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
         }
       }
     } finally {
-      const stillCurrent = playGenerationRef.current === closeGeneration;
+      const stillCurrent = playbackScopeRef.current.isCurrent(closeGeneration);
       if (shouldStopTorrent && stillCurrent) {
         await stopTorrentStream().catch(() => false);
       }
       closingPlayerRef.current = false;
     }
-    if (playGenerationRef.current === closeGeneration) {
+    if (playbackScopeRef.current.isCurrent(closeGeneration)) {
       playingMetaRef.current = null;
       playingEpisodeRef.current = null;
       playingStreamRef.current = null;
@@ -370,7 +370,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   });
 
   const handlePlay = usePlayerPlaybackStart({
-    stateRef, onEpisodePlaybackFailed, playGenerationRef, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage,
+    stateRef, onEpisodePlaybackFailed, playbackScope: playbackScopeRef.current, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage,
   });
   const handleNativePlayerError = useCallback(async (message: string) => {
     const nextSource = await nextRetrySource(playingStreamRef.current);

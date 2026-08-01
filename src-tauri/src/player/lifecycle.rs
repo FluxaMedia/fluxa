@@ -126,7 +126,7 @@ pub async fn player_load(
         url
     };
 
-    *state.thumb_url.lock().unwrap() = Some(url.clone());
+    state.player_overlay.lock().unwrap().thumb_url = Some(url.clone());
 
     let engine = playback_engine::read_player_engine(&app);
     *state.active_player_engine.lock().unwrap() = engine;
@@ -228,7 +228,7 @@ pub fn player_apply_preferences(
     preferences: serde_json::Value,
 ) -> Result<(), String> {
     if let Some(v) = preferences.get("useChapterSkip").and_then(|v| v.as_bool()) {
-        *state.use_chapter_skip.lock().unwrap() = v;
+        state.player_overlay.lock().unwrap().use_chapter_skip = v;
     }
     let (options, anime4k_resolved) = mpv_options_from_preferences(Some(&app), &preferences);
     if anime4k_should_apply(&preferences) && !anime4k_resolved {
@@ -250,7 +250,7 @@ pub fn player_apply_preferences(
         }
     };
     let anime4k_enabled = anime4k_resolved && options_applied;
-    *state.anime4k_enabled.lock().unwrap() = anime4k_enabled;
+    state.player_overlay.lock().unwrap().anime4k_enabled = anime4k_enabled;
     let _ = app.emit(
         "player-anime4k-state",
         serde_json::json!({ "enabled": anime4k_enabled }),

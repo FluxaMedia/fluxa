@@ -108,7 +108,7 @@ async fn ensure_healthy_torrent_base_url(
     state: &State<'_, DesktopState>,
     data_dir: &std::path::Path,
 ) -> Option<String> {
-    let base_url = state.torrent_server_base_url.lock().unwrap().clone()?;
+    let base_url = state.torrent.lock().unwrap().server_base_url.clone()?;
     let healthy = tauri::async_runtime::spawn_blocking({
         let base_url = base_url.clone();
         move || torrent_transport::healthy(&base_url)
@@ -118,10 +118,14 @@ async fn ensure_healthy_torrent_base_url(
     if healthy {
         return Some(base_url);
     }
-    let previous_generation = state.torrent_generation.lock().unwrap().take();
-    *state.torrent_server_base_url.lock().unwrap() = None;
-    *state.torrent_stream_link.lock().unwrap() = None;
-    *state.torrent_stream_file_id.lock().unwrap() = None;
+    let previous_generation = {
+        let mut torrent = state.torrent.lock().unwrap();
+        let generation = torrent.generation.take();
+        torrent.server_base_url = None;
+        torrent.stream_link = None;
+        torrent.stream_file_id = None;
+        generation
+    };
     let cleanup_dir = data_dir.to_path_buf();
     let _ = tauri::async_runtime::spawn_blocking(move || {
         let stopped = fluxa_streaming_engine::stop_torrent_server(previous_generation);
@@ -153,7 +157,7 @@ pub async fn start_torrent_stream(
                 .and_then(Value::as_str)
                 .map(str::to_ascii_lowercase)
         });
-    let existing_link = state.torrent_stream_link.lock().unwrap().clone();
+    let existing_link = state.torrent.lock().unwrap().stream_link.clone();
     let existing_base_url = ensure_healthy_torrent_base_url(&state, &data_dir).await;
     let reuse_existing_server = existing_base_url.is_some();
     let same_torrent = info_hash.as_ref().is_some_and(|hash| {
@@ -165,8 +169,9 @@ pub async fn start_torrent_stream(
         if let (Some(base_url), Some(old_link)) = (existing_base_url.clone(), existing_link) {
             torrent_transport::remove(&base_url, &old_link);
         }
-        *state.torrent_stream_link.lock().unwrap() = None;
-        *state.torrent_stream_file_id.lock().unwrap() = None;
+        let mut torrent = state.torrent.lock().unwrap();
+        torrent.stream_link = None;
+        torrent.stream_file_id = None;
     }
     let (stream_url, base_url, link, generation, file_id) =
         tauri::async_runtime::spawn_blocking(move || {
@@ -174,11 +179,12 @@ pub async fn start_torrent_stream(
         })
         .await
         .map_err(|e| e.to_string())??;
-    *state.torrent_server_base_url.lock().unwrap() = Some(base_url);
-    *state.torrent_stream_link.lock().unwrap() = Some(link);
-    *state.torrent_stream_file_id.lock().unwrap() = file_id;
+    let mut torrent = state.torrent.lock().unwrap();
+    torrent.server_base_url = Some(base_url);
+    torrent.stream_link = Some(link);
+    torrent.stream_file_id = file_id;
     if let Some(generation) = generation {
-        *state.torrent_generation.lock().unwrap() = Some(generation);
+        torrent.generation = Some(generation);
     }
     Ok(stream_url)
 }
@@ -200,25 +206,32 @@ pub(crate) async fn resolve_torrent_download_url(
         })
         .await
         .map_err(|e| e.to_string())??;
-    *state.torrent_server_base_url.lock().unwrap() = Some(base_url);
+    let mut torrent = state.torrent.lock().unwrap();
+    torrent.server_base_url = Some(base_url);
     if let Some(generation) = generation {
-        *state.torrent_generation.lock().unwrap() = Some(generation);
+        torrent.generation = Some(generation);
     }
     Ok(stream_url)
 }
 
 #[tauri::command]
 pub async fn stop_torrent_stream(state: State<'_, DesktopState>) -> Result<bool, String> {
-    let was_playing = state.torrent_stream_link.lock().unwrap().take().is_some();
-    *state.torrent_stream_file_id.lock().unwrap() = None;
+    let mut torrent = state.torrent.lock().unwrap();
+    let was_playing = torrent.stream_link.take().is_some();
+    torrent.stream_file_id = None;
     Ok(was_playing)
 }
 
 #[tauri::command]
 pub async fn player_torrent_stats(state: State<'_, DesktopState>) -> Result<Option<Value>, String> {
-    let base_url = state.torrent_server_base_url.lock().unwrap().clone();
-    let link = state.torrent_stream_link.lock().unwrap().clone();
-    let file_id = *state.torrent_stream_file_id.lock().unwrap();
+    let (base_url, link, file_id) = {
+        let torrent = state.torrent.lock().unwrap();
+        (
+            torrent.server_base_url.clone(),
+            torrent.stream_link.clone(),
+            torrent.stream_file_id,
+        )
+    };
     let (Some(base_url), Some(link)) = (base_url, link) else {
         return Ok(None);
     };

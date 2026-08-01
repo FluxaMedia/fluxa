@@ -520,7 +520,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         let _ = app.emit("native-player-show", ());
                         let state = app.state::<DesktopState>();
 
-                        *state.eof_next_fired.lock().unwrap() = false;
+                        state.player_overlay.lock().unwrap().eof_next_fired = false;
                         if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
                             let result = (|| {
                                 let mut players = state.player_renderer_vlc.lock().unwrap();
@@ -864,15 +864,14 @@ fn check_player_events(app: &AppHandle) {
     if !status.eof_reached() {
         return;
     }
-    let mut fired = state.eof_next_fired.lock().unwrap();
-    if *fired {
+    let mut overlay = state.player_overlay.lock().unwrap();
+    if !overlay.take_eof_next() {
         return;
     }
-    *fired = true;
-    drop(fired);
 
-    let next_sub = state.next_ep_subtitle.lock().unwrap().clone();
-    let auto_play = *state.auto_play_next_episode.lock().unwrap();
+    let next_sub = overlay.next_ep_subtitle.clone();
+    let auto_play = overlay.auto_play_next_episode;
+    drop(overlay);
     if FluxaCore::should_play_next_episode(!next_sub.is_empty(), auto_play) {
         let _ = app.emit("native-player-next-episode", ());
     } else {

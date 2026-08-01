@@ -69,6 +69,64 @@ use std::sync::Mutex;
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 
+pub struct PlayerOverlayState {
+    pub chapters_json: Option<String>,
+    pub skip_segments_json: Option<String>,
+    pub next_ep_subtitle: String,
+    pub next_ep_threshold_percent: f64,
+    pub auto_play_next_episode: bool,
+    pub auto_play_countdown_secs: u32,
+    pub auto_skip_segments: bool,
+    pub use_chapter_skip: bool,
+    pub eof_next_fired: bool,
+    pub episodes_json: Option<String>,
+    pub thumb_url: Option<String>,
+    pub seek_thumbnail_enabled: bool,
+    pub thumbnail_renderer: Option<mpv_render::MpvRenderer>,
+    pub thumbnail_loaded_url: Option<String>,
+    pub anime4k_enabled: bool,
+}
+
+impl Default for PlayerOverlayState {
+    fn default() -> Self {
+        Self {
+            chapters_json: None,
+            skip_segments_json: None,
+            next_ep_subtitle: String::new(),
+            next_ep_threshold_percent: 85.0,
+            auto_play_next_episode: true,
+            auto_play_countdown_secs: 7,
+            auto_skip_segments: false,
+            use_chapter_skip: true,
+            eof_next_fired: false,
+            episodes_json: None,
+            thumb_url: None,
+            seek_thumbnail_enabled: false,
+            thumbnail_renderer: None,
+            thumbnail_loaded_url: None,
+            anime4k_enabled: false,
+        }
+    }
+}
+
+impl PlayerOverlayState {
+    pub fn take_eof_next(&mut self) -> bool {
+        if self.eof_next_fired {
+            return false;
+        }
+        self.eof_next_fired = true;
+        true
+    }
+}
+
+#[derive(Default)]
+pub struct TorrentRuntimeState {
+    pub server_base_url: Option<String>,
+    pub stream_link: Option<String>,
+    pub stream_file_id: Option<usize>,
+    pub generation: Option<u64>,
+}
+
 pub struct DesktopState {
     pub engine_handle: Mutex<Option<u64>>,
     pub data_dir: Mutex<Option<PathBuf>>,
@@ -85,21 +143,7 @@ pub struct DesktopState {
     pub native_player_surface: Mutex<Option<windows_player_surface::NativePlayerSurface>>,
     #[cfg(target_os = "macos")]
     pub native_player_surface: Mutex<Option<macos_player_surface::NativePlayerSurface>>,
-    pub chapters_json: Mutex<Option<String>>,
-    pub skip_segments_json: Mutex<Option<String>>,
-    pub next_ep_subtitle: Mutex<String>,
-    pub next_ep_threshold_percent: Mutex<f64>,
-    pub auto_play_next_episode: Mutex<bool>,
-    pub auto_play_countdown_secs: Mutex<u32>,
-    pub auto_skip_segments: Mutex<bool>,
-    pub use_chapter_skip: Mutex<bool>,
-    pub eof_next_fired: Mutex<bool>,
-    pub episodes_json: Mutex<Option<String>>,
-    pub thumb_url: Mutex<Option<String>>,
-    pub seek_thumbnail_enabled: Mutex<bool>,
-    pub thumbnail_renderer: Mutex<Option<mpv_render::MpvRenderer>>,
-    pub thumbnail_loaded_url: Mutex<Option<String>>,
-    pub anime4k_enabled: Mutex<bool>,
+    pub player_overlay: Mutex<PlayerOverlayState>,
     pub pending_hide: AtomicBool,
     pub player_telemetry_running: AtomicBool,
     pub player_position_interval_ms: AtomicU64,
@@ -107,10 +151,7 @@ pub struct DesktopState {
     pub main_window_size: std::sync::atomic::AtomicU64,
     pub downloads: downloads::DownloadsState,
     pub pending_stream_headers: Mutex<Vec<(String, String)>>,
-    pub torrent_server_base_url: Mutex<Option<String>>,
-    pub torrent_stream_link: Mutex<Option<String>>,
-    pub torrent_stream_file_id: Mutex<Option<usize>>,
-    pub torrent_generation: Mutex<Option<u64>>,
+    pub torrent: Mutex<TorrentRuntimeState>,
     pub close_flush_done: AtomicBool,
     pub sleep_inhibitor: Mutex<sleep_inhibitor::SleepInhibitor>,
 }
@@ -131,21 +172,7 @@ impl Default for DesktopState {
             native_player_surface: Mutex::new(None),
             #[cfg(target_os = "macos")]
             native_player_surface: Mutex::new(None),
-            chapters_json: Mutex::new(None),
-            skip_segments_json: Mutex::new(None),
-            next_ep_subtitle: Mutex::new(String::new()),
-            next_ep_threshold_percent: Mutex::new(85.0),
-            auto_play_next_episode: Mutex::new(true),
-            auto_play_countdown_secs: Mutex::new(7),
-            auto_skip_segments: Mutex::new(false),
-            use_chapter_skip: Mutex::new(true),
-            eof_next_fired: Mutex::new(false),
-            episodes_json: Mutex::new(None),
-            thumb_url: Mutex::new(None),
-            seek_thumbnail_enabled: Mutex::new(false),
-            thumbnail_renderer: Mutex::new(None),
-            thumbnail_loaded_url: Mutex::new(None),
-            anime4k_enabled: Mutex::new(false),
+            player_overlay: Mutex::new(PlayerOverlayState::default()),
             pending_hide: AtomicBool::new(false),
             player_telemetry_running: AtomicBool::new(false),
             player_position_interval_ms: AtomicU64::new(750),
@@ -153,10 +180,7 @@ impl Default for DesktopState {
             main_window_size: std::sync::atomic::AtomicU64::new(0),
             downloads: downloads::DownloadsState::default(),
             pending_stream_headers: Mutex::new(Vec::new()),
-            torrent_server_base_url: Mutex::new(None),
-            torrent_stream_link: Mutex::new(None),
-            torrent_stream_file_id: Mutex::new(None),
-            torrent_generation: Mutex::new(None),
+            torrent: Mutex::new(TorrentRuntimeState::default()),
             close_flush_done: AtomicBool::new(false),
             sleep_inhibitor: Mutex::new(sleep_inhibitor::SleepInhibitor::default()),
         }
@@ -165,6 +189,20 @@ impl Default for DesktopState {
 
 static DIAGNOSTIC_MODE: AtomicBool = AtomicBool::new(false);
 static SENTRY_GUARD: Mutex<Option<sentry::ClientInitGuard>> = Mutex::new(None);
+
+#[cfg(test)]
+mod tests {
+    use super::PlayerOverlayState;
+
+    #[test]
+    fn eof_next_is_consumed_once_per_playback() {
+        let mut overlay = PlayerOverlayState::default();
+        assert!(overlay.take_eof_next());
+        assert!(!overlay.take_eof_next());
+        overlay.eof_next_fired = false;
+        assert!(overlay.take_eof_next());
+    }
+}
 
 fn sentry_dsn() -> Option<sentry::types::Dsn> {
     "https://7fe8e82cf7ea0eed65175d3d43afb1c0@o4511704565678080.ingest.de.sentry.io/4511706871693392"

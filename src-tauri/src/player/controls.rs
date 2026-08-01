@@ -128,7 +128,7 @@ pub fn player_set_anime4k_enabled(
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             surface.command_args(commands)?;
-            *state.anime4k_enabled.lock().unwrap() = enabled;
+            state.player_overlay.lock().unwrap().anime4k_enabled = enabled;
             let _ = app.emit(
                 "player-anime4k-state",
                 serde_json::json!({ "enabled": enabled }),
@@ -147,7 +147,7 @@ pub fn player_set_anime4k_enabled(
             }
         }
     }
-    *state.anime4k_enabled.lock().unwrap() = enabled;
+    state.player_overlay.lock().unwrap().anime4k_enabled = enabled;
     let _ = app.emit(
         "player-anime4k-state",
         serde_json::json!({ "enabled": enabled }),
@@ -157,7 +157,7 @@ pub fn player_set_anime4k_enabled(
 
 #[tauri::command]
 pub fn player_get_anime4k_enabled(state: State<DesktopState>) -> bool {
-    *state.anime4k_enabled.lock().unwrap()
+    state.player_overlay.lock().unwrap().anime4k_enabled
 }
 
 #[tauri::command]
@@ -167,7 +167,7 @@ pub fn player_command(
     command: String,
 ) -> Result<(), String> {
     if command == "stop" {
-        *state.eof_next_fired.lock().unwrap() = true;
+        state.player_overlay.lock().unwrap().eof_next_fired = true;
     }
     #[cfg(target_os = "windows")]
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
@@ -189,4 +189,3 @@ pub fn player_set_sleep_inhibition(
 ) -> Result<(), String> {
     state.sleep_inhibitor.lock().unwrap().set_enabled(enabled)
 }
-

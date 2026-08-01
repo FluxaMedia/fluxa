@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { NavSidebar, TopBar, type NavRoute } from './components/NavSidebar';
 import { ProfileChip } from './components/ProfileChip';
 import { GlobalSearchBar } from './components/GlobalSearchBar';
-import { PlayerLoadingOverlay } from './components/PlayerLoadingOverlay';
+import { PlaybackHost } from './components/PlaybackHost';
+import { AppShell } from './components/AppShell';
+import { AppBootstrap } from './components/AppBootstrap';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { setBrowsingDiscordPresence } from './core/discordPresence';
@@ -13,7 +15,7 @@ import { useDetailNavigation } from './hooks/useDetailNavigation';
 import { useAppLayoutPrefs } from './hooks/useAppLayoutPrefs';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UpdateModal, startUpdateCheck } from './components/UpdateModal';
-import { CalendarScreen, DetailScreen, DiscoverScreen, HomeScreen, LibraryScreen, ReactPlayerOverlay, SearchScreen, SettingsScreen } from './appScreens';
+import { CalendarScreen, DetailScreen, DiscoverScreen, HomeScreen, LibraryScreen, SearchScreen, SettingsScreen } from './appScreens';
 import { AppProfileGate, AppWelcomeGate } from './AppGateScreens';
 import { NuvioStatusBanner } from './components/NuvioStatusBanner';
 import { OfflineBanner } from './components/OfflineBanner';
@@ -28,13 +30,28 @@ import { dispatchAction } from './core/engine';
 import { pumpEffects } from './core/effectRunner';
 import { appPrefs, prefBool, prefString } from './core/appPrefs';
 import { setRpdbApiKey } from './core/rpdb';
+import { AppStateStore, appStateSliceEqual, useAppStateSelector } from './core/appStateStore';
 import { mergeAppState } from './core/mergeState';
+import { AsyncScope } from './core/asyncScope';
 import { usePlayer } from './hooks/usePlayer';
 import { useAppInit } from './hooks/useAppInit';
 import type { AppState, Meta, Stream, Video, UserProfile } from './core/types';
 
+const settingsStateEqual = appStateSliceEqual('settings');
+const profileStateEqual = appStateSliceEqual('plugins');
+const searchBarStateEqual = appStateSliceEqual('home', 'search');
+const detailStateEqual = appStateSliceEqual('detail', 'settings', 'library', 'home', 'addons');
+const homeStateEqual = appStateSliceEqual('home', 'settings', 'addons');
+const calendarStateEqual = appStateSliceEqual('calendar', 'library');
+const discoverStateEqual = appStateSliceEqual('discover', 'settings', 'addons');
+const libraryStateEqual = appStateSliceEqual('library', 'settings', 'home');
+const searchStateEqual = appStateSliceEqual('search', 'settings');
+const settingsScreenStateEqual = appStateSliceEqual('addons', 'settings', 'plugins');
+
 export default function App() {
-  const [state, setState] = useState<AppState>(DEFAULT_STATE);
+  const storeRef = useRef<AppStateStore | null>(null);
+  if (!storeRef.current) storeRef.current = new AppStateStore(DEFAULT_STATE);
+  const store = storeRef.current;
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [activeRoute, setActiveRoute] = useState<NavRoute>('home');
   const [homeScrolled, setHomeScrolled] = useState(false);
@@ -42,7 +59,18 @@ export default function App() {
   const [pendingAddonUrl, setPendingAddonUrl] = useState<string | null>(null);
   const [p2pDialog, setP2PDialog] = useState<{ mode: 'first-time' | 'disabled'; pendingPlay: () => void } | null>(null);
   const storedPrefsRef = useRef<Record<string, unknown>>({});
-  const stateRef = useRef<AppState>(DEFAULT_STATE);
+  const stateRef = useRef<AppState>(store.getState());
+  const profileScopeRef = useRef(new AsyncScope());
+  const settingsState = useAppStateSelector(store, (appState) => appState, settingsStateEqual);
+  const profileState = useAppStateSelector(store, (appState) => appState, profileStateEqual);
+  const searchBarState = useAppStateSelector(store, (appState) => appState, searchBarStateEqual);
+  const detailState = useAppStateSelector(store, (appState) => appState, detailStateEqual);
+  const homeState = useAppStateSelector(store, (appState) => appState, homeStateEqual);
+  const calendarState = useAppStateSelector(store, (appState) => appState, calendarStateEqual);
+  const discoverState = useAppStateSelector(store, (appState) => appState, discoverStateEqual);
+  const libraryState = useAppStateSelector(store, (appState) => appState, libraryStateEqual);
+  const searchState = useAppStateSelector(store, (appState) => appState, searchStateEqual);
+  const settingsScreenState = useAppStateSelector(store, (appState) => appState, settingsScreenStateEqual);
   const lastNonSettingsRouteRef = useRef<NavRoute>('home');
   const lastNonSearchRouteRef = useRef<NavRoute>('home');
   const episodePlaybackFailureRef = useRef<(meta: Meta, episode: Video, message: string) => Promise<void>>(async () => {});
@@ -66,14 +94,23 @@ export default function App() {
   const updateState = useCallback((s: Partial<AppState>) => {
     const overlaid = overlayPrefs(mergeAppState(stateRef.current, s));
     stateRef.current = overlaid;
-    setState(overlaid);
-  }, [overlayPrefs]);
+    store.replace(overlaid);
+  }, [overlayPrefs, store]);
 
   const updateStateDeferred = useCallback((s: Partial<AppState>) => {
     const overlaid = overlayPrefs(mergeAppState(stateRef.current, s));
     stateRef.current = overlaid;
-    React.startTransition(() => setState(overlaid));
-  }, [overlayPrefs]);
+    React.startTransition(() => store.replace(overlaid));
+  }, [overlayPrefs, store]);
+
+  const replaceState = useCallback((next: AppState) => {
+    stateRef.current = next;
+    store.replace(next);
+  }, [store]);
+
+  const invalidateProfileWork = useCallback(() => {
+    profileScopeRef.current.invalidate();
+  }, []);
 
   const {
     ready,
@@ -196,8 +233,9 @@ export default function App() {
   const { searchFocusSignal, setSearchFocusSignal } = useGlobalShortcuts({ nativePlayerActive, navigateRoute, goBack });
 
   const dispatch = useCallback(async (actionJson: string) => {
+    const profileRevision = profileScopeRef.current.capture();
     const result = await dispatchAction(actionJson);
-    if (!result) return;
+    if (!result || !profileScopeRef.current.isCurrent(profileRevision)) return;
     try {
       const action = JSON.parse(actionJson) as { type?: string };
       if (action.type === 'settingsChanged') {
@@ -207,7 +245,9 @@ export default function App() {
     } catch {}
     updateState(result.state);
     if (result.effects.length > 0) {
-      await pumpEffects(result.effects, updateStateDeferred).catch(() => undefined);
+      await pumpEffects(result.effects, (patch) => {
+        if (profileScopeRef.current.isCurrent(profileRevision)) updateStateDeferred(patch);
+      }).catch(() => undefined);
     }
   }, [updateState, updateStateDeferred]);
 
@@ -222,10 +262,11 @@ export default function App() {
   }, [updateState]);
 
   const switchToNoProfile = useCallback(async () => {
+    invalidateProfileWork();
     setActiveProfile(null);
     await setActiveProfileId('');
     await applyStoredPrefs();
-  }, [applyStoredPrefs, setActiveProfile]);
+  }, [applyStoredPrefs, invalidateProfileWork, setActiveProfile]);
 
   const activeProfileId = activeProfile?.id;
   const handleNuvioSynced = useCallback(async (changed: boolean) => {
@@ -258,9 +299,9 @@ export default function App() {
   const handleSearchQueryChange = useCallback((query: string) => { setGlobalSearchQuery(query); }, []);
   const handleDiscoverBack = useCallback(() => { setDiscoverInitialGenre(null); setActiveRoute('home'); }, [setDiscoverInitialGenre]);
 
-  const prefs = React.useMemo(() => appPrefs(state), [state.settings?.values]);
+  const prefs = React.useMemo(() => appPrefs(settingsState), [settingsState.settings?.values]);
   const { rootStyle, isTopBar, navBarPosition, navItemsAlign, sidebarAlwaysOpen, sidebarOffset, mirrorSearchToLeft } = useAppLayoutPrefs({
-    state, prefs, nativePlayerActive, updateState, storedPrefsRef,
+    state: settingsState, prefs, nativePlayerActive, updateState, storedPrefsRef,
   });
 
   React.useEffect(() => {
@@ -268,32 +309,22 @@ export default function App() {
     setBrowsingDiscordPresence(BROWSING_LABELS[activeRoute] ?? 'Browsing');
   }, [activeRoute, detailMeta, nativePlayerActive]);
 
-  if (!ready || !profilesChecked) {
-    return (
-      <div style={appStyles.loading}>
-        <span style={appStyles.loadingText}>fluxa</span>
-      </div>
-    );
-  }
-
-  if (!welcomeCompleted) {
-    return (
-      <AppWelcomeGate
+  const welcomeGate = (
+    <AppWelcomeGate
         dispatch={dispatch}
         applyStoredPrefs={applyStoredPrefs}
         setAllProfiles={setAllProfiles}
         setActiveProfile={setActiveProfile}
         setWelcomeCompleted={setWelcomeCompleted}
-      />
-    );
-  }
+        invalidateProfileWork={invalidateProfileWork}
+    />
+  );
 
-  if (!activeProfile || editProfileOpen) {
-    return (
-      <AppProfileGate
-        state={state}
+  const profileGate = (
+    <AppProfileGate
+        state={profileState}
         stateRef={stateRef}
-        setState={setState}
+        setState={replaceState}
         dispatch={dispatch}
         applyStoredPrefs={applyStoredPrefs}
         updateState={updateState}
@@ -301,22 +332,14 @@ export default function App() {
         setActiveProfile={setActiveProfile}
         setEditProfileOpen={setEditProfileOpen}
         setHomeResetKey={setHomeResetKey}
-      />
-    );
-  }
+        invalidateProfileWork={invalidateProfileWork}
+    />
+  );
 
   const showDetail = detailMeta !== null;
   const bannerOffset = (serverDown && !dismissed) || justRecovered ? 36 : 0;
 
-  return (
-    <div
-      style={rootStyle}
-      data-animations={prefBool(prefs, 'animationsEnabled', true) ? 'on' : 'off'}
-      data-density={prefString(prefs, 'interfaceDensity', 'medium')}
-      data-reduce-motion={prefBool(prefs, 'reduceMotion', false) ? 'true' : 'false'}
-      data-reduced-effects={prefBool(prefs, 'reducedEffects', false) ? 'true' : 'false'}
-    >
-      {!nativePlayerActive && (isTopBar ? (
+  const navigation = !nativePlayerActive && (isTopBar ? (
         <TopBar
           activeRoute={activeRoute}
           onNavigate={navigateRoute}
@@ -334,9 +357,9 @@ export default function App() {
           topOffset={bannerOffset}
           alwaysOpen={sidebarAlwaysOpen}
         />
-      ))}
+      ));
 
-      {!nativePlayerActive && (
+  const globalControls = !nativePlayerActive ? (
         <div
           style={{
             position: 'fixed',
@@ -355,20 +378,21 @@ export default function App() {
             onSearch={(query) => { setGlobalSearchQuery(query); navigateRoute('search'); }}
             onBack={leaveSearch}
             focusSignal={searchFocusSignal}
-            state={state}
+            state={searchBarState}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
           />
           <div style={{ pointerEvents: 'auto', flexShrink: 0 }}>
             <ProfileChip
-              profile={activeProfile}
+              profile={activeProfile!}
               allProfiles={allProfiles}
               onSwitchProfile={() => void switchToNoProfile()}
               onSwitchToProfile={async (p) => {
+                invalidateProfileWork();
                 await setActiveProfileId(p.id);
                 invalidateLibraryKeyCache();
                 stateRef.current = DEFAULT_STATE;
-                setState(DEFAULT_STATE);
+                replaceState(DEFAULT_STATE);
                 setActiveProfile(p);
                 setHomeResetKey((k) => k + 1);
                 await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
@@ -381,9 +405,9 @@ export default function App() {
             />
           </div>
         </div>
-      )}
+      ) : null;
 
-      <div style={{ ...appStyles.content, top: (isTopBar && navBarPosition === 'top' && activeRoute !== 'home' && !showDetail ? 76 : 0) + bannerOffset, paddingLeft: sidebarAlwaysOpen && navBarPosition !== 'right' ? sidebarOffset : 0, paddingRight: sidebarAlwaysOpen && navBarPosition === 'right' ? sidebarOffset : 0, display: nativePlayerActive ? 'none' : undefined }}>
+  const content = (
       <ErrorBoundary
         resetKeys={[activeRoute, detailMeta?.id]}
         onReset={() => { setDetailMeta(null); setActiveRoute('home'); }}
@@ -392,7 +416,7 @@ export default function App() {
           <React.Suspense fallback={null}><DetailScreen
             key={detailMeta!.id}
             meta={detailMeta!}
-            state={state}
+            state={detailState}
             onDispatch={dispatch}
             onPlay={(stream, meta, episode, resumeAt, sourceCandidates) => void guardedPlay(stream, meta, episode, resumeAt !== undefined ? resumeAt : (detailAutoShowStreams ? detailResumeAt : undefined), undefined, sourceCandidates)}
             onNavigateDetail={handleNavigateDetail}
@@ -405,7 +429,7 @@ export default function App() {
         )}
         <div style={{ display: !showDetail && activeRoute === 'home' ? 'contents' : 'none' }}>
           <HomeScreen
-            state={state}
+            state={homeState}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
             onPlay={setDetailMeta}
@@ -421,7 +445,7 @@ export default function App() {
         {!showDetail && activeRoute === 'calendar' && (
           <React.Suspense fallback={null}>
             <CalendarScreen
-              state={state}
+              state={calendarState}
               onDispatch={dispatch}
             />
           </React.Suspense>
@@ -429,7 +453,7 @@ export default function App() {
         {!showDetail && activeRoute === 'discover' && (
           <React.Suspense fallback={null}>
             <DiscoverScreen
-              state={state}
+              state={discoverState}
               onDispatch={dispatch}
               onNavigateDetail={handleNavigateDetail}
               onBack={handleDiscoverBack}
@@ -439,17 +463,17 @@ export default function App() {
         )}
         {!showDetail && activeRoute === 'library' && (
           <LibraryScreen
-            state={state}
+            state={libraryState}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
             onBack={handleLibraryBack}
-            activeProfile={activeProfile}
+            activeProfile={activeProfile!}
             onProfileUpdated={handleProfileUpdated}
           />
         )}
         {!showDetail && activeRoute === 'search' ? (
           <SearchScreen
-            state={state}
+            state={searchState}
             onDispatch={dispatch}
             onNavigateDetail={handleNavigateDetail}
             query={globalSearchQuery}
@@ -459,7 +483,7 @@ export default function App() {
         ) : !showDetail && activeRoute === 'settings' ? (
           <React.Suspense fallback={null}>
             <SettingsScreen
-              state={state}
+              state={settingsScreenState}
               onDispatch={dispatch}
               activeProfile={activeProfile}
               onProfileUpdated={(updated) => setActiveProfile(updated)}
@@ -471,9 +495,9 @@ export default function App() {
           </React.Suspense>
         ) : null}
       </ErrorBoundary>
-      </div>
+  );
 
-      {isOnline ? (
+  const notices = isOnline ? (
         <NuvioStatusBanner
           serverDown={serverDown}
           justRecovered={justRecovered}
@@ -482,7 +506,8 @@ export default function App() {
         />
       ) : (
         <OfflineBanner online={isOnline} />
-      )}
+      );
+  const dialogs = <>
       {p2pDialog && (
         <P2PDialog
           mode={p2pDialog.mode}
@@ -498,47 +523,64 @@ export default function App() {
         />
       )}
       <UpdateModal state={updateModalState} onClose={() => setUpdateModalState({ phase: 'idle' })} />
-      {playerLoadingOverlay && (
-        <PlayerLoadingOverlay
-          background={playerLoadingOverlay.background}
-          logo={playerLoadingOverlay.logo}
-          title={playerLoadingOverlay.title}
-          episodeLine={playerLoadingOverlay.episodeLine}
-          status={playerLoadingOverlay.status}
-          error={playerLoadingOverlay.error}
-          isTorrentStream={playerUsesTorrent}
-          source={playerLoadingOverlay.source}
-          onBack={closePlayer}
-        />
-      )}
-      {nativePlayerActive && (
-        <ErrorBoundary>
-          <React.Suspense fallback={null}><ReactPlayerOverlay
-            closePlayer={closePlayer}
-            onFirstFrame={notifyFirstFrame}
-            initialTitle={playerTitle}
-            initialEpisodeTitle={playerEpisodeTitle}
-            currentEpisode={playerEpisode}
-            isTorrentStream={playerUsesTorrent}
-            initialPosterUrl={playerPosterUrl}
-            initialLogoUrl={playerLogoUrl}
-            metaId={playerMetaId}
-            initialSubtitleUrl={playerSubtitleUrl}
-            initialStreamHeaders={playerStreamHeaders}
-            streamRef={playingStreamRef}
-            metaRef={playingMetaRef}
-            playbackUrl={playerUrl}
-            prefs={prefs}
-            onDispatch={dispatch}
-            playbackError={playerPlaybackError}
-            subtitleWarning={playerSubtitleWarning}
-            onDismissSubtitleWarning={dismissSubtitleWarning}
-            softwareVideoActive={softwareVideoActive}
-            bannerOffset={bannerOffset}
-            skipSegmentCoverage={skipSegmentCoverage}
-          /></React.Suspense>
-        </ErrorBoundary>
-      )}
-    </div>
+  </>;
+  const playback = (
+      <PlaybackHost
+        active={nativePlayerActive}
+        loading={playerLoadingOverlay}
+        closePlayer={closePlayer}
+        notifyFirstFrame={notifyFirstFrame}
+        title={playerTitle}
+        episodeTitle={playerEpisodeTitle}
+        episode={playerEpisode}
+        usesTorrent={playerUsesTorrent}
+        posterUrl={playerPosterUrl}
+        logoUrl={playerLogoUrl}
+        metaId={playerMetaId}
+        subtitleUrl={playerSubtitleUrl}
+        streamHeaders={playerStreamHeaders}
+        streamRef={playingStreamRef}
+        metaRef={playingMetaRef}
+        playbackUrl={playerUrl}
+        prefs={prefs}
+        playbackError={playerPlaybackError}
+        subtitleWarning={playerSubtitleWarning}
+        dismissSubtitleWarning={dismissSubtitleWarning}
+        softwareVideoActive={softwareVideoActive}
+        bannerOffset={bannerOffset}
+        skipSegmentCoverage={skipSegmentCoverage}
+        dispatch={dispatch}
+      />
+  );
+
+  const shell = (
+    <AppShell
+      rootStyle={rootStyle}
+      animations={prefBool(prefs, 'animationsEnabled', true) ? 'on' : 'off'}
+      density={prefString(prefs, 'interfaceDensity', 'medium')}
+      reduceMotion={prefBool(prefs, 'reduceMotion', false) ? 'true' : 'false'}
+      reducedEffects={prefBool(prefs, 'reducedEffects', false) ? 'true' : 'false'}
+      navigation={navigation}
+      globalControls={globalControls}
+      contentStyle={{ ...appStyles.content, top: (isTopBar && navBarPosition === 'top' && activeRoute !== 'home' && !showDetail ? 76 : 0) + bannerOffset, paddingLeft: sidebarAlwaysOpen && navBarPosition !== 'right' ? sidebarOffset : 0, paddingRight: sidebarAlwaysOpen && navBarPosition === 'right' ? sidebarOffset : 0, display: nativePlayerActive ? 'none' : undefined }}
+      content={content}
+      notices={notices}
+      dialogs={dialogs}
+      playback={playback}
+    />
+  );
+
+  return (
+    <AppBootstrap
+      ready={ready}
+      profilesChecked={profilesChecked}
+      welcomeCompleted={welcomeCompleted}
+      profileReady={!!activeProfile && !editProfileOpen}
+      loading={<span style={appStyles.loadingText}>fluxa</span>}
+      welcome={welcomeGate}
+      profile={profileGate}
+    >
+      {shell}
+    </AppBootstrap>
   );
 }

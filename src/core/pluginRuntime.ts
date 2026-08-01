@@ -1,4 +1,5 @@
-import { coreInvoke, getSnapshot, httpFetchText, runPluginScraper } from './engine';
+import { coreInvoke, getSnapshot, runPluginScraper } from './engine';
+import { platformFetch } from './httpClient';
 
 interface PluginScraperState {
   id: string;
@@ -17,16 +18,18 @@ function repoBaseUrl(manifestUrl: string): string {
   return idx >= 0 ? manifestUrl.slice(0, idx + 1) : manifestUrl;
 }
 
-async function loadScraperCode(scraper: PluginScraperState): Promise<string | null> {
+async function loadScraperCode(scraper: PluginScraperState, signal?: AbortSignal): Promise<string | null> {
   const cacheKey = `${scraper.repositoryUrl}::${scraper.filename}`;
   const cached = codeCache.get(cacheKey);
   if (cached) return cached;
   try {
     const url = new URL(scraper.filename, repoBaseUrl(scraper.repositoryUrl)).toString();
-    const response = await httpFetchText(url);
-    if (response.statusCode < 200 || response.statusCode >= 300 || !response.body) return null;
-    codeCache.set(cacheKey, response.body);
-    return response.body;
+    const response = await platformFetch(url, { signal });
+    if (!response.ok) return null;
+    const code = await response.text();
+    if (!code) return null;
+    codeCache.set(cacheKey, code);
+    return code;
   } catch {
     return null;
   }
@@ -37,6 +40,7 @@ export async function fetchPluginStreams(
   tmdbId: string | undefined,
   season: number | undefined,
   episode: number | undefined,
+  signal?: AbortSignal,
 ): Promise<Array<Record<string, unknown>>> {
   if (!tmdbId) return [];
   const snapshot = (await getSnapshot()) as { plugins?: { scrapers?: PluginScraperState[] } } | null;
@@ -57,7 +61,7 @@ export async function fetchPluginStreams(
 
   const results = await Promise.allSettled(
     plan.scrapers.map(async (scraper) => {
-      const code = await loadScraperCode(scraper);
+      const code = await loadScraperCode(scraper, signal);
       if (!code) return [];
       const raw = await runPluginScraper(
         code,
@@ -76,13 +80,13 @@ export async function fetchPluginStreams(
   return results.flatMap((result) => (result.status === 'fulfilled' ? result.value : []));
 }
 
-export async function fetchPluginManifestEffect(payload: Record<string, unknown>): Promise<unknown> {
+export async function fetchPluginManifestEffect(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const manifestUrl = payload.manifestUrl as string;
-  const response = await httpFetchText(manifestUrl);
-  if (response.statusCode < 200 || response.statusCode >= 300 || !response.body) {
-    throw new Error(`failed to fetch plugin manifest: HTTP ${response.statusCode}`);
+  const response = await platformFetch(manifestUrl, { signal });
+  if (!response.ok) {
+    throw new Error(`failed to fetch plugin manifest: HTTP ${response.status}`);
   }
-  const manifest = await coreInvoke<Record<string, unknown>>('pluginManifestParse', response.body);
+  const manifest = await coreInvoke<Record<string, unknown>>('pluginManifestParse', await response.text());
   if (!manifest) throw new Error('invalid plugin manifest');
   return { manifestUrl, manifest };
 }

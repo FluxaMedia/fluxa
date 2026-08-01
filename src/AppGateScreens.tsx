@@ -13,17 +13,20 @@ export function AppWelcomeGate({
   setAllProfiles,
   setActiveProfile,
   setWelcomeCompleted,
+  invalidateProfileWork,
 }: {
   dispatch: (actionJson: string) => Promise<void> | void;
   applyStoredPrefs: () => Promise<void>;
   setAllProfiles: (profiles: UserProfile[]) => void;
   setActiveProfile: (profile: UserProfile) => void;
   setWelcomeCompleted: (done: boolean) => void;
+  invalidateProfileWork: () => void;
 }) {
   return (
     <React.Suspense fallback={null}>
       <WelcomeScreen
         onProfileCreated={async (profile) => {
+          invalidateProfileWork();
           await storageWrite('welcome_done', true);
           const profiles = await loadProfiles();
           invalidateLibraryKeyCache();
@@ -33,6 +36,7 @@ export function AppWelcomeGate({
           setWelcomeCompleted(true);
         }}
         onContinueLocal={async () => {
+          invalidateProfileWork();
           await storageWrite('welcome_done', true);
           const profile = await createProfileObject('Local', '#FFFFFF');
           const profiles = await saveProfile(profile);
@@ -44,6 +48,7 @@ export function AppWelcomeGate({
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
         }}
         onNuvioLogin={async (profile) => {
+          invalidateProfileWork();
           await storageWrite('welcome_done', true);
           const profiles = await loadProfiles();
           setAllProfiles(profiles);
@@ -70,6 +75,7 @@ export function AppProfileGate({
   setActiveProfile,
   setEditProfileOpen,
   setHomeResetKey,
+  invalidateProfileWork,
 }: {
   state: AppState;
   stateRef: React.MutableRefObject<AppState>;
@@ -81,11 +87,13 @@ export function AppProfileGate({
   setActiveProfile: (profile: UserProfile) => void;
   setEditProfileOpen: (open: boolean) => void;
   setHomeResetKey: (updater: (k: number) => number) => void;
+  invalidateProfileWork: () => void;
 }) {
   return (
     <React.Suspense fallback={null}>
       <ProfileSelectionScreen
         onProfileSelected={async (profile) => {
+          invalidateProfileWork();
           const outgoingRepositories = state.plugins?.repositories ?? [];
           invalidateLibraryKeyCache();
           stateRef.current = DEFAULT_STATE;

@@ -5,8 +5,8 @@ import { fetchPlannedResources, fetchParsedAddonResource, resourceForPlannedRequ
 import { discoverCatalogOptions } from './homeEffects';
 import { fetchBuiltinCatalog, isBuiltinTmdbAddon } from './tmdbAddon';
 
-export async function fetchCatalogPage(payload: Record<string, unknown>): Promise<unknown> {
-  const values = await fetchPlannedResources({ ...payload, kind: 'catalogPage' });
+export async function fetchCatalogPage(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+  const values = await fetchPlannedResources({ ...payload, kind: 'catalogPage' }, undefined, signal);
   const rawItems = values.flatMap((value) => ((value as { items?: unknown[] })?.items ?? []));
   const transportUrl = typeof payload.transportUrl === 'string' ? payload.transportUrl : undefined;
   const catalogType = typeof payload.contentType === 'string' ? payload.contentType : undefined;
@@ -27,7 +27,7 @@ export function setSearchPartialHandler(fn: ((query: string, items: unknown[]) =
   _searchPartialHandler = fn;
 }
 
-export async function runSearch(payload: Record<string, unknown>): Promise<unknown> {
+export async function runSearch(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const query = payload.query as string;
   const language = payload.language as string | undefined;
   const cacheKey = `${language ?? ''}|${query}`;
@@ -37,6 +37,7 @@ export async function runSearch(payload: Record<string, unknown>): Promise<unkno
   searchAbortController?.abort();
   const abortController = new AbortController();
   searchAbortController = abortController;
+  const requestSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
 
   const addons = await loadEnabledAddons();
   const plan = await coreResourceFetchPlan({ kind: 'search', query, addons });
@@ -59,7 +60,7 @@ export async function runSearch(payload: Record<string, unknown>): Promise<unkno
       request.kind,
       request.addonName,
       undefined,
-      abortController.signal,
+      requestSignal,
     );
     const rawItems = ((parsed?.items as unknown[] | undefined) ?? []);
     if (!rawItems.length) return;
@@ -85,7 +86,7 @@ export async function runSearch(payload: Record<string, unknown>): Promise<unkno
   const tmdbApiKey = String(prefs.tmdbApiKey ?? '').trim();
   if (tmdbApiKey) {
     await Promise.all((['movie', 'series'] as const).map(async (type) => {
-      const { metas } = await fetchBuiltinCatalog(type, { search: query }, tmdbApiKey, String(prefs.language ?? 'en'));
+      const { metas } = await fetchBuiltinCatalog(type, { search: query }, tmdbApiKey, String(prefs.language ?? 'en'), requestSignal);
       if (searchAbortController !== abortController || !metas.length) return;
       _searchPartialHandler?.(query, metas);
       sources.push({ id: `tmdb:${type}`, name: 'TMDB', type, items: metas, addonName: 'TMDB' });
@@ -105,10 +106,11 @@ export async function runSearch(payload: Record<string, unknown>): Promise<unkno
 
 let discoverAbortController: AbortController | null = null;
 
-export async function runDiscover(payload: Record<string, unknown>): Promise<unknown> {
+export async function runDiscover(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   discoverAbortController?.abort();
   const abortController = new AbortController();
   discoverAbortController = abortController;
+  const requestSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
 
   const contentType = payload.contentType as string;
   const filters = payload.filters as { catalogKey?: string; transportUrl?: string; extra?: Record<string, unknown> } | undefined;
@@ -116,7 +118,7 @@ export async function runDiscover(payload: Record<string, unknown>): Promise<unk
 
   if (isBuiltinTmdbAddon(filters?.transportUrl)) {
     const prefs = await loadPrefs();
-    const { metas } = await fetchBuiltinCatalog(contentType, extra, String(prefs.tmdbApiKey ?? ''), String(prefs.language ?? 'en'));
+    const { metas } = await fetchBuiltinCatalog(contentType, extra, String(prefs.tmdbApiKey ?? ''), String(prefs.language ?? 'en'), requestSignal);
     if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
     return { results: metas };
   }
@@ -126,7 +128,7 @@ export async function runDiscover(payload: Record<string, unknown>): Promise<unk
   const values = await fetchPlannedResources(
     { kind: 'discover', contentType, catalogKey, extra, addons },
     undefined,
-    abortController.signal,
+    requestSignal,
   );
   if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
 

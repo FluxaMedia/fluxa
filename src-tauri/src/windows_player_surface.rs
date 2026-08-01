@@ -701,7 +701,7 @@ fn spawn_install_thread(
                         let state = app.state::<DesktopState>();
 
                         state.pending_hide.store(false, Ordering::Release);
-                        *state.eof_next_fired.lock().unwrap() = false;
+                        state.player_overlay.lock().unwrap().eof_next_fired = false;
                         if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
                             let result = (|| {
                                 let mut players = state.player_renderer_vlc.lock().unwrap();
@@ -970,8 +970,13 @@ fn check_player_events(app: &AppHandle) {
         if !eof {
             continue;
         }
-        let next_sub = state.next_ep_subtitle.lock().unwrap().clone();
-        let auto_play = *state.auto_play_next_episode.lock().unwrap();
+        let mut overlay = state.player_overlay.lock().unwrap();
+        if !overlay.take_eof_next() {
+            continue;
+        }
+        let next_sub = overlay.next_ep_subtitle.clone();
+        let auto_play = overlay.auto_play_next_episode;
+        drop(overlay);
         if FluxaCore::should_play_next_episode(!next_sub.is_empty(), auto_play) {
             log::info!("player surface: eof reached, auto-playing next episode");
             let _ = app.emit("native-player-next-episode", ());

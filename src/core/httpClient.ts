@@ -25,7 +25,8 @@ export async function platformFetch(url: string, init?: RequestInit): Promise<Re
   }
   try {
     return await fetch(url, { ...init, headers: nativeHeaders, signal });
-  } catch {
+  } catch (error) {
+    if (signal.aborted) throw error;
     return tauriFetch(url, { ...init, signal });
   }
 }

@@ -109,8 +109,13 @@ pub fn player_status(
                 if let Some(message) = error {
                     let _ = app.emit("native-player-error", message);
                 } else if eof {
-                    let next_sub = state.next_ep_subtitle.lock().unwrap().clone();
-                    let auto_play = *state.auto_play_next_episode.lock().unwrap();
+                    let mut overlay = state.player_overlay.lock().unwrap();
+                    if !overlay.take_eof_next() {
+                        continue;
+                    }
+                    let next_sub = overlay.next_ep_subtitle.clone();
+                    let auto_play = overlay.auto_play_next_episode;
+                    drop(overlay);
                     if FluxaCore::should_play_next_episode(!next_sub.is_empty(), auto_play) {
                         let _ = app.emit("native-player-next-episode", ());
                     } else {
@@ -135,15 +140,16 @@ pub fn player_status(
 
 #[tauri::command]
 pub fn player_get_playback_info(state: State<DesktopState>) -> serde_json::Value {
+    let overlay = state.player_overlay.lock().unwrap();
     serde_json::json!({
-        "skipSegmentsJson": state.skip_segments_json.lock().unwrap().clone(),
-        "chaptersJson": state.chapters_json.lock().unwrap().clone(),
-        "episodesJson": state.episodes_json.lock().unwrap().clone(),
-        "nextEpSubtitle": state.next_ep_subtitle.lock().unwrap().clone(),
-        "nextEpThresholdPercent": *state.next_ep_threshold_percent.lock().unwrap(),
-        "autoPlayNextEpisode": *state.auto_play_next_episode.lock().unwrap(),
-        "autoPlayCountdownSecs": *state.auto_play_countdown_secs.lock().unwrap(),
-        "autoSkipSegments": *state.auto_skip_segments.lock().unwrap(),
+        "skipSegmentsJson": overlay.skip_segments_json.clone(),
+        "chaptersJson": overlay.chapters_json.clone(),
+        "episodesJson": overlay.episodes_json.clone(),
+        "nextEpSubtitle": overlay.next_ep_subtitle.clone(),
+        "nextEpThresholdPercent": overlay.next_ep_threshold_percent,
+        "autoPlayNextEpisode": overlay.auto_play_next_episode,
+        "autoPlayCountdownSecs": overlay.auto_play_countdown_secs,
+        "autoSkipSegments": overlay.auto_skip_segments,
     })
 }
 
@@ -214,7 +220,7 @@ pub fn player_destroy(state: State<DesktopState>) -> bool {
 
 #[tauri::command]
 pub fn player_set_chapters(state: State<DesktopState>, chapters_json: String) {
-    *state.chapters_json.lock().unwrap() =
+    state.player_overlay.lock().unwrap().chapters_json =
         if chapters_json.trim().is_empty() || chapters_json == "[]" {
             None
         } else {
@@ -224,7 +230,7 @@ pub fn player_set_chapters(state: State<DesktopState>, chapters_json: String) {
 
 #[tauri::command]
 pub fn player_clear_chapters(state: State<DesktopState>) {
-    *state.chapters_json.lock().unwrap() = None;
+    state.player_overlay.lock().unwrap().chapters_json = None;
 }
 
 #[tauri::command]
@@ -238,40 +244,42 @@ pub fn player_set_skip_info(
     auto_play_countdown_secs: Option<u32>,
     auto_skip_segments: Option<bool>,
 ) {
-    *state.skip_segments_json.lock().unwrap() =
+    let mut overlay = state.player_overlay.lock().unwrap();
+    overlay.skip_segments_json =
         if segments_json.trim().is_empty() || segments_json == "[]" {
             None
         } else {
             Some(segments_json)
         };
-    *state.next_ep_subtitle.lock().unwrap() = next_ep_subtitle.unwrap_or_default();
-    *state.eof_next_fired.lock().unwrap() = false;
+    overlay.next_ep_subtitle = next_ep_subtitle.unwrap_or_default();
+    overlay.eof_next_fired = false;
     if let Some(t) = next_ep_threshold_percent {
-        *state.next_ep_threshold_percent.lock().unwrap() = t.clamp(1.0, 99.0);
+        overlay.next_ep_threshold_percent = t.clamp(1.0, 99.0);
     }
     if let Some(v) = auto_play_next_episode {
-        *state.auto_play_next_episode.lock().unwrap() = v;
+        overlay.auto_play_next_episode = v;
     }
     if let Some(s) = auto_play_countdown_secs {
-        *state.auto_play_countdown_secs.lock().unwrap() = s.max(1);
+        overlay.auto_play_countdown_secs = s.max(1);
     }
     if let Some(v) = auto_skip_segments {
-        *state.auto_skip_segments.lock().unwrap() = v;
+        overlay.auto_skip_segments = v;
     }
     let _ = app.emit("player-skip-info-updated", ());
 }
 
 #[tauri::command]
 pub fn player_clear_skip_info(app: AppHandle, state: State<DesktopState>) {
-    *state.skip_segments_json.lock().unwrap() = None;
-    *state.next_ep_subtitle.lock().unwrap() = String::new();
-    *state.eof_next_fired.lock().unwrap() = false;
+    let mut overlay = state.player_overlay.lock().unwrap();
+    overlay.skip_segments_json = None;
+    overlay.next_ep_subtitle = String::new();
+    overlay.eof_next_fired = false;
     let _ = app.emit("player-skip-info-updated", ());
 }
 
 #[tauri::command]
 pub fn player_set_episodes(state: State<DesktopState>, episodes_json: String) {
-    *state.episodes_json.lock().unwrap() =
+    state.player_overlay.lock().unwrap().episodes_json =
         if episodes_json.trim() == "[]" || episodes_json.trim().is_empty() {
             None
         } else {
@@ -281,12 +289,12 @@ pub fn player_set_episodes(state: State<DesktopState>, episodes_json: String) {
 
 #[tauri::command]
 pub fn player_clear_episodes(state: State<DesktopState>) {
-    *state.episodes_json.lock().unwrap() = None;
+    state.player_overlay.lock().unwrap().episodes_json = None;
 }
 
 #[tauri::command]
 pub fn player_set_seek_thumbnail_enabled(state: State<DesktopState>, enabled: bool) {
-    *state.seek_thumbnail_enabled.lock().unwrap() = enabled;
+    state.player_overlay.lock().unwrap().seek_thumbnail_enabled = enabled;
 }
 
 #[tauri::command]
@@ -296,27 +304,30 @@ pub fn player_get_seek_thumbnail(
 ) -> Result<String, String> {
     use base64::{engine::general_purpose, Engine as _};
 
-    if !*state.seek_thumbnail_enabled.lock().unwrap() {
+    if !state.player_overlay.lock().unwrap().seek_thumbnail_enabled {
         return Ok(String::new());
     }
     let url = state
-        .thumb_url
+        .player_overlay
         .lock()
         .unwrap()
+        .thumb_url
         .clone()
         .ok_or_else(|| "no url".to_string())?;
 
-    let mut renderer_guard = state.thumbnail_renderer.lock().unwrap();
-    let mut loaded_url_guard = state.thumbnail_loaded_url.lock().unwrap();
+    let mut overlay = state.player_overlay.lock().unwrap();
 
-    if renderer_guard.is_none() {
-        *renderer_guard = Some(mpv_render::MpvRenderer::new_thumbnail()?);
+    if overlay.thumbnail_renderer.is_none() {
+        overlay.thumbnail_renderer = Some(mpv_render::MpvRenderer::new_thumbnail()?);
     }
-    let renderer = renderer_guard.as_mut().unwrap();
+    let reload_thumbnail = overlay.thumbnail_loaded_url.as_deref() != Some(url.as_str());
+    if reload_thumbnail {
+        overlay.thumbnail_loaded_url = Some(url.clone());
+    }
+    let renderer = overlay.thumbnail_renderer.as_mut().unwrap();
 
-    if loaded_url_guard.as_deref() != Some(url.as_str()) {
+    if reload_thumbnail {
         renderer.load_thumbnail(&url)?;
-        *loaded_url_guard = Some(url.clone());
         for _ in 0..50 {
             if renderer.query_property("duration").is_some() {
                 break;
@@ -339,8 +350,7 @@ pub fn player_get_seek_thumbnail(
     }
 
     let pixels = renderer.render_thumbnail(320, 180)?;
-    drop(renderer_guard);
-    drop(loaded_url_guard);
+    drop(overlay);
 
     let img = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(320, 180, pixels)
         .ok_or_else(|| "frame buffer mismatch".to_string())?;

@@ -11,14 +11,14 @@ import { loadAddons, saveAddons } from './libraryOps';
 import { addonName, normalizeAddonDescriptor } from './addons';
 import type { AddonDescriptor } from './types';
 
-export async function fetchAddonManifest(payload: Record<string, unknown>): Promise<unknown> {
+export async function fetchAddonManifest(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const transportUrl = payload.transportUrl as string;
   const plan = await manifestFetchPlan(transportUrl);
   const candidateUrls = plan?.candidateUrls?.length ? plan.candidateUrls : [transportUrl];
 
   for (const candidateUrl of candidateUrls) {
     try {
-      const data = await fetchJson(candidateUrl);
+      const data = await fetchJson(candidateUrl, { signal });
       const parsed = await parseManifest(JSON.stringify(data), candidateUrl);
       if (!parsed) continue;
       const resolved = await resolveManifestAssets(parsed);
@@ -31,12 +31,12 @@ export async function fetchAddonManifest(payload: Record<string, unknown>): Prom
   throw new Error(`Unable to fetch addon manifest: ${transportUrl}`);
 }
 
-export async function refreshInstalledAddons(_payload: Record<string, unknown>): Promise<unknown> {
+export async function refreshInstalledAddons(_payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const addons = await loadAddons();
   const refreshed: AddonDescriptor[] = [];
   for (const addon of addons) {
     try {
-      const manifest = await fetchAddonManifest({ transportUrl: addon.transportUrl });
+      const manifest = await fetchAddonManifest({ transportUrl: addon.transportUrl }, signal);
       const merged = await mergeLiveManifest(addon, manifest, addonName(addon));
       refreshed.push(await normalizeAddonDescriptor((merged ?? manifest) as AddonDescriptor));
     } catch {
@@ -47,7 +47,7 @@ export async function refreshInstalledAddons(_payload: Record<string, unknown>):
   return { addons: refreshed };
 }
 
-export async function fetchAddonResource(payload: Record<string, unknown>): Promise<unknown> {
+export async function fetchAddonResource(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const resource = String(payload.resource ?? '');
   const plan = await coreAddonResourceRequestPlan({
     transportUrl: payload.transportUrl,
@@ -57,7 +57,7 @@ export async function fetchAddonResource(payload: Record<string, unknown>): Prom
     extra: payload.extra,
   });
   const values = await Promise.all(
-    (plan?.urls ?? []).map((url) => fetchParsedAddonResource(url, resource, 'addonResource')),
+    (plan?.urls ?? []).map((url) => fetchParsedAddonResource(url, resource, 'addonResource', undefined, undefined, signal)),
   );
   return values[0] ?? null;
 }

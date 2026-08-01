@@ -496,8 +496,10 @@ impl SurfaceTick {
                 SurfaceCommand::Load { url, start_at } => {
                     self.app.state::<DesktopState>().pending_hide
                         .store(false, std::sync::atomic::Ordering::Release);
-                    *self.app.state::<DesktopState>().eof_next_fired.lock().unwrap() = false;
-                    *self.app.state::<DesktopState>().chapters_json.lock().unwrap() = None;
+                    let state = self.app.state::<DesktopState>();
+                    let mut overlay = state.player_overlay.lock().unwrap();
+                    overlay.eof_next_fired = false;
+                    overlay.chapters_json = None;
                     if *self.app.state::<DesktopState>().active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
                         self.gl_area.set_auto_render(false);
                         self.gl_area.show();
@@ -710,23 +712,21 @@ impl SurfaceTick {
                 .unwrap_or(0.0);
             if pos > 0.05 {
                 self.chapters_native_loaded = true;
-                let chapters_already_set = state.chapters_json.lock().unwrap().is_some();
+                let chapters_already_set = state.player_overlay.lock().unwrap().chapters_json.is_some();
                 if !chapters_already_set {
                     if let Ok(guard) = state.player_renderer.try_lock() {
                         if let Some(renderer) = guard.as_ref() {
                             let native = read_mpv_chapters(renderer);
                             if !native.is_empty() {
                                 let chapters_json = chapters_to_json(&native);
-                                *state.chapters_json.lock().unwrap() =
-                                    Some(chapters_json.clone());
-                                let skip_already_set =
-                                    state.skip_segments_json.lock().unwrap().is_some();
-                                let chapter_skip_enabled =
-                                    *state.use_chapter_skip.lock().unwrap();
+                                let mut overlay = state.player_overlay.lock().unwrap();
+                                overlay.chapters_json = Some(chapters_json.clone());
+                                let skip_already_set = overlay.skip_segments_json.is_some();
+                                let chapter_skip_enabled = overlay.use_chapter_skip;
                                 if !skip_already_set && chapter_skip_enabled {
                                     let derived = FluxaCore::chapter_skip_segments_json(&chapters_json);
                                     if derived != "[]" {
-                                        *state.skip_segments_json.lock().unwrap() = Some(derived);
+                                        overlay.skip_segments_json = Some(derived);
                                     }
                                 }
                             }
@@ -1054,21 +1054,20 @@ fn check_player_events(app: &AppHandle) {
         }
     }
     if !eof {
-        let mut fired = state.eof_next_fired.lock().unwrap();
-        if *fired {
-            *fired = false;
+        let mut overlay = state.player_overlay.lock().unwrap();
+        if overlay.eof_next_fired {
+            overlay.eof_next_fired = false;
         }
         return;
     }
-    let mut fired = state.eof_next_fired.lock().unwrap();
-    if *fired {
+    let mut overlay = state.player_overlay.lock().unwrap();
+    if !overlay.take_eof_next() {
         return;
     }
-    *fired = true;
-    drop(fired);
 
-    let next_sub = state.next_ep_subtitle.lock().unwrap().clone();
-    let auto_play = *state.auto_play_next_episode.lock().unwrap();
+    let next_sub = overlay.next_ep_subtitle.clone();
+    let auto_play = overlay.auto_play_next_episode;
+    drop(overlay);
     if FluxaCore::should_play_next_episode(!next_sub.is_empty(), auto_play) {
         let _ = app.emit("native-player-next-episode", ());
     } else {

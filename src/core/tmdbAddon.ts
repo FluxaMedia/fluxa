@@ -39,10 +39,11 @@ export async function fetchBuiltinCatalog(
   extra: Record<string, unknown>,
   apiKey: string,
   language: string,
+  signal?: AbortSignal,
 ): Promise<{ metas: unknown[] }> {
   const url = await coreTmdbBuiltinCatalogUrl(type, extra, apiKey, language);
   if (!url) return { metas: [] };
-  const data = (await tryFetchJson(url)) as { results?: unknown[] } | null;
+  const data = (await tryFetchJson(url, { signal })) as { results?: unknown[] } | null;
   const items = data?.results ?? [];
   if (items.length === 0) return { metas: [] };
   const metas = (await coreTmdbBulkMetas(JSON.stringify(items), type, language)) ?? [];
@@ -66,6 +67,7 @@ async function fetchBuiltinMetaUrls(
   id: string,
   apiKey: string,
   language: string,
+  signal?: AbortSignal,
 ): Promise<TmdbMetaUrls | null> {
   const plan = await coreInvoke<{ findUrl?: string } & Partial<TmdbMetaUrls>>(
     'tmdbBuiltinMetaRequestPlan',
@@ -76,7 +78,7 @@ async function fetchBuiltinMetaUrls(
     return plan as TmdbMetaUrls;
   }
   if (!plan.findUrl) return null;
-  const find = await tryFetchJson(plan.findUrl);
+  const find = await tryFetchJson(plan.findUrl, { signal });
   if (!find) return null;
   return coreInvoke<TmdbMetaUrls>(
     'tmdbBuiltinMetaUrlsFromFind',
@@ -89,15 +91,16 @@ export async function fetchBuiltinMeta(
   id: string,
   apiKey: string,
   language: string,
+  signal?: AbortSignal,
 ): Promise<{ meta: unknown } | null> {
-  const urls = await fetchBuiltinMetaUrls(type, id, apiKey, language);
+  const urls = await fetchBuiltinMetaUrls(type, id, apiKey, language, signal);
   if (!urls) return null;
 
   const [details, credits, images, externalIds] = await Promise.all([
-    tryFetchJson(urls.detailsUrl),
-    tryFetchJson(urls.creditsUrl),
-    tryFetchJson(urls.imagesUrl),
-    tryFetchJson(urls.externalIdsUrl),
+    tryFetchJson(urls.detailsUrl, { signal }),
+    tryFetchJson(urls.creditsUrl, { signal }),
+    tryFetchJson(urls.imagesUrl, { signal }),
+    tryFetchJson(urls.externalIdsUrl, { signal }),
   ]);
   if (!details) return null;
 
@@ -113,7 +116,7 @@ export async function fetchBuiltinMeta(
       .filter((n): n is number => typeof n === 'number' && n > 0);
     const seriesId = String(meta.id ?? id);
     const videoLists = await runWithConcurrency(seasons, 4, (seasonNumber) =>
-      fetchBuiltinSeasonVideos(urls.tmdbId, seasonNumber, seriesId, apiKey, language));
+      fetchBuiltinSeasonVideos(urls.tmdbId, seasonNumber, seriesId, apiKey, language, signal));
     meta.videos = videoLists.flat();
   }
 
@@ -122,6 +125,7 @@ export async function fetchBuiltinMeta(
 
 async function fetchBuiltinSeasonVideos(
   tmdbId: string, season: number, seriesId: string, apiKey: string, language: string,
+  signal?: AbortSignal,
 ): Promise<unknown[]> {
   const url = await coreInvoke<string>('tmdbSeasonRequestUrl', JSON.stringify({
     contentId: `tmdb:${tmdbId}`,
@@ -130,16 +134,17 @@ async function fetchBuiltinSeasonVideos(
     language,
   }));
   if (!url) return [];
-  const seasonData = await tryFetchJson(url);
+  const seasonData = await tryFetchJson(url, { signal });
   if (!seasonData) return [];
   return (await coreTmdbEpisodesToVideos(JSON.stringify(seasonData), seriesId)) ?? [];
 }
 
 export async function fetchBuiltinSeasonEpisodes(
   seriesId: string, season: number, apiKey: string, language: string,
+  signal?: AbortSignal,
 ): Promise<{ episodes: unknown[] }> {
-  const urls = await fetchBuiltinMetaUrls('series', seriesId, apiKey, language);
+  const urls = await fetchBuiltinMetaUrls('series', seriesId, apiKey, language, signal);
   if (!urls) return { episodes: [] };
-  const videos = await fetchBuiltinSeasonVideos(urls.tmdbId, season, seriesId, apiKey, language);
+  const videos = await fetchBuiltinSeasonVideos(urls.tmdbId, season, seriesId, apiKey, language, signal);
   return { episodes: videos };
 }
