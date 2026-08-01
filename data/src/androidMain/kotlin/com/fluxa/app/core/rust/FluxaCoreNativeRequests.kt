@@ -33,7 +33,8 @@ internal data class NativeTorrentRuntimeRequest(
     val rejectedIndex: Int?,
     val baseUrl: String,
     val play: Boolean,
-    val stat: Boolean
+    val stat: Boolean,
+    val durationMs: Long? = null
 )
 
 internal data class NativeSubtitleTrackEntry(val id: String?, val label: String, val language: String?)

@@ -849,7 +849,8 @@ object FluxaCoreNative {
         rejectedIndex: Int?,
         baseUrl: String,
         play: Boolean,
-        stat: Boolean
+        stat: Boolean,
+        durationMs: Long? = null
     ): NativeTorrentRuntimeInfo {
         val request = NativeTorrentRuntimeRequest(
             link = link,
@@ -861,7 +862,8 @@ object FluxaCoreNative {
             rejectedIndex = rejectedIndex,
             baseUrl = baseUrl,
             play = play,
-            stat = stat
+            stat = stat,
+            durationMs = durationMs
         )
         val value = FluxaCoreUniFfi.coreInvokeValue("torrentRuntimeInfo", gson.toJson(request))
         return gson.fromJson(value, NativeTorrentRuntimeInfo::class.java) ?: NativeTorrentRuntimeInfo()

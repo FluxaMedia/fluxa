@@ -16,11 +16,13 @@ data class TorrentRequest(
     @SerializedName("file_id") val fileId: Int? = null,
     // Defaults to video for old callers. Subtitle selection can opt in
     // without replacing the torrent's current primary video focus.
-    val role: String = "video"
+    val role: String = "video",
+    val prewarm: Boolean = false
 )
 
 data class TorrentSettings(
     @SerializedName("PreloadSize") val preloadSize: Long = 16,
+    @SerializedName("CacheLimitMb") val cacheLimitMb: Long? = null,
 )
 
 data class TorrentAddRequest(

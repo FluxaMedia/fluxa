@@ -14,7 +14,8 @@ object TorrentCorePolicy {
         rejectedIndex: Int? = null,
         baseUrl: String = Constants.LocalServer.TORRENT_SERVER_BASE_URL,
         play: Boolean = true,
-        stat: Boolean = false
+        stat: Boolean = false,
+        durationMs: Long? = null
     ): NativeTorrentRuntimeInfo {
         return FluxaCoreNative.torrentRuntimeInfo(
             link = link,
@@ -26,7 +27,8 @@ object TorrentCorePolicy {
             rejectedIndex = rejectedIndex,
             baseUrl = baseUrl,
             play = play,
-            stat = stat
+            stat = stat,
+            durationMs = durationMs
         )
     }
 

@@ -92,7 +92,8 @@ class TorrentStreamManager private constructor() {
                         link = plan.normalizedLink,
                         title = title,
                         saveToDb = false,
-                        fileId = fileIdx ?: plan.selectedFileIdx
+                        fileId = fileIdx ?: plan.selectedFileIdx,
+                        prewarm = true
                     )
                 )
                 Log.d(TAG, "preWarm registered: ${plan.normalizedLink} fileIdx=${fileIdx ?: plan.selectedFileIdx}")
@@ -131,7 +132,8 @@ class TorrentStreamManager private constructor() {
                     requestedFileIdx = fileIdx,
                     preferredFilename = preferredFilename,
                     sources = sources.orEmpty(),
-                    fileStats = emptyList()
+                    fileStats = emptyList(),
+                    durationMs = durationMs.takeIf { it > 0L }
                 )
                 // Hand the player the URL immediately — stream_fname will
                 // ensure_torrent on its own. Doing /torrents add here in a
