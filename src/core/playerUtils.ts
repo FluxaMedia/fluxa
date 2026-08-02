@@ -46,7 +46,7 @@ export function playerDisplayTitle(meta?: Meta, episode?: Video | null, stream?:
   const episodeNumber = episode?.episode ?? episode?.number;
   const episodeName = episode?.name ?? episode?.title;
   if (typeof season === 'number' && typeof episodeNumber === 'number') {
-    const prefix = `S${season}, E${episodeNumber}`;
+    const prefix = `${t('format.season_abbrev')}${season}, ${t('format.episode_abbrev')}${episodeNumber}`;
     return {
       contentTitle,
       episodeLine: episodeName?.trim() ? `${prefix}: ${episodeName.trim()}` : prefix,
@@ -78,7 +78,8 @@ export function formatNextEpisodeSubtitle(ep: Video): string {
   const epNum = ep.episode ?? ep.number;
   const name = ep.name ?? ep.title ?? '';
   if (typeof season === 'number' && typeof epNum === 'number') {
-    return name ? `S${season}:E${epNum} ${name}` : `S${season}:E${epNum}`;
+    const code = `${t('format.season_abbrev')}${season}:${t('format.episode_abbrev')}${epNum}`;
+    return name ? `${code} ${name}` : code;
   }
   return name || t('auto.next_episode');
 }

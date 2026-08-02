@@ -16,8 +16,8 @@ export type EpisodeInfo = {
 };
 
 export function epLabel(ep: EpisodeInfo): string {
-  const s = ep.season != null ? `S${ep.season}` : '';
-  const e = (ep.episode ?? ep.number) != null ? `E${ep.episode ?? ep.number}` : '';
+  const s = ep.season != null ? `${t('format.season_abbrev')}${ep.season}` : '';
+  const e = (ep.episode ?? ep.number) != null ? `${t('format.episode_abbrev')}${ep.episode ?? ep.number}` : '';
   const se = s || e ? `${s}${e} — ` : '';
   return se + (ep.name ?? ep.title ?? '');
 }

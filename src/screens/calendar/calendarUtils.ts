@@ -80,13 +80,15 @@ export function eventEpisodeLabel(item: CalendarItem): string {
 }
 
 export function eventEpisodeCode(item: CalendarItem): string {
+  const seasonAbbrev = t('format.season_abbrev');
+  const episodeAbbrev = t('format.episode_abbrev');
   const season = item.seasonNumber ?? item.season;
   const episode = item.episodeNumber ?? item.episode ?? item.number;
-  if (season != null && episode != null) return `S${season} • E${episode}`;
-  if (season != null) return `S${season}`;
-  if (episode != null) return `E${episode}`;
+  if (season != null && episode != null) return `${seasonAbbrev}${season} • ${episodeAbbrev}${episode}`;
+  if (season != null) return `${seasonAbbrev}${season}`;
+  if (episode != null) return `${episodeAbbrev}${episode}`;
   const subtitleEpisode = item.subtitle?.match(/S\s*(\d+)\s*[:•-]?\s*E\s*(\d+)/i);
-  if (subtitleEpisode) return `S${subtitleEpisode[1]} • E${subtitleEpisode[2]}`;
+  if (subtitleEpisode) return `${seasonAbbrev}${subtitleEpisode[1]} • ${episodeAbbrev}${subtitleEpisode[2]}`;
   return t('calendar.episode');
 }
 

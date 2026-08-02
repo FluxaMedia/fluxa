@@ -49,7 +49,7 @@ function liveEpisodeLine(meta: Meta): string | null {
   if (name == null) name = item.lastEpisodeName;
 
   if (season == null || number == null) return null;
-  const code = `S${season}:E${number}`;
+  const code = `${t('format.season_abbrev')}${season}:${t('format.episode_abbrev')}${number}`;
   return name?.trim() ? `${code} ${name.trim()}` : code;
 }
 

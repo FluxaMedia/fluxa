@@ -326,7 +326,7 @@ export function InlineSourceList({
   const epNum = episode.episode ?? episode.number ?? '';
   const seasonNum = episode.season ?? 1;
   const epTitle = episode.title?.trim() || episode.name?.trim() || t('format.episode_number', epNum);
-  const episodeLabel = `S${seasonNum}, E${epNum}: ${epTitle}`;
+  const episodeLabel = `${t('format.season_abbrev')}${seasonNum}, ${t('format.episode_abbrev')}${epNum}: ${epTitle}`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
