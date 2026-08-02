@@ -83,6 +83,7 @@ export function PlaybackHost({
           <React.Suspense fallback={null}><ReactPlayerOverlay
             closePlayer={closePlayer}
             onFirstFrame={notifyFirstFrame}
+            isLoadingOverlayActive={!!loading}
             initialTitle={title}
             initialEpisodeTitle={episodeTitle}
             currentEpisode={episode}

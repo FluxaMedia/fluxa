@@ -311,6 +311,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
       await withCloseTimeout(embeddedMpvHide(), 400).catch(() => undefined);
       await withCloseTimeout(embeddedMpvStop(), 900).catch(() => undefined);
       await withCloseTimeout(destroyEmbeddedMpv(), 900).catch(() => undefined);
+      mpvInitializedRef.current = false;
       closingPlayerRef.current = false;
       if (status && captureMeta) {
         const timePos = parseFloat(status.timePos ?? '0');
@@ -374,7 +375,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   });
 
   const handlePlay = usePlayerPlaybackStart({
-    stateRef, onEpisodePlaybackFailed, playbackScope: playbackScopeRef.current, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage,
+    stateRef, onEpisodePlaybackFailed, playbackScope: playbackScopeRef.current, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage,
   });
   const handleNativePlayerError = useCallback(async (message: string) => {
     const nextSource = await nextRetrySource(playingStreamRef.current);

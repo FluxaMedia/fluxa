@@ -35,6 +35,8 @@ import { usePlayerOverlayInput } from './player/usePlayerOverlayInput';
 import { PlayerOverlayDecorations } from './player/PlayerOverlayDecorations';
 import { usePlayerTitleReset } from './player/usePlayerTitleReset';
 import { usePlayerIntroDb } from './player/usePlayerIntroDb';
+import { usePlayerContentWarnings } from './player/usePlayerContentWarnings';
+import { ContentWarningOverlay } from './player/ContentWarningOverlay';
 import { PlayerSupplementalPanels } from './player/PlayerSupplementalPanels';
 import { PlayerTrackPanel } from './player/PlayerTrackPanel';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
@@ -47,6 +49,7 @@ import { sendCmd, type Chapter, type FeedbackFlash } from './player/PlayerOverla
 interface Props {
   closePlayer: () => Promise<void>;
   onFirstFrame?: () => void;
+  isLoadingOverlayActive?: boolean;
   initialTitle?: string;
   initialEpisodeTitle?: string;
   currentEpisode?: Video | null;
@@ -70,7 +73,7 @@ interface Props {
   skipSegmentCoverage?: Record<string, string[]>;
 }
 
-export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, initialEpisodeTitle, currentEpisode, isTorrentStream = false, initialPosterUrl, initialLogoUrl, metaId, initialSubtitleUrl, initialStreamHeaders, streamRef, metaRef, playbackUrl, torrentTelemetryContext, playbackError, subtitleWarning, onDismissSubtitleWarning, softwareVideoActive = false, bannerOffset = 0, prefs, onDispatch, skipSegmentCoverage }: Props) {
+export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlayActive = false, initialTitle, initialEpisodeTitle, currentEpisode, isTorrentStream = false, initialPosterUrl, initialLogoUrl, metaId, initialSubtitleUrl, initialStreamHeaders, streamRef, metaRef, playbackUrl, torrentTelemetryContext, playbackError, subtitleWarning, onDismissSubtitleWarning, softwareVideoActive = false, bannerOffset = 0, prefs, onDispatch, skipSegmentCoverage }: Props) {
   const playerTelemetry = usePlayerTelemetryState();
   const { paused, muted, volumeLevel, isBuffering, bufferingProgress, hdrLabel, statsSnap, torrentStatsSnap, torrentSpeedHistory, setPaused, setMuted, setVolumeLevel, resetTorrentSpeedHistory } = playerTelemetry;
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -111,6 +114,8 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
   const theIntroDbApiKey = typeof prefs?.theIntroDbApiKey === 'string' ? prefs.theIntroDbApiKey : '';
   const { imdbId: introDbImdbId, tmdbId: introDbTmdbId } = usePlayerIntroDb(metaId, introDbSubmitEnabled || skipDbSubmitEnabled || theIntroDbSubmitEnabled);
   const [showTorrentPopover, setShowTorrentPopover] = useState(false);
+  const [hasRenderedFirstFrame, setHasRenderedFirstFrame] = useState(false);
+  const contentWarnings = usePlayerContentWarnings(metaRef?.current ?? undefined, currentEpisode, playbackUrl, hasRenderedFirstFrame);
   const [feedback, setFeedback] = useState<FeedbackFlash | null>(null);
   const [showSeekOverlay, setShowSeekOverlay] = useState(false);
   const seekOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -169,7 +174,11 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
   useEffect(() => {
     firstFrameFiredRef.current = false;
     hasAppliedInitialFillRef.current = false;
+    setHasRenderedFirstFrame(false);
   }, [currentEpisode?.id]);
+  useEffect(() => {
+    if (!isLoadingOverlayActive) setHasRenderedFirstFrame(true);
+  }, [isLoadingOverlayActive]);
   const activeSkipKeyRef = useRef<string | null>(null);
   const discordPresenceKeyRef = useRef<string | null>(null);
   const discordPresenceSentAtRef = useRef(0);
@@ -292,6 +301,8 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, initialTitle, in
       {softwareVideoActive && <SoftwareVideoCanvas key={currentEpisode?.id} statusRef={liveStatusRef} onFirstFrame={onFirstFrame} />}
 
       <PlayerOverlayDecorations controlsVisible={controlsVisible} feedback={feedback} muted={muted} volumeLevel={volumeLevel} showSeekOverlay={showSeekOverlay} activeSkip={activeSkip} showNextEpCard={showNextEpCard} nextEpSubtitle={nextEpSubtitle} nextEpThumbnail={nextEpThumbnail} countdown={countdown} autoPlayCountdownSecs={autoPlayCountdownSecs} showEpisodePanel={showEpisodePanel} episodes={episodes} currentEpisode={currentEpisode} skipFillRef={skipFillRef} onActivity={resetActivity} onDismissSkip={() => setActiveSkip(null)} onDismissNextEpisode={() => setNextEpDismissed(true)} onCloseEpisodePanel={() => { setShowEpisodePanel(false); episodePanelOpenRef.current = false; }} />
+
+      <ContentWarningOverlay warnings={contentWarnings.warnings} isVisible={contentWarnings.isVisible} onAnimationComplete={contentWarnings.onAnimationComplete} />
 
       <PlayerStatusToasts bannerOffset={bannerOffset} playbackError={playbackError} subtitleWarning={subtitleWarning} onClosePlayer={() => { void closePlayer(); }} onDismissSubtitleWarning={onDismissSubtitleWarning} />
 
