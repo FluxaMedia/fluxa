@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MS } from './detailStyles';
 import { GenreTag } from './ModernDetailParts';
 import { RatingsRow } from './RatingBadge';
+import { t } from '../../i18n';
 
 export function ModernDetailMetaBlock({
   mdblistRatings,
@@ -17,6 +18,7 @@ export function ModernDetailMetaBlock({
   description?: string;
 }) {
   const hasMdblistRatings = mdblistRatings != null && Object.keys(mdblistRatings).length > 0;
+  const [expanded, setExpanded] = useState(false);
   return (
     <div style={MS.metaBlock}>
       {hasMdblistRatings && (
@@ -35,7 +37,19 @@ export function ModernDetailMetaBlock({
           {metaDetails.length > 0 && <span style={MS.metaDetailsText}>{metaDetails.join(' • ')}</span>}
         </p>
       )}
-      {description && <p style={MS.descText}>{description}</p>}
+      {description && (
+        <>
+          <p style={expanded ? { ...MS.descText, WebkitLineClamp: 'unset', overflow: 'visible' } : MS.descText}>{description}</p>
+          {description.length > 180 && (
+            <button
+              onClick={() => setExpanded((value) => !value)}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', padding: 0, marginTop: '-0.375rem', marginBottom: '0.75rem' }}
+            >
+              {expanded ? t('detail.read_less') : t('detail.read_more')}
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }
