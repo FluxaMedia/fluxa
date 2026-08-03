@@ -25,7 +25,6 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
             selectedCategoryTitle = null,
             editingProfile = null,
             showProfilePickerSettings = false,
-            settingsBackStack = emptyList(),
             initialLibrarySection = null
         )
     }
