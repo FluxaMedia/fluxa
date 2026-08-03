@@ -1,10 +1,16 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig(async () => ({
-  plugins: [react()],
+  plugins: [
+    react(),
+    ...(process.env.ANALYZE_BUNDLE
+      ? [visualizer({ filename: "dist/bundle-stats.html", gzipSize: true, brotliSize: true })]
+      : []),
+  ],
   clearScreen: false,
   server: {
     port: 1420,
@@ -26,27 +32,12 @@ export default defineConfig(async () => ({
     entries: ["index.html"],
   },
   build: {
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500,
     target:
       process.env.TAURI_ENV_PLATFORM === "windows"
         ? "chrome105"
         : "safari15",
     minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
-            return "react-vendor";
-          }
-          if (id.includes("node_modules/@tauri-apps")) {
-            return "tauri-vendor";
-          }
-          if (id.includes("node_modules/@phosphor-icons")) {
-            return "icons-vendor";
-          }
-        },
-      },
-    },
   },
 }));
