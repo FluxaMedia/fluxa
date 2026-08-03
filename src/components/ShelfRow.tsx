@@ -8,6 +8,8 @@ import { useDragScroll } from '../hooks/useDragScroll';
 const ROW_PADDING_LEFT = '2rem';
 const NEAR_END_THRESHOLD_PX = 1200;
 const SKELETON_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const CARD_GAP_PX = 10;
+const OVERSCAN_CARDS = 4;
 
 interface Props {
   title: string;
@@ -50,7 +52,9 @@ export const ShelfRow = React.memo(function ShelfRow({
   const radius = posterPrefs?.radius ?? 12;
   const layout = posterPrefs?.layout ?? 'vertical';
   const hideTitle = posterPrefs?.hideTitles ?? false;
-  const visibleItems = items;
+
+  const [viewport, setViewport] = useState({ clientWidth: 0, scrollLeft: 0 });
+  const rafRef = useRef<number | null>(null);
 
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -62,18 +66,46 @@ export const ShelfRow = React.memo(function ShelfRow({
     }
   }, [onNearEnd]);
 
+  const updateViewport = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setViewport({ clientWidth: el.clientWidth, scrollLeft: el.scrollLeft });
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     checkScroll();
-    el.addEventListener('scroll', checkScroll, { passive: true });
-    const ro = new ResizeObserver(checkScroll);
+    updateViewport();
+    const handleScroll = () => {
+      checkScroll();
+      if (rafRef.current != null) return;
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null;
+        updateViewport();
+      });
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    const ro = new ResizeObserver(updateViewport);
     ro.observe(el);
     return () => {
-      el.removeEventListener('scroll', checkScroll);
+      el.removeEventListener('scroll', handleScroll);
       ro.disconnect();
+      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
     };
-  }, [checkScroll, items.length]);
+  }, [checkScroll, updateViewport, items.length]);
+
+  const canVirtualize = !topTenEnabled && !isLoading;
+  const step = width + CARD_GAP_PX;
+  const startIndex = canVirtualize
+    ? Math.max(0, Math.floor(viewport.scrollLeft / step) - OVERSCAN_CARDS)
+    : 0;
+  const endIndex = canVirtualize
+    ? Math.min(items.length, Math.ceil((viewport.scrollLeft + viewport.clientWidth) / step) + OVERSCAN_CARDS)
+    : items.length;
+  const visibleItems = canVirtualize ? items.slice(startIndex, endIndex) : items;
+  const leadSpacerWidth = canVirtualize ? startIndex * step : 0;
+  const tailSpacerWidth = canVirtualize ? Math.max(0, (items.length - endIndex) * step - CARD_GAP_PX) : 0;
 
   if (!isLoading && items.length === 0) return null;
 
@@ -102,21 +134,28 @@ export const ShelfRow = React.memo(function ShelfRow({
             ? SKELETON_INDICES.map((i) => (
                 <SkeletonCard key={i} width={width} height={height} radius={radius} delay={i * 0.06} />
               ))
-            : visibleItems.map((meta, idx) => (
-                <MovieCard
-                  key={`${meta.id}-${idx}`}
-                  meta={meta}
-                  width={width}
-                  height={height}
-                  radius={radius}
-                  layout={layout}
-                  hideTitle={hideTitle}
-                  topTenRank={topTenEnabled && idx < 10 ? idx + 1 : undefined}
-                  addonIcon={addonIcon}
-                  onClick={onItemClick}
-                  onDispatch={onDispatch}
-                />
-              ))}
+            : <>
+                {leadSpacerWidth > 0 && <div style={{ width: leadSpacerWidth, flexShrink: 0 }} />}
+                {visibleItems.map((meta, relIdx) => {
+                  const idx = startIndex + relIdx;
+                  return (
+                    <MovieCard
+                      key={`${meta.id}-${idx}`}
+                      meta={meta}
+                      width={width}
+                      height={height}
+                      radius={radius}
+                      layout={layout}
+                      hideTitle={hideTitle}
+                      topTenRank={topTenEnabled && idx < 10 ? idx + 1 : undefined}
+                      addonIcon={addonIcon}
+                      onClick={onItemClick}
+                      onDispatch={onDispatch}
+                    />
+                  );
+                })}
+                {tailSpacerWidth > 0 && <div style={{ width: tailSpacerWidth, flexShrink: 0 }} />}
+              </>}
           {!isLoading && isLoadingMore && (
             <SkeletonCard key="loading-more" width={width} height={height} radius={radius} delay={0} />
           )}

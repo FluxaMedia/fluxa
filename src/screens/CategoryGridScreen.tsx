@@ -3,6 +3,7 @@ import { ChevronLeft, LayoutGrid, Play, Plus, TriangleAlert } from 'lucide-react
 import type { Meta, MetaLink } from '../core/types';
 import type { PosterPrefs } from '../core/posterPrefs';
 import { ModernTabBar } from '../components/detail/DetailButtons';
+import { VirtualizedPosterGrid } from '../components/VirtualizedPosterGrid';
 import { coreInvoke } from '../core/engine';
 import { t } from '../i18n';
 
@@ -26,13 +27,6 @@ function labelForType(type: string): string {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-const GRID_PADDING_X = 24;
-const GRID_PADDING_TOP = 20;
-const GRID_PADDING_BOTTOM = 60;
-const GRID_GAP_X = 18;
-const GRID_GAP_Y = 28;
-const GRID_MIN_COLUMN_WIDTH = 150;
-const GRID_OVERSCAN_ROWS = 3;
 const SCROLL_HOVER_IDLE_MS = 180;
 
 export function CategoryGridScreen({ title, items, groups, isLoading = false, loadError = false, onLoadMore, isLoadingMore = false, posterPrefs, onNavigateDetail, onBack, onDispatch }: Props) {
@@ -124,7 +118,7 @@ export function CategoryGridScreen({ title, items, groups, isLoading = false, lo
             onHover={handlePosterHover}
             onClick={handlePosterClick}
             onScrollActivity={handleGridScroll}
-            onNearBottom={onLoadMore}
+            onNearEnd={onLoadMore}
             isLoadingMore={isLoadingMore}
           />
         )}
@@ -246,154 +240,6 @@ function PanelIconBtn({ title, icon, onClick }: { title: string; icon: React.Rea
   );
 }
 
-
-
-function VirtualizedPosterGrid({ items, selectedId, posterPrefs, onHover, onClick, onScrollActivity, onNearBottom, isLoadingMore = false }: {
-  items: Meta[];
-  selectedId: string | null;
-  posterPrefs: PosterPrefs;
-  onHover: (m: Meta | null) => boolean;
-  onClick: (m: Meta) => void;
-  onScrollActivity: () => void;
-  onNearBottom?: () => void;
-  isLoadingMore?: boolean;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
-  const [viewport, setViewport] = useState({ width: 0, height: 0, scrollTop: 0 });
-
-  useEffect(() => {
-    const node = scrollRef.current;
-    if (!node) return;
-    const update = () => setViewport({ width: node.clientWidth, height: node.clientHeight, scrollTop: node.scrollTop });
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  const cardExtraHeight = posterPrefs.hideTitles ? 0 : 23;
-  const itemHeight = posterPrefs.height + cardExtraHeight;
-  const availableWidth = Math.max(0, viewport.width - GRID_PADDING_X * 2);
-  const columns = Math.max(1, Math.floor((availableWidth + GRID_GAP_X) / (GRID_MIN_COLUMN_WIDTH + GRID_GAP_X)));
-  const columnWidth = columns > 0
-    ? Math.max(GRID_MIN_COLUMN_WIDTH, (availableWidth - GRID_GAP_X * (columns - 1)) / columns)
-    : GRID_MIN_COLUMN_WIDTH;
-  const rowStep = itemHeight + GRID_GAP_Y;
-  const placeholderCount = isLoadingMore ? columns : 0;
-  const slotCount = items.length + placeholderCount;
-  const rowCount = Math.ceil(slotCount / columns);
-  const totalHeight = GRID_PADDING_TOP + GRID_PADDING_BOTTOM + Math.max(0, rowCount * itemHeight + Math.max(0, rowCount - 1) * GRID_GAP_Y);
-  const startRow = Math.max(0, Math.floor((viewport.scrollTop - GRID_PADDING_TOP) / rowStep) - GRID_OVERSCAN_ROWS);
-  const endRow = Math.min(rowCount, Math.ceil((viewport.scrollTop + viewport.height - GRID_PADDING_TOP) / rowStep) + GRID_OVERSCAN_ROWS);
-
-  useEffect(() => {
-    if (!onNearBottom || totalHeight === 0 || viewport.height === 0) return;
-    const threshold = rowStep * 2;
-    if (viewport.scrollTop + viewport.height >= totalHeight - threshold) onNearBottom();
-  }, [viewport.scrollTop, viewport.height, totalHeight, rowStep, onNearBottom]);
-
-  const visible: Array<{ item: Meta; row: number; col: number }> = [];
-  const placeholders: Array<{ row: number; col: number }> = [];
-  for (let row = startRow; row < endRow; row++) {
-    for (let col = 0; col < columns; col++) {
-      const index = row * columns + col;
-      const item = items[index];
-      if (item) visible.push({ item, row, col });
-      else if (index < slotCount) placeholders.push({ row, col });
-    }
-  }
-
-  const handleScroll = () => {
-    onScrollActivity();
-    const node = scrollRef.current;
-    if (!node || rafRef.current != null) return;
-    rafRef.current = window.requestAnimationFrame(() => {
-      rafRef.current = null;
-      setViewport((c) => c.scrollTop === node.scrollTop ? c : { width: node.clientWidth, height: node.clientHeight, scrollTop: node.scrollTop });
-    });
-  };
-
-  return (
-    <div ref={scrollRef} style={S.virtualGrid} onScroll={handleScroll}>
-      <div style={{ position: 'relative', height: totalHeight, minHeight: '100%' }}>
-        {visible.map(({ item, row, col }) => {
-          const left = GRID_PADDING_X + col * (columnWidth + GRID_GAP_X) + Math.max(0, (columnWidth - posterPrefs.width) / 2);
-          const top = GRID_PADDING_TOP + row * rowStep;
-          return (
-            <div key={item.id} style={{ position: 'absolute', left, top, width: posterPrefs.width, height: itemHeight }}>
-              <PosterCard
-                meta={item}
-                selected={selectedId === item.id}
-                posterPrefs={posterPrefs}
-                onHover={onHover}
-                onClick={onClick}
-              />
-            </div>
-          );
-        })}
-        {placeholders.map(({ row, col }) => {
-          const left = GRID_PADDING_X + col * (columnWidth + GRID_GAP_X) + Math.max(0, (columnWidth - posterPrefs.width) / 2);
-          const top = GRID_PADDING_TOP + row * rowStep;
-          return (
-            <div key={`ph-${row}-${col}`} style={{ position: 'absolute', left, top, width: posterPrefs.width, height: posterPrefs.height, borderRadius: posterPrefs.radius, background: '#1B212B', animation: 'pulse 1.6s ease-in-out infinite', animationDelay: `${(col % 8) * 0.07}s` }} />
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-const PosterCard = React.memo(function PosterCard({ meta, selected, posterPrefs, onHover, onClick }: {
-  meta: Meta; selected: boolean; posterPrefs: PosterPrefs;
-  onHover: (m: Meta | null) => boolean; onClick: (m: Meta) => void;
-}) {
-  const [imgErr, setImgErr] = useState(false);
-  const src = posterPrefs.layout === 'horizontal'
-    ? meta.background || meta.poster
-    : meta.poster || meta.background;
-
-  return (
-    <div
-      style={{ width: posterPrefs.width, cursor: 'pointer' }}
-      onMouseEnter={() => onHover(meta)}
-      onMouseLeave={() => onHover(null)}
-      onClick={() => onClick(meta)}
-    >
-      <div style={{
-        width: posterPrefs.width, height: posterPrefs.height,
-        borderRadius: posterPrefs.radius, overflow: 'hidden', background: '#1B212B',
-        outline: selected ? '0.1875rem solid rgba(255,255,255,0.9)' : 'none',
-      }}>
-        {src && !imgErr ? (
-          <img src={src} alt={meta.name} loading="lazy" decoding="async"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            onError={() => setImgErr(true)} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1B212B' }}>
-            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '1.5rem', fontWeight: 900 }}>
-              {(meta.name ?? '').slice(0, 2).toUpperCase()}
-            </span>
-          </div>
-        )}
-      </div>
-      {!posterPrefs.hideTitles && (
-        <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.75rem', fontWeight: 600, margin: '0.4375rem 0 0', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {meta.name}
-        </p>
-      )}
-    </div>
-  );
-});
-
-
-
 const S: Record<string, React.CSSProperties> = {
   screen: {
     display: 'flex',
@@ -447,16 +293,6 @@ const S: Record<string, React.CSSProperties> = {
     gap: '1.75rem 1.125rem',
     padding: '1.25rem 1.5rem 3.75rem',
     alignContent: 'start',
-  },
-  virtualGrid: {
-    flex: 1,
-    overflowY: 'auto',
-    overflowX: 'hidden',
-    position: 'relative',
-    scrollbarWidth: 'thin',
-    scrollbarColor: 'rgba(255,255,255,0.1) transparent',
-    contain: 'strict',
-    willChange: 'scroll-position',
   },
   right: {
     width: '18.75rem', flexShrink: 0,

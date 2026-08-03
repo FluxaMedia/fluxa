@@ -9,7 +9,7 @@ const GRID_PADDING_BOTTOM = 60;
 const GRID_GAP_X = 18;
 const GRID_GAP_Y = 28;
 const GRID_MIN_COLUMN_WIDTH = 150;
-const GRID_OVERSCAN_ROWS = 6;
+const GRID_OVERSCAN_ROWS = 2;
 const NEAR_END_THRESHOLD_PX = 800;
 
 export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
@@ -22,6 +22,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
   onScrollActivity,
   onNearEnd,
   resetKey,
+  isLoadingMore = false,
 }: {
   items: Meta[];
   selectedId: string | null;
@@ -32,6 +33,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
   onScrollActivity: () => void;
   onNearEnd?: () => void;
   resetKey?: string;
+  isLoadingMore?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -75,7 +77,9 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
     ? Math.max(GRID_MIN_COLUMN_WIDTH, (availableWidth - GRID_GAP_X * (columns - 1)) / columns)
     : GRID_MIN_COLUMN_WIDTH;
   const rowStep = itemHeight + GRID_GAP_Y;
-  const rowCount = Math.ceil(items.length / columns);
+  const placeholderCount = isLoadingMore ? columns : 0;
+  const slotCount = items.length + placeholderCount;
+  const rowCount = Math.ceil(slotCount / columns);
   const totalHeight = GRID_PADDING_TOP + GRID_PADDING_BOTTOM + Math.max(0, rowCount * itemHeight + Math.max(0, rowCount - 1) * GRID_GAP_Y);
   const startRow = Math.max(0, Math.floor((viewport.scrollTop - GRID_PADDING_TOP) / rowStep) - GRID_OVERSCAN_ROWS);
   const endRow = Math.min(
@@ -84,12 +88,13 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
   );
 
   const visible: Array<{ item: Meta; index: number; row: number; col: number }> = [];
+  const placeholders: Array<{ row: number; col: number }> = [];
   for (let row = startRow; row < endRow; row += 1) {
     for (let col = 0; col < columns; col += 1) {
       const index = row * columns + col;
       const item = items[index];
-      if (!item) continue;
-      visible.push({ item, index, row, col });
+      if (item) visible.push({ item, index, row, col });
+      else if (index < slotCount) placeholders.push({ row, col });
     }
   }
 
@@ -121,7 +126,6 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
         scrollbarWidth: 'thin',
         scrollbarColor: 'rgba(255,255,255,0.1) transparent',
         contain: 'strict',
-        willChange: 'scroll-position',
       }}
       onScroll={handleScroll}
     >
@@ -139,7 +143,6 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
                 width: posterPrefs.width,
                 height: itemHeight,
                 transform: `translate3d(${left}px, ${top}px, 0)`,
-                willChange: 'transform',
               }}
             >
               <PosterCard
@@ -150,6 +153,27 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
                 onClick={onClick}
               />
             </div>
+          );
+        })}
+        {placeholders.map(({ row, col }) => {
+          const left = GRID_PADDING_X + col * (columnWidth + GRID_GAP_X) + Math.max(0, (columnWidth - posterPrefs.width) / 2);
+          const top = GRID_PADDING_TOP + row * rowStep;
+          return (
+            <div
+              key={`ph-${row}-${col}`}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: posterPrefs.width,
+                height: posterPrefs.height,
+                borderRadius: posterPrefs.radius,
+                background: '#1B212B',
+                transform: `translate3d(${left}px, ${top}px, 0)`,
+                animation: 'pulse 1.6s ease-in-out infinite',
+                animationDelay: `${(col % 8) * 0.07}s`,
+              }}
+            />
           );
         })}
       </div>
@@ -171,9 +195,11 @@ const PosterCard = React.memo(function PosterCard({
   onClick: (m: Meta) => void;
 }) {
   const [imgErr, setImgErr] = useState(false);
+  const dpr = window.devicePixelRatio;
+  const displayWidth = posterPrefs.width;
   const imgSrc = posterPrefs.layout === 'horizontal'
-    ? cardImageUrl(meta.background, 'backdrop') || cardImageUrl(meta.poster)
-    : cardImageUrl(meta.poster) || cardImageUrl(meta.background, 'backdrop');
+    ? cardImageUrl(meta.background, { kind: 'backdrop', displayWidth, dpr }) || cardImageUrl(meta.poster, { displayWidth, dpr })
+    : cardImageUrl(meta.poster, { displayWidth, dpr }) || cardImageUrl(meta.background, { kind: 'backdrop', displayWidth, dpr });
 
   return (
     <div
