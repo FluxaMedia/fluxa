@@ -8,6 +8,7 @@ export type ProviderLibrarySnapshot = {
   watching: Record<string, unknown>[];
   completed: Record<string, unknown>[];
   dropped: Record<string, unknown>[];
+  favorites: Record<string, unknown>[];
 };
 
 export const PROVIDER_LIBRARIES_CHANGED = 'provider-libraries-changed';
@@ -26,6 +27,7 @@ export async function loadProviderLibraries(profileKey?: string): Promise<Provid
       watching: snapshot?.watching ?? [],
       completed: snapshot?.completed ?? [],
       dropped: snapshot?.dropped ?? [],
+      favorites: snapshot?.favorites ?? [],
     }]),
   ) as ProviderLibraries;
 }

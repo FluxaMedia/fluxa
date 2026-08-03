@@ -11,6 +11,7 @@ export const CORE_METHODS = [
   'airDateRefreshCandidates',
   'airDateRefreshPlan',
   'anilistEntriesToSync',
+  'anilistGraphqlQueries',
   'anilistId',
   'anilistMalId',
   'anilistMediaIdPlan',

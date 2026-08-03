@@ -100,6 +100,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   const [isInWatchlist, flipWatchlistOverride] = useOptimisticToggle(watchlist.some((item) => item.id === displayMeta.id));
   const [isDropped, flipDroppedOverride] = useOptimisticToggle(((libRaw?.dropped as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id));
   const [isCompleted, flipCompletedOverride] = useOptimisticToggle(((libRaw?.completed as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id));
+  const [isFavorite, flipFavoriteOverride] = useOptimisticToggle(((libRaw?.favorites as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id));
   const watchedMap = (libRaw?.watched as Record<string, boolean> | undefined) ?? {};
   const progressMap = (libRaw?.progress as Record<string, ProgressEntry> | undefined) ?? {};
 
@@ -405,6 +406,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
         isInWatchlist={isInWatchlist}
         isDropped={isDropped}
         isCompleted={isCompleted}
+        isFavorite={isFavorite}
         omdbRatings={omdbRatings}
         mdblistRatings={mdblistRatings}
         fanartArtwork={fanartArtwork}
@@ -434,6 +436,7 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
         onToggleWatchlist={() => { flipWatchlistOverride(); onDispatch(JSON.stringify({ type: 'toggleWatchlistRequested', item: displayMeta })); }}
         onToggleCompleted={() => { flipCompletedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'completed', item: displayMeta })); }}
         onToggleDropped={() => { flipDroppedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'dropped', item: displayMeta })); }}
+        onToggleFavorite={() => { flipFavoriteOverride(); onDispatch(JSON.stringify({ type: 'setFeedbackRequested', id: displayMeta.id, value: !isFavorite, meta: displayMeta })); }}
         onOpenComments={traktCommentsEnabled ? () => setCommentsOpen(true) : undefined}
         onBgError={() => setBgError(true)}
       />

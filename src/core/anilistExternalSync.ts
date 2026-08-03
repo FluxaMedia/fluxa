@@ -1,8 +1,8 @@
 import { platformFetch } from './httpClient';
-import { loadLibrary, saveLibrary, buildContinueWatching, persistStatusListMerge, persistWatchedMerge, persistProgressMerge, profileStorageKey } from './libraryOps';
+import { profileStorageKey } from './libraryOps';
 import type { UserProfile } from './types';
 import { replaceExternalContinueWatching } from './externalSyncUtils';
-import { coreAnilistEntriesToSync, coreInvoke, coreMergeLibraryItemsById } from './engine';
+import { coreAnilistEntriesToSync, coreAnilistGraphqlQueries, coreAnilistSaveMediaListEntryVariables, coreInvoke } from './engine';
 import { saveProviderLibrary } from './providerLibraries';
 import type { ImportCategory } from './importCategories';
 
@@ -20,8 +20,6 @@ type AniListCollectionResponse = {
     lists?: Array<{ entries?: AniListEntry[] | null }> | null;
   } | null;
 };
-
-type LibraryItemRecord = Record<string, unknown>;
 
 const ANILIST_COLLECTION_QUERY = `
   query ($userId: Int) {
@@ -70,38 +68,16 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
   const plan = await coreAnilistEntriesToSync(entries, Date.now(), categories, dryRun);
   if (!plan) return { synced: false, error: 'AniList entries could not be processed' };
 
-  const lib = await loadLibrary(profileKey);
-  const watchlistBefore = (lib.watchlist as LibraryItemRecord[] | undefined) ?? [];
-  const completedBefore = (lib.completed as LibraryItemRecord[] | undefined) ?? [];
-  const droppedBefore = (lib.dropped as LibraryItemRecord[] | undefined) ?? [];
-  const watchedBefore = (lib.watched as Record<string, boolean> | undefined) ?? {};
-  const progressBefore = (lib.progress as Record<string, unknown> | undefined) ?? {};
-
-  if (plan.watchlist != null) {
-    lib.watchlist = await coreMergeLibraryItemsById(watchlistBefore, plan.watchlist);
-    await persistStatusListMerge(watchlistBefore, lib.watchlist as LibraryItemRecord[], 'watchlist', profileKey);
-  }
-  if (plan.completed != null && plan.dropped != null && plan.watched != null) {
-    lib.completed = await coreMergeLibraryItemsById(completedBefore, plan.completed);
-    lib.dropped = await coreMergeLibraryItemsById(droppedBefore, plan.dropped);
-    lib.watched = { ...watchedBefore, ...plan.watched };
-    await persistStatusListMerge(completedBefore, lib.completed as LibraryItemRecord[], 'completed', profileKey);
-    await persistStatusListMerge(droppedBefore, lib.dropped as LibraryItemRecord[], 'dropped', profileKey);
-    await persistWatchedMerge(watchedBefore, lib.watched as Record<string, boolean>, profileKey);
-  }
-  if (plan.progress != null && plan.watching != null) {
-    lib.progress = { ...progressBefore, ...plan.progress };
-    lib.continueWatching = await buildContinueWatching(lib.progress as Record<string, unknown>);
-    await persistProgressMerge(progressBefore, lib.progress as Record<string, unknown>, profileKey);
+  if (plan.watching != null) {
     await replaceExternalContinueWatching({ provider: 'anilist', items: plan.watching, profileKey });
   }
   if (!dryRun) {
-    await saveLibrary(lib, profileKey);
     await saveProviderLibrary('anilist', {
       watchlist: plan.watchlist ?? [],
       watching: plan.watching ?? [],
       completed: plan.completed ?? [],
       dropped: plan.dropped ?? [],
+      favorites: [],
     }, profileKey);
   }
 
@@ -160,25 +136,24 @@ export async function pushLibraryStatusAniList(
 }
 
 async function setAniListStatus(anilistId: number, status: string, token: string): Promise<void> {
-  await anilistGraphql(`
-    mutation ($mediaId: Int, $status: MediaListStatus) {
-      SaveMediaListEntry(mediaId: $mediaId, status: $status) { id status }
-    }
-  `, { mediaId: anilistId, status }, token);
+  const queries = await coreAnilistGraphqlQueries();
+  const variables = (await coreAnilistSaveMediaListEntryVariables(`anilist:${anilistId}`, status as 'COMPLETED' | 'CURRENT'))
+    ?? { mediaId: anilistId, status };
+  await anilistGraphql(
+    queries?.saveMediaListEntry ?? `mutation ($mediaId: Int, $status: MediaListStatus) { SaveMediaListEntry(mediaId: $mediaId, status: $status) { id } }`,
+    variables,
+    token,
+  );
 }
 
 async function deleteAniListEntry(anilistId: number, token: string): Promise<void> {
-  const viewer = await anilistGraphql<{ Viewer?: { id?: number } }>(ANILIST_VIEWER_QUERY, {}, token);
-  const userId = viewer?.Viewer?.id;
-  if (!userId) return;
-  const entry = await anilistGraphql<{ MediaList?: { id?: number } }>(
-    `query ($mediaId: Int, $userId: Int) { MediaList(mediaId: $mediaId, userId: $userId) { id } }`,
-    { mediaId: anilistId, userId },
-    token,
-  );
-  const entryId = entry?.MediaList?.id;
+  const queries = await coreAnilistGraphqlQueries();
+  const lookupQuery = queries?.mediaListEntryLookup ?? `query ($mediaId: Int) { Media(id: $mediaId) { mediaListEntry { id } } }`;
+  const entry = await anilistGraphql<{ Media?: { mediaListEntry?: { id?: number } } }>(lookupQuery, { mediaId: anilistId }, token);
+  const entryId = entry?.Media?.mediaListEntry?.id;
   if (!entryId) return;
-  await anilistGraphql(`mutation ($id: Int) { DeleteMediaListEntry(id: $id) { deleted } }`, { id: entryId }, token);
+  const deleteQuery = queries?.deleteMediaListEntry ?? `mutation ($id: Int) { DeleteMediaListEntry(id: $id) { deleted } }`;
+  await anilistGraphql(deleteQuery, { id: entryId }, token);
 }
 
 async function anilistGraphql<T>(query: string, variables: Record<string, unknown>, token: string, attempt = 0): Promise<T | null> {

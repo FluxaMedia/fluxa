@@ -1,51 +1,36 @@
 import { coreInvoke } from './engine';
 import { dropTraktPlaybackProgress, getOAuthClientId, refreshTraktProfile } from './traktSync';
-import { syncTraktNow, pushMarkWatchedTrakt, pushWatchlistTrakt } from './traktExternalSync';
-import { syncSimklNow, pushMarkWatchedSimkl, pushWatchlistSimkl, dropSimklPlaybackProgress } from './simklExternalSync';
-import {
-  pushStremioPlaybackProgress,
-  pushStremioWatched,
-  pushStremioWatchlist,
-  syncStremioNow,
-} from './stremioExternalSync';
-import { pushAnimeTrackingExternal } from './animeExternalSync';
-import { pushLibraryStatusAniList, pushWatchlistAniList, syncAniListNow } from './anilistExternalSync';
-import {
-  nuvioDeleteWatchHistory,
-  nuvioDeleteWatchProgress,
-  nuvioPullLibrary,
-  nuvioPushLibrary,
-  nuvioPushWatchHistory,
-  nuvioPushWatchProgress,
-  nuvioRefreshToken,
-} from './nuvioApi';
-import { saveProfile } from './profiles';
+import { syncTraktNow, pushMarkWatchedTrakt } from './traktExternalSync';
+import { syncSimklNow, pushMarkWatchedSimkl, dropSimklPlaybackProgress } from './simklExternalSync';
+import { pushStremioPlaybackProgress, syncStremioNow } from './stremioExternalSync';
+import { pushLibraryStatusAniList, syncAniListNow } from './anilistExternalSync';
+import { nuvioPushWatchProgress } from './nuvioApi';
 import { loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistProgressMerge, profileStorageKey } from './libraryOps';
+import { providerAdapters } from './providers';
+import type { PushWatchedArgs, WatchedEpisodeInfo, WatchProgressInfo } from './providers';
 import type { UserProfile } from './types';
 import type { ImportCategory } from './importCategories';
 
 export { enqueueTraktScrobble } from './traktSync';
 export { replaceExternalContinueWatching } from './externalSyncUtils';
+export type { WatchedEpisodeInfo, WatchProgressInfo } from './providers';
 
-export type WatchedEpisodeInfo = {
-  contentId: string;
-  contentType: string;
-  videoId?: string;
-  season?: number;
-  episode?: number;
-  title?: string;
-};
-
-export type WatchProgressInfo = {
-  contentId: string;
-  contentType: string;
-  videoId: string;
-  positionSeconds: number;
-  durationSeconds: number;
-  lastWatched: number;
-  season?: number;
-  episode?: number;
-};
+async function validNuvioProfile(profile: UserProfile): Promise<UserProfile> {
+  const expiresAt = profile.nuvioTokenExpiresAt ?? 0;
+  if (!profile.nuvioAccessToken || !profile.nuvioRefreshToken || expiresAt > Math.floor(Date.now() / 1000) + 60) return profile;
+  const { nuvioRefreshToken } = await import('./nuvioApi');
+  const session = await nuvioRefreshToken(profile.nuvioRefreshToken);
+  const { saveProfile } = await import('./profiles');
+  const updated: UserProfile = {
+    ...profile,
+    nuvioAccessToken: session.access_token,
+    nuvioRefreshToken: session.refresh_token ?? profile.nuvioRefreshToken,
+    nuvioTokenExpiresAt: Math.floor(Date.now() / 1000) + (session.expires_in ?? 3600),
+    nuvioUserId: session.user?.id ?? profile.nuvioUserId,
+  };
+  await saveProfile(updated);
+  return updated;
+}
 
 async function integrationSettings(): Promise<Record<string, unknown>> {
   const prefs = await loadPrefs();
@@ -101,44 +86,6 @@ export async function promoteExternalProgress(
   }
 }
 
-const nuvioLibraryMutationQueues = new Map<string, Promise<void>>();
-
-function queueNuvioLibraryMutation(key: string, mutation: () => Promise<void>): Promise<void> {
-  const previous = nuvioLibraryMutationQueues.get(key) ?? Promise.resolve();
-  const next = previous.catch(() => undefined).then(mutation);
-  nuvioLibraryMutationQueues.set(key, next);
-  void next.finally(() => {
-    if (nuvioLibraryMutationQueues.get(key) === next) nuvioLibraryMutationQueues.delete(key);
-  });
-  return next;
-}
-
-function isAuthFailure(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return /\b(401|403)\b|JWT|token|expired/i.test(message);
-}
-
-async function refreshNuvioProfile(profile: UserProfile): Promise<UserProfile> {
-  if (!profile.nuvioRefreshToken) return profile;
-  const session = await nuvioRefreshToken(profile.nuvioRefreshToken);
-  const updated: UserProfile = {
-    ...profile,
-    nuvioAccessToken: session.access_token,
-    nuvioRefreshToken: session.refresh_token ?? profile.nuvioRefreshToken,
-    nuvioTokenExpiresAt: Math.floor(Date.now() / 1000) + (session.expires_in ?? 3600),
-    nuvioUserId: session.user?.id ?? profile.nuvioUserId,
-  };
-  await saveProfile(updated);
-  return updated;
-}
-
-async function validNuvioProfile(profile: UserProfile): Promise<UserProfile> {
-  if (!profile.nuvioAccessToken || !profile.nuvioRefreshToken) return profile;
-  const expiresAt = profile.nuvioTokenExpiresAt ?? 0;
-  if (expiresAt > Math.floor(Date.now() / 1000) + 60) return profile;
-  return refreshNuvioProfile(profile);
-}
-
 export async function pushMarkWatchedExternal(
   videoIds: string[],
   watched: boolean,
@@ -150,74 +97,23 @@ export async function pushMarkWatchedExternal(
   if (!profile) return;
   const activeProfile = await refreshTraktProfile(profile).catch(() => profile);
   const settings = await integrationSettings();
-  const tasks: Promise<void>[] = [];
-  const plan = await coreInvoke<{
-    trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean;
-    animeEpisode?: WatchedEpisodeInfo; animeProgressEpisode?: number;
-    episodes: WatchedEpisodeInfo[];
-    watchedKeys: Array<{ content_id: string; season?: number; episode?: number }>;
-    historyItems: Array<{ content_id: string; content_type: string; title?: string; season?: number; episode?: number; watched_at: number }>;
-    progressEntry?: { content_id: string; content_type: string; video_id: string; position: number; duration: number; last_watched: number; season?: number; episode?: number };
-  }>('externalProviderActionPlan', JSON.stringify({ kind: 'markWatched', profile: activeProfile, videoIds, watched, meta, episodeInfo, progressInfo, integrationSettings: settings, nowMs: Date.now() }));
+  const plan = await coreInvoke<{ trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean } & Omit<PushWatchedArgs, 'videoIds' | 'watched' | 'meta'>>(
+    'externalProviderActionPlan',
+    JSON.stringify({ kind: 'markWatched', profile: activeProfile, videoIds, watched, meta, episodeInfo, progressInfo, integrationSettings: settings, nowMs: Date.now() }),
+  );
   if (!plan) return;
 
-  if (plan.trakt) {
-    tasks.push((async () => {
-      const clientId = await getOAuthClientId('trakt');
-      await pushMarkWatchedTrakt(videoIds, watched, activeProfile.traktAccessToken!, clientId);
-    })().catch(() => undefined));
-  }
+  const args: PushWatchedArgs = {
+    videoIds, watched, meta,
+    episodes: plan.episodes, animeEpisode: plan.animeEpisode, animeProgressEpisode: plan.animeProgressEpisode,
+    watchedKeys: plan.watchedKeys, historyItems: plan.historyItems, progressEntry: plan.progressEntry,
+  };
 
-  if (plan.simkl) {
-    tasks.push((async () => {
-      const clientId = await getOAuthClientId('simkl');
-      await pushMarkWatchedSimkl(videoIds, watched, meta, activeProfile.simklAccessToken!, clientId);
-    })().catch(() => undefined));
-  }
-
-  if (plan.anilist) {
-    tasks.push(pushAnimeTrackingExternal({
-      meta,
-      episode: plan.animeEpisode,
-      progressEpisode: plan.animeProgressEpisode,
-      watched,
-    }, activeProfile).catch(() => undefined));
-  }
-
-  if (plan.stremio) {
-    tasks.push(pushStremioWatched(meta, watched, plan.episodes, activeProfile).catch(() => undefined));
-  }
-  if (plan.nuvio) {
-    tasks.push((async () => {
-      let nuvioProfile = await validNuvioProfile(activeProfile);
-      const push = async () => {
-        const token = nuvioProfile.nuvioAccessToken!;
-        const profileIdx = nuvioProfile.nuvioProfileIndex ?? 1;
-        if (!watched) {
-          if (plan.watchedKeys.length > 0) await nuvioDeleteWatchHistory(token, profileIdx, plan.watchedKeys);
-          return;
-        }
-        if (plan.episodes.length > 0) {
-          await Promise.all(plan.episodes.map((info) =>
-            nuvioDeleteWatchProgress(token, profileIdx, info.contentId, info.season, info.episode).catch(() => undefined),
-          ));
-          await nuvioPushWatchHistory(token, profileIdx, plan.historyItems);
-        }
-        if (plan.progressEntry) {
-          await nuvioPushWatchProgress(token, profileIdx, [plan.progressEntry]);
-        }
-      };
-      try {
-        await push();
-      } catch (err) {
-        if (!isAuthFailure(err)) throw err;
-        nuvioProfile = await refreshNuvioProfile(nuvioProfile);
-        await push();
-      }
-    })().catch(() => undefined));
-  }
-
-  await Promise.all(tasks);
+  await Promise.all(
+    providerAdapters
+      .filter((adapter) => plan[adapter.id])
+      .map((adapter) => adapter.pushWatched(activeProfile, args).catch(() => undefined)),
+  );
 }
 
 export async function pushWatchlistExternal(
@@ -227,48 +123,17 @@ export async function pushWatchlistExternal(
 ): Promise<void> {
   if (!profile) return;
   const activeProfile = await refreshTraktProfile(profile).catch(() => profile);
-  const id = String(item.id ?? '');
-  const contentType = String(item.type ?? 'movie');
-  const tasks: Promise<void>[] = [];
-  const plan = await coreInvoke<{ trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'watchlist', profile: activeProfile, item, command, nowMs: Date.now() }));
+  const plan = await coreInvoke<{ trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean }>(
+    'externalProviderActionPlan',
+    JSON.stringify({ kind: 'watchlist', profile: activeProfile, item, command, nowMs: Date.now() }),
+  );
   if (!plan) return;
 
-  if (plan.trakt) {
-    tasks.push((async () => {
-      const clientId = await getOAuthClientId('trakt');
-      await pushWatchlistTrakt(id, contentType, command, activeProfile.traktAccessToken!, clientId);
-    })().catch(() => undefined));
-  }
-
-  if (plan.simkl) {
-    tasks.push((async () => {
-      const clientId = await getOAuthClientId('simkl');
-      await pushWatchlistSimkl(id, contentType, command, activeProfile.simklAccessToken!, clientId);
-    })().catch(() => undefined));
-  }
-
-  if (plan.anilist) {
-    tasks.push(pushWatchlistAniList(id, command, activeProfile.anilistAccessToken!).catch(() => undefined));
-  }
-
-  if (plan.stremio) {
-    tasks.push(pushStremioWatchlist(item, command, activeProfile).catch(() => undefined));
-  }
-
-  if (plan.nuvio) {
-    const queueKey = `${activeProfile.nuvioUserId ?? activeProfile.id}:${activeProfile.nuvioProfileIndex ?? 1}`;
-    tasks.push(queueNuvioLibraryMutation(queueKey, async () => {
-      let nuvioProfile = await validNuvioProfile(activeProfile);
-      const token = nuvioProfile.nuvioAccessToken;
-      if (!token) return;
-      const profileIdx = nuvioProfile.nuvioProfileIndex ?? 1;
-      const remote = await nuvioPullLibrary(token, profileIdx);
-      const updated = await coreInvoke<typeof remote>('nuvioLibraryMutationPlan', JSON.stringify({ remote, item, command, nowMs: Date.now() }));
-      if (updated) await nuvioPushLibrary(token, profileIdx, updated);
-    }).catch(() => undefined));
-  }
-
-  await Promise.all(tasks);
+  await Promise.all(
+    providerAdapters
+      .filter((adapter) => plan[adapter.id])
+      .map((adapter) => adapter.pushWatchlist(activeProfile, item, command).catch(() => undefined)),
+  );
 }
 
 export async function pushPlaybackProgressExternal(
@@ -294,6 +159,22 @@ export async function pushPlaybackProgressExternal(
     })().catch(() => undefined));
   }
   await Promise.all(tasks);
+}
+
+export async function pushFavoriteExternal(
+  item: Record<string, unknown>,
+  command: 'add' | 'remove',
+  profile: UserProfile | null,
+): Promise<void> {
+  if (!profile) return;
+  const plan = await coreInvoke<{ trakt: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'favorite', profile, command, nowMs: Date.now() }));
+  if (!plan) return;
+
+  await Promise.all(
+    providerAdapters
+      .filter((adapter) => plan[adapter.id as keyof typeof plan] && adapter.pushFavorite)
+      .map((adapter) => adapter.pushFavorite!(profile, item, command).catch(() => undefined)),
+  );
 }
 
 export async function pushLibraryStatusExternal(

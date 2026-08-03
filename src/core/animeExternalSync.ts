@@ -1,5 +1,6 @@
 import { platformFetch } from './httpClient';
 import {
+  coreAnilistGraphqlQueries,
   coreAnilistMediaListStatus,
   coreAnilistSaveMediaListEntryVariables,
   coreAnilistSearchBestMatch,
@@ -150,13 +151,10 @@ async function anilistGraphql<T>(query: string, variables: Record<string, unknow
 }
 
 async function pushAniListProgress(anilistId: number, progressEpisode: number, meta: Meta, token: string): Promise<void> {
-  const query = `
-    mutation ($mediaId: Int, $progress: Int, $status: MediaListStatus) {
-      SaveMediaListEntry(mediaId: $mediaId, progress: $progress, status: $status) {
-        id
-        progress
-        status
-      }
+  const queries = await coreAnilistGraphqlQueries();
+  const query = queries?.saveMediaListEntry ?? `
+    mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int) {
+      SaveMediaListEntry(mediaId: $mediaId, status: $status, progress: $progress) { id }
     }
   `;
   const totalEpisodes = Array.isArray(meta.videos) ? meta.videos.length : 0;

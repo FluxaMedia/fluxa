@@ -27,6 +27,7 @@ import {
   saveLibrary,
 } from "./libraryOps";
 import {
+  pushFavoriteExternal,
   pushLibraryStatusExternal,
   pushMarkWatchedExternal,
   pushPlaybackProgressExternal,
@@ -435,6 +436,25 @@ export async function writeSettings(
 
 export async function readLibraryState(): Promise<unknown> {
   return loadLibrary();
+}
+
+export async function writeFeedback(
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  const id = payload.id as string;
+  const value = payload.value as boolean | null | undefined;
+  const meta = payload.meta as Record<string, unknown> | undefined;
+  const lib = await loadLibrary();
+  const favorites = ((lib.favorites as Record<string, unknown>[] | undefined) ?? [])
+    .filter((item) => item.id !== id);
+  if (value === true && meta) favorites.unshift(meta);
+  lib.favorites = favorites;
+  await saveLibrary(lib);
+  const profile = await loadActiveProfile();
+  if (profile && meta) {
+    void pushFavoriteExternal(meta, value === true ? "add" : "remove", profile);
+  }
+  return { feedback: value };
 }
 
 export async function readPlaybackProgress(

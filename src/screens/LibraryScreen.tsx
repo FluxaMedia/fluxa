@@ -18,7 +18,7 @@ import { useLibraryCollections } from '../hooks/useLibraryCollections';
 import { NAV_RAIL_WIDTH, PX, styles } from './libraryScreenStyles';
 import { CircleBtn, HistoryTimeline, TabChip } from './LibraryScreenParts';
 
-type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 'airing' | 'rated' | 'history';
+type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 'airing' | 'rated' | 'history' | 'favorites';
 type LibrarySource = 'local' | LibraryProvider;
 
 interface Props {
@@ -80,7 +80,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
     if (librarySource !== 'local' && !providerLibraries[librarySource]) changeLibrarySource('local');
   }, [librarySource, providerLibraries]);
 
-  const TAB_ORDER: Tab[] = ['watchlist', 'watching', 'completed', 'dropped', 'collections', 'airing', 'rated', 'history'];
+  const TAB_ORDER: Tab[] = ['watchlist', 'watching', 'completed', 'dropped', 'favorites', 'collections', 'airing', 'rated', 'history'];
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -108,6 +108,21 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const watching = (selectedProviderLibrary?.watching ?? library.lastWrite?.continueWatching ?? library.continueWatching ?? []) as LibraryItem[];
   const rawCompleted = (selectedProviderLibrary?.completed ?? library.lastWrite?.completed ?? library.completed ?? []) as LibraryItem[];
   const rawDropped = (selectedProviderLibrary?.dropped ?? library.lastWrite?.dropped ?? library.dropped ?? []) as LibraryItem[];
+  const favorites = (librarySource === 'trakt'
+    ? (selectedProviderLibrary?.favorites ?? [])
+    : ((library.lastWrite?.favorites ?? library.favorites) ?? [])) as LibraryItem[];
+
+  const watchlistLabelKey = librarySource === 'trakt' || librarySource === 'nuvio' || librarySource === 'stremio'
+    ? 'library.watchlist'
+    : librarySource === 'anilist'
+      ? 'library.planning'
+      : 'library.plan_to_watch';
+  const completedLabelKey = librarySource === 'trakt' ? 'library.history' : 'library.completed';
+  const completedTabEnabled = librarySource !== 'nuvio' && librarySource !== 'stremio';
+
+  useEffect(() => {
+    if (!completedTabEnabled && tab === 'completed') changeTab('watchlist');
+  }, [completedTabEnabled, tab]);
   const posterPrefs = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);
   const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
   const accent = prefString(prefs, 'accentColorArgb', '#FFFFFF');
@@ -137,11 +152,11 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   useEffect(() => {
     let active = true;
     void coreInvoke<typeof viewPlan>('libraryViewPlan', JSON.stringify({
-      watchlist, watching, completed: rawCompleted, dropped: rawDropped,
+      watchlist, watching, completed: rawCompleted, dropped: rawDropped, favorites,
       progress: library.lastWrite?.progress ?? {}, tab, query, sortBy,
     })).then((plan) => { if (active && plan) setViewPlan(plan); });
     return () => { active = false; };
-  }, [watchlist, watching, rawCompleted, rawDropped, library.lastWrite?.progress, tab, query, sortBy]);
+  }, [watchlist, watching, rawCompleted, rawDropped, favorites, library.lastWrite?.progress, tab, query, sortBy]);
   const completed = viewPlan.completed;
   const dropped = viewPlan.dropped;
   const smartLists = viewPlan.smartLists;
@@ -215,16 +230,21 @@ export const LibraryScreen = React.memo(function LibraryScreen({
 
       <div style={styles.tabRow}>
         <TabChip active={tab === 'watchlist'} onClick={() => changeTab('watchlist')}>
-          {t('library.plan_to_watch')}{watchlist.length > 0 ? ` (${watchlist.length})` : ''}
+          {t(watchlistLabelKey)}{watchlist.length > 0 ? ` (${watchlist.length})` : ''}
         </TabChip>
         <TabChip active={tab === 'watching'} onClick={() => changeTab('watching')}>
           {t('library.watching')}{watching.length > 0 ? ` (${watching.length})` : ''}
         </TabChip>
-        <TabChip active={tab === 'completed'} onClick={() => changeTab('completed')}>
-          {t('library.completed')}{completed.length > 0 ? ` (${completed.length})` : ''}
-        </TabChip>
+        {completedTabEnabled && (
+          <TabChip active={tab === 'completed'} onClick={() => changeTab('completed')}>
+            {t(completedLabelKey)}{completed.length > 0 ? ` (${completed.length})` : ''}
+          </TabChip>
+        )}
         <TabChip active={tab === 'dropped'} onClick={() => changeTab('dropped')}>
           {t('library.dropped')}{dropped.length > 0 ? ` (${dropped.length})` : ''}
+        </TabChip>
+        <TabChip active={tab === 'favorites'} onClick={() => changeTab('favorites')}>
+          {t('library.favorites')}{favorites.length > 0 ? ` (${favorites.length})` : ''}
         </TabChip>
         <TabChip active={tab === 'collections'} onClick={() => changeTab('collections')}>
           {t('library.collections')}{collections.length > 0 ? ` (${collections.length})` : ''}

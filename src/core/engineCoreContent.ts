@@ -316,6 +316,14 @@ export async function coreAnilistMediaListStatus(
   )) ?? "CURRENT";
 }
 
+export async function coreAnilistGraphqlQueries(): Promise<{
+  saveMediaListEntry: string;
+  mediaListEntryLookup: string;
+  deleteMediaListEntry: string;
+} | null> {
+  return coreInvoke("anilistGraphqlQueries", "{}");
+}
+
 export async function coreAnilistSaveMediaListEntryVariables(
   contentId: string,
   status: "COMPLETED" | "CURRENT",

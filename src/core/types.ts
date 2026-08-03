@@ -437,12 +437,14 @@ export interface LibraryStateSlice {
   continueWatching?: LibraryItem[];
   dropped?: LibraryItem[];
   completed?: LibraryItem[];
+  favorites?: LibraryItem[];
   isLoading?: boolean;
   lastWrite?: {
     watchlist?: LibraryItem[];
     continueWatching?: LibraryItem[];
     dropped?: LibraryItem[];
     completed?: LibraryItem[];
+    favorites?: LibraryItem[];
     progress?: Record<string, LibraryItem>;
   };
   lastWriteError?: string | null;

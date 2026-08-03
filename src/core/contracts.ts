@@ -18,6 +18,7 @@ export type AppActionType =
   | 'profileActivated'
   | 'savePlaybackProgressRequested'
   | 'searchRequested'
+  | 'setFeedbackRequested'
   | 'settingsChanged'
   | 'syncExternalIntegration'
   | 'toggleLibraryStatusRequested'

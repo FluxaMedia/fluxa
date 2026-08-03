@@ -1,6 +1,5 @@
 import {
   coreBuildTraktIds,
-  coreImportApplyPlan,
   coreInvoke,
   coreTraktActivityDiff,
   coreTraktMarkWatchedBody,
@@ -13,11 +12,11 @@ import {
   storageRead,
   storageWrite,
 } from './engine';
-import { loadLibrary, saveLibrary, persistStatusListMerge, persistWatchedMerge, profileStorageKey } from './libraryOps';
+import { loadPrefs, profileStorageKey } from './libraryOps';
+import { saveProviderLibrary } from './providerLibraries';
 import { platformFetch } from './httpClient';
 import { refreshTraktProfile, traktHeaders } from './traktSync';
 import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
-import { saveProviderLibrary } from './providerLibraries';
 import type { ImportCategory } from './importCategories';
 
 type TraktDeltaCache = {
@@ -48,21 +47,6 @@ async function fetchAllPages(url: string, headers: HeadersInit, limit: number): 
     }));
   }
   return plan?.items ?? [];
-}
-
-async function applyWatchlistMerge(merged: Record<string, unknown>[], before: Record<string, unknown>[], profileKey?: string): Promise<void> {
-  if (merged.length <= before.length) return;
-  const lib = await loadLibrary(profileKey);
-  lib.watchlist = merged;
-  await persistStatusListMerge(before, merged, 'watchlist', profileKey);
-  await saveLibrary(lib, profileKey);
-}
-
-async function applyWatchedMerge(merged: Record<string, boolean>, before: Record<string, boolean>, profileKey?: string): Promise<void> {
-  const lib = await loadLibrary(profileKey);
-  lib.watched = merged;
-  await persistWatchedMerge(before, merged, profileKey);
-  await saveLibrary(lib, profileKey);
 }
 
 export async function syncTraktNow(payload: Record<string, unknown>): Promise<unknown> {
@@ -132,6 +116,10 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   const allItems = ((await coreTraktPlaybackItemsToLibrary(JSON.stringify(playbackItems))) ?? []) as Record<string, unknown>[];
   let items = await enrichWithAddonMeta(allItems);
 
+  const prefs = await loadPrefs();
+  const librarySource = String((prefs as Record<string, unknown>).integrationLibrarySource ?? 'local');
+  const isSelectedLibrarySource = librarySource === 'trakt';
+
   let watchlistCount = 0;
   let watchedCount = 0;
   try {
@@ -148,24 +136,14 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
 
     const watchlistItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
     const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
+    const completedItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? []) as Record<string, unknown>[];
+    const favoriteItems = isSelectedLibrarySource ? await fetchTraktFavorites(token, clientId).catch(() => []) : [];
+    watchlistCount = watchlistItems.length;
+    watchedCount = Object.values(watchedIds).filter(Boolean).length;
 
-    if (!dryRun) await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: [], dropped: [] }, profileKey);
-
-    const localLib = await loadLibrary(profileKey);
-    const localWatchlist = (localLib.watchlist as Record<string, unknown>[] | undefined) ?? [];
-    const localWatched = (localLib.watched as Record<string, unknown> | undefined) ?? {};
-    const applyPlan = await coreImportApplyPlan({
-      localWatchlist,
-      externalWatchlist: watchlistItems,
-      localWatched,
-      externalWatched: watchedIds,
-      categories,
-      dryRun,
-    });
-    watchlistCount = applyPlan.watchlistCount;
-    watchedCount = applyPlan.watchedCount;
-    if (applyPlan.watchlist != null) await applyWatchlistMerge(applyPlan.watchlist, localWatchlist, profileKey);
-    if (applyPlan.watched != null) await applyWatchedMerge(applyPlan.watched, localWatched as Record<string, boolean>, profileKey);
+    if (!dryRun) {
+      await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: favoriteItems }, profileKey);
+    }
 
     if (activities) {
       await storageWrite(cacheKey, { activities, playbackItems, watchlistMovies, watchlistShows, watchedMovies, watchedShows } satisfies TraktDeltaCache);
@@ -242,4 +220,28 @@ export async function pushWatchlistTrakt(
   const endpoint = command === 'add' ? '/sync/watchlist' : '/sync/watchlist/remove';
   const body = contentType === 'series' ? { shows: [{ ids }] } : { movies: [{ ids }] };
   await platformFetch(`https://api.trakt.tv${endpoint}`, { method: 'POST', headers, body: JSON.stringify(body) });
+}
+
+export async function pushFavoriteTrakt(
+  id: string,
+  contentType: string,
+  command: 'add' | 'remove',
+  token: string,
+  clientId: string,
+): Promise<void> {
+  const headers = traktHeaders(token, clientId);
+  const ids = await coreBuildTraktIds(id);
+  if (!ids) return;
+  const endpoint = command === 'add' ? '/sync/favorites' : '/sync/favorites/remove';
+  const body = contentType === 'series' ? { shows: [{ ids }] } : { movies: [{ ids }] };
+  await platformFetch(`https://api.trakt.tv${endpoint}`, { method: 'POST', headers, body: JSON.stringify(body) });
+}
+
+export async function fetchTraktFavorites(token: string, clientId: string): Promise<Record<string, unknown>[]> {
+  const headers = traktHeaders(token, clientId);
+  const [movies, shows] = await Promise.all([
+    fetchAllPages('https://api.trakt.tv/sync/favorites/movies/added/desc', headers, 250),
+    fetchAllPages('https://api.trakt.tv/sync/favorites/shows/added/desc', headers, 250),
+  ]);
+  return ((await coreTraktWatchlistToItems(JSON.stringify(movies), JSON.stringify(shows))) ?? []) as Record<string, unknown>[];
 }

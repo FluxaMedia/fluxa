@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, BookmarkCheck, CheckCircle2, Film, MessageCircle, XCircle } from 'lucide-react';
+import { Bookmark, BookmarkCheck, CheckCircle2, Film, Heart, MessageCircle, XCircle } from 'lucide-react';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { t } from '../../i18n';
 import { MS } from './detailStyles';
@@ -16,6 +16,8 @@ export function ModernDetailActionRow({
   onToggleCompleted,
   isDropped,
   onToggleDropped,
+  isFavorite,
+  onToggleFavorite,
   onOpenComments,
 }: {
   continueLabel: string | null;
@@ -28,6 +30,8 @@ export function ModernDetailActionRow({
   onToggleCompleted: () => void;
   isDropped: boolean;
   onToggleDropped: () => void;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   onOpenComments?: () => void;
 }) {
   return (
@@ -50,6 +54,9 @@ export function ModernDetailActionRow({
       </ModernIconBtn>
       <ModernIconBtn title={isDropped ? t('library.unmark_dropped') : t('library.mark_dropped')} active={isDropped} onClick={onToggleDropped}>
         <XCircle size={18} />
+      </ModernIconBtn>
+      <ModernIconBtn title={t('detail.favourite')} active={isFavorite} onClick={onToggleFavorite}>
+        <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
       </ModernIconBtn>
       {onOpenComments && <ModernIconBtn title={t('detail.trakt_comments')} onClick={onOpenComments}>
         <MessageCircle size={18} />

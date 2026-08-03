@@ -11,6 +11,7 @@ import {
   readDetailLocalState,
   readLibraryState,
   readPlaybackProgress,
+  writeFeedback,
   writePlaybackProgress,
   writeSettings,
 } from './libraryEffects';
@@ -165,7 +166,7 @@ async function runEffect(
       value = await writePlaybackProgress(p);
       break;
     case 'writeFeedback':
-      value = {};
+      value = await writeFeedback(p);
       break;
     case 'clearPlaybackProgress': {
       const lib = await loadLibrary();

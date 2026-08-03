@@ -52,6 +52,7 @@ export type ModernDetailProps = {
   isInWatchlist: boolean;
   isDropped: boolean;
   isCompleted: boolean;
+  isFavorite: boolean;
   omdbRatings?: { rottenTomatoes?: string; metascore?: string } | null;
   mdblistRatings?: Record<string, number> | null;
   fanartArtwork?: { hdLogo?: string } | null;
@@ -72,6 +73,7 @@ export type ModernDetailProps = {
   onToggleWatchlist: () => void;
   onToggleCompleted: () => void;
   onToggleDropped: () => void;
+  onToggleFavorite: () => void;
   onOpenComments?: () => void;
   onBgError: () => void;
 };
@@ -80,13 +82,13 @@ export function ModernDetailLayout({
   displayMeta, bgUrl, isSeries, detail, meta, episodes, filteredEps, seasonNumbers,
   selectedSeason, selectedEpisode, showSources, playbackFailure, streams, episodePlan, similarItems,
   displayTrailers, trailerMetadata, castMembers, directorLinks, peopleImages,
-  watchedMap, progressMap, continueWatchingEntry, isInWatchlist, isDropped, isCompleted,
+  watchedMap, progressMap, continueWatchingEntry, isInWatchlist, isDropped, isCompleted, isFavorite,
   omdbRatings, mdblistRatings, fanartArtwork, availableAddons, streamAddonCount, poster,
   trailerOnHero, detailHeroAutoplayTrailer, detailHeroAutoplayTrailerDelaySecs, preferredSubtitleLanguage, secondarySubtitleLanguage,
   blurUnwatchedEpisodes, spoilerHideEpisodeInfo, detailSeasonSelectorMode: _detailSeasonSelectorMode, episodeCardsLayout,
   onBack, onDispatch, onNavigateDetail, onNavigateGenre, onSeasonChange, onEpisodeClick,
   onMovieSources, onRetryFailed, onBackToEpisodes, onPlaySource, onPlay,
-  onToggleWatchlist, onToggleCompleted, onToggleDropped, onOpenComments, onBgError,
+  onToggleWatchlist, onToggleCompleted, onToggleDropped, onToggleFavorite, onOpenComments, onBgError,
 }: ModernDetailProps) {
   const [activeTab, setActiveTab] = useState<'episodes' | 'related' | 'details'>(() => isSeries ? 'episodes' : 'details');
   const [similarSource, setSimilarSource] = useState('auto');
@@ -242,6 +244,8 @@ export function ModernDetailLayout({
             onToggleCompleted={onToggleCompleted}
             isDropped={isDropped}
             onToggleDropped={onToggleDropped}
+            isFavorite={isFavorite}
+            onToggleFavorite={onToggleFavorite}
             onOpenComments={onOpenComments}
           />
 
