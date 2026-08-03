@@ -6,6 +6,7 @@ import { addRecentSearch, clearRecentSearches, loadRecentSearches, removeRecentS
 import type { AppState, HomeCategory, Meta } from '../core/types';
 import { getLanguage, t } from '../i18n';
 import { coreInvoke } from '../core/engine';
+import { addSearchPartialHandler, type PartialSearchSource } from '../core/catalogEffects';
 import { styles } from './searchStyles';
 import { LoadingShelves, SearchCategoryRow, RecentSearchChip, formatCatalogTitle, TypeChip, GenreCard } from './SearchScreenParts';
 
@@ -48,6 +49,31 @@ export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch
     categoryCount: number;
     isLoading: boolean;
   }>({ query: '', queryEligible: false, shouldDispatch: false, shouldCache: false, categories: [], resultCount: 0, categoryCount: 0, isLoading: false });
+  const trimmedQueryRef = useRef(trimmedQuery);
+  trimmedQueryRef.current = trimmedQuery;
+  const [partialCategories, setPartialCategories] = useState<HomeCategory[]>([]);
+
+  useEffect(() => addSearchPartialHandler((q, source: PartialSearchSource, items) => {
+    if (q !== trimmedQueryRef.current) return;
+    const meta = items as Meta[];
+    setPartialCategories((current) => {
+      const idx = current.findIndex((c) => c.id === source.id);
+      if (idx === -1) {
+        return [...current, { id: source.id, name: source.name ?? '', type: source.type ?? '', items: meta }];
+      }
+      const existing = current[idx];
+      const seen = new Set(existing.items.map((m) => m.id));
+      const added = meta.filter((m) => !seen.has(m.id));
+      if (!added.length) return current;
+      const updated = [...current];
+      updated[idx] = { ...existing, items: [...existing.items, ...added] };
+      return updated;
+    });
+  }), []);
+
+  useEffect(() => {
+    setPartialCategories([]);
+  }, [trimmedQuery]);
 
   useEffect(() => {
     loadRecentSearches().then(setRecentSearches);
@@ -84,6 +110,9 @@ export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch
   const categories = screenPlan.categories;
   const resultCount = screenPlan.resultCount;
   const isLoading = screenPlan.isLoading;
+  const orderedPartialCategories = [...partialCategories].sort((a, b) => (
+    (a.type === 'series' ? 1 : 0) - (b.type === 'series' ? 1 : 0)
+  ));
 
   const handleGenreClick = (genreKey: string) => {
     onQueryChange(t(genreKey));
@@ -163,8 +192,23 @@ export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch
           </>
         )}
 
-        {isLoading && (
+        {isLoading && orderedPartialCategories.length === 0 && (
           <LoadingShelves />
+        )}
+
+        {isLoading && orderedPartialCategories.length > 0 && (
+          <div style={styles.categoryList}>
+            {orderedPartialCategories.map((category) => (
+              <SearchCategoryRow
+                key={category.id}
+                title={formatCatalogTitle(category.name, category.type)}
+                items={category.items}
+                onItemClick={onNavigateDetail}
+                onDispatch={onDispatch}
+                posterPrefs={posterPrefs}
+              />
+            ))}
+          </div>
         )}
 
         {!isLoading && search.error && query.trim().length >= 2 && (

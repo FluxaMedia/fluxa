@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search as SearchIcon, X, Clock } from 'lucide-react';
 import { t, getLanguage } from '../i18n';
 import { addRecentSearch, loadRecentSearches, clearRecentSearches, removeRecentSearch, type RecentSearch } from '../core/searchHistory';
-import { setSearchPartialHandler } from '../core/catalogEffects';
+import { addSearchPartialHandler } from '../core/catalogEffects';
 import { appPrefs, prefBool } from '../core/appPrefs';
 import { coreInvoke } from '../core/engine';
 import type { AppState, Meta } from '../core/types';
@@ -56,17 +56,14 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
     return () => clearTimeout(debounceRef.current);
   }, [inputValue, onDispatch]);
 
-  useEffect(() => {
-    setSearchPartialHandler((q, items) => {
-      if (q !== partialQueryRef.current) return;
-      setPartialResults((current) => {
-        const seen = new Set(current.map((meta) => meta.id));
-        const added = (items as Meta[]).filter((meta) => !seen.has(meta.id));
-        return added.length > 0 ? [...current, ...added] : current;
-      });
+  useEffect(() => addSearchPartialHandler((q, _source, items) => {
+    if (q !== partialQueryRef.current) return;
+    setPartialResults((current) => {
+      const seen = new Set(current.map((meta) => meta.id));
+      const added = (items as Meta[]).filter((meta) => !seen.has(meta.id));
+      return added.length > 0 ? [...current, ...added] : current;
     });
-    return () => setSearchPartialHandler(null);
-  }, []);
+  }), []);
 
   const [localSuggestions, setLocalSuggestions] = useState<Meta[]>([]);
   useEffect(() => {

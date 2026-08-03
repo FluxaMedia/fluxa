@@ -21,10 +21,23 @@ export async function fetchCatalogPage(payload: Record<string, unknown>, signal?
 const searchResultsCache = new Map<string, unknown>();
 let searchAbortController: AbortController | null = null;
 
-let _searchPartialHandler: ((query: string, items: unknown[]) => void) | null = null;
+export interface PartialSearchSource {
+  id: string;
+  name?: string;
+  type?: string;
+}
 
-export function setSearchPartialHandler(fn: ((query: string, items: unknown[]) => void) | null) {
-  _searchPartialHandler = fn;
+type SearchPartialHandler = (query: string, source: PartialSearchSource, items: unknown[]) => void;
+
+const _searchPartialHandlers = new Set<SearchPartialHandler>();
+
+export function addSearchPartialHandler(fn: SearchPartialHandler): () => void {
+  _searchPartialHandlers.add(fn);
+  return () => _searchPartialHandlers.delete(fn);
+}
+
+function notifySearchPartialHandlers(query: string, source: PartialSearchSource, items: unknown[]) {
+  for (const handler of _searchPartialHandlers) handler(query, source, items);
 }
 
 export async function runSearch(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
@@ -71,10 +84,12 @@ export async function runSearch(payload: Record<string, unknown>, signal?: Abort
         ? { ...(item as Record<string, unknown>), sourceAddonTransportUrl: transportUrl, sourceAddonCatalogType: catalogType }
         : item
     ));
-    if (searchAbortController === abortController) _searchPartialHandler?.(query, items);
+    const sourceId = String(request.categoryId ?? url);
+    const sourceName = request.categoryName ? String(request.categoryName) : (typeof request.addonName === 'string' ? request.addonName : undefined);
+    if (searchAbortController === abortController) notifySearchPartialHandlers(query, { id: sourceId, name: sourceName, type: catalogType }, items);
     sources.push({
-      id: String(request.categoryId ?? url),
-      name: request.categoryName ? String(request.categoryName) : (typeof request.addonName === 'string' ? request.addonName : undefined),
+      id: sourceId,
+      name: sourceName,
       type: catalogType,
       items,
       addonName: typeof request.addonName === 'string' ? request.addonName : undefined,
@@ -88,7 +103,7 @@ export async function runSearch(payload: Record<string, unknown>, signal?: Abort
     await Promise.all((['movie', 'series'] as const).map(async (type) => {
       const { metas } = await fetchBuiltinCatalog(type, { search: query }, tmdbApiKey, String(prefs.language ?? 'en'), requestSignal);
       if (searchAbortController !== abortController || !metas.length) return;
-      _searchPartialHandler?.(query, metas);
+      notifySearchPartialHandlers(query, { id: `tmdb:${type}`, name: 'TMDB', type }, metas);
       sources.push({ id: `tmdb:${type}`, name: 'TMDB', type, items: metas, addonName: 'TMDB' });
     }));
   }
