@@ -47,7 +47,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
@@ -1114,7 +1113,7 @@ private fun SettingsEpisodeLayoutPreview(model: SettingsAppearanceDetailUiModel)
                                 .background(Color.White.copy(alpha = thumbAlpha * 0.14f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.OndemandVideo, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(20.dp))
                         }
                         Box(
                             modifier = Modifier
@@ -1139,7 +1138,7 @@ private fun SettingsEpisodeLayoutPreview(model: SettingsAppearanceDetailUiModel)
                                 .background(Color.White.copy(alpha = thumbAlpha * 0.14f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.OndemandVideo, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
