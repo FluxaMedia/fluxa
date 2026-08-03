@@ -16,7 +16,7 @@ import type { AppState, HomeCategory, Meta, NuvioRemoteCollectionSource, Trailer
 import { getLanguage, t } from '../i18n';
 import { useInViewport } from '../hooks/useInViewport';
 import { loadNuvioCollectionSource } from '../core/collectionSources';
-import { fetchBuiltinCatalog } from '../core/tmdbAddon';
+import { fetchBuiltinCatalog, fetchTmdbLogo } from '../core/tmdbAddon';
 import { loadPrefs } from '../core/libraryOps';
 
 const ROW_PLACEHOLDER_HEIGHT = 340;
@@ -264,22 +264,26 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
   const [heroTrailers, setHeroTrailers] = useState<Record<string, Trailer[]>>({});
   const [fetchedHeroTrailerIds, setFetchedHeroTrailerIds] = useState<string[]>([]);
+  const [heroLogos, setHeroLogos] = useState<Record<string, string>>({});
+  const [fetchedHeroLogoIds, setFetchedHeroLogoIds] = useState<string[]>([]);
   const [homePlan, setHomePlan] = useState<{
     categories: HomeCategory[];
     billboard: Meta | null;
     slides: Meta[];
     trailerTargets: Meta[];
+    logoTargets: Meta[];
     showHero: boolean;
     autoplayTrailer: boolean;
-  }>({ categories: [], billboard: null, slides: [], trailerTargets: [], showHero: true, autoplayTrailer: false });
+  }>({ categories: [], billboard: null, slides: [], trailerTargets: [], logoTargets: [], showHero: true, autoplayTrailer: false });
   useEffect(() => {
     let active = true;
     void coreInvoke<typeof homePlan>('homeHeroPlan', JSON.stringify({
       categories: home.categories ?? [], billboard: home.billboard ?? null, prefs,
       fetchedTrailers: heroTrailers, fetchedIds: fetchedHeroTrailerIds,
+      fetchedLogos: heroLogos, fetchedLogoIds: fetchedHeroLogoIds,
     })).then((plan) => { if (active && plan) setHomePlan(plan); });
     return () => { active = false; };
-  }, [home.categories, home.billboard, prefs, heroTrailers, fetchedHeroTrailerIds]);
+  }, [home.categories, home.billboard, prefs, heroTrailers, fetchedHeroTrailerIds, heroLogos, fetchedHeroLogoIds]);
   const categories = homePlan.categories;
   const nearEndCallbacks = useMemo(() => {
     const map = new Map<string, () => void>();
@@ -313,6 +317,25 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
     }).catch((err) => console.error('hero trailer fetch failed', err));
     return () => { cancelled = true; };
   }, [homePlan.trailerTargets, prefs]);
+
+  useEffect(() => {
+    const apiKey = prefString(prefs, 'tmdbApiKey');
+    const targets = homePlan.logoTargets;
+    if (!targets.length) return;
+    setFetchedHeroLogoIds((current) => Array.from(new Set([...current, ...targets.map((item) => item.id)])));
+    let cancelled = false;
+    const language = getLanguage();
+    Promise.all(targets.map(async (item) => {
+      const logo = await fetchTmdbLogo(item.type, item.id, apiKey, language);
+      return [item.id, logo] as const;
+    })).then((results) => {
+      if (cancelled) return;
+      const found = results.filter((entry): entry is [string, string] => !!entry[1]);
+      if (!found.length) return;
+      setHeroLogos((prev) => ({ ...prev, ...Object.fromEntries(found) }));
+    }).catch((err) => console.error('hero logo fetch failed', err));
+    return () => { cancelled = true; };
+  }, [homePlan.logoTargets, prefs]);
 
   const billboardWithTrailer = billboard;
   const heroSlidesWithTrailers = heroSlides;

@@ -4,6 +4,7 @@ import {
   coreTmdbBulkMetas,
   coreTmdbEpisodesToVideos,
   coreTmdbFullMetaToMeta,
+  coreTmdbPickLogo,
   coreInvoke,
 } from './engine';
 import { tryFetchJson } from './httpClient';
@@ -121,6 +122,21 @@ export async function fetchBuiltinMeta(
   }
 
   return { meta };
+}
+
+export async function fetchTmdbLogo(
+  type: string,
+  id: string,
+  apiKey: string,
+  language: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const urls = await fetchBuiltinMetaUrls(type, id, apiKey, language, signal);
+  if (!urls) return null;
+  const images = await tryFetchJson(urls.imagesUrl, { signal });
+  if (!images) return null;
+  const picked = await coreTmdbPickLogo(JSON.stringify(images), language);
+  return picked?.logo ?? null;
 }
 
 async function fetchBuiltinSeasonVideos(

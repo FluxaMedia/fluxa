@@ -445,6 +445,7 @@ export const CORE_METHODS = [
   'tmdbNumericId',
   'tmdbPeopleImagesFromCredits',
   'tmdbPeopleRequestPlan',
+  'tmdbPickLogo',
   'tmdbResolveIdHint',
   'tmdbSeasonRequestUrl',
   'tmdbVideoToTrailer',

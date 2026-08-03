@@ -103,6 +103,13 @@ export async function coreTmdbFullMetaToMeta(
   );
 }
 
+export async function coreTmdbPickLogo(
+  imagesJson: string,
+  language: string,
+): Promise<{ logo: string | null } | null> {
+  return coreInvoke("tmdbPickLogo", JSON.stringify({ imagesJson, language }));
+}
+
 export async function coreTmdbEpisodesToVideos(
   seasonJson: string,
   seriesId: string,
