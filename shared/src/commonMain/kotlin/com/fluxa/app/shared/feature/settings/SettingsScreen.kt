@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -915,6 +916,7 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
         SettingsChoiceOption("large", AppStrings.t(lang, "auto.large")),
         SettingsChoiceOption("xlarge", AppStrings.t(lang, "auto.very_large"))
     )
+    SettingsPosterPreview(model)
     SettingsSectionHeader(AppStrings.t(lang, "settings.layout"))
     SettingsGroupCard {
         SettingsChoiceRow(AppStrings.t(lang, "auto.card_corners"), model.cardCornerPreset, cornerOptions) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(cardCornerPreset = it))) }
@@ -927,6 +929,78 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
     SettingsGroupCard {
         SettingsNavRow(AppStrings.t(lang, "settings.hero_banner")) { onNavigate(SettingsCategory.AppearanceHomeHero) }
         SettingsNavRow(AppStrings.t(lang, "auto.continue_watching")) { onNavigate(SettingsCategory.AppearanceHomeContinueWatching) }
+    }
+}
+
+private fun posterCornerRadius(preset: String): androidx.compose.ui.unit.Dp = when (preset) {
+    "sharp" -> 0.dp
+    "classic" -> 4.dp
+    "soft" -> 8.dp
+    "rounded" -> 14.dp
+    "pill" -> 22.dp
+    else -> 8.dp
+}
+
+private fun posterWidth(preset: String): androidx.compose.ui.unit.Dp = when (preset) {
+    "xsmall" -> 64.dp
+    "small" -> 78.dp
+    "medium" -> 94.dp
+    "large" -> 112.dp
+    "xlarge" -> 132.dp
+    else -> 94.dp
+}
+
+private fun posterSpacing(preset: String): androidx.compose.ui.unit.Dp = when (preset) {
+    "small" -> 6.dp
+    "medium" -> 12.dp
+    "large" -> 20.dp
+    else -> 12.dp
+}
+
+@Composable
+private fun SettingsPosterPreview(model: SettingsAppearanceHomeUiModel) {
+    val shape = RoundedCornerShape(posterCornerRadius(model.cardCornerPreset))
+    val width = posterWidth(model.posterWidthPreset)
+    val aspectRatio = if (model.posterLandscapeMode) 16f / 9f else 2f / 3f
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(posterSpacing(model.posterWidthPreset))
+    ) {
+        repeat(3) {
+            Column(modifier = Modifier.width(width)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(aspectRatio)
+                        .clip(shape)
+                        .background(Color.White.copy(alpha = 0.1f))
+                        .border(1.dp, Color.White.copy(alpha = 0.08f), shape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Movie,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.25f),
+                        modifier = Modifier.size(width / 3)
+                    )
+                }
+                if (!model.posterHideTitles) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 6.dp)
+                            .fillMaxWidth(0.75f)
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.White.copy(alpha = 0.18f))
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1024,6 +1098,7 @@ private fun SettingsAppearanceDetailEpisodesContent(model: SettingsAppearanceDet
         SettingsChoiceOption("list", AppStrings.t(lang, "settings.episode_layout_list")),
         SettingsChoiceOption("horizontal", AppStrings.t(lang, "settings.episode_layout_horizontal"))
     )
+    SettingsEpisodeLayoutPreview(model)
     SettingsGroupCard {
         SettingsToggleRow(
             AppStrings.t(lang, "settings.blur_unwatched_episodes"),
@@ -1034,6 +1109,81 @@ private fun SettingsAppearanceDetailEpisodesContent(model: SettingsAppearanceDet
         }
         SettingsChoiceRow(AppStrings.t(lang, "settings.episode_cards_layout"), model.episodeCardsLayout, episodeLayoutOptions) {
             onAction(SettingsAction.AppearanceDetailChanged(model.copy(episodeCardsLayout = it)))
+        }
+    }
+}
+
+@Composable
+private fun SettingsEpisodeLayoutPreview(model: SettingsAppearanceDetailUiModel) {
+    val thumbAlpha = if (model.blurUnwatchedEpisodes) 0.35f else 0.85f
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .padding(16.dp)
+    ) {
+        if (model.episodeCardsLayout == "horizontal") {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                repeat(3) {
+                    Column(modifier = Modifier.width(96.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White.copy(alpha = thumbAlpha * 0.14f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Filled.OndemandVideo, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(20.dp))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 6.dp)
+                                .fillMaxWidth(0.7f)
+                                .height(7.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color.White.copy(alpha = 0.18f))
+                        )
+                    }
+                }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                repeat(2) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .width(84.dp)
+                                .aspectRatio(16f / 9f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White.copy(alpha = thumbAlpha * 0.14f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Filled.OndemandVideo, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.6f)
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color.White.copy(alpha = 0.2f))
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 6.dp)
+                                    .fillMaxWidth(0.9f)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color.White.copy(alpha = 0.1f))
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

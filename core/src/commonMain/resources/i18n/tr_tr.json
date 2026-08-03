@@ -778,6 +778,7 @@
   "settings.preferred_subtitle_language_desc": "Otomatik açılacak ilk altyazı dili.",
   "settings.secondary_subtitle_language": "İkincil Altyazı Dili",
   "settings.secondary_subtitle_language_desc": "Birincil altyazı yoksa kullanılacak yedek altyazı dili.",
+  "settings.subtitle_preview_text": "Bu bir önizleme altyazısıdır",
   "settings.subtitle_text": "Altyazı Yazısı",
   "settings.subtitle_background": "Arka Plan",
   "settings.subtitle_outline": "Kontur",

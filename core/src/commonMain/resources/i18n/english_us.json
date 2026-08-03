@@ -778,6 +778,7 @@
   "settings.preferred_subtitle_language_desc": "First subtitle language to enable automatically.",
   "settings.secondary_subtitle_language": "Secondary Subtitle Language",
   "settings.secondary_subtitle_language_desc": "Fallback subtitle language if the preferred one is unavailable.",
+  "settings.subtitle_preview_text": "This is a preview subtitle",
   "settings.subtitle_text": "Subtitle Text",
   "settings.subtitle_background": "Background",
   "settings.subtitle_outline": "Outline",
