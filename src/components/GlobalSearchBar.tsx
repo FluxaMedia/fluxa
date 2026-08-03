@@ -18,6 +18,7 @@ interface Props {
 }
 
 const SUGGESTION_DEBOUNCE_MS = 200;
+const LOCAL_SUGGESTIONS_DEBOUNCE_MS = 100;
 const MAX_SUGGESTIONS = 6;
 
 export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, onDispatch, onNavigateDetail }: Props) {
@@ -65,14 +66,20 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
     });
   }), []);
 
+  const [debouncedInputValue, setDebouncedInputValue] = useState(inputValue);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedInputValue(inputValue), LOCAL_SUGGESTIONS_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
+
   const [localSuggestions, setLocalSuggestions] = useState<Meta[]>([]);
   useEffect(() => {
     let active = true;
-    const needle = inputValue.trim().toLowerCase();
+    const needle = debouncedInputValue.trim().toLowerCase();
     void coreInvoke<Meta[]>('searchSuggestionsPlan', JSON.stringify({ categories: state.home.categories, needle, limit: MAX_SUGGESTIONS }))
       .then((items) => { if (active) setLocalSuggestions(items ?? []); });
     return () => { active = false; };
-  }, [state.home.categories, inputValue]);
+  }, [state.home.categories, debouncedInputValue]);
 
   const [networkSuggestions, setNetworkSuggestions] = useState<Meta[]>([]);
   useEffect(() => {
