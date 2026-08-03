@@ -244,12 +244,8 @@ private fun SettingsCategoryContent(
         SettingsCategory.Notifications -> SettingsNotificationsContent(state.notifications, lang, onAction)
         SettingsCategory.General -> SettingsGeneralContent(state.general, lang, onAction)
         SettingsCategory.Appearance -> SettingsAppearanceContent(state.appearance, lang, onAction, onNavigate = onNavigate)
-        SettingsCategory.AppearanceHome -> SettingsAppearanceHomeContent(state.appearanceHome, lang, onAction, onNavigate = onNavigate)
-        SettingsCategory.AppearanceHomeHero -> SettingsAppearanceHomeHeroContent(state.appearanceHome, lang, onAction)
-        SettingsCategory.AppearanceHomeContinueWatching -> SettingsAppearanceHomeContinueWatchingContent(state.appearanceHome, lang, onAction)
-        SettingsCategory.AppearanceDetail -> SettingsAppearanceDetailContent(lang, onNavigate = onNavigate)
-        SettingsCategory.AppearanceDetailHero -> SettingsAppearanceDetailHeroContent(state.appearanceDetail, lang, onAction)
-        SettingsCategory.AppearanceDetailEpisodes -> SettingsAppearanceDetailEpisodesContent(state.appearanceDetail, lang, onAction)
+        SettingsCategory.AppearanceHome -> SettingsAppearanceHomeContent(state.appearanceHome, lang, onAction)
+        SettingsCategory.AppearanceDetail -> SettingsAppearanceDetailContent(state.appearanceDetail, lang, onAction)
         SettingsCategory.Playback -> SettingsPlaybackContent(state.playback, state.subtitles, lang, onAction, onNavigate = onNavigate)
         SettingsCategory.Subtitles -> SettingsSubtitlesContent(state.subtitles, lang, onAction)
         SettingsCategory.Advanced -> SettingsAdvancedContent(state.advanced, lang, onAction)
@@ -897,7 +893,7 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
 }
 
 @Composable
-private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit) {
+private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
     val cornerOptions = listOf(
         SettingsChoiceOption("sharp", AppStrings.t(lang, "auto.sharp")),
         SettingsChoiceOption("classic", AppStrings.t(lang, "auto.classic")),
@@ -917,6 +913,14 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
         SettingsChoiceOption("large", AppStrings.t(lang, "auto.large")),
         SettingsChoiceOption("xlarge", AppStrings.t(lang, "auto.very_large"))
     )
+    val continueWatchingSourceOptions = listOf(
+        SettingsChoiceOption("fluxa", AppStrings.t(lang, "settings.continue_watching_source_fluxa")),
+        SettingsChoiceOption("stremio", "Stremio"),
+        SettingsChoiceOption("nuvio", "Nuvio"),
+        SettingsChoiceOption("trakt", "Trakt"),
+        SettingsChoiceOption("simkl", "Simkl"),
+        SettingsChoiceOption("anilist", "AniList")
+    )
     SettingsPosterPreview(model)
     SettingsSectionHeader(AppStrings.t(lang, "settings.layout"))
     SettingsGroupCard {
@@ -926,10 +930,45 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
         SettingsToggleRow(AppStrings.t(lang, "settings.landscape_mode"), value = model.posterLandscapeMode) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(posterLandscapeMode = it))) }
         SettingsToggleRow(AppStrings.t(lang, "auto.hide_titles"), value = model.posterHideTitles) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(posterHideTitles = it))) }
     }
-    SettingsSectionHeader(AppStrings.t(lang, "settings.sections"))
+    SettingsSectionHeader(AppStrings.t(lang, "settings.hero_banner"))
     SettingsGroupCard {
-        SettingsNavRow(AppStrings.t(lang, "settings.hero_banner")) { onNavigate(SettingsCategory.AppearanceHomeHero) }
-        SettingsNavRow(AppStrings.t(lang, "auto.continue_watching")) { onNavigate(SettingsCategory.AppearanceHomeContinueWatching) }
+        SettingsToggleRow(
+            AppStrings.t(lang, "settings.season_posters_on_hero"),
+            description = AppStrings.t(lang, "settings.home_season_posters_on_hero_desc"),
+            value = model.homeSeasonPostersOnHero
+        ) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(homeSeasonPostersOnHero = it))) }
+        SettingsToggleRow(
+            AppStrings.t(lang, "settings.trailer_on_home_hero"),
+            description = AppStrings.t(lang, "settings.trailer_on_home_hero_desc"),
+            value = model.trailerOnHomeHeroEnabled
+        ) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(trailerOnHomeHeroEnabled = it))) }
+        if (model.trailerOnHomeHeroEnabled) {
+            SettingsStepperRow(AppStrings.t(lang, "settings.trailer_on_home_hero_delay"), model.trailerOnHomeHeroDelaySeconds, min = 0, max = 15, formatValue = { "${it}s" }) {
+                onAction(SettingsAction.AppearanceHomeChanged(model.copy(trailerOnHomeHeroDelaySeconds = it)))
+            }
+        }
+    }
+    SettingsSectionHeader(AppStrings.t(lang, "auto.continue_watching"))
+    SettingsGroupCard {
+        SettingsToggleRow(AppStrings.t(lang, "auto.continue_watching"), value = model.continueWatchingEnabled) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingEnabled = it)))
+        }
+        SettingsToggleRow(
+            AppStrings.t(lang, "settings.upcoming_row"),
+            description = AppStrings.t(lang, "settings.upcoming_row_desc"),
+            value = model.upcomingRowEnabled
+        ) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(upcomingRowEnabled = it)))
+        }
+        SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_horizontal"), value = model.continueWatchingHorizontal) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHorizontal = it)))
+        }
+        SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_hide_titles"), value = model.continueWatchingHideTitles) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHideTitles = it)))
+        }
+        SettingsChoiceRow(AppStrings.t(lang, "settings.continue_watching_source"), model.continueWatchingSource, continueWatchingSourceOptions) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingSource = it)))
+        }
     }
 }
 
@@ -1007,69 +1046,31 @@ private fun SettingsPosterPreview(model: SettingsAppearanceHomeUiModel) {
 }
 
 @Composable
-private fun SettingsAppearanceHomeHeroContent(model: SettingsAppearanceHomeUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
-    SettingsGroupCard {
-        SettingsToggleRow(
-            AppStrings.t(lang, "settings.season_posters_on_hero"),
-            description = AppStrings.t(lang, "settings.home_season_posters_on_hero_desc"),
-            value = model.homeSeasonPostersOnHero
-        ) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(homeSeasonPostersOnHero = it))) }
-        SettingsToggleRow(
-            AppStrings.t(lang, "settings.trailer_on_home_hero"),
-            description = AppStrings.t(lang, "settings.trailer_on_home_hero_desc"),
-            value = model.trailerOnHomeHeroEnabled
-        ) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(trailerOnHomeHeroEnabled = it))) }
-        if (model.trailerOnHomeHeroEnabled) {
-            SettingsStepperRow(AppStrings.t(lang, "settings.trailer_on_home_hero_delay"), model.trailerOnHomeHeroDelaySeconds, min = 0, max = 15, formatValue = { "${it}s" }) {
-                onAction(SettingsAction.AppearanceHomeChanged(model.copy(trailerOnHomeHeroDelaySeconds = it)))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsAppearanceHomeContinueWatchingContent(model: SettingsAppearanceHomeUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
-    val continueWatchingSourceOptions = listOf(
-        SettingsChoiceOption("fluxa", AppStrings.t(lang, "settings.continue_watching_source_fluxa")),
-        SettingsChoiceOption("stremio", "Stremio"),
-        SettingsChoiceOption("nuvio", "Nuvio"),
-        SettingsChoiceOption("trakt", "Trakt"),
-        SettingsChoiceOption("simkl", "Simkl"),
-        SettingsChoiceOption("anilist", "AniList")
+private fun SettingsAppearanceDetailContent(model: SettingsAppearanceDetailUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    val seasonSelectorOptions = listOf(
+        SettingsChoiceOption("dropdown", AppStrings.t(lang, "settings.season_selector_dropdown")),
+        SettingsChoiceOption("tabs", AppStrings.t(lang, "settings.season_selector_tabs")),
+        SettingsChoiceOption("posters", AppStrings.t(lang, "settings.season_selector_posters"))
     )
+    val episodeLayoutOptions = listOf(
+        SettingsChoiceOption("list", AppStrings.t(lang, "settings.episode_layout_list")),
+        SettingsChoiceOption("horizontal", AppStrings.t(lang, "settings.episode_layout_horizontal"))
+    )
+    SettingsEpisodeLayoutPreview(model)
+    SettingsSectionHeader(AppStrings.t(lang, "settings.episodes"))
     SettingsGroupCard {
-        SettingsToggleRow(AppStrings.t(lang, "auto.continue_watching"), value = model.continueWatchingEnabled) {
-            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingEnabled = it)))
-        }
         SettingsToggleRow(
-            AppStrings.t(lang, "settings.upcoming_row"),
-            description = AppStrings.t(lang, "settings.upcoming_row_desc"),
-            value = model.upcomingRowEnabled
-        ) {
-            onAction(SettingsAction.AppearanceHomeChanged(model.copy(upcomingRowEnabled = it)))
+            AppStrings.t(lang, "settings.blur_unwatched_episodes"),
+            value = model.blurUnwatchedEpisodes
+        ) { onAction(SettingsAction.AppearanceDetailChanged(model.copy(blurUnwatchedEpisodes = it))) }
+        SettingsChoiceRow(AppStrings.t(lang, "settings.season_selector"), model.detailSeasonSelectorMode, seasonSelectorOptions) {
+            onAction(SettingsAction.AppearanceDetailChanged(model.copy(detailSeasonSelectorMode = it)))
         }
-        SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_horizontal"), value = model.continueWatchingHorizontal) {
-            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHorizontal = it)))
-        }
-        SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_hide_titles"), value = model.continueWatchingHideTitles) {
-            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHideTitles = it)))
-        }
-        SettingsChoiceRow(AppStrings.t(lang, "settings.continue_watching_source"), model.continueWatchingSource, continueWatchingSourceOptions) {
-            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingSource = it)))
+        SettingsChoiceRow(AppStrings.t(lang, "settings.episode_cards_layout"), model.episodeCardsLayout, episodeLayoutOptions) {
+            onAction(SettingsAction.AppearanceDetailChanged(model.copy(episodeCardsLayout = it)))
         }
     }
-}
-
-@Composable
-private fun SettingsAppearanceDetailContent(lang: String?, onNavigate: (SettingsCategory) -> Unit) {
-    SettingsGroupCard {
-        SettingsNavRow(AppStrings.t(lang, "settings.hero_banner")) { onNavigate(SettingsCategory.AppearanceDetailHero) }
-        SettingsNavRow(AppStrings.t(lang, "settings.episodes")) { onNavigate(SettingsCategory.AppearanceDetailEpisodes) }
-    }
-}
-
-@Composable
-private fun SettingsAppearanceDetailHeroContent(model: SettingsAppearanceDetailUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+    SettingsSectionHeader(AppStrings.t(lang, "settings.hero_banner"))
     SettingsGroupCard {
         SettingsToggleRow(
             AppStrings.t(lang, "settings.trailer_on_detail_hero"),
@@ -1086,32 +1087,6 @@ private fun SettingsAppearanceDetailHeroContent(model: SettingsAppearanceDetailU
             description = AppStrings.t(lang, "settings.detail_season_posters_on_hero_desc"),
             value = model.detailSeasonPostersOnHero
         ) { onAction(SettingsAction.AppearanceDetailChanged(model.copy(detailSeasonPostersOnHero = it))) }
-    }
-}
-
-@Composable
-private fun SettingsAppearanceDetailEpisodesContent(model: SettingsAppearanceDetailUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
-    val seasonSelectorOptions = listOf(
-        SettingsChoiceOption("dropdown", AppStrings.t(lang, "settings.season_selector_dropdown")),
-        SettingsChoiceOption("tabs", AppStrings.t(lang, "settings.season_selector_tabs")),
-        SettingsChoiceOption("posters", AppStrings.t(lang, "settings.season_selector_posters"))
-    )
-    val episodeLayoutOptions = listOf(
-        SettingsChoiceOption("list", AppStrings.t(lang, "settings.episode_layout_list")),
-        SettingsChoiceOption("horizontal", AppStrings.t(lang, "settings.episode_layout_horizontal"))
-    )
-    SettingsEpisodeLayoutPreview(model)
-    SettingsGroupCard {
-        SettingsToggleRow(
-            AppStrings.t(lang, "settings.blur_unwatched_episodes"),
-            value = model.blurUnwatchedEpisodes
-        ) { onAction(SettingsAction.AppearanceDetailChanged(model.copy(blurUnwatchedEpisodes = it))) }
-        SettingsChoiceRow(AppStrings.t(lang, "settings.season_selector"), model.detailSeasonSelectorMode, seasonSelectorOptions) {
-            onAction(SettingsAction.AppearanceDetailChanged(model.copy(detailSeasonSelectorMode = it)))
-        }
-        SettingsChoiceRow(AppStrings.t(lang, "settings.episode_cards_layout"), model.episodeCardsLayout, episodeLayoutOptions) {
-            onAction(SettingsAction.AppearanceDetailChanged(model.copy(episodeCardsLayout = it)))
-        }
     }
 }
 

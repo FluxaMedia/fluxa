@@ -4,8 +4,6 @@ import kotlinx.coroutines.flow.Flow
 
 enum class SettingsCategory {
     Hub, Account, TmdbFeatures, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
-    AppearanceHomeHero, AppearanceHomeContinueWatching,
-    AppearanceDetailHero, AppearanceDetailEpisodes,
     Playback, Subtitles, Advanced, Content, Downloads, Developer
 }
 
