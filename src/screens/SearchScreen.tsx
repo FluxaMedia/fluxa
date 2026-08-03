@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { appPrefs, prefBool } from '../core/appPrefs';
 import { posterPrefsFromState } from '../core/posterPrefs';
@@ -8,6 +8,7 @@ import { getLanguage, t } from '../i18n';
 import { coreInvoke } from '../core/engine';
 import { addSearchPartialHandler, type PartialSearchSource } from '../core/catalogEffects';
 import { styles } from './searchStyles';
+import { searchCacheKey, searchCacheGet, searchCacheSet, searchCacheDelete } from '../core/searchResultsCache';
 import { LoadingShelves, SearchCategoryRow, RecentSearchChip, formatCatalogTitle, TypeChip, GenreCard } from './SearchScreenParts';
 
 interface Props {
@@ -25,12 +26,25 @@ const TYPE_FILTERS = [
   { labelKey: 'auto.series', value: 'series' },
 ];
 
+function groupCategoriesByAddon(categories: HomeCategory[]): HomeCategory[] {
+  const groups = new Map<string, HomeCategory[]>();
+  const order: string[] = [];
+  for (const category of categories) {
+    if (!groups.has(category.name)) {
+      groups.set(category.name, []);
+      order.push(category.name);
+    }
+    groups.get(category.name)!.push(category);
+  }
+  return order.flatMap((name) => (
+    groups.get(name)!.sort((a, b) => (a.type === 'series' ? 1 : 0) - (b.type === 'series' ? 1 : 0))
+  ));
+}
+
 const GENRE_CHIPS = [
   'genre.action', 'genre.thriller', 'genre.scifi', 'genre.comedy', 'genre.drama',
   'genre.horror', 'genre.animation', 'genre.documentary', 'genre.romance', 'genre.crime',
 ];
-
-const searchResultsCache = new Map<string, HomeCategory[]>();
 
 export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch, onNavigateDetail, query, onQueryChange, onBack }: Props) {
   const [typeFilter, setTypeFilter] = useState('');
@@ -79,7 +93,9 @@ export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch
     loadRecentSearches().then(setRecentSearches);
   }, []);
 
-  const cachedCategories = searchResultsCache.get(trimmedQuery) ?? null;
+  const language = getLanguage();
+  const cacheKey = searchCacheKey(trimmedQuery, language, typeFilter);
+  const cachedCategories = searchCacheGet(cacheKey);
   useEffect(() => {
     let active = true;
     void coreInvoke<typeof screenPlan>('searchScreenPlan', JSON.stringify({
@@ -92,11 +108,11 @@ export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch
       typeFilter,
     })).then((plan) => {
       if (!active || !plan) return;
-      if (plan.shouldCache) searchResultsCache.set(plan.query, search.categories as HomeCategory[]);
+      if (plan.shouldCache) searchCacheSet(searchCacheKey(plan.query, language, typeFilter), search.categories as HomeCategory[]);
       setScreenPlan(plan);
     });
     return () => { active = false; };
-  }, [query, search.query, search.categories, search.isLoading, cachedCategories, typeFilter]);
+  }, [query, search.query, search.categories, search.isLoading, cachedCategories, typeFilter, language]);
 
   useEffect(() => {
     if (!screenPlan.queryEligible || screenPlan.query !== trimmedQuery) return;
@@ -107,12 +123,10 @@ export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch
     if (screenPlan.shouldDispatch) onDispatch(JSON.stringify({ type: 'searchRequested', query: screenPlan.query, language: getLanguage() }));
   }, [screenPlan.query, screenPlan.queryEligible, screenPlan.shouldDispatch, trimmedQuery, onDispatch]);
 
-  const categories = screenPlan.categories;
+  const categories = useMemo(() => groupCategoriesByAddon(screenPlan.categories), [screenPlan.categories]);
   const resultCount = screenPlan.resultCount;
   const isLoading = screenPlan.isLoading;
-  const orderedPartialCategories = [...partialCategories].sort((a, b) => (
-    (a.type === 'series' ? 1 : 0) - (b.type === 'series' ? 1 : 0)
-  ));
+  const orderedPartialCategories = useMemo(() => groupCategoriesByAddon(partialCategories), [partialCategories]);
 
   const handleGenreClick = (genreKey: string) => {
     onQueryChange(t(genreKey));
@@ -218,7 +232,7 @@ export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch
             <button
               style={styles.retryBtn}
               onClick={() => {
-                searchResultsCache.delete(trimmedQuery);
+                searchCacheDelete(cacheKey);
                 onDispatch(JSON.stringify({ type: 'searchRequested', query: trimmedQuery, language: getLanguage() }));
               }}
             >
