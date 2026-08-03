@@ -55,11 +55,25 @@ class AndroidLibraryDataSource(
         val profile = activeProfile()
         val lang = language()
 
-        val planned = (watchlist + libraryUiState.traktPlanned + libraryUiState.malPlanned + libraryUiState.simklPlanned)
-            .distinctBy { it.id }
-        val completed = (libraryUiState.traktWatched + libraryUiState.malCompleted + libraryUiState.simklCompleted)
-            .distinctBy { it.id }
-        val favorites = likedItems.distinctBy { it.id }
+        val (planned, completed) = when (profile?.integrationLibrarySource) {
+            "trakt" -> libraryUiState.traktPlanned.distinctBy { it.id } to libraryUiState.traktWatched.distinctBy { it.id }
+            "simkl" -> libraryUiState.simklPlanned.distinctBy { it.id } to libraryUiState.simklCompleted.distinctBy { it.id }
+            "anilist" -> (libraryUiState.anilistPlanned + libraryUiState.anilistWatching).distinctBy { it.id } to libraryUiState.anilistCompleted.distinctBy { it.id }
+            "stremio" -> libraryUiState.stremioPlanned.distinctBy { it.id } to emptyList()
+            "nuvio" -> libraryUiState.nuvioPlanned.distinctBy { it.id } to emptyList()
+            else -> watchlist.distinctBy { it.id } to emptyList()
+        }
+        val favorites = when (profile?.integrationLibrarySource) {
+            "trakt" -> libraryUiState.traktFavorites.distinctBy { it.id }
+            else -> likedItems.distinctBy { it.id }
+        }
+        val (plannedLabelKey, completedLabelKey, completedSectionEnabled) = when (profile?.integrationLibrarySource) {
+            "trakt" -> Triple("auto.watchlist", "auto.history", true)
+            "simkl" -> Triple("auto.plan_to_watch", "auto.completed", true)
+            "anilist" -> Triple("auto.planning", "auto.completed", true)
+            "stremio", "nuvio" -> Triple("auto.watchlist", "auto.completed", false)
+            else -> Triple("auto.planned", "auto.completed", false)
+        }
 
         val collections = buildList {
             if (libraryUiState.traktCollection.isNotEmpty()) {
@@ -123,7 +137,10 @@ class AndroidLibraryDataSource(
                 collections.isEmpty() &&
                 downloadGroups.isEmpty(),
             planned = planned.toCatalogItems(profile),
+            plannedLabelKey = plannedLabelKey,
             completed = completed.toCatalogItems(profile),
+            completedLabelKey = completedLabelKey,
+            completedSectionEnabled = completedSectionEnabled,
             favorites = favorites.toCatalogItems(profile),
             collections = collections,
             downloadGroups = downloadGroups
@@ -138,33 +155,30 @@ class AndroidLibraryDataSource(
 
     override suspend fun createCollection(title: String) {
         val profile = activeProfile() ?: return
-        val updated = profile.copy(
-            libraryCollections = profile.safeLibraryCollections + LibraryUserCollection(
+        val updated = profileManager.updateProfile(profile.id) {
+            it.copy(libraryCollections = it.safeLibraryCollections + LibraryUserCollection(
                 id = "local_${System.currentTimeMillis()}",
                 title = title
-            )
-        )
-        profileManager.saveProfile(updated)
+            ))
+        } ?: return
         onProfileChanged(updated)
     }
 
     override suspend fun renameCollection(id: String, title: String) {
         val profile = activeProfile() ?: return
-        val updated = profile.copy(
-            libraryCollections = profile.safeLibraryCollections.map {
-                if (it.id == id) it.copy(title = title) else it
-            }
-        )
-        profileManager.saveProfile(updated)
+        val updated = profileManager.updateProfile(profile.id) {
+            it.copy(libraryCollections = it.safeLibraryCollections.map { collection ->
+                if (collection.id == id) collection.copy(title = title) else collection
+            })
+        } ?: return
         onProfileChanged(updated)
     }
 
     override suspend fun deleteCollection(id: String) {
         val profile = activeProfile() ?: return
-        val updated = profile.copy(
-            libraryCollections = profile.safeLibraryCollections.filterNot { it.id == id }
-        )
-        profileManager.saveProfile(updated)
+        val updated = profileManager.updateProfile(profile.id) {
+            it.copy(libraryCollections = it.safeLibraryCollections.filterNot { collection -> collection.id == id })
+        } ?: return
         onProfileChanged(updated)
     }
 

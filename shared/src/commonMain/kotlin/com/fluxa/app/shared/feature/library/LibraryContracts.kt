@@ -62,7 +62,10 @@ data class LibraryDownloadGroupUiModel(
 data class LibraryUiState(
     val isLoading: Boolean = false,
     val planned: List<CatalogItemUiModel> = emptyList(),
+    val plannedLabelKey: String = "auto.planned",
     val completed: List<CatalogItemUiModel> = emptyList(),
+    val completedLabelKey: String = "auto.completed",
+    val completedSectionEnabled: Boolean = true,
     val favorites: List<CatalogItemUiModel> = emptyList(),
     val collections: List<LibraryCollectionUiModel> = emptyList(),
     val downloadGroups: List<LibraryDownloadGroupUiModel> = emptyList(),

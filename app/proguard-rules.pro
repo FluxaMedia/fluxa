@@ -11,12 +11,6 @@
     public static int i(...);
 }
 
-# Lifecycle & ViewModel
--keepclassmembers class * extends androidx.lifecycle.ViewModel {
-    <init>(...);
-}
--keep class * extends androidx.lifecycle.ViewModel { *; }
-
 # Retrofit 2
 -keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
@@ -24,40 +18,21 @@
 -keepattributes exceptions
 
 -dontwarn retrofit2.**
--keep class retrofit2.** { *; }
--keep interface retrofit2.** { *; }
-
 -keepclasseswithmembers interface * {
     @retrofit2.http.* <methods>;
 }
 
-# OkHttp 3
--dontwarn okhttp3.**
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
-
 # Gson
--keep class com.google.gson.** { *; }
 -keep class com.google.gson.reflect.TypeToken
 -keep class * extends com.google.gson.reflect.TypeToken
 -keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# Keep ALL app code — no obfuscation needed and prevents the entire class of
-# "add another ProGuard rule" problems caused by R8 renaming our own classes.
-# R8 still dead-code-strips unused app code; it just won't rename anything.
--keep class com.fluxa.app.** { *; }
--keep interface com.fluxa.app.** { *; }
--keep class com.fluxa.core.** { *; }
--keep interface com.fluxa.core.** { *; }
-
 # Kotlin Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherLoader
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler
 -keepnames class kotlinx.coroutines.android.HandlerContext
--keep class kotlinx.coroutines.** { *; }
-
 # Maintain generic type information for Retrofit
 -keep class kotlin.coroutines.Continuation
 
@@ -86,9 +61,6 @@
 -keep class com.fluxa.core.uniffi.** { *; }
 -keepclassmembers class com.fluxa.core.uniffi.** { *; }
 
-# Coil
--keep class coil.** { *; }
-
 # Room
 -keep class * extends androidx.room.RoomDatabase
 -keep class * extends androidx.room.Entity
@@ -101,7 +73,6 @@
 -keep class * extends androidx.hilt.work.HiltWorkerFactory { *; }
 -keep @androidx.hilt.work.HiltWorker class * { *; }
 # Hilt generates *_AssistedFactory and *_HiltModules classes next to each @HiltWorker
--keep class com.fluxa.app.plugins.** { *; }
 -keep class **_AssistedFactory { *; }
 -keep class **_HiltModules { *; }
 -keep class **_HiltModules_* { *; }
@@ -121,33 +92,33 @@
 -keep interface com.lagradost.cloudstream3.** { *; }
 
 # NiceHttp - extensions call NiceResponse.getDocument() which returns org.jsoup.nodes.Document
--keep class com.lagradost.nicehttp.** { *; }
--keep interface com.lagradost.nicehttp.** { *; }
+-keep,allowoptimization class com.lagradost.nicehttp.** { public protected *; }
+-keep,allowoptimization interface com.lagradost.nicehttp.** { public protected *; }
 -dontwarn com.lagradost.nicehttp.**
 
 # CloudStream API logger used by extensions
--keep class com.lagradost.api.** { *; }
+-keep,allowoptimization class com.lagradost.api.** { public protected *; }
 -dontwarn com.lagradost.api.**
 
 # Jsoup - MUST keep original class names, R8 was renaming Document to r9.h
 # causing NoSuchMethodError for getDocument()Lorg/jsoup/nodes/Document;
--keep class org.jsoup.** { *; }
--keep interface org.jsoup.** { *; }
+-keep,allowoptimization class org.jsoup.** { public protected *; }
+-keep,allowoptimization interface org.jsoup.** { public protected *; }
 
 # OkHttp - referenced in NiceResponse constructor signatures
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
+-keep,allowoptimization class okhttp3.** { public protected *; }
+-keep,allowoptimization interface okhttp3.** { public protected *; }
 
 # Jackson - used by CloudStream extensions for JSON parsing
--keep class com.fasterxml.jackson.** { *; }
+-keep,allowoptimization class com.fasterxml.jackson.** { public protected *; }
 -dontwarn com.fasterxml.jackson.**
 
 # Kotlin internals referenced by extensions
--keep class kotlin.** { *; }
--keep class kotlin.coroutines.** { *; }
--keep class kotlin.coroutines.jvm.internal.** { *; }
--keep class kotlin.jvm.internal.** { *; }
--keep class kotlinx.coroutines.** { *; }
+-keep,allowoptimization class kotlin.** { public protected *; }
+-keep,allowoptimization class kotlin.coroutines.** { public protected *; }
+-keep,allowoptimization class kotlin.coroutines.jvm.internal.** { public protected *; }
+-keep,allowoptimization class kotlin.jvm.internal.** { public protected *; }
+-keep,allowoptimization class kotlinx.coroutines.** { public protected *; }
 -keepattributes Signature,RuntimeVisibleAnnotations,RuntimeInvisibleAnnotations,InnerClasses,EnclosingMethod
 
 # Prefer library classes over local stubs to avoid R8 conflicts

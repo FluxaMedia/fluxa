@@ -10,6 +10,7 @@ import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktRepository
 import com.fluxa.app.data.repository.TraktWatchedState
+import com.fluxa.app.data.repository.library.ProviderAdapters
 import com.fluxa.app.domain.discovery.StreamDiscoveryUseCase
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
@@ -21,11 +22,12 @@ class HomeViewModelCoordinatorFactory @Inject constructor() {
         traktRepository: TraktRepository,
         watchlistManager: WatchlistManager,
         pushCoordinator: ExternalSyncPushCoordinator,
+        adapters: ProviderAdapters,
         scope: CoroutineScope,
         coreState: FluxaUniFfiCoreStateHandle,
         gson: Gson
     ): HomeLibraryCoordinator {
-        return HomeLibraryCoordinator(repository, traktRepository, watchlistManager, pushCoordinator, scope, coreState, gson)
+        return HomeLibraryCoordinator(repository, traktRepository, watchlistManager, pushCoordinator, adapters, scope, coreState, gson)
     }
 
     internal fun playback(

@@ -133,8 +133,12 @@ class AndroidSettingsDataSource(
                 hasTrakt = !profile.traktAccessToken.isNullOrBlank(),
                 hasSimkl = !profile.simklAccessToken.isNullOrBlank(),
                 hasAnilist = !profile.anilistAccessToken.isNullOrBlank(),
+                traktUsername = profile.traktUsername,
+                simklUsername = profile.simklUsername,
+                anilistUsername = profile.anilistUsername,
                 syncCwSourceOfTruth = profile.syncCwSourceOfTruth.takeIf { it in setOf("", "local", "nuvio", "trakt", "simkl", "anilist", "stremio") } ?: "",
                 syncCwRanking = profile.syncCwRanking.takeIf { it in setOf("last_watched", "most_recent_episode") } ?: "last_watched",
+                integrationLibrarySource = profile.integrationLibrarySource.takeIf { it in setOf("local", "nuvio", "trakt", "simkl", "anilist", "stremio") } ?: "local",
                 continueWatchingDays = (profile.continueWatchingDays ?: 0).takeIf { it == 0 || it in 1..365 } ?: 0,
                 traktCommentsEnabled = profile.traktCommentsEnabled ?: false,
                 hasAnySync = !profile.traktAccessToken.isNullOrBlank() ||
@@ -285,8 +289,7 @@ class AndroidSettingsDataSource(
 
     private fun update(block: (UserProfile) -> UserProfile) {
         val profile = activeProfile() ?: return
-        val updated = block(profile)
-        profileManager.saveProfile(updated)
+        val updated = profileManager.updateProfile(profile.id, block) ?: return
         profileState.value = updated
         onProfileChanged(updated)
     }
@@ -414,6 +417,7 @@ class AndroidSettingsDataSource(
         it.copy(
             syncCwSourceOfTruth = value.syncCwSourceOfTruth,
             syncCwRanking = value.syncCwRanking,
+            integrationLibrarySource = value.integrationLibrarySource,
             continueWatchingDays = value.continueWatchingDays,
             traktCommentsEnabled = value.traktCommentsEnabled,
             tmdbApiKey = value.tmdbApiKey,
@@ -477,20 +481,23 @@ class AndroidSettingsDataSource(
         it.copy(
             traktAccessToken = null,
             traktRefreshToken = null,
+            traktUsername = null,
             simklAccessToken = null,
+            simklUsername = null,
             anilistAccessToken = null,
             anilistRefreshToken = null,
-            anilistTokenExpiresAt = null
+            anilistTokenExpiresAt = null,
+            anilistUsername = null
         )
     }
 
     override suspend fun disconnectProvider(provider: String) = update {
         when (provider) {
             "stremio" -> it.copy(authKey = "")
-            "nuvio" -> it.copy(nuvioAccessToken = null, nuvioRefreshToken = null, nuvioTokenExpiresAt = null, nuvioUserId = null, nuvioEmail = null, nuvioProfileIndex = null, nuvioLastSyncAt = null)
-            "trakt" -> it.copy(traktAccessToken = null, traktRefreshToken = null, traktTokenExpiresAt = null, traktLastSyncAt = null, traktLastSyncedItems = null, traktLastContinueWatchingCount = null, traktLastWatchlistCount = null)
-            "simkl" -> it.copy(simklAccessToken = null, simklLastSyncAt = null)
-            "anilist" -> it.copy(anilistAccessToken = null, anilistRefreshToken = null, anilistTokenExpiresAt = null)
+            "nuvio" -> it.copy(nuvioAccessToken = null, nuvioRefreshToken = null, nuvioTokenExpiresAt = null, nuvioUserId = null, nuvioEmail = null, nuvioProfileIndex = null, nuvioLastSyncAt = null, nuvioLibrarySnapshot = null)
+            "trakt" -> it.copy(traktAccessToken = null, traktRefreshToken = null, traktTokenExpiresAt = null, traktUsername = null, traktLastSyncAt = null, traktLastSyncedItems = null, traktLastContinueWatchingCount = null, traktLastWatchlistCount = null)
+            "simkl" -> it.copy(simklAccessToken = null, simklUsername = null, simklLastSyncAt = null)
+            "anilist" -> it.copy(anilistAccessToken = null, anilistRefreshToken = null, anilistTokenExpiresAt = null, anilistUsername = null)
             else -> it
         }
     }

@@ -2,302 +2,108 @@ package com.fluxa.app.data.repository
 
 import android.util.Log
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
-import com.fluxa.app.data.BuildConfig
-import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.data.remote.AnilistGraphQlRequest
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.remote.TraktApi
 import com.fluxa.app.data.remote.Video
+import com.fluxa.app.data.repository.library.ProviderAdapters
 import com.google.gson.Gson
-import com.google.gson.JsonObject
-import com.google.gson.reflect.TypeToken
-import retrofit2.Response
-
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private const val ANILIST_SAVE_MEDIA_LIST_ENTRY_MUTATION = """
-    mutation (${'$'}mediaId: Int, ${'$'}status: MediaListStatus, ${'$'}progress: Int) {
-        SaveMediaListEntry(mediaId: ${'$'}mediaId, status: ${'$'}status, progress: ${'$'}progress) { id }
+private data class ProviderEligibility(
+    val trakt: Boolean = false,
+    val simkl: Boolean = false,
+    val anilist: Boolean = false,
+    val stremio: Boolean = false,
+    val nuvio: Boolean = false
+) {
+    fun isEligible(id: String): Boolean = when (id) {
+        "trakt" -> trakt
+        "simkl" -> simkl
+        "anilist" -> anilist
+        "stremio" -> stremio
+        "nuvio" -> nuvio
+        else -> false
     }
-"""
-
-private const val ANILIST_MEDIA_LIST_ENTRY_LOOKUP_QUERY = """
-    query (${'$'}mediaId: Int) {
-        Media(id: ${'$'}mediaId) { mediaListEntry { id } }
-    }
-"""
-
-private const val ANILIST_DELETE_MEDIA_LIST_ENTRY_MUTATION = """
-    mutation (${'$'}id: Int) {
-        DeleteMediaListEntry(id: ${'$'}id) { deleted }
-    }
-"""
+}
 
 class ExternalSyncPushCoordinator @Inject constructor(
-    private val api: TraktApi,
-    private val repository: StremioRepository,
-    private val profileManager: ProfileManager,
-    private val nuvioSyncCoordinator: NuvioSyncCoordinator,
+    private val adapters: ProviderAdapters,
     private val gson: Gson
 ) {
     suspend fun pushMarkWatched(profile: UserProfile, meta: Meta, episodes: List<Video>, watched: Boolean) = coroutineScope {
-        profile.traktAccessToken?.takeIf(String::isNotBlank)?.let { token ->
+        val plan = fetchPlan(
+            "markWatched",
+            mapOf(
+                "profile" to profileJson(profile),
+                "videoIds" to episodes.map { it.id },
+                "watched" to watched,
+                "meta" to meta,
+                "nowMs" to System.currentTimeMillis()
+            )
+        ) ?: return@coroutineScope
+
+        adapters.all.filter { plan.isEligible(it.id) }.forEach { adapter ->
             launch {
-                runCatching { pushTraktMarkWatched(token, meta, episodes, watched) }
-                    .onSuccess { profileManager.clearExternalSyncFailure(profile.id, "trakt") }
-                    .onFailure {
-                        Log.w("ExternalSyncPush", "Trakt pushMarkWatched failed for ${meta.id}", it)
-                        profileManager.recordExternalSyncFailure(profile.id, "trakt")
-                    }
-            }
-        }
-        if (!profile.simklAccessToken.isNullOrBlank()) {
-            launch { pushSimklWithTokenHandling(profile) { token -> pushSimklMarkWatched(token, meta, episodes, watched) } }
-        }
-        if (watched && !profile.malAccessToken.isNullOrBlank()) {
-            launch { pushMalWithTokenHandling(profile) { token -> pushMalMarkWatched(token, meta, episodes) } }
-        }
-        if (watched && !profile.anilistAccessToken.isNullOrBlank()) {
-            launch {
-                val token = profile.anilistAccessToken
-                val progress = episodes.mapNotNull { it.id?.let { id -> TraktIntegration.episodeLocator(id)?.episode } }.maxOrNull()
-                    ?: episodes.size.takeIf { it > 0 }
-                runCatching { pushAnilistListEntry(token, meta, "COMPLETED", progress) }
-                    .onSuccess { success ->
-                        if (success) profileManager.clearExternalSyncFailure(profile.id, "anilist")
-                        else profileManager.recordExternalSyncFailure(profile.id, "anilist")
-                    }
-                    .onFailure {
-                        Log.w("ExternalSyncPush", "AniList pushMarkWatched failed for ${meta.id}", it)
-                        profileManager.recordExternalSyncFailure(profile.id, "anilist")
-                    }
-            }
-        }
-        if (!profile.nuvioAccessToken.isNullOrBlank()) {
-            launch {
-                runCatching { nuvioSyncCoordinator.pushWatched(profile, meta, episodes, watched) }
-                    .onSuccess { profileManager.clearExternalSyncFailure(profile.id, "nuvio") }
-                    .onFailure {
-                        Log.w("ExternalSyncPush", "Nuvio pushWatched failed for ${meta.id}", it)
-                        profileManager.recordExternalSyncFailure(profile.id, "nuvio")
-                    }
+                runCatching { adapter.pushWatched(profile, meta, episodes, watched) }
+                    .onFailure { Log.w("ExternalSyncPush", "${adapter.id} pushMarkWatched failed for ${meta.id}", it) }
             }
         }
     }
 
     suspend fun pushWatchlist(profile: UserProfile, meta: Meta, isInWatchlist: Boolean) = coroutineScope {
-        profile.traktAccessToken?.takeIf(String::isNotBlank)?.let { token ->
+        val plan = fetchPlan(
+            "watchlist",
+            mapOf(
+                "profile" to profileJson(profile),
+                "item" to meta,
+                "command" to if (isInWatchlist) "add" else "remove",
+                "nowMs" to System.currentTimeMillis()
+            )
+        ) ?: return@coroutineScope
+
+        adapters.all.filter { plan.isEligible(it.id) }.forEach { adapter ->
             launch {
-                runCatching { pushTraktWatchlist(token, meta, isInWatchlist) }
-                    .onSuccess { profileManager.clearExternalSyncFailure(profile.id, "trakt") }
-                    .onFailure {
-                        Log.w("ExternalSyncPush", "Trakt pushWatchlist failed for ${meta.id}", it)
-                        profileManager.recordExternalSyncFailure(profile.id, "trakt")
-                    }
+                runCatching { adapter.pushWatchlist(profile, meta, isInWatchlist) }
+                    .onFailure { Log.w("ExternalSyncPush", "${adapter.id} pushWatchlist failed for ${meta.id}", it) }
             }
         }
-        if (!profile.simklAccessToken.isNullOrBlank()) {
+    }
+
+    suspend fun pushFavorite(profile: UserProfile, meta: Meta, isFavorite: Boolean) = coroutineScope {
+        val plan = fetchPlan(
+            "favorite",
+            mapOf(
+                "profile" to profileJson(profile),
+                "command" to if (isFavorite) "add" else "remove",
+                "nowMs" to System.currentTimeMillis()
+            )
+        ) ?: return@coroutineScope
+
+        adapters.all.filter { plan.isEligible(it.id) }.forEach { adapter ->
             launch {
-                pushSimklWithTokenHandling(profile) { token ->
-                    if (isInWatchlist) pushSimklWatchlist(token, meta) else pushSimklWatchlistRemoval(token, meta)
-                }
-            }
-        }
-        if (isInWatchlist && !profile.malAccessToken.isNullOrBlank()) {
-            launch { pushMalWithTokenHandling(profile) { token -> pushMalWatchlist(token, meta) } }
-        }
-        if (!profile.anilistAccessToken.isNullOrBlank()) {
-            launch {
-                val token = profile.anilistAccessToken
-                runCatching {
-                    if (isInWatchlist) pushAnilistListEntry(token, meta, "PLANNING", progress = null)
-                    else pushAnilistWatchlistRemoval(token, meta)
-                }
-                    .onSuccess { success ->
-                        if (success) profileManager.clearExternalSyncFailure(profile.id, "anilist")
-                        else profileManager.recordExternalSyncFailure(profile.id, "anilist")
-                    }
-                    .onFailure {
-                        Log.w("ExternalSyncPush", "AniList pushWatchlist failed for ${meta.id}", it)
-                        profileManager.recordExternalSyncFailure(profile.id, "anilist")
-                    }
-            }
-        }
-        if (!profile.nuvioAccessToken.isNullOrBlank()) {
-            launch {
-                runCatching { nuvioSyncCoordinator.pushWatchlist(profile, meta, isInWatchlist) }
-                    .onSuccess { profileManager.clearExternalSyncFailure(profile.id, "nuvio") }
-                    .onFailure {
-                        Log.w("ExternalSyncPush", "Nuvio pushWatchlist failed for ${meta.id}", it)
-                        profileManager.recordExternalSyncFailure(profile.id, "nuvio")
-                    }
+                runCatching { adapter.pushFavorite(profile, meta, isFavorite) }
+                    .onFailure { Log.w("ExternalSyncPush", "${adapter.id} pushFavorite failed for ${meta.id}", it) }
             }
         }
     }
 
-    private suspend fun pushSimklWithTokenHandling(profile: UserProfile, call: suspend (String) -> Response<Unit>?) {
-        val token = profile.simklAccessToken?.takeIf { it.isNotBlank() } ?: return
-        val response = runCatching { call(token) }.getOrNull()
-        if (response == null) {
-            Log.w("ExternalSyncPush", "Simkl push failed for profile ${profile.id}")
-            profileManager.recordExternalSyncFailure(profile.id, "simkl")
-            return
-        }
-        when (ExternalSyncPolicy.afterResponse(ExternalSyncProvider.SIMKL, response.code())) {
-            ExternalSyncAction.STAMP_SUCCESS -> {
-                profileManager.saveProfile(profile.copy(simklLastSyncAt = System.currentTimeMillis()))
-                profileManager.clearExternalSyncFailure(profile.id, "simkl")
-            }
-            ExternalSyncAction.CLEAR_CREDENTIALS -> profileManager.saveProfile(profile.copy(simklAccessToken = null))
-            else -> {
-                Log.w("ExternalSyncPush", "Simkl push failed for profile ${profile.id} http=${response.code()}")
-                profileManager.recordExternalSyncFailure(profile.id, "simkl")
-            }
-        }
-    }
+    private fun profileJson(profile: UserProfile): Map<String, Any?> = mapOf(
+        "traktAccessToken" to profile.traktAccessToken,
+        "traktTokenExpiresAt" to profile.traktTokenExpiresAt,
+        "simklAccessToken" to profile.simklAccessToken,
+        "anilistAccessToken" to profile.anilistAccessToken,
+        "stremioAuthKey" to profile.authKey,
+        "nuvioAccessToken" to profile.nuvioAccessToken
+    )
 
-    private suspend fun pushMalWithTokenHandling(profile: UserProfile, call: suspend (String) -> Response<Unit>?) {
-        val token = profile.malAccessToken?.takeIf { it.isNotBlank() } ?: return
-        val firstResponse = runCatching { call(token) }.getOrNull() ?: return
-        when (ExternalSyncPolicy.afterResponse(ExternalSyncProvider.MAL, firstResponse.code())) {
-            ExternalSyncAction.STAMP_SUCCESS -> {
-                profileManager.saveProfile(profile.copy(malLastSyncAt = System.currentTimeMillis()))
-                return
-            }
-            ExternalSyncAction.REFRESH_CREDENTIALS -> Unit
-            else -> return
-        }
-
-        val refreshToken = profile.malRefreshToken?.takeIf { it.isNotBlank() } ?: return
-        val refreshed = runCatching { repository.refreshMalToken(refreshToken) }.getOrNull() ?: return
-        val refreshedProfile = profile.copy(
-            malAccessToken = refreshed.accessToken,
-            malRefreshToken = refreshed.refreshToken ?: refreshToken,
-            malTokenExpiresAt = refreshed.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
-        )
-
-        val retryResponse = runCatching { call(refreshed.accessToken) }.getOrNull()
-        when (ExternalSyncPolicy.afterRefreshRetry(retryResponse?.code())) {
-            ExternalSyncAction.STAMP_SUCCESS -> {
-                profileManager.saveProfile(refreshedProfile.copy(malLastSyncAt = System.currentTimeMillis()))
-            }
-            ExternalSyncAction.CLEAR_CREDENTIALS -> {
-                profileManager.saveProfile(refreshedProfile.copy(malAccessToken = null, malRefreshToken = null, malTokenExpiresAt = null))
-            }
-            else -> profileManager.saveProfile(refreshedProfile)
-        }
-    }
-
-    private suspend fun pushTraktMarkWatched(token: String, meta: Meta, episodes: List<Video>, watched: Boolean) {
-        val request = TraktIntegration.buildHistoryRequest(meta, episodes) ?: return
-        val bearer = TraktIntegration.bearer(token)
-        if (watched) {
-            api.addToHistory(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
-        } else {
-            api.removeFromHistory(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
-        }
-    }
-
-    private suspend fun pushTraktWatchlist(token: String, meta: Meta, isInWatchlist: Boolean) {
-        val request = TraktIntegration.buildHistoryRequest(meta, emptyList()) ?: return
-        val bearer = TraktIntegration.bearer(token)
-        if (isInWatchlist) {
-            api.addToWatchlist(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
-        } else {
-            api.removeFromWatchlist(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
-        }
-    }
-
-    private suspend fun pushSimklMarkWatched(token: String, meta: Meta, episodes: List<Video>, watched: Boolean): Response<Unit>? {
-        val clientId = BuildConfig.SIMKL_CLIENT_ID
-        val imdbId = SimklIntegration.imdbIdFrom(meta.id) ?: return null
-        val isSeries = meta.type == "series"
-        val episodesBySeason = if (isSeries) {
-            episodes.mapNotNull { TraktIntegration.episodeLocator(it.id) }
-                .groupBy({ it.season }, { it.episode })
-        } else {
-            emptyMap()
-        }
-        val body = SimklIntegration.historyBody(imdbId, isSeries, episodesBySeason)
-        val bearer = "Bearer $token"
-        return if (watched) {
-            api.simklAddToHistory(clientId, bearer, body)
-        } else {
-            api.simklRemoveFromHistory(clientId, bearer, body)
-        }
-    }
-
-    private suspend fun pushSimklWatchlist(token: String, meta: Meta): Response<Unit>? {
-        val clientId = BuildConfig.SIMKL_CLIENT_ID
-        val imdbId = SimklIntegration.imdbIdFrom(meta.id) ?: return null
-        val body = SimklIntegration.watchlistBody(imdbId, meta.type == "series")
-        return api.simklAddToList(clientId, "Bearer $token", body)
-    }
-
-    private suspend fun pushAnilistListEntry(token: String, meta: Meta, status: String, progress: Int?): Boolean {
-        val args = JsonObject().apply {
-            addProperty("contentId", meta.id)
-            addProperty("status", status)
-            progress?.let { addProperty("progress", it) }
-        }
-        val variablesJson = FluxaCoreUniFfi.coreInvokeValue("anilistSaveMediaListEntryVariables", args.toString())
-        if (variablesJson.isJsonNull) return false
-
-        val variablesType = object : TypeToken<Map<String, Any?>>() {}.type
-        val variables: Map<String, Any?> = gson.fromJson(variablesJson, variablesType)
-        val response = api.anilistGraphQl(
-            "Bearer $token",
-            AnilistGraphQlRequest(query = ANILIST_SAVE_MEDIA_LIST_ENTRY_MUTATION, variables = variables)
-        )
-        return response.get("errors") == null
-    }
-
-    private suspend fun pushAnilistWatchlistRemoval(token: String, meta: Meta): Boolean {
-        val mediaId = meta.id.removePrefix("anilist:").toIntOrNull() ?: return false
-        val lookupResponse = api.anilistGraphQl(
-            "Bearer $token",
-            AnilistGraphQlRequest(query = ANILIST_MEDIA_LIST_ENTRY_LOOKUP_QUERY, variables = mapOf("mediaId" to mediaId))
-        )
-        val entryId = lookupResponse.getAsJsonObject("data")
-            ?.getAsJsonObject("Media")
-            ?.getAsJsonObject("mediaListEntry")
-            ?.get("id")
-            ?.takeUnless { it.isJsonNull }
-            ?.asInt ?: return true
-
-        val deleteResponse = api.anilistGraphQl(
-            "Bearer $token",
-            AnilistGraphQlRequest(query = ANILIST_DELETE_MEDIA_LIST_ENTRY_MUTATION, variables = mapOf("id" to entryId))
-        )
-        return deleteResponse.get("errors") == null
-    }
-
-    private suspend fun pushSimklWatchlistRemoval(token: String, meta: Meta): Response<Unit>? {
-        val clientId = BuildConfig.SIMKL_CLIENT_ID
-        val imdbId = SimklIntegration.imdbIdFrom(meta.id) ?: return null
-        val body = SimklIntegration.watchlistRemovalBody(imdbId, meta.type == "series")
-        return api.simklRemoveFromList(clientId, "Bearer $token", body)
-    }
-
-    private suspend fun pushMalMarkWatched(token: String, meta: Meta, episodes: List<Video>): Response<Unit>? {
-        val update = ExternalSyncPolicy.malWatchedUpdate(meta, episodes) ?: return null
-        return api.malUpdateListStatus(
-            malId = update.malId,
-            token = "Bearer $token",
-            numWatchedEpisodes = update.watchedEpisodes,
-            status = update.status
-        )
-    }
-
-    private suspend fun pushMalWatchlist(token: String, meta: Meta): Response<Unit>? {
-        val update = ExternalSyncPolicy.malWatchlistUpdate(meta) ?: return null
-        return api.malUpdateListStatus(
-            malId = update.malId,
-            token = "Bearer $token",
-            status = update.status
-        )
+    private fun fetchPlan(kind: String, args: Map<String, Any?>): ProviderEligibility? {
+        val payload = args + mapOf("kind" to kind, "integrationSettings" to mapOf("watchProgressSource" to "all"))
+        return runCatching {
+            val value = FluxaCoreUniFfi.coreInvokeValue("externalProviderActionPlan", gson.toJson(payload))
+            gson.fromJson(value, ProviderEligibility::class.java)
+        }.onFailure { Log.w("ExternalSyncPush", "externalProviderActionPlan failed for kind=$kind", it) }
+            .getOrNull()
     }
 }

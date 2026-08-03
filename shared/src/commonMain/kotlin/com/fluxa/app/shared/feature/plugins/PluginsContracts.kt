@@ -64,6 +64,7 @@ data class PluginsUiState(
     val repositoryError: String? = null,
     val scraperSettingsSheet: PluginScraperSettingsUiState? = null,
     val cloudstreamRepos: List<CloudstreamRepoUiModel> = emptyList(),
+    val cloudstreamAutomaticUpdatesEnabled: Boolean = false,
     val isAddingCloudstreamRepo: Boolean = false,
     val cloudstreamRepoError: String? = null,
     val openRepoUrl: String? = null,
@@ -83,7 +84,8 @@ sealed interface PluginsAction {
     data class ScraperSettingsRequested(val scraperId: String) : PluginsAction
     data object ScraperSettingsDismissed : PluginsAction
     data class ScraperSettingsSaved(val scraperId: String, val values: Map<String, Any?>) : PluginsAction
-    data class CloudstreamRepoAdded(val url: String) : PluginsAction
+    data class CloudstreamRepoAdded(val url: String, val publisherPublicKey: String) : PluginsAction
+    data class CloudstreamAutomaticUpdatesChanged(val enabled: Boolean) : PluginsAction
     data class RepoOpened(val url: String) : PluginsAction
     data object RepoDialogDismissed : PluginsAction
     data class RepoRemoved(val url: String) : PluginsAction
@@ -100,7 +102,8 @@ interface PluginsDataSource {
     suspend fun requestScraperSettings(scraperId: String)
     suspend fun dismissScraperSettings()
     suspend fun saveScraperSettings(scraperId: String, values: Map<String, Any?>)
-    suspend fun addCloudstreamRepository(url: String)
+    suspend fun addCloudstreamRepository(url: String, publisherPublicKey: String)
+    suspend fun setCloudstreamAutomaticUpdatesEnabled(enabled: Boolean)
     suspend fun openRepo(url: String)
     suspend fun dismissRepoDialog()
     suspend fun removeRepo(url: String)

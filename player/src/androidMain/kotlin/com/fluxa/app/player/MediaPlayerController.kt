@@ -92,7 +92,6 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         fun getLibassRelay(player: ExoPlayer): LibassEventRelay? = libassRelays[player]
 
         private const val BYTES_PER_MB = 1024 * 1024
-        private const val PLAYER_DISK_CACHE_BYTES = 512L * 1024L * 1024L
         private const val PLAYER_CACHE_FRAGMENT_BYTES = 8L * 1024L * 1024L
         private const val PREFS_PLAYER = "fluxa_player"
         private const val PREF_BW_ESTIMATE_BPS = "bw_estimate_bps"
@@ -108,12 +107,21 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                 .edit().putLong(PREF_BW_ESTIMATE_BPS, bps).apply()
         }
 
-        private fun safePlayerTargetBufferBytes(requestedMb: Int): Int {
+        private fun safePlayerTargetBufferBytes(context: Context, requestedMb: Int): Int {
             val heapMb = (Runtime.getRuntime().maxMemory() / BYTES_PER_MB).toInt().coerceAtLeast(64)
-            // Allow up to 1/4 of heap; cap at 150 MB for modern devices, minimum 32 MB.
-            val heapBoundMb = (heapMb / 4).coerceIn(32, 150)
+            val lowRam = context.getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice == true
+            val heapBoundMb = if (lowRam) (heapMb / 8).coerceIn(16, 48) else (heapMb / 4).coerceIn(32, 150)
             return requestedMb.coerceIn(32, 2000)
                 .coerceAtMost(heapBoundMb) * BYTES_PER_MB
+        }
+
+        private fun playerDiskCacheBytes(context: Context): Long {
+            val activityManager = context.getSystemService(android.app.ActivityManager::class.java)
+            return when {
+                activityManager?.isLowRamDevice == true -> 128L * 1024L * 1024L
+                context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK) -> 256L * 1024L * 1024L
+                else -> 512L * 1024L * 1024L
+            }
         }
 
         private fun shouldScanEmbeddedAssFonts(url: String, title: String?): Boolean {
@@ -131,7 +139,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             return playerDiskCache ?: synchronized(this) {
                 playerDiskCache ?: SimpleCache(
                     context.applicationContext.cacheDir.resolve("player_http_cache"),
-                    LeastRecentlyUsedCacheEvictor(PLAYER_DISK_CACHE_BYTES),
+                    LeastRecentlyUsedCacheEvictor(playerDiskCacheBytes(context)),
                     StandaloneDatabaseProvider(context.applicationContext)
                 ).also { playerDiskCache = it }
             }
@@ -315,7 +323,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                     rebufferBufferMs.coerceIn(1000, 10000)
                 )
                 .setBackBuffer(backBufferSeconds.coerceIn(0, 60) * 1000, true)
-                .setTargetBufferBytes(safePlayerTargetBufferBytes(bufferCacheMb))
+                .setTargetBufferBytes(safePlayerTargetBufferBytes(context, bufferCacheMb))
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build()
 

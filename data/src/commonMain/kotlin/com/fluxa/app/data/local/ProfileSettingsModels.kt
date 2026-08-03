@@ -11,8 +11,6 @@ data class ExternalAccounts(
     val traktLastSyncedItems: Int? = null,
     val traktLastContinueWatchingCount: Int? = null,
     val traktLastWatchlistCount: Int? = null,
-    val malAccessToken: String? = null,
-    val malRefreshToken: String? = null,
     val simklAccessToken: String? = null
 )
 

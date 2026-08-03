@@ -10,7 +10,6 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.fluxa.app.BuildConfig
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -20,13 +19,14 @@ class TraktScrobbleWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     profileManager: ProfileManager,
-    private val api: TraktApi
+    private val api: TraktApi,
+    private val oauthClientConfig: OAuthClientConfig
 ) : ProviderSyncPushWorker(appContext, params, profileManager) {
 
     override val providerName = "trakt"
 
     override suspend fun doWork(): Result {
-        if (!TraktIntegration.hasClient(BuildConfig.TRAKT_CLIENT_ID)) return Result.success()
+        if (!TraktIntegration.hasClient(oauthClientConfig.traktClientId)) return Result.success()
 
         val profileId = inputData.getString(KEY_PROFILE_ID)?.takeIf { it.isNotBlank() } ?: return Result.failure()
         val mediaType = inputData.getString(KEY_MEDIA_TYPE)?.takeIf { it.isNotBlank() } ?: return Result.failure()
@@ -40,14 +40,14 @@ class TraktScrobbleWorker @AssistedInject constructor(
 
         Log.d(
             "TraktScrobbleWorker",
-            "Scrobble request action=$action media_type=$mediaType media_id=$mediaId progress=${"%.4f".format(java.util.Locale.US, progress)} url=${TraktIntegration.scrobbleUrl(action)} headers=${TraktIntegration.traktHeadersForLog(token, BuildConfig.TRAKT_CLIENT_ID)} body=${TraktIntegration.toLogJson(request)}"
+            "Scrobble request action=$action media_type=$mediaType media_id=$mediaId progress=${"%.4f".format(java.util.Locale.US, progress)} url=${TraktIntegration.scrobbleUrl(action)} headers=${TraktIntegration.traktHeadersForLog(token, oauthClientConfig.traktClientId)} body=${TraktIntegration.toLogJson(request)}"
         )
 
         return runCatching {
             when (action) {
-                "start" -> api.scrobbleStart(TraktIntegration.bearer(token), BuildConfig.TRAKT_CLIENT_ID, request)
-                "pause" -> api.scrobblePause(TraktIntegration.bearer(token), BuildConfig.TRAKT_CLIENT_ID, request)
-                "stop" -> api.scrobbleStop(TraktIntegration.bearer(token), BuildConfig.TRAKT_CLIENT_ID, request)
+                "start" -> api.scrobbleStart(TraktIntegration.bearer(token), oauthClientConfig.traktClientId, request)
+                "pause" -> api.scrobblePause(TraktIntegration.bearer(token), oauthClientConfig.traktClientId, request)
+                "stop" -> api.scrobbleStop(TraktIntegration.bearer(token), oauthClientConfig.traktClientId, request)
                 else -> null
             }
         }.fold(
@@ -107,29 +107,30 @@ class TraktScrobbleWorker @AssistedInject constructor(
             api.refreshToken(
                 TraktRefreshTokenRequest(
                     refresh_token = refreshToken,
-                    client_id = BuildConfig.TRAKT_CLIENT_ID,
-                    client_secret = BuildConfig.TRAKT_CLIENT_SECRET,
+                    client_id = oauthClientConfig.traktClientId,
+                    client_secret = oauthClientConfig.traktClientSecret.orEmpty(),
                     redirect_uri = TraktIntegration.MOBILE_REDIRECT_URI
                 )
             )
         }.map { response ->
-            val updated = profile.copy(
-                traktAccessToken = response.accessToken,
-                traktRefreshToken = response.refreshToken,
-                traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(response.createdAt, response.expiresIn)
-            )
-            profileManager.saveProfile(updated)
+            profileManager.updateProfile(profile.id) {
+                it.copy(
+                    traktAccessToken = response.accessToken,
+                    traktRefreshToken = response.refreshToken,
+                    traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(response.createdAt, response.expiresIn)
+                )
+            }
             response.accessToken
         }.getOrElse { error ->
             val status = (error as? retrofit2.HttpException)?.code()
             if (status == 400 || status == 401) {
-                profileManager.saveProfile(
-                    profile.copy(
+                profileManager.updateProfile(profile.id) {
+                    it.copy(
                         traktAccessToken = null,
                         traktRefreshToken = null,
                         traktTokenExpiresAt = null
                     )
-                )
+                }
             }
             null
         }

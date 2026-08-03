@@ -132,19 +132,7 @@ object NetworkModule {
         dispatcher: okhttp3.Dispatcher,
         netTimingEventListenerFactory: okhttp3.EventListener.Factory
     ): OkHttpClient {
-        val ipv4OnlyDns = object : okhttp3.Dns {
-            override fun lookup(hostname: String): List<java.net.InetAddress> {
-                val all = okhttp3.Dns.SYSTEM.lookup(hostname)
-                val filtered = all.filter { it is java.net.Inet4Address }
-                if (BuildConfig.DEBUG) {
-                    android.util.Log.d("NetTiming", "dns host=$hostname all=$all filteredToIpv4=$filtered")
-                }
-                return filtered
-            }
-        }
-
         return OkHttpClient.Builder()
-            .dns(ipv4OnlyDns)
             .connectionPool(connectionPool)
             .dispatcher(dispatcher)
             .eventListenerFactory(netTimingEventListenerFactory)

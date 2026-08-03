@@ -117,6 +117,24 @@ interface TraktApi {
     ): Response<List<TraktSyncItem>>
 
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/favorites/movies/added/desc")
+    suspend fun getFavoriteMovies(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/favorites/shows/added/desc")
+    suspend fun getFavoriteShows(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
     @GET("sync/watchlist/{type}")
     suspend fun getWatchlistByType(
         @Path("type") type: String,
@@ -141,26 +159,6 @@ interface TraktApi {
     suspend fun exchangeDeviceCode(@Body request: TraktDeviceTokenRequest): Response<TraktTokenResponse>
 
     @FormUrlEncoded
-    @POST("https://myanimelist.net/v1/oauth2/token")
-    suspend fun exchangeMalCode(
-        @Field("client_id") clientId: String,
-        @Field("client_secret") clientSecret: String?,
-        @Field("grant_type") grantType: String,
-        @Field("code") code: String,
-        @Field("redirect_uri") redirectUri: String,
-        @Field("code_verifier") codeVerifier: String
-    ): ExternalOAuthTokenResponse
-
-    @FormUrlEncoded
-    @POST("https://myanimelist.net/v1/oauth2/token")
-    suspend fun refreshMalToken(
-        @Field("client_id") clientId: String,
-        @Field("client_secret") clientSecret: String?,
-        @Field("grant_type") grantType: String,
-        @Field("refresh_token") refreshToken: String
-    ): ExternalOAuthTokenResponse
-
-    @FormUrlEncoded
     @POST("https://api.simkl.com/oauth/token")
     suspend fun exchangeSimklCode(
         @Field("client_id") clientId: String,
@@ -172,14 +170,6 @@ interface TraktApi {
 
     @POST("https://anilist.co/api/v2/oauth/token")
     suspend fun exchangeAnilistCode(@Body request: AnilistTokenRequest): ExternalOAuthTokenResponse
-
-    @GET("https://api.myanimelist.net/v2/users/@me/animelist")
-    suspend fun getMalAnimeList(
-        @Header("Authorization") token: String,
-        @Query("status") status: String = "watching",
-        @Query("fields") fields: String = "list_status,num_episodes,main_picture",
-        @Query("limit") limit: Int = 1000
-    ): MalAnimeListResponse
 
     @GET("https://api.simkl.com/sync/all-items/{type}/{status}")
     suspend fun getSimklAllItems(
@@ -194,6 +184,19 @@ interface TraktApi {
 
     @GET("https://api.simkl.com/sync/activities")
     suspend fun getSimklActivities(
+        @Header("Authorization") token: String,
+        @Header("simkl-api-key") apiKey: String
+    ): com.google.gson.JsonObject
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("users/settings")
+    suspend fun getTraktSettings(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String
+    ): com.google.gson.JsonObject
+
+    @GET("https://api.simkl.com/users/settings")
+    suspend fun getSimklSettings(
         @Header("Authorization") token: String,
         @Header("simkl-api-key") apiKey: String
     ): com.google.gson.JsonObject
@@ -281,6 +284,14 @@ interface TraktApi {
     @POST("sync/watchlist/remove")
     suspend fun removeFromWatchlist(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
 
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("sync/favorites")
+    suspend fun addToFavorites(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("sync/favorites/remove")
+    suspend fun removeFromFavorites(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
+
     @Headers("Content-Type: application/json")
     @POST("https://api.simkl.com/sync/history")
     suspend fun simklAddToHistory(
@@ -311,15 +322,6 @@ interface TraktApi {
         @Query("client_id") clientId: String,
         @Header("Authorization") token: String,
         @Body body: Map<String, @JvmSuppressWildcards Any>
-    ): Response<Unit>
-
-    @FormUrlEncoded
-    @PATCH("https://api.myanimelist.net/v2/anime/{id}/my_list_status")
-    suspend fun malUpdateListStatus(
-        @Path("id") malId: Int,
-        @Header("Authorization") token: String,
-        @Field("num_watched_episodes") numWatchedEpisodes: Int? = null,
-        @Field("status") status: String? = null
     ): Response<Unit>
 
     @Headers("Content-Type: application/json", "trakt-api-version: 2")

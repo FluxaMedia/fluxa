@@ -28,6 +28,12 @@ import javax.inject.Singleton
 
 private const val EPISODE_PROGRESS_UNIT_MS = 45 * 60_000L
 
+data class AnilistLibrarySnapshot(
+    val watchlist: List<Pair<Meta, Long>> = emptyList(),
+    val watching: List<Meta> = emptyList(),
+    val completed: List<Meta> = emptyList()
+)
+
 private const val ANILIST_LIST_QUERY = """
 query (${'$'}userId: Int) {
   MediaListCollection(userId: ${'$'}userId, type: ANIME) {
@@ -68,10 +74,9 @@ class ExternalLibraryClient @Inject constructor(
     suspend fun getExternalContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
         supervisorScope {
             val trakt = async { getTraktPlaybackItems(profile, language) }
-            val mal = async { getMalContinueWatchingItems(profile.malAccessToken) }
             val simkl = async { getSimklContinueWatchingItems(profile) }
             val anilist = async { getAnilistContinueWatchingItems(profile.anilistAccessToken) }
-            val combined = trakt.await() + mal.await() + simkl.await() + anilist.await()
+            val combined = trakt.await() + simkl.await() + anilist.await()
             distinctByIdentityKey(combined)
         }
     }
@@ -89,25 +94,6 @@ class ExternalLibraryClient @Inject constructor(
                 watchlistCount = watchlist.await()
             )
         }
-    }
-
-    suspend fun getMalLibraryItems(token: String?, status: String): List<Meta> = withContext(Dispatchers.IO) {
-        if (token.isNullOrBlank()) return@withContext emptyList()
-        runCatching {
-            traktApi.getMalAnimeList("Bearer $token", status = status)
-                .data
-                .map { entry ->
-                    Meta(
-                        id = "mal:${entry.node.id}",
-                        name = entry.node.title,
-                        type = "series",
-                        poster = null,
-                        releaseInfo = entry.node.numEpisodes?.takeIf { it > 0 }?.let { "$it episodes" },
-                        reason = "MyAnimeList"
-                    )
-                }
-                .distinctBy { it.id }
-        }.getOrDefault(emptyList())
     }
 
     suspend fun getSimklLibraryItems(token: String?, status: String): List<Meta> = withContext(Dispatchers.IO) {
@@ -257,33 +243,6 @@ class ExternalLibraryClient @Inject constructor(
         }
     }
 
-    private suspend fun getMalContinueWatchingItems(token: String?): List<Meta> {
-        if (token.isNullOrBlank()) return emptyList()
-        return try {
-            traktApi.getMalAnimeList("Bearer $token")
-                .data
-                .mapNotNull { entry ->
-                    val watched = entry.listStatus?.numEpisodesWatched ?: return@mapNotNull null
-                    val total = entry.node.numEpisodes?.takeIf { it > 0 } ?: (watched + 1)
-                    if (watched <= 0 || watched >= total) return@mapNotNull null
-                    Meta(
-                        id = "mal:${entry.node.id}",
-                        name = entry.node.title,
-                        type = "series",
-                        poster = null,
-                        timeOffset = watched * EPISODE_PROGRESS_UNIT_MS,
-                        duration = total * EPISODE_PROGRESS_UNIT_MS,
-                        lastVideoId = "mal:${entry.node.id}:1:${watched + 1}",
-                        lastEpisodeName = "Episode ${watched + 1}",
-                        reason = "MyAnimeList"
-                    )
-                }
-        } catch (e: Exception) {
-            Log.w("ExternalLibraryClient", "Failed to load MyAnimeList continue watching items", e)
-            emptyList()
-        }
-    }
-
     private suspend fun getSimklContinueWatchingItems(profile: UserProfile): List<Meta> {
         return runCatching {
             simklSyncCoordinator.snapshot(profile).resources.let { resources ->
@@ -388,6 +347,27 @@ class ExternalLibraryClient @Inject constructor(
     suspend fun getAnilistWatchlistWithTimestamps(token: String?): List<Pair<Meta, Long>> {
         val watchlist = anilistSyncValue(token)?.getAsJsonArray("watchlist") ?: return emptyList()
         return watchlist.mapNotNull { entry -> anilistWatchlistEntryToMeta(entry.asJsonObject) }
+    }
+
+    suspend fun getAnilistLibrarySnapshot(token: String?): AnilistLibrarySnapshot {
+        val value = anilistSyncValue(token) ?: return AnilistLibrarySnapshot()
+        return AnilistLibrarySnapshot(
+            watchlist = value.getAsJsonArray("watchlist")?.mapNotNull { anilistWatchlistEntryToMeta(it.asJsonObject) }.orEmpty(),
+            watching = value.getAsJsonArray("watching")?.mapNotNull { anilistItemToMeta(it.asJsonObject) }.orEmpty(),
+            completed = value.getAsJsonArray("completed")?.mapNotNull { anilistItemToMeta(it.asJsonObject) }.orEmpty()
+        )
+    }
+
+    private fun anilistItemToMeta(item: com.google.gson.JsonObject): Meta? {
+        val id = item.get("id")?.takeUnless { it.isJsonNull }?.asString ?: return null
+        return Meta(
+            id = id,
+            name = item.get("name")?.takeUnless { it.isJsonNull }?.asString ?: id,
+            type = item.get("type")?.takeUnless { it.isJsonNull }?.asString ?: "series",
+            poster = item.get("poster")?.takeUnless { it.isJsonNull }?.asString,
+            background = item.get("background")?.takeUnless { it.isJsonNull }?.asString,
+            reason = "AniList"
+        )
     }
 
     private fun anilistWatchlistEntryToMeta(item: com.google.gson.JsonObject): Pair<Meta, Long>? {

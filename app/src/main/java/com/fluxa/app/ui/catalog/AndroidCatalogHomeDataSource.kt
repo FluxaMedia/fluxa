@@ -205,7 +205,7 @@ class AndroidCatalogHomeDataSource(
                         CatalogItemUiModel(
                             id = folder.id,
                             type = "catalog_folder",
-                            card = folder.toSharedUiModel().toCatalogCardUiModel(profile.safePosterWidthPreset ?: "medium"),
+                            card = folder.toSharedUiModel().toCatalogCardUiModel(profile.safePosterWidthPreset),
                             backdropUrl = folder.heroBackdropUrl ?: folder.effectiveImageUrl()
                         )
                     }

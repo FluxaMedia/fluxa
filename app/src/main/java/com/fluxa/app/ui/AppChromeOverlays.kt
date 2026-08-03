@@ -31,14 +31,12 @@ internal fun AppChromeOverlays(
     showTraktSheet: Boolean,
     isTraktSyncing: Boolean,
     traktContinueWatchingLastUpdatedAt: Long,
-    showMalSheet: Boolean,
     showSimklSheet: Boolean,
     onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
     onDownloadingChanged: (Boolean) -> Unit,
     onDownloadProgressChanged: (Float) -> Unit,
     onShowTraktSheetChanged: (Boolean) -> Unit,
     onTraktSyncingChanged: (Boolean) -> Unit,
-    onShowMalSheetChanged: (Boolean) -> Unit,
     onShowSimklSheetChanged: (Boolean) -> Unit
 ) {
     AppUpdateOverlay(
@@ -97,39 +95,21 @@ internal fun AppChromeOverlays(
                 }
             },
             onDisconnect = {
-                val updated = activeProfile.copy(
-                    traktAccessToken = null,
-                    traktRefreshToken = null,
-                    traktTokenExpiresAt = null,
-                    traktLastSyncAt = null,
-                    traktLastSyncedItems = null,
-                    traktLastContinueWatchingCount = null,
-                    traktLastWatchlistCount = null
-                )
+                val updated = profileManager.updateProfile(activeProfile.id) {
+                    it.copy(
+                        traktAccessToken = null,
+                        traktRefreshToken = null,
+                        traktTokenExpiresAt = null,
+                        traktLastSyncAt = null,
+                        traktLastSyncedItems = null,
+                        traktLastContinueWatchingCount = null,
+                        traktLastWatchlistCount = null
+                    )
+                } ?: activeProfile
                 onActiveProfileChanged(updated)
-                profileManager.saveProfile(updated)
                 profileManager.setLastActiveProfile(updated)
                 homeViewModel.loadInitialData(updated, force = true)
                 onShowTraktSheetChanged(false)
-            }
-        )
-    }
-    if (showMalSheet && activeProfile != null) {
-        com.fluxa.app.ui.SimpleIntegrationSheet(
-            titleKey = "brand.myanimelist",
-            iconRes = com.fluxa.app.R.drawable.ic_myanimelist,
-            lang = activeProfile.safeLanguage,
-            onDismiss = { onShowMalSheetChanged(false) },
-            onDisconnect = {
-                val updated = activeProfile.copy(
-                    malAccessToken = null,
-                    malRefreshToken = null
-                )
-                onActiveProfileChanged(updated)
-                profileManager.saveProfile(updated)
-                profileManager.setLastActiveProfile(updated)
-                homeViewModel.loadInitialData(updated, force = true)
-                onShowMalSheetChanged(false)
             }
         )
     }
@@ -140,11 +120,10 @@ internal fun AppChromeOverlays(
             lang = activeProfile.safeLanguage,
             onDismiss = { onShowSimklSheetChanged(false) },
             onDisconnect = {
-                val updated = activeProfile.copy(
-                    simklAccessToken = null
-                )
+                val updated = profileManager.updateProfile(activeProfile.id) {
+                    it.copy(simklAccessToken = null)
+                } ?: activeProfile
                 onActiveProfileChanged(updated)
-                profileManager.saveProfile(updated)
                 profileManager.setLastActiveProfile(updated)
                 homeViewModel.loadInitialData(updated, force = true)
                 onShowSimklSheetChanged(false)

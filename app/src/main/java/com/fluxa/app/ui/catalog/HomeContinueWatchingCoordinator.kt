@@ -113,7 +113,7 @@ internal class HomeContinueWatchingCoordinator(
             setTraktUpdatedAt(System.currentTimeMillis())
         }
         if (items != null) {
-            watchlistManager.replaceExternalContinueWatching(setOf("trakt", "mal", "simkl", "anilist", "nuvio"), items)
+            watchlistManager.replaceExternalContinueWatching(setOf("trakt", "simkl", "anilist", "nuvio"), items)
         }
         return items ?: externalItems()
     }

@@ -55,11 +55,12 @@ class HomeViewModel @Inject constructor(
     private val forgottenContinueWatchingStore: ForgottenContinueWatchingStore,
     private val coordinatorFactory: HomeViewModelCoordinatorFactory,
     private val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
+    private val providerAdapters: com.fluxa.app.data.repository.library.ProviderAdapters,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
     private val nuvioSyncCoordinator: NuvioSyncCoordinator,
     private val platformContentGateway: HomePlatformContentGateway,
     private val imdbApiService: ImdbApiService,
-    private val gson: Gson,
+    internal val gson: Gson,
     @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context
 ) : ViewModel() {
 
@@ -197,7 +198,7 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
     private val libraryCoordinator by lazy {
-        coordinatorFactory.library(repository, traktRepository, watchlistManager, externalSyncPushCoordinator, viewModelScope, coreState, gson)
+        coordinatorFactory.library(repository, traktRepository, watchlistManager, externalSyncPushCoordinator, providerAdapters, viewModelScope, coreState, gson)
     }
     val libraryUiState: StateFlow<LibraryUiState> get() = libraryCoordinator.state
 
@@ -385,7 +386,7 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    private val authCoordinator by lazy {
+    internal val authCoordinator by lazy {
         HomeAuthCoordinator(
             scope = viewModelScope,
             gson = gson,
@@ -1033,10 +1034,6 @@ class HomeViewModel @Inject constructor(
         authCoordinator.refreshTokenIfNeeded("trakt", profile, onProfileUpdated)
     }
 
-    fun refreshMalTokenIfNeeded(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
-        authCoordinator.refreshTokenIfNeeded("mal", profile, onProfileUpdated)
-    }
-
     fun refreshExternalContinueWatching() {
         currentActiveProfile?.let(::loadLibraryData)
     }
@@ -1188,40 +1185,5 @@ class HomeViewModel @Inject constructor(
             )
         }
     }
-
-    private suspend fun <T> fromStateList(value: Any?, type: java.lang.reflect.Type): List<T> {
-        if (value == null) return emptyList()
-        return withContext(Dispatchers.Default) {
-            runCatching {
-                gson.fromJson<List<T>>(gson.toJsonTree(value), type)
-            }.getOrDefault(emptyList())
-        }
-    }
-
-    private suspend fun <T> fromStateObject(value: Any?, clazz: Class<T>): T? {
-        if (value == null) return null
-        return withContext(Dispatchers.Default) {
-            runCatching {
-                gson.fromJson(gson.toJsonTree(value), clazz)
-            }.onFailure {
-                android.util.Log.e("HomeViewModel", "fromStateObject failed for ${clazz.simpleName}: $value", it)
-            }.getOrNull()
-        }
-    }
-
-    fun exchangeTraktCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
-        authCoordinator.exchangeCode("trakt", code, null, onProfileUpdated, onComplete)
-
-    fun startTraktDeviceAuthorization(onCodeReady: (TraktDeviceCodeResponse) -> Unit, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean, String?) -> Unit) =
-        authCoordinator.startTraktDeviceAuthorization(onCodeReady, onProfileUpdated, onComplete)
-
-    fun exchangeMalCode(code: String, codeVerifier: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
-        authCoordinator.exchangeCode("mal", code, codeVerifier, onProfileUpdated, onComplete)
-
-    fun exchangeSimklCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
-        authCoordinator.exchangeCode("simkl", code, null, onProfileUpdated, onComplete)
-
-    fun exchangeAnilistCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
-        authCoordinator.exchangeCode("anilist", code, null, onProfileUpdated, onComplete)
 
 }

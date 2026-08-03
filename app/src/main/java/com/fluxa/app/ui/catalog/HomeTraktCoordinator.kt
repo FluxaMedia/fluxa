@@ -134,6 +134,6 @@ internal class HomeTraktCoordinator(
 
     private fun UserProfile?.hasExternalContinueProvider(): Boolean {
         return this != null &&
-            (!traktAccessToken.isNullOrBlank() || !malAccessToken.isNullOrBlank() || !simklAccessToken.isNullOrBlank())
+            (!traktAccessToken.isNullOrBlank() || !simklAccessToken.isNullOrBlank())
     }
 }

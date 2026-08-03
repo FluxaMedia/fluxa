@@ -5,6 +5,7 @@ import com.fluxa.app.core.rust.models.NativeSimklEpisodeMatch
 import com.google.gson.Gson
 
 object SimklIntegration {
+    const val REDIRECT_URI = "fluxa://oauth/simkl"
     private val gson = Gson()
 
     fun imdbIdFrom(contentId: String): String? {

@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.fluxa.app.ui.catalog
 
 import androidx.media3.datasource.DataSource
@@ -10,17 +12,10 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.common.MediaItem
 import okhttp3.OkHttpClient
-import okhttp3.Dns
-import java.net.Inet4Address
 
 internal object TrailerResolver {
 
-    private val httpClient = OkHttpClient.Builder()
-        .dns { hostname ->
-            val addresses = Dns.SYSTEM.lookup(hostname)
-            addresses.filterIsInstance<Inet4Address>().ifEmpty { addresses }
-        }
-        .build()
+    private val httpClient = OkHttpClient.Builder().build()
 
     fun init(cacheDir: java.io.File) = Unit
 

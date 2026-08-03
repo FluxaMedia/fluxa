@@ -65,7 +65,6 @@ import com.fluxa.app.data.remote.TraktHistorySyncRequest
 import com.fluxa.app.data.remote.TraktIds
 import com.fluxa.app.data.remote.TraktSyncItem
 import com.fluxa.app.data.repository.TraktWatchedState
-import com.fluxa.app.data.repository.MalListUpdate
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
 import com.fluxa.app.domain.discovery.MetadataFeedOption
@@ -443,7 +442,7 @@ object FluxaCoreNative {
     fun parseEpisodeLocator(raw: String?): NativeEpisodeLocator? {
         val args = JsonObject().apply { addProperty("input", raw.orEmpty()) }
         val value = FluxaCoreUniFfi.coreInvokeValue("parseEpisodeLocator", args.toString())
-            return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeEpisodeLocator::class.java) }
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeEpisodeLocator::class.java) }
     }
 
     fun contentImdbId(id: String): String? {
@@ -1321,16 +1320,6 @@ object FluxaCoreNative {
         return FluxaCoreUniFfi.coreInvokeValue("externalSyncRefreshRetryAction", args.toString()).asString
     }
 
-    fun malListUpdate(meta: Meta, episodes: List<Video>, watched: Boolean): MalListUpdate? {
-        val args = JsonObject().apply {
-            add("meta", gson.toJsonTree(meta))
-            add("episodes", gson.toJsonTree(episodes))
-        }
-        val method = if (watched) "malWatchedUpdate" else "malWatchlistUpdate"
-        val value = FluxaCoreUniFfi.coreInvokeValue(method, args.toString())
-        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, MalListUpdate::class.java) }
-    }
-
     fun normalizeHomeCatalogItems(items: List<Meta>, catalogId: String, genre: String?): List<Meta> {
         val todayIso = java.time.LocalDate.now(java.time.ZoneId.systemDefault()).toString()
         val args = JsonObject().apply {
@@ -1687,6 +1676,16 @@ object FluxaCoreNative {
         val args = JsonObject().apply { addProperty("metaJson", gson.toJson(meta)) }
         val value = FluxaCoreUniFfi.coreInvokeValue("clearPlaybackProgressItem", args.toString())
         return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, LibraryItem::class.java) }
+    }
+
+    fun watchlistLibraryItems(meta: Meta, add: Boolean): List<LibraryItem> {
+        val args = JsonObject().apply {
+            addProperty("kind", "watchlist")
+            add("item", gson.toJsonTree(meta))
+            addProperty("command", if (add) "add" else "remove")
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("stremioLibraryMutationPlan", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<LibraryItem>>(it, libraryItemListType) } ?: emptyList()
     }
 
     fun watchedStateItems(meta: Meta, episodes: List<Video>, watched: Boolean, watchedAt: String?): List<LibraryItem> {

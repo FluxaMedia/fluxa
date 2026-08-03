@@ -63,6 +63,7 @@ internal object PluginStateCodec {
                 val obj = array.getJSONObject(i)
                 PluginRepositoryEntry(
                     url = obj.getString("url"),
+                    publisherPublicKey = obj.optString("publisherPublicKey"),
                     name = obj.optString("name", ""),
                     description = obj.optString("description", ""),
                     iconUrl = obj.optString("iconUrl").takeIf { it.isNotBlank() },
@@ -80,6 +81,7 @@ internal object PluginStateCodec {
         repos.forEach { repo ->
             val obj = JSONObject().apply {
                 put("url", repo.url)
+                put("publisherPublicKey", repo.publisherPublicKey)
                 put("name", repo.name)
                 put("description", repo.description)
                 repo.iconUrl?.let { put("iconUrl", it) }

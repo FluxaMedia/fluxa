@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.fluxa.app.core.rust
 
 import android.content.Context
@@ -144,7 +146,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     )
 
     private val offlineEffectHandler = AndroidOfflineEffectHandler(context, gson)
-    private val cloudStreamRuntime = AndroidCloudStreamRuntime(pluginManager)
+    internal val cloudStreamRuntime = AndroidCloudStreamRuntime(pluginManager)
     private val trailerHttpClient = OkHttpClient.Builder().build()
 
     override suspend fun execute(effect: NativeHeadlessEffect): HeadlessEffectCompletion = withContext(Dispatchers.IO) {
@@ -748,7 +750,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                         runCatching { gson.fromJson(gson.toJsonTree(it), Video::class.java) }.getOrNull()
                     }
                     val episodesToPush = if (watched && meta?.type != "movie") {
-                        episodes.filter { it.id != null && it.id !in previouslyWatchedVideoIds }
+                        episodes.filter { it.id !in previouslyWatchedVideoIds }
                     } else {
                         episodes
                     }
@@ -771,6 +773,12 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val meta = gson.fromJson(gson.toJsonTree(payload["meta"]), Meta::class.java)
         val value = payload["value"] as? Boolean
         watchlistManager.setFeedback(payload.string("id"), value, meta)
+        val profile = payload.profile()
+        if (profile != null && meta != null) {
+            primeScope.launch {
+                runCatching { externalSyncPushCoordinator.pushFavorite(profile, meta, isFavorite = value == true) }
+            }
+        }
         return ok(effect, mapOf("feedback" to value))
     }
 
@@ -1164,42 +1172,14 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         }
         return ok(effect, mapOf("body" to result.body))
     }
-
-    internal fun ok(effect: NativeHeadlessEffect, value: Any?): HeadlessEffectCompletion =
-        HeadlessEffectCompletion(effectId = effect.id, status = "ok", value = value)
-
-    internal fun error(effect: NativeHeadlessEffect, code: String): HeadlessEffectCompletion =
-        HeadlessEffectCompletion(effectId = effect.id, status = "error", error = mapOf("code" to code))
-
-    internal fun syncWatchlistProfile(effect: NativeHeadlessEffect) {
-        val profileId = effect.payload.parseProfile(gson)?.id ?: effect.payload.stringOrNull("profileId")
-        profileId?.let(watchlistManager::setActiveProfile)
-    }
-
+    internal fun ok(effect: NativeHeadlessEffect, value: Any?): HeadlessEffectCompletion = HeadlessEffectCompletion(effectId = effect.id, status = "ok", value = value)
+    internal fun error(effect: NativeHeadlessEffect, code: String): HeadlessEffectCompletion = HeadlessEffectCompletion(effectId = effect.id, status = "error", error = mapOf("code" to code))
     internal fun Map<String, Any?>.profile(): UserProfile? = parseProfile(gson)
-
     private fun Map<String, Any?>.remoteSources(): List<LibraryRemoteSource> {
         val raw = this["remoteSource"] ?: return emptyList()
         val values = raw as? List<*> ?: listOf(raw)
-        return values.mapNotNull { value ->
-            runCatching { gson.fromJson(gson.toJsonTree(value), LibraryRemoteSource::class.java) }.getOrNull()
-        }
+        return values.mapNotNull { value -> runCatching { gson.fromJson(gson.toJsonTree(value), LibraryRemoteSource::class.java) }.getOrNull() }
     }
-
-    private fun JsonElement.asJsonObjectOrNull() = takeIf { it.isJsonObject }?.asJsonObject
-
-    private fun com.google.gson.JsonObject.getAsJsonArrayOrNull(key: String): JsonArray? =
-        get(key)?.takeIf { it.isJsonArray }?.asJsonArray
-
-    internal fun isTmdbContentId(id: String): Boolean =
-        id.startsWith("tmdb:", ignoreCase = true) || id.toIntOrNull() != null
-
-    internal suspend fun loadCsNativeMetaDetail(id: String): MetaDetail? = cloudStreamRuntime.loadMetaDetail(id)
-
-    internal suspend fun loadCsNativeStreams(id: String, directTimeoutMs: Long = 30_000L): List<Stream> =
-        cloudStreamRuntime.loadStreams(id, directTimeoutMs)
-
-    internal fun csQualityScore(quality: String): Int = cloudStreamRuntime.qualityScore(quality)
 
     internal suspend fun buildPlaybackStreamRequestIds(
         type: String,
@@ -1220,10 +1200,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                     useConfiguredAddons = true
                 )
             }
-        } else {
-            null
-        }
+        } else null
         return FluxaCoreNative.playbackStreamRequestIds(type, id, detail?.id)
     }
-
 }

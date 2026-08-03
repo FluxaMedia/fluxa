@@ -114,13 +114,6 @@ class WatchlistManager @Inject constructor(
         return active + removed
     }
 
-    suspend fun applyRemoteWatchlistAdd(item: Meta) {
-        val profileId = pid()
-        dao.upsertContent(item.toContentItemEntity(profileId))
-        dao.clearWatchlistRemoval(profileId, item.id)
-        dao.upsertWatchlistEntry(WatchlistEntryEntity(profileId, item.id))
-    }
-
     suspend fun getContentMeta(id: String): Meta? {
         return dao.getContentState(pid(), id)?.toMeta()
     }

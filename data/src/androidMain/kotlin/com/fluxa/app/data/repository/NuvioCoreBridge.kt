@@ -56,6 +56,19 @@ object NuvioCoreBridge {
         JsonObject().apply { add("collections", collections) }
     ).asJsonArray
 
+    fun libraryMutationPlan(remote: JsonElement, item: JsonElement, command: String, nowMs: Long): JsonElement? {
+        val result = invoke(
+            "nuvioLibraryMutationPlan",
+            JsonObject().apply {
+                add("remote", remote)
+                add("item", item)
+                addProperty("command", command)
+                addProperty("nowMs", nowMs)
+            }
+        )
+        return result.takeUnless { it.isJsonNull }
+    }
+
     private fun invoke(method: String, args: JsonObject): JsonElement =
         FluxaCoreUniFfi.coreInvokeValue(method, args.toString())
 }

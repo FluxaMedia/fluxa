@@ -31,13 +31,8 @@ android {
 
     defaultConfig {
         buildConfigField("String", "TRAKT_CLIENT_ID", "\"${secret("TRAKT_CLIENT_ID")}\"")
-        buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"\"")
-        buildConfigField("String", "MAL_CLIENT_ID", "\"${secret("MAL_CLIENT_ID")}\"")
-        buildConfigField("String", "MAL_CLIENT_SECRET", "\"\"")
         buildConfigField("String", "SIMKL_CLIENT_ID", "\"${secret("SIMKL_CLIENT_ID")}\"")
-        buildConfigField("String", "SIMKL_CLIENT_SECRET", "\"\"")
         buildConfigField("String", "ANILIST_CLIENT_ID", "\"${secret("ANILIST_CLIENT_ID")}\"")
-        buildConfigField("String", "ANILIST_CLIENT_SECRET", "\"${secret("ANILIST_CLIENT_SECRET")}\"")
     }
 }
 

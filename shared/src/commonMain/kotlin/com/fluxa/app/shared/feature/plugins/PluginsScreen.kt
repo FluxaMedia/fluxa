@@ -178,11 +178,46 @@ fun PluginsScreen(
             }
 
             item {
-                PluginRepositoryInput(
+                CloudstreamRepositoryInput(
                     language = language,
-                    placeholderKey = "addons.cloudstream_repo",
-                    onSubmit = { url -> onAction(PluginsAction.CloudstreamRepoAdded(url)) }
+                    onSubmit = { url, publisherPublicKey -> onAction(PluginsAction.CloudstreamRepoAdded(url, publisherPublicKey)) }
                 )
+            }
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color.White.copy(alpha = 0.04f))
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = AppStrings.t(language, "addons.cloudstream_automatic_updates"),
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = AppStrings.t(language, "addons.cloudstream_automatic_updates_desc"),
+                            color = Color.White.copy(alpha = 0.58f),
+                            fontSize = 12.sp
+                        )
+                    }
+                    Switch(
+                        checked = state.cloudstreamAutomaticUpdatesEnabled,
+                        onCheckedChange = { enabled ->
+                            onAction(PluginsAction.CloudstreamAutomaticUpdatesChanged(enabled))
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.Black,
+                            checkedTrackColor = Color.White
+                        )
+                    )
+                }
             }
 
             if (state.cloudstreamRepoError != null) {
@@ -294,6 +329,77 @@ private fun PluginRepositoryInput(
                 }
             },
             enabled = url.isNotBlank(),
+            modifier = Modifier.fillMaxWidth().height(44.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(AppStrings.t(language, "settings.plugins.add_repository"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+private fun CloudstreamRepositoryInput(
+    language: String?,
+    onSubmit: (String, String) -> Unit
+) {
+    var url by remember { mutableStateOf("") }
+    var publisherPublicKey by remember { mutableStateOf("") }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = AppStrings.t(language, "addons.cloudstream_trust_warning"),
+            color = Color.White.copy(alpha = 0.58f),
+            fontSize = 12.sp
+        )
+        OutlinedTextField(
+            value = url,
+            onValueChange = { url = it },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            singleLine = true,
+            placeholder = { Text(AppStrings.t(language, "addons.cloudstream_repo_url_placeholder"), color = Color.White.copy(alpha = 0.3f), fontSize = 13.sp) },
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = Color.White,
+                focusedContainerColor = Color.Black.copy(alpha = 0.2f),
+                unfocusedContainerColor = Color.Black.copy(alpha = 0.2f)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        )
+        OutlinedTextField(
+            value = publisherPublicKey,
+            onValueChange = { publisherPublicKey = it },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            singleLine = true,
+            label = { Text(AppStrings.t(language, "addons.repository_public_key")) },
+            placeholder = { Text(AppStrings.t(language, "addons.repository_public_key_placeholder"), color = Color.White.copy(alpha = 0.3f), fontSize = 13.sp) },
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = Color.White,
+                focusedContainerColor = Color.Black.copy(alpha = 0.2f),
+                unfocusedContainerColor = Color.Black.copy(alpha = 0.2f)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        )
+        androidx.compose.material3.Button(
+            onClick = {
+                onSubmit(url.trim(), publisherPublicKey.trim())
+                url = ""
+                publisherPublicKey = ""
+            },
+            enabled = url.isNotBlank() && publisherPublicKey.isNotBlank(),
             modifier = Modifier.fillMaxWidth().height(44.dp),
             shape = RoundedCornerShape(12.dp),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)

@@ -226,38 +226,6 @@ data class AnilistGraphQlRequest(
 )
 
 @Serializable
-data class MalMainPicture(val medium: String? = null, val large: String? = null)
-
-@Serializable
-data class MalAnimeListResponse(val data: List<MalAnimeListEntry> = emptyList())
-
-@Serializable
-data class MalAnimeListEntry(val node: MalAnimeNode, val list_status: MalListStatus? = null) {
-    val listStatus: MalListStatus? get() = list_status
-}
-
-@Serializable
-data class MalAnimeNode(
-    val id: Int,
-    val title: String,
-    val main_picture: MalMainPicture? = null,
-    val num_episodes: Int? = null
-) {
-    val mainPicture: MalMainPicture? get() = main_picture
-    val numEpisodes: Int? get() = num_episodes
-}
-
-@Serializable
-data class MalListStatus(
-    val status: String? = null,
-    val num_episodes_watched: Int? = null,
-    val updated_at: String? = null
-) {
-    val numEpisodesWatched: Int? get() = num_episodes_watched
-    val updatedAt: String? get() = updated_at
-}
-
-@Serializable
 data class SimklAllItemsResponse(
     val movies: List<SimklItem> = emptyList(),
     val shows: List<SimklItem> = emptyList(),

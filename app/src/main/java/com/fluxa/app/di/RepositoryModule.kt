@@ -19,6 +19,19 @@ object RepositoryModule {
 
     @Provides
     @Singleton
+    fun provideOAuthClientConfig(): OAuthClientConfig {
+        return OAuthClientConfig(
+            traktClientId = com.fluxa.app.BuildConfig.TRAKT_CLIENT_ID,
+            traktClientSecret = com.fluxa.app.BuildConfig.TRAKT_CLIENT_SECRET.takeIf { it.isNotBlank() },
+            simklClientId = com.fluxa.app.BuildConfig.SIMKL_CLIENT_ID,
+            simklClientSecret = com.fluxa.app.BuildConfig.SIMKL_CLIENT_SECRET.takeIf { it.isNotBlank() },
+            anilistClientId = com.fluxa.app.BuildConfig.ANILIST_CLIENT_ID,
+            anilistClientSecret = com.fluxa.app.BuildConfig.ANILIST_CLIENT_SECRET.takeIf { it.isNotBlank() }
+        )
+    }
+
+    @Provides
+    @Singleton
     fun provideAddonRepository(
         manifestClient: StremioAddonManifestClient,
         resourceClient: StremioAddonResourceClient
@@ -34,9 +47,10 @@ object RepositoryModule {
         addonRepository: AddonRepository,
         externalLibraryClient: ExternalLibraryClient,
         traktSyncClient: TraktSyncClient,
-        gson: Gson
+        gson: Gson,
+        oauthClientConfig: OAuthClientConfig
     ): TraktRepository {
-        return TraktRepository(context, traktApi, addonRepository, externalLibraryClient, traktSyncClient, gson)
+        return TraktRepository(context, traktApi, addonRepository, externalLibraryClient, traktSyncClient, gson, oauthClientConfig)
     }
 
     @Provides

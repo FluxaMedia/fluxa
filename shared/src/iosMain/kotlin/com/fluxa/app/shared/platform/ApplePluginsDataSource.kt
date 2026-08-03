@@ -30,6 +30,7 @@ data class ApplePluginsActionSnapshot(
     val enabled: Boolean? = null,
     val settingsJson: String? = null,
     val url: String? = null,
+    val publisherPublicKey: String? = null,
     val repoUrl: String? = null,
     val internalName: String? = null
 )
@@ -202,8 +203,13 @@ class ApplePluginsDataSource : PluginsDataSource {
         )
     }
 
-    override suspend fun addCloudstreamRepository(url: String) {
-        postAction(ApplePluginsActionSnapshot(type = "addCloudstreamRepository", url = url))
+    override suspend fun addCloudstreamRepository(url: String, publisherPublicKey: String) {
+        postAction(ApplePluginsActionSnapshot(type = "addCloudstreamRepository", url = url, publisherPublicKey = publisherPublicKey))
+    }
+
+    override suspend fun setCloudstreamAutomaticUpdatesEnabled(enabled: Boolean) {
+        state.value = state.value.copy(cloudstreamAutomaticUpdatesEnabled = enabled)
+        postAction(ApplePluginsActionSnapshot(type = "setCloudstreamAutomaticUpdatesEnabled", enabled = enabled))
     }
 
     override suspend fun openRepo(url: String) {

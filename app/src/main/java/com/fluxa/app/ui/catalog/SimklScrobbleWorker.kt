@@ -78,13 +78,13 @@ class SimklScrobbleWorker @AssistedInject constructor(
                 when {
                     response == null -> Result.success()
                     response.isSuccessful -> {
-                        profileManager.saveProfile(profile.copy(simklLastSyncAt = System.currentTimeMillis()))
+                        profileManager.updateProfile(profile.id) { it.copy(simklLastSyncAt = System.currentTimeMillis()) }
                         onSyncSuccess(profileId)
                         Result.success()
                     }
                     response.code() == 401 -> {
                         Log.w("SimklScrobbleWorker", "Simkl access revoked for profile=$profileId, clearing token")
-                        profileManager.saveProfile(profile.copy(simklAccessToken = null))
+                        profileManager.updateProfile(profile.id) { it.copy(simklAccessToken = null) }
                         Result.failure()
                     }
                     response.code() == 429 || response.code() >= 500 -> {

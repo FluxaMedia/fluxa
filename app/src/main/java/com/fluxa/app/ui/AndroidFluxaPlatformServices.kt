@@ -15,11 +15,15 @@ import com.fluxa.app.ui.catalog.AndroidDiscoverDataSource
 import com.fluxa.app.ui.catalog.AndroidLibraryDataSource
 import com.fluxa.app.ui.catalog.AndroidSearchDataSource
 import com.fluxa.app.ui.catalog.AndroidSettingsDataSource
-import com.fluxa.app.ui.catalog.AppContainer
 import com.fluxa.app.ui.catalog.DetailViewModel
 import com.fluxa.app.ui.catalog.HomeViewModel
 import com.fluxa.app.ui.profile.AndroidProfileDataSource
 import com.fluxa.app.ui.settings.AndroidPluginsDataSource
+import com.fluxa.app.data.remote.StremioService
+import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
+import com.fluxa.app.data.repository.StremioRepository
+import com.fluxa.app.plugins.PluginManager
+import com.fluxa.app.plugins.PluginRepositoryManager
 
 class AndroidFluxaPlatformServices(
     homeViewModel: HomeViewModel,
@@ -30,6 +34,11 @@ class AndroidFluxaPlatformServices(
     onActiveProfileChanged: (UserProfile) -> Unit,
     offlineDownloadManager: OfflineDownloadManager,
     watchlistStore: WatchlistStore,
+    repository: StremioRepository,
+    pluginRepositoryManager: PluginRepositoryManager,
+    pluginManager: PluginManager,
+    authService: StremioService,
+    nuvioImportCoordinator: NuvioAccountImportCoordinator,
     appVersionLabel: String
 ) : FluxaMobilePlatformServices {
     override val catalogHomeDataSource = AndroidCatalogHomeDataSource(homeViewModel, activeProfile)
@@ -48,21 +57,21 @@ class AndroidFluxaPlatformServices(
     override val detailDataSource = AndroidDetailDataSource(detailViewModel, activeProfile)
     override val profileDataSource = AndroidProfileDataSource(profileManager, profilePickerSettingsStore)
     override val addonStoreDataSource = AndroidAddonStoreDataSource(
-        repository = AppContainer.repository,
+        repository = repository,
         profileManager = profileManager,
         homeViewModel = homeViewModel,
         activeProfile = activeProfile,
         onProfileChanged = onActiveProfileChanged
     )
     override val pluginsDataSource = AndroidPluginsDataSource(
-        pluginRepositoryManager = AppContainer.pluginRepositoryManager,
-        pluginManager = AppContainer.pluginManager,
+        pluginRepositoryManager = pluginRepositoryManager,
+        pluginManager = pluginManager,
         language = { activeProfile()?.language ?: "en" }
     )
     override val authDataSource = AndroidAuthDataSource(
-        authService = AppContainer.authService,
-        nuvioCoordinator = AppContainer.nuvioImportCoordinator,
-        pluginRepositoryManager = AppContainer.pluginRepositoryManager,
+        authService = authService,
+        nuvioCoordinator = nuvioImportCoordinator,
+        pluginRepositoryManager = pluginRepositoryManager,
         profileManager = profileManager,
         language = { activeProfile()?.language ?: "en" },
         onAuthenticated = onActiveProfileChanged

@@ -195,6 +195,7 @@ internal fun AppRoutesHost(
                 BiometricLockHelper.authenticate(
                     activity = activity,
                     lang = profile.language,
+                    profileId = profile.id,
                     onSuccess = { onResult(true) },
                     onFailure = { onResult(false) }
                 )
@@ -213,35 +214,35 @@ internal fun AppRoutesHost(
             androidx.compose.foundation.Image(
                 painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_nuvio),
                 contentDescription = null,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(34.dp)
             )
         },
         stremioIcon = {
             androidx.compose.foundation.Image(
                 painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_stremio),
                 contentDescription = null,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(34.dp)
             )
         },
         traktIcon = {
             androidx.compose.foundation.Image(
                 painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_trakt),
                 contentDescription = null,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(34.dp)
             )
         },
         simklIcon = {
             androidx.compose.foundation.Image(
                 painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_simkl),
                 contentDescription = null,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(34.dp)
             )
         },
         anilistIcon = {
             androidx.compose.foundation.Image(
                 painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_anilist),
                 contentDescription = null,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(34.dp)
             )
         },
         onSettingsBackRequested = navigateBackSafely,

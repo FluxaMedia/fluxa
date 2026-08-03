@@ -230,6 +230,24 @@ class TraktSyncClient @Inject constructor(
         }
     }
 
+    suspend fun getFavorites(token: String): List<Meta> = withContext(Dispatchers.IO) {
+        getFavoritesResult(token).getOrReport(emptyList())
+    }
+
+    suspend fun getFavoritesResult(token: String): DataResult<List<Meta>> = withContext(Dispatchers.IO) {
+        if (!TraktIntegration.hasClient(traktKey)) return@withContext DataResult.AuthUnavailable("trakt.favorites")
+        try {
+            val auth = TraktIntegration.bearer(token)
+            val movies = async { runCatching { fetchTraktSyncPages { page, limit -> traktApi.getFavoriteMovies(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
+            val shows = async { runCatching { fetchTraktSyncPages { page, limit -> traktApi.getFavoriteShows(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
+            DataResult.Success((movies.await().mapNotNull { it.toMeta("movie") { AppStrings.t(null, "auto.unknown") } } +
+                shows.await().mapNotNull { it.toMeta("series") { AppStrings.t(null, "auto.unknown") } })
+                .distinctBy { it.id })
+        } catch (e: Exception) {
+            DataResult.NetworkError("trakt.favorites", e)
+        }
+    }
+
     private fun <T> DataResult<T>.getOrReport(defaultValue: T): T {
         asFailure()?.let(failureReporter::report)
         return getOrDefault(defaultValue)

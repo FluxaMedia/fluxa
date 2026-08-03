@@ -414,7 +414,7 @@ private fun SettingsAccountContent(
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.stremio"),
             connected = model.hasStremio,
-            connectedLabel = AppStrings.t(lang, "auto.connected"),
+            connectedLabel = if (model.email.isNotBlank()) AppStrings.format(lang, "settings.connected_as", model.email) else AppStrings.t(lang, "auto.connected"),
             icon = brandIcons.stremio,
             hasSyncFailure = "stremio" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
@@ -422,7 +422,7 @@ private fun SettingsAccountContent(
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.nuvio"),
             connected = model.hasNuvio,
-            connectedLabel = AppStrings.t(lang, "auto.connected"),
+            connectedLabel = model.nuvioEmail?.takeIf { it.isNotBlank() }?.let { AppStrings.format(lang, "settings.connected_as", it) } ?: AppStrings.t(lang, "auto.connected"),
             icon = brandIcons.nuvio,
             hasSyncFailure = "nuvio" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
@@ -430,7 +430,7 @@ private fun SettingsAccountContent(
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.trakt"),
             connected = model.hasTrakt,
-            connectedLabel = AppStrings.t(lang, "auto.connected"),
+            connectedLabel = model.traktUsername?.takeIf { it.isNotBlank() }?.let { AppStrings.format(lang, "settings.connected_as", it) } ?: AppStrings.t(lang, "auto.connected"),
             icon = brandIcons.trakt,
             hasSyncFailure = "trakt" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
@@ -438,7 +438,7 @@ private fun SettingsAccountContent(
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.simkl"),
             connected = model.hasSimkl,
-            connectedLabel = AppStrings.t(lang, "auto.connected"),
+            connectedLabel = model.simklUsername?.takeIf { it.isNotBlank() }?.let { AppStrings.format(lang, "settings.connected_as", it) } ?: AppStrings.t(lang, "auto.connected"),
             icon = brandIcons.simkl,
             hasSyncFailure = "simkl" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
@@ -446,7 +446,7 @@ private fun SettingsAccountContent(
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.anilist"),
             connected = model.hasAnilist,
-            connectedLabel = AppStrings.t(lang, "auto.connected"),
+            connectedLabel = model.anilistUsername?.takeIf { it.isNotBlank() }?.let { AppStrings.format(lang, "settings.connected_as", it) } ?: AppStrings.t(lang, "auto.connected"),
             icon = brandIcons.anilist,
             hasSyncFailure = "anilist" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
@@ -468,6 +468,18 @@ private fun SettingsAccountContent(
             value = model.syncCwSourceOfTruth,
             options = sourceOfTruthOptions
         ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(syncCwSourceOfTruth = it))) }
+        SettingsChoiceRow(
+            label = AppStrings.t(lang, "settings.library_source_of_truth"),
+            value = model.integrationLibrarySource,
+            options = listOf(
+                SettingsChoiceOption("local", AppStrings.t(lang, "settings.cw_source_of_truth_local")),
+                SettingsChoiceOption("nuvio", AppStrings.t(lang, "settings.cw_source_of_truth_nuvio")),
+                SettingsChoiceOption("trakt", AppStrings.t(lang, "settings.cw_source_of_truth_trakt")),
+                SettingsChoiceOption("simkl", AppStrings.t(lang, "settings.cw_source_of_truth_simkl")),
+                SettingsChoiceOption("anilist", AppStrings.t(lang, "settings.cw_source_of_truth_anilist")),
+                SettingsChoiceOption("stremio", AppStrings.t(lang, "settings.cw_source_of_truth_stremio"))
+            )
+        ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(integrationLibrarySource = it))) }
         SettingsChoiceRow(
             label = AppStrings.t(lang, "settings.cw_ranking"),
             value = model.syncCwRanking,

@@ -27,7 +27,8 @@ class TraktRepository @Inject constructor(
     private val addonRepository: AddonRepository,
     private val externalLibraryClient: ExternalLibraryClient,
     private val traktSyncClient: TraktSyncClient,
-    private val gson: Gson
+    private val gson: Gson,
+    private val oauthClientConfig: OAuthClientConfig
 ) {
     private val TRAKT_KEY = BuildConfig.TRAKT_CLIENT_ID
     private val MAX_CONCURRENT_TRAKT_DETAIL_RESOLUTION = 6
@@ -127,6 +128,10 @@ class TraktRepository @Inject constructor(
         traktSyncClient.getCollection(token)
     }
 
+    suspend fun getFavorites(token: String): List<Meta> = withContext(Dispatchers.IO) {
+        traktSyncClient.getFavorites(token)
+    }
+
     suspend fun getHype(language: String = "en"): List<Meta> = traktCatalogClient.getHype(language)
 
     suspend fun getTrending(language: String = "en"): List<Meta> = traktCatalogClient.getTrending(language)
@@ -167,34 +172,6 @@ class TraktRepository @Inject constructor(
         traktApi.removeFromHistory(TraktIntegration.bearer(token), TRAKT_KEY, request)
     }
 
-    suspend fun exchangeCode(code: String): TraktTokenResponse = traktApi.exchangeCode(
-        TraktTokenRequest(
-            code = code,
-            client_id = TRAKT_KEY,
-            client_secret = BuildConfig.TRAKT_CLIENT_SECRET,
-            redirect_uri = TraktIntegration.MOBILE_REDIRECT_URI
-        )
-    )
-
-    suspend fun refreshToken(refreshToken: String): TraktTokenResponse = traktApi.refreshToken(
-        TraktRefreshTokenRequest(
-            refresh_token = refreshToken,
-            client_id = TRAKT_KEY,
-            client_secret = BuildConfig.TRAKT_CLIENT_SECRET,
-            redirect_uri = TraktIntegration.MOBILE_REDIRECT_URI
-        )
-    )
-
-    suspend fun createDeviceCode(): TraktDeviceCodeResponse = traktApi.createDeviceCode(TraktDeviceCodeRequest(TRAKT_KEY))
-
-    suspend fun exchangeDeviceCode(deviceCode: String): retrofit2.Response<TraktTokenResponse> = traktApi.exchangeDeviceCode(
-        TraktDeviceTokenRequest(
-            code = deviceCode,
-            client_id = TRAKT_KEY,
-            client_secret = BuildConfig.TRAKT_CLIENT_SECRET
-        )
-    )
-
     suspend fun getTraktWatchlist(token: String): List<Meta> = getWatchlist(token)
 
     suspend fun getTraktWatchlistWithListedAt(token: String): List<Pair<Meta, Long>> = getWatchlistWithListedAt(token)
@@ -204,6 +181,8 @@ class TraktRepository @Inject constructor(
 
     suspend fun getTraktCollection(token: String): List<Meta> = getCollection(token)
 
+    suspend fun getTraktFavorites(token: String): List<Meta> = getFavorites(token)
+
     suspend fun getTraktWatchedState(token: String): TraktWatchedState = getWatchedState(token)
 
     suspend fun getTraktWatchedEpisodesWithTimestamps(token: String): Map<String, Long> = getWatchedEpisodesWithTimestamps(token)
@@ -211,7 +190,14 @@ class TraktRepository @Inject constructor(
     suspend fun getTraktSyncSnapshot(profile: UserProfile, language: String = profile.safeLanguage): TraktSyncSnapshot =
         getSyncSnapshot(profile, language)
 
-    suspend fun refreshTraktToken(refreshToken: String): TraktTokenResponse = refreshToken(refreshToken)
+    suspend fun refreshTraktToken(refreshToken: String): TraktTokenResponse = traktApi.refreshToken(
+        TraktRefreshTokenRequest(
+            refresh_token = refreshToken,
+            client_id = oauthClientConfig.traktClientId,
+            client_secret = oauthClientConfig.traktClientSecret.orEmpty(),
+            redirect_uri = TraktIntegration.MOBILE_REDIRECT_URI
+        )
+    )
 
     suspend fun clearTraktPlaybackProgress(token: String?, meta: Meta) = clearPlaybackProgress(token, meta)
 

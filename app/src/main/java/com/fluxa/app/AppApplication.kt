@@ -6,6 +6,7 @@ import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 
 import android.app.Application
+import android.app.ActivityManager
 import dagger.hilt.android.HiltAndroidApp
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -22,7 +23,6 @@ import com.lagradost.cloudstream3.app
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.common.initialize
 import com.fluxa.app.ui.catalog.EpisodeReleaseWorker
-import com.fluxa.app.plugins.PluginAutoUpdateWorker
 import com.fluxa.app.ui.catalog.TrailerResolver
 import okhttp3.OkHttpClient
 import androidx.work.Configuration
@@ -52,7 +52,6 @@ class AppApplication : Application(), SingletonImageLoader.Factory, Configuratio
 
         AppStrings.initialize(this)
         TrailerResolver.init(cacheDir)
-        PluginAutoUpdateWorker.enqueue(this)
         EpisodeReleaseWorker.enqueue(this)
         com.fluxa.app.player.TorrentStreamManager.getInstance(this).startEngineEarly(this)
         appScope.launch { profileManager.getProfiles() }
@@ -63,16 +62,24 @@ class AppApplication : Application(), SingletonImageLoader.Factory, Configuratio
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {
+        val activityManager = context.getSystemService(ActivityManager::class.java)
+        val isLowRam = activityManager?.isLowRamDevice == true
+        val isTelevision = packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+        val memoryCachePercent = when {
+            isLowRam -> 0.10
+            isTelevision -> 0.15
+            else -> 0.20
+        }
         return ImageLoader.Builder(context)
             .memoryCache {
                 MemoryCache.Builder()
-                    .maxSizePercent(context, 0.30)
+                    .maxSizePercent(context, memoryCachePercent)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache").toOkioPath())
-                    .maxSizeBytes(256L * 1024L * 1024L)
+                    .maxSizeBytes(if (isLowRam) 128L * 1024L * 1024L else 256L * 1024L * 1024L)
                     .build()
             }
             .crossfade(true)

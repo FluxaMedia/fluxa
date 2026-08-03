@@ -1,6 +1,7 @@
 package com.fluxa.app.data.local
 
 import com.fluxa.app.common.Constants
+import com.fluxa.app.data.remote.Meta
 
 data class UserProfile(
     val id: String,
@@ -34,6 +35,7 @@ data class UserProfile(
     val continueWatchingSource: String? = "fluxa",
     val syncCwSourceOfTruth: String? = "",
     val syncCwRanking: String? = "last_watched",
+    val integrationLibrarySource: String? = "local",
     val continueWatchingDays: Int? = 0,
     val traktCommentsEnabled: Boolean? = false,
     val nuvioAccessToken: String? = null,
@@ -43,23 +45,23 @@ data class UserProfile(
     val nuvioEmail: String? = null,
     val nuvioProfileIndex: Int? = null,
     val nuvioLastSyncAt: Long? = null,
+    val nuvioLibrarySnapshot: List<Meta>? = null,
     val externalSyncFailedProviders: Set<String>? = null,
     val traktAccessToken: String? = null,
     val traktRefreshToken: String? = null,
     val traktTokenExpiresAt: Long? = null,
+    val traktUsername: String? = null,
     val traktLastSyncAt: Long? = null,
     val traktLastSyncedItems: Int? = null,
     val traktLastContinueWatchingCount: Int? = null,
     val traktLastWatchlistCount: Int? = null,
-    val malAccessToken: String? = null,
-    val malRefreshToken: String? = null,
-    val malTokenExpiresAt: Long? = null,
-    val malLastSyncAt: Long? = null,
     val simklAccessToken: String? = null,
+    val simklUsername: String? = null,
     val simklLastSyncAt: Long? = null,
     val anilistAccessToken: String? = null,
     val anilistRefreshToken: String? = null,
     val anilistTokenExpiresAt: Long? = null,
+    val anilistUsername: String? = null,
     val tmdbApiKey: String? = null,
     val mdblistApiKey: String? = null,
     val introDbApiKey: String? = null,
@@ -243,8 +245,6 @@ data class UserProfile(
     val safeStreamingServerUrl: String get() = streamingServerUrl ?: Constants.LocalServer.BASE_URL
     val safeInstalledLocalAddons: List<String> get() = localAddons.orEmpty()
     val safeSimklLastSyncAt: Long get() = simklLastSyncAt ?: 0L
-    val safeMalTokenExpiresAt: Long get() = malTokenExpiresAt ?: 0L
-    val safeMalLastSyncAt: Long get() = malLastSyncAt ?: 0L
     val safeTmdbApiKey: String get() = tmdbApiKey.orEmpty()
     val safeIntroDbApiKey: String get() = introDbApiKey.orEmpty()
     val safeTmdbCastImagesEnabled: Boolean get() = tmdbCastImagesEnabled ?: true
@@ -270,8 +270,6 @@ data class UserProfile(
                 traktLastSyncedItems = traktLastSyncedItems,
                 traktLastContinueWatchingCount = traktLastContinueWatchingCount,
                 traktLastWatchlistCount = traktLastWatchlistCount,
-                malAccessToken = malAccessToken,
-                malRefreshToken = malRefreshToken,
                 simklAccessToken = simklAccessToken
             ),
             addonSettings = addonSettings ?: AddonSettings(

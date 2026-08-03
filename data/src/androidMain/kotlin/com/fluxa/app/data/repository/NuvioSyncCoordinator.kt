@@ -9,12 +9,15 @@ import com.fluxa.app.data.remote.NuvioRefreshRequest
 import com.fluxa.app.data.remote.toDto
 import com.fluxa.app.data.remote.NuvioService
 import com.fluxa.app.data.remote.Video
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import retrofit2.Response
 import javax.inject.Inject
 
 class NuvioSyncCoordinator @Inject constructor(
     private val nuvioService: NuvioService,
-    private val profileManager: ProfileManager
+    private val profileManager: ProfileManager,
+    private val gson: Gson
 ) {
     suspend fun isHealthy(): Boolean {
         return runCatching { nuvioService.healthCheck().bodyOrNull()?.status?.lowercase() in setOf("healthy", "ok") }.getOrDefault(false)
@@ -31,7 +34,7 @@ class NuvioSyncCoordinator @Inject constructor(
                 "p_collections_json" to current.safeLibraryCollections.map(NuvioSyncRequests::collection)
             )
         ).requireSuccess()
-        profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
+        profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
     }
 
     suspend fun pushAddons(profile: UserProfile) {
@@ -70,28 +73,42 @@ class NuvioSyncCoordinator @Inject constructor(
                 }
             }
         }
-        profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
+        profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
     }
+    private val watchlistMutexes = mutableMapOf<String, kotlinx.coroutines.sync.Mutex>()
+    private val watchlistMutexesLock = Any()
+
     suspend fun pushWatchlist(profile: UserProfile, meta: Meta, isInWatchlist: Boolean) {
-        val current = freshProfile(profile) ?: return
-        val token = current.nuvioAccessToken ?: return
-        val index = current.nuvioProfileIndex ?: return
-        val remote = nuvioService.pullLibrary("Bearer $token", mapOf("p_profile_id" to index, "p_limit" to 500, "p_offset" to 0)).bodyOrNull()?.map { it.toDomain() }
-            ?.map(NuvioSyncRequests::libraryItem)
-            ?.toMutableList()
-            ?: return
-        val existingIndex = remote.indexOfFirst { it["content_id"] == meta.id && it["content_type"] == meta.type }
-        if (isInWatchlist && existingIndex >= 0) remote.removeAt(existingIndex)
-        if (isInWatchlist) remote.add(NuvioSyncRequests.libraryItem(meta, System.currentTimeMillis()))
-        else if (existingIndex >= 0) remote.removeAt(existingIndex)
-        nuvioService.pushLibrary(
-            "Bearer $token",
-            mapOf(
-                "p_profile_id" to index,
-                "p_items" to remote
-            )
-        ).requireSuccess()
-        profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
+        val queueKey = "${profile.nuvioUserId ?: profile.id}:${profile.nuvioProfileIndex ?: 1}"
+        val mutex = synchronized(watchlistMutexesLock) {
+            watchlistMutexes.getOrPut(queueKey) { kotlinx.coroutines.sync.Mutex() }
+        }
+        mutex.lock()
+        try {
+            val current = freshProfile(profile) ?: return
+            val token = current.nuvioAccessToken ?: return
+            val index = current.nuvioProfileIndex ?: return
+            val remote = nuvioService.pullLibrary("Bearer $token", mapOf("p_profile_id" to index, "p_limit" to 500, "p_offset" to 0)).bodyOrNull()?.map { it.toDomain() }
+                ?.map(NuvioSyncRequests::libraryItem)
+                ?: return
+            val updatedJson = NuvioCoreBridge.libraryMutationPlan(
+                remote = gson.toJsonTree(remote),
+                item = gson.toJsonTree(meta),
+                command = if (isInWatchlist) "add" else "remove",
+                nowMs = System.currentTimeMillis()
+            ) ?: return
+            val updated: List<Map<String, Any?>> = gson.fromJson(updatedJson, object : TypeToken<List<Map<String, Any?>>>() {}.type)
+            nuvioService.pushLibrary(
+                "Bearer $token",
+                mapOf(
+                    "p_profile_id" to index,
+                    "p_items" to updated
+                )
+            ).requireSuccess()
+            profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
+        } finally {
+            mutex.unlock()
+        }
     }
 
     suspend fun pushWatched(profile: UserProfile, meta: Meta, episodes: List<Video>, watched: Boolean) {
@@ -112,7 +129,7 @@ class NuvioSyncCoordinator @Inject constructor(
         } else {
             nuvioService.deleteWatchedItems("Bearer $token", mapOf("p_profile_id" to index, "p_keys" to keys)).requireSuccess()
         }
-        profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
+        profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
     }
 
     suspend fun pushPlaybackProgress(profile: UserProfile, meta: Meta, videoId: String?, position: Long, duration: Long) {
@@ -128,7 +145,7 @@ class NuvioSyncCoordinator @Inject constructor(
                 "p_entries" to listOf(entry)
             )
         ).requireSuccess()
-        profileManager.saveProfile(current.copy(nuvioLastSyncAt = System.currentTimeMillis()))
+        profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
     }
 
     private suspend fun freshProfile(profile: UserProfile): UserProfile? {

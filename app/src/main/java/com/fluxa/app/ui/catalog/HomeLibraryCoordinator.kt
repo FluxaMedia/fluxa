@@ -11,6 +11,7 @@ import com.fluxa.app.data.repository.ExternalSyncMergeBridge
 import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktRepository
+import com.fluxa.app.data.repository.library.ProviderAdapters
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,12 +27,15 @@ data class LibraryUiState(
     val traktPlanned: List<Meta> = emptyList(),
     val traktWatched: List<Meta> = emptyList(),
     val traktCollection: List<Meta> = emptyList(),
-    val malWatching: List<Meta> = emptyList(),
-    val malPlanned: List<Meta> = emptyList(),
-    val malCompleted: List<Meta> = emptyList(),
+    val traktFavorites: List<Meta> = emptyList(),
     val simklWatching: List<Meta> = emptyList(),
     val simklPlanned: List<Meta> = emptyList(),
     val simklCompleted: List<Meta> = emptyList(),
+    val anilistPlanned: List<Meta> = emptyList(),
+    val anilistWatching: List<Meta> = emptyList(),
+    val anilistCompleted: List<Meta> = emptyList(),
+    val stremioPlanned: List<Meta> = emptyList(),
+    val nuvioPlanned: List<Meta> = emptyList(),
     val errorMessage: String? = null,
     val lastLoadedProfileKey: String? = null
 )
@@ -41,6 +45,7 @@ internal class HomeLibraryCoordinator(
     private val traktRepository: TraktRepository,
     private val watchlistManager: WatchlistManager,
     private val pushCoordinator: ExternalSyncPushCoordinator,
+    private val adapters: ProviderAdapters,
     private val scope: CoroutineScope,
     private val coreState: FluxaUniFfiCoreStateHandle,
     private val gson: Gson
@@ -57,7 +62,6 @@ internal class HomeLibraryCoordinator(
             setLibraryState(current.copy(isLoading = true, errorMessage = null))
             try {
                 val profile = activeProfile
-                val language = profile?.safeLanguage ?: "en"
                 val stremioContinue = async(Dispatchers.IO) {
                     val authKey = profile?.authKey
                     if (!authKey.isNullOrBlank()) {
@@ -75,82 +79,71 @@ internal class HomeLibraryCoordinator(
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 }
-                val stremioAuthKey = profile?.authKey?.takeIf { it.isNotBlank() }
-                val stremioWatchlistWithTimestamps = stremioAuthKey?.let { authKey ->
-                    async(Dispatchers.IO) { repository.getLibraryWatchlistWithTimestamps(authKey) }
-                }
 
-                val traktToken = profile?.traktAccessToken
-                val traktPlannedWithListedAt = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktWatchlistWithListedAt(traktToken) } else null
-                val traktWatched = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktRecentlyWatched(traktToken, language, profile) } else null
-                val traktWatchedEpisodesWithTimestamps = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktWatchedEpisodesWithTimestamps(traktToken) } else null
-                val traktCollection = if (!traktToken.isNullOrBlank()) async(Dispatchers.IO) { traktRepository.getTraktCollection(traktToken) } else null
+                val traktConnected = profile != null && adapters.trakt.isConnected(profile)
+                val traktPlannedWithListedAt = if (traktConnected) async(Dispatchers.IO) { traktRepository.getTraktWatchlistWithListedAt(profile.traktAccessToken!!) } else null
+                val traktWatched = if (traktConnected) async(Dispatchers.IO) { adapters.trakt.fetchWatched(profile) } else null
+                val traktWatchedEpisodeTimestamps = if (traktConnected) async(Dispatchers.IO) { adapters.trakt.fetchWatchedEpisodeTimestamps(profile) } else null
+                val traktCollection = if (traktConnected) async(Dispatchers.IO) { traktRepository.getTraktCollection(profile.traktAccessToken!!) } else null
+                val traktFavorites = if (traktConnected && profile.integrationLibrarySource == "trakt") {
+                    async(Dispatchers.IO) { adapters.trakt.fetchFavorites(profile) }
+                } else null
 
-                val malToken = profile?.malAccessToken
-                val malWatching = if (!malToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getMalLibraryItems(malToken, "watching") } else null
-                val malPlanned = if (!malToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getMalLibraryItems(malToken, "plan_to_watch") } else null
-                val malCompleted = if (!malToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getMalLibraryItems(malToken, "completed") } else null
+                val simklConnected = profile != null && adapters.simkl.isConnected(profile)
+                val simklWatching = if (simklConnected) async(Dispatchers.IO) { repository.getSimklLibraryItems(profile, "watching") } else null
+                val simklPlanned = if (simklConnected) async(Dispatchers.IO) { adapters.simkl.fetchWatchlist(profile) } else null
+                val simklCompleted = if (simklConnected) async(Dispatchers.IO) { adapters.simkl.fetchWatched(profile) } else null
+                val simklWatchedEpisodeTimestamps = if (simklConnected) async(Dispatchers.IO) { adapters.simkl.fetchWatchedEpisodeTimestamps(profile) } else null
 
-                val simklToken = profile?.simklAccessToken
-                val simklWatching = if (!simklToken.isNullOrBlank() && profile != null) async(Dispatchers.IO) { repository.getSimklLibraryItems(profile, "watching") } else null
-                val simklPlanned = if (!simklToken.isNullOrBlank() && profile != null) async(Dispatchers.IO) { repository.getSimklLibraryItems(profile, "plantowatch") } else null
-                val simklCompleted = if (!simklToken.isNullOrBlank() && profile != null) async(Dispatchers.IO) { repository.getSimklLibraryItems(profile, "completed") } else null
-                val simklWatchedEpisodesWithTimestamps = if (!simklToken.isNullOrBlank() && profile != null) async(Dispatchers.IO) { repository.getSimklWatchedEpisodesWithTimestamps(profile) } else null
+                val anilistConnected = profile != null && adapters.anilist.isConnected(profile)
+                val anilistSnapshot = if (anilistConnected) async(Dispatchers.IO) { repository.getAnilistLibrarySnapshot(profile.anilistAccessToken) } else null
 
-                val anilistToken = profile?.anilistAccessToken
-                val anilistWatchlistWithTimestamps = if (!anilistToken.isNullOrBlank()) async(Dispatchers.IO) { repository.getAnilistWatchlistWithTimestamps(anilistToken) } else null
+                val stremioPlanned = if (profile != null && adapters.stremio.isConnected(profile)) async(Dispatchers.IO) { adapters.stremio.fetchWatchlist(profile) } else null
+                val nuvioPlanned = if (profile != null && adapters.nuvio.isConnected(profile)) async(Dispatchers.IO) { adapters.nuvio.fetchWatchlist(profile) } else null
 
                 val traktPlannedWithTimestamps = traktPlannedWithListedAt?.await().orEmpty()
+                val anilistLibrary = anilistSnapshot?.await()
+                val anilistWatchlistWithTimestamps = anilistLibrary?.watchlist.orEmpty()
 
                 setLibraryState(LibraryUiState(
                     continueItems = (stremioContinue.await() + externalContinue.await()).distinctBy { it.id },
                     traktPlanned = traktPlannedWithTimestamps.map { it.first },
                     traktWatched = traktWatched?.await().orEmpty(),
                     traktCollection = traktCollection?.await().orEmpty(),
-                    malWatching = malWatching?.await().orEmpty(),
-                    malPlanned = malPlanned?.await().orEmpty(),
-                    malCompleted = malCompleted?.await().orEmpty(),
+                    traktFavorites = traktFavorites?.await().orEmpty(),
                     simklWatching = simklWatching?.await().orEmpty(),
                     simklPlanned = simklPlanned?.await().orEmpty(),
                     simklCompleted = simklCompleted?.await().orEmpty(),
+                    anilistPlanned = anilistWatchlistWithTimestamps.map { it.first },
+                    anilistWatching = anilistLibrary?.watching.orEmpty(),
+                    anilistCompleted = anilistLibrary?.completed.orEmpty(),
+                    stremioPlanned = stremioPlanned?.await().orEmpty(),
+                    nuvioPlanned = nuvioPlanned?.await().orEmpty(),
                     lastLoadedProfileKey = profileKey
                 ))
 
-                if (profile != null && !traktToken.isNullOrBlank()) {
+                if (profile != null && traktConnected) {
                     scope.launch(Dispatchers.IO) {
-                        runCatching { reconcileWatchlist(profile, traktPlannedWithTimestamps) }
-                            .onFailure { Log.w("HomeLibrary", "Trakt watchlist reconcile failed", it) }
+                        runCatching { pushLocalWatchlistDelta(profile, traktPlannedWithTimestamps) }
+                            .onFailure { Log.w("HomeLibrary", "Trakt watchlist push failed", it) }
                     }
                     scope.launch(Dispatchers.IO) {
-                        val remoteWatched = traktWatchedEpisodesWithTimestamps?.await().orEmpty()
-                        runCatching { reconcileWatchedEpisodes(profile, remoteWatched) }
-                            .onFailure { Log.w("HomeLibrary", "Trakt watched reconcile failed", it) }
-                    }
-                }
-                if (profile != null && !simklToken.isNullOrBlank()) {
-                    scope.launch(Dispatchers.IO) {
-                        val remotePlanned = simklPlanned?.await().orEmpty()
-                        runCatching { remotePlanned.forEach { watchlistManager.applyRemoteWatchlistAdd(it) } }
-                            .onFailure { Log.w("HomeLibrary", "Simkl watchlist reconcile failed", it) }
-                    }
-                    scope.launch(Dispatchers.IO) {
-                        val remoteWatched = simklWatchedEpisodesWithTimestamps?.await().orEmpty()
-                        runCatching { reconcileWatchedEpisodes(profile, remoteWatched) }
-                            .onFailure { Log.w("HomeLibrary", "Simkl watched reconcile failed", it) }
+                        val remoteWatched = traktWatchedEpisodeTimestamps?.await().orEmpty()
+                        runCatching { pushLocalWatchedDelta(profile, remoteWatched) }
+                            .onFailure { Log.w("HomeLibrary", "Trakt watched push failed", it) }
                     }
                 }
-                if (profile != null && !anilistToken.isNullOrBlank()) {
+                if (profile != null && simklConnected) {
                     scope.launch(Dispatchers.IO) {
-                        val remotePlanned = anilistWatchlistWithTimestamps?.await().orEmpty()
-                        runCatching { reconcileWatchlist(profile, remotePlanned) }
-                            .onFailure { Log.w("HomeLibrary", "AniList watchlist reconcile failed", it) }
+                        val remoteWatched = simklWatchedEpisodeTimestamps?.await().orEmpty()
+                        runCatching { pushLocalWatchedDelta(profile, remoteWatched) }
+                            .onFailure { Log.w("HomeLibrary", "Simkl watched push failed", it) }
                     }
                 }
-                if (stremioAuthKey != null) {
+                if (profile != null && anilistConnected) {
                     scope.launch(Dispatchers.IO) {
-                        val remoteWatchlist = stremioWatchlistWithTimestamps?.await().orEmpty()
-                        runCatching { reconcileWatchlistPullOnly(remoteWatchlist) }
-                            .onFailure { Log.w("HomeLibrary", "Stremio watchlist reconcile failed", it) }
+                        runCatching { pushLocalWatchlistDelta(profile, anilistWatchlistWithTimestamps) }
+                            .onFailure { Log.w("HomeLibrary", "AniList watchlist push failed", it) }
                     }
                 }
             } catch (e: Exception) {
@@ -164,17 +157,13 @@ internal class HomeLibraryCoordinator(
         }
     }
 
-    private suspend fun reconcileWatchlist(profile: UserProfile, remoteEntries: List<Pair<Meta, Long>>) {
+    private suspend fun pushLocalWatchlistDelta(profile: UserProfile, remoteEntries: List<Pair<Meta, Long>>) {
         val localSnapshot = watchlistManager.getWatchlistMembershipSnapshot()
         val remoteMembership = remoteEntries.map { (meta, listedAtMs) ->
             ExternalSyncMergeBridge.RemoteMembershipItem(meta.id, listedAtMs)
         }
         val plan = ExternalSyncMergeBridge.mergeWatchlist(localSnapshot, remoteMembership)
-        val remoteById = remoteEntries.associateBy { it.first.id }
 
-        plan.applyLocalAdd.forEach { id ->
-            remoteById[id]?.first?.let { watchlistManager.applyRemoteWatchlistAdd(it) }
-        }
         plan.pushRemoteAdd.forEach { id ->
             val meta = watchlistManager.getContentMeta(id) ?: return@forEach
             pushCoordinator.pushWatchlist(profile, meta, isInWatchlist = true)
@@ -185,29 +174,13 @@ internal class HomeLibraryCoordinator(
         }
     }
 
-    private suspend fun reconcileWatchlistPullOnly(remoteEntries: List<Pair<Meta, Long>>) {
-        val localSnapshot = watchlistManager.getWatchlistMembershipSnapshot()
-        val remoteMembership = remoteEntries.map { (meta, updatedAtMs) ->
-            ExternalSyncMergeBridge.RemoteMembershipItem(meta.id, updatedAtMs)
-        }
-        val plan = ExternalSyncMergeBridge.mergeWatchlist(localSnapshot, remoteMembership)
-        val remoteById = remoteEntries.associateBy { it.first.id }
-        plan.applyLocalAdd.forEach { id ->
-            remoteById[id]?.first?.let { watchlistManager.applyRemoteWatchlistAdd(it) }
-        }
-    }
-
-    private suspend fun reconcileWatchedEpisodes(profile: UserProfile, remoteWatched: Map<String, Long>) {
+    private suspend fun pushLocalWatchedDelta(profile: UserProfile, remoteWatched: Map<String, Long>) {
         val localSnapshot = watchlistManager.getWatchedEpisodeMembershipSnapshot()
         val remoteMembership = remoteWatched.map { (videoId, watchedAtMs) ->
             ExternalSyncMergeBridge.RemoteMembershipItem(videoId, watchedAtMs)
         }
         val plan = ExternalSyncMergeBridge.mergeWatched(localSnapshot, remoteMembership)
 
-        plan.applyLocalAdd.forEach { videoId ->
-            val seriesId = TraktIntegration.showIdFromEpisodeId(videoId)
-            watchlistManager.markEpisodesWatched(seriesId, listOf(videoId), watched = true)
-        }
         plan.pushRemoteAdd.forEach { videoId ->
             val seriesId = TraktIntegration.showIdFromEpisodeId(videoId)
             val meta = watchlistManager.getContentMeta(seriesId) ?: return@forEach
@@ -243,7 +216,6 @@ internal class HomeLibraryCoordinator(
         return listOf(
             this?.authKey.orEmpty(),
             this?.traktAccessToken.orEmpty(),
-            this?.malAccessToken.orEmpty(),
             this?.simklAccessToken.orEmpty(),
             this?.safeLanguage.orEmpty()
         ).joinToString("|")

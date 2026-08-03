@@ -53,6 +53,11 @@ data class ProfileStoreSnapshot(
 interface ProfilePersistence {
     fun observe(): Flow<ProfileStoreSnapshot>
     suspend fun pinHash(profileId: String): String?
+    suspend fun createPinHash(pin: String): String = PinHasher.hash(pin)
+    suspend fun verifyPin(profileId: String, pin: String, storedHash: String): Boolean = PinHasher.hash(pin) == storedHash
+    suspend fun canAttemptPin(profileId: String): Boolean = true
+    suspend fun recordPinFailure(profileId: String) {}
+    suspend fun clearPinFailures(profileId: String) {}
     suspend fun activate(profileId: String)
     suspend fun delete(profileId: String)
     suspend fun save(edit: ProfileEditUiModel, pinHash: String?): String
@@ -96,11 +101,18 @@ class SharedProfileDataSource(
     }
 
     override suspend fun attemptPin(profileId: String, pin: String) {
-        if (PinHasher.hash(pin) == store.pinHash(profileId)) {
+        if (!store.canAttemptPin(profileId)) {
+            pinError.value = true
+            return
+        }
+        val storedHash = store.pinHash(profileId)
+        if (!storedHash.isNullOrBlank() && store.verifyPin(profileId, pin, storedHash)) {
+            store.clearPinFailures(profileId)
             store.activate(profileId)
             pendingPinId.value = null
             pinError.value = false
         } else {
+            store.recordPinFailure(profileId)
             pinError.value = true
         }
     }
@@ -118,14 +130,18 @@ class SharedProfileDataSource(
 
     override suspend fun deleteProfile(id: String, pin: String?): Boolean {
         val expectedPinHash = store.pinHash(id)
-        if (!expectedPinHash.isNullOrBlank() && PinHasher.hash(pin.orEmpty()) != expectedPinHash) return false
+        if (!expectedPinHash.isNullOrBlank() && !store.verifyPin(id, pin.orEmpty(), expectedPinHash)) {
+            store.recordPinFailure(id)
+            return false
+        }
+        store.clearPinFailures(id)
         store.delete(id)
         return true
     }
 
     override suspend fun saveProfile(edit: ProfileEditUiModel): String {
         val pinHash = when {
-            edit.newPin != null -> PinHasher.hash(edit.newPin)
+            edit.newPin != null -> store.createPinHash(edit.newPin)
             edit.keepExistingPin && edit.id != null -> store.pinHash(edit.id)
             else -> null
         }

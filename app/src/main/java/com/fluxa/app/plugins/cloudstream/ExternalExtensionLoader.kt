@@ -20,6 +20,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
@@ -34,6 +36,10 @@ private const val CLOUDSTREAM_PACKAGE_NAME = "com.lagradost.cloudstream3"
 class ExternalExtensionLoader(
     private val context: Context
 ) {
+    class ExtensionReplacement internal constructor(
+        val target: File,
+        val backup: File?
+    )
     private val httpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
             chain.proceed(HttpRequestSecurity.upgradeRemoteHttpRequest(chain.request()))
@@ -63,40 +69,99 @@ class ExternalExtensionLoader(
     suspend fun downloadExtension(scraperId: String, downloadUrl: String): File? = withContext(Dispatchers.IO) {
         try {
             val targetFile = File(extensionsDir, "${safeFileName(scraperId)}.cs3")
-
-            if (targetFile.exists()) {
-                targetFile.setWritable(true)
-                targetFile.delete()
-            }
-
-            val request = Request.Builder()
-                .url(downloadUrl)
-                .header("User-Agent", com.fluxa.app.BuildConfig.APPLICATION_ID)
-                .build()
-
-            httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.e(TAG, "Failed to download $scraperId: ${response.code}")
-                    return@withContext null
-                }
-
-                val body = response.body.bytes()
-                if (body.size > MAX_DEX_SIZE) {
-                    Log.e(TAG, "Extension $scraperId exceeds size limit")
-                    return@withContext null
-                }
-
-                targetFile.writeBytes(body)
-                
-                // Security fix for Android 14+
-                targetFile.setReadOnly()
-                
-                Log.d(TAG, "Downloaded extension $scraperId to ${targetFile.absolutePath}")
-                targetFile
-            }
+            downloadToFile(scraperId, downloadUrl, targetFile)
         } catch (e: Exception) {
             Log.e(TAG, "Error downloading extension $scraperId", e)
             null
+        }
+    }
+
+    suspend fun downloadExtensionToTemporaryFile(scraperId: String, downloadUrl: String): File? = withContext(Dispatchers.IO) {
+        try {
+            val targetFile = File(extensionsDir, "${safeFileName(scraperId)}.cs3.download")
+            downloadToFile(scraperId, downloadUrl, targetFile)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error downloading extension update $scraperId", e)
+            null
+        }
+    }
+
+    fun discardTemporaryExtension(file: File) {
+        file.setWritable(true)
+        file.delete()
+    }
+
+    fun validateExtension(file: File): Boolean {
+        return try {
+            val manifest = readManifestFromZip(file) ?: return false
+            val className = manifest.optString("pluginClassName").takeIf { it.isNotBlank() } ?: return false
+            BasePlugin::class.java.isAssignableFrom(createClassLoader(file).loadClass(className))
+        } catch (e: Exception) {
+            Log.w(TAG, "Plugin validation failed for ${file.name}", e)
+            false
+        }
+    }
+
+    fun promoteTemporaryExtension(scraperId: String, temporaryFile: File): ExtensionReplacement? {
+        val target = File(extensionsDir, "${safeFileName(scraperId)}.cs3")
+        val backup = File(extensionsDir, "${safeFileName(scraperId)}.cs3.previous")
+        return try {
+            if (backup.exists()) backup.delete()
+            if (target.exists()) moveFile(target, backup)
+            moveFile(temporaryFile, target)
+            target.setReadOnly()
+            ExtensionReplacement(target, backup.takeIf(File::exists))
+        } catch (e: Exception) {
+            Log.e(TAG, "Unable to promote extension $scraperId", e)
+            if (!target.exists() && backup.exists()) runCatching { moveFile(backup, target) }
+            null
+        }
+    }
+
+    fun restoreExtension(replacement: ExtensionReplacement) {
+        replacement.target.setWritable(true)
+        replacement.target.delete()
+        replacement.backup?.takeIf(File::exists)?.let { moveFile(it, replacement.target) }
+        replacement.target.setReadOnly()
+    }
+
+    fun finalizeExtensionReplacement(replacement: ExtensionReplacement) {
+        replacement.backup?.setWritable(true)
+        replacement.backup?.delete()
+    }
+
+    private fun downloadToFile(scraperId: String, downloadUrl: String, targetFile: File): File? {
+        if (targetFile.exists()) {
+            targetFile.setWritable(true)
+            targetFile.delete()
+        }
+        val request = Request.Builder()
+            .url(downloadUrl)
+            .header("User-Agent", com.fluxa.app.BuildConfig.APPLICATION_ID)
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e(TAG, "Failed to download $scraperId: ${response.code}")
+                return null
+            }
+            val body = response.body.bytes()
+            if (body.size > MAX_DEX_SIZE) {
+                Log.e(TAG, "Extension $scraperId exceeds size limit")
+                return null
+            }
+            targetFile.writeBytes(body)
+            targetFile.setReadOnly()
+            Log.d(TAG, "Downloaded extension $scraperId to ${targetFile.absolutePath}")
+            return targetFile
+        }
+    }
+
+    private fun moveFile(source: File, destination: File) {
+        source.setWritable(true)
+        runCatching {
+            Files.move(source.toPath(), destination.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        }.getOrElse {
+            Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
     }
 

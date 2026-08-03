@@ -9,8 +9,10 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.repository.TraktIntegration
+import com.fluxa.app.data.repository.SimklIntegration
 import com.fluxa.app.ui.TraktDeviceAuthUiState
 import com.fluxa.app.ui.catalog.HomeViewModel
+import com.fluxa.app.ui.catalog.startTraktDeviceAuthorization
 import java.net.URLEncoder
 
 internal fun connectTrakt(
@@ -63,7 +65,7 @@ internal fun connectSimkl(context: Context, activeProfile: UserProfile?) {
     if (clientId.isBlank()) {
         Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.simkl_client_missing"), Toast.LENGTH_SHORT).show()
     } else {
-        val redirect = URLEncoder.encode("app://simkl", "UTF-8")
+        val redirect = URLEncoder.encode(SimklIntegration.REDIRECT_URI, "UTF-8")
         val url = "https://simkl.com/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirect"
         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url)))
     }

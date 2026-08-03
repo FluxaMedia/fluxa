@@ -173,21 +173,18 @@ class StremioRepository @Inject constructor(
     suspend fun exchangeTraktDeviceCode(deviceCode: String): retrofit2.Response<TraktTokenResponse> =
         oauthClient.exchangeTraktDeviceCode(deviceCode)
 
-    suspend fun exchangeMalCode(code: String, codeVerifier: String): ExternalOAuthTokenResponse =
-        oauthClient.exchangeMalCode(code, codeVerifier)
-
-    suspend fun refreshMalToken(refreshToken: String): ExternalOAuthTokenResponse =
-        oauthClient.refreshMalToken(refreshToken)
-
     suspend fun exchangeSimklCode(code: String): ExternalOAuthTokenResponse = oauthClient.exchangeSimklCode(code)
 
     suspend fun exchangeAnilistCode(code: String): ExternalOAuthTokenResponse = oauthClient.exchangeAnilistCode(code)
 
+    suspend fun getTraktUsername(accessToken: String): String? = oauthClient.getTraktUsername(accessToken)
+
+    suspend fun getSimklUsername(accessToken: String): String? = oauthClient.getSimklUsername(accessToken)
+
+    suspend fun getAnilistUsername(accessToken: String): String? = oauthClient.getAnilistUsername(accessToken)
+
     suspend fun getExternalContinueWatching(profile: UserProfile, language: String = profile.safeLanguage): List<Meta> =
         externalLibraryClient.getExternalContinueWatching(profile, language)
-
-    suspend fun getMalLibraryItems(token: String?, status: String): List<Meta> =
-        externalLibraryClient.getMalLibraryItems(token, status)
 
     suspend fun getSimklLibraryItems(token: String?, status: String): List<Meta> =
         externalLibraryClient.getSimklLibraryItems(token, status)
@@ -203,6 +200,9 @@ class StremioRepository @Inject constructor(
 
     suspend fun getAnilistWatchlistWithTimestamps(token: String?): List<Pair<Meta, Long>> =
         externalLibraryClient.getAnilistWatchlistWithTimestamps(token)
+
+    suspend fun getAnilistLibrarySnapshot(token: String?): AnilistLibrarySnapshot =
+        externalLibraryClient.getAnilistLibrarySnapshot(token)
 
     suspend fun clearTraktPlaybackProgress(token: String?, meta: Meta) =
         traktRepository.clearPlaybackProgress(token, meta)
@@ -270,6 +270,19 @@ class StremioRepository @Inject constructor(
             Log.w("StremioRepository", "Failed to save playback progress for ${meta.id}", e)
             profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
             false
+        }
+    }
+
+    suspend fun pushWatchlist(authKey: String, meta: Meta, isInWatchlist: Boolean) = withContext(Dispatchers.IO) {
+        val profileId = profileIdForAuthKey(authKey)
+        try {
+            val items = FluxaCoreNative.watchlistLibraryItems(meta, isInWatchlist)
+            if (items.isNotEmpty()) authService.datastorePut(DatastorePutRequest(authKey, "library", items))
+            profileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
+        } catch (e: Exception) {
+            failureReporter.report("stremio.library.pushWatchlist", e)
+            Log.w("StremioRepository", "Failed to push watchlist for ${meta.id}", e)
+            profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
         }
     }
 

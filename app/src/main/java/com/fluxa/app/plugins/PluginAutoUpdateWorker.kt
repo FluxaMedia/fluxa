@@ -33,6 +33,7 @@ class PluginAutoUpdateWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        if (!pluginManager.automaticUpdatesEnabled.value) return Result.success()
         return try {
             Log.d(TAG, "[AutoUpdate] Starting background plugin update check...")
             val report = pluginManager.checkAndAutoUpdatePlugins()
@@ -141,6 +142,10 @@ class PluginAutoUpdateWorker @AssistedInject constructor(
 
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, work)
+        }
+
+        fun cancel(context: Context) {
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
         }
     }
 }

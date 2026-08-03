@@ -13,7 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class ProfileManager @Inject constructor(
     @ApplicationContext context: Context,
-    private val gson: Gson
+    private val gson: Gson,
+    private val credentialStore: ProfileCredentialStore
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("fluxa_profiles", Context.MODE_PRIVATE)
     private val profilesLock = Any()
@@ -29,46 +30,51 @@ class ProfileManager @Inject constructor(
         saveProfileInternal(profile, mergeMirroredAddons = false)
     }
 
+    @WorkerThread
+    fun updateProfile(profileId: String, transform: (UserProfile) -> UserProfile): UserProfile? = synchronized(profilesLock) {
+        val current = getProfiles().firstOrNull { it.id == profileId } ?: return@synchronized null
+        transform(current).also(::saveProfile)
+    }
+
     private fun saveProfileInternal(profile: UserProfile, mergeMirroredAddons: Boolean) {
         val sanitizedProfile = sanitizeProfile(profile, mergeMirroredAddons)
-        // The whole read-modify-write must be one atomic unit, not just the cache swap —
-        // otherwise two concurrent callers (e.g. a WorkManager worker and a coroutine
-        // completion callback) can each read a stale list and clobber each other's write.
         synchronized(profilesLock) {
-            val profiles = getProfiles().toMutableList()
+            credentialStore.store(sanitizedProfile)
+            val persistedProfile = credentialStore.redact(sanitizedProfile)
+            val profiles = getProfiles().map(credentialStore::redact).toMutableList()
             val existingIndex = profiles.indexOfFirst {
-                it.id == sanitizedProfile.id ||
+                it.id == persistedProfile.id ||
                     (it.email == sanitizedProfile.email &&
-                        it.nuvioUserId.isNullOrBlank() && sanitizedProfile.nuvioUserId.isNullOrBlank())
+                        it.nuvioUserId.isNullOrBlank() && persistedProfile.nuvioUserId.isNullOrBlank())
             }
             if (existingIndex != -1) {
-                profiles[existingIndex] = sanitizedProfile
+                profiles[existingIndex] = persistedProfile
             } else {
-                profiles.add(sanitizedProfile)
+                profiles.add(persistedProfile)
             }
             val json = gson.toJson(profiles)
             prefs.edit()
                 .putString("profiles_list", json)
-                .putStringSet(localAddonsKey(sanitizedProfile), sanitizedProfile.safeInstalledLocalAddons.toSet())
+                .putStringSet(localAddonsKey(persistedProfile), persistedProfile.safeInstalledLocalAddons.toSet())
                 .apply()
-            cachedProfiles = profiles
+            cachedProfiles = profiles.map(credentialStore::hydrate)
         }
     }
 
     @WorkerThread
     fun recordExternalSyncFailure(profileId: String, provider: String) {
-        val profile = getProfiles().firstOrNull { it.id == profileId } ?: return
-        val current = profile.externalSyncFailedProviders.orEmpty()
-        if (provider in current) return
-        saveProfile(profile.copy(externalSyncFailedProviders = current + provider))
+        updateProfile(profileId) { profile ->
+            val current = profile.externalSyncFailedProviders.orEmpty()
+            if (provider in current) profile else profile.copy(externalSyncFailedProviders = current + provider)
+        }
     }
 
     @WorkerThread
     fun clearExternalSyncFailure(profileId: String, provider: String) {
-        val profile = getProfiles().firstOrNull { it.id == profileId } ?: return
-        val current = profile.externalSyncFailedProviders.orEmpty()
-        if (provider !in current) return
-        saveProfile(profile.copy(externalSyncFailedProviders = current - provider))
+        updateProfile(profileId) { profile ->
+            val current = profile.externalSyncFailedProviders.orEmpty()
+            if (provider !in current) profile else profile.copy(externalSyncFailedProviders = current - provider)
+        }
     }
 
     fun getProfiles(): List<UserProfile> {
@@ -86,8 +92,16 @@ class ProfileManager @Inject constructor(
         }
         val type = object : TypeToken<List<UserProfile>>() {}.type
         val list: List<UserProfile> = gson.fromJson(json, type)
-        return list
-            .map { sanitizeProfile(it, mergeMirroredAddons = true) }
+        val hasLegacyCredentials = list.any(credentialStore::hasLegacyCredentials)
+        val hydrated = list.map { profile ->
+            val sanitized = sanitizeProfile(profile, mergeMirroredAddons = true)
+            if (credentialStore.hasLegacyCredentials(sanitized)) credentialStore.store(sanitized)
+            credentialStore.hydrate(credentialStore.redact(sanitized))
+        }
+        if (hasLegacyCredentials) {
+            prefs.edit().putString("profiles_list", gson.toJson(hydrated.map(credentialStore::redact))).apply()
+        }
+        return hydrated
             .distinctBy { profile ->
                 when {
                     !profile.nuvioUserId.isNullOrBlank() -> "nuvio:${profile.nuvioUserId}:${profile.nuvioProfileIndex ?: 1}"
@@ -118,6 +132,7 @@ class ProfileManager @Inject constructor(
     fun deleteProfile(email: String) {
         synchronized(profilesLock) {
             val profiles = getProfiles().filterNot { it.email == email }
+            getProfiles().filter { it.email == email }.forEach { credentialStore.remove(it.id) }
             val json = gson.toJson(profiles)
             prefs.edit().putString("profiles_list", json).apply()
             cachedProfiles = profiles
@@ -128,6 +143,7 @@ class ProfileManager @Inject constructor(
     fun deleteProfileById(id: String) {
         synchronized(profilesLock) {
             val profiles = getProfiles().filterNot { it.id == id }
+            credentialStore.remove(id)
             val json = gson.toJson(profiles)
             prefs.edit().putString("profiles_list", json).apply()
             cachedProfiles = profiles
@@ -148,6 +164,24 @@ class ProfileManager @Inject constructor(
         editor.apply()
     }
 
+    fun canAttemptPin(profileId: String, nowMillis: Long = System.currentTimeMillis()): Boolean {
+        val value = prefs.getString(pinAttemptKey(profileId), null) ?: return true
+        val parts = value.split(':')
+        val failures = parts.getOrNull(0)?.toIntOrNull() ?: return true
+        val lastFailure = parts.getOrNull(1)?.toLongOrNull() ?: return true
+        val delay = if (failures >= 5) 300_000L else minOf(30_000L, 1_000L shl (failures - 1).coerceAtLeast(0))
+        return nowMillis - lastFailure >= delay
+    }
+
+    fun recordPinFailure(profileId: String, nowMillis: Long = System.currentTimeMillis()) {
+        val previous = prefs.getString(pinAttemptKey(profileId), null)?.substringBefore(':')?.toIntOrNull() ?: 0
+        prefs.edit().putString(pinAttemptKey(profileId), "${minOf(previous + 1, 5)}:$nowMillis").apply()
+    }
+
+    fun clearPinFailures(profileId: String) {
+        prefs.edit().remove(pinAttemptKey(profileId)).apply()
+    }
+
     fun registerOnChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }
@@ -155,4 +189,6 @@ class ProfileManager @Inject constructor(
     fun unregisterOnChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.unregisterOnSharedPreferenceChangeListener(listener)
     }
+
+    private fun pinAttemptKey(profileId: String): String = "pin_attempt_$profileId"
 }

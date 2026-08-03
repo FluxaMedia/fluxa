@@ -59,7 +59,8 @@ internal class AndroidAuthEffectHandler(
                 profile.copy(
                     traktAccessToken = response.accessToken,
                     traktRefreshToken = response.refreshToken,
-                    traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(response.createdAt, response.expiresIn)
+                    traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(response.createdAt, response.expiresIn),
+                    traktUsername = repository.getTraktUsername(response.accessToken)
                 )
             }
             "traktDevice" -> {
@@ -80,24 +81,24 @@ internal class AndroidAuthEffectHandler(
                 profile.copy(
                     traktAccessToken = responseBody.accessToken,
                     traktRefreshToken = responseBody.refreshToken,
-                    traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(responseBody.createdAt, responseBody.expiresIn)
+                    traktTokenExpiresAt = TraktIntegration.tokenExpiresAt(responseBody.createdAt, responseBody.expiresIn),
+                    traktUsername = repository.getTraktUsername(responseBody.accessToken)
                 )
             }
-            "mal" -> {
-                val response = repository.exchangeMalCode(payload.string("code"), payload.string("codeVerifier"))
+            "simkl" -> {
+                val response = repository.exchangeSimklCode(payload.string("code"))
                 profile.copy(
-                    malAccessToken = response.accessToken,
-                    malRefreshToken = response.refreshToken,
-                    malTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
+                    simklAccessToken = response.accessToken,
+                    simklUsername = repository.getSimklUsername(response.accessToken)
                 )
             }
-            "simkl" -> profile.copy(simklAccessToken = repository.exchangeSimklCode(payload.string("code")).accessToken)
             "anilist" -> {
                 val response = repository.exchangeAnilistCode(payload.string("code"))
                 profile.copy(
                     anilistAccessToken = response.accessToken,
                     anilistRefreshToken = response.refreshToken,
-                    anilistTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
+                    anilistTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L },
+                    anilistUsername = repository.getAnilistUsername(response.accessToken)
                 )
             }
             else -> return failure(effect, "unsupported_auth_provider")
@@ -109,7 +110,6 @@ internal class AndroidAuthEffectHandler(
         val profile = effect.payload.parseProfile() ?: return failure(effect, "missing_profile")
         val updated = when (effect.payload.string("provider")) {
             "trakt" -> refreshTraktTokenIfNeeded(profile)
-            "mal" -> refreshMalTokenIfNeeded(profile)
             else -> return failure(effect, "unsupported_auth_provider")
         }
         return success(effect, mapOf("profile" to updated))
@@ -130,25 +130,6 @@ internal class AndroidAuthEffectHandler(
             Log.w("Trakt", "Token refresh failed", throwable)
             if ((throwable as? retrofit2.HttpException)?.code() in setOf(400, 401)) {
                 profile.copy(traktAccessToken = null, traktRefreshToken = null, traktTokenExpiresAt = null)
-            } else profile
-        }
-    }
-
-    private suspend fun refreshMalTokenIfNeeded(profile: UserProfile): UserProfile {
-        val refreshToken = profile.malRefreshToken?.takeIf(String::isNotBlank) ?: return profile
-        val refreshWindowMs = 24L * 60L * 60L * 1000L
-        if (!profile.malAccessToken.isNullOrBlank() && profile.safeMalTokenExpiresAt > System.currentTimeMillis() + refreshWindowMs) return profile
-        return runCatching {
-            val response = repository.refreshMalToken(refreshToken)
-            profile.copy(
-                malAccessToken = response.accessToken,
-                malRefreshToken = response.refreshToken ?: refreshToken,
-                malTokenExpiresAt = response.expiresIn?.let { System.currentTimeMillis() + it * 1000L }
-            )
-        }.getOrElse { throwable ->
-            Log.w("Mal", "Token refresh failed", throwable)
-            if ((throwable as? retrofit2.HttpException)?.code() in setOf(400, 401)) {
-                profile.copy(malAccessToken = null, malRefreshToken = null, malTokenExpiresAt = null)
             } else profile
         }
     }

@@ -87,6 +87,7 @@ internal class IptPqc2ToneMapProgram(private val outputHdr: Boolean = false) : B
             GLES30.glDeleteProgram(glProgram)
             glProgram = 0
         }
+        super.release()
     }
 
     private fun compileShader(type: Int, src: String): Int {

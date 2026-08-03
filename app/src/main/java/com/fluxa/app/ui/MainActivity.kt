@@ -88,12 +88,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var watchlistStore: com.fluxa.app.data.local.WatchlistStore
 
     private val searchIntentFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
-    private val traktAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
-    private val malAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
-    private val simklAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
-    private val anilistAuthFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
-    private var pendingMalCodeVerifier: String? = null
-    private val oauthPrefs by lazy { getSharedPreferences("fluxa_oauth", MODE_PRIVATE) }
+    private val oauthRedirectHandler = OAuthRedirectHandler()
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
@@ -112,22 +107,7 @@ class MainActivity : FragmentActivity() {
             query?.let { searchIntentFlow.tryEmit(it) }
         }
 
-        if (intent.action == android.content.Intent.ACTION_VIEW) {
-            val data = intent.data ?: return
-            val isOAuthRedirect = data.scheme == "fluxa" && data.host == "oauth"
-            if (isOAuthRedirect && data.lastPathSegment == "trakt") {
-                data.getQueryParameter("code")?.let { traktAuthFlow.tryEmit(it) }
-            }
-            if (isOAuthRedirect && data.lastPathSegment == "mal") {
-                data.getQueryParameter("code")?.let { malAuthFlow.tryEmit(it) }
-            }
-            if (isOAuthRedirect && data.lastPathSegment == "simkl") {
-                data.getQueryParameter("code")?.let { simklAuthFlow.tryEmit(it) }
-            }
-            if (isOAuthRedirect && data.lastPathSegment == "anilist") {
-                data.getQueryParameter("code")?.let { anilistAuthFlow.tryEmit(it) }
-            }
-        }
+        oauthRedirectHandler.handle(intent)
     }
 
     override fun onDestroy() {
@@ -147,8 +127,6 @@ class MainActivity : FragmentActivity() {
         }
         
         handleIntent(intent)
-
-        AppContainer.initialize(profileManager, pluginManager, pluginRepositoryManager, stremioRepository, authService, nuvioImportCoordinator)
 
         setContent {
             AppTheme {
@@ -196,7 +174,6 @@ class MainActivity : FragmentActivity() {
                     var traktDeviceAuth by remember { mutableStateOf<TraktDeviceAuthUiState?>(null) }
                     var showTraktSheet by remember { mutableStateOf(false) }
                     var isTraktSyncing by remember { mutableStateOf(false) }
-                    var showMalSheet by remember { mutableStateOf(false) }
                     var showSimklSheet by remember { mutableStateOf(false) }
                     val coroutineScope = rememberCoroutineScope()
                     
@@ -210,32 +187,16 @@ class MainActivity : FragmentActivity() {
                         androidx.hilt.navigation.compose.hiltViewModel(key = "SharedMobileDetailViewModel")
                     val offlineDownloadManager = remember(context) { OfflineDownloadManager.getInstance(context) }
 
-                    LaunchedEffect(activeProfile?.id, activeProfile?.nuvioAccessToken) {
-                        if (activeProfile?.nuvioAccessToken.isNullOrBlank()) return@LaunchedEffect
-                        var wasHealthy: Boolean? = null
-                        while (isActive) {
-                            val profile = activeProfile
-                            if (profile != null && !profile.nuvioAccessToken.isNullOrBlank()) {
-                                val isHealthy = homeViewModel.isNuvioHealthy()
-                                if (isHealthy && wasHealthy != true) {
-                                    homeViewModel.syncNuvioIntegration(
-                                        profile = profile,
-                                        onProfileUpdated = { updated ->
-                                            activeProfile = updated
-                                            profileManager.saveProfile(updated)
-                                            profileManager.setLastActiveProfile(updated)
-                                            homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
-                                        },
-                                        onComplete = {}
-                                    )
-                                }
-                                wasHealthy = isHealthy
-                                delay(if (isHealthy) 60_000L else 30_000L)
-                            } else {
-                                delay(30_000L)
-                            }
+                    NuvioHealthSyncEffect(
+                        profile = activeProfile,
+                        homeViewModel = homeViewModel,
+                        onProfileUpdated = { updated ->
+                            activeProfile = updated
+                            profileManager.saveProfile(updated)
+                            profileManager.setLastActiveProfile(updated)
+                            homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
                         }
-                    }
+                    )
                     val isDirectLoading by homeViewModel.isDirectLoading.collectAsState()
                     val traktContinueWatchingLastUpdatedAt by homeViewModel.traktContinueWatchingLastUpdatedAt.collectAsState()
                     val isNetworkAvailable by remember(context) {
@@ -269,75 +230,15 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    LaunchedEffect(Unit) {
-                        traktAuthFlow.collect { code ->
-                            homeViewModel.exchangeTraktCode(code, onProfileUpdated = { updated ->
-                                activeProfile = updated
-                                profileManager.saveProfile(updated)
-                            }) { success ->
-                                android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, if (success) "toast.trakt_connected" else "toast.trakt_connect_failed"), android.widget.Toast.LENGTH_SHORT).show()
-                                activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
-                                if (success) {
-                                    activeProfile?.let { profile ->
-                                        isTraktSyncing = true
-                                        homeViewModel.syncTraktIntegration(
-                                            profile = profile,
-                                            onProfileUpdated = { updated ->
-                                                activeProfile = updated
-                                                profileManager.saveProfile(updated)
-                                                profileManager.setLastActiveProfile(updated)
-                                            }
-                                        ) { isTraktSyncing = false }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    LaunchedEffect(Unit) {
-                        malAuthFlow.collect { code ->
-                            val verifier = pendingMalCodeVerifier ?: oauthPrefs.getString("mal_code_verifier", null)
-                            if (verifier.isNullOrBlank()) {
-                                android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.mal_verifier_missing"), android.widget.Toast.LENGTH_SHORT).show()
-                            } else {
-                                homeViewModel.exchangeMalCode(code, verifier, onProfileUpdated = { updated ->
-                                    activeProfile = updated
-                                    profileManager.saveProfile(updated)
-                                }) { success ->
-                                    if (success) {
-                                        pendingMalCodeVerifier = null
-                                        oauthPrefs.edit().remove("mal_code_verifier").apply()
-                                    }
-                                    android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, if (success) "toast.mal_connected" else "toast.mal_connect_failed"), android.widget.Toast.LENGTH_SHORT).show()
-                                    activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
-                                }
-                            }
-                        }
-                    }
-
-                    LaunchedEffect(Unit) {
-                        simklAuthFlow.collect { code ->
-                            homeViewModel.exchangeSimklCode(code, onProfileUpdated = { updated ->
-                                activeProfile = updated
-                                profileManager.saveProfile(updated)
-                            }) { success ->
-                                android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, if (success) "toast.simkl_connected" else "toast.simkl_connect_failed"), android.widget.Toast.LENGTH_SHORT).show()
-                                activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
-                            }
-                        }
-                    }
-
-                    LaunchedEffect(Unit) {
-                        anilistAuthFlow.collect { code ->
-                            homeViewModel.exchangeAnilistCode(code, onProfileUpdated = { updated ->
-                                activeProfile = updated
-                                profileManager.saveProfile(updated)
-                            }) { success ->
-                                android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, if (success) "toast.anilist_connected" else "toast.anilist_connect_failed"), android.widget.Toast.LENGTH_SHORT).show()
-                                activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
-                            }
-                        }
-                    }
+                    OAuthRedirectEffect(
+                        redirectHandler = oauthRedirectHandler,
+                        context = context,
+                        homeViewModel = homeViewModel,
+                        profileManager = profileManager,
+                        activeProfile = activeProfile,
+                        onProfileUpdated = { activeProfile = it },
+                        onTraktSyncingChanged = { isTraktSyncing = it }
+                    )
 
                     TraktDeviceAuthDialog(
                         state = traktDeviceAuth,
@@ -396,6 +297,11 @@ class MainActivity : FragmentActivity() {
                             onActiveProfileChanged = { updated -> activeProfile = updated },
                             offlineDownloadManager = offlineDownloadManager,
                             watchlistStore = watchlistStore,
+                            repository = stremioRepository,
+                            pluginRepositoryManager = pluginRepositoryManager,
+                            pluginManager = pluginManager,
+                            authService = authService,
+                            nuvioImportCoordinator = nuvioImportCoordinator,
                             appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}"
                         )
                     }
@@ -417,26 +323,15 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    LaunchedEffect(activeProfile?.safeAutomaticUpdates) {
-                        if (activeProfile?.safeAutomaticUpdates == false) return@LaunchedEffect
-                        while (isActive) {
-                            val update = UpdateManager.checkUpdate()
-                            if (update != null) {
-                                updateInfo = update
-                                break
-                            }
-                            delay(if (com.fluxa.app.BuildConfig.DEBUG) 120000 else 21600000)
-                        }
-                    }
+                    AppUpdateCheckEffect(
+                        automaticUpdatesEnabled = activeProfile?.safeAutomaticUpdates != false,
+                        isDebugBuild = com.fluxa.app.BuildConfig.DEBUG,
+                        onUpdateFound = { updateInfo = it }
+                    )
 
                     LaunchedEffect(activeProfile?.id) {
                         activeProfile?.let { profile ->
                             homeViewModel.refreshTraktTokenIfNeeded(profile) { updated ->
-                                activeProfile = updated
-                                profileManager.saveProfile(updated)
-                                profileManager.setLastActiveProfile(updated)
-                            }
-                            homeViewModel.refreshMalTokenIfNeeded(profile) { updated ->
                                 activeProfile = updated
                                 profileManager.saveProfile(updated)
                                 profileManager.setLastActiveProfile(updated)
@@ -560,14 +455,12 @@ class MainActivity : FragmentActivity() {
                             showTraktSheet = showTraktSheet,
                             isTraktSyncing = isTraktSyncing,
                             traktContinueWatchingLastUpdatedAt = traktContinueWatchingLastUpdatedAt,
-                            showMalSheet = showMalSheet,
                             showSimklSheet = showSimklSheet,
                             onUpdateInfoChanged = { updateInfo = it },
                             onDownloadingChanged = { isDownloading = it },
                             onDownloadProgressChanged = { downloadProgress = it },
                             onShowTraktSheetChanged = { showTraktSheet = it },
                             onTraktSyncingChanged = { isTraktSyncing = it },
-                            onShowMalSheetChanged = { showMalSheet = it },
                             onShowSimklSheetChanged = { showSimklSheet = it }
                         )
                     }

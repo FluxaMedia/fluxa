@@ -161,7 +161,7 @@ class NuvioAccountImportCoordinator(
         val libraryJson = gson.toJsonTree(libraryItems.orEmpty()).asJsonArray
         if (libraryItems != null) {
             val watchlistItems = gson.fromJson(NuvioCoreBridge.libraryToWatchlist(libraryJson), Array<Meta>::class.java).toList()
-            watchlistManager.replaceWatchlist(watchlistItems)
+            profile = profile.copy(nuvioLibrarySnapshot = watchlistItems)
         }
         onStep(NuvioImportStep.LIBRARY)
 
@@ -229,7 +229,8 @@ class NuvioAccountImportCoordinator(
             localAddons = profile.localAddons,
             disabledLocalAddons = profile.disabledLocalAddons,
             libraryCollections = profile.libraryCollections,
-            nuvioLastSyncAt = profile.nuvioLastSyncAt
+            nuvioLastSyncAt = profile.nuvioLastSyncAt,
+            nuvioLibrarySnapshot = profile.nuvioLibrarySnapshot
         )
         profileManager.saveProfileReplacingLocalAddons(finalProfile)
         profileManager.setLastActiveProfile(finalProfile)

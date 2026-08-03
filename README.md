@@ -22,7 +22,7 @@ Browse catalogs, track what you watch, and play anything the Stremio addon ecosy
 
 ## What it does
 
-Fluxa connects to any Stremio-compatible addon and turns it into a proper Android app: a home feed with genre and category browsing, a calendar of upcoming episodes, a library with continue-watching and resume positions, and two-way watch tracking with Trakt, MyAnimeList, and Simkl. Playback runs through Media3/ExoPlayer and MPV, including direct torrent/magnet support, with no telemetry.
+Fluxa connects to any Stremio-compatible addon and turns it into a proper Android app: a home feed with genre and category browsing, a calendar of upcoming episodes, a library with continue-watching and resume positions, and two-way watch tracking with Trakt, AniList, Simkl, Nuvio, and Stremio. Playback runs through Media3/ExoPlayer and MPV, including direct torrent/magnet support, with no telemetry.
 
 The Android shell handles all platform I/O — HTTP, Room, ExoPlayer, audio, notifications — but the actual decision-making lives in **[fluxa-core](https://github.com/FluxaMedia/fluxa-core)**, a headless Rust library that runs the same logic across Android and desktop targets. Rust never touches the network directly; it emits typed effects that the Kotlin layer fulfills.
 
@@ -30,7 +30,7 @@ The Android shell handles all platform I/O — HTTP, Room, ExoPlayer, audio, not
 
 - **Catalogs & discovery** — home feed, genre/category grids, search across every installed addon, and a calendar of upcoming episodes for what you're following
 - **Library** — watchlist, continue watching with resume position, and custom collections, with import support for existing lists
-- **Watch tracking** — two-way sync with Trakt, MyAnimeList, and Simkl
+- **Watch tracking** — two-way sync with Trakt, AniList, Simkl, Nuvio, and Stremio
 - **Playback** — subtitle and audio track selection, intro/outro/recap skip, and direct torrent/magnet support
 - **Profiles** — multiple local profiles on one install, each with its own library, addons, and sync accounts
 - **Addons** — install and manage Stremio-compatible addons directly from the app
@@ -39,7 +39,7 @@ The Android shell handles all platform I/O — HTTP, Room, ExoPlayer, audio, not
 
 ## Download
 
-Grab the latest build from [Releases](https://github.com/FluxaMedia/fluxa/releases/latest). Requires Android 8.0+ (API 26).
+Grab the latest build from [Releases](https://github.com/FluxaMedia/fluxa/releases/latest). Requires Android 11+ (API 30).
 
 | Variant | Package | Target |
 | --- | --- | --- |
@@ -72,6 +72,19 @@ cd fluxa
 - [`fluxa-core`](https://github.com/FluxaMedia/fluxa-core) checked out as a sibling directory (`../fluxa-core`) — it also provides `fluxa-streaming-engine` (`../fluxa-streaming-engine`)
 
 The Rust libraries (`fluxa_core`, `fluxa_streaming_engine`) are cross-compiled for all Android ABIs automatically as part of the Gradle build; no manual `cargo build` step is needed.
+
+## Signed CloudStream repositories
+
+CloudStream repositories require a publisher Ed25519 public key supplied separately from the repository URL. Fluxa accepts only manifests with this envelope:
+
+```json
+{
+  "signedPayload": "base64-encoded UTF-8 manifest JSON",
+  "signature": "base64-encoded Ed25519 signature"
+}
+```
+
+`signature` signs the decoded bytes of `signedPayload`. The public key entered in Fluxa must be the publisher's Base64-encoded X.509 Ed25519 public key. The signed payload must contain its plugin entries directly in `plugins`; external `pluginLists` are not accepted. Plugin entries must include a SHA-256 checksum; unsigned manifests and plugins without checksums are rejected.
 
 ## Architecture
 

@@ -29,12 +29,6 @@ on:
       - "settings.gradle.kts"
       - "build.gradle.kts"
   workflow_dispatch:
-    inputs:
-      fluxa_core_ref:
-        description: Fluxa Rust core ref to build
-        required: false
-        default: master
-        type: string
 
 permissions:
   contents: read
@@ -51,7 +45,7 @@ jobs:
         with:
           repository: FluxaMedia/fluxa-core
           path: fluxa-core
-          ref: ${{ inputs.fluxa_core_ref || 'master' }}
+          ref: master
 
       - name: Link sibling Rust core
         run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
@@ -66,7 +60,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: 1.94.0
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
 
       - name: Install Android NDK
@@ -77,11 +71,95 @@ jobs:
       - name: Compile Android shared modules
         run: >-
           ./gradlew --no-daemon
+          checkKotlinFileSize
           checkSharedUiBoundary
           checkKmpCommonBoundary
           checkSharedPlayerBoundary
+          testDebugUnitTest
+          lint
+          assembleMobileDebug
+          assembleTvDebug
           :core:compileDebugKotlinAndroid
           :data:compileDebugKotlinAndroid
           :player:compileDebugKotlinAndroid
           :shared:compileDebugKotlinAndroid
           :app:compileTvDebugKotlin
+
+  release-smoke:
+    name: Android release smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: FluxaMedia/fluxa-core
+          path: fluxa-core
+          ref: master
+
+      - name: Link sibling Rust core
+        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.94.0
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
+
+      - name: Install Android NDK
+        run: |
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Assemble mobile release
+        run: ./gradlew --no-daemon :app:assembleMobileRelease
+
+  instrumentation:
+    name: Android instrumentation
+    needs: android-shared
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: FluxaMedia/fluxa-core
+          path: fluxa-core
+          ref: master
+
+      - name: Link sibling Rust core
+        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.94.0
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
+
+      - name: Install Android NDK
+        run: |
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Run mobile instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          script: ./gradlew --no-daemon :app:connectedMobileDebugAndroidTest

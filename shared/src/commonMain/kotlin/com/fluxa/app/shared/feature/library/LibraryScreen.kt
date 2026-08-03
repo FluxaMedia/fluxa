@@ -71,6 +71,11 @@ fun LibraryScreen(
     modifier: Modifier = Modifier
 ) {
     var section by remember(initialSection) { mutableStateOf(initialSection) }
+    LaunchedEffect(state.completedSectionEnabled) {
+        if (!state.completedSectionEnabled && section == LibrarySection.Completed) {
+            section = LibrarySection.Planned
+        }
+    }
     var typeFilter by remember { mutableStateOf(LibraryTypeFilter.All) }
     var viewingCollectionId by remember { mutableStateOf<String?>(null) }
     var viewingDownloadGroupKey by remember { mutableStateOf<String?>(null) }
@@ -119,6 +124,9 @@ fun LibraryScreen(
                                 LibrarySection.Downloads to state.downloadGroups.size,
                                 LibrarySection.Collections to state.collections.size
                             ),
+                            plannedLabelKey = state.plannedLabelKey,
+                            completedLabelKey = state.completedLabelKey,
+                            completedSectionEnabled = state.completedSectionEnabled,
                             onSectionSelected = { section = it },
                             language = language
                         )
@@ -197,19 +205,23 @@ private fun filterItems(
 private fun LibrarySectionChips(
     section: LibrarySection,
     counts: Map<LibrarySection, Int>,
+    plannedLabelKey: String,
+    completedLabelKey: String,
+    completedSectionEnabled: Boolean,
     onSectionSelected: (LibrarySection) -> Unit,
     language: String?
 ) {
+    val visibleSections = LibrarySection.entries.filter { it != LibrarySection.Completed || completedSectionEnabled }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(bottom = 12.dp)
     ) {
-        items(LibrarySection.entries.toList()) { entry ->
+        items(visibleSections) { entry ->
             val selected = entry == section
             val label = when (entry) {
-                LibrarySection.Planned -> AppStrings.t(language, "auto.planned")
-                LibrarySection.Completed -> AppStrings.t(language, "auto.completed")
+                LibrarySection.Planned -> AppStrings.t(language, plannedLabelKey)
+                LibrarySection.Completed -> AppStrings.t(language, completedLabelKey)
                 LibrarySection.Favorites -> AppStrings.t(language, "auto.favorites")
                 LibrarySection.Downloads -> AppStrings.t(language, "auto.downloads")
                 LibrarySection.Collections -> AppStrings.t(language, "auto.my_collections")

@@ -65,12 +65,6 @@ interface StremioService {
                 level = okhttp3.logging.HttpLoggingInterceptor.Level.NONE
             }
 
-            val ipv4OnlyDns = object : okhttp3.Dns {
-                override fun lookup(hostname: String): List<java.net.InetAddress> {
-                    return okhttp3.Dns.SYSTEM.lookup(hostname).filter { it is java.net.Inet4Address }
-                }
-            }
-            
             val cookieJar = if (!withJsonHeader) {
                 object : CookieJar {
                     private val cookieStore = mutableMapOf<String, List<Cookie>>()
@@ -84,7 +78,6 @@ interface StremioService {
             } else CookieJar.NO_COOKIES
 
             return OkHttpClient.Builder()
-                .dns(ipv4OnlyDns)
                 .cookieJar(cookieJar)
                 .addInterceptor { chain ->
                     chain.proceed(HttpRequestSecurity.upgradeRemoteHttpRequest(chain.request()))

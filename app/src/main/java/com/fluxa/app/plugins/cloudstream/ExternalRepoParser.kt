@@ -6,9 +6,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
+import java.security.KeyFactory
+import java.security.Signature
+import java.security.spec.X509EncodedKeySpec
+import android.util.Base64
 import java.util.concurrent.TimeUnit
 
 private const val TAG = "ExternalRepoParser"
@@ -48,7 +50,7 @@ class ExternalRepoParser {
     /**
      * Fetch and parse a repository manifest
      */
-    suspend fun fetchRepository(repoUrl: String): RepositoryResult = withContext(Dispatchers.IO) {
+    suspend fun fetchRepository(repoUrl: String, publisherPublicKey: String): RepositoryResult = withContext(Dispatchers.IO) {
         try {
             val sanitizedUrl = sanitizeScheme(repoUrl)
             
@@ -86,7 +88,7 @@ class ExternalRepoParser {
                     )
                 }
 
-                parseRepositoryManifest(repoUrl, body, httpClient)
+                parseRepositoryManifest(repoUrl, body, publisherPublicKey)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching repository from $repoUrl", e)
@@ -100,10 +102,12 @@ class ExternalRepoParser {
     private suspend fun parseRepositoryManifest(
         repoUrl: String, 
         jsonString: String, 
-        httpClient: OkHttpClient
+        publisherPublicKey: String
     ): RepositoryResult = withContext(Dispatchers.IO) {
         try {
-            val json = JSONObject(jsonString)
+            val signedEnvelope = JSONObject(jsonString)
+            val json = verifiedManifest(signedEnvelope, publisherPublicKey)
+                ?: return@withContext RepositoryResult.Error(SIGNATURE_ERROR)
             
             val name = json.optString("name", "Unknown Repository")
             val description = json.optString("description", "")
@@ -115,68 +119,12 @@ class ExternalRepoParser {
                 json.optNullableString("logo")
             )?.let { resolveUrl(it, repoUrl) }
             
-            val plugins = mutableListOf<PluginInfo>()
-            
-            // Check for pluginLists array (CloudStream3 standard format)
-            json.optJSONArray("pluginLists")?.let { pluginListsArray ->
-                Log.d(TAG, "Found pluginLists with ${pluginListsArray.length()} entries")
-                
-                for (i in 0 until pluginListsArray.length()) {
-                    val pluginListUrl = pluginListsArray.getString(i)
-                    Log.d(TAG, "Fetching plugin list: $pluginListUrl")
-                    
-                    try {
-                        val request = Request.Builder().url(pluginListUrl).build()
-                        httpClient.newCall(request).execute().use { response ->
-                            if (response.isSuccessful) {
-                                val pluginsBody = response.body.string()
-                                if (!pluginsBody.isNullOrEmpty()) {
-                                    // Try to parse as direct array first ([{...}, {...}])
-                                    val pluginsArray = try {
-                                        JSONArray(pluginsBody)
-                                    } catch (e: Exception) {
-                                        // Try as object with "plugins" key ({"plugins": [...]})
-                                        try {
-                                            JSONObject(pluginsBody).optJSONArray("plugins")
-                                        } catch (e2: Exception) {
-                                            null
-                                        }
-                                    }
-                                    
-                                    pluginsArray?.let { array ->
-                                        Log.d(TAG, "Found ${array.length()} plugins in $pluginListUrl")
-                                        for (j in 0 until array.length()) {
-                                            try {
-                                                val pluginObj = array.getJSONObject(j)
-                                                val plugin = parsePluginInfo(pluginObj, pluginListUrl)
-                                                if (plugin.url.isNotEmpty() && plugin.status == 1) { // Only active plugins
-                                                    plugins.add(plugin)
-                                                }
-                                            } catch (e: Exception) {
-                                                Log.w(TAG, "Error parsing plugin at index $j", e)
-                                            }
-                                        }
-                                    } ?: Log.w(TAG, "No plugins array found in $pluginListUrl")
-                                }
-                            } else {
-                                Log.w(TAG, "Failed to fetch plugin list: HTTP ${response.code}")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error fetching plugin list $pluginListUrl", e)
-                    }
-                }
-            }
-            
-            // Also check for direct plugins array (fallback)
-            if (plugins.isEmpty()) {
+            val plugins = buildList {
                 json.optJSONArray("plugins")?.let { pluginsArray ->
-                    Log.d(TAG, "Found direct plugins array with ${pluginsArray.length()} entries")
                     for (i in 0 until pluginsArray.length()) {
-                        val pluginObj = pluginsArray.getJSONObject(i)
-                        val plugin = parsePluginInfo(pluginObj, repoUrl)
-                        if (plugin.url.isNotEmpty()) {
-                            plugins.add(plugin)
+                        val plugin = parsePluginInfo(pluginsArray.getJSONObject(i), repoUrl)
+                        if (plugin.url.isNotEmpty() && plugin.status == 1 && plugin.hasRequiredChecksum) {
+                            add(plugin)
                         }
                     }
                 }
@@ -281,6 +229,14 @@ class ExternalRepoParser {
         return values.firstOrNull { !it.isNullOrBlank() }
     }
 
+    private fun verifiedManifest(envelope: JSONObject, publisherPublicKey: String): JSONObject? = runCatching {
+        val payload = envelope.optString("signedPayload").takeIf(String::isNotBlank) ?: return@runCatching null
+        val signature = envelope.optString("signature").takeIf(String::isNotBlank) ?: return@runCatching null
+        val payloadBytes = Base64.decode(payload, Base64.NO_WRAP)
+        if (!verifyEd25519Signature(payloadBytes, signature, publisherPublicKey)) return@runCatching null
+        JSONObject(payloadBytes.toString(Charsets.UTF_8))
+    }.getOrNull()
+
     /**
      * Validate a plugin URL by checking if the .cs3 file is accessible
      */
@@ -331,6 +287,7 @@ data class PluginInfo(
     val status: Int // 1 = active, 0 = deprecated
 ) {
     val isActive: Boolean get() = status == 1
+    val hasRequiredChecksum: Boolean get() = sha256?.matches(ChecksumPattern) == true
     
     /**
      * Get display types for UI
@@ -347,6 +304,8 @@ data class PluginInfo(
         return replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
 }
+
+private val ChecksumPattern = Regex("[0-9a-fA-F]{64}")
 
 // Local storage models
 data class InstalledPlugin(
@@ -365,8 +324,22 @@ data class InstalledPlugin(
 
 data class PluginRepositoryEntry(
     val url: String,
+    val publisherPublicKey: String,
     val name: String,
     val description: String,
     val iconUrl: String? = null,
     val addedAt: Long = System.currentTimeMillis()
 )
+
+const val SIGNATURE_ERROR = "repository_signature_invalid"
+
+internal fun verifyEd25519Signature(payload: ByteArray, signature: String, publisherPublicKey: String): Boolean = runCatching {
+    val verifier = Signature.getInstance("Ed25519")
+    verifier.initVerify(
+        KeyFactory.getInstance("Ed25519").generatePublic(
+            X509EncodedKeySpec(Base64.decode(publisherPublicKey, Base64.NO_WRAP))
+        )
+    )
+    verifier.update(payload)
+    verifier.verify(Base64.decode(signature, Base64.NO_WRAP))
+}.getOrDefault(false)

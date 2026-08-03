@@ -46,8 +46,9 @@ class AndroidPluginsDataSource(
         pluginRepositoryManager.state,
         pluginManager.installedPlugins,
         pluginManager.repositories,
+        pluginManager.automaticUpdatesEnabled,
         extras
-    ) { nuvio, installedPlugins, repos, ex ->
+    ) { nuvio, installedPlugins, repos, automaticUpdatesEnabled, ex ->
         latestNuvioScrapers = nuvio.scrapers
         PluginsUiState(
             repositories = nuvio.repositories.map {
@@ -73,6 +74,7 @@ class AndroidPluginsDataSource(
             repositoryError = nuvio.error,
             scraperSettingsSheet = ex.scraperSettingsSheet,
             cloudstreamRepos = repos.map { CloudstreamRepoUiModel(name = it.name, url = it.url, iconUrl = it.iconUrl) },
+            cloudstreamAutomaticUpdatesEnabled = automaticUpdatesEnabled,
             isAddingCloudstreamRepo = ex.isAddingCloudstreamRepo,
             cloudstreamRepoError = ex.cloudstreamRepoError,
             openRepoUrl = ex.openRepoUrl,
@@ -161,10 +163,10 @@ class AndroidPluginsDataSource(
         extras.update { it.copy(scraperSettingsSheet = null) }
     }
 
-    override suspend fun addCloudstreamRepository(url: String) {
+    override suspend fun addCloudstreamRepository(url: String, publisherPublicKey: String) {
         extras.update { it.copy(isAddingCloudstreamRepo = true, cloudstreamRepoError = null) }
         val normalizedUrl = FluxaCoreNative.normalizeCloudstreamRepoUrl(url)
-        val result = pluginManager.addRepository(normalizedUrl)
+        val result = pluginManager.addRepository(normalizedUrl, publisherPublicKey)
         extras.update {
             if (result.isSuccess) {
                 it.copy(isAddingCloudstreamRepo = false)
@@ -172,10 +174,21 @@ class AndroidPluginsDataSource(
                 it.copy(
                     isAddingCloudstreamRepo = false,
                     cloudstreamRepoError = result.exceptionOrNull()?.message
+                        ?.let { error ->
+                            if (error == com.fluxa.app.plugins.cloudstream.SIGNATURE_ERROR) {
+                                AppStrings.t(language(), "addons.repository_signature_invalid")
+                            } else {
+                                error
+                            }
+                        }
                         ?: AppStrings.t(language(), "addons.repository_add_failed")
                 )
             }
         }
+    }
+
+    override suspend fun setCloudstreamAutomaticUpdatesEnabled(enabled: Boolean) {
+        pluginManager.setAutomaticUpdatesEnabled(enabled)
     }
 
     override suspend fun openRepo(url: String) {

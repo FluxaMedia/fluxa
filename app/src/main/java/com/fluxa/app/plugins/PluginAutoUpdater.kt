@@ -39,8 +39,9 @@ internal class PluginAutoUpdater(
                 return@forEach
             }
 
+            val repository = repos.firstOrNull { it.url == repoUrl } ?: return@forEach
             try {
-                val repoData = when (val repoResult = ExternalRepoParser().fetchRepository(repoUrl)) {
+                val repoData = when (val repoResult = ExternalRepoParser().fetchRepository(repoUrl, repository.publisherPublicKey)) {
                     is RepositoryResult.Success -> repoResult.manifest
                     is RepositoryResult.Error -> {
                         Log.w(TAG, "[AutoUpdate] Failed to fetch repo: $repoUrl - ${repoResult.message}")
