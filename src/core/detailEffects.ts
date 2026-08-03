@@ -10,7 +10,7 @@ import {
   coreInvoke,
   dispatchAction,
 } from './engine';
-import { loadEnabledAddons, loadPrefs } from './libraryOps';
+import { loadActiveProfile, loadEnabledAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
 import { fetchBuiltinMeta } from './tmdbAddon';
 import { tryFetchJson } from './httpClient';
@@ -88,8 +88,8 @@ async function fetchTmdbSimilarItems({
   const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, calls);
   if (!plan) return [];
 
-  for (const path of calls) {
-    const response = await tryFetchJson(plan.urls[path]);
+  const responses = await Promise.all(calls.map((path) => tryFetchJson(plan.urls[path])));
+  for (const response of responses) {
     const rawItems = (response as { results?: TmdbMetaResult[] } | null)?.results ?? [];
     if (!rawItems.length) continue;
     const results = (await coreTmdbBulkMetas(JSON.stringify(rawItems), contentType, language)) ?? [];
@@ -450,11 +450,13 @@ async function fetchSimilarItems({
     return items.length ? items : tmdbFallback();
   }
 
-  const traktItems = await fetchTraktSimilarItems({ imdbId, contentType });
-  if (traktItems.length) return traktItems;
-  const simklItems = await fetchSimklSimilarItems({ imdbId, contentType });
-  if (simklItems.length) return simklItems;
-  return tmdbFallback();
+  const profile = await loadActiveProfile();
+  const racers: Promise<unknown[]>[] = [];
+  if (profile?.traktAccessToken) racers.push(fetchTraktSimilarItems({ imdbId, contentType }));
+  if (profile?.simklAccessToken) racers.push(fetchSimklSimilarItems({ imdbId, contentType }));
+  if (!racers.length) return tmdbFallback();
+
+  return Promise.race(racers);
 }
 
 export async function fetchDetailSecondary(payload: Record<string, unknown>): Promise<unknown> {
@@ -464,7 +466,6 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
   const language = prefString(prefs, 'language', String(payload.language ?? 'en'));
   const apiKey = prefString(prefs, 'tmdbApiKey');
   const omdbApiKey = prefString(prefs, 'omdbApiKey');
-  const mdblistApiKey = prefString(prefs, 'mdblistApiKey');
   const fanartApiKey = prefString(prefs, 'fanartApiKey');
   const requestedSource = String(payload.similarTitlesSource ?? '');
   const source = ['auto', 'trakt', 'simkl', 'tmdb'].includes(requestedSource)
@@ -474,7 +475,7 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
   const similarEnabled = prefBool(prefs, 'tmdbSimilarResultsEnabled', true);
   const shouldFetchSimilar = source !== 'tmdb' || recommendationsEnabled || similarEnabled;
 
-  const [similarItems, trailers, omdbRatings, mdblistRatings, fanartArtwork] = await Promise.all([
+  const [similarItems, trailers, omdbRatings, fanartArtwork] = await Promise.all([
     shouldFetchSimilar
       ? fetchSimilarItems({
           contentType,
@@ -490,7 +491,6 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
       ? fetchTmdbTrailers({ contentType, id, language, apiKey })
       : Promise.resolve([]),
     fetchOmdbRatings(id, omdbApiKey),
-    fetchMdblistRatings(contentType, id, mdblistApiKey),
     fetchFanartArtwork({ contentType, id, language, apiKey }, fanartApiKey),
   ]);
 
@@ -499,9 +499,16 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
     similarItems,
     trailers,
     omdbRatings,
-    mdblistRatings,
     fanartArtwork,
   };
+}
+
+export async function fetchMdblistRatingsForDetail(payload: Record<string, unknown>): Promise<Record<string, number> | null> {
+  const contentType = String(payload.contentType ?? payload.type ?? 'movie');
+  const id = String(payload.id ?? '');
+  const prefs = { ...DEFAULT_APP_PREFS, ...(await loadPrefs()) };
+  const mdblistApiKey = prefString(prefs, 'mdblistApiKey');
+  return fetchMdblistRatings(contentType, id, mdblistApiKey);
 }
 
 export async function prefetchDetailStreams(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {

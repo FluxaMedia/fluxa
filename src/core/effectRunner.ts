@@ -22,6 +22,7 @@ import { fetchCatalogPage, readDiscoverCatalogFilters, runDiscover, runSearch } 
 import {
   fetchDetailSecondary,
   fetchDetailStreams,
+  fetchMdblistRatingsForDetail,
   fetchMetaDetail,
   fetchSeasonEpisodes,
   prefetchDetailStreams,
@@ -256,7 +257,11 @@ async function runEffect(
       value = await runDiscover(p, signal);
       break;
 
-    case 'fetchMetaDetail':
+    case 'fetchMetaDetail': {
+      const [meta, mdblistRatings] = await Promise.all([fetchMetaDetail(p), fetchMdblistRatingsForDetail(p)]);
+      value = { meta, mdblistRatings };
+      break;
+    }
     case 'fetchMetaDetailLookup':
       value = await fetchMetaDetail(p);
       break;
