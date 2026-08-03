@@ -119,9 +119,10 @@ export const MovieCard = React.memo(function MovieCard({
       >
         {/* Poster image */}
         {(() => {
+          const dpr = window.devicePixelRatio;
           const basePosterSrc = layout === 'horizontal'
-            ? cardImageUrl(meta.background, 'backdrop') || cardImageUrl(meta.poster)
-            : cardImageUrl(meta.poster) || cardImageUrl(meta.background, 'backdrop');
+            ? cardImageUrl(meta.background, { kind: 'backdrop', displayWidth: width, dpr }) || cardImageUrl(meta.poster, { displayWidth: width, dpr })
+            : cardImageUrl(meta.poster, { displayWidth: width, dpr }) || cardImageUrl(meta.background, { kind: 'backdrop', displayWidth: width, dpr });
           const rpdbSrc = layout !== 'horizontal' ? rpdbPosterUrl(meta) : undefined;
           const posterSrc = rpdbSrc && !rpdbFailed ? rpdbSrc : basePosterSrc;
           if (posterSrc && !imgError) {

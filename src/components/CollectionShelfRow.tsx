@@ -164,7 +164,8 @@ const FolderTileCard = React.memo(function FolderTileCard({
     ? { width: w, minWidth: w, height: '9.375rem' }
     : { width: w, minWidth: w, height: '14.625rem' };
 
-  const staticUrl = cardImageUrl(folder.poster) ?? cardImageUrl(folder.background, 'backdrop');
+  const staticUrl = cardImageUrl(folder.poster, { displayWidth: w, dpr: window.devicePixelRatio })
+    ?? cardImageUrl(folder.background, { kind: 'backdrop', displayWidth: w, dpr: window.devicePixelRatio });
   const { src: staticSrc } = usePosterSrc(staticUrl);
   const hasStatic = !!staticSrc;
   const gifEligible = !!folder.focusGifUrl && inViewport && (gifAutoplayEnabled || hovered) && !gifError;
