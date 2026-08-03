@@ -52,6 +52,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -135,7 +136,7 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier.width(300.dp).fillMaxSize().padding(24.dp)
             ) {
-                Text(AppStrings.t(lang, "nav.settings"), color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                Text(AppStrings.t(lang, "nav.settings"), style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Spacer(Modifier.height(16.dp))
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     SETTINGS_TV_RAIL_CATEGORIES.forEach { railCategory ->
@@ -155,7 +156,7 @@ fun SettingsScreen(
                 Column(
                     modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(scrollStates.getOrPut(animatedCategory) { ScrollState(0) })
                 ) {
-                    Text(settingsCategoryTitle(animatedCategory, lang), color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                    Text(settingsCategoryTitle(animatedCategory, lang), style = MaterialTheme.typography.titleLarge, color = Color.White)
                     Spacer(Modifier.height(16.dp))
                     CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
                         SettingsCategoryContent(animatedCategory, state, lang, brandIcons, onAction, onPushCategory, onSwitchProfilesRequested, navigateAndHighlight)

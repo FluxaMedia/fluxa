@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,18 +28,22 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.ui.catalog.FluxaColors
 
 @Composable
 internal fun SettingsTvRailRow(label: String, selected: Boolean, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).onFocusChanged { focused = it.isFocused }
-            .background(if (focused) Color.White else if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent)
+            .background(if (focused) Color.White else if (selected) FluxaColors.accent.copy(alpha = 0.16f) else Color.Transparent)
             .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
-        Text(label, color = if (focused) Color.Black else if (selected) Color.White else Color.White.copy(alpha = 0.6f), fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+        Text(
+            label,
+            color = if (focused) Color.Black else if (selected) FluxaColors.accent else Color.White.copy(alpha = 0.6f),
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+        )
     }
 }
 
@@ -70,6 +75,6 @@ internal fun SettingsTopBar(title: String, onBack: () -> Unit) {
             Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(12.dp))
-        Text(title, color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
+        Text(title, style = MaterialTheme.typography.titleLarge, color = Color.White)
     }
 }
