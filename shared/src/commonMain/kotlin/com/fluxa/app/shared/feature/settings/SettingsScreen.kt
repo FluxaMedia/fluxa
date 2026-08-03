@@ -177,20 +177,16 @@ fun SettingsScreen(
     SideEffect { previousDepth = backStack.size }
 
     CompositionLocalProvider(LocalSettingsAccentColor provides accentColor) {
-    Box(
-        modifier = modifier.fillMaxSize().background(
-            Brush.verticalGradient(
-                0f to LocalSettingsAccentColor.current.copy(alpha = 0.10f),
-                0.18f to FluxaColors.background,
-                1f to FluxaColors.background
-            )
-        )
-    ) {
-        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(horizontal = 20.dp)) {
-            SettingsTopBar(
-                title = settingsCategoryTitle(category, lang),
-                onBack = { if (backStack.isEmpty()) onBackRequested() else onPopCategory() }
-            )
+    Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
+        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
+            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                SettingsTopBarTitle(
+                    title = settingsCategoryTitle(category, lang),
+                    showBack = category != SettingsCategory.Hub,
+                    onBack = { if (backStack.isEmpty()) onBackRequested() else onPopCategory() }
+                )
+            }
+            SettingsTopBarDivider()
             AnimatedContent(
                 targetState = category,
                 transitionSpec = {
@@ -206,6 +202,7 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollStates.getOrPut(animatedCategory) { ScrollState(0) })
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                    .padding(horizontal = 20.dp)
             ) {
                 CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
                     SettingsCategoryContent(animatedCategory, state, lang, brandIcons, onAction, onPushCategory, onSwitchProfilesRequested, navigateAndHighlight)

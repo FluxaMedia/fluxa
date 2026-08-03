@@ -45,6 +45,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -56,9 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
@@ -81,6 +80,7 @@ data class SettingsChoiceOption(val value: String, val label: String)
 
 val LocalSettingsHighlightLabel = compositionLocalOf<String?> { null }
 val LocalSettingsAccentColor = compositionLocalOf { FluxaColors.accent }
+private val LocalSettingsGroupRowCounter = compositionLocalOf<IntArray?> { null }
 
 fun Modifier.settingsHighlight(highlighted: Boolean): Modifier = composed {
     if (highlighted) {
@@ -99,62 +99,43 @@ fun Modifier.settingsFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifi
         .then(if (focused) Modifier.border(1.dp, LocalSettingsAccentColor.current.copy(alpha = 0.5f), shape) else Modifier)
 }
 
-fun Modifier.settingsRowDivider(): Modifier = drawBehind {
-    drawLine(
-        color = Color.White.copy(alpha = 0.06f),
-        start = Offset(0f, 0f),
-        end = Offset(size.width, 0f),
-        strokeWidth = 1.dp.toPx()
-    )
-}
-
-@Composable
-fun SettingsSectionHeader(title: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, top = 20.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .height(11.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(LocalSettingsAccentColor.current)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = title.uppercase(),
-            color = Color.White.copy(alpha = 0.6f),
-            fontWeight = FontWeight.Bold,
-            fontSize = 12.sp,
-            letterSpacing = 0.8.sp
-        )
+fun Modifier.settingsRowDivider(): Modifier = composed {
+    val counter = LocalSettingsGroupRowCounter.current
+    val isFirstInGroup = counter != null && counter[0] == 0
+    counter?.let { it[0] = it[0] + 1 }
+    if (isFirstInGroup) {
+        this
+    } else {
+        drawBehind {
+            drawLine(
+                color = Color.White.copy(alpha = 0.08f),
+                start = Offset(0f, 0f),
+                end = Offset(size.width, 0f),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
     }
 }
 
 @Composable
-fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(elevation = 10.dp, shape = shape, ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.5f))
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.06f), FluxaColors.surfaceCard)
-                )
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.02f), Color.Black.copy(alpha = 0.2f))
-                ),
-                shape = shape
-            )
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        content = content
+fun SettingsSectionHeader(title: String) {
+    Text(
+        text = title.uppercase(),
+        color = Color.White.copy(alpha = 0.45f),
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        letterSpacing = 0.8.sp,
+        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp, top = 26.dp)
     )
+}
+
+@Composable
+fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val counter = remember { IntArray(1) }
+    counter[0] = 0
+    CompositionLocalProvider(LocalSettingsGroupRowCounter provides counter) {
+        Column(modifier = Modifier.fillMaxWidth(), content = content)
+    }
 }
 
 @Composable
@@ -175,16 +156,17 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onValueChanged(!value)
             }
-            .padding(vertical = 10.dp),
+            .padding(vertical = 13.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, color = Color.White)
+            Text(label, color = Color.White, fontSize = 15.sp)
             if (description != null) {
-                Text(description, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                Text(description, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
             }
         }
+        Spacer(Modifier.width(12.dp))
         Switch(
             checked = value,
             onCheckedChange = null,
@@ -222,11 +204,11 @@ fun SettingsChoiceRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable { showDialog = true }
-            .padding(vertical = 10.dp),
+            .padding(vertical = 13.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = Color.White, modifier = Modifier.weight(1f))
+        Text(label, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
         Text(
             currentLabel,
             color = Color.White.copy(alpha = 0.55f),
@@ -258,14 +240,12 @@ fun SettingsChoiceDialog(
     onDismiss: () -> Unit
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        val shape = RoundedCornerShape(24.dp)
+        val shape = RoundedCornerShape(20.dp)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(elevation = 24.dp, shape = shape, ambientColor = Color.Black.copy(alpha = 0.5f), spotColor = Color.Black.copy(alpha = 0.6f))
                 .clip(shape)
-                .background(Brush.verticalGradient(listOf(Color(0xFF262626), FluxaColors.surfaceRaised)))
-                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.18f), Color.Transparent)), shape)
+                .background(FluxaColors.surfaceRaised)
                 .padding(vertical = 8.dp)
         ) {
             Text(
@@ -565,26 +545,16 @@ fun SettingsActionRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 13.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
-                val tint = if (destructive) FluxaColors.errorRed else LocalSettingsAccentColor.current
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(11.dp))
-                        .background(Brush.radialGradient(listOf(tint.copy(alpha = 0.32f), tint.copy(alpha = 0.1f))))
-                        .border(1.dp, tint.copy(alpha = 0.25f), RoundedCornerShape(11.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    icon()
-                }
+                Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) { icon() }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, fontWeight = FontWeight.SemiBold)
+            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
         }
         if (value != null) {
             Text(
@@ -610,7 +580,7 @@ fun SettingsConnectionRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 13.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -618,17 +588,16 @@ fun SettingsConnectionRow(
             if (icon != null) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(Brush.radialGradient(listOf(LocalSettingsAccentColor.current.copy(alpha = 0.32f), LocalSettingsAccentColor.current.copy(alpha = 0.1f))))
-                        .border(1.dp, LocalSettingsAccentColor.current.copy(alpha = 0.25f), RoundedCornerShape(13.dp)),
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(Color.White.copy(alpha = 0.08f)),
                     contentAlignment = Alignment.Center
                 ) {
                     icon()
                 }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
         }
         if (connected && hasSyncFailure) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -729,6 +698,7 @@ fun SettingsInfoRow(label: String, value: String) {
 fun SettingsNavRow(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    description: String? = null,
     value: String? = null,
     onClick: () -> Unit
 ) {
@@ -745,30 +715,26 @@ fun SettingsNavRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
-            .padding(vertical = 14.dp),
+            .padding(vertical = if (description != null) 12.dp else 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             if (icon != null) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(11.dp))
-                        .background(Brush.radialGradient(listOf(LocalSettingsAccentColor.current.copy(alpha = 0.32f), LocalSettingsAccentColor.current.copy(alpha = 0.1f))))
-                        .border(1.dp, LocalSettingsAccentColor.current.copy(alpha = 0.25f), RoundedCornerShape(11.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = LocalSettingsAccentColor.current,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Spacer(Modifier.width(14.dp))
+                androidx.compose.material3.Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(Modifier.width(16.dp))
             }
-            Text(label, color = Color.White, fontWeight = FontWeight.SemiBold)
+            Column {
+                Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                if (description != null) {
+                    Text(description, color = Color.White.copy(alpha = 0.45f), fontSize = 12.5.sp, modifier = Modifier.padding(top = 2.dp))
+                }
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (value != null) {
@@ -785,7 +751,7 @@ fun SettingsNavRow(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.35f),
+                tint = Color.White.copy(alpha = 0.3f),
                 modifier = Modifier.size(20.dp)
             )
         }
