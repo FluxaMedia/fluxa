@@ -6,6 +6,7 @@ import { t } from '../../i18n';
 import { ChoiceTile, ToggleTile, InputTile, SettingsSection, ActionTile } from './SettingsUI';
 import type { Prefs } from './settingsTypes';
 import { setRpdbApiKey, validateRpdbApiKey } from '../../core/rpdb';
+import { initDiagnosticsSentry } from '../../core/sentryRuntime';
 
 function applyDiscordPresenceConfig(enabled: boolean) {
   void invoke('discord_presence_configure', { enabled });
@@ -13,6 +14,7 @@ function applyDiscordPresenceConfig(enabled: boolean) {
 
 function applyDiagnosticMode(enabled: boolean) {
   void invoke('set_diagnostic_mode', { enabled }).catch(() => undefined);
+  if (enabled && import.meta.env.PROD) void initDiagnosticsSentry();
 }
 
 export function GeneralSection({ prefs, setPref }: { prefs: Prefs; setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void }) {

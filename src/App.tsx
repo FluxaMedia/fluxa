@@ -23,6 +23,7 @@ import { useNuvioConnectivity } from './hooks/useNuvioConnectivity';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { setActiveProfileId, loadProfiles } from './core/profiles';
 import { invalidateLibraryKeyCache, loadPrefs } from './core/libraryOps';
+import { clearSearchResultsCache } from './core/searchResultsCache';
 import { storageWrite, storageRead } from './core/engine';
 import { getLanguage, setLanguage } from './i18n';
 import { dispatchAction } from './core/engine';
@@ -96,6 +97,7 @@ export default function App() {
     profileScopeRef.current.invalidate();
     profileAbortControllerRef.current.abort();
     profileAbortControllerRef.current = new AbortController();
+    clearSearchResultsCache();
   }, []);
 
   const {
@@ -449,24 +451,28 @@ export default function App() {
           </React.Suspense>
         )}
         {!showDetail && activeRoute === 'library' && (
-          <LibraryRoute
-            store={store}
-            onDispatch={dispatch}
-            onNavigateDetail={handleNavigateDetail}
-            onBack={handleLibraryBack}
-            activeProfile={activeProfile!}
-            onProfileUpdated={handleProfileUpdated}
-          />
+          <React.Suspense fallback={null}>
+            <LibraryRoute
+              store={store}
+              onDispatch={dispatch}
+              onNavigateDetail={handleNavigateDetail}
+              onBack={handleLibraryBack}
+              activeProfile={activeProfile!}
+              onProfileUpdated={handleProfileUpdated}
+            />
+          </React.Suspense>
         )}
         {!showDetail && activeRoute === 'search' ? (
-          <SearchRoute
-            store={store}
-            onDispatch={dispatch}
-            onNavigateDetail={handleNavigateDetail}
-            query={globalSearchQuery}
-            onQueryChange={handleSearchQueryChange}
-            onBack={leaveSearch}
-          />
+          <React.Suspense fallback={null}>
+            <SearchRoute
+              store={store}
+              onDispatch={dispatch}
+              onNavigateDetail={handleNavigateDetail}
+              query={globalSearchQuery}
+              onQueryChange={handleSearchQueryChange}
+              onBack={leaveSearch}
+            />
+          </React.Suspense>
         ) : !showDetail && activeRoute === 'settings' ? (
           <React.Suspense fallback={null}>
             <SettingsRoute

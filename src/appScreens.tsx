@@ -1,18 +1,29 @@
 import React from 'react';
-import * as Sentry from '@sentry/react';
+import { getSentryModule } from './core/sentryRuntime';
 import { HomeScreen as HomeScreenBase } from './screens/HomeScreen';
-import { SearchScreen as SearchScreenBase } from './screens/SearchScreen';
-import { LibraryScreen as LibraryScreenBase } from './screens/LibraryScreen';
 
-export const HomeScreen = Sentry.withProfiler(HomeScreenBase, { name: 'HomeScreen' });
-export const SearchScreen = Sentry.withProfiler(SearchScreenBase, { name: 'SearchScreen' });
-export const LibraryScreen = Sentry.withProfiler(LibraryScreenBase, { name: 'LibraryScreen' });
+function withOptionalProfiler<P extends object>(Base: React.ComponentType<P>, name: string): React.ComponentType<P> {
+  return function ProfiledScreen(props: P) {
+    const profiledRef = React.useRef<React.ComponentType<P> | null>(null);
+    const sentry = getSentryModule();
+    if (sentry && !profiledRef.current) {
+      profiledRef.current = sentry.withProfiler(Base, { name });
+    }
+    const Comp = profiledRef.current ?? Base;
+    return <Comp {...props} />;
+  };
+}
 
-export const DetailScreen = React.lazy(() => import('./screens/DetailScreen').then((m) => ({ default: Sentry.withProfiler(m.DetailScreen, { name: 'DetailScreen' }) })));
-export const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then((m) => ({ default: Sentry.withProfiler(m.SettingsScreen, { name: 'SettingsScreen' }) })));
+export const HomeScreen = withOptionalProfiler(HomeScreenBase, 'HomeScreen');
+
+export const SearchScreen = React.lazy(() => import('./screens/SearchScreen').then((m) => ({ default: withOptionalProfiler(m.SearchScreen, 'SearchScreen') })));
+export const LibraryScreen = React.lazy(() => import('./screens/LibraryScreen').then((m) => ({ default: withOptionalProfiler(m.LibraryScreen, 'LibraryScreen') })));
+
+export const DetailScreen = React.lazy(() => import('./screens/DetailScreen').then((m) => ({ default: withOptionalProfiler(m.DetailScreen, 'DetailScreen') })));
+export const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then((m) => ({ default: withOptionalProfiler(m.SettingsScreen, 'SettingsScreen') })));
 export const ReactPlayerOverlay = React.lazy(() => import('./components/ReactPlayerOverlay').then((m) => ({ default: m.ReactPlayerOverlay })));
 
-export const DiscoverScreen = React.lazy(() => import('./screens/DiscoverScreen').then((m) => ({ default: Sentry.withProfiler(m.DiscoverScreen, { name: 'DiscoverScreen' }) })));
-export const CalendarScreen = React.lazy(() => import('./screens/CalendarScreen').then((m) => ({ default: Sentry.withProfiler(m.CalendarScreen, { name: 'CalendarScreen' }) })));
+export const DiscoverScreen = React.lazy(() => import('./screens/DiscoverScreen').then((m) => ({ default: withOptionalProfiler(m.DiscoverScreen, 'DiscoverScreen') })));
+export const CalendarScreen = React.lazy(() => import('./screens/CalendarScreen').then((m) => ({ default: withOptionalProfiler(m.CalendarScreen, 'CalendarScreen') })));
 export const ProfileSelectionScreen = React.lazy(() => import('./screens/ProfileSelectionScreen').then((m) => ({ default: m.ProfileSelectionScreen })));
 export const WelcomeScreen = React.lazy(() => import('./screens/WelcomeScreen').then((m) => ({ default: m.WelcomeScreen })));
