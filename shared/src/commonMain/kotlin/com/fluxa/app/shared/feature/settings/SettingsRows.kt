@@ -56,7 +56,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
@@ -78,10 +80,11 @@ import kotlinx.coroutines.launch
 data class SettingsChoiceOption(val value: String, val label: String)
 
 val LocalSettingsHighlightLabel = compositionLocalOf<String?> { null }
+val LocalSettingsAccentColor = compositionLocalOf { FluxaColors.accent }
 
 fun Modifier.settingsHighlight(highlighted: Boolean): Modifier = composed {
     if (highlighted) {
-        clip(RoundedCornerShape(10.dp)).background(FluxaColors.accent.copy(alpha = 0.16f))
+        clip(RoundedCornerShape(10.dp)).background(LocalSettingsAccentColor.current.copy(alpha = 0.16f))
     } else {
         this
     }
@@ -92,8 +95,8 @@ fun Modifier.settingsFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifi
     this
         .clip(shape)
         .onFocusChanged { focused = it.isFocused }
-        .background(if (focused) FluxaColors.accent.copy(alpha = 0.16f) else Color.Transparent)
-        .then(if (focused) Modifier.border(1.dp, FluxaColors.accent.copy(alpha = 0.5f), shape) else Modifier)
+        .background(if (focused) LocalSettingsAccentColor.current.copy(alpha = 0.16f) else Color.Transparent)
+        .then(if (focused) Modifier.border(1.dp, LocalSettingsAccentColor.current.copy(alpha = 0.5f), shape) else Modifier)
 }
 
 fun Modifier.settingsRowDivider(): Modifier = drawBehind {
@@ -116,7 +119,7 @@ fun SettingsSectionHeader(title: String) {
                 .width(3.dp)
                 .height(11.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(FluxaColors.accent)
+                .background(LocalSettingsAccentColor.current)
         )
         Spacer(Modifier.width(8.dp))
         Text(
@@ -131,13 +134,25 @@ fun SettingsSectionHeader(title: String) {
 
 @Composable
 fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(FluxaColors.surfaceCard)
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
-            .padding(horizontal = 14.dp, vertical = 4.dp),
+            .shadow(elevation = 10.dp, shape = shape, ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.5f))
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.White.copy(alpha = 0.06f), FluxaColors.surfaceCard)
+                )
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.02f), Color.Black.copy(alpha = 0.2f))
+                ),
+                shape = shape
+            )
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         content = content
     )
 }
@@ -175,7 +190,7 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
             onCheckedChange = null,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = FluxaColors.accent,
+                checkedTrackColor = LocalSettingsAccentColor.current,
                 checkedBorderColor = Color.Transparent,
                 uncheckedThumbColor = Color.White.copy(alpha = 0.8f),
                 uncheckedTrackColor = Color.White.copy(alpha = 0.14f),
@@ -243,11 +258,14 @@ fun SettingsChoiceDialog(
     onDismiss: () -> Unit
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        val shape = RoundedCornerShape(24.dp)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(FluxaColors.surfaceRaised)
+                .shadow(elevation = 24.dp, shape = shape, ambientColor = Color.Black.copy(alpha = 0.5f), spotColor = Color.Black.copy(alpha = 0.6f))
+                .clip(shape)
+                .background(Brush.verticalGradient(listOf(Color(0xFF262626), FluxaColors.surfaceRaised)))
+                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.18f), Color.Transparent)), shape)
                 .padding(vertical = 8.dp)
         ) {
             Text(
@@ -271,11 +289,11 @@ fun SettingsChoiceDialog(
                     ) {
                         Text(
                             option.label,
-                            color = if (isSelected) FluxaColors.accent else Color.White.copy(alpha = 0.75f),
+                            color = if (isSelected) LocalSettingsAccentColor.current else Color.White.copy(alpha = 0.75f),
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                         )
                         if (isSelected) {
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = FluxaColors.accent, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = LocalSettingsAccentColor.current, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -347,7 +365,7 @@ private fun SettingsIconButton(
                 .clip(CircleShape)
                 .background(
                     when {
-                        focused -> FluxaColors.accent
+                        focused -> LocalSettingsAccentColor.current
                         enabled -> Color.White.copy(alpha = 0.1f)
                         else -> Color.White.copy(alpha = 0.04f)
                     }
@@ -378,8 +396,8 @@ fun SettingsPercentSliderRow(label: String, value: Float, onValueChanged: (Float
             onValueChangeFinished = { onValueChanged(dragValue) },
             valueRange = 0f..100f,
             colors = SliderDefaults.colors(
-                thumbColor = FluxaColors.accent,
-                activeTrackColor = FluxaColors.accent,
+                thumbColor = LocalSettingsAccentColor.current,
+                activeTrackColor = LocalSettingsAccentColor.current,
                 inactiveTrackColor = Color.White.copy(alpha = 0.14f)
             )
         )
@@ -437,8 +455,8 @@ fun SettingsColorOpacityRow(
             onValueChangeFinished = { onOpacityChanged(dragOpacity) },
             valueRange = 0f..1f,
             colors = SliderDefaults.colors(
-                thumbColor = FluxaColors.accent,
-                activeTrackColor = FluxaColors.accent,
+                thumbColor = LocalSettingsAccentColor.current,
+                activeTrackColor = LocalSettingsAccentColor.current,
                 inactiveTrackColor = Color.White.copy(alpha = 0.14f)
             )
         )
@@ -473,7 +491,7 @@ fun SettingsOrderedToggleRow(
                 .size(22.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .onFocusChanged { checkboxFocused = it.isFocused }
-                .background(if (selected) FluxaColors.accent else Color.White.copy(alpha = 0.08f))
+                .background(if (selected) LocalSettingsAccentColor.current else Color.White.copy(alpha = 0.08f))
                 .then(
                     if (checkboxFocused) Modifier.border(2.dp, Color.White, RoundedCornerShape(6.dp)) else Modifier
                 )
@@ -553,18 +571,20 @@ fun SettingsActionRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
+                val tint = if (destructive) FluxaColors.errorRed else LocalSettingsAccentColor.current
                 Box(
                     modifier = Modifier
                         .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background((if (destructive) FluxaColors.errorRed else FluxaColors.accent).copy(alpha = 0.16f)),
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(Brush.radialGradient(listOf(tint.copy(alpha = 0.32f), tint.copy(alpha = 0.1f))))
+                        .border(1.dp, tint.copy(alpha = 0.25f), RoundedCornerShape(11.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     icon()
                 }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, fontWeight = FontWeight.Medium)
+            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, fontWeight = FontWeight.SemiBold)
         }
         if (value != null) {
             Text(
@@ -599,15 +619,16 @@ fun SettingsConnectionRow(
                 Box(
                     modifier = Modifier
                         .size(46.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(FluxaColors.accent.copy(alpha = 0.16f)),
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(Brush.radialGradient(listOf(LocalSettingsAccentColor.current.copy(alpha = 0.32f), LocalSettingsAccentColor.current.copy(alpha = 0.1f))))
+                        .border(1.dp, LocalSettingsAccentColor.current.copy(alpha = 0.25f), RoundedCornerShape(13.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     icon()
                 }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = Color.White, fontWeight = FontWeight.Medium)
+            Text(label, color = Color.White, fontWeight = FontWeight.SemiBold)
         }
         if (connected && hasSyncFailure) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -669,11 +690,11 @@ fun SettingsSecretFieldRow(
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
-            focusedBorderColor = FluxaColors.accent,
+            focusedBorderColor = LocalSettingsAccentColor.current,
             unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-            focusedLabelColor = FluxaColors.accent,
+            focusedLabelColor = LocalSettingsAccentColor.current,
             unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
-            cursorColor = FluxaColors.accent
+            cursorColor = LocalSettingsAccentColor.current
         )
     )
 }
@@ -733,20 +754,21 @@ fun SettingsNavRow(
                 Box(
                     modifier = Modifier
                         .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(FluxaColors.accent.copy(alpha = 0.16f)),
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(Brush.radialGradient(listOf(LocalSettingsAccentColor.current.copy(alpha = 0.32f), LocalSettingsAccentColor.current.copy(alpha = 0.1f))))
+                        .border(1.dp, LocalSettingsAccentColor.current.copy(alpha = 0.25f), RoundedCornerShape(11.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     androidx.compose.material3.Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = FluxaColors.accent,
+                        tint = LocalSettingsAccentColor.current,
                         modifier = Modifier.size(22.dp)
                     )
                 }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = Color.White, fontWeight = FontWeight.Medium)
+            Text(label, color = Color.White, fontWeight = FontWeight.SemiBold)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (value != null) {
@@ -791,11 +813,11 @@ fun SettingsTextFieldRow(
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
-            focusedBorderColor = FluxaColors.accent,
+            focusedBorderColor = LocalSettingsAccentColor.current,
             unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-            focusedLabelColor = FluxaColors.accent,
+            focusedLabelColor = LocalSettingsAccentColor.current,
             unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
-            cursorColor = FluxaColors.accent
+            cursorColor = LocalSettingsAccentColor.current
         )
     )
 }

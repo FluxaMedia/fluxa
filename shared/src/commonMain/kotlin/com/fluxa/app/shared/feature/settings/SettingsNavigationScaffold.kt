@@ -1,6 +1,7 @@
 package com.fluxa.app.shared.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -24,7 +25,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,12 +39,12 @@ internal fun SettingsTvRailRow(label: String, selected: Boolean, onClick: () -> 
     var focused by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).onFocusChanged { focused = it.isFocused }
-            .background(if (focused) Color.White else if (selected) FluxaColors.accent.copy(alpha = 0.16f) else Color.Transparent)
+            .background(if (focused) Color.White else if (selected) LocalSettingsAccentColor.current.copy(alpha = 0.16f) else Color.Transparent)
             .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Text(
             label,
-            color = if (focused) Color.Black else if (selected) FluxaColors.accent else Color.White.copy(alpha = 0.6f),
+            color = if (focused) Color.Black else if (selected) LocalSettingsAccentColor.current else Color.White.copy(alpha = 0.6f),
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
         )
     }
@@ -70,11 +73,20 @@ internal fun settingsCategoryTitle(category: SettingsCategory, lang: String?): S
 
 @Composable
 internal fun SettingsTopBar(title: String, onBack: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f)).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .shadow(elevation = 6.dp, shape = CircleShape, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f))
+                .clip(CircleShape)
+                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.White.copy(alpha = 0.03f))))
+                .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
+                .clickable(onClick = onBack),
+            contentAlignment = Alignment.Center
+        ) {
             Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         }
-        Spacer(Modifier.width(12.dp))
-        Text(title, style = MaterialTheme.typography.titleLarge, color = Color.White)
+        Spacer(Modifier.width(14.dp))
+        Text(title, style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
     }
 }

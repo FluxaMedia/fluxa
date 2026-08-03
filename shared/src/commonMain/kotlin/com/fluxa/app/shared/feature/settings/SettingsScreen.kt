@@ -71,6 +71,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
@@ -129,9 +130,11 @@ fun SettingsScreen(
         highlightLabel = entry.label
         onPushCategory(entry.category)
     }
+    val accentColor = Color(state.appearance.accentColorArgb.toInt())
 
     if (deviceType == com.fluxa.app.ui.catalog.DeviceType.TV) {
         val selectedCategory = if (category == SettingsCategory.Hub) SettingsCategory.Account else category
+        CompositionLocalProvider(LocalSettingsAccentColor provides accentColor) {
         Row(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
             Column(
                 modifier = Modifier.width(300.dp).fillMaxSize().padding(24.dp)
@@ -165,6 +168,7 @@ fun SettingsScreen(
                 }
             }
         }
+        }
         return
     }
 
@@ -172,7 +176,16 @@ fun SettingsScreen(
     val forward = backStack.size >= previousDepth
     SideEffect { previousDepth = backStack.size }
 
-    Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
+    CompositionLocalProvider(LocalSettingsAccentColor provides accentColor) {
+    Box(
+        modifier = modifier.fillMaxSize().background(
+            Brush.verticalGradient(
+                0f to LocalSettingsAccentColor.current.copy(alpha = 0.10f),
+                0.18f to FluxaColors.background,
+                1f to FluxaColors.background
+            )
+        )
+    ) {
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(horizontal = 20.dp)) {
             SettingsTopBar(
                 title = settingsCategoryTitle(category, lang),
@@ -201,6 +214,7 @@ fun SettingsScreen(
             }
             }
         }
+    }
     }
 }
 
@@ -321,27 +335,41 @@ private fun SettingsHubContent(
     SettingsGroupCard {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clickable { onNavigate(SettingsCategory.Account) }.padding(vertical = 12.dp)
+            modifier = Modifier.fillMaxWidth().clickable { onNavigate(SettingsCategory.Account) }.padding(vertical = 14.dp)
         ) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!state.account.avatarUrl.isNullOrBlank()) {
-                    com.fluxa.app.shared.image.FluxaRemoteImage(
-                        imageUrl = state.account.avatarUrl,
-                        cacheKey = "settings-avatar:${state.account.avatarUrl}",
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-                } else {
-                    com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar(modifier = Modifier.size(28.dp))
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(66.dp)
+                        .background(
+                            Brush.radialGradient(listOf(LocalSettingsAccentColor.current.copy(alpha = 0.3f), Color.Transparent)),
+                            CircleShape
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(FluxaColors.surfaceRaised)
+                        .border(1.5.dp, LocalSettingsAccentColor.current.copy(alpha = 0.4f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!state.account.avatarUrl.isNullOrBlank()) {
+                        com.fluxa.app.shared.image.FluxaRemoteImage(
+                            imageUrl = state.account.avatarUrl,
+                            cacheKey = "settings-avatar:${state.account.avatarUrl}",
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar(modifier = Modifier.size(28.dp))
+                    }
                 }
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(state.account.displayName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(state.account.displayName, style = MaterialTheme.typography.titleMedium, color = Color.White)
                 Text(AppStrings.t(lang, "auto.account"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
             }
             Icon(
