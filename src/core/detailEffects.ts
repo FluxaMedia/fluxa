@@ -136,15 +136,17 @@ async function resolveImdbId({ contentType, id, language, apiKey }: TmdbRequest)
 }
 
 const TMDB_ENRICHMENT_FLAG_KEYS = {
-  logo: 'tmdbEnrichLogoEnabled',
-  background: 'tmdbEnrichBackgroundEnabled',
-  poster: 'tmdbEnrichPosterEnabled',
-  synopsis: 'tmdbEnrichSynopsisEnabled',
-  genres: 'tmdbEnrichGenresEnabled',
-  cast: 'tmdbEnrichCastEnabled',
+  artwork: 'tmdbEnrichArtworkEnabled',
+  description: 'tmdbEnrichDescriptionEnabled',
+  genresKeywords: 'tmdbEnrichGenresKeywordsEnabled',
+  castCrew: 'tmdbEnrichCastCrewEnabled',
   network: 'tmdbEnrichNetworkEnabled',
-  episodeStills: 'tmdbEpisodeImagesEnabled',
   ratings: 'tmdbRatingsEnabled',
+  collection: 'tmdbCollectionInfoEnabled',
+  statusSchedule: 'tmdbEnrichStatusScheduleEnabled',
+  originTitles: 'tmdbEnrichOriginTitlesEnabled',
+  watchProviders: 'tmdbEnrichWatchProvidersEnabled',
+  episodeStills: 'tmdbEpisodeImagesEnabled',
 } as const;
 
 async function enrichMetaWithTmdb(meta: unknown, contentType: string, id: string): Promise<unknown> {

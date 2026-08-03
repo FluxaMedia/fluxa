@@ -9,20 +9,53 @@ export interface Meta {
   logo?: string;
   network?: string;
   description?: string;
+  tagline?: string;
+  status?: string;
   awards?: string;
   year?: number;
   imdbRating?: number;
+  certification?: string;
   genres?: string[];
+  keywords?: string[];
   runtime?: string;
   releaseInfo?: string;
   focusGifUrl?: string;
   cast?: CastMember[];
   director?: string[];
+  createdBy?: string[];
+  collection?: MetaCollection;
+  originalLanguage?: string;
+  productionCountries?: string[];
+  alternativeTitles?: string[];
+  nextEpisodeToAir?: EpisodeToAir;
+  lastEpisodeToAir?: EpisodeToAir;
+  watchProviders?: WatchProviders;
   trailers?: Trailer[];
   links?: MetaLink[];
   videos?: Video[];
   sourceAddonTransportUrl?: string;
   sourceAddonCatalogType?: string;
+}
+
+export interface MetaCollection {
+  name: string;
+  poster?: string;
+  background?: string;
+}
+
+export interface EpisodeToAir {
+  season: number;
+  episode: number;
+  airDate?: string;
+  name?: string;
+}
+
+export interface WatchProviders {
+  region: string;
+  link?: string;
+  flatrate?: string[];
+  rent?: string[];
+  buy?: string[];
 }
 
 export interface CastMember {

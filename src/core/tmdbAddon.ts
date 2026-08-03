@@ -61,6 +61,10 @@ interface TmdbMetaUrls {
   creditsUrl: string;
   imagesUrl: string;
   externalIdsUrl: string;
+  keywordsUrl?: string;
+  alternativeTitlesUrl?: string;
+  contentRatingsUrl?: string;
+  watchProvidersUrl?: string;
 }
 
 async function fetchBuiltinMetaUrls(
@@ -97,17 +101,22 @@ export async function fetchBuiltinMeta(
   const urls = await fetchBuiltinMetaUrls(type, id, apiKey, language, signal);
   if (!urls) return null;
 
-  const [details, credits, images, externalIds] = await Promise.all([
+  const [details, credits, images, externalIds, keywords, alternativeTitles, contentRatings, watchProviders] = await Promise.all([
     tryFetchJson(urls.detailsUrl, { signal }),
     tryFetchJson(urls.creditsUrl, { signal }),
     tryFetchJson(urls.imagesUrl, { signal }),
     tryFetchJson(urls.externalIdsUrl, { signal }),
+    urls.keywordsUrl ? tryFetchJson(urls.keywordsUrl, { signal }) : null,
+    urls.alternativeTitlesUrl ? tryFetchJson(urls.alternativeTitlesUrl, { signal }) : null,
+    urls.contentRatingsUrl ? tryFetchJson(urls.contentRatingsUrl, { signal }) : null,
+    urls.watchProvidersUrl ? tryFetchJson(urls.watchProvidersUrl, { signal }) : null,
   ]);
   if (!details) return null;
 
+  const extras = { keywords, alternativeTitles, contentRatings, watchProviders };
   const meta = await coreTmdbFullMetaToMeta(
     JSON.stringify(details), JSON.stringify(credits ?? {}), JSON.stringify(images ?? {}),
-    JSON.stringify(externalIds ?? {}), type, language,
+    JSON.stringify(externalIds ?? {}), JSON.stringify(extras), type, language,
   ) as Record<string, unknown> | null;
   if (!meta) return null;
 

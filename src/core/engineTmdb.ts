@@ -87,6 +87,7 @@ export async function coreTmdbFullMetaToMeta(
   creditsJson: string,
   imagesJson: string,
   externalIdsJson: string,
+  extrasJson: string,
   requestedType: string,
   language: string,
 ): Promise<unknown | null> {
@@ -97,6 +98,7 @@ export async function coreTmdbFullMetaToMeta(
       creditsJson,
       imagesJson,
       externalIdsJson,
+      extrasJson,
       requestedType,
       language,
     }),

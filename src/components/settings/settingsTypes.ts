@@ -14,13 +14,14 @@ export interface Prefs {
   tmdbCollectionInfoEnabled: boolean;
   tmdbEpisodeImagesEnabled: boolean;
   tmdbRatingsEnabled: boolean;
-  tmdbEnrichLogoEnabled: boolean;
-  tmdbEnrichBackgroundEnabled: boolean;
-  tmdbEnrichPosterEnabled: boolean;
-  tmdbEnrichSynopsisEnabled: boolean;
-  tmdbEnrichGenresEnabled: boolean;
-  tmdbEnrichCastEnabled: boolean;
+  tmdbEnrichArtworkEnabled: boolean;
+  tmdbEnrichDescriptionEnabled: boolean;
+  tmdbEnrichGenresKeywordsEnabled: boolean;
+  tmdbEnrichCastCrewEnabled: boolean;
   tmdbEnrichNetworkEnabled: boolean;
+  tmdbEnrichStatusScheduleEnabled: boolean;
+  tmdbEnrichOriginTitlesEnabled: boolean;
+  tmdbEnrichWatchProvidersEnabled: boolean;
   rpdbApiKey: string;
   omdbApiKey: string;
   mdblistApiKey: string;
@@ -174,13 +175,14 @@ export const DEFAULT_PREFS: Prefs = {
   tmdbCollectionInfoEnabled: true,
   tmdbEpisodeImagesEnabled: true,
   tmdbRatingsEnabled: true,
-  tmdbEnrichLogoEnabled: true,
-  tmdbEnrichBackgroundEnabled: true,
-  tmdbEnrichPosterEnabled: true,
-  tmdbEnrichSynopsisEnabled: true,
-  tmdbEnrichGenresEnabled: true,
-  tmdbEnrichCastEnabled: true,
+  tmdbEnrichArtworkEnabled: true,
+  tmdbEnrichDescriptionEnabled: true,
+  tmdbEnrichGenresKeywordsEnabled: true,
+  tmdbEnrichCastCrewEnabled: true,
   tmdbEnrichNetworkEnabled: true,
+  tmdbEnrichStatusScheduleEnabled: true,
+  tmdbEnrichOriginTitlesEnabled: true,
+  tmdbEnrichWatchProvidersEnabled: true,
   accentColorArgb: '#FFFFFF',
   uiScale: '100',
   animationsEnabled: true,
