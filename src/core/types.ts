@@ -50,12 +50,17 @@ export interface EpisodeToAir {
   name?: string;
 }
 
+export interface WatchProvider {
+  name: string;
+  logo?: string;
+}
+
 export interface WatchProviders {
   region: string;
   link?: string;
-  flatrate?: string[];
-  rent?: string[];
-  buy?: string[];
+  flatrate?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
 }
 
 export interface CastMember {
