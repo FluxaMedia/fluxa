@@ -119,3 +119,14 @@ export async function coreTmdbEpisodesToVideos(
     JSON.stringify({ seasonJson, seriesId }),
   );
 }
+
+export async function coreTmdbMergeEnrichment(
+  baseJson: string,
+  tmdbJson: string,
+  flagsJson: string,
+): Promise<unknown | null> {
+  return coreInvoke(
+    "tmdbMergeEnrichment",
+    JSON.stringify({ baseJson, tmdbJson, flagsJson }),
+  );
+}

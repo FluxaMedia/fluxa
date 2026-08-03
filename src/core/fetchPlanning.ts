@@ -73,7 +73,7 @@ async function buildBuiltinRequest(request: Record<string, unknown>, signal?: Ab
     addonName: 'TMDB',
     __builtinResolve: async () => {
       const result = await fetchBuiltinMeta(String(request.contentType ?? ''), String(request.id ?? ''), apiKey, language, signal);
-      return result ? { meta: result.meta } : null;
+      return result ? { meta: result.meta, __tmdbSourced: true } : null;
     },
   };
 }

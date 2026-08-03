@@ -162,6 +162,64 @@ export function GeneralSection({ prefs, setPref }: { prefs: Prefs; setPref: <K e
         onChange={(v) => setPref('fanartApiKey', v)}
       />
     </SettingsSection>
+    {prefs.tmdbApiKey && (
+      <SettingsSection title={t('settings.tmdb_enrichment')} subtitle={t('settings.tmdb_enrichment_desc')}>
+        <ToggleTile
+          title={t('settings.tmdb_enrich_logo')}
+          subtitle={t('settings.tmdb_enrich_logo_desc')}
+          checked={prefs.tmdbEnrichLogoEnabled}
+          onToggle={(v) => setPref('tmdbEnrichLogoEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.tmdb_enrich_background')}
+          subtitle={t('settings.tmdb_enrich_background_desc')}
+          checked={prefs.tmdbEnrichBackgroundEnabled}
+          onToggle={(v) => setPref('tmdbEnrichBackgroundEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.tmdb_enrich_poster')}
+          subtitle={t('settings.tmdb_enrich_poster_desc')}
+          checked={prefs.tmdbEnrichPosterEnabled}
+          onToggle={(v) => setPref('tmdbEnrichPosterEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.tmdb_enrich_synopsis')}
+          subtitle={t('settings.tmdb_enrich_synopsis_desc')}
+          checked={prefs.tmdbEnrichSynopsisEnabled}
+          onToggle={(v) => setPref('tmdbEnrichSynopsisEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.tmdb_enrich_genres')}
+          subtitle={t('settings.tmdb_enrich_genres_desc')}
+          checked={prefs.tmdbEnrichGenresEnabled}
+          onToggle={(v) => setPref('tmdbEnrichGenresEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.tmdb_enrich_cast')}
+          subtitle={t('settings.tmdb_enrich_cast_desc')}
+          checked={prefs.tmdbEnrichCastEnabled}
+          onToggle={(v) => setPref('tmdbEnrichCastEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.tmdb_enrich_network')}
+          subtitle={t('settings.tmdb_enrich_network_desc')}
+          checked={prefs.tmdbEnrichNetworkEnabled}
+          onToggle={(v) => setPref('tmdbEnrichNetworkEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.tmdb_enrich_episode_stills')}
+          subtitle={t('settings.tmdb_enrich_episode_stills_desc')}
+          checked={prefs.tmdbEpisodeImagesEnabled}
+          onToggle={(v) => setPref('tmdbEpisodeImagesEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.tmdb_enrich_ratings')}
+          subtitle={t('settings.tmdb_enrich_ratings_desc')}
+          checked={prefs.tmdbRatingsEnabled}
+          onToggle={(v) => setPref('tmdbRatingsEnabled', v)}
+        />
+      </SettingsSection>
+    )}
     <SettingsSection title={t('settings.diagnostics')} subtitle={t('settings.diagnostics_desc')}>
       <ToggleTile
         title={t('settings.diagnostic_mode')}

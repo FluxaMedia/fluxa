@@ -7,6 +7,7 @@ export interface Meta {
   poster?: string;
   background?: string;
   logo?: string;
+  network?: string;
   description?: string;
   awards?: string;
   year?: number;

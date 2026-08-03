@@ -13,8 +13,14 @@ export interface Prefs {
   tmdbRecommendationsEnabled: boolean;
   tmdbCollectionInfoEnabled: boolean;
   tmdbEpisodeImagesEnabled: boolean;
-  tmdbLogosBackdropsEnabled: boolean;
   tmdbRatingsEnabled: boolean;
+  tmdbEnrichLogoEnabled: boolean;
+  tmdbEnrichBackgroundEnabled: boolean;
+  tmdbEnrichPosterEnabled: boolean;
+  tmdbEnrichSynopsisEnabled: boolean;
+  tmdbEnrichGenresEnabled: boolean;
+  tmdbEnrichCastEnabled: boolean;
+  tmdbEnrichNetworkEnabled: boolean;
   rpdbApiKey: string;
   omdbApiKey: string;
   mdblistApiKey: string;
@@ -167,8 +173,14 @@ export const DEFAULT_PREFS: Prefs = {
   tmdbRecommendationsEnabled: true,
   tmdbCollectionInfoEnabled: true,
   tmdbEpisodeImagesEnabled: true,
-  tmdbLogosBackdropsEnabled: true,
   tmdbRatingsEnabled: true,
+  tmdbEnrichLogoEnabled: true,
+  tmdbEnrichBackgroundEnabled: true,
+  tmdbEnrichPosterEnabled: true,
+  tmdbEnrichSynopsisEnabled: true,
+  tmdbEnrichGenresEnabled: true,
+  tmdbEnrichCastEnabled: true,
+  tmdbEnrichNetworkEnabled: true,
   accentColorArgb: '#FFFFFF',
   uiScale: '100',
   animationsEnabled: true,

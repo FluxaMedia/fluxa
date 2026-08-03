@@ -4,6 +4,7 @@ import {
   coreTmdbImageUrl,
   coreTmdbBulkMetas,
   coreTmdbBulkVideosToTrailers,
+  coreTmdbMergeEnrichment,
   coreMdblistMediaInfoUrl,
   coreMdblistMediaRatingsFromResponse,
   coreInvoke,
@@ -11,6 +12,7 @@ import {
 } from './engine';
 import { loadEnabledAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
+import { fetchBuiltinMeta } from './tmdbAddon';
 import { tryFetchJson } from './httpClient';
 import { fetchPluginStreams } from './pluginRuntime';
 import { fetchTraktSimilarItems, fetchSimklSimilarItems } from './similarTitles';
@@ -133,13 +135,52 @@ async function resolveImdbId({ contentType, id, language, apiKey }: TmdbRequest)
   return response?.imdb_id ?? undefined;
 }
 
+const TMDB_ENRICHMENT_FLAG_KEYS = {
+  logo: 'tmdbEnrichLogoEnabled',
+  background: 'tmdbEnrichBackgroundEnabled',
+  poster: 'tmdbEnrichPosterEnabled',
+  synopsis: 'tmdbEnrichSynopsisEnabled',
+  genres: 'tmdbEnrichGenresEnabled',
+  cast: 'tmdbEnrichCastEnabled',
+  network: 'tmdbEnrichNetworkEnabled',
+  episodeStills: 'tmdbEpisodeImagesEnabled',
+  ratings: 'tmdbRatingsEnabled',
+} as const;
+
+async function enrichMetaWithTmdb(meta: unknown, contentType: string, id: string): Promise<unknown> {
+  const prefs = { ...DEFAULT_APP_PREFS, ...(await loadPrefs()) };
+  const apiKey = prefString(prefs, 'tmdbApiKey');
+  if (!apiKey) return meta;
+
+  const flags = Object.fromEntries(
+    Object.entries(TMDB_ENRICHMENT_FLAG_KEYS).map(([field, prefKey]) => [field, prefBool(prefs, prefKey, true)]),
+  );
+  if (!Object.values(flags).some(Boolean)) return meta;
+
+  const language = prefString(prefs, 'language', 'en');
+  const tmdbResult = await fetchBuiltinMeta(contentType, id, apiKey, language);
+  if (!tmdbResult?.meta) return meta;
+
+  const merged = await coreTmdbMergeEnrichment(
+    JSON.stringify(meta),
+    JSON.stringify(tmdbResult.meta),
+    JSON.stringify(flags),
+  );
+  return merged ?? meta;
+}
+
 export async function fetchMetaDetail(payload: Record<string, unknown>): Promise<unknown> {
   const id = payload.id as string;
   const contentType = payload.contentType as string;
   const transportUrl = typeof payload.sourceAddonTransportUrl === 'string' ? payload.sourceAddonTransportUrl : undefined;
   const addons = await loadEnabledAddons();
   const values = await fetchPlannedResources({ kind: 'metaDetail', addons, contentType, id, transportUrl });
-  return (values.find((value) => (value as { meta?: unknown }).meta) as { meta?: unknown } | undefined)?.meta ?? null;
+  const winner = values.find((value) => (value as { meta?: unknown }).meta) as
+    | { meta?: unknown; __tmdbSourced?: boolean }
+    | undefined;
+  if (!winner?.meta) return null;
+  if (winner.__tmdbSourced) return winner.meta;
+  return enrichMetaWithTmdb(winner.meta, contentType, id);
 }
 
 export async function fetchMetaVideos(id: string, contentType: string): Promise<Video[]> {

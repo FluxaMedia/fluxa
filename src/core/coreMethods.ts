@@ -441,6 +441,7 @@ export const CORE_METHODS = [
   'tmdbFullMetaToMeta',
   'tmdbImageUrl',
   'tmdbLanguage',
+  'tmdbMergeEnrichment',
   'tmdbMetaToMeta',
   'tmdbNumericId',
   'tmdbPeopleImagesFromCredits',
