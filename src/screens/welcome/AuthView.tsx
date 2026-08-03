@@ -60,7 +60,7 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
         <div style={S.card}>
           <button style={S.nuvioBtn} onClick={onNuvioClick}>
             <img
-              src="https://nuvio.tv//assets/Logo_1080x1080.png"
+              src="/nuvio.png"
               alt="Nuvio"
               style={{ width: '1.375rem', height: '1.375rem', objectFit: 'contain', flexShrink: 0 }}
             />

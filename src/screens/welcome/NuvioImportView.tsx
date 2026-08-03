@@ -124,7 +124,7 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
         <div style={{ ...S.card, maxWidth: '22.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
             <img
-              src="https://nuvio.tv//assets/Logo_1080x1080.png"
+              src="/nuvio.png"
               alt="Nuvio"
               style={{ width: '2rem', height: '2rem', objectFit: 'contain' }}
             />

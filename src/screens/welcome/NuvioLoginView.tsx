@@ -87,7 +87,7 @@ export function NuvioLoginView({ onBack, onImporting, onContinueLocal, localLoad
         <div style={S.card}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
             <img
-              src="https://nuvio.tv//assets/Logo_1080x1080.png"
+              src="/nuvio.png"
               alt="Nuvio"
               style={{ width: '2.25rem', height: '2.25rem', objectFit: 'contain' }}
             />

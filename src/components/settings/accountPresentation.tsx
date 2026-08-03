@@ -7,7 +7,7 @@ const PROVIDER_ICON: Record<string, { src: string; alt: string; background: stri
   simkl: { src: '/simkl.svg', alt: 'Simkl', background: 'rgba(28,177,74,0.12)' },
   anilist: { src: '/anilist.svg', alt: 'AniList', background: 'rgba(2,169,255,0.12)' },
   stremio: { src: '/stremio.svg', alt: 'Stremio', background: 'rgba(123,91,245,0.12)' },
-  nuvio: { src: 'https://nuvio.tv//assets/Logo_1080x1080.png', alt: 'Nuvio', background: 'rgba(255,255,255,0.06)' },
+  nuvio: { src: '/nuvio.png', alt: 'Nuvio', background: 'rgba(255,255,255,0.06)' },
 };
 
 export function providerIcon(key: string): React.ReactNode {
