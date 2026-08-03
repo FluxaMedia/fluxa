@@ -9,11 +9,49 @@ import type { ImportCategory } from '../../core/importCategories';
 import { profileConnectionState, saveProfile } from '../../core/profiles';
 import { syncExternalIntegrationNow } from '../../core/effectRunner';
 import { refreshAnimeTrackingProfile } from '../../core/animeExternalSync';
+import { platformFetch } from '../../core/httpClient';
+import { traktHeaders } from '../../core/traktSync';
 import type { Prefs, SyncMeta, TraktTokenResponse } from './settingsTypes';
 import { nuvioSignIn } from '../../core/nuvioApi';
 import { refreshNuvioProfiles } from '../../core/nuvioSync';
 import { stremioLogin, stremioLoginWithAuthKey, stremioLogout } from '../../core/stremioApi';
 import { codeChallenge, credentialAuthErrorMessage, generateCodeVerifier, type OAuthCodePayload, type OAuthService } from './accountPresentation';
+
+async function fetchTraktUsername(token: string, clientId: string): Promise<string | undefined> {
+  try {
+    const res = await platformFetch('https://api.trakt.tv/users/settings', { headers: traktHeaders(token, clientId) });
+    const json = await res.json() as { user?: { username?: string } };
+    return json.user?.username;
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchAnilistUsername(token: string): Promise<string | undefined> {
+  try {
+    const res = await platformFetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ query: '{ Viewer { name } }' }),
+    });
+    const json = await res.json() as { data?: { Viewer?: { name?: string } } };
+    return json.data?.Viewer?.name;
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchSimklUsername(token: string, clientId: string): Promise<string | undefined> {
+  try {
+    const res = await platformFetch('https://api.simkl.com/users/settings', {
+      headers: { Authorization: `Bearer ${token}`, 'simkl-api-key': clientId },
+    });
+    const json = await res.json() as { user?: { name?: string } };
+    return json.user?.name;
+  } catch {
+    return undefined;
+  }
+}
 
 export function useIntegrationAccounts({
   prefs,
@@ -151,7 +189,8 @@ export function useIntegrationAccounts({
         try {
           const tokenJson = await invoke<string>('trakt_oauth_exchange', { code: payload.code });
           const tokens = JSON.parse(tokenJson) as TraktTokenResponse;
-          const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: tokens.created_at + tokens.expires_in };
+          const traktUsername = await fetchTraktUsername(tokens.access_token, traktClientId);
+          const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: tokens.created_at + tokens.expires_in, traktUsername };
           await saveProfile(updated);
           onProfileUpdated(updated);
         } catch (err) {
@@ -172,7 +211,7 @@ export function useIntegrationAccounts({
 
   const handleTraktDisconnect = async () => {
     if (!activeProfile) return;
-    const updated: UserProfile = { ...activeProfile, traktAccessToken: undefined, traktRefreshToken: undefined, traktTokenExpiresAt: undefined };
+    const updated: UserProfile = { ...activeProfile, traktAccessToken: undefined, traktRefreshToken: undefined, traktTokenExpiresAt: undefined, traktUsername: undefined };
     await saveProfile(updated);
     onProfileUpdated(updated);
   };
@@ -208,11 +247,13 @@ export function useIntegrationAccounts({
         try {
           const tokenJson = await invoke<string>('anilist_oauth_exchange', { code: payload.code });
           const tokens = JSON.parse(tokenJson) as { access_token: string; expires_in?: number };
+          const anilistUsername = await fetchAnilistUsername(tokens.access_token);
           const updated: UserProfile = {
             ...activeProfile,
             anilistAccessToken: tokens.access_token,
             anilistRefreshToken: undefined,
             anilistTokenExpiresAt: tokens.expires_in ? Math.floor(Date.now() / 1000) + tokens.expires_in : undefined,
+            anilistUsername,
           };
           await saveProfile(updated);
           onProfileUpdated(updated);
@@ -240,6 +281,7 @@ export function useIntegrationAccounts({
       anilistAccessToken: undefined,
       anilistRefreshToken: undefined,
       anilistTokenExpiresAt: undefined,
+      anilistUsername: undefined,
     };
     await saveProfile(updated);
     onProfileUpdated(updated);
@@ -285,7 +327,8 @@ export function useIntegrationAccounts({
           const expiresAt = tokens.expires_in
             ? (tokens.created_at ?? Math.floor(Date.now() / 1000)) + tokens.expires_in
             : undefined;
-          const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token, simklTokenExpiresAt: expiresAt };
+          const simklUsername = await fetchSimklUsername(tokens.access_token, simklClientId);
+          const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token, simklTokenExpiresAt: expiresAt, simklUsername };
           await saveProfile(updated);
           onProfileUpdated(updated);
         } catch (err) {
@@ -308,7 +351,7 @@ export function useIntegrationAccounts({
   const handleSimklDisconnect = async () => {
     if (!activeProfile) return;
     setSimklPopoverOpen(false);
-    const updated: UserProfile = { ...activeProfile, simklAccessToken: undefined, simklRefreshToken: undefined, simklTokenExpiresAt: undefined };
+    const updated: UserProfile = { ...activeProfile, simklAccessToken: undefined, simklRefreshToken: undefined, simklTokenExpiresAt: undefined, simklUsername: undefined };
     await saveProfile(updated);
     onProfileUpdated(updated);
   };

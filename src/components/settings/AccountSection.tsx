@@ -3,7 +3,7 @@ import type { UserProfile } from '../../core/types';
 import { t } from '../../i18n';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { AvatarPreview } from '../../screens/ProfileForm';
-import { ChoiceTile, SettingsSection, SyncServicePopover, SyncServiceRow, cwRankingOptions, cwSourceOfTruthOptions, similarTitlesSourceOptions } from './SettingsUI';
+import { ChoiceTile, SettingsSection, SyncServicePopover, SyncServiceRow, cwRankingOptions, cwSourceOfTruthOptions, librarySourceOfTruthOptions, similarTitlesSourceOptions } from './SettingsUI';
 import type { Prefs } from './settingsTypes';
 
 import { AuthKeyLoginForm, CredentialLoginForm, type IntegrationService } from './accountPresentation';
@@ -83,7 +83,7 @@ export function AccountSection({
         {/* Trakt */}
         {!traktConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/trakt.svg" alt="Trakt" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
+            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/trakt.svg" alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
             title="Trakt.tv"
             value={traktBusy ? t('trakt.device.waiting') : t('auto.connect_trakt_tv_account')}
             onClick={() => setSelectedIntegration('trakt')}
@@ -99,9 +99,9 @@ export function AccountSection({
         {traktConnected && (
           <div ref={traktRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/trakt.svg" alt="Trakt" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
+              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/trakt.svg" alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
               title="Trakt.tv"
-              value={traktBusy ? t('sync.device.syncing') : t('sync.device.connected')}
+              value={traktBusy ? t('sync.device.syncing') : (activeProfile?.traktUsername ? t('settings.connected_as', activeProfile.traktUsername) : t('sync.device.connected'))}
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('trakt')}
               busy={traktBusy}
@@ -123,7 +123,7 @@ export function AccountSection({
         {/* AniList */}
         {!anilistConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(2,169,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/anilist.svg" alt="AniList" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
+            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(2,169,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/anilist.svg" alt="AniList" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
             title="AniList"
             value={anilistBusy ? t('trakt.device.waiting') : t('auto.connect_anilist_account')}
             onClick={() => setSelectedIntegration('anilist')}
@@ -139,9 +139,9 @@ export function AccountSection({
         {anilistConnected && (
           <div ref={anilistRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(2,169,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/anilist.svg" alt="AniList" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
+              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(2,169,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/anilist.svg" alt="AniList" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
               title="AniList"
-              value={anilistBusy ? t('sync.device.syncing') : t('settings.anime_tracking_enabled')}
+              value={anilistBusy ? t('sync.device.syncing') : (activeProfile?.anilistUsername ? t('settings.connected_as', activeProfile.anilistUsername) : t('settings.anime_tracking_enabled'))}
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('anilist')}
               busy={anilistBusy}
@@ -166,7 +166,7 @@ export function AccountSection({
         {/* Simkl */}
         {!simklConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(28,177,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/simkl.svg" alt="Simkl" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
+            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/simkl.svg" alt="Simkl" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
             title="Simkl"
             value={simklBusy ? t('trakt.device.waiting') : t('auto.connect_simkl_account')}
             onClick={() => setSelectedIntegration('simkl')}
@@ -182,9 +182,9 @@ export function AccountSection({
         {simklConnected && (
           <div ref={simklRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(28,177,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/simkl.svg" alt="Simkl" style={{ width: '1.625rem', height: '1.625rem', objectFit: 'contain' }} /></div>}
+              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/simkl.svg" alt="Simkl" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
               title="Simkl"
-              value={simklBusy ? t('sync.device.syncing') : t('sync.device.connected')}
+              value={simklBusy ? t('sync.device.syncing') : (activeProfile?.simklUsername ? t('settings.connected_as', activeProfile.simklUsername) : t('sync.device.connected'))}
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('simkl')}
               busy={simklBusy}
@@ -206,7 +206,7 @@ export function AccountSection({
         {/* Nuvio */}
         {!nuvioConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/nuvio.png" alt="Nuvio" style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} /></div>}
+            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/nuvio.png" alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /></div>}
             title="Nuvio"
             value={nuvioBusy ? t('auth.signing_in') : t('settings.connect_nuvio_account')}
             onClick={() => setSelectedIntegration('nuvio')}
@@ -229,9 +229,9 @@ export function AccountSection({
         {nuvioConnected && (
           <div ref={nuvioRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/nuvio.png" alt="Nuvio" style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} /></div>}
+              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/nuvio.png" alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /></div>}
               title="Nuvio"
-              value={nuvioBusy ? t('sync.device.syncing') : (activeProfile?.nuvioEmail ?? t('sync.device.connected'))}
+              value={nuvioBusy ? t('sync.device.syncing') : (activeProfile?.nuvioEmail ? t('settings.connected_as', activeProfile.nuvioEmail) : t('sync.device.connected'))}
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('nuvio')}
               busy={nuvioBusy}
@@ -253,7 +253,7 @@ export function AccountSection({
         {/* Stremio */}
         {!stremioConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(123,91,245,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/stremio.svg" alt="Stremio" style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} /></div>}
+            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(123,91,245,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/stremio.svg" alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /></div>}
             title="Stremio"
             value={stremioBusy ? t('auth.signing_in') : t('settings.connect_stremio_account')}
             onClick={() => setSelectedIntegration('stremio')}
@@ -294,9 +294,9 @@ export function AccountSection({
         {stremioConnected && (
           <div ref={stremioRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.125rem', height: '2.125rem', borderRadius: '0.5625rem', background: 'rgba(123,91,245,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/stremio.svg" alt="Stremio" style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} /></div>}
+              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(123,91,245,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/stremio.svg" alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /></div>}
               title="Stremio"
-              value={stremioBusy ? t('sync.device.syncing') : (activeProfile?.stremioEmail ?? t('sync.device.connected'))}
+              value={stremioBusy ? t('sync.device.syncing') : (activeProfile?.stremioEmail ? t('settings.connected_as', activeProfile.stremioEmail) : t('sync.device.connected'))}
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('stremio')}
               busy={stremioBusy}
@@ -318,6 +318,7 @@ export function AccountSection({
 
       <SettingsSection title={t('settings.cw_conflict_resolution')} subtitle={t('settings.cw_conflict_resolution_desc')}>
         <ChoiceTile title={t('settings.cw_source_of_truth')} subtitle={t('settings.cw_source_of_truth_desc')} options={cwSourceOfTruthOptions()} selected={prefs.syncCwSourceOfTruth} onSelect={(value) => setPref('syncCwSourceOfTruth', value)} />
+        <ChoiceTile title={t('settings.library_source_of_truth')} subtitle={t('settings.library_source_of_truth_desc')} options={librarySourceOfTruthOptions()} selected={prefs.integrationLibrarySource} onSelect={(value) => setPref('integrationLibrarySource', value)} />
         <ChoiceTile title={t('settings.cw_ranking')} subtitle={t('settings.cw_ranking_desc')} options={cwRankingOptions()} selected={prefs.syncCwRanking} onSelect={(value) => setPref('syncCwRanking', value)} disabled={prefs.syncCwSourceOfTruth !== ''} />
         <ChoiceTile title={t('settings.similar_titles_source')} subtitle={t('settings.similar_titles_source_desc')} options={similarTitlesSourceOptions()} selected={prefs.similarTitlesSource} onSelect={(value) => setPref('similarTitlesSource', value)} />
       </SettingsSection>

@@ -16,6 +16,7 @@ export {
   subtitleFontOptions,
   streamSourceOptions,
   cwSourceOfTruthOptions,
+  librarySourceOfTruthOptions,
   cwRankingOptions,
   similarTitlesSourceOptions,
   isFeedEnabled,

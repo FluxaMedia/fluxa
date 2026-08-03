@@ -4,7 +4,7 @@ import { nuvioAuthErrorKind } from '../../core/nuvioApi';
 
 const PROVIDER_ICON: Record<string, { src: string; alt: string; background: string }> = {
   trakt: { src: '/trakt.svg', alt: 'Trakt', background: 'rgba(237,28,36,0.12)' },
-  simkl: { src: '/simkl.svg', alt: 'Simkl', background: 'rgba(28,177,74,0.12)' },
+  simkl: { src: '/simkl.svg', alt: 'Simkl', background: 'rgba(255,255,255,0.06)' },
   anilist: { src: '/anilist.svg', alt: 'AniList', background: 'rgba(2,169,255,0.12)' },
   stremio: { src: '/stremio.svg', alt: 'Stremio', background: 'rgba(123,91,245,0.12)' },
   nuvio: { src: '/nuvio.png', alt: 'Nuvio', background: 'rgba(255,255,255,0.06)' },

@@ -324,12 +324,15 @@ export interface UserProfile {
   traktAccessToken?: string;
   traktRefreshToken?: string;
   traktTokenExpiresAt?: number;
+  traktUsername?: string;
   anilistAccessToken?: string;
   anilistRefreshToken?: string;
   anilistTokenExpiresAt?: number;
+  anilistUsername?: string;
   simklAccessToken?: string;
   simklRefreshToken?: string;
   simklTokenExpiresAt?: number;
+  simklUsername?: string;
   stremioAuthKey?: string;
   stremioEmail?: string;
   nuvioAccessToken?: string;
