@@ -99,7 +99,7 @@ impl RenderContext {
 
     fn render_and_present(
         &mut self,
-        renderer: &mut crate::mpv_render::MpvRenderer,
+        renderer: &mut crate::mpv_render::MpvRenderState,
         width: i32,
         height: i32,
         vsync_enabled: bool,
@@ -241,42 +241,44 @@ fn ensure_renderer_for_surface(
     backend: RenderBackend,
 ) -> Result<(), String> {
     let state = app.state::<DesktopState>();
-    let mut renderer = state.player_renderer.lock().unwrap();
-    if renderer.is_none() {
+    let mut render_guard = state.player_render_state.lock().unwrap();
+    let mut client_guard = state.player_mpv_client.lock().unwrap();
+    if client_guard.is_none() {
         log::warn!("player surface: renderer missing, recreating before load");
-        let mut fresh =
-            crate::mpv_render::MpvRenderer::new().map_err(|e| format!("mpv init failed: {e}"))?;
+        let (client, mut render) =
+            crate::mpv_render::MpvClientHandle::new().map_err(|e| format!("mpv init failed: {e}"))?;
         match backend {
             RenderBackend::OpenGl => {
-                fresh
+                render
                     .prepare_opengl_context()
                     .map_err(|e| format!("mpv GL context failed: {e}"))?;
             }
             RenderBackend::Vulkan => {
-                fresh
+                client
                     .set_option("gpu-api", "vulkan")
                     .map_err(|e| format!("mpv gpu-api=vulkan failed: {e}"))?;
             }
             RenderBackend::D3d11 => {
-                fresh
+                client
                     .set_option("gpu-api", "d3d11")
                     .map_err(|e| format!("mpv gpu-api=d3d11 failed: {e}"))?;
             }
         }
         if hdc != 0 {
             if let Some(icc) = query_icm_profile(hdc) {
-                if let Err(e) = fresh.set_icc_profile(&icc) {
+                if let Err(e) = render.set_icc_profile(&icc) {
                     log::warn!("failed to set ICC profile: {e}");
                 }
             }
         }
-        *renderer = Some(fresh);
+        *render_guard = Some(render);
+        *client_guard = Some(client);
     }
     if hdc != 0 {
-        if let Some(r) = renderer.as_ref() {
+        if let Some(c) = client_guard.as_ref() {
             let hz = unsafe { GetDeviceCaps(hdc, VREFRESH as i32) };
             if hz > 1 {
-                if let Err(e) = r.set_option("display-fps-override", &hz.to_string()) {
+                if let Err(e) = c.set_option("display-fps-override", &hz.to_string()) {
                     log::warn!("failed to set display-fps-override: {e}");
                 }
             }
@@ -646,7 +648,7 @@ fn spawn_install_thread(
             let _ = setup_tx.send(Err(e));
             return;
         }
-        log::info!("player surface: MpvRenderer ready");
+        log::info!("player surface: mpv renderer ready");
 
         log::info!("player surface: setup complete, entering render loop");
         let _ = setup_tx.send(Ok(NativePlayerSurface {
@@ -731,7 +733,7 @@ fn spawn_install_thread(
                             unsafe { ShowWindow(child_hwnd, SW_HIDE) };
                             continue;
                         }
-                        let mut renderer = state.player_renderer.lock().unwrap();
+                        let mut renderer = state.player_mpv_client.lock().unwrap();
                         if let Some(r) = renderer.as_mut() {
                             if render_ctx.is_hdr() {
                                 let _ = r.set_option("target-trc", "linear");
@@ -760,7 +762,7 @@ fn spawn_install_thread(
                     }
                     SurfaceCommand::CommandArgs { commands, sender } => {
                         let state = app.state::<DesktopState>();
-                        let renderer = state.player_renderer.lock().unwrap();
+                        let renderer = state.player_mpv_client.lock().unwrap();
                         let result = renderer.as_ref()
                             .ok_or_else(|| "player renderer is not initialized".to_string())
                             .and_then(|r| {
@@ -778,7 +780,7 @@ fn spawn_install_thread(
                     SurfaceCommand::PlayerCommand(command) => {
                         let state = app.state::<DesktopState>();
 
-                        let mut renderer = state.player_renderer.lock().unwrap();
+                        let mut renderer = state.player_mpv_client.lock().unwrap();
                         if let Some(r) = renderer.as_mut() {
                             if let Err(error) = r.user_command(&command) {
                                 log::warn!("player surface: command failed ({command}): {error}");
@@ -788,7 +790,7 @@ fn spawn_install_thread(
                     SurfaceCommand::Status(sender) => {
                         let state = app.state::<DesktopState>();
 
-                        let renderer = state.player_renderer.lock().unwrap();
+                        let renderer = state.player_mpv_client.lock().unwrap();
                         if let Some(r) = renderer.as_ref() {
                             let mut status = r.status();
                             status.hdr_active = render_ctx.is_hdr();
@@ -797,7 +799,7 @@ fn spawn_install_thread(
                     }
                     SurfaceCommand::TrackOptions { track_type, sender } => {
                         let state = app.state::<DesktopState>();
-                        let renderer = state.player_renderer.lock().unwrap();
+                        let renderer = state.player_mpv_client.lock().unwrap();
                         let tracks = renderer
                             .as_ref()
                             .map(|r| r.track_options(&track_type))
@@ -811,7 +813,7 @@ fn spawn_install_thread(
                         sender,
                     } => {
                         let state = app.state::<DesktopState>();
-                        let renderer = state.player_renderer.lock().unwrap();
+                        let renderer = state.player_mpv_client.lock().unwrap();
                         let result = renderer
                             .as_ref()
                             .ok_or_else(|| "player renderer is not initialized".to_string())
@@ -834,7 +836,7 @@ fn spawn_install_thread(
                         let _ = app.emit("native-player-hide", ());
                         let state = app.state::<DesktopState>();
 
-                        let guard = state.player_renderer.lock().unwrap();
+                        let guard = state.player_mpv_client.lock().unwrap();
                         if let Some(r) = guard.as_ref() {
                             let _ = r.command_args(&["stop"]);
                         }
@@ -900,7 +902,7 @@ fn spawn_install_thread(
                 }
                 let swap_start = std::time::Instant::now();
                 {
-                    let Ok(mut renderer) = state.player_renderer.try_lock() else {
+                    let Ok(mut renderer) = state.player_render_state.try_lock() else {
                         std::thread::sleep(Duration::from_millis(16));
                         continue;
                     };
@@ -951,7 +953,7 @@ fn spawn_install_thread(
 fn check_player_events(app: &AppHandle) {
     let state = app.state::<DesktopState>();
     let events = {
-        let Ok(mut renderer) = state.player_renderer.try_lock() else {
+        let Ok(mut renderer) = state.player_mpv_client.try_lock() else {
             return;
         };
         match renderer.as_mut() {

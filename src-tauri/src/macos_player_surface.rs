@@ -403,16 +403,20 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
 
             {
                 let state = app_handle.state::<DesktopState>();
-                let mut renderer = state.player_renderer.lock().unwrap();
-                if renderer.is_none() {
-                    match crate::mpv_render::MpvRenderer::new() {
-                        Ok(r) => *renderer = Some(r),
+                let mut render_guard = state.player_render_state.lock().unwrap();
+                let mut client_guard = state.player_mpv_client.lock().unwrap();
+                if client_guard.is_none() {
+                    match crate::mpv_render::MpvClientHandle::new() {
+                        Ok((client, render)) => {
+                            *render_guard = Some(render);
+                            *client_guard = Some(client);
+                        }
                         Err(e) => {
                             return Err(format!("mpv init failed: {e}"));
                         }
                     }
                 }
-                if let Some(r) = renderer.as_mut() {
+                if let Some(r) = render_guard.as_mut() {
                     r.prepare_opengl_context()
                         .map_err(|e| format!("mpv GL context failed: {e}"))?;
                     if let Some(icc) = query_colorsync_icc_profile() {
@@ -446,16 +450,20 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                 .map_err(|e| format!("Vulkan context creation failed: {e}"))?;
 
             let state = app_handle.state::<DesktopState>();
-            let mut renderer = state.player_renderer.lock().unwrap();
-            if renderer.is_none() {
-                match crate::mpv_render::MpvRenderer::new() {
-                    Ok(r) => *renderer = Some(r),
+            let mut render_guard = state.player_render_state.lock().unwrap();
+            let mut client_guard = state.player_mpv_client.lock().unwrap();
+            if client_guard.is_none() {
+                match crate::mpv_render::MpvClientHandle::new() {
+                    Ok((client, render)) => {
+                        *render_guard = Some(render);
+                        *client_guard = Some(client);
+                    }
                     Err(e) => {
                         return Err(format!("mpv init failed: {e}"));
                     }
                 }
             }
-            if let Some(r) = renderer.as_mut() {
+            if let Some(r) = render_guard.as_mut() {
                 let (instance, phys_device, device, queue_index, queue_count) =
                     vk_ctx.device_handles();
                 r.create_vulkan_context(
@@ -468,14 +476,16 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                     &[],
                 )
                 .map_err(|e| format!("mpv Vulkan context failed: {e}"))?;
-                if vk_ctx.is_hdr() {
-                    let _ = r.set_option("target-trc", "linear");
-                    let _ = r.set_option("target-prim", "bt.709");
-                }
                 if let Some(icc) = query_colorsync_icc_profile() {
                     if let Err(e) = r.set_icc_profile(&icc) {
                         log::warn!("failed to set ICC profile: {e}");
                     }
+                }
+            }
+            if vk_ctx.is_hdr() {
+                if let Some(c) = client_guard.as_ref() {
+                    let _ = c.set_option("target-trc", "linear");
+                    let _ = c.set_option("target-prim", "bt.709");
                 }
             }
 
@@ -543,7 +553,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                             }
                             continue;
                         }
-                        let mut r = state.player_renderer.lock().unwrap();
+                        let mut r = state.player_mpv_client.lock().unwrap();
                         if let Some(renderer) = r.as_mut() {
                             if let Err(e) = renderer.load(&url, start_at) {
                                 drop(r);
@@ -565,7 +575,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         let _ = app.emit("native-player-hide", ());
                         let state = app.state::<DesktopState>();
 
-                        let guard = state.player_renderer.lock().unwrap();
+                        let guard = state.player_mpv_client.lock().unwrap();
                         if let Some(r) = guard.as_ref() {
                             let _ = r.command_args(&["stop"]);
                         }
@@ -677,7 +687,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         {
                             let state = app.state::<DesktopState>();
 
-                            let mut renderer = state.player_renderer.lock().unwrap();
+                            let mut renderer = state.player_render_state.lock().unwrap();
                             if let Some(r) = renderer.as_mut() {
                                 let _ = r.render_opengl_frame(last_size.0, last_size.1);
                             }
@@ -690,7 +700,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         {
                             let state = app.state::<DesktopState>();
 
-                            let mut renderer = state.player_renderer.lock().unwrap();
+                            let mut renderer = state.player_render_state.lock().unwrap();
                             if let Some(r) = renderer.as_mut() {
                                 r.report_swap();
                             };
@@ -704,7 +714,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         }
                         let state = app.state::<DesktopState>();
 
-                        let mut renderer = state.player_renderer.lock().unwrap();
+                        let mut renderer = state.player_render_state.lock().unwrap();
                         if let Some(r) = renderer.as_mut() {
                             let image_usage = ctx.image_usage();
                             let result = ctx.render_and_present(
@@ -848,7 +858,7 @@ unsafe fn create_gl_context() -> Result<SendId, String> {
 fn check_player_events(app: &AppHandle) {
     let state = app.state::<DesktopState>();
     let (events, status) = {
-        let mut renderer = state.player_renderer.lock().unwrap();
+        let mut renderer = state.player_mpv_client.lock().unwrap();
         match renderer.as_mut() {
             Some(r) => (r.poll_events(), r.status()),
             None => return,
