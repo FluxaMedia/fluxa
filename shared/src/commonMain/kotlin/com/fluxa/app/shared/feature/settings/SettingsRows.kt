@@ -167,12 +167,14 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
             }
         }
         Spacer(Modifier.width(12.dp))
+        val accentColor = LocalSettingsAccentColor.current
+        val checkedThumbColor = if (accentColor.luminance() > 0.5f) Color.Black else Color.White
         Switch(
             checked = value,
             onCheckedChange = null,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = LocalSettingsAccentColor.current,
+                checkedThumbColor = checkedThumbColor,
+                checkedTrackColor = accentColor,
                 checkedBorderColor = Color.Transparent,
                 uncheckedThumbColor = Color.White.copy(alpha = 0.8f),
                 uncheckedTrackColor = Color.White.copy(alpha = 0.14f),

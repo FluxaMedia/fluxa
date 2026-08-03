@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -968,8 +969,9 @@ private fun SettingsPosterPreview(model: SettingsAppearanceHomeUiModel) {
             .padding(top = 4.dp, bottom = 4.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White.copy(alpha = 0.04f))
+            .horizontalScroll(rememberScrollState())
             .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(posterSpacing(model.posterWidthPreset))
+        horizontalArrangement = Arrangement.spacedBy(posterSpacing(model.interfaceDensity))
     ) {
         repeat(3) {
             Column(modifier = Modifier.width(width)) {
