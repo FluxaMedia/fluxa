@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.OndemandVideo
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Widgets
@@ -389,7 +390,7 @@ private fun SettingsHubContent(
         SettingsNavRow(AppStrings.t(lang, "auto.appearance"), icon = Icons.Filled.Palette) { onNavigate(SettingsCategory.Appearance) }
         SettingsNavRow(
             AppStrings.t(lang, "auto.playback"),
-            icon = Icons.Filled.OndemandVideo,
+            icon = Icons.Rounded.PlayArrow,
             value = if (state.playback.preferredPlayer == "mpv") "MPV" else "ExoPlayer"
         ) { onNavigate(SettingsCategory.Playback) }
     }
