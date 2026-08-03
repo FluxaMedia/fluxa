@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::path::PathBuf;
 use std::ptr;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::sync::OnceLock;
 
@@ -184,29 +186,64 @@ type MpvRenderContextFree = unsafe extern "C" fn(*mut MpvRenderContext);
 type MpvWaitEvent = unsafe extern "C" fn(*mut MpvHandle, f64) -> *mut MpvEvent;
 type MpvRequestLogMessages = unsafe extern "C" fn(*mut MpvHandle, *const c_char) -> c_int;
 
-pub struct MpvRenderer {
-    api: MpvApi,
+pub struct MpvFrameState {
+    loaded: AtomicBool,
+    frames_rendered: AtomicU64,
+    first_frame_presented: AtomicBool,
+    frame_ready_to_restore_audio: AtomicBool,
+    waiting_for_seek_restart: AtomicBool,
+    pending_seek_active: AtomicBool,
+    #[cfg(target_os = "windows")]
+    muted_until_first_frame: AtomicBool,
+    #[cfg(target_os = "windows")]
+    restore_mute_value: AtomicBool,
+}
+
+impl MpvFrameState {
+    fn new() -> Self {
+        Self {
+            loaded: AtomicBool::new(false),
+            frames_rendered: AtomicU64::new(0),
+            first_frame_presented: AtomicBool::new(false),
+            frame_ready_to_restore_audio: AtomicBool::new(false),
+            waiting_for_seek_restart: AtomicBool::new(false),
+            pending_seek_active: AtomicBool::new(false),
+            #[cfg(target_os = "windows")]
+            muted_until_first_frame: AtomicBool::new(false),
+            #[cfg(target_os = "windows")]
+            restore_mute_value: AtomicBool::new(false),
+        }
+    }
+}
+
+pub struct MpvClientHandle {
+    api: Arc<MpvApi>,
+    handle: *mut MpvHandle,
+    frame_state: Arc<MpvFrameState>,
+    log_ring: std::collections::VecDeque<(c_int, String)>,
+    pending_unpause: bool,
+    pending_seek_seconds: Option<f64>,
+    current_url: Option<String>,
+}
+
+unsafe impl Send for MpvClientHandle {}
+
+pub struct MpvRenderState {
+    api: Arc<MpvApi>,
     handle: *mut MpvHandle,
     render_context: *mut MpvRenderContext,
     buffer: Vec<u8>,
     width: i32,
     height: i32,
-    loaded: bool,
-    log_ring: std::collections::VecDeque<(c_int, String)>,
-    frames_rendered: u64,
-    first_frame_presented: bool,
-    pending_unpause: bool,
-    pending_seek_seconds: Option<f64>,
-    waiting_for_seek_restart: bool,
-    frame_ready_to_restore_audio: bool,
-    #[cfg(target_os = "windows")]
-    muted_until_first_frame: bool,
-    #[cfg(target_os = "windows")]
-    restore_mute: Option<bool>,
-    current_url: Option<String>,
+    frame_state: Arc<MpvFrameState>,
 }
 
-unsafe impl Send for MpvRenderer {}
+unsafe impl Send for MpvRenderState {}
+
+pub struct MpvThumbnailRenderer {
+    client: MpvClientHandle,
+    render: MpvRenderState,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]

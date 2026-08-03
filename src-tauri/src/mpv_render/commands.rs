@@ -1,6 +1,6 @@
 use super::*;
 
-impl MpvRenderer {
+impl MpvClientHandle {
     pub fn command_string(&self, command: &str) -> Result<(), String> {
         let c_command = CString::new(command).map_err(|error| error.to_string())?;
         let result = unsafe { (self.api.mpv_command_string)(self.handle, c_command.as_ptr()) };

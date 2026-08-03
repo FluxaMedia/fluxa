@@ -205,7 +205,7 @@ where
     for _ in 0..attempts {
         match engine {
             PlayerEngine::Mpv => {
-                if let Ok(guard) = state.player_renderer.try_lock() {
+                if let Ok(guard) = state.player_mpv_client.try_lock() {
                     if let Some(renderer) = guard.as_ref() {
                         return f(renderer).map(Some);
                     }
@@ -238,7 +238,7 @@ where
     for _ in 0..attempts {
         match engine {
             PlayerEngine::Mpv => {
-                if let Ok(mut guard) = state.player_renderer.try_lock() {
+                if let Ok(mut guard) = state.player_mpv_client.try_lock() {
                     if let Some(renderer) = guard.as_mut() {
                         return f(renderer).map(Some);
                     }

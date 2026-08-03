@@ -41,7 +41,7 @@ pub fn player_render_frame(
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
         return Err("headless frame rendering is not supported by the libvlc engine".to_string());
     }
-    let mut renderer = state.player_renderer.lock().unwrap();
+    let mut renderer = state.player_render_state.lock().unwrap();
     renderer
         .as_mut()
         .ok_or_else(|| "player renderer is not initialized".to_string())?

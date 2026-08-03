@@ -23,6 +23,7 @@ pub(super) struct MpvApi {
 }
 
 unsafe impl Send for MpvApi {}
+unsafe impl Sync for MpvApi {}
 
 impl MpvApi {
     pub(super) fn load() -> Result<Self, String> {

@@ -1,6 +1,6 @@
 use super::*;
 
-impl MpvRenderer {
+impl MpvClientHandle {
     fn error_log_details(&self) -> Vec<String> {
         const MPV_LOG_LEVEL_WARN: c_int = 30;
         const MAX_LINES: usize = 6;
@@ -131,14 +131,31 @@ impl MpvRenderer {
                 }
                 MPV_EVENT_PLAYBACK_RESTART => {
                     if let Some(secs) = self.pending_seek_seconds.take() {
-                        self.waiting_for_seek_restart = true;
-                        self.frame_ready_to_restore_audio = false;
+                        self.frame_state
+                            .pending_seek_active
+                            .store(false, Ordering::Release);
+                        self.frame_state
+                            .waiting_for_seek_restart
+                            .store(true, Ordering::Release);
+                        self.frame_state
+                            .frame_ready_to_restore_audio
+                            .store(false, Ordering::Release);
                         let _ = self.command_args(&["seek", &format!("{secs:.3}"), "absolute+exact"]);
-                    } else if self.waiting_for_seek_restart {
-                        self.waiting_for_seek_restart = false;
-                        self.frame_ready_to_restore_audio = false;
+                    } else if self
+                        .frame_state
+                        .waiting_for_seek_restart
+                        .load(Ordering::Acquire)
+                    {
+                        self.frame_state
+                            .waiting_for_seek_restart
+                            .store(false, Ordering::Release);
+                        self.frame_state
+                            .frame_ready_to_restore_audio
+                            .store(false, Ordering::Release);
                     }
-                    if self.pending_unpause && !self.waiting_for_seek_restart {
+                    if self.pending_unpause
+                        && !self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire)
+                    {
                         self.pending_unpause = false;
                         let _ = self.command_args(&["set", "pause", "no"]);
                     }
@@ -148,6 +165,34 @@ impl MpvRenderer {
         }
         self.restore_audio_only();
         events
+    }
+
+    fn restore_audio_only(&mut self) {
+        #[cfg(target_os = "windows")]
+        {
+            if self.pending_seek_seconds.is_some()
+                || self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire)
+                || !self.frame_state.muted_until_first_frame.load(Ordering::Acquire)
+            {
+                return;
+            }
+            let (has_video_track, track_list_ready) = self.track_list_status();
+            if track_list_ready
+                && !has_video_track
+                && self
+                    .frame_state
+                    .muted_until_first_frame
+                    .compare_exchange(true, false, Ordering::AcqRel, Ordering::Acquire)
+                    .is_ok()
+            {
+                let mute = if self.frame_state.restore_mute_value.load(Ordering::Acquire) {
+                    "yes"
+                } else {
+                    "no"
+                };
+                let _ = self.command_args(&["set", "mute", mute]);
+            }
+        }
     }
 
     pub(super) fn track_list_status(&self) -> (bool, bool) {
@@ -173,7 +218,7 @@ impl MpvRenderer {
     pub fn status(&self) -> PlayerStatus {
         let (has_video_track, track_list_ready) = self.track_list_status();
         PlayerStatus {
-            loaded: self.loaded,
+            loaded: self.frame_state.loaded.load(Ordering::Acquire),
             path: self.get_string_property("path"),
             media_title: self.get_string_property("media-title"),
             time_pos: self.get_string_property("time-pos"),
@@ -217,11 +262,12 @@ impl MpvRenderer {
             cache_buffering_state: self.get_string_property("cache-buffering-state"),
             seeking: self.get_string_property("seeking"),
             file_format: self.get_string_property("file-format"),
-            frames_rendered: self.frames_rendered,
-            first_frame_presented: self.first_frame_presented,
+            frames_rendered: self.frame_state.frames_rendered.load(Ordering::Relaxed),
+            first_frame_presented: self.frame_state.first_frame_presented.load(Ordering::Acquire),
             has_video_track,
             track_list_ready,
-            resuming: self.pending_seek_seconds.is_some() || self.waiting_for_seek_restart,
+            resuming: self.pending_seek_seconds.is_some()
+                || self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire),
         }
     }
 
@@ -232,7 +278,7 @@ impl MpvRenderer {
             .max(0) as usize;
         log::warn!(
             "mpv track query: requested={track_type:?}, loaded={}, count={count}, path={:?}",
-            self.loaded,
+            self.frame_state.loaded.load(Ordering::Acquire),
             self.get_string_property("path")
         );
         let mut tracks = Vec::new();

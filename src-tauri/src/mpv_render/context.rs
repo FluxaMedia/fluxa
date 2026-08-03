@@ -1,6 +1,6 @@
 use super::*;
 
-impl MpvRenderer {
+impl MpvRenderState {
     #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
     pub fn needs_opengl_context(&self) -> bool {
         self.render_context.is_null()
@@ -41,7 +41,9 @@ impl MpvRenderer {
             (self.api.mpv_render_context_free)(self.render_context);
         }
         self.render_context = ptr::null_mut();
-        self.frame_ready_to_restore_audio = false;
+        self.frame_state
+            .frame_ready_to_restore_audio
+            .store(false, Ordering::Release);
     }
 
     pub fn set_icc_profile(&self, data: &[u8]) -> Result<(), String> {

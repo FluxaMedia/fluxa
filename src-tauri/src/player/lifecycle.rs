@@ -26,14 +26,16 @@ pub async fn player_init(app: AppHandle, state: State<'_, DesktopState>) -> Resu
     let app_for_headless = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let state = app_for_headless.state::<DesktopState>();
-        let mut renderer = state.player_renderer.lock().unwrap();
-        if renderer.is_none() {
-            match mpv_render::MpvRenderer::new() {
-                Ok(r) => *renderer = Some(r),
+        if state.player_mpv_client.lock().unwrap().is_none() {
+            match mpv_render::MpvClientHandle::new() {
+                Ok((client, render)) => {
+                    *state.player_render_state.lock().unwrap() = Some(render);
+                    *state.player_mpv_client.lock().unwrap() = Some(client);
+                }
                 Err(error) => {
-                    log::error!("player_init: MpvRenderer::new failed: {error}");
+                    log::error!("player_init: MpvClientHandle::new failed: {error}");
                     sentry::capture_message(
-                        &format!("MpvRenderer::new failed: {error}"),
+                        &format!("MpvClientHandle::new failed: {error}"),
                         sentry::Level::Error,
                     );
                     return Err(error);
@@ -66,11 +68,10 @@ fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
                 break;
             }
             let status = match *state.active_player_engine.lock().unwrap() {
-                PlayerEngine::Mpv => state
-                    .player_renderer
-                    .try_lock()
-                    .ok()
-                    .and_then(|renderer| renderer.as_ref().map(|renderer| renderer.status())),
+                PlayerEngine::Mpv => {
+                    let renderer = state.player_mpv_client.lock().unwrap();
+                    renderer.as_ref().map(|renderer| renderer.status())
+                }
                 PlayerEngine::Vlc => state
                     .player_renderer_vlc
                     .try_lock()
@@ -167,7 +168,7 @@ pub async fn player_load(
         log::warn!(
             "player_load: Windows native player surface unavailable, using software video rendering"
         );
-        if let Ok(mut renderer) = state.player_renderer.lock() {
+        if let Ok(mut renderer) = state.player_render_state.lock() {
             if let Some(renderer) = renderer.as_mut() {
                 renderer.reset_render_context();
             }
@@ -189,10 +190,12 @@ pub async fn player_load(
         );
     }
 
-    let mut renderer = state.player_renderer.lock().unwrap();
-    if renderer.is_none() {
-        *renderer = Some(mpv_render::MpvRenderer::new()?);
+    if state.player_mpv_client.lock().unwrap().is_none() {
+        let (client, render) = mpv_render::MpvClientHandle::new()?;
+        *state.player_render_state.lock().unwrap() = Some(render);
+        *state.player_mpv_client.lock().unwrap() = Some(client);
     }
+    let mut renderer = state.player_mpv_client.lock().unwrap();
     renderer
         .as_mut()
         .ok_or_else(|| "player renderer is not initialized".to_string())?

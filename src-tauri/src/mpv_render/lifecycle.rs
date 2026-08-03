@@ -1,189 +1,179 @@
 use super::*;
 
-impl MpvRenderer {
-    pub fn new() -> Result<Self, String> {
+impl MpvClientHandle {
+    fn new_internal(thumbnail: bool) -> Result<(Self, MpvRenderState), String> {
         let api = MpvApi::load()?;
         let handle = unsafe { (api.mpv_create)() };
         if handle.is_null() {
             return Err("mpv_create returned null".to_string());
         }
+        let api = Arc::new(api);
+        let frame_state = Arc::new(MpvFrameState::new());
 
-        let renderer = Self {
-            api,
+        let client = Self {
+            api: api.clone(),
+            handle,
+            frame_state: frame_state.clone(),
+            log_ring: std::collections::VecDeque::new(),
+            pending_unpause: false,
+            pending_seek_seconds: None,
+            current_url: None,
+        };
+        let render = MpvRenderState {
+            api: api.clone(),
             handle,
             render_context: ptr::null_mut(),
             buffer: Vec::new(),
             width: 0,
             height: 0,
-            loaded: false,
-            log_ring: std::collections::VecDeque::new(),
-            frames_rendered: 0,
-            first_frame_presented: false,
-            pending_unpause: false,
-            pending_seek_seconds: None,
-            waiting_for_seek_restart: false,
-            frame_ready_to_restore_audio: false,
-            #[cfg(target_os = "windows")]
-            muted_until_first_frame: false,
-            #[cfg(target_os = "windows")]
-            restore_mute: None,
-            current_url: None,
+            frame_state,
         };
 
-        renderer.set_option("terminal", "no")?;
-        renderer.set_option("config", "no")?;
-        renderer.set_option("vo", "libmpv")?;
-        #[cfg(target_os = "windows")]
-        renderer.set_option("gpu-api", "opengl")?;
-        renderer.set_option("idle", "yes")?;
-        renderer.set_option("keep-open", "yes")?;
-        if let Err(error) = renderer.set_option("osc", "no") {
-            log::warn!("set_option(osc, no) failed (mpv build without lua/OSC?): {error}");
+        if thumbnail {
+            client.set_option("terminal", "no")?;
+            client.set_option("config", "no")?;
+            client.set_option("vo", "libmpv")?;
+            client.set_option("ao", "null")?;
+            client.set_option("audio", "no")?;
+            client.set_option("idle", "yes")?;
+            if let Err(error) = client.set_option("osc", "no") {
+                log::warn!("set_option(osc, no) failed (mpv build without lua/OSC?): {error}");
+            }
+            client.set_option("osd-level", "0")?;
+            client.set_option("hr-seek", "yes")?;
+            client.set_option("pause", "yes")?;
+            client.set_option("cache", "yes")?;
+            client.set_option("cache-secs", "2")?;
+            client.set_option("demuxer-max-bytes", "8MiB")?;
+            client.set_option("demuxer-readahead-secs", "1")?;
+        } else {
+            client.set_option("terminal", "no")?;
+            client.set_option("config", "no")?;
+            client.set_option("vo", "libmpv")?;
+            #[cfg(target_os = "windows")]
+            client.set_option("gpu-api", "opengl")?;
+            client.set_option("idle", "yes")?;
+            client.set_option("keep-open", "yes")?;
+            if let Err(error) = client.set_option("osc", "no") {
+                log::warn!("set_option(osc, no) failed (mpv build without lua/OSC?): {error}");
+            }
+            client.set_option("osd-level", "0")?;
+            client.set_option("osd-bar", "no")?;
+            client.set_option("input-default-bindings", "yes")?;
+
+            // GPU decode — auto-safe tries every platform API (VAAPI/NVDEC/DXVA2/VideoToolbox)
+            // and falls back to software decode silently if none is available.
+            client.set_option("hwdec", "auto-safe")?;
+            client.set_option("hwdec-codecs", "all")?;
+
+            client.set_option("video-sync", "audio")?;
+            client.set_option("display-fps-override", "60")?;
+
+            // Start playback immediately without waiting for the cache to fill.
+            // cache-pause-initial=yes (default in many MPV builds) causes MPV to pause
+            // at the beginning until demuxer-readahead-secs worth of data is buffered,
+            // which looks like a frozen seekbar with no video or audio.
+            client.set_option("cache-pause-initial", "no")?;
+
+            // Network stream buffering (important for HLS/DASH/torrent)
+            client.set_option("cache", "yes")?;
+            client.set_option("cache-secs", "30")?;
+            client.set_option("demuxer-max-bytes", "150MiB")?;
+            client.set_option("demuxer-readahead-secs", "10")?;
+
+            // Lower audio latency and proper app name for PulseAudio/PipeWire
+            client.set_option("audio-buffer", "0.2")?;
+            client.set_option("audio-client-name", "fluxa")?;
         }
-        renderer.set_option("osd-level", "0")?;
-        renderer.set_option("osd-bar", "no")?;
-        renderer.set_option("input-default-bindings", "yes")?;
 
-        // GPU decode — auto-safe tries every platform API (VAAPI/NVDEC/DXVA2/VideoToolbox)
-        // and falls back to software decode silently if none is available.
-        renderer.set_option("hwdec", "auto-safe")?;
-        renderer.set_option("hwdec-codecs", "all")?;
-
-        renderer.set_option("video-sync", "audio")?;
-        renderer.set_option("display-fps-override", "60")?;
-
-        // Start playback immediately without waiting for the cache to fill.
-        // cache-pause-initial=yes (default in many MPV builds) causes MPV to pause
-        // at the beginning until demuxer-readahead-secs worth of data is buffered,
-        // which looks like a frozen seekbar with no video or audio.
-        renderer.set_option("cache-pause-initial", "no")?;
-
-        // Network stream buffering (important for HLS/DASH/torrent)
-        renderer.set_option("cache", "yes")?;
-        renderer.set_option("cache-secs", "30")?;
-        renderer.set_option("demuxer-max-bytes", "150MiB")?;
-        renderer.set_option("demuxer-readahead-secs", "10")?;
-
-        // Lower audio latency and proper app name for PulseAudio/PipeWire
-        renderer.set_option("audio-buffer", "0.2")?;
-        renderer.set_option("audio-client-name", "fluxa")?;
-
-        let init_result = unsafe { (renderer.api.mpv_initialize)(renderer.handle) };
+        let init_result = unsafe { (client.api.mpv_initialize)(client.handle) };
         if init_result < 0 {
-            let message = renderer.api.error_string(init_result);
-            unsafe { (renderer.api.mpv_terminate_destroy)(renderer.handle) };
+            let message = client.api.error_string(init_result);
+            unsafe { (client.api.mpv_terminate_destroy)(client.handle) };
             return Err(format!("mpv_initialize failed: {message}"));
         }
 
+        if thumbnail {
+            return Ok((client, render));
+        }
+
         let level = CString::new("info").unwrap();
-        let log_result =
-            unsafe { (renderer.api.mpv_request_log_messages)(renderer.handle, level.as_ptr()) };
+        let log_result = unsafe { (client.api.mpv_request_log_messages)(client.handle, level.as_ptr()) };
         if log_result < 0 {
             log::warn!(
                 "mpv: failed to enable info logging: {}",
-                renderer.api.error_string(log_result)
+                client.api.error_string(log_result)
             );
         } else {
             log::info!("mpv: info logging enabled");
         }
 
-        Ok(renderer)
+        Ok((client, render))
     }
 
-    pub fn new_thumbnail() -> Result<Self, String> {
-        let api = MpvApi::load()?;
-        let handle = unsafe { (api.mpv_create)() };
-        if handle.is_null() {
-            return Err("mpv_create returned null".to_string());
-        }
+    pub fn new() -> Result<(Self, MpvRenderState), String> {
+        Self::new_internal(false)
+    }
 
-        let mut renderer = Self {
-            api,
-            handle,
-            render_context: ptr::null_mut(),
-            buffer: Vec::new(),
-            width: 0,
-            height: 0,
-            loaded: false,
-            log_ring: std::collections::VecDeque::new(),
-            frames_rendered: 0,
-            first_frame_presented: false,
-            pending_unpause: false,
-            pending_seek_seconds: None,
-            waiting_for_seek_restart: false,
-            frame_ready_to_restore_audio: false,
-            #[cfg(target_os = "windows")]
-            muted_until_first_frame: false,
-            #[cfg(target_os = "windows")]
-            restore_mute: None,
-            current_url: None,
-        };
-
-        renderer.set_option("terminal", "no")?;
-        renderer.set_option("config", "no")?;
-        renderer.set_option("vo", "libmpv")?;
-        renderer.set_option("ao", "null")?;
-        renderer.set_option("audio", "no")?;
-        renderer.set_option("idle", "yes")?;
-        if let Err(error) = renderer.set_option("osc", "no") {
-            log::warn!("set_option(osc, no) failed (mpv build without lua/OSC?): {error}");
-        }
-        renderer.set_option("osd-level", "0")?;
-        renderer.set_option("hr-seek", "yes")?;
-        renderer.set_option("pause", "yes")?;
-        renderer.set_option("cache", "yes")?;
-        renderer.set_option("cache-secs", "2")?;
-        renderer.set_option("demuxer-max-bytes", "8MiB")?;
-        renderer.set_option("demuxer-readahead-secs", "1")?;
-
-        let init_result = unsafe { (renderer.api.mpv_initialize)(renderer.handle) };
-        if init_result < 0 {
-            let message = renderer.api.error_string(init_result);
-            unsafe { (renderer.api.mpv_terminate_destroy)(renderer.handle) };
-            return Err(format!("mpv_initialize failed: {message}"));
-        }
-
-        renderer.create_software_context()?;
-
-        Ok(renderer)
+    pub fn new_thumbnail() -> Result<(Self, MpvRenderState), String> {
+        let (client, mut render) = Self::new_internal(true)?;
+        render.create_software_context()?;
+        Ok((client, render))
     }
 
     pub fn load(&mut self, url: &str, start_at: Option<u64>) -> Result<(), String> {
-        self.loaded = false;
+        self.frame_state.loaded.store(false, Ordering::Release);
         self.current_url = Some(url.to_string());
         self.log_ring.clear();
-        self.frames_rendered = 0;
-        self.first_frame_presented = false;
+        self.frame_state.frames_rendered.store(0, Ordering::Relaxed);
+        self.frame_state
+            .first_frame_presented
+            .store(false, Ordering::Release);
         self.pending_unpause = true;
         self.pending_seek_seconds = start_at.filter(|&s| s > 0).map(|s| s as f64);
-        self.waiting_for_seek_restart = false;
-        self.frame_ready_to_restore_audio = false;
+        self.frame_state
+            .pending_seek_active
+            .store(self.pending_seek_seconds.is_some(), Ordering::Release);
+        self.frame_state
+            .waiting_for_seek_restart
+            .store(false, Ordering::Release);
+        self.frame_state
+            .frame_ready_to_restore_audio
+            .store(false, Ordering::Release);
         #[cfg(target_os = "windows")]
         {
-            let restore_mute = if self.muted_until_first_frame {
-                self.restore_mute.unwrap_or(false)
+            let already_muted_until_first_frame = self
+                .frame_state
+                .muted_until_first_frame
+                .load(Ordering::Acquire);
+            let restore_mute = if already_muted_until_first_frame {
+                self.frame_state.restore_mute_value.load(Ordering::Acquire)
             } else {
                 self.get_string_property("mute").as_deref() == Some("yes")
             };
-            self.muted_until_first_frame = true;
-            self.restore_mute = Some(restore_mute);
+            self.frame_state
+                .muted_until_first_frame
+                .store(true, Ordering::Release);
+            self.frame_state
+                .restore_mute_value
+                .store(restore_mute, Ordering::Release);
             self.command_string("set mute yes")?;
         }
         self.command(&["loadfile", url, "replace"])?;
         self.command_string("set pause yes")?;
-        self.loaded = true;
+        self.frame_state.loaded.store(true, Ordering::Release);
         Ok(())
     }
 
     pub fn load_thumbnail(&mut self, url: &str) -> Result<(), String> {
-        self.loaded = false;
+        self.frame_state.loaded.store(false, Ordering::Release);
         self.command(&["loadfile", url, "replace"])?;
-        self.loaded = true;
+        self.frame_state.loaded.store(true, Ordering::Release);
         Ok(())
     }
 
     pub fn first_frame_presented(&self) -> bool {
-        self.first_frame_presented
+        self.frame_state.first_frame_presented.load(Ordering::Acquire)
     }
 
     pub fn seek_to(&self, time_pos: f64) -> Result<(), String> {
@@ -199,7 +189,12 @@ impl MpvRenderer {
         }
         if command.starts_with("seek ") || command.starts_with("set time-pos ") {
             self.pending_seek_seconds = None;
-            self.waiting_for_seek_restart = false;
+            self.frame_state
+                .pending_seek_active
+                .store(false, Ordering::Release);
+            self.frame_state
+                .waiting_for_seek_restart
+                .store(false, Ordering::Release);
         }
         self.command_string(command)
     }
@@ -222,15 +217,45 @@ impl MpvRenderer {
     }
 }
 
-impl Drop for MpvRenderer {
+impl Drop for MpvClientHandle {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.handle.is_null() {
+                (self.api.mpv_terminate_destroy)(self.handle);
+            }
+        }
+    }
+}
+
+impl Drop for MpvRenderState {
     fn drop(&mut self) {
         unsafe {
             if !self.render_context.is_null() {
                 (self.api.mpv_render_context_free)(self.render_context);
             }
-            if !self.handle.is_null() {
-                (self.api.mpv_terminate_destroy)(self.handle);
-            }
         }
+    }
+}
+
+impl MpvThumbnailRenderer {
+    pub fn new() -> Result<Self, String> {
+        let (client, render) = MpvClientHandle::new_thumbnail()?;
+        Ok(Self { client, render })
+    }
+
+    pub fn load_thumbnail(&mut self, url: &str) -> Result<(), String> {
+        self.client.load_thumbnail(url)
+    }
+
+    pub fn query_property(&self, name: &str) -> Option<String> {
+        self.client.query_property(name)
+    }
+
+    pub fn seek_to(&self, time_pos: f64) -> Result<(), String> {
+        self.client.seek_to(time_pos)
+    }
+
+    pub fn render_thumbnail(&mut self, width: i32, height: i32) -> Result<Vec<u8>, String> {
+        self.render.render_thumbnail(width, height)
     }
 }

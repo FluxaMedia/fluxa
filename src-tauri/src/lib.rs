@@ -105,7 +105,7 @@ impl Default for PlayerOverlayState {
 pub struct ThumbnailRuntimeState {
     pub enabled: bool,
     pub url: Option<String>,
-    pub renderer: Option<mpv_render::MpvRenderer>,
+    pub renderer: Option<mpv_render::MpvThumbnailRenderer>,
     pub loaded_url: Option<String>,
 }
 
@@ -135,7 +135,8 @@ pub struct DesktopState {
     /// but the legacy encryption key is a separate file.
     pub storage_lock: Mutex<()>,
     pub download_dir: Mutex<Option<PathBuf>>,
-    pub player_renderer: Mutex<Option<mpv_render::MpvRenderer>>,
+    pub player_mpv_client: Mutex<Option<mpv_render::MpvClientHandle>>,
+    pub player_render_state: Mutex<Option<mpv_render::MpvRenderState>>,
     pub player_renderer_vlc: Mutex<Option<libvlc_render::LibvlcPlayer>>,
     pub active_player_engine: Mutex<playback_engine::PlayerEngine>,
     #[cfg(target_os = "linux")]
@@ -165,7 +166,8 @@ impl Default for DesktopState {
             data_dir: Mutex::new(None),
             storage_lock: Mutex::new(()),
             download_dir: Mutex::new(None),
-            player_renderer: Mutex::new(None),
+            player_mpv_client: Mutex::new(None),
+            player_render_state: Mutex::new(None),
             player_renderer_vlc: Mutex::new(None),
             active_player_engine: Mutex::new(playback_engine::PlayerEngine::Mpv),
             #[cfg(target_os = "linux")]
@@ -401,6 +403,11 @@ pub fn run() {
                 .level_for("librqbit_core", librqbit_log_level)
                 .level_for("librqbit_peer_protocol", librqbit_log_level)
                 .level_for("tracing::span", log::LevelFilter::Off)
+                .level_for("h2", log::LevelFilter::Warn)
+                .level_for("hyper", log::LevelFilter::Warn)
+                .level_for("hyper_util", log::LevelFilter::Warn)
+                .level_for("reqwest", log::LevelFilter::Warn)
+                .level_for("rustls", log::LevelFilter::Warn)
                 .targets({
                     let mut targets = vec![tauri_plugin_log::Target::new(
                         tauri_plugin_log::TargetKind::LogDir { file_name: None },

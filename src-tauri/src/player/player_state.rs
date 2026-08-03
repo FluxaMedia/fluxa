@@ -212,10 +212,12 @@ pub fn player_destroy(state: State<DesktopState>) -> bool {
     #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
     if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
         surface.hide();
-        return state.player_renderer.lock().unwrap().is_some();
+        return state.player_mpv_client.lock().unwrap().is_some();
     }
 
-    state.player_renderer.lock().unwrap().take().is_some()
+    let had_render = state.player_render_state.lock().unwrap().take().is_some();
+    let had_client = state.player_mpv_client.lock().unwrap().take().is_some();
+    had_render || had_client
 }
 
 #[tauri::command]
@@ -311,7 +313,7 @@ pub fn player_get_seek_thumbnail(
     let url = thumbnail.url.clone().ok_or_else(|| "no url".to_string())?;
 
     if thumbnail.renderer.is_none() {
-        thumbnail.renderer = Some(mpv_render::MpvRenderer::new_thumbnail()?);
+        thumbnail.renderer = Some(mpv_render::MpvThumbnailRenderer::new()?);
     }
     let reload_thumbnail = thumbnail.loaded_url.as_deref() != Some(url.as_str());
     if reload_thumbnail {

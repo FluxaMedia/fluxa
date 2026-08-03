@@ -1,8 +1,8 @@
 use super::*;
 
-impl MpvRenderer {
+impl MpvRenderState {
     pub fn render_thumbnail(&mut self, width: i32, height: i32) -> Result<Vec<u8>, String> {
-        if !self.loaded {
+        if !self.frame_state.loaded.load(Ordering::Acquire) {
             return Err("not loaded".to_string());
         }
         if self.render_context.is_null() {
@@ -56,7 +56,7 @@ impl MpvRenderer {
     }
 
     pub fn render_frame(&mut self, width: i32, height: i32) -> Result<PlayerFrame, String> {
-        if !self.loaded {
+        if !self.frame_state.loaded.load(Ordering::Acquire) {
             return Err("player has not loaded media yet".to_string());
         }
         if self.render_context.is_null() {
@@ -109,8 +109,10 @@ impl MpvRenderer {
         }
 
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
-            self.frames_rendered = self.frames_rendered.saturating_add(1);
-            self.frame_ready_to_restore_audio = true;
+            self.frame_state.frames_rendered.fetch_add(1, Ordering::Relaxed);
+            self.frame_state
+                .frame_ready_to_restore_audio
+                .store(true, Ordering::Release);
         }
 
         Ok(PlayerFrame {
@@ -167,8 +169,10 @@ impl MpvRenderer {
             ));
         }
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
-            self.frames_rendered = self.frames_rendered.saturating_add(1);
-            self.frame_ready_to_restore_audio = true;
+            self.frame_state.frames_rendered.fetch_add(1, Ordering::Relaxed);
+            self.frame_state
+                .frame_ready_to_restore_audio
+                .store(true, Ordering::Release);
         }
         Ok(())
     }
@@ -211,8 +215,10 @@ impl MpvRenderer {
             ));
         }
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
-            self.frames_rendered = self.frames_rendered.saturating_add(1);
-            self.frame_ready_to_restore_audio = true;
+            self.frame_state.frames_rendered.fetch_add(1, Ordering::Relaxed);
+            self.frame_state
+                .frame_ready_to_restore_audio
+                .store(true, Ordering::Release);
         }
         Ok(())
     }
@@ -247,13 +253,14 @@ impl MpvRenderer {
             ));
         }
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
-            self.frames_rendered = self.frames_rendered.saturating_add(1);
-            self.frame_ready_to_restore_audio = true;
+            self.frame_state.frames_rendered.fetch_add(1, Ordering::Relaxed);
+            self.frame_state
+                .frame_ready_to_restore_audio
+                .store(true, Ordering::Release);
         }
         Ok(())
     }
 
-    /// Call right after the buffer swap completes.
     pub fn report_swap(&mut self) {
         if self.render_context.is_null() {
             return;
@@ -261,49 +268,56 @@ impl MpvRenderer {
         unsafe {
             (self.api.mpv_render_context_report_swap)(self.render_context);
         }
-        if self.frame_ready_to_restore_audio
-            && self.pending_seek_seconds.is_none()
-            && !self.waiting_for_seek_restart
+        if self.frame_state.frame_ready_to_restore_audio.load(Ordering::Acquire)
+            && !self.frame_state.pending_seek_active.load(Ordering::Acquire)
+            && !self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire)
         {
-            self.first_frame_presented = true;
+            self.frame_state
+                .first_frame_presented
+                .store(true, Ordering::Release);
         }
         self.restore_audio_after_first_presented_frame();
+    }
+
+    #[cfg(target_os = "windows")]
+    fn command_args(&self, args: &[&str]) -> Result<(), String> {
+        let c_args = args
+            .iter()
+            .map(|arg| CString::new(*arg).map_err(|error| error.to_string()))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut raw_args = c_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+        raw_args.push(ptr::null());
+
+        let result = unsafe { (self.api.mpv_command_async)(self.handle, 0, raw_args.as_ptr()) };
+        if result < 0 {
+            Err(format!(
+                "mpv async command failed: {}",
+                self.api.error_string(result)
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     fn restore_audio_after_first_presented_frame(&mut self) {
         #[cfg(target_os = "windows")]
         {
-            if !self.muted_until_first_frame
-                || !self.frame_ready_to_restore_audio
-                || self.pending_seek_seconds.is_some()
-                || self.waiting_for_seek_restart
+            if !self.frame_state.frame_ready_to_restore_audio.load(Ordering::Acquire)
+                || self.frame_state.pending_seek_active.load(Ordering::Acquire)
+                || self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire)
             {
                 return;
             }
-            self.frame_ready_to_restore_audio = false;
-            self.muted_until_first_frame = false;
-            let mute = if self.restore_mute.take().unwrap_or(false) {
-                "yes"
-            } else {
-                "no"
-            };
-            let _ = self.command_args(&["set", "mute", mute]);
-        }
-    }
-
-    pub(super) fn restore_audio_only(&mut self) {
-        #[cfg(target_os = "windows")]
-        {
-            if !self.muted_until_first_frame
-                || self.pending_seek_seconds.is_some()
-                || self.waiting_for_seek_restart
+            if self
+                .frame_state
+                .muted_until_first_frame
+                .compare_exchange(true, false, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
             {
-                return;
-            }
-            let (has_video_track, track_list_ready) = self.track_list_status();
-            if track_list_ready && !has_video_track {
-                self.muted_until_first_frame = false;
-                let mute = if self.restore_mute.take().unwrap_or(false) {
+                self.frame_state
+                    .frame_ready_to_restore_audio
+                    .store(false, Ordering::Release);
+                let mute = if self.frame_state.restore_mute_value.load(Ordering::Acquire) {
                     "yes"
                 } else {
                     "no"

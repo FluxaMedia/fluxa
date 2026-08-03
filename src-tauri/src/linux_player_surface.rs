@@ -104,7 +104,7 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
                 let state = app.state::<DesktopState>();
                 let mut wire_error = false;
                 let ready = {
-                    let Ok(mut guard) = state.player_renderer.try_lock() else {
+                    let Ok(mut guard) = state.player_render_state.try_lock() else {
                         std::thread::sleep(Duration::from_millis(2));
                         continue;
                     };
@@ -164,7 +164,7 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
                 let result = ctx.render_and_present(
                     |image, format, iw, ih, wait_semaphore, signal_semaphore| {
                         let mut guard = state
-                            .player_renderer
+                            .player_render_state
                             .lock()
                             .map_err(|_| "player renderer lock poisoned".to_string())?;
                         let renderer = guard
@@ -188,7 +188,7 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
                 match result {
                     Ok(()) => {
                         last_present = Instant::now();
-                        if let Ok(mut guard) = state.player_renderer.lock() {
+                        if let Ok(mut guard) = state.player_render_state.lock() {
                             if let Some(r) = guard.as_mut() {
                                 r.report_swap();
                             }
@@ -354,7 +354,7 @@ struct Chapter {
     start_ms: i64,
 }
 
-fn read_mpv_chapters(renderer: &crate::mpv_render::MpvRenderer) -> Vec<Chapter> {
+fn read_mpv_chapters(renderer: &crate::mpv_render::MpvClientHandle) -> Vec<Chapter> {
     let count: usize = renderer
         .query_property("chapters")
         .and_then(|s| s.trim().parse().ok())
@@ -556,7 +556,7 @@ impl SurfaceTick {
                         state.surface_handle.hide();
                     }
                     let _ = self.app.emit("native-player-hide", ());
-                    if let Ok(guard) = self.app.state::<DesktopState>().player_renderer.try_lock() {
+                    if let Ok(guard) = self.app.state::<DesktopState>().player_mpv_client.try_lock() {
                         if let Some(r) = guard.as_ref() {
                             let _ = r.command_args(&["stop"]);
                         }
@@ -602,7 +602,7 @@ impl SurfaceTick {
         if self.pending_load.is_none() && warmup_ready {
             match self.backend {
                 RenderBackend::OpenGl => {
-                    if let Ok(mut guard) = self.app.state::<DesktopState>().player_renderer.try_lock() {
+                    if let Ok(mut guard) = self.app.state::<DesktopState>().player_render_state.try_lock() {
                         if let Some(renderer) = guard.as_mut() {
                             if renderer.needs_opengl_context() {
                                 self.gl_area.make_current();
@@ -652,7 +652,7 @@ impl SurfaceTick {
             return;
         };
         let state = self.app.state::<DesktopState>();
-        if state.player_renderer.try_lock().is_ok() {
+        if state.player_mpv_client.try_lock().is_ok() {
             match prepare_and_load(&self.app, &self.gl_area, self.backend, &self.vulkan_state, &url, start_at) {
                 Ok(()) => {
                     self.pending_load = None;
@@ -705,7 +705,7 @@ impl SurfaceTick {
         // to the React overlay for chapter-segmented seekbar rendering.
         if !in_grace && !self.chapters_native_loaded {
             let state = self.app.state::<DesktopState>();
-            let pos = state.player_renderer.try_lock().ok()
+            let pos = state.player_mpv_client.try_lock().ok()
                 .and_then(|g| g.as_ref()
                     .and_then(|r| r.query_property("time-pos")
                         .and_then(|v| v.trim().parse::<f64>().ok())))
@@ -714,7 +714,7 @@ impl SurfaceTick {
                 self.chapters_native_loaded = true;
                 let chapters_already_set = state.player_overlay.lock().unwrap().chapters_json.is_some();
                 if !chapters_already_set {
-                    if let Ok(guard) = state.player_renderer.try_lock() {
+                    if let Ok(guard) = state.player_mpv_client.try_lock() {
                         if let Some(renderer) = guard.as_ref() {
                             let native = read_mpv_chapters(renderer);
                             if !native.is_empty() {
@@ -757,7 +757,7 @@ impl SurfaceTick {
         if self.screenshot_countdown_ticks >= 0 {
             self.screenshot_countdown_ticks -= 1;
             if self.screenshot_countdown_ticks == 0 {
-                if let Ok(guard) = self.app.state::<DesktopState>().player_renderer.try_lock() {
+                if let Ok(guard) = self.app.state::<DesktopState>().player_mpv_client.try_lock() {
                     if let Some(r) = guard.as_ref() {
                         self.screenshot_seq += 1;
                         let path = format!("/tmp/fluxa_mpv_screenshot_{}.png", self.screenshot_seq);
@@ -860,7 +860,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                     let scale = area.scale_factor().max(1);
                     let w = area.allocated_width().max(2) * scale;
                     let h = area.allocated_height().max(2) * scale;
-                    let Ok(mut renderer) = state.player_renderer.try_lock() else {
+                    let Ok(mut renderer) = state.player_render_state.try_lock() else {
                         return glib::Propagation::Stop;
                     };
                     if let Some(r) = renderer.as_mut() {
@@ -927,14 +927,23 @@ fn prepare_and_load(
     }
 
     let state = app_handle.state::<DesktopState>();
-    let mut renderer = state
-        .player_renderer
+    let mut render_guard = state
+        .player_render_state
         .try_lock()
         .map_err(|_| "player renderer busy — load deferred".to_string())?;
-    if renderer.is_none() {
-        *renderer = Some(crate::mpv_render::MpvRenderer::new()?);
+    let mut client_guard = state
+        .player_mpv_client
+        .try_lock()
+        .map_err(|_| "player renderer busy — load deferred".to_string())?;
+    if client_guard.is_none() {
+        let (client, render) = crate::mpv_render::MpvClientHandle::new()?;
+        *render_guard = Some(render);
+        *client_guard = Some(client);
     }
-    let renderer = renderer
+    let render = render_guard
+        .as_mut()
+        .ok_or_else(|| "player renderer is not initialized".to_string())?;
+    let client = client_guard
         .as_mut()
         .ok_or_else(|| "player renderer is not initialized".to_string())?;
 
@@ -944,7 +953,7 @@ fn prepare_and_load(
             if let Some(error) = gl_area.error() {
                 return Err(format!("OpenGL player surface context error: {error}"));
             }
-            renderer.prepare_opengl_context()?;
+            render.prepare_opengl_context()?;
         }
         RenderBackend::Vulkan => {
             let shared = vulkan_state
@@ -952,28 +961,28 @@ fn prepare_and_load(
                 .as_ref()
                 .map(|vs| vs.shared.clone())
                 .ok_or_else(|| VULKAN_CONTEXT_PENDING.to_string())?;
-            if renderer.needs_vulkan_context() && !shared.mpv_context_ready.load(Ordering::Acquire)
+            if render.needs_vulkan_context() && !shared.mpv_context_ready.load(Ordering::Acquire)
             {
                 return Err(VULKAN_CONTEXT_PENDING.to_string());
             }
             if shared.hdr.load(Ordering::Acquire) {
-                let _ = renderer.set_option("target-trc", "linear");
-                let _ = renderer.set_option("target-prim", "bt.709");
+                let _ = client.set_option("target-trc", "linear");
+                let _ = client.set_option("target-prim", "bt.709");
             }
         }
     }
 
     if let Some(fps) = monitor_refresh_fps(gl_area) {
-        if let Err(e) = renderer.set_option("display-fps-override", &format!("{fps:.3}")) {
+        if let Err(e) = client.set_option("display-fps-override", &format!("{fps:.3}")) {
             log::warn!("failed to set display-fps-override: {e}");
         }
     }
     if let Some(icc) = query_x11_icc_profile() {
-        if let Err(e) = renderer.set_icc_profile(&icc) {
+        if let Err(e) = render.set_icc_profile(&icc) {
             log::warn!("failed to set ICC profile: {e}");
         }
     }
-    renderer.load(url, start_at)
+    client.load(url, start_at)
 }
 
 fn monitor_refresh_fps(gl_area: &gtk::GLArea) -> Option<f64> {
@@ -1036,7 +1045,7 @@ fn query_x11_icc_profile() -> Option<Vec<u8>> {
 fn check_player_events(app: &AppHandle) {
     let state = app.state::<DesktopState>();
     let (events, eof) = {
-        let Ok(mut renderer) = state.player_renderer.try_lock() else {
+        let Ok(mut renderer) = state.player_mpv_client.try_lock() else {
             return;
         };
         let Some(r) = renderer.as_mut() else {
