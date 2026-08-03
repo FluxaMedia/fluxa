@@ -57,6 +57,7 @@ export const HeroSection = React.memo(function HeroSection({
   const activeIndexRef = useRef(activeIndex);
   activeIndexRef.current = activeIndex;
   const indicatorFillRef = useRef<HTMLSpanElement | null>(null);
+  const indicatorAnimationRef = useRef<Animation | null>(null);
 
   const activeMeta = items[activeIndex] ?? meta;
   const canSlide = items.length > 1;
@@ -78,7 +79,7 @@ export const HeroSection = React.memo(function HeroSection({
 
   const {
     trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerProgress, trailerMuted, activeTrailerSubtitle,
+    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerProgressElRef, trailerMuted, activeTrailerSubtitle,
     handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
   } = useTrailerPlayback({
     metaId: activeMeta.id,
@@ -143,16 +144,22 @@ export const HeroSection = React.memo(function HeroSection({
 
   useEffect(() => {
     const el = indicatorFillRef.current;
+    indicatorAnimationRef.current?.cancel();
     if (!el) return;
-    el.style.animation = 'none';
-    void el.offsetWidth;
-    el.style.animation = `heroIndicatorFill ${slideIntervalMs}ms linear forwards`;
-    el.style.animationPlayState = trailerPending || !isActive ? 'paused' : 'running';
+    const animation = el.animate(
+      [{ width: '0%' }, { width: '100%' }],
+      { duration: slideIntervalMs, easing: 'linear', fill: 'forwards' },
+    );
+    if (trailerPending || !isActive) animation.pause();
+    indicatorAnimationRef.current = animation;
+    return () => animation.cancel();
   }, [activeIndex, slideIntervalMs]);
 
   useEffect(() => {
-    const el = indicatorFillRef.current;
-    if (el) el.style.animationPlayState = trailerPending || !isActive ? 'paused' : 'running';
+    const animation = indicatorAnimationRef.current;
+    if (!animation) return;
+    if (trailerPending || !isActive) animation.pause();
+    else animation.play();
   }, [trailerPending, isActive]);
 
   useEffect(() => {
@@ -199,7 +206,7 @@ export const HeroSection = React.memo(function HeroSection({
             opacity: visible ? (trailerActive ? 0 : 1) : 0,
             transition: 'opacity 0.6s ease',
             animation: prefersReducedMotion ? 'none' : `heroKenBurns ${slideIntervalMs + 400}ms ease-out forwards`,
-            animationPlayState: trailerActive ? 'paused' : 'running',
+            animationPlayState: trailerActive || !isActive ? 'paused' : 'running',
           }}
           onError={() => setBgError(true)}
         />
@@ -270,7 +277,7 @@ export const HeroSection = React.memo(function HeroSection({
 
       {trailerActive && (
         <div style={styles.trailerProgressTrack}>
-          <span style={{ ...styles.trailerProgressFill, width: `${trailerProgress * 100}%` }} />
+          <span ref={trailerProgressElRef} style={{ ...styles.trailerProgressFill, width: '0%' }} />
         </div>
       )}
       </div>

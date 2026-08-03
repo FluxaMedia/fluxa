@@ -30,8 +30,8 @@ export function useTrailerPlayback({
   const [trailerReady, setTrailerReady] = useState(false);
   const [trailerResolving, setTrailerResolving] = useState(false);
   const [trailerLoading, setTrailerLoading] = useState(false);
-  const [trailerProgress, setTrailerProgress] = useState(0);
   const [trailerMuted, setTrailerMuted] = useState(true);
+  const trailerProgressElRef = useRef<HTMLSpanElement | null>(null);
   const lastTrailerProgressAtRef = useRef(0);
   const trailerVideoRef = useRef<HTMLVideoElement | null>(null);
   const trailerAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -59,7 +59,7 @@ export function useTrailerPlayback({
     setActiveTrailerSubtitle('');
     activeTrailerSubtitleRef.current = '';
     setTrailerReady(false);
-    setTrailerProgress(0);
+    if (trailerProgressElRef.current) trailerProgressElRef.current.style.width = '0%';
     setTrailerResolving(false);
     setTrailerLoading(false);
     setTrailerMuted(true);
@@ -117,6 +117,14 @@ export function useTrailerPlayback({
       window.clearTimeout(delayId);
     };
   }, [trailerVideoIds, autoplay, autoplayDelaySecs, isActive]);
+
+  useEffect(() => {
+    if (isActive) return;
+    trailerAudioRef.current?.pause();
+    setTrailerStreamUrl(null);
+    setTrailerAudioUrl(null);
+    setTrailerLoading(false);
+  }, [isActive]);
 
   useEffect(() => {
     let cancelled = false;
@@ -211,7 +219,9 @@ export function useTrailerPlayback({
 
   const handleTrailerTimeUpdate = (el: HTMLVideoElement) => {
     lastTrailerProgressAtRef.current = Date.now();
-    if (el.duration > 0) setTrailerProgress(el.currentTime / el.duration);
+    if (el.duration > 0 && trailerProgressElRef.current) {
+      trailerProgressElRef.current.style.width = `${(el.currentTime / el.duration) * 100}%`;
+    }
     syncTrailerAudio(false);
     updateActiveTrailerSubtitle(el.currentTime);
   };
@@ -261,7 +271,7 @@ export function useTrailerPlayback({
 
   return {
     trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerProgress, trailerMuted, activeTrailerSubtitle,
+    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerProgressElRef, trailerMuted, activeTrailerSubtitle,
     handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
   };
 }

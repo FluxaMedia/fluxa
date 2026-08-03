@@ -7,10 +7,6 @@ export const heroKeyframes = `
   from { transform: scale(1); }
   to { transform: scale(1.06); }
 }
-@keyframes heroIndicatorFill {
-  from { width: 0%; }
-  to { width: 100%; }
-}
 `;
 
 export const heroStyles: Record<string, React.CSSProperties> = {

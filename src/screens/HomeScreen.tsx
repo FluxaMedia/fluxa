@@ -27,7 +27,14 @@ function LazyRow({ children }: { children: React.ReactNode }) {
   const shownRef = useRef(false);
   if (inViewport) shownRef.current = true;
   return (
-    <div ref={ref} style={shownRef.current ? undefined : { minHeight: ROW_PLACEHOLDER_HEIGHT }}>
+    <div
+      ref={ref}
+      style={{
+        contentVisibility: 'auto',
+        containIntrinsicSize: `100% ${ROW_PLACEHOLDER_HEIGHT}px`,
+        minHeight: shownRef.current ? undefined : ROW_PLACEHOLDER_HEIGHT,
+      } as React.CSSProperties}
+    >
       {shownRef.current ? children : null}
     </div>
   );
@@ -120,6 +127,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   const folderSourceStatesRef = useRef<FolderSourceState[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const savedScrollRef = useRef(0);
+  const [heroScrolledPast, setHeroScrolledPast] = useState(false);
 
   const [catalogExtra, setCatalogExtra] = useState<Record<string, Meta[]>>({});
   const catalogExtraRef = useRef(catalogExtra);
@@ -188,8 +196,12 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !onScrolledChange) return;
-    const handleScroll = () => onScrolledChange(el.scrollTop > 40);
+    if (!el) return;
+    const handleScroll = () => {
+      onScrolledChange?.(el.scrollTop > 40);
+      const past = el.scrollTop > 100;
+      setHeroScrolledPast((prev) => (prev === past ? prev : past));
+    };
     handleScroll();
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
@@ -432,7 +444,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
           onPlay={onPlay}
           onDetails={onNavigateDetail}
           onAddToWatchlist={handleAddToWatchlist}
-          isActive={isActive}
+          isActive={isActive && !heroScrolledPast}
           autoplayTrailer={autoplayTrailerEnabled}
           autoplayTrailerDelaySecs={Number(prefString(prefs, 'homeHeroAutoplayTrailerDelaySecs', '2'))}
           preferredSubtitleLanguage={prefString(prefs, 'preferredSubtitleLanguage', 'none')}

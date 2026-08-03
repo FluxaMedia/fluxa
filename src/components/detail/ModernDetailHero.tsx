@@ -28,7 +28,7 @@ export function ModernDetailHero({
 }) {
   const {
     trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerProgress, trailerMuted, activeTrailerSubtitle,
+    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerProgressElRef, trailerMuted, activeTrailerSubtitle,
     handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
   } = trailer;
 
@@ -102,7 +102,7 @@ export function ModernDetailHero({
             {trailerMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
           <div style={MS.heroTrailerProgressTrack}>
-            <span style={{ ...MS.heroTrailerProgressFill, width: `${trailerProgress * 100}%` }} />
+            <span ref={trailerProgressElRef} style={{ ...MS.heroTrailerProgressFill, width: '0%' }} />
           </div>
         </div>
       )}
