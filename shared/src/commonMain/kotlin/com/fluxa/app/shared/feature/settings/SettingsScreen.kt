@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.OndemandVideo
@@ -867,10 +869,10 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
         SettingsToggleRow(AppStrings.t(lang, "auto.disable_animations"), value = !model.animationsEnabled) {
             onAction(SettingsAction.AppearanceChanged(model.copy(animationsEnabled = !it)))
         }
-        SettingsToggleRow(AppStrings.t(lang, "settings.floating_bottom_bar"), description = AppStrings.t(lang, "settings.floating_bottom_bar_desc"), value = model.floatingBottomBar) {
+        SettingsToggleRow(AppStrings.t(lang, "settings.floating_bottom_bar"), value = model.floatingBottomBar) {
             onAction(SettingsAction.AppearanceChanged(model.copy(floatingBottomBar = it)))
         }
-        SettingsToggleRow(AppStrings.t(lang, "settings.bottom_bar_labels"), description = AppStrings.t(lang, "settings.bottom_bar_labels_desc"), value = model.bottomBarLabels) {
+        SettingsToggleRow(AppStrings.t(lang, "settings.bottom_bar_labels"), value = model.bottomBarLabels) {
             onAction(SettingsAction.AppearanceChanged(model.copy(bottomBarLabels = it)))
         }
         SettingsToggleRow(AppStrings.t(lang, "settings.top_navigation_bar"), description = AppStrings.t(lang, "settings.top_navigation_bar_desc"), value = model.topNavigationBar) {
@@ -879,8 +881,16 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
     }
     Spacer(Modifier.height(20.dp))
     SettingsGroupCard {
-        SettingsNavRow(AppStrings.t(lang, "settings.appearance_home_screen")) { onNavigate(SettingsCategory.AppearanceHome) }
-        SettingsNavRow(AppStrings.t(lang, "settings.appearance_detail_screen")) { onNavigate(SettingsCategory.AppearanceDetail) }
+        SettingsNavRow(
+            AppStrings.t(lang, "settings.appearance_home_screen"),
+            icon = Icons.Filled.Home,
+            description = AppStrings.t(lang, "settings.appearance_home_screen_desc")
+        ) { onNavigate(SettingsCategory.AppearanceHome) }
+        SettingsNavRow(
+            AppStrings.t(lang, "settings.appearance_detail_screen"),
+            icon = Icons.Filled.Movie,
+            description = AppStrings.t(lang, "settings.appearance_detail_screen_desc")
+        ) { onNavigate(SettingsCategory.AppearanceDetail) }
     }
 }
 
@@ -1017,7 +1027,6 @@ private fun SettingsAppearanceDetailEpisodesContent(model: SettingsAppearanceDet
     SettingsGroupCard {
         SettingsToggleRow(
             AppStrings.t(lang, "settings.blur_unwatched_episodes"),
-            description = AppStrings.t(lang, "settings.blur_unwatched_episodes_desc"),
             value = model.blurUnwatchedEpisodes
         ) { onAction(SettingsAction.AppearanceDetailChanged(model.copy(blurUnwatchedEpisodes = it))) }
         SettingsChoiceRow(AppStrings.t(lang, "settings.season_selector"), model.detailSeasonSelectorMode, seasonSelectorOptions) {
