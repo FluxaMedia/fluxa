@@ -19,6 +19,7 @@ internal class HomeHeadlessSyncCoordinator(
     private val setWatchlist: (List<Meta>) -> Unit,
     private val setContinueWatching: (List<Meta>) -> Unit,
     private val setExternalContinueWatching: (List<Meta>) -> Unit,
+    private val externalContinueWatching: () -> List<Meta>,
     private val setLiked: (List<Meta>) -> Unit,
     private val refreshDynamicRows: () -> Unit
 ) {
@@ -74,7 +75,9 @@ internal class HomeHeadlessSyncCoordinator(
             val updated = syncResult?.let { mergeSyncedProfile(gson, base = profile, updated = it, current = activeProfile()) }
             if (updated != null) {
                 setActiveProfile(updated)
-                setExternalContinueWatching(decodeList((result.state["home"] as? Map<*, *>)?.get("externalContinueWatching")))
+                val fresh = decodeList((result.state["home"] as? Map<*, *>)?.get("externalContinueWatching"))
+                val freshIds = fresh.map { it.id }.toSet()
+                setExternalContinueWatching(fresh + externalContinueWatching().filterNot { it.id in freshIds })
                 onProfileUpdated(updated)
                 refreshDynamicRows()
                 onSynced?.invoke(updated)

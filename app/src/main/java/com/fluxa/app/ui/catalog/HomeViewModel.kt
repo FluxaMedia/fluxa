@@ -153,6 +153,7 @@ class HomeViewModel @Inject constructor(
             setWatchlist = ::setWatchlistState,
             setContinueWatching = ::setCurrentWatchlistState,
             setExternalContinueWatching = ::setExternalContinueWatchingState,
+            externalContinueWatching = { externalContinueWatching },
             setLiked = ::setLikedItemsState,
             refreshDynamicRows = ::refreshDynamicRows
         )
