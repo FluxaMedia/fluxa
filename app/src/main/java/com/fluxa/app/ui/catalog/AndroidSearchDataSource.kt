@@ -68,7 +68,7 @@ internal fun List<Meta>.toCatalogItems(
     profile: UserProfile?,
     sources: Map<String, CatalogSourceUiModel> = emptyMap()
 ): List<CatalogItemUiModel> {
-    val cardLayout = if (profile?.safePosterLandscapeMode == true) "horizontal" else profile?.safeCardLayout ?: "vertical"
+    val cardLayout = profile?.safeCardLayout ?: "vertical"
     return map { meta ->
         CatalogItemUiModel(
             id = meta.id,

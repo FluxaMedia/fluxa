@@ -2,6 +2,7 @@ package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 
@@ -261,20 +262,22 @@ fun MobilePlayerSettingsSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        modifier = Modifier.width(300.dp),
-        containerColor = FluxaDimensions.PlayerChrome.deckBackground,
+        containerColor = FluxaColors.surfaceRaised,
         contentColor = Color.White
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = AppStrings.t(lang, "nav.settings"),
                 color = Color.White,
-                fontSize = FluxaDimensions.PlayerChrome.sidebarTitleTextSize,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 4.dp)
+                modifier = Modifier.padding(bottom = 6.dp)
             )
             if (supportsTrackSettings) {
                 MobilePlayerSettingsRow(
@@ -289,7 +292,7 @@ fun MobilePlayerSettingsSheet(
                 detail = "${formatSpeedLabel(playbackSpeed)}",
                 onClick = { onSelectSettings(2) }
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

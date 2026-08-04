@@ -50,7 +50,7 @@ class AndroidDiscoverDataSource(
                     id = meta.id,
                     type = meta.type,
                     card = meta.toCatalogCardUiModel(
-                        cardLayout = if (profile?.safePosterLandscapeMode == true) "horizontal" else profile?.safeCardLayout ?: "vertical",
+                        cardLayout = profile?.safeCardLayout ?: "vertical",
                         artworkPreference = null,
                         profile = profile,
                         cardScale = 1f,
