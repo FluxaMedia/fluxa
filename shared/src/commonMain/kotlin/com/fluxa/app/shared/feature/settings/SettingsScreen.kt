@@ -924,6 +924,7 @@ private fun SettingsGeneralContent(model: SettingsGeneralUiModel, lang: String?,
 
 @Composable
 private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit) {
+    SettingsSectionHeader(AppStrings.t(lang, "settings.section_appearance_theme"))
     SettingsGroupCard {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 10.dp)) {
             Text(AppStrings.t(lang, "auto.accent_color"), color = Color.White, modifier = Modifier.weight(1f))
@@ -960,6 +961,10 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
         SettingsToggleRow(AppStrings.t(lang, "settings.liquid_glass"), description = AppStrings.t(lang, "settings.liquid_glass_desc"), value = model.liquidGlassMode) {
             onAction(SettingsAction.AppearanceChanged(model.copy(liquidGlassMode = it)))
         }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.section_appearance_layout"))
+    SettingsGroupCard {
         SettingsToggleRow(AppStrings.t(lang, "auto.disable_animations"), value = !model.animationsEnabled) {
             onAction(SettingsAction.AppearanceChanged(model.copy(animationsEnabled = !it)))
         }
@@ -973,7 +978,8 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
             onAction(SettingsAction.AppearanceChanged(model.copy(topNavigationBar = it)))
         }
     }
-    Spacer(Modifier.height(20.dp))
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.section_appearance_screens"))
     SettingsGroupCard {
         SettingsNavRow(
             AppStrings.t(lang, "settings.appearance_home_screen"),
