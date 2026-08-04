@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import android.content.SharedPreferences
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.local.LibraryUserCollectionFolder
@@ -17,8 +18,12 @@ import com.fluxa.app.shared.feature.library.LibraryFolderSectionUiModel
 import com.fluxa.app.shared.feature.library.LibraryFolderUiModel
 import com.fluxa.app.shared.feature.library.LibraryUiState
 import com.fluxa.app.shared.feature.library.toCatalogCardUiModel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 private data class AndroidLibrarySources(
     val watchlist: List<com.fluxa.app.data.remote.Meta>,
@@ -36,6 +41,18 @@ class AndroidLibraryDataSource(
     private val language: () -> String
 ) : LibraryDataSource {
 
+    private val profileState = MutableStateFlow(activeProfile())
+
+    private fun profileFlow(): Flow<UserProfile?> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> profileState.value = activeProfile() }
+        profileManager.registerOnChangeListener(listener)
+        val forwardingJob = launch { profileState.collect { trySend(it) } }
+        awaitClose {
+            forwardingJob.cancel()
+            profileManager.unregisterOnChangeListener(listener)
+        }
+    }
+
     private val librarySources = combine(
         watchlistStore.observeWatchlist(),
         watchlistStore.observeLiked(),
@@ -47,12 +64,12 @@ class AndroidLibraryDataSource(
     override fun observeLibrary(): Flow<LibraryUiState> = combine(
         librarySources,
         homeViewModel.isLoading,
-        offlineDownloadManager.items
-    ) { sources, isLoading, downloads ->
+        offlineDownloadManager.items,
+        profileFlow()
+    ) { sources, isLoading, downloads, profile ->
         val watchlist = sources.watchlist
         val likedItems = sources.likedItems
         val libraryUiState = sources.remoteLibrary
-        val profile = activeProfile()
         val lang = language()
 
         val (planned, completed) = when (profile?.integrationLibrarySource) {
