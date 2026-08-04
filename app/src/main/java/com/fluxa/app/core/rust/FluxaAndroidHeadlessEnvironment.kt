@@ -142,6 +142,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         context = context,
         repository = repository,
         watchlistManager = watchlistManager,
+        profileManager = profileManager,
         gson = gson
     )
 

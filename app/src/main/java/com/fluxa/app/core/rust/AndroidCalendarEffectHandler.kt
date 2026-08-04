@@ -15,6 +15,7 @@ internal class AndroidCalendarEffectHandler(
     private val context: Context,
     private val repository: StremioRepository,
     private val watchlistManager: WatchlistManager,
+    private val profileManager: ProfileManager,
     private val gson: Gson
 ) {
     suspend fun execute(effect: NativeHeadlessEffect): HeadlessEffectCompletion = when (effect.type) {
@@ -47,8 +48,20 @@ internal class AndroidCalendarEffectHandler(
         val items = effect.payload.list("items").mapNotNull { raw ->
             runCatching { gson.fromJson(gson.toJsonTree(raw), Meta::class.java) }.getOrNull()
         }
-        watchlistManager.replaceExternalContinueWatching(items)
-        return success(effect, mapOf("count" to items.size))
+        val activeSource = profileManager.getLastActiveProfileId()
+            ?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
+            ?.safeContinueWatchingSource
+        val relevant = items.filter { it.externalProviderKeyForSource() == activeSource }
+        watchlistManager.replaceExternalContinueWatching(relevant)
+        return success(effect, mapOf("count" to relevant.size))
+    }
+
+    private fun Meta.externalProviderKeyForSource(): String = when {
+        reason.equals("Trakt.tv", ignoreCase = true) -> "trakt"
+        reason.equals("Simkl", ignoreCase = true) -> "simkl"
+        reason.equals("AniList", ignoreCase = true) -> "anilist"
+        reason.equals("Nuvio", ignoreCase = true) -> "nuvio"
+        else -> "stremio"
     }
 
     private fun updateWidget(effect: NativeHeadlessEffect): HeadlessEffectCompletion {

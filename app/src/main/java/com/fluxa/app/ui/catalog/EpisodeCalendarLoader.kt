@@ -40,12 +40,12 @@ internal class EpisodeCalendarLoader(
         month: Int,
         plannedItems: List<Meta> = emptyList()
     ): EpisodeCalendarLoadResult = withContext(Dispatchers.IO) {
-        profile?.id?.let(watchlistManager::setActiveProfile)
+        val profileId = profile?.id
         val monthPrefix = "%04d-%02d".format(Locale.US, year, month)
         val usesRemoteLibrarySource = !profile?.integrationLibrarySource.isNullOrBlank() && profile?.integrationLibrarySource != "local"
-        val localLibraryItems = if (usesRemoteLibrarySource) emptyList() else runCatching { watchlistManager.getWatchlistSnapshot() }.getOrDefault(emptyList())
-        val localContinueWatching = if (usesRemoteLibrarySource) emptyList() else runCatching { watchlistManager.getContinueWatchingSnapshot() }.getOrDefault(emptyList())
-        val persistedExternalItems = if (usesRemoteLibrarySource) emptyList() else runCatching { watchlistManager.getExternalContinueWatchingSnapshot() }.getOrDefault(emptyList())
+        val localLibraryItems = if (usesRemoteLibrarySource || profileId == null) emptyList() else runCatching { watchlistManager.getWatchlistSnapshotForProfile(profileId) }.getOrDefault(emptyList())
+        val localContinueWatching = if (usesRemoteLibrarySource || profileId == null) emptyList() else runCatching { watchlistManager.getContinueWatchingSnapshotForProfile(profileId) }.getOrDefault(emptyList())
+        val persistedExternalItems = if (usesRemoteLibrarySource || profileId == null) emptyList() else runCatching { watchlistManager.getExternalContinueWatchingSnapshotForProfile(profileId) }.getOrDefault(emptyList())
         val refreshedExternalItems = if (usesRemoteLibrarySource) emptyList() else fetchExternalContinueWatching(profile)
         val localItems = calendarCandidatePlan(listOf(localLibraryItems, localContinueWatching))
         val externalItems = calendarCandidatePlan(listOf(persistedExternalItems, refreshedExternalItems))

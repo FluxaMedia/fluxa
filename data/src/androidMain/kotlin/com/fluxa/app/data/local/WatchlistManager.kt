@@ -69,6 +69,10 @@ class WatchlistManager @Inject constructor(
         return dao.getWatchlistSnapshot(pid()).map { it.toMeta() }
     }
 
+    suspend fun getWatchlistSnapshotForProfile(profileId: String): List<Meta> {
+        return dao.getWatchlistSnapshot(profileId).map { it.toMeta() }
+    }
+
     suspend fun replaceWatchlist(items: List<Meta>) {
         val profileId = pid()
         val itemIds = items.map { it.id }.toSet()
@@ -85,8 +89,16 @@ class WatchlistManager @Inject constructor(
         return dao.getContinueWatchingSnapshot(pid()).map { it.toMeta() }
     }
 
+    suspend fun getContinueWatchingSnapshotForProfile(profileId: String): List<Meta> {
+        return dao.getContinueWatchingSnapshot(profileId).map { it.toMeta() }
+    }
+
     suspend fun getExternalContinueWatchingSnapshot(): List<Meta> {
         return dao.getExternalContinueWatchingSnapshot(pid()).map { it.toMeta() }
+    }
+
+    suspend fun getExternalContinueWatchingSnapshotForProfile(profileId: String): List<Meta> {
+        return dao.getExternalContinueWatchingSnapshot(profileId).map { it.toMeta() }
     }
 
     suspend fun toggleWatchlist(item: Meta) {
@@ -296,19 +308,9 @@ class WatchlistManager @Inject constructor(
 
     suspend fun replaceExternalContinueWatching(providers: Set<String>, items: List<Meta>) {
         val profileId = pid()
-        val existingByKey = dao.getExternalContinueWatchingSnapshot(profileId)
-            .associateBy { it.provider to it.contentId }
-        val kept = items.filter { it.id.isNotBlank() && (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L }
-            .map { item ->
-                if (!item.continueWatchingPoster.isNullOrBlank()) return@map item
-                val existing = existingByKey[item.externalProviderKey() to item.id] ?: return@map item
-                item.copy(
-                    continueWatchingPoster = existing.continueWatchingPoster,
-                    continueWatchingBackground = existing.continueWatchingBackground
-                )
-            }
         providers.forEach { dao.deleteExternalPlaybackProgressByProvider(profileId, it) }
         val now = System.currentTimeMillis()
+        val kept = items.filter { it.id.isNotBlank() && (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L }
         dao.upsertExternalPlaybackProgress(kept.map { it.toExternalPlaybackProgressEntity(profileId, now) })
     }
 
