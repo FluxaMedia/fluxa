@@ -272,7 +272,6 @@ internal fun PlayerLifecycleEffect(
                 if (latestActiveProfile != null) {
                     homeViewModel.refreshInstalledAddons(forceRefresh = true)
                 }
-                homeViewModel.refreshExternalContinueWatching()
             } else if (event == Lifecycle.Event.ON_PAUSE) {
                 previewPlayer.pause()
                 val isPlayerScreen = latestIsPlayerActive

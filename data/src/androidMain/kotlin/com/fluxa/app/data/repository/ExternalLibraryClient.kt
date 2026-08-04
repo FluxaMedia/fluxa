@@ -258,15 +258,22 @@ class ExternalLibraryClient @Inject constructor(
         }
     }
 
+    private val simklEpisodeStillCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     private suspend fun attachSimklEpisodeStill(item: SimklItem, meta: Meta): Meta {
         val simklId = item.effectiveIds?.simkl ?: return meta
         val locator = item.nextEpisodeLocator() ?: return meta
+        val cacheKey = "$simklId:${locator.first}:${locator.second}"
         val still = runCatching {
             traktApi.getSimklTvEpisodes(simklId, BuildConfig.SIMKL_CLIENT_ID)
                 .firstOrNull { it.season == locator.first && it.episode == locator.second }
                 ?.img
-        }.getOrNull() ?: return meta
-        val stillUrl = "https://simkl.in/episodes/${still}_w.webp"
+        }.getOrNull()
+        if (still != null) {
+            simklEpisodeStillCache[cacheKey] = still
+        }
+        val resolvedStill = still ?: simklEpisodeStillCache[cacheKey] ?: return meta
+        val stillUrl = "https://simkl.in/episodes/${resolvedStill}_w.webp"
         return meta.copy(continueWatchingPoster = stillUrl, continueWatchingBackground = stillUrl)
     }
 
