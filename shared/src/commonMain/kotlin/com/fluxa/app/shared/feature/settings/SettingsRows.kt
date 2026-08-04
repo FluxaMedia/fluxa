@@ -121,14 +121,24 @@ fun Modifier.settingsRowDivider(): Modifier = composed {
 
 @Composable
 fun SettingsSectionHeader(title: String) {
-    Text(
-        text = title.uppercase(),
-        color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel),
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        letterSpacing = 0.8.sp,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(start = 4.dp)
-    )
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .background(LocalSettingsAccentColor.current, CircleShape)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = title.uppercase(),
+            color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel),
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            letterSpacing = 0.8.sp,
+        )
+    }
 }
 
 @Composable
@@ -155,7 +165,7 @@ private fun SettingsIconChip(content: @Composable () -> Unit) {
         modifier = Modifier
             .size(40.dp)
             .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.soft))
-            .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
+            .background(LocalSettingsAccentColor.current.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
         contentAlignment = Alignment.Center,
     ) {
         content()
