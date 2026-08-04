@@ -10,6 +10,8 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,14 +25,19 @@ class SimklSyncCoordinator @Inject constructor(
     private val traktApi: TraktApi
 ) {
     private val cache = context.getSharedPreferences("simkl_sync_delta", Context.MODE_PRIVATE)
+    private val mutex = Mutex()
 
     suspend fun snapshot(profile: UserProfile): SimklSyncSnapshot = withContext(Dispatchers.IO) {
-        val token = profile.simklAccessToken?.takeIf(String::isNotBlank) ?: return@withContext SimklSyncSnapshot(emptyMap())
-        if (BuildConfig.SIMKL_CLIENT_ID.isBlank()) return@withContext SimklSyncSnapshot(emptyMap())
+        mutex.withLock { snapshotLocked(profile) }
+    }
+
+    private suspend fun snapshotLocked(profile: UserProfile): SimklSyncSnapshot {
+        val token = profile.simklAccessToken?.takeIf(String::isNotBlank) ?: return SimklSyncSnapshot(emptyMap())
+        if (BuildConfig.SIMKL_CLIENT_ID.isBlank()) return SimklSyncSnapshot(emptyMap())
         val key = "snapshot:${profile.id}"
         val previous = cache.getString(key, null)?.let { gson.fromJson(it, SimklCache::class.java) }
         val activities = runCatching { traktApi.getSimklActivities("Bearer $token", BuildConfig.SIMKL_CLIENT_ID) }.getOrNull()
-            ?: return@withContext SimklSyncSnapshot(previous?.resources.orEmpty())
+            ?: return SimklSyncSnapshot(previous?.resources.orEmpty())
         val definitions = listOf(
             Definition("showsWatching", "shows", "watching"),
             Definition("moviesWatching", "movies", "watching"),
@@ -49,18 +56,20 @@ class SimklSyncCoordinator @Inject constructor(
         val resources = definitions.associate { definition ->
             val entry = plan[definition.key]
             val cached = previous?.resources?.get(definition.key)
-            val next = when (entry?.action) {
-                "unchanged" -> cached
-                "delta" -> {
-                    val changes = traktApi.getSimklAllItems(definition.type, definition.status, "Bearer $token", BuildConfig.SIMKL_CLIENT_ID, dateFrom = entry.dateFrom)
-                    gson.fromJson(FluxaCoreNative.simklMergeDelta(cached, changes), SimklAllItemsResponse::class.java)
+            val next = runCatching {
+                when (entry?.action) {
+                    "unchanged" -> cached
+                    "delta" -> {
+                        val changes = traktApi.getSimklAllItems(definition.type, definition.status, "Bearer $token", BuildConfig.SIMKL_CLIENT_ID, dateFrom = entry.dateFrom)
+                        gson.fromJson(FluxaCoreNative.simklMergeDelta(cached, changes), SimklAllItemsResponse::class.java)
+                    }
+                    else -> traktApi.getSimklAllItems(definition.type, definition.status, "Bearer $token", BuildConfig.SIMKL_CLIENT_ID)
                 }
-                else -> traktApi.getSimklAllItems(definition.type, definition.status, "Bearer $token", BuildConfig.SIMKL_CLIENT_ID)
-            }
-            definition.key to (next ?: SimklAllItemsResponse())
+            }.getOrNull()
+            definition.key to (next ?: cached ?: SimklAllItemsResponse())
         }
         cache.edit().putString(key, gson.toJson(SimklCache(activities, resources))).apply()
-        SimklSyncSnapshot(resources)
+        return SimklSyncSnapshot(resources)
     }
 
     private data class Definition(val key: String, val type: String, val status: String)
