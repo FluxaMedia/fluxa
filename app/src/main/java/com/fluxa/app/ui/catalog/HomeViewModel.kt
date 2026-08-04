@@ -1012,6 +1012,13 @@ class HomeViewModel @Inject constructor(
                 setCategoriesAndCache(filteredCategories)
                 setCurrentWatchlistState(fromStateList(home["continueWatching"], metaListType))
                 setWatchlistState(fromStateList(home["watchlist"], metaListType))
+                val hasExternalProvider = !activeProfile?.traktAccessToken.isNullOrBlank() ||
+                    !activeProfile?.simklAccessToken.isNullOrBlank() ||
+                    !activeProfile?.anilistAccessToken.isNullOrBlank() ||
+                    !activeProfile?.nuvioAccessToken.isNullOrBlank()
+                if (hasExternalProvider) {
+                    setExternalContinueWatchingState(continueWatchingCoordinator.fetchExternal(activeProfile))
+                }
                 refreshDynamicRows()
             } finally {
                 _hasLoadedHome.value = true
