@@ -239,10 +239,22 @@ data class SimklItem(
     val ids: SimklIds? = null,
     val status: String? = null,
     val last_watched_at: String? = null,
-    val seasons: List<SimklSeason>? = null
+    val seasons: List<SimklSeason>? = null,
+    val show: SimklMediaRef? = null,
+    val movie: SimklMediaRef? = null
 ) {
     val lastWatchedAt: String? get() = last_watched_at
+    val effectiveTitle: String? get() = title ?: show?.title ?: movie?.title
+    val effectiveYear: Int? get() = year ?: show?.year ?: movie?.year
+    val effectiveIds: SimklIds? get() = ids ?: show?.ids ?: movie?.ids
 }
+
+@Serializable
+data class SimklMediaRef(
+    val title: String? = null,
+    val year: Int? = null,
+    val ids: SimklIds? = null
+)
 
 @Serializable
 data class SimklIds(

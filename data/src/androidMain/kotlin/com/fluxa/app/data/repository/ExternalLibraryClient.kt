@@ -168,7 +168,7 @@ class ExternalLibraryClient @Inject constructor(
     }
 
     private fun SimklItem.watchedEpisodeTimestamps(): List<Pair<String, Long>> {
-        val seriesId = ids?.imdb ?: ids?.tmdb ?: ids?.slug?.let { "simkl:$it" } ?: ids?.simkl?.let { "simkl:$it" } ?: return emptyList()
+        val seriesId = effectiveIds?.imdb ?: effectiveIds?.tmdb ?: effectiveIds?.slug?.let { "simkl:$it" } ?: effectiveIds?.simkl?.let { "simkl:$it" } ?: return emptyList()
         return seasons.orEmpty().flatMap { season ->
             val seasonNumber = season.number ?: return@flatMap emptyList()
             season.episodes.orEmpty().mapNotNull { episode ->
@@ -256,20 +256,20 @@ class ExternalLibraryClient @Inject constructor(
     }
 
     private fun SimklItem.toLibraryMeta(type: String, source: String): Meta? {
-        val id = ids?.imdb ?: ids?.tmdb ?: ids?.slug?.let { "simkl:$it" } ?: ids?.simkl?.let { "simkl:$it" } ?: return null
+        val id = effectiveIds?.imdb ?: effectiveIds?.tmdb ?: effectiveIds?.slug?.let { "simkl:$it" } ?: effectiveIds?.simkl?.let { "simkl:$it" } ?: return null
         return Meta(
             id = id,
-            name = title ?: unknownName(null),
+            name = effectiveTitle ?: unknownName(null),
             type = type,
             poster = null,
-            releaseInfo = year?.toString(),
-            released = year?.let { "$it-01-01" },
+            releaseInfo = effectiveYear?.toString(),
+            released = effectiveYear?.let { "$it-01-01" },
             reason = source
         )
     }
 
     private fun SimklItem.toContinueMeta(type: String): Meta? {
-        val id = ids?.imdb ?: ids?.tmdb ?: ids?.slug?.let { "simkl:$it" } ?: ids?.simkl?.let { "simkl:$it" } ?: return null
+        val id = effectiveIds?.imdb ?: effectiveIds?.tmdb ?: effectiveIds?.slug?.let { "simkl:$it" } ?: effectiveIds?.simkl?.let { "simkl:$it" } ?: return null
         val latestEpisode = seasons.orEmpty()
             .flatMap { season -> season.episodes.orEmpty().map { season.number to it } }
             .filter { (_, episode) -> !episode.watchedAt.isNullOrBlank() || (episode.number ?: 0) > 0 }
@@ -278,11 +278,11 @@ class ExternalLibraryClient @Inject constructor(
         val totalUnits = (watchedCount + 1).coerceAtLeast(2)
         return Meta(
             id = id,
-            name = title ?: unknownName(null),
+            name = effectiveTitle ?: unknownName(null),
             type = type,
             poster = null,
-            releaseInfo = year?.toString(),
-            released = year?.let { "$it-01-01" },
+            releaseInfo = effectiveYear?.toString(),
+            released = effectiveYear?.let { "$it-01-01" },
             timeOffset = watchedCount * EPISODE_PROGRESS_UNIT_MS,
             duration = totalUnits * EPISODE_PROGRESS_UNIT_MS,
             lastVideoId = latestEpisode?.let { "$id:${it.first ?: 1}:${(it.second.number ?: watchedCount) + 1}" },
