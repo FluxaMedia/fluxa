@@ -147,19 +147,6 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
 }
 
 @Composable
-private fun SettingsIconChip(content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.soft))
-            .background(LocalSettingsAccentColor.current.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
-        contentAlignment = Alignment.Center,
-    ) {
-        content()
-    }
-}
-
-@Composable
 fun SettingsToggleRow(label: String, description: String? = null, value: Boolean, onValueChanged: (Boolean) -> Unit) {
     val haptics = LocalHapticFeedback.current
     val highlighted = LocalSettingsHighlightLabel.current == label
@@ -835,7 +822,6 @@ fun SettingsInfoRow(label: String, value: String) {
 @Composable
 fun SettingsNavRow(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     description: String? = null,
     value: String? = null,
     onClick: () -> Unit
@@ -858,17 +844,6 @@ fun SettingsNavRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            if (icon != null) {
-                SettingsIconChip {
-                    androidx.compose.material3.Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = LocalSettingsAccentColor.current,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(Modifier.width(14.dp))
-            }
             Column {
                 Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 if (description != null) {

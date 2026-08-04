@@ -36,20 +36,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -392,29 +383,27 @@ private fun SettingsHubContent(
             )
         }
         SettingsNavRow(
-            AppStrings.t(lang, "settings.switch_profiles"),
-            icon = Icons.Filled.AccountCircle
+            AppStrings.t(lang, "settings.switch_profiles")
         ) { onSwitchProfiles() }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_preferences"))
     SettingsGroupCard {
-        SettingsNavRow(AppStrings.t(lang, "settings.notifications_title"), icon = Icons.Filled.Notifications) { onNavigate(SettingsCategory.Notifications) }
-        SettingsNavRow(AppStrings.t(lang, "auto.general"), icon = Icons.Filled.Tune) { onNavigate(SettingsCategory.General) }
-        SettingsNavRow(AppStrings.t(lang, "auto.appearance"), icon = Icons.Filled.Palette) { onNavigate(SettingsCategory.Appearance) }
+        SettingsNavRow(AppStrings.t(lang, "settings.notifications_title")) { onNavigate(SettingsCategory.Notifications) }
+        SettingsNavRow(AppStrings.t(lang, "auto.general")) { onNavigate(SettingsCategory.General) }
+        SettingsNavRow(AppStrings.t(lang, "auto.appearance")) { onNavigate(SettingsCategory.Appearance) }
         SettingsNavRow(
             AppStrings.t(lang, "auto.playback"),
-            icon = Icons.Rounded.PlayArrow,
             value = if (state.playback.preferredPlayer == "mpv") "MPV" else "ExoPlayer"
         ) { onNavigate(SettingsCategory.Playback) }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_content"))
     SettingsGroupCard {
-        SettingsNavRow(AppStrings.t(lang, "auto.catalogs"), icon = Icons.AutoMirrored.Filled.LibraryBooks) { onNavigate(SettingsCategory.Content) }
-        SettingsNavRow(AppStrings.t(lang, "auto.add_ons"), icon = Icons.Filled.Extension) { onAction(SettingsAction.ManageAddonsRequested) }
-        SettingsNavRow(AppStrings.t(lang, "settings.plugins.manage"), icon = Icons.Filled.Widgets) { onAction(SettingsAction.ManagePluginsRequested) }
-        SettingsNavRow(AppStrings.t(lang, "auto.downloads"), icon = Icons.Filled.Download) { onNavigate(SettingsCategory.Downloads) }
+        SettingsNavRow(AppStrings.t(lang, "auto.catalogs")) { onNavigate(SettingsCategory.Content) }
+        SettingsNavRow(AppStrings.t(lang, "auto.add_ons")) { onAction(SettingsAction.ManageAddonsRequested) }
+        SettingsNavRow(AppStrings.t(lang, "settings.plugins.manage")) { onAction(SettingsAction.ManagePluginsRequested) }
+        SettingsNavRow(AppStrings.t(lang, "auto.downloads")) { onNavigate(SettingsCategory.Downloads) }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_system"))
@@ -426,7 +415,7 @@ private fun SettingsHubContent(
             onValueChanged = { onAction(SettingsAction.SystemChanged(state.system.copy(automaticUpdates = it))) }
         )
         SettingsActionRow(AppStrings.t(lang, "settings.check_for_updates")) { onAction(SettingsAction.CheckForUpdateRequested) }
-        SettingsNavRow(AppStrings.t(lang, "settings.developer"), icon = Icons.Filled.Code) { onNavigate(SettingsCategory.Developer) }
+        SettingsNavRow(AppStrings.t(lang, "settings.developer")) { onNavigate(SettingsCategory.Developer) }
     }
 
     Text(
