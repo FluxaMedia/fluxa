@@ -184,7 +184,7 @@ fun SettingsScreen(
     CompositionLocalProvider(LocalSettingsAccentColor provides accentColor) {
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
-            Box(modifier = Modifier.padding(horizontal = 14.dp)) {
+            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsTopBarTitle(
                     title = settingsCategoryTitle(category, lang),
                     showBack = category != SettingsCategory.Hub,
@@ -207,7 +207,8 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollStates.getOrPut(animatedCategory) { ScrollState(0) })
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
                     SettingsCategoryContent(animatedCategory, state, lang, brandIcons, onAction, onPushCategory, onSwitchProfilesRequested, navigateAndHighlight)
@@ -428,7 +429,6 @@ private fun SettingsHubContent(
         SettingsNavRow(AppStrings.t(lang, "settings.developer"), icon = Icons.Filled.Code) { onNavigate(SettingsCategory.Developer) }
     }
 
-    Spacer(Modifier.height(12.dp))
     Text(
         state.system.appVersionLabel,
         color = Color.White.copy(alpha = 0.35f),
@@ -522,7 +522,6 @@ private fun SettingsAccountContent(
         ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(integrationLibrarySource = it))) }
     }
     if (model.hasAnySync) {
-        Spacer(Modifier.height(12.dp))
         SettingsGroupCard {
             SettingsActionRow(AppStrings.t(lang, "auto.disconnect"), destructive = true) { confirmingDisconnect = true }
         }
@@ -1347,7 +1346,6 @@ private fun SettingsPlaybackContent(
         SettingsToggleRow(AppStrings.t(lang, "settings.content_warnings_enabled"), value = model.contentWarningsEnabled) { onAction(SettingsAction.PlaybackChanged(model.copy(contentWarningsEnabled = it))) }
     }
 
-    Spacer(Modifier.height(12.dp))
     var confirmingReset by remember { mutableStateOf(false) }
     SettingsGroupCard {
         SettingsActionRow(AppStrings.t(lang, "settings.reset_to_defaults"), destructive = true) {

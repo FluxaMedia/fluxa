@@ -126,7 +126,7 @@ fun SettingsSectionHeader(title: String) {
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         letterSpacing = 0.8.sp,
-        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp, top = 10.dp)
+        modifier = Modifier.padding(start = 4.dp)
     )
 }
 
