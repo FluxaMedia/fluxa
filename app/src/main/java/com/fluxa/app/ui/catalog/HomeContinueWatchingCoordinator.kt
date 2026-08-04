@@ -97,6 +97,13 @@ internal class HomeContinueWatchingCoordinator(
     fun prefetchArtwork(items: List<Meta>) {
         val lang = activeProfile()?.safeLanguage ?: "en"
         val targets = items.filter {
+            val isThirdPartyProvider = it.reason?.let { reason ->
+                reason.equals("Trakt.tv", ignoreCase = true) ||
+                    reason.equals("Simkl", ignoreCase = true) ||
+                    reason.equals("AniList", ignoreCase = true) ||
+                    reason.equals("Nuvio", ignoreCase = true)
+            } == true
+            if (isThirdPartyProvider) return@filter false
             val isSeries = it.type == "series" || it.type == "tv" || it.type == "anime"
             val hasEpisode = isSeries && !it.lastVideoId.isNullOrBlank()
             val hasOnlyTitleArtwork = it.continueWatchingPoster.isNullOrBlank() ||
