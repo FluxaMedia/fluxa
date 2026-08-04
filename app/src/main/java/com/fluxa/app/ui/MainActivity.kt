@@ -356,6 +356,9 @@ class MainActivity : FragmentActivity() {
                                     }
                                 ) { isTraktSyncing = false }
                             }
+                            if (!profile.simklAccessToken.isNullOrBlank() || !profile.anilistAccessToken.isNullOrBlank()) {
+                                homeViewModel.loadLibraryItems(profile)
+                            }
                         }
                     }
 

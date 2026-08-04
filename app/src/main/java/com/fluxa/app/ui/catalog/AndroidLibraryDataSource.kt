@@ -44,7 +44,7 @@ class AndroidLibraryDataSource(
     private val profileState = MutableStateFlow(activeProfile())
 
     private fun profileFlow(): Flow<UserProfile?> = callbackFlow {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> profileState.value = activeProfile() }
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> launch { profileState.value = activeProfile() } }
         profileManager.registerOnChangeListener(listener)
         val forwardingJob = launch { profileState.collect { trySend(it) } }
         awaitClose {
