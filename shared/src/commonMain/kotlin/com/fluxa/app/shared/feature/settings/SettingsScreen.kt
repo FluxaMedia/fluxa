@@ -43,7 +43,6 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -983,12 +982,10 @@ private fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: St
     SettingsGroupCard {
         SettingsNavRow(
             AppStrings.t(lang, "settings.appearance_home_screen"),
-            icon = Icons.Filled.Home,
             description = AppStrings.t(lang, "settings.appearance_home_screen_desc")
         ) { onNavigate(SettingsCategory.AppearanceHome) }
         SettingsNavRow(
             AppStrings.t(lang, "settings.appearance_detail_screen"),
-            icon = Icons.Filled.Movie,
             description = AppStrings.t(lang, "settings.appearance_detail_screen_desc")
         ) { onNavigate(SettingsCategory.AppearanceDetail) }
     }

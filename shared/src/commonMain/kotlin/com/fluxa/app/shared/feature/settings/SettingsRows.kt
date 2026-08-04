@@ -142,7 +142,7 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
                 .clip(shape)
                 .background(FluxaColors.surfaceCard)
                 .border(1.dp, Color.White.copy(alpha = FluxaDimensions.Alpha.hairline), shape)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 6.dp),
             content = content,
         )
     }
@@ -179,7 +179,7 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onValueChanged(!value)
             }
-            .padding(vertical = 7.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -229,7 +229,7 @@ fun SettingsChoiceRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable { showDialog = true }
-            .padding(vertical = 7.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -237,6 +237,7 @@ fun SettingsChoiceRow(
         Text(
             currentLabel,
             color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
+            style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.widthIn(max = 140.dp)
@@ -334,13 +335,13 @@ fun SettingsStepperRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = Color.White, modifier = Modifier.weight(1f))
+        Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             SettingsIconButton(Icons.Filled.Remove) {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onValueChanged((value - step).coerceIn(min, max))
             }
-            Text(formatValue(value), color = Color.White, modifier = Modifier.width(48.dp), fontSize = 14.sp)
+            Text(formatValue(value), color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(48.dp))
             SettingsIconButton(Icons.Filled.Add) {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onValueChanged((value + step).coerceIn(min, max))
@@ -392,8 +393,8 @@ fun SettingsPercentSliderRow(label: String, value: Float, onValueChanged: (Float
     var dragValue by remember(value) { mutableFloatStateOf(value) }
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = Color.White)
-            Text("${dragValue.toInt()}%", color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText))
+            Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            Text("${dragValue.toInt()}%", color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText), style = MaterialTheme.typography.bodySmall)
         }
         Slider(
             value = dragValue,
@@ -424,7 +425,7 @@ fun SettingsColorOpacityRow(
     var dragOpacity by remember(opacity) { mutableFloatStateOf(opacity) }
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = Color.White, modifier = Modifier.weight(1f))
+            Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SETTINGS_COLOR_SWATCHES.forEach { swatch ->
                     var swatchFocused by remember { mutableStateOf(false) }
@@ -571,7 +572,7 @@ fun SettingsActionRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
-            .padding(vertical = 7.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -606,7 +607,7 @@ fun SettingsConnectionRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 7.dp),
+        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -707,8 +708,8 @@ fun SettingsInfoRow(label: String, value: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = Color.White.copy(alpha = FluxaDimensions.Alpha.iconMuted))
-        Text(value, color = Color.White.copy(alpha = 0.85f))
+        Text(label, color = Color.White.copy(alpha = FluxaDimensions.Alpha.iconMuted), style = MaterialTheme.typography.bodyMedium)
+        Text(value, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -733,7 +734,7 @@ fun SettingsNavRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
-            .padding(vertical = if (description != null) 7.dp else 9.dp),
+            .padding(vertical = if (description != null) 6.dp else 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
