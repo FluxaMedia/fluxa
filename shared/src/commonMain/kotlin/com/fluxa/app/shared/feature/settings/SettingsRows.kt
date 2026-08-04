@@ -77,7 +77,7 @@ import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import kotlinx.coroutines.launch
 
-data class SettingsChoiceOption(val value: String, val label: String)
+data class SettingsChoiceOption(val value: String, val label: String, val description: String? = null)
 
 val LocalSettingsHighlightLabel = compositionLocalOf<String?> { null }
 val LocalSettingsAccentColor = compositionLocalOf { FluxaColors.accent }
@@ -249,6 +249,43 @@ fun SettingsChoiceRow(
             },
             onDismiss = { showDialog = false }
         )
+    }
+}
+
+@Composable
+fun SettingsInlineChoiceCards(
+    options: List<SettingsChoiceOption>,
+    selected: String,
+    onSelected: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { option ->
+            val isSelected = option.value == selected
+            val shape = RoundedCornerShape(16.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(shape)
+                    .background(FluxaColors.surfaceCard)
+                    .then(
+                        if (isSelected) Modifier.border(1.dp, Color.White.copy(alpha = FluxaDimensions.Alpha.valueText), shape) else Modifier
+                    )
+                    .clickable { onSelected(option.value) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(option.label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    if (option.description != null) {
+                        Text(option.description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+                    }
+                }
+                if (isSelected) {
+                    Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
     }
 }
 

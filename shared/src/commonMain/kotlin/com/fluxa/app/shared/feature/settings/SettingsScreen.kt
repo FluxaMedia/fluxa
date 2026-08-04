@@ -1423,9 +1423,9 @@ private fun SettingsContentCategoryContent(model: SettingsContentUiModel, lang: 
 @Composable
 private fun SettingsDownloadsContent(model: SettingsDownloadsUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
     val streamSourceModeOptions = listOf(
-        SettingsChoiceOption("manual", AppStrings.t(lang, "settings.stream_source_manual")),
-        SettingsChoiceOption("first", AppStrings.t(lang, "settings.stream_source_first")),
-        SettingsChoiceOption("regex", AppStrings.t(lang, "settings.stream_source_regex"))
+        SettingsChoiceOption("manual", AppStrings.t(lang, "settings.stream_source_manual"), AppStrings.t(lang, "settings.stream_source_manual_desc")),
+        SettingsChoiceOption("first", AppStrings.t(lang, "settings.stream_source_first"), AppStrings.t(lang, "settings.stream_source_first_desc")),
+        SettingsChoiceOption("regex", AppStrings.t(lang, "settings.stream_source_regex"), AppStrings.t(lang, "settings.stream_source_regex_desc"))
     )
     val downloadSubtitleOptions = listOf(
         SettingsChoiceOption("preferred", AppStrings.t(lang, "settings.download_subtitle_preferred")),
@@ -1447,6 +1447,11 @@ private fun SettingsDownloadsContent(model: SettingsDownloadsUiModel, lang: Stri
         }
     }
 
+    SettingsSectionHeader(AppStrings.t(lang, "settings.source_modes"))
+    SettingsInlineChoiceCards(
+        options = streamSourceModeOptions,
+        selected = model.downloadSourceSelectionMode
+    ) { onAction(SettingsAction.DownloadsChanged(model.copy(downloadSourceSelectionMode = it))) }
 }
 
 @Composable
