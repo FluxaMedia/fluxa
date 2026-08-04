@@ -249,7 +249,7 @@ class ExternalLibraryClient @Inject constructor(
             val movies = resources["moviesWatching"]?.movies.orEmpty().mapNotNull { it.toContinueMeta("movie") }
             val shows = resources["showsWatching"]?.shows.orEmpty().mapNotNull { item -> item.toContinueMeta("series")?.let { item to it } }
             val showsWithStills = supervisorScope {
-                shows.map { (item, meta) -> async { attachSimklEpisodeStill(item, meta) } }.awaitAll()
+                shows.map { (item, meta) -> async { attachSimklEpisodeDetails(item, meta) } }.awaitAll()
             }
             movies + showsWithStills
         }.getOrElse {
@@ -258,23 +258,28 @@ class ExternalLibraryClient @Inject constructor(
         }
     }
 
-    private val simklEpisodeStillCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private data class SimklEpisodeCacheEntry(val still: String?, val title: String?)
 
-    private suspend fun attachSimklEpisodeStill(item: SimklItem, meta: Meta): Meta {
+    private val simklEpisodeCache = java.util.concurrent.ConcurrentHashMap<String, SimklEpisodeCacheEntry>()
+
+    private suspend fun attachSimklEpisodeDetails(item: SimklItem, meta: Meta): Meta {
         val simklId = item.effectiveIds?.simkl ?: return meta
         val locator = item.nextEpisodeLocator() ?: return meta
         val cacheKey = "$simklId:${locator.first}:${locator.second}"
-        val still = runCatching {
+        val fetched = runCatching {
             traktApi.getSimklTvEpisodes(simklId, BuildConfig.SIMKL_CLIENT_ID)
                 .firstOrNull { it.season == locator.first && it.episode == locator.second }
-                ?.img
         }.getOrNull()
-        if (still != null) {
-            simklEpisodeStillCache[cacheKey] = still
+        if (fetched != null) {
+            simklEpisodeCache[cacheKey] = SimklEpisodeCacheEntry(fetched.img, fetched.title)
         }
-        val resolvedStill = still ?: simklEpisodeStillCache[cacheKey] ?: return meta
-        val stillUrl = "https://simkl.in/episodes/${resolvedStill}_w.webp"
-        return meta.copy(continueWatchingPoster = stillUrl, continueWatchingBackground = stillUrl)
+        val resolved = fetched?.let { SimklEpisodeCacheEntry(it.img, it.title) } ?: simklEpisodeCache[cacheKey] ?: return meta
+        val stillUrl = resolved.still?.let { "https://simkl.in/episodes/${it}_w.webp" }
+        return meta.copy(
+            continueWatchingPoster = stillUrl ?: meta.continueWatchingPoster,
+            continueWatchingBackground = stillUrl ?: meta.continueWatchingBackground,
+            lastEpisodeName = resolved.title ?: meta.lastEpisodeName
+        )
     }
 
     private fun SimklItem.nextEpisodeLocator(): Pair<Int, Int>? {

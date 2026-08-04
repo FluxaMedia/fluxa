@@ -270,6 +270,7 @@ data class SimklIds(
 data class SimklEpisodeDetail(
     val season: Int? = null,
     val episode: Int? = null,
+    val title: String? = null,
     val img: String? = null
 )
 
