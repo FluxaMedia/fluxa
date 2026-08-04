@@ -32,6 +32,7 @@ object FluxaDimensions {
     object CornerPresets {
         val sharp = 2.dp
         val classic = 8.dp
+        val highlight = 10.dp
         val soft = 12.dp
         val rounded = 18.dp
         val pill = 28.dp
@@ -81,6 +82,14 @@ object FluxaDimensions {
         const val upNextBadge = 0.72f
         const val coverEmoji = 0.82f
         const val coverFallbackText = 0.2f
+        const val secondaryText = 0.5f
+        const val faintText = 0.4f
+        const val trackInactive = 0.14f
+        const val mutedLabel = 0.45f
+        const val valueText = 0.55f
+        const val placeholderText = 0.3f
+        const val borderFaint = 0.15f
+        const val iconMuted = 0.6f
     }
 
     object AnimDuration {

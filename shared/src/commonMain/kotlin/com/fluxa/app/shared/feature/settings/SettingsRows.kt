@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.FluxaDimensions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -84,19 +85,19 @@ private val LocalSettingsGroupRowCounter = compositionLocalOf<IntArray?> { null 
 
 fun Modifier.settingsHighlight(highlighted: Boolean): Modifier = composed {
     if (highlighted) {
-        clip(RoundedCornerShape(10.dp)).background(LocalSettingsAccentColor.current.copy(alpha = 0.16f))
+        clip(RoundedCornerShape(FluxaDimensions.CornerPresets.highlight)).background(LocalSettingsAccentColor.current.copy(alpha = FluxaDimensions.Alpha.mediumBorder))
     } else {
         this
     }
 }
 
-fun Modifier.settingsFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier = composed {
+fun Modifier.settingsFocusRing(shape: Shape = RoundedCornerShape(FluxaDimensions.CornerPresets.highlight)): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
     this
         .clip(shape)
         .onFocusChanged { focused = it.isFocused }
-        .background(if (focused) LocalSettingsAccentColor.current.copy(alpha = 0.16f) else Color.Transparent)
-        .then(if (focused) Modifier.border(1.dp, LocalSettingsAccentColor.current.copy(alpha = 0.5f), shape) else Modifier)
+        .background(if (focused) LocalSettingsAccentColor.current.copy(alpha = FluxaDimensions.Alpha.mediumBorder) else Color.Transparent)
+        .then(if (focused) Modifier.border(1.dp, LocalSettingsAccentColor.current.copy(alpha = FluxaDimensions.Alpha.secondaryText), shape) else Modifier)
 }
 
 fun Modifier.settingsRowDivider(): Modifier = composed {
@@ -108,7 +109,7 @@ fun Modifier.settingsRowDivider(): Modifier = composed {
     } else {
         drawBehind {
             drawLine(
-                color = Color.White.copy(alpha = 0.08f),
+                color = Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder),
                 start = Offset(0f, 0f),
                 end = Offset(size.width, 0f),
                 strokeWidth = 1.dp.toPx()
@@ -121,7 +122,7 @@ fun Modifier.settingsRowDivider(): Modifier = composed {
 fun SettingsSectionHeader(title: String) {
     Text(
         text = title.uppercase(),
-        color = Color.White.copy(alpha = 0.45f),
+        color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel),
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         letterSpacing = 0.8.sp,
@@ -163,7 +164,7 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
         Column(modifier = Modifier.weight(1f)) {
             Text(label, color = Color.White, fontSize = 15.sp)
             if (description != null) {
-                Text(description, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                Text(description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
             }
         }
         Spacer(Modifier.width(12.dp))
@@ -177,7 +178,7 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
                 checkedTrackColor = accentColor,
                 checkedBorderColor = Color.Transparent,
                 uncheckedThumbColor = Color.White.copy(alpha = 0.8f),
-                uncheckedTrackColor = Color.White.copy(alpha = 0.14f),
+                uncheckedTrackColor = Color.White.copy(alpha = FluxaDimensions.Alpha.trackInactive),
                 uncheckedBorderColor = Color.Transparent
             )
         )
@@ -213,7 +214,7 @@ fun SettingsChoiceRow(
         Text(label, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
         Text(
             currentLabel,
-            color = Color.White.copy(alpha = 0.55f),
+            color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.widthIn(max = 140.dp)
@@ -370,7 +371,7 @@ fun SettingsPercentSliderRow(label: String, value: Float, onValueChanged: (Float
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, color = Color.White)
-            Text("${dragValue.toInt()}%", color = Color.White.copy(alpha = 0.55f))
+            Text("${dragValue.toInt()}%", color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText))
         }
         Slider(
             value = dragValue,
@@ -380,7 +381,7 @@ fun SettingsPercentSliderRow(label: String, value: Float, onValueChanged: (Float
             colors = SliderDefaults.colors(
                 thumbColor = LocalSettingsAccentColor.current,
                 activeTrackColor = LocalSettingsAccentColor.current,
-                inactiveTrackColor = Color.White.copy(alpha = 0.14f)
+                inactiveTrackColor = Color.White.copy(alpha = FluxaDimensions.Alpha.trackInactive)
             )
         )
     }
@@ -439,7 +440,7 @@ fun SettingsColorOpacityRow(
             colors = SliderDefaults.colors(
                 thumbColor = LocalSettingsAccentColor.current,
                 activeTrackColor = LocalSettingsAccentColor.current,
-                inactiveTrackColor = Color.White.copy(alpha = 0.14f)
+                inactiveTrackColor = Color.White.copy(alpha = FluxaDimensions.Alpha.trackInactive)
             )
         )
     }
@@ -468,14 +469,15 @@ fun SettingsOrderedToggleRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         var checkboxFocused by remember { mutableStateOf(false) }
+        val checkboxShape = RoundedCornerShape(6.dp)
         Box(
             modifier = Modifier
                 .size(22.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .clip(checkboxShape)
                 .onFocusChanged { checkboxFocused = it.isFocused }
-                .background(if (selected) LocalSettingsAccentColor.current else Color.White.copy(alpha = 0.08f))
+                .background(if (selected) LocalSettingsAccentColor.current else Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder))
                 .then(
-                    if (checkboxFocused) Modifier.border(2.dp, Color.White, RoundedCornerShape(6.dp)) else Modifier
+                    if (checkboxFocused) Modifier.border(2.dp, Color.White, checkboxShape) else Modifier
                 )
                 .clickable(onClick = onToggle),
             contentAlignment = Alignment.Center
@@ -485,7 +487,7 @@ fun SettingsOrderedToggleRow(
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(label, color = Color.White, fontSize = 14.sp)
-            if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
+            if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = FluxaDimensions.Alpha.faintText), fontSize = 11.sp)
         }
         if (selected) {
             Box(
@@ -518,7 +520,7 @@ fun SettingsOrderedToggleRow(
                 Icon(
                     Icons.Filled.DragHandle,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.4f),
+                    tint = Color.White.copy(alpha = FluxaDimensions.Alpha.faintText),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -561,7 +563,7 @@ fun SettingsActionRow(
         if (value != null) {
             Text(
                 value,
-                color = Color.White.copy(alpha = 0.5f),
+                color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText),
                 fontSize = 13.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -592,7 +594,7 @@ fun SettingsConnectionRow(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(11.dp))
-                        .background(Color.White.copy(alpha = 0.08f)),
+                        .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
                     contentAlignment = Alignment.Center
                 ) {
                     icon()
@@ -651,7 +653,7 @@ fun SettingsSecretFieldRow(
         value = text,
         onValueChange = { text = it },
         label = { Text(label) },
-        placeholder = placeholder?.let { { Text(it, color = Color.White.copy(alpha = 0.3f)) } },
+        placeholder = placeholder?.let { { Text(it, color = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText)) } },
         singleLine = true,
         visualTransformation = if (revealed) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {
@@ -662,9 +664,9 @@ fun SettingsSecretFieldRow(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
             focusedBorderColor = LocalSettingsAccentColor.current,
-            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+            unfocusedBorderColor = Color.White.copy(alpha = FluxaDimensions.Alpha.borderFaint),
             focusedLabelColor = LocalSettingsAccentColor.current,
-            unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
+            unfocusedLabelColor = Color.White.copy(alpha = FluxaDimensions.Alpha.faintText),
             cursorColor = LocalSettingsAccentColor.current
         )
     )
@@ -679,7 +681,7 @@ private fun IconButtonToggle(revealed: Boolean, onClick: () -> Unit) {
         Icon(
             imageVector = if (revealed) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.6f),
+            tint = Color.White.copy(alpha = FluxaDimensions.Alpha.iconMuted),
             modifier = Modifier.size(20.dp)
         )
     }
@@ -691,7 +693,7 @@ fun SettingsInfoRow(label: String, value: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = Color.White.copy(alpha = 0.6f))
+        Text(label, color = Color.White.copy(alpha = FluxaDimensions.Alpha.iconMuted))
         Text(value, color = Color.White.copy(alpha = 0.85f))
     }
 }
@@ -734,7 +736,7 @@ fun SettingsNavRow(
             Column {
                 Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 if (description != null) {
-                    Text(description, color = Color.White.copy(alpha = 0.45f), fontSize = 12.5.sp, modifier = Modifier.padding(top = 2.dp))
+                    Text(description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel), fontSize = 12.5.sp, modifier = Modifier.padding(top = 2.dp))
                 }
             }
         }
@@ -742,7 +744,7 @@ fun SettingsNavRow(
             if (value != null) {
                 Text(
                     value,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText),
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -753,7 +755,7 @@ fun SettingsNavRow(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.3f),
+                tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -782,9 +784,9 @@ fun SettingsTextFieldRow(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
             focusedBorderColor = LocalSettingsAccentColor.current,
-            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+            unfocusedBorderColor = Color.White.copy(alpha = FluxaDimensions.Alpha.borderFaint),
             focusedLabelColor = LocalSettingsAccentColor.current,
-            unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
+            unfocusedLabelColor = Color.White.copy(alpha = FluxaDimensions.Alpha.faintText),
             cursorColor = LocalSettingsAccentColor.current
         )
     )
