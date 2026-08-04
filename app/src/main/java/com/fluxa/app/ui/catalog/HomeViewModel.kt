@@ -203,8 +203,8 @@ class HomeViewModel @Inject constructor(
     }
     val libraryUiState: StateFlow<LibraryUiState> get() = libraryCoordinator.state
 
-    fun loadLibraryItems(activeProfile: UserProfile?) {
-        libraryCoordinator.load(activeProfile)
+    fun loadLibraryItems(activeProfile: UserProfile?, force: Boolean = false) {
+        libraryCoordinator.load(activeProfile, force)
     }
 
     suspend fun loadFolderSections(

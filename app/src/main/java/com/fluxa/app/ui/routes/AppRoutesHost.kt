@@ -343,7 +343,7 @@ internal fun AppRoutesHost(
         onSyncProviderRequested = { provider ->
             val profile = activeProfile
             if (profile != null && provider in setOf("simkl", "anilist")) {
-                homeViewModel.loadLibraryData(profile)
+                homeViewModel.loadLibraryItems(profile, force = true)
                 if (provider == "simkl") {
                     val updated = profileManager.updateProfile(profile.id) { it.copy(simklLastSyncAt = System.currentTimeMillis()) }
                     if (updated != null) onActiveProfileChanged(updated)

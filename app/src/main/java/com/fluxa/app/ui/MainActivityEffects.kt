@@ -148,7 +148,7 @@ internal fun OAuthRedirectEffect(
                 ).show()
                 profile?.let {
                     homeViewModel.loadInitialData(it, force = true)
-                    homeViewModel.loadLibraryData(it)
+                    homeViewModel.loadLibraryItems(it)
                 }
             }
         }
@@ -171,7 +171,7 @@ internal fun OAuthRedirectEffect(
                 ).show()
                 profile?.let {
                     homeViewModel.loadInitialData(it, force = true)
-                    homeViewModel.loadLibraryData(it)
+                    homeViewModel.loadLibraryItems(it)
                 }
             }
         }

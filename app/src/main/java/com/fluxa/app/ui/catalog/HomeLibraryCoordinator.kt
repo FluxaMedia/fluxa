@@ -53,10 +53,10 @@ internal class HomeLibraryCoordinator(
     private val _state = MutableStateFlow(LibraryUiState())
     val state: StateFlow<LibraryUiState> = _state.asStateFlow()
 
-    fun load(activeProfile: UserProfile?) {
+    fun load(activeProfile: UserProfile?, force: Boolean = false) {
         val profileKey = activeProfile.libraryProfileKey()
         val current = _state.value
-        if (current.isLoading || current.lastLoadedProfileKey == profileKey) return
+        if (current.isLoading || (!force && current.lastLoadedProfileKey == profileKey)) return
 
         scope.launch {
             setLibraryState(current.copy(isLoading = true, errorMessage = null))
