@@ -245,14 +245,41 @@ class ExternalLibraryClient @Inject constructor(
 
     private suspend fun getSimklContinueWatchingItems(profile: UserProfile): List<Meta> {
         return runCatching {
-            simklSyncCoordinator.snapshot(profile).resources.let { resources ->
-                resources["moviesWatching"]?.movies.orEmpty().mapNotNull { it.toContinueMeta("movie") } +
-                    resources["showsWatching"]?.shows.orEmpty().mapNotNull { it.toContinueMeta("series") }
+            val resources = simklSyncCoordinator.snapshot(profile).resources
+            val movies = resources["moviesWatching"]?.movies.orEmpty().mapNotNull { it.toContinueMeta("movie") }
+            val shows = resources["showsWatching"]?.shows.orEmpty().mapNotNull { item -> item.toContinueMeta("series")?.let { item to it } }
+            val showsWithStills = supervisorScope {
+                shows.map { (item, meta) -> async { attachSimklEpisodeStill(item, meta) } }.awaitAll()
             }
+            movies + showsWithStills
         }.getOrElse {
             Log.w("ExternalLibraryClient", "Failed to load Simkl continue watching items", it)
             emptyList()
         }
+    }
+
+    private suspend fun attachSimklEpisodeStill(item: SimklItem, meta: Meta): Meta {
+        val simklId = item.effectiveIds?.simkl ?: return meta
+        val locator = item.nextEpisodeLocator() ?: return meta
+        val still = runCatching {
+            traktApi.getSimklTvEpisodes(simklId, BuildConfig.SIMKL_CLIENT_ID)
+                .firstOrNull { it.season == locator.first && it.episode == locator.second }
+                ?.img
+        }.getOrNull() ?: return meta
+        val stillUrl = "https://simkl.in/episodes/${still}_w.webp"
+        return meta.copy(continueWatchingPoster = stillUrl, continueWatchingBackground = stillUrl)
+    }
+
+    private fun SimklItem.nextEpisodeLocator(): Pair<Int, Int>? {
+        val latestEpisode = seasons.orEmpty()
+            .flatMap { season -> season.episodes.orEmpty().map { season.number to it } }
+            .filter { (_, episode) -> !episode.watchedAt.isNullOrBlank() || (episode.number ?: 0) > 0 }
+            .maxWithOrNull(compareBy<Pair<Int?, SimklEpisode>>({ it.first ?: 0 }, { it.second.number ?: 0 }))
+            ?: return null
+        val season = latestEpisode.first ?: 1
+        val watchedCount = seasons.orEmpty().sumOf { it.episodes.orEmpty().size }
+        val nextEpisode = (latestEpisode.second.number ?: watchedCount) + 1
+        return season to nextEpisode
     }
 
     private fun SimklItem.simklPosterUrl(): String? = effectivePoster?.let { "https://simkl.in/posters/${it}_m.jpg" }

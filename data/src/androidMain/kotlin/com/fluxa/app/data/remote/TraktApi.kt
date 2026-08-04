@@ -182,6 +182,12 @@ interface TraktApi {
         @Query("date_from") dateFrom: String? = null
     ): SimklAllItemsResponse
 
+    @GET("https://api.simkl.com/tv/episodes/{id}")
+    suspend fun getSimklTvEpisodes(
+        @Path("id") id: Int,
+        @Query("client_id") apiKey: String
+    ): List<SimklEpisodeDetail>
+
     @GET("https://api.simkl.com/sync/activities")
     suspend fun getSimklActivities(
         @Header("Authorization") token: String,

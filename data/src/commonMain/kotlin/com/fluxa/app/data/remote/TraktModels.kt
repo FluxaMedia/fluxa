@@ -267,6 +267,13 @@ data class SimklIds(
 )
 
 @Serializable
+data class SimklEpisodeDetail(
+    val season: Int? = null,
+    val episode: Int? = null,
+    val img: String? = null
+)
+
+@Serializable
 data class SimklSeason(val number: Int? = null, val episodes: List<SimklEpisode>? = null)
 
 @Serializable
