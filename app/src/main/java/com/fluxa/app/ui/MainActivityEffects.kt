@@ -146,7 +146,10 @@ internal fun OAuthRedirectEffect(
                     AppStrings.t(profile?.safeLanguage, if (success) "toast.simkl_connected" else "toast.simkl_connect_failed"),
                     Toast.LENGTH_SHORT
                 ).show()
-                profile?.let { homeViewModel.loadInitialData(it, force = true) }
+                profile?.let {
+                    homeViewModel.loadInitialData(it, force = true)
+                    homeViewModel.loadLibraryData(it)
+                }
             }
         }
     }
@@ -166,7 +169,10 @@ internal fun OAuthRedirectEffect(
                     AppStrings.t(profile?.safeLanguage, if (success) "toast.anilist_connected" else "toast.anilist_connect_failed"),
                     Toast.LENGTH_SHORT
                 ).show()
-                profile?.let { homeViewModel.loadInitialData(it, force = true) }
+                profile?.let {
+                    homeViewModel.loadInitialData(it, force = true)
+                    homeViewModel.loadLibraryData(it)
+                }
             }
         }
     }

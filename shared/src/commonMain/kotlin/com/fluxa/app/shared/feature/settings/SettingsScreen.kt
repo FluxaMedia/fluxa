@@ -596,7 +596,12 @@ private fun SettingsAccountDetailContent(
         SettingsAccountProvider.Simkl -> model.simklLastSyncAt
         SettingsAccountProvider.Stremio, SettingsAccountProvider.Anilist -> 0L
     }
-    val email = if (provider == SettingsAccountProvider.Nuvio) model.nuvioEmail.orEmpty().ifBlank { model.email } else model.email
+    val email = when (provider) {
+        SettingsAccountProvider.Nuvio -> model.nuvioEmail.orEmpty().ifBlank { model.email }
+        SettingsAccountProvider.Simkl -> model.simklUsername.orEmpty().ifBlank { model.email }
+        SettingsAccountProvider.Anilist -> model.anilistUsername.orEmpty().ifBlank { model.email }
+        else -> model.email
+    }
     val providerKey = when (provider) {
         SettingsAccountProvider.Stremio -> "stremio"
         SettingsAccountProvider.Nuvio -> "nuvio"
@@ -703,10 +708,34 @@ private fun SettingsAccountDetailContent(
                 }
             )
             SettingsInfoRow(AppStrings.t(lang, "integration.account_info"), email)
-            SettingsInfoRow(AppStrings.t(lang, "integration.imported_items"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktItemCount else model.addonCount))
-            SettingsInfoRow(AppStrings.t(lang, "integration.continue_watching"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktContinueWatchingCount else model.continueWatchingCount))
-            SettingsInfoRow(AppStrings.t(lang, "integration.library_items"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktLibraryCount else 0))
-            SettingsInfoRow(AppStrings.t(lang, "integration.addons"), AppStrings.format(lang, "integration.item_count", model.addonCount))
+            val importedItems = when (provider) {
+                SettingsAccountProvider.Trakt -> model.traktItemCount
+                SettingsAccountProvider.Simkl -> model.simklItemCount
+                SettingsAccountProvider.Anilist -> model.anilistItemCount
+                else -> model.addonCount
+            }
+            SettingsInfoRow(AppStrings.t(lang, "integration.imported_items"), AppStrings.format(lang, "integration.item_count", importedItems))
+            val continueWatchingItems = when (provider) {
+                SettingsAccountProvider.Trakt -> model.traktContinueWatchingCount
+                SettingsAccountProvider.Simkl -> model.simklContinueWatchingCount
+                SettingsAccountProvider.Anilist -> model.anilistContinueWatchingCount
+                else -> null
+            }
+            if (continueWatchingItems != null) {
+                SettingsInfoRow(AppStrings.t(lang, "integration.continue_watching"), AppStrings.format(lang, "integration.item_count", continueWatchingItems))
+            }
+            val libraryItems = when (provider) {
+                SettingsAccountProvider.Trakt -> model.traktLibraryCount
+                SettingsAccountProvider.Simkl -> model.simklLibraryCount
+                SettingsAccountProvider.Anilist -> model.anilistLibraryCount
+                else -> null
+            }
+            if (libraryItems != null) {
+                SettingsInfoRow(AppStrings.t(lang, "integration.library_items"), AppStrings.format(lang, "integration.item_count", libraryItems))
+            }
+            if (provider == SettingsAccountProvider.Nuvio || provider == SettingsAccountProvider.Stremio) {
+                SettingsInfoRow(AppStrings.t(lang, "integration.addons"), AppStrings.format(lang, "integration.item_count", model.addonCount))
+            }
         }
 
         if (provider == SettingsAccountProvider.Trakt) {

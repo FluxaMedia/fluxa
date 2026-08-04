@@ -58,7 +58,8 @@ class AndroidSettingsDataSource(
         homeViewModel.loadedCs3CatalogFeedOptions,
         LastMediaDebugInfoStore.state,
         homeViewModel.syncingProviders,
-        homeViewModel.connectErrors
+        homeViewModel.connectErrors,
+        homeViewModel.libraryUiState
     ) { values ->
         val profile = values[0] as UserProfile?
         @Suppress("UNCHECKED_CAST") val addons = values[1] as List<AddonDescriptor>
@@ -66,10 +67,11 @@ class AndroidSettingsDataSource(
         val debugInfo = values[3] as com.fluxa.app.player.LastMediaDebugInfo
         @Suppress("UNCHECKED_CAST") val syncingProviders = values[4] as Set<String>
         @Suppress("UNCHECKED_CAST") val connectErrors = values[5] as Map<String, String>
+        val libraryUiState = values[6] as LibraryUiState
         if (profile == null) {
             SettingsUiState(isLoading = true)
         } else {
-            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo, syncingProviders, connectErrors)
+            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo, syncingProviders, connectErrors, libraryUiState)
         }
     }
 
@@ -92,7 +94,8 @@ class AndroidSettingsDataSource(
         metadataOptions: List<MetadataFeedOption>,
         debugInfo: com.fluxa.app.player.LastMediaDebugInfo,
         syncingProviders: Set<String> = emptySet(),
-        connectErrors: Map<String, String> = emptyMap()
+        connectErrors: Map<String, String> = emptyMap(),
+        libraryUiState: LibraryUiState = LibraryUiState()
     ): SettingsUiState {
         val heroOptions = orderedMetadataFeeds(metadataOptions, profile.heroFeedOrder)
         val heroSelection = effectiveHomeMetadataFeedSelection(profile.heroFeedToggles, heroOptions.map { it.key })
@@ -163,6 +166,12 @@ class AndroidSettingsDataSource(
                 traktContinueWatchingCount = profile.safeTraktLastContinueWatchingCount,
                 continueWatchingCount = homeViewModel.currentContinueWatchingCount.value,
                 traktLibraryCount = profile.safeTraktLastWatchlistCount,
+                simklItemCount = libraryUiState.simklPlanned.size,
+                simklContinueWatchingCount = libraryUiState.simklWatching.size,
+                simklLibraryCount = libraryUiState.simklCompleted.size,
+                anilistItemCount = libraryUiState.anilistPlanned.size,
+                anilistContinueWatchingCount = libraryUiState.anilistWatching.size,
+                anilistLibraryCount = libraryUiState.anilistCompleted.size,
                 addonCount = profile.safeLocalAddons.size,
                 tmdbApiKey = profile.tmdbApiKey,
                 mdblistApiKey = profile.mdblistApiKey,
