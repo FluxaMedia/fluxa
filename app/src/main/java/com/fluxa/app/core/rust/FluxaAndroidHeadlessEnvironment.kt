@@ -211,9 +211,11 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         val payload = effect.payload
         val id = payload.string("id")
 
+        val isLookup = effect.type == "fetchMetaDetailLookup"
+
         if (id.startsWith("cs3:")) {
             val csDetail = loadCsNativeMetaDetail(id)
-            if (csDetail != null) return ok(effect, csDetail)
+            if (csDetail != null) return ok(effect, if (isLookup) csDetail else mapOf("meta" to csDetail))
         }
 
         val profile = payload.profile()
@@ -238,7 +240,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         } else {
             detail
         }
-        return ok(effect, enriched)
+        return ok(effect, if (isLookup) enriched else mapOf("meta" to enriched))
     }
 
     private suspend fun readPlaybackProgress(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
