@@ -242,6 +242,7 @@ private fun SettingsCategoryContent(
             onContinueWatchingSourceChanged = { onAction(SettingsAction.AppearanceHomeChanged(state.appearanceHome.copy(continueWatchingSource = it))) }
         )
         SettingsCategory.TmdbFeatures -> SettingsTmdbFeaturesContent(state.account, lang, onAction)
+        SettingsCategory.MdblistApi -> SettingsMdblistApiContent(state.account, lang, onAction)
         SettingsCategory.Notifications -> SettingsNotificationsContent(state.notifications, lang, onAction)
         SettingsCategory.General -> SettingsGeneralContent(state.general, lang, onAction)
         SettingsCategory.Appearance -> SettingsAppearanceContent(state.appearance, lang, onAction, onNavigate = onNavigate)
@@ -536,45 +537,31 @@ private fun SettingsAccountContent(
         )
     }
 
-    SettingsSectionHeader(AppStrings.t(lang, "settings.tmdb_api"))
+    SettingsSectionHeader(AppStrings.t(lang, "settings.apis"))
     val tmdbConfigured = !model.tmdbApiKey.isNullOrBlank()
+    val mdblistConfigured = !model.mdblistApiKey.isNullOrBlank()
     SettingsGroupCard {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(AppStrings.t(lang, "brand.tmdb"), color = Color.White)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (tmdbConfigured) {
-                    Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = FluxaColors.successGreen, modifier = Modifier.size(14.dp))
-                }
-                Text(
-                    AppStrings.t(lang, if (tmdbConfigured) "settings.tmdb_api_configured" else "settings.tmdb_api_not_configured"),
-                    color = if (tmdbConfigured) FluxaColors.successGreen else Color.White.copy(alpha = 0.5f),
-                    fontSize = 12.sp
-                )
-            }
-        }
-        SettingsSecretFieldRow(
-            AppStrings.t(lang, "settings.tmdb_api_key"),
-            model.tmdbApiKey.orEmpty(),
-            placeholder = AppStrings.t(lang, "settings.tmdb_api_key_placeholder")
-        ) {
-            onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbApiKey = it)))
-        }
-        if (tmdbConfigured) {
-            SettingsNavRow(AppStrings.t(lang, "settings.apis")) { onNavigate(SettingsCategory.TmdbFeatures) }
-        }
+        SettingsNavRow(
+            AppStrings.t(lang, "brand.tmdb"),
+            value = AppStrings.t(lang, if (tmdbConfigured) "settings.tmdb_api_configured" else "settings.tmdb_api_not_configured")
+        ) { onNavigate(SettingsCategory.TmdbFeatures) }
+        SettingsNavRow(
+            AppStrings.t(lang, "settings.mdblist_api"),
+            value = AppStrings.t(lang, if (mdblistConfigured) "settings.tmdb_api_configured" else "settings.tmdb_api_not_configured")
+        ) { onNavigate(SettingsCategory.MdblistApi) }
     }
+}
 
+@Composable
+private fun SettingsMdblistApiContent(model: SettingsAccountUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
     SettingsSectionHeader(AppStrings.t(lang, "settings.mdblist_api"))
-    SettingsGroupCard {
-        SettingsSecretFieldRow(
-            AppStrings.t(lang, "settings.mdblist_api_key"),
-            model.mdblistApiKey.orEmpty(),
-            placeholder = AppStrings.t(lang, "settings.mdblist_api_key_placeholder")
-        ) {
-            onAction(SettingsAction.TmdbAccountChanged(model.copy(mdblistApiKey = it)))
-        }
+    SettingsInlineSecretField(
+        AppStrings.t(lang, "settings.mdblist_api_key"),
+        model.mdblistApiKey.orEmpty(),
+        placeholder = AppStrings.t(lang, "settings.mdblist_api_key_placeholder")
+    ) {
+        onAction(SettingsAction.TmdbAccountChanged(model.copy(mdblistApiKey = it)))
     }
-
 }
 
 internal enum class SettingsAccountProvider { Stremio, Nuvio, Trakt, Simkl, Anilist }
@@ -842,6 +829,16 @@ private fun SettingsTmdbFeaturesContent(model: SettingsAccountUiModel, lang: Str
         model.tmdbRecommendationsEnabled && model.tmdbCollectionInfoEnabled && model.tmdbEpisodeImagesEnabled &&
         model.tmdbLogosBackdropsEnabled && model.tmdbRatingsEnabled && model.tmdbBasicInfoEnabled &&
         model.tmdbDetailsEnabled && model.tmdbProductionsEnabled && model.tmdbNetworksEnabled
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.tmdb_api"))
+    SettingsInlineSecretField(
+        AppStrings.t(lang, "settings.tmdb_api_key"),
+        model.tmdbApiKey.orEmpty(),
+        placeholder = AppStrings.t(lang, "settings.tmdb_api_key_placeholder")
+    ) {
+        onAction(SettingsAction.TmdbAccountChanged(model.copy(tmdbApiKey = it)))
+    }
+
     SettingsGroupCard {
         SettingsToggleRow(AppStrings.t(lang, "settings.tmdb_enable_all"), value = allEnabled) {
             onAction(

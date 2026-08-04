@@ -701,17 +701,21 @@ fun SettingsConnectionRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = label.take(1).uppercase(),
-                    color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold
-                )
+                if (icon != null) {
+                    icon()
+                } else {
+                    Text(
+                        text = label.take(1).uppercase(),
+                        color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
             Spacer(Modifier.width(14.dp))
             Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
@@ -736,6 +740,44 @@ fun SettingsConnectionRow(
             )
         }
     }
+}
+
+@Composable
+fun SettingsInlineSecretField(
+    label: String,
+    value: String,
+    placeholder: String? = null,
+    onValueChanged: (String) -> Unit
+) {
+    var revealed by remember { mutableStateOf(false) }
+    var text by remember(value) { mutableStateOf(value) }
+    LaunchedEffect(text) {
+        if (text != value) {
+            kotlinx.coroutines.delay(500)
+            onValueChanged(text)
+        }
+    }
+    androidx.compose.material3.OutlinedTextField(
+        value = text,
+        onValueChange = { text = it },
+        label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it, color = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText)) } },
+        singleLine = true,
+        visualTransformation = if (revealed) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            IconButtonToggle(revealed) { revealed = !revealed }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            focusedBorderColor = LocalSettingsAccentColor.current,
+            unfocusedBorderColor = Color.White.copy(alpha = FluxaDimensions.Alpha.borderFaint),
+            focusedLabelColor = LocalSettingsAccentColor.current,
+            unfocusedLabelColor = Color.White.copy(alpha = FluxaDimensions.Alpha.faintText),
+            cursorColor = LocalSettingsAccentColor.current
+        )
+    )
 }
 
 @Composable

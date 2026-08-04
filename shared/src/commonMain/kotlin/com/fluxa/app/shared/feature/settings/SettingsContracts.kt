@@ -3,7 +3,7 @@ package com.fluxa.app.shared.feature.settings
 import kotlinx.coroutines.flow.Flow
 
 enum class SettingsCategory {
-    Hub, Account, TmdbFeatures, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
+    Hub, Account, TmdbFeatures, MdblistApi, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
     Playback, Subtitles, Advanced, Content, Downloads, Developer,
     AccountStremio, AccountNuvio, AccountTrakt, AccountSimkl, AccountAnilist
 }

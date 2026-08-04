@@ -52,7 +52,8 @@ internal fun SettingsTvRailRow(label: String, selected: Boolean, onClick: () -> 
 internal fun settingsCategoryTitle(category: SettingsCategory, lang: String?): String = when (category) {
     SettingsCategory.Hub -> AppStrings.t(lang, "nav.settings")
     SettingsCategory.Account -> AppStrings.t(lang, "auto.account")
-    SettingsCategory.TmdbFeatures -> AppStrings.t(lang, "settings.apis")
+    SettingsCategory.TmdbFeatures -> AppStrings.t(lang, "brand.tmdb")
+    SettingsCategory.MdblistApi -> AppStrings.t(lang, "settings.mdblist_api")
     SettingsCategory.Notifications -> AppStrings.t(lang, "settings.notifications_title")
     SettingsCategory.General -> AppStrings.t(lang, "auto.general")
     SettingsCategory.Appearance -> AppStrings.t(lang, "auto.appearance")
