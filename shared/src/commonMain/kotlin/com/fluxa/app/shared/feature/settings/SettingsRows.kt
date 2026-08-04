@@ -109,7 +109,7 @@ fun Modifier.settingsRowDivider(): Modifier = composed {
     } else {
         drawBehind {
             drawLine(
-                color = Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder),
+                color = Color.White.copy(alpha = FluxaDimensions.Alpha.hairline),
                 start = Offset(0f, 0f),
                 end = Offset(size.width, 0f),
                 strokeWidth = 1.dp.toPx()
@@ -126,7 +126,7 @@ fun SettingsSectionHeader(title: String) {
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         letterSpacing = 0.8.sp,
-        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp, top = 26.dp)
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp, top = 16.dp)
     )
 }
 
@@ -141,8 +141,8 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
                 .fillMaxWidth()
                 .clip(shape)
                 .background(FluxaColors.surfaceCard)
-                .border(1.dp, Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder), shape)
-                .padding(horizontal = 16.dp),
+                .border(1.dp, Color.White.copy(alpha = FluxaDimensions.Alpha.hairline), shape)
+                .padding(horizontal = 8.dp),
             content = content,
         )
     }
@@ -152,7 +152,7 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
 private fun SettingsIconChip(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(34.dp)
             .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.soft))
             .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
         contentAlignment = Alignment.Center,
@@ -179,12 +179,12 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onValueChanged(!value)
             }
-            .padding(vertical = 13.dp),
+            .padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge)
+            Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
             if (description != null) {
                 Text(description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
             }
@@ -229,11 +229,11 @@ fun SettingsChoiceRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable { showDialog = true }
-            .padding(vertical = 13.dp),
+            .padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Text(
             currentLabel,
             color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
@@ -571,7 +571,7 @@ fun SettingsActionRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
-            .padding(vertical = 13.dp),
+            .padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -580,7 +580,7 @@ fun SettingsActionRow(
                 Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) { icon() }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, style = MaterialTheme.typography.bodyLarge)
+            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, style = MaterialTheme.typography.bodyMedium)
         }
         if (value != null) {
             Text(
@@ -606,7 +606,7 @@ fun SettingsConnectionRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 13.dp),
+        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -615,7 +615,7 @@ fun SettingsConnectionRow(
                 SettingsIconChip(content = icon)
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge)
+            Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
         }
         if (connected && hasSyncFailure) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -733,7 +733,7 @@ fun SettingsNavRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
-            .padding(vertical = if (description != null) 12.dp else 14.dp),
+            .padding(vertical = if (description != null) 7.dp else 9.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -744,13 +744,13 @@ fun SettingsNavRow(
                         imageVector = icon,
                         contentDescription = null,
                         tint = LocalSettingsAccentColor.current,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(12.dp))
             }
             Column {
-                Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 if (description != null) {
                     Text(description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
                 }

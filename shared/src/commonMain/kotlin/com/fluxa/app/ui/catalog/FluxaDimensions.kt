@@ -75,6 +75,7 @@ object FluxaDimensions {
         const val emptyCardBackground = 0.05f
         const val cardSubtitle = 0.58f
         const val progressBarTrack = 0.38f
+        const val hairline = 0.05f
         const val subtleBorder = 0.08f
         const val mediumBorder = 0.16f
         const val dimText = 0.48f
