@@ -699,18 +699,20 @@ fun SettingsConnectionRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.classic))
-                    .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (icon != null) {
-                    Box(modifier = Modifier.scale(0.6f)) {
+            if (icon != null) {
+                Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.scale(28f / 34f)) {
                         icon()
                     }
-                } else {
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.classic))
+                        .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         text = label.take(1).uppercase(),
                         color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText),
