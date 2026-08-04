@@ -2,6 +2,8 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.shared.feature.player.MobilePlayerControlsCallbacks
+import com.fluxa.app.shared.feature.player.MobilePlayerControlsUiModel
 import com.fluxa.app.shared.feature.player.MobilePlayerUIContent
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
 import com.fluxa.app.shared.feature.player.TvPlayerUIContent
@@ -64,19 +66,13 @@ internal fun PlayerUIContent(
     }
 
     if (deviceType == DeviceType.Mobile) {
-        MobilePlayerUIContent(
-            title = content.title,
-            content = content,
-            lang = lang,
+        val mobileControls = MobilePlayerControlsUiModel(
             duration = duration,
             position = position,
             bufferedFraction = bufferedFraction,
-            chapters = chapters,
             isPlaying = isPlaying,
             isBuffering = isBuffering,
             hasStartedPlaying = hasStartedPlaying,
-            onPlayPause = onPlayPause,
-            onSeek = onSeek,
             playbackSpeed = playbackSpeed,
             subtitlesEnabled = subtitlesEnabled,
             supportsTrackSettings = supportsTrackSettings,
@@ -89,7 +85,11 @@ internal fun PlayerUIContent(
             hasNextEpisode = hasNextEpisode,
             showSourcesButton = showSourcesButton,
             showEpisodesButton = showEpisodesButton,
-            introDbMarkingEnabled = introDbMarkingEnabled,
+            introDbMarkingEnabled = introDbMarkingEnabled
+        )
+        val mobileCallbacks = MobilePlayerControlsCallbacks(
+            onPlayPause = onPlayPause,
+            onSeek = onSeek,
             onPlayPrevious = onPlayPrevious,
             onPlayNext = onPlayNext,
             onCast = onCast,
@@ -97,7 +97,15 @@ internal fun PlayerUIContent(
             onPictureInPicture = onPictureInPicture,
             onToggleAspect = onToggleAspect,
             onShowSettings = onShowSettings,
-            onClose = onClose,
+            onClose = onClose
+        )
+        MobilePlayerUIContent(
+            title = content.title,
+            content = content,
+            lang = lang,
+            controls = mobileControls,
+            callbacks = mobileCallbacks,
+            chapters = chapters,
             isScrubbing = isScrubbing,
             scrubPosition = scrubPosition,
             onScrubbingChange = onScrubbingChange,

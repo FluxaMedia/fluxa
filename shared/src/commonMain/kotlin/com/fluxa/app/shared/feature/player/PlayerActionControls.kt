@@ -10,6 +10,7 @@ import com.fluxa.app.ui.catalog.FluxaIcons
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,6 +25,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +50,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
@@ -83,13 +87,26 @@ fun PlayerFlatIconButton(
     contentDescription: String? = null,
     enabled: Boolean = true,
     size: Dp = FluxaDimensions.PlayerChrome.iconSize,
-    touchSize: Dp = 44.dp
+    touchSize: Dp = 44.dp,
+    pressScale: Boolean = false
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressScale && pressed) 0.86f else 1f,
+        animationSpec = tween(FluxaDimensions.AnimDuration.blink),
+        label = "iconPressScale"
+    )
     Box(
         modifier = modifier
             .size(touchSize)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(CircleShape)
-            .clickable(enabled = enabled) { onClick() },
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled
+            ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -191,7 +208,7 @@ fun MobileBottomAction(
             Text(
                 text = label,
                 color = Color.White,
-                fontSize = 13.sp,
+                fontSize = FluxaDimensions.PlayerChrome.actionLabelTextSize,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Start,
                 maxLines = 1,

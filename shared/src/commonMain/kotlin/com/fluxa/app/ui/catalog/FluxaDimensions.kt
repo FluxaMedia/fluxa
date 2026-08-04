@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -111,7 +112,8 @@ object FluxaDimensions {
         val bottomScrimHeight = 230.dp
         const val topScrimAlpha = 0.72f
         const val bottomScrimAlpha = 0.86f
-        val seekTrackHeight = 4.dp
+        val seekTrackHeight = 5.dp
+        val seekTrackHeightDragging = 7.dp
 
         val edgeMargin = 20.dp
         val iconSize = 22.dp
@@ -120,6 +122,20 @@ object FluxaDimensions {
         const val textAlphaPrimary = 1.0f
         const val textAlphaSecondary = 0.7f
         const val textAlphaDisabled = 0.35f
+
+        val deckCornerRadius = 22.dp
+        val deckPadding = 14.dp
+        val deckActionRowSpacing = 22.dp
+        val deckBackground = Color(0xE6101418)
+        val deckDivider = Color.White.copy(alpha = 0.08f)
+
+        val titleTextSize = 15.sp
+        val metaTextSize = 12.sp
+        val timeTextSize = 13.sp
+        val actionLabelTextSize = 11.sp
+        val sidebarTitleTextSize = 15.sp
+        val sidebarRowTextSize = 14.sp
+        val sidebarRowSubtitleTextSize = 11.sp
     }
 
     val mobileFocusBorderStroke = 2.dp

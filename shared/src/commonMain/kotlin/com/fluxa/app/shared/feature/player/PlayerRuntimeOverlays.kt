@@ -127,7 +127,7 @@ private fun PlayerToastPill(icon: androidx.compose.ui.graphics.vector.ImageVecto
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(FluxaDimensions.PlayerChrome.pillCornerRadius))
-            .background(Color.Black.copy(alpha = 0.74f))
+            .background(if (deviceType == DeviceType.Mobile) FluxaDimensions.PlayerChrome.deckBackground else Color.Black.copy(alpha = 0.74f))
             .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(FluxaDimensions.PlayerChrome.pillCornerRadius))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

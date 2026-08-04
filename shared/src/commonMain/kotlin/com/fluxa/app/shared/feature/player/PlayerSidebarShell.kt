@@ -2,6 +2,7 @@ package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.StreamSourceUiModel
@@ -125,10 +126,11 @@ fun PlayerSidebarShell(
                 ) { requestClose() }
         )
 
+        val deckRadius = FluxaDimensions.PlayerChrome.deckCornerRadius
         val panelShape = when {
-            isDrawer -> RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
+            isDrawer -> RoundedCornerShape(topEnd = deckRadius, bottomEnd = deckRadius)
             isCard -> RoundedCornerShape(24.dp)
-            else -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+            else -> RoundedCornerShape(topStart = deckRadius, topEnd = deckRadius, bottomStart = 0.dp, bottomEnd = 0.dp)
         }
         val panelSizeModifier = when {
             isDrawer -> Modifier
@@ -174,7 +176,7 @@ fun PlayerSidebarShell(
                         (1f - progress) * size.height + dragOffsetPx
                     }
                 }
-                .background(Color(0xE6101418), shape = panelShape)
+                .background(FluxaDimensions.PlayerChrome.deckBackground, shape = panelShape)
                 .clip(panelShape)
                 .then(if (!isCard) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier)
                 .then(if (isDrawer) Modifier.pointerInput(onClose) {
@@ -246,7 +248,7 @@ fun PlayerSidebarShell(
                     Text(
                         text = title,
                         color = Color.White,
-                        fontSize = if (deviceType == DeviceType.TV) 16.sp else 15.sp,
+                        fontSize = if (deviceType == DeviceType.TV) 16.sp else FluxaDimensions.PlayerChrome.sidebarTitleTextSize,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -304,7 +306,7 @@ fun TrackItem(
                 text = title,
                 color = Color.White.copy(alpha = contentAlpha),
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                fontSize = if (resolvedDeviceType == DeviceType.TV) 15.sp else 14.sp,
+                fontSize = if (resolvedDeviceType == DeviceType.TV) 15.sp else FluxaDimensions.PlayerChrome.sidebarRowTextSize,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -317,7 +319,7 @@ fun TrackItem(
                         Text(
                             text = secondaryLine,
                             color = Color.White.copy(alpha = 0.5f),
-                            fontSize = 11.sp,
+                            fontSize = FluxaDimensions.PlayerChrome.sidebarRowSubtitleTextSize,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

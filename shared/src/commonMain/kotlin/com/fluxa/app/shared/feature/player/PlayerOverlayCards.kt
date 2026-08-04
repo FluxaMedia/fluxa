@@ -147,15 +147,16 @@ private fun NextEpisodeSkipCard(
     LaunchedEffect(deviceType) {
         if (deviceType == DeviceType.TV) focusRequester.requestFocus()
     }
+    val mobileCardRadius = FluxaDimensions.CornerPresets.rounded
     Row(
         modifier = Modifier
             .width(cardWidth)
-            .clip(RoundedCornerShape(if (deviceType == DeviceType.Mobile) 12.dp else 14.dp))
-            .background(Color.Black.copy(alpha = 0.82f))
+            .clip(RoundedCornerShape(if (deviceType == DeviceType.Mobile) mobileCardRadius else 14.dp))
+            .background(if (deviceType == DeviceType.Mobile) FluxaDimensions.PlayerChrome.deckBackground else Color.Black.copy(alpha = 0.82f))
             .border(
                 1.dp,
                 if (deviceType == DeviceType.TV && isFocused) FluxaColors.accent else Color.White.copy(alpha = 0.16f),
-                RoundedCornerShape(if (deviceType == DeviceType.Mobile) 12.dp else 14.dp)
+                RoundedCornerShape(if (deviceType == DeviceType.Mobile) mobileCardRadius else 14.dp)
             )
             .focusRequester(focusRequester)
             .onFocusChanged { isFocused = it.isFocused }

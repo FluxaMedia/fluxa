@@ -2,6 +2,7 @@ package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -261,7 +262,7 @@ fun MobilePlayerSettingsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         modifier = Modifier.width(300.dp),
-        containerColor = Color(0xFF101418),
+        containerColor = FluxaDimensions.PlayerChrome.deckBackground,
         contentColor = Color.White
     ) {
         Column(
@@ -271,7 +272,7 @@ fun MobilePlayerSettingsSheet(
             Text(
                 text = AppStrings.t(lang, "nav.settings"),
                 color = Color.White,
-                fontSize = 18.sp,
+                fontSize = FluxaDimensions.PlayerChrome.sidebarTitleTextSize,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
@@ -303,7 +304,7 @@ private fun MobilePlayerSettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.rounded))
             .background(Color.White.copy(alpha = 0.06f))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 16.dp),
@@ -311,7 +312,7 @@ private fun MobilePlayerSettingsRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
-        Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        Text(title, color = Color.White, fontSize = FluxaDimensions.PlayerChrome.sidebarRowTextSize, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         detail?.let { Text(it, color = Color.White.copy(alpha = 0.65f), fontSize = 14.sp) }
         Icon(FluxaIcons.ChevronRight, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
     }
@@ -361,7 +362,7 @@ private fun SpeedPopup(playbackSpeed: Float, lang: String, onSpeedChange: (Float
                     scaleX = 0.92f + 0.08f * progress
                     scaleY = 0.92f + 0.08f * progress
                 }
-                .background(Color(0xE6101418), RoundedCornerShape(18.dp))
+                .background(FluxaDimensions.PlayerChrome.deckBackground, RoundedCornerShape(18.dp))
                 .clip(RoundedCornerShape(18.dp))
                 .padding(6.dp)
         ) {

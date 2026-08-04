@@ -332,7 +332,10 @@ fun MobilePlayerSeekbar(
         }
 
         val thumbSize by animateDpAsState(targetValue = if (isDragging) 18.dp else 12.dp, label = "seekThumbSize")
-        val trackThickness by animateDpAsState(targetValue = if (isDragging) 6.dp else 4.dp, label = "seekTrackThickness")
+        val trackThickness by animateDpAsState(
+            targetValue = if (isDragging) FluxaDimensions.PlayerChrome.seekTrackHeightDragging else FluxaDimensions.PlayerChrome.seekTrackHeight,
+            label = "seekTrackThickness"
+        )
 
         Slider(
             value = sliderPosition,
@@ -442,42 +445,17 @@ fun MobilePlayerUIContent(
     title: String,
     content: PlayerContentUiModel,
     lang: String,
-    duration: Long,
-    position: Long,
-    bufferedFraction: Float,
+    controls: MobilePlayerControlsUiModel,
+    callbacks: MobilePlayerControlsCallbacks,
     chapters: List<Chapter> = emptyList(),
-    isPlaying: Boolean,
-    isBuffering: Boolean,
-    hasStartedPlaying: Boolean,
-    onPlayPause: () -> Unit,
-    onSeek: (Long) -> Unit,
-    playbackSpeed: Float,
-    subtitlesEnabled: Boolean,
-    supportsTrackSettings: Boolean,
-    technicalInfo: String?,
-    episodeMetaLine: String?,
-    streamDetailLine: String?,
-    seekForwardMs: Long,
-    seekBackwardMs: Long,
-    hasPreviousEpisode: Boolean,
-    hasNextEpisode: Boolean,
-    showSourcesButton: Boolean,
-    showEpisodesButton: Boolean,
-    introDbMarkingEnabled: Boolean = false,
-    onPlayPrevious: () -> Unit,
-    onPlayNext: () -> Unit,
-    onCast: () -> Unit,
-    onOpenInExternalPlayer: () -> Unit,
-    onPictureInPicture: () -> Unit,
-    onToggleAspect: () -> Unit,
-    onShowSettings: (Int) -> Unit,
-    onClose: () -> Unit,
     isScrubbing: Boolean = false,
     scrubPosition: Long = 0L,
     onScrubbingChange: (Boolean, Long) -> Unit = { _, _ -> },
     seekPreviewBitmap: ImageBitmap? = null,
     accentColor: Color = FluxaColors.accent
 ) {
+    val duration = controls.duration
+    val position = controls.position
     var showRemainingTime by remember { mutableStateOf(false) }
     var showOverflowMenu by remember { mutableStateOf(false) }
     val chromeVisible = !isScrubbing
@@ -506,30 +484,30 @@ fun MobilePlayerUIContent(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     PlayerFlatIconButton(
                         icon = FluxaIcons.ArrowBack,
-                        onClick = onClose,
+                        onClick = callbacks.onClose,
                         contentDescription = AppStrings.t(lang, "common.back")
                     )
                     Spacer(modifier = Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f).padding(top = 12.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = title,
                             color = Color.White,
-                            fontSize = 15.sp,
+                            fontSize = FluxaDimensions.PlayerChrome.titleTextSize,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        val metaLine = episodeMetaLine?.takeIf { it.isNotBlank() }
+                        val metaLine = controls.episodeMetaLine?.takeIf { it.isNotBlank() }
                             ?: listOfNotNull(content.releaseInfo, content.runtime).joinToString("   ").takeIf { it.isNotBlank() }
                         if (!metaLine.isNullOrBlank()) {
                             Text(
                                 text = metaLine,
                                 color = Color.White.copy(alpha = FluxaDimensions.PlayerChrome.textAlphaSecondary),
-                                fontSize = 12.sp,
+                                fontSize = FluxaDimensions.PlayerChrome.metaTextSize,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -542,9 +520,9 @@ fun MobilePlayerUIContent(
                         showOverflowMenu = showOverflowMenu,
                         onToggle = { showOverflowMenu = !showOverflowMenu },
                         onDismiss = { showOverflowMenu = false },
-                        onPictureInPicture = onPictureInPicture,
-                        onCast = onCast,
-                        onOpenInExternalPlayer = onOpenInExternalPlayer
+                        onPictureInPicture = callbacks.onPictureInPicture,
+                        onCast = callbacks.onCast,
+                        onOpenInExternalPlayer = callbacks.onOpenInExternalPlayer
                     )
                 }
             }
@@ -561,13 +539,14 @@ fun MobilePlayerUIContent(
                 ) {
                     PlayerFlatIconButton(
                         icon = FluxaIcons.Replay10,
-                        onClick = { onSeek((position - seekBackwardMs).coerceAtLeast(0L)) },
+                        onClick = { callbacks.onSeek((position - controls.seekBackwardMs).coerceAtLeast(0L)) },
                         contentDescription = AppStrings.t(lang, "player.rewind_10"),
                         size = 26.dp,
-                        touchSize = 48.dp
+                        touchSize = 48.dp,
+                        pressScale = true
                     )
                     Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-                        if (isBuffering && hasStartedPlaying) {
+                        if (controls.isBuffering && controls.hasStartedPlaying) {
                             CircularProgressIndicator(
                                 color = Color.White,
                                 strokeWidth = 2.5.dp,
@@ -575,11 +554,12 @@ fun MobilePlayerUIContent(
                             )
                         } else {
                             PlayerFlatIconButton(
-                                icon = if (isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow,
-                                onClick = onPlayPause,
-                                contentDescription = if (isPlaying) AppStrings.t(lang, "player.pause") else AppStrings.t(lang, "player.play"),
+                                icon = if (controls.isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow,
+                                onClick = callbacks.onPlayPause,
+                                contentDescription = if (controls.isPlaying) AppStrings.t(lang, "player.pause") else AppStrings.t(lang, "player.play"),
                                 size = 40.dp,
-                                touchSize = 56.dp
+                                touchSize = 56.dp,
+                                pressScale = true
                             )
                         }
                     }
@@ -587,19 +567,20 @@ fun MobilePlayerUIContent(
                         icon = FluxaIcons.Forward10,
                         onClick = {
                             val maxDuration = duration.takeIf { it > 0L } ?: Long.MAX_VALUE
-                            onSeek((position + seekForwardMs).coerceAtMost(maxDuration))
+                            callbacks.onSeek((position + controls.seekForwardMs).coerceAtMost(maxDuration))
                         },
                         contentDescription = AppStrings.t(lang, "player.forward_10"),
                         size = 26.dp,
-                        touchSize = 48.dp
+                        touchSize = 48.dp,
+                        pressScale = true
                     )
                 }
             }
 
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
                     .padding(bottom = 14.dp)
             ) {
                 Row(
@@ -609,7 +590,7 @@ fun MobilePlayerUIContent(
                     Text(
                         text = formatPlayerTime(if (isScrubbing) scrubPosition else position),
                         color = Color.White,
-                        fontSize = 13.sp,
+                        fontSize = FluxaDimensions.PlayerChrome.timeTextSize,
                         fontWeight = FontWeight.Medium
                     )
                     Box(
@@ -620,8 +601,8 @@ fun MobilePlayerUIContent(
                         MobilePlayerSeekbar(
                             position = position,
                             duration = duration,
-                            bufferedFraction = bufferedFraction,
-                            onSeek = onSeek,
+                            bufferedFraction = controls.bufferedFraction,
+                            onSeek = callbacks.onSeek,
                             accentColor = accentColor,
                             onScrubbingChange = onScrubbingChange,
                             seekPreviewBitmap = seekPreviewBitmap,
@@ -635,7 +616,7 @@ fun MobilePlayerUIContent(
                             formatPlayerTime(duration)
                         },
                         color = Color.White.copy(alpha = FluxaDimensions.PlayerChrome.textAlphaSecondary),
-                        fontSize = 13.sp,
+                        fontSize = FluxaDimensions.PlayerChrome.timeTextSize,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.clickable { showRemainingTime = !showRemainingTime }
                     )
@@ -655,30 +636,30 @@ fun MobilePlayerUIContent(
                             MobileBottomAction(
                                 icon = FluxaIcons.Settings,
                                 label = AppStrings.t(lang, "nav.settings"),
-                                onClick = { onShowSettings(-1) },
+                                onClick = { callbacks.onShowSettings(-1) },
                                 iconOnly = true
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                            if (hasNextEpisode) {
+                            if (controls.hasNextEpisode) {
                                 MobileBottomAction(
                                     icon = FluxaIcons.SkipNext,
                                     label = AppStrings.t(lang, "player.next_ep_short"),
-                                    onClick = onPlayNext
+                                    onClick = callbacks.onPlayNext
                                 )
                             }
-                            if (showSourcesButton) {
+                            if (controls.showSourcesButton) {
                                 MobileBottomAction(
                                     icon = FluxaIcons.Storage,
                                     label = AppStrings.t(lang, "player.source"),
-                                    onClick = { onShowSettings(4) }
+                                    onClick = { callbacks.onShowSettings(4) }
                                 )
                             }
-                            if (introDbMarkingEnabled) {
+                            if (controls.introDbMarkingEnabled) {
                                 MobileBottomAction(
                                     icon = FluxaIcons.BookmarkBorder,
                                     label = AppStrings.t(lang, "player.mark_segment"),
-                                    onClick = { onShowSettings(5) },
+                                    onClick = { callbacks.onShowSettings(5) },
                                     iconOnly = true
                                 )
                             }
