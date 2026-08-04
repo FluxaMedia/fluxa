@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.Flow
 
 enum class SettingsCategory {
     Hub, Account, TmdbFeatures, MdblistApi, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
-    Playback, Subtitles, Advanced, Content, Downloads, Developer,
+    Playback, PlaybackStream, PlaybackSkip, Subtitles, Advanced, Content, Downloads, Developer,
     AccountStremio, AccountNuvio, AccountTrakt, AccountSimkl, AccountAnilist
 }
 

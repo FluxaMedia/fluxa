@@ -683,6 +683,7 @@
   "settings.try_binge_group_desc": "When the next episode starts, prefer a source with the same Stremio binge group.",
   "settings.stream_settings": "STREAM SETTINGS",
   "settings.section_playback_general": "GENERAL",
+  "settings.progress_thresholds": "PROGRESS THRESHOLDS",
   "settings.next_episode_threshold": "Next Episode Threshold",
   "settings.next_episode_threshold_desc": "Shows the next episode card after playback reaches this point.",
   "settings.watched_threshold": "Watched Threshold",

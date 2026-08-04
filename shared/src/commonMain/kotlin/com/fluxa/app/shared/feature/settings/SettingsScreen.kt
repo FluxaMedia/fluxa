@@ -179,7 +179,8 @@ fun SettingsScreen(
                 SettingsTopBarTitle(
                     title = settingsCategoryTitle(category, lang),
                     showBack = category != SettingsCategory.Hub,
-                    onBack = { if (backStack.isEmpty()) onBackRequested() else onPopCategory() }
+                    onBack = { if (backStack.isEmpty()) onBackRequested() else onPopCategory() },
+                    badge = settingsCategoryBadge(category)
                 )
             }
             SettingsTopBarDivider()
@@ -248,7 +249,9 @@ private fun SettingsCategoryContent(
         SettingsCategory.Appearance -> SettingsAppearanceContent(state.appearance, lang, onAction, onNavigate = onNavigate)
         SettingsCategory.AppearanceHome -> SettingsAppearanceHomeContent(state.appearanceHome, lang, onAction)
         SettingsCategory.AppearanceDetail -> SettingsAppearanceDetailContent(state.appearanceDetail, lang, onAction)
-        SettingsCategory.Playback -> SettingsPlaybackContent(state.playback, state.subtitles, lang, onAction, onNavigate = onNavigate)
+        SettingsCategory.Playback -> SettingsPlaybackCoreContent(state.playback, state.subtitles, lang, onAction, onNavigate = onNavigate)
+        SettingsCategory.PlaybackStream -> SettingsPlaybackStreamContent(state.playback, lang, onAction, onNavigate = onNavigate)
+        SettingsCategory.PlaybackSkip -> SettingsPlaybackSkipContent(state.playback, lang, onAction)
         SettingsCategory.Subtitles -> SettingsSubtitlesContent(state.subtitles, lang, onAction)
         SettingsCategory.Advanced -> SettingsAdvancedContent(state.advanced, lang, onAction)
         SettingsCategory.Content -> SettingsContentCategoryContent(state.content, lang, onAction)
@@ -1241,7 +1244,7 @@ private fun SettingsEpisodeLayoutPreview(model: SettingsAppearanceDetailUiModel)
 }
 
 @Composable
-private fun SettingsPlaybackContent(
+private fun SettingsPlaybackCoreContent(
     model: SettingsPlaybackUiModel,
     subtitles: SettingsSubtitlesUiModel,
     lang: String?,
@@ -1252,12 +1255,6 @@ private fun SettingsPlaybackContent(
     val playbackSpeedOptions = listOf("0.75", "1.0", "1.25", "1.5").map { SettingsChoiceOption(it, "${it}x") }
     val seekOptions = listOf("10", "15", "30").map { SettingsChoiceOption(it, "${it}s") }
     val holdSpeedOptions = listOf("1.25", "1.5", "1.75", "2.0", "2.5", "3.0").map { SettingsChoiceOption(it, "${it}x") }
-    val streamSourceModeOptions = listOf(
-        SettingsChoiceOption("manual", AppStrings.t(lang, "settings.stream_source_manual")),
-        SettingsChoiceOption("first", AppStrings.t(lang, "settings.stream_source_first")),
-        SettingsChoiceOption("regex", AppStrings.t(lang, "settings.stream_source_regex"))
-    )
-    val autoplayCountdownOptions = listOf("5", "7", "10", "15").map { SettingsChoiceOption(it, "${it}s") }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_playback_general"))
     SettingsGroupCard {
@@ -1293,6 +1290,25 @@ private fun SettingsPlaybackContent(
         }
     }
 
+    SettingsGroupCard {
+        SettingsNavRow(AppStrings.t(lang, "settings.stream_settings")) { onNavigate(SettingsCategory.PlaybackStream) }
+    }
+}
+
+@Composable
+private fun SettingsPlaybackStreamContent(
+    model: SettingsPlaybackUiModel,
+    lang: String?,
+    onAction: (SettingsAction) -> Unit,
+    onNavigate: (SettingsCategory) -> Unit
+) {
+    val streamSourceModeOptions = listOf(
+        SettingsChoiceOption("manual", AppStrings.t(lang, "settings.stream_source_manual")),
+        SettingsChoiceOption("first", AppStrings.t(lang, "settings.stream_source_first")),
+        SettingsChoiceOption("regex", AppStrings.t(lang, "settings.stream_source_regex"))
+    )
+    val autoplayCountdownOptions = listOf("5", "7", "10", "15").map { SettingsChoiceOption(it, "${it}s") }
+
     SettingsSectionHeader(AppStrings.t(lang, "settings.stream_settings"))
     SettingsGroupCard {
         SettingsChoiceRow(AppStrings.t(lang, "settings.stream_source_selection"), model.streamSourceSelectionMode, streamSourceModeOptions) {
@@ -1313,6 +1329,10 @@ private fun SettingsPlaybackContent(
         }
         SettingsToggleRow(AppStrings.t(lang, "settings.auto_retry_next_source"), value = model.autoRetryNextSource) { onAction(SettingsAction.PlaybackChanged(model.copy(autoRetryNextSource = it))) }
         SettingsToggleRow(AppStrings.t(lang, "settings.try_binge_group"), value = model.tryBingeGroup) { onAction(SettingsAction.PlaybackChanged(model.copy(tryBingeGroup = it))) }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.progress_thresholds"))
+    SettingsGroupCard {
         SettingsPercentSliderRow(AppStrings.t(lang, "settings.next_episode_threshold"), model.nextEpisodeThresholdPercent) {
             onAction(SettingsAction.PlaybackChanged(model.copy(nextEpisodeThresholdPercent = it)))
         }
@@ -1321,6 +1341,13 @@ private fun SettingsPlaybackContent(
         }
     }
 
+    SettingsGroupCard {
+        SettingsNavRow(AppStrings.t(lang, "settings.skip_segments")) { onNavigate(SettingsCategory.PlaybackSkip) }
+    }
+}
+
+@Composable
+private fun SettingsPlaybackSkipContent(model: SettingsPlaybackUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
     SettingsSectionHeader(AppStrings.t(lang, "settings.skip_segments"))
     SettingsGroupCard {
         SettingsToggleRow(AppStrings.t(lang, "settings.use_skip_segments"), value = model.useSkipSegments) { onAction(SettingsAction.PlaybackChanged(model.copy(useSkipSegments = it))) }
