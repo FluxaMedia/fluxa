@@ -530,7 +530,7 @@ fun FluxaApp(
                     state = state,
                     onCatalogAction = onCatalogAction,
                     onCategorySelected = onCategorySelected,
-                    bottomContentInset = if (liquidGlassMode && navChromeVisible) navBarHeightDp + 20.dp else 24.dp,
+                    bottomContentInset = if (navChromeVisible) navBarHeightDp + 20.dp else 24.dp,
                     modifier = Modifier.fillMaxSize()
                 )
                 else -> FluxaDestinationPlaceholder(
