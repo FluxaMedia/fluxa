@@ -2,6 +2,7 @@ package com.fluxa.app.ui.catalog
 
 import android.content.SharedPreferences
 import com.fluxa.app.data.local.*
+import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.domain.discovery.MetadataFeedOption
@@ -56,12 +57,19 @@ class AndroidSettingsDataSource(
         homeViewModel.userAddons,
         homeViewModel.loadedCs3CatalogFeedOptions,
         LastMediaDebugInfoStore.state,
-        homeViewModel.syncingProviders
-    ) { profile, addons, cs3Options, debugInfo, syncingProviders ->
+        homeViewModel.syncingProviders,
+        homeViewModel.connectErrors
+    ) { values ->
+        val profile = values[0] as UserProfile?
+        @Suppress("UNCHECKED_CAST") val addons = values[1] as List<AddonDescriptor>
+        @Suppress("UNCHECKED_CAST") val cs3Options = values[2] as List<MetadataFeedOption>
+        val debugInfo = values[3] as com.fluxa.app.player.LastMediaDebugInfo
+        @Suppress("UNCHECKED_CAST") val syncingProviders = values[4] as Set<String>
+        @Suppress("UNCHECKED_CAST") val connectErrors = values[5] as Map<String, String>
         if (profile == null) {
             SettingsUiState(isLoading = true)
         } else {
-            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo, syncingProviders)
+            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo, syncingProviders, connectErrors)
         }
     }
 
@@ -83,7 +91,8 @@ class AndroidSettingsDataSource(
         profile: UserProfile,
         metadataOptions: List<MetadataFeedOption>,
         debugInfo: com.fluxa.app.player.LastMediaDebugInfo,
-        syncingProviders: Set<String> = emptySet()
+        syncingProviders: Set<String> = emptySet(),
+        connectErrors: Map<String, String> = emptyMap()
     ): SettingsUiState {
         val heroOptions = orderedMetadataFeeds(metadataOptions, profile.heroFeedOrder)
         val heroSelection = effectiveHomeMetadataFeedSelection(profile.heroFeedToggles, heroOptions.map { it.key })
@@ -146,6 +155,7 @@ class AndroidSettingsDataSource(
                     !profile.anilistAccessToken.isNullOrBlank(),
                 syncFailedProviders = profile.externalSyncFailedProviders.orEmpty(),
                 syncingProviders = syncingProviders,
+                connectErrors = connectErrors,
                 nuvioLastSyncAt = profile.nuvioLastSyncAt ?: 0L,
                 traktLastSyncAt = profile.safeTraktLastSyncAt,
                 simklLastSyncAt = profile.safeSimklLastSyncAt,

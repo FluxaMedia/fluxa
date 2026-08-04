@@ -4,7 +4,8 @@ import kotlinx.coroutines.flow.Flow
 
 enum class SettingsCategory {
     Hub, Account, TmdbFeatures, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
-    Playback, Subtitles, Advanced, Content, Downloads, Developer
+    Playback, Subtitles, Advanced, Content, Downloads, Developer,
+    AccountStremio, AccountNuvio, AccountTrakt, AccountSimkl, AccountAnilist
 }
 
 data class SettingsAccountUiModel(
@@ -28,6 +29,7 @@ data class SettingsAccountUiModel(
     val hasAnySync: Boolean = false,
     val syncFailedProviders: Set<String> = emptySet(),
     val syncingProviders: Set<String> = emptySet(),
+    val connectErrors: Map<String, String> = emptyMap(),
     val nuvioLastSyncAt: Long = 0L,
     val traktLastSyncAt: Long = 0L,
     val simklLastSyncAt: Long = 0L,
@@ -229,6 +231,8 @@ sealed interface SettingsAction {
     data object ManagePluginsRequested : SettingsAction
     data object ConnectStremioRequested : SettingsAction
     data object ConnectNuvioRequested : SettingsAction
+    data class ConnectStremioWithCredentials(val email: String, val password: String) : SettingsAction
+    data class ConnectNuvioWithCredentials(val email: String, val password: String) : SettingsAction
     data object ConnectTraktRequested : SettingsAction
     data object ConnectSimklRequested : SettingsAction
     data object ConnectAnilistRequested : SettingsAction

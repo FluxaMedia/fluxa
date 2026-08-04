@@ -51,21 +51,23 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Widgets
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheetDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -239,7 +241,15 @@ private fun SettingsCategoryContent(
             onAction = onAction,
             onNavigateSearchResult = onNavigateSearchResult
         )
-        SettingsCategory.Account -> SettingsAccountContent(state.account, lang, brandIcons, onAction, onNavigate = onNavigate)
+        SettingsCategory.Account -> SettingsAccountContent(
+            model = state.account,
+            lang = lang,
+            brandIcons = brandIcons,
+            onAction = onAction,
+            onNavigate = onNavigate,
+            continueWatchingSource = state.appearanceHome.continueWatchingSource,
+            onContinueWatchingSourceChanged = { onAction(SettingsAction.AppearanceHomeChanged(state.appearanceHome.copy(continueWatchingSource = it))) }
+        )
         SettingsCategory.TmdbFeatures -> SettingsTmdbFeaturesContent(state.account, lang, onAction)
         SettingsCategory.Notifications -> SettingsNotificationsContent(state.notifications, lang, onAction)
         SettingsCategory.General -> SettingsGeneralContent(state.general, lang, onAction)
@@ -252,6 +262,11 @@ private fun SettingsCategoryContent(
         SettingsCategory.Content -> SettingsContentCategoryContent(state.content, lang, onAction)
         SettingsCategory.Downloads -> SettingsDownloadsContent(state.downloads, lang, onAction)
         SettingsCategory.Developer -> SettingsDeveloperContent(state.developer, lang)
+        SettingsCategory.AccountStremio -> SettingsAccountDetailContent(SettingsAccountProvider.Stremio, state.account, lang, onAction)
+        SettingsCategory.AccountNuvio -> SettingsAccountDetailContent(SettingsAccountProvider.Nuvio, state.account, lang, onAction)
+        SettingsCategory.AccountTrakt -> SettingsAccountDetailContent(SettingsAccountProvider.Trakt, state.account, lang, onAction)
+        SettingsCategory.AccountSimkl -> SettingsAccountDetailContent(SettingsAccountProvider.Simkl, state.account, lang, onAction)
+        SettingsCategory.AccountAnilist -> SettingsAccountDetailContent(SettingsAccountProvider.Anilist, state.account, lang, onAction)
     }
 }
 
@@ -430,9 +445,10 @@ private fun SettingsAccountContent(
     lang: String?,
     brandIcons: SettingsBrandIcons,
     onAction: (SettingsAction) -> Unit,
-    onNavigate: (SettingsCategory) -> Unit
+    onNavigate: (SettingsCategory) -> Unit,
+    continueWatchingSource: String?,
+    onContinueWatchingSourceChanged: (String) -> Unit
 ) {
-    var selectedProvider by remember { mutableStateOf<SettingsAccountProvider?>(null) }
     var confirmingDisconnect by remember { mutableStateOf(false) }
     SettingsSectionHeader(AppStrings.t(lang, "auto.account_sync"))
     SettingsGroupCard {
@@ -444,7 +460,7 @@ private fun SettingsAccountContent(
             icon = brandIcons.stremio,
             hasSyncFailure = "stremio" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
-        ) { selectedProvider = SettingsAccountProvider.Stremio }
+        ) { onNavigate(SettingsCategory.AccountStremio) }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.nuvio"),
             connected = model.hasNuvio,
@@ -452,7 +468,7 @@ private fun SettingsAccountContent(
             icon = brandIcons.nuvio,
             hasSyncFailure = "nuvio" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
-        ) { selectedProvider = SettingsAccountProvider.Nuvio }
+        ) { onNavigate(SettingsCategory.AccountNuvio) }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.trakt"),
             connected = model.hasTrakt,
@@ -460,7 +476,7 @@ private fun SettingsAccountContent(
             icon = brandIcons.trakt,
             hasSyncFailure = "trakt" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
-        ) { selectedProvider = SettingsAccountProvider.Trakt }
+        ) { onNavigate(SettingsCategory.AccountTrakt) }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.simkl"),
             connected = model.hasSimkl,
@@ -468,7 +484,7 @@ private fun SettingsAccountContent(
             icon = brandIcons.simkl,
             hasSyncFailure = "simkl" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
-        ) { selectedProvider = SettingsAccountProvider.Simkl }
+        ) { onNavigate(SettingsCategory.AccountSimkl) }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.anilist"),
             connected = model.hasAnilist,
@@ -476,44 +492,35 @@ private fun SettingsAccountContent(
             icon = brandIcons.anilist,
             hasSyncFailure = "anilist" in model.syncFailedProviders,
             syncFailedLabel = syncFailedLabel
-        ) { selectedProvider = SettingsAccountProvider.Anilist }
+        ) { onNavigate(SettingsCategory.AccountAnilist) }
     }
     SettingsSectionHeader(AppStrings.t(lang, "settings.sync_preferences"))
     SettingsGroupCard {
-        val sourceOfTruthOptions = listOf(
-            SettingsChoiceOption("", AppStrings.t(lang, "settings.cw_source_of_truth_none")),
-            SettingsChoiceOption("local", AppStrings.t(lang, "settings.cw_source_of_truth_local")),
-            SettingsChoiceOption("nuvio", AppStrings.t(lang, "settings.cw_source_of_truth_nuvio")),
-            SettingsChoiceOption("trakt", AppStrings.t(lang, "settings.cw_source_of_truth_trakt")),
-            SettingsChoiceOption("simkl", AppStrings.t(lang, "settings.cw_source_of_truth_simkl")),
-            SettingsChoiceOption("anilist", AppStrings.t(lang, "settings.cw_source_of_truth_anilist")),
-            SettingsChoiceOption("stremio", AppStrings.t(lang, "settings.cw_source_of_truth_stremio"))
-        )
+        val connectedSourceOptions = buildList {
+            add(SettingsChoiceOption("stremio", AppStrings.t(lang, "settings.cw_source_of_truth_local")))
+            if (model.hasNuvio) add(SettingsChoiceOption("nuvio", AppStrings.t(lang, "settings.cw_source_of_truth_nuvio")))
+            if (model.hasTrakt) add(SettingsChoiceOption("trakt", AppStrings.t(lang, "settings.cw_source_of_truth_trakt")))
+            if (model.hasSimkl) add(SettingsChoiceOption("simkl", AppStrings.t(lang, "settings.cw_source_of_truth_simkl")))
+            if (model.hasAnilist) add(SettingsChoiceOption("anilist", AppStrings.t(lang, "settings.cw_source_of_truth_anilist")))
+        }
+        val connectedLibraryOptions = buildList {
+            add(SettingsChoiceOption("local", AppStrings.t(lang, "settings.cw_source_of_truth_local")))
+            if (model.hasStremio) add(SettingsChoiceOption("stremio", AppStrings.t(lang, "settings.cw_source_of_truth_stremio")))
+            if (model.hasNuvio) add(SettingsChoiceOption("nuvio", AppStrings.t(lang, "settings.cw_source_of_truth_nuvio")))
+            if (model.hasTrakt) add(SettingsChoiceOption("trakt", AppStrings.t(lang, "settings.cw_source_of_truth_trakt")))
+            if (model.hasSimkl) add(SettingsChoiceOption("simkl", AppStrings.t(lang, "settings.cw_source_of_truth_simkl")))
+            if (model.hasAnilist) add(SettingsChoiceOption("anilist", AppStrings.t(lang, "settings.cw_source_of_truth_anilist")))
+        }
         SettingsChoiceRow(
-            label = AppStrings.t(lang, "settings.cw_source_of_truth"),
-            value = model.syncCwSourceOfTruth,
-            options = sourceOfTruthOptions
-        ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(syncCwSourceOfTruth = it))) }
+            label = AppStrings.t(lang, "settings.continue_watching_source"),
+            value = continueWatchingSource ?: "stremio",
+            options = connectedSourceOptions
+        ) { onContinueWatchingSourceChanged(it) }
         SettingsChoiceRow(
             label = AppStrings.t(lang, "settings.library_source_of_truth"),
             value = model.integrationLibrarySource,
-            options = listOf(
-                SettingsChoiceOption("local", AppStrings.t(lang, "settings.cw_source_of_truth_local")),
-                SettingsChoiceOption("nuvio", AppStrings.t(lang, "settings.cw_source_of_truth_nuvio")),
-                SettingsChoiceOption("trakt", AppStrings.t(lang, "settings.cw_source_of_truth_trakt")),
-                SettingsChoiceOption("simkl", AppStrings.t(lang, "settings.cw_source_of_truth_simkl")),
-                SettingsChoiceOption("anilist", AppStrings.t(lang, "settings.cw_source_of_truth_anilist")),
-                SettingsChoiceOption("stremio", AppStrings.t(lang, "settings.cw_source_of_truth_stremio"))
-            )
+            options = connectedLibraryOptions
         ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(integrationLibrarySource = it))) }
-        SettingsChoiceRow(
-            label = AppStrings.t(lang, "settings.cw_ranking"),
-            value = model.syncCwRanking,
-            options = listOf(
-                SettingsChoiceOption("last_watched", AppStrings.t(lang, "settings.cw_ranking_last_watched")),
-                SettingsChoiceOption("most_recent_episode", AppStrings.t(lang, "settings.cw_ranking_most_recent_episode"))
-            )
-        ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(syncCwRanking = it))) }
     }
     if (model.hasAnySync) {
         Spacer(Modifier.height(20.dp))
@@ -581,42 +588,16 @@ private fun SettingsAccountContent(
         }
     }
 
-    selectedProvider?.let { provider ->
-        key(provider) {
-            SettingsAccountSheet(
-                provider = provider,
-                model = model,
-                lang = lang,
-                onDismiss = { selectedProvider = null },
-                onAccountChanged = { onAction(SettingsAction.TmdbAccountChanged(it)) },
-                onDisconnect = { onAction(SettingsAction.DisconnectProviderRequested(provider.name.lowercase())) }
-            ) {
-                onAction(
-                    when (provider) {
-                        SettingsAccountProvider.Stremio -> SettingsAction.ConnectStremioRequested
-                        SettingsAccountProvider.Nuvio -> SettingsAction.ConnectNuvioRequested
-                        SettingsAccountProvider.Trakt -> SettingsAction.ConnectTraktRequested
-                        SettingsAccountProvider.Simkl -> SettingsAction.ConnectSimklRequested
-                        SettingsAccountProvider.Anilist -> SettingsAction.ConnectAnilistRequested
-                    }
-                )
-            }
-        }
-    }
 }
 
-private enum class SettingsAccountProvider { Stremio, Nuvio, Trakt, Simkl, Anilist }
+internal enum class SettingsAccountProvider { Stremio, Nuvio, Trakt, Simkl, Anilist }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun SettingsAccountSheet(
+private fun SettingsAccountDetailContent(
     provider: SettingsAccountProvider,
     model: SettingsAccountUiModel,
     lang: String?,
-    onDismiss: () -> Unit,
-    onAccountChanged: (SettingsAccountUiModel) -> Unit,
-    onDisconnect: () -> Unit,
-    onSync: () -> Unit
+    onAction: (SettingsAction) -> Unit
 ) {
     val connected = when (provider) {
         SettingsAccountProvider.Stremio -> model.hasStremio
@@ -648,8 +629,10 @@ private fun SettingsAccountSheet(
     }
     val hasSyncFailure = providerKey in model.syncFailedProviders
     val isSyncing = providerKey in model.syncingProviders
-    var justSynced by remember { mutableStateOf(false) }
-    var confirmingDisconnect by remember { mutableStateOf(false) }
+    val isCredentialProvider = provider == SettingsAccountProvider.Stremio || provider == SettingsAccountProvider.Nuvio
+    var justSynced by remember(provider) { mutableStateOf(false) }
+    var confirmingDisconnect by remember(provider) { mutableStateOf(false) }
+    var showCredentialForm by remember(provider) { mutableStateOf(false) }
     LaunchedEffect(isSyncing) {
         if (isSyncing) {
             justSynced = false
@@ -659,29 +642,100 @@ private fun SettingsAccountSheet(
             justSynced = false
         }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Text(AppStrings.t(lang, titleKey), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            SettingsAccountStat(AppStrings.t(lang, "integration.account_info"), email)
-            SettingsAccountStat(
-                AppStrings.t(lang, "integration.sync_status"),
+    LaunchedEffect(connected) {
+        if (connected) showCredentialForm = false
+    }
+    val onSync = {
+        onAction(
+            when (provider) {
+                SettingsAccountProvider.Stremio -> SettingsAction.ConnectStremioRequested
+                SettingsAccountProvider.Nuvio -> SettingsAction.ConnectNuvioRequested
+                SettingsAccountProvider.Trakt -> SettingsAction.ConnectTraktRequested
+                SettingsAccountProvider.Simkl -> SettingsAction.ConnectSimklRequested
+                SettingsAccountProvider.Anilist -> SettingsAction.ConnectAnilistRequested
+            }
+        )
+    }
+    val onConnect = {
+        if (isCredentialProvider) {
+            showCredentialForm = true
+        } else {
+            onSync()
+        }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "settings.sync_with"))
+    SettingsGroupCard {
+        SettingsActionRow(
+            label = AppStrings.t(lang, titleKey),
+            value = when {
+                !connected -> AppStrings.t(lang, "settings.connect_account")
+                isSyncing -> AppStrings.t(lang, "integration.syncing")
+                else -> AppStrings.t(lang, "auto.connected")
+            },
+            onClick = { if (!connected) onConnect() }
+        )
+        if (hasSyncFailure) {
+            SettingsInfoRow(AppStrings.t(lang, "common.error"), AppStrings.t(lang, "integration.sync_failed"))
+        }
+    }
+
+    if (!connected && isCredentialProvider && showCredentialForm) {
+        SettingsCredentialLoginForm(
+            lang = lang,
+            busy = isSyncing,
+            errorMessage = model.connectErrors[providerKey]?.let { code ->
                 when {
-                    !connected -> AppStrings.t(lang, "auto.not_connected")
+                    code == "invalid_credentials" && provider == SettingsAccountProvider.Stremio -> AppStrings.t(lang, "login.stremio_failed")
+                    code == "invalid_credentials" -> AppStrings.t(lang, "auth.error.invalid_credentials")
+                    else -> AppStrings.format(lang, "login.connection_error", code)
+                }
+            },
+            onSubmit = { email, password ->
+                onAction(
+                    if (provider == SettingsAccountProvider.Stremio) {
+                        SettingsAction.ConnectStremioWithCredentials(email, password)
+                    } else {
+                        SettingsAction.ConnectNuvioWithCredentials(email, password)
+                    }
+                )
+            },
+            onCancel = { showCredentialForm = false }
+        )
+    }
+
+    if (connected) {
+        SettingsSectionHeader(AppStrings.t(lang, titleKey))
+        SettingsGroupCard {
+            SettingsActionRow(
+                label = AppStrings.t(lang, "integration.sync_now"),
+                value = when {
                     isSyncing -> AppStrings.t(lang, "integration.syncing")
                     justSynced -> AppStrings.t(lang, "integration.synced")
-                    hasSyncFailure -> AppStrings.t(lang, "integration.sync_failed")
-                    lastSyncAt <= 0L -> AppStrings.format(lang, "integration.status_ok", AppStrings.t(lang, "integration.never_synced"))
-                    else -> AppStrings.format(lang, "integration.status_ok", AppStrings.t(lang, "integration.just_now"))
-                }
+                    lastSyncAt <= 0L -> AppStrings.t(lang, "integration.never_synced")
+                    else -> AppStrings.t(lang, "integration.just_now")
+                },
+                onClick = onSync
             )
-            SettingsAccountStat(AppStrings.t(lang, "integration.imported_items"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktItemCount else model.addonCount))
-            SettingsAccountStat(AppStrings.t(lang, "integration.continue_watching"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktContinueWatchingCount else model.continueWatchingCount))
-            SettingsAccountStat(AppStrings.t(lang, "integration.library_items"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktLibraryCount else 0))
-            SettingsAccountStat(AppStrings.t(lang, "integration.addons"), AppStrings.format(lang, "integration.item_count", model.addonCount))
-            if (provider == SettingsAccountProvider.Trakt) {
+            SettingsActionRow(
+                label = AppStrings.t(lang, "integration.disconnect"),
+                destructive = true,
+                onClick = { confirmingDisconnect = true }
+            )
+        }
+
+        SettingsSectionHeader(AppStrings.t(lang, "settings.provider_library"))
+        SettingsGroupCard {
+            SettingsInfoRow(AppStrings.t(lang, "integration.account_info"), email)
+            SettingsInfoRow(AppStrings.t(lang, "integration.imported_items"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktItemCount else model.addonCount))
+            SettingsInfoRow(AppStrings.t(lang, "integration.continue_watching"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktContinueWatchingCount else model.continueWatchingCount))
+            SettingsInfoRow(AppStrings.t(lang, "integration.library_items"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktLibraryCount else 0))
+            SettingsInfoRow(AppStrings.t(lang, "integration.addons"), AppStrings.format(lang, "integration.item_count", model.addonCount))
+        }
+
+        if (provider == SettingsAccountProvider.Trakt) {
+            SettingsSectionHeader(AppStrings.t(lang, "brand.trakt"))
+            SettingsGroupCard {
                 SettingsChoiceRow(
                     label = AppStrings.t(lang, "settings.continue_watching_window"),
                     value = model.continueWatchingDays.toString(),
@@ -692,35 +746,16 @@ private fun SettingsAccountSheet(
                         SettingsChoiceOption("90", "90"),
                         SettingsChoiceOption("365", "365")
                     )
-                ) { value -> onAccountChanged(model.copy(continueWatchingDays = value.toInt())) }
+                ) { value -> onAction(SettingsAction.TmdbAccountChanged(model.copy(continueWatchingDays = value.toInt()))) }
                 SettingsToggleRow(
                     label = AppStrings.t(lang, "settings.trakt_comments"),
                     description = AppStrings.t(lang, "settings.trakt_comments_desc"),
                     value = model.traktCommentsEnabled
-                ) { onAccountChanged(model.copy(traktCommentsEnabled = it)) }
-            }
-            Button(
-                onClick = onSync,
-                enabled = !isSyncing,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
-            ) {
-                Text(
-                    when {
-                        isSyncing -> AppStrings.t(lang, "integration.syncing")
-                        justSynced -> AppStrings.t(lang, "integration.synced")
-                        connected -> AppStrings.t(lang, "integration.sync_now")
-                        else -> AppStrings.t(lang, "integration.connect")
-                    }
-                )
-            }
-            if (connected) {
-                TextButton(onClick = { confirmingDisconnect = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(AppStrings.t(lang, "integration.disconnect"), color = FluxaColors.errorRed)
-                }
+                ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(traktCommentsEnabled = it))) }
             }
         }
     }
+
     if (confirmingDisconnect) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { confirmingDisconnect = false },
@@ -729,7 +764,7 @@ private fun SettingsAccountSheet(
             confirmButton = {
                 TextButton(onClick = {
                     confirmingDisconnect = false
-                    onDisconnect()
+                    onAction(SettingsAction.DisconnectProviderRequested(providerKey))
                 }) {
                     Text(AppStrings.t(lang, "integration.disconnect"), color = FluxaColors.errorRed)
                 }
@@ -744,10 +779,71 @@ private fun SettingsAccountSheet(
 }
 
 @Composable
-private fun SettingsAccountStat(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp)
-        Text(value, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+private fun SettingsCredentialLoginForm(
+    lang: String?,
+    busy: Boolean,
+    errorMessage: String?,
+    onSubmit: (String, String) -> Unit,
+    onCancel: () -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Color.White,
+        unfocusedTextColor = Color.White,
+        focusedBorderColor = Color.White.copy(alpha = 0.4f),
+        unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+        focusedLabelColor = Color.White.copy(alpha = 0.7f),
+        unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
+        cursorColor = Color.White
+    )
+    SettingsGroupCard {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text(AppStrings.t(lang, "auth.field.email")) },
+                singleLine = true,
+                enabled = !busy,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                colors = fieldColors,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text(AppStrings.t(lang, "auth.field.password")) },
+                singleLine = true,
+                enabled = !busy,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                colors = fieldColors,
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (errorMessage != null) {
+                Text(errorMessage, color = FluxaColors.errorRed, fontSize = 12.sp)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onCancel, enabled = !busy, modifier = Modifier.weight(1f)) {
+                    Text(AppStrings.t(lang, "common.cancel"))
+                }
+                Button(
+                    onClick = { onSubmit(email.trim(), password) },
+                    enabled = !busy && email.isNotBlank() && password.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (busy) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                    } else {
+                        Text(AppStrings.t(lang, "auth.nuvio.sign_in"))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -913,14 +1009,6 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
         SettingsChoiceOption("large", AppStrings.t(lang, "auto.large")),
         SettingsChoiceOption("xlarge", AppStrings.t(lang, "auto.very_large"))
     )
-    val continueWatchingSourceOptions = listOf(
-        SettingsChoiceOption("fluxa", AppStrings.t(lang, "settings.continue_watching_source_fluxa")),
-        SettingsChoiceOption("stremio", "Stremio"),
-        SettingsChoiceOption("nuvio", "Nuvio"),
-        SettingsChoiceOption("trakt", "Trakt"),
-        SettingsChoiceOption("simkl", "Simkl"),
-        SettingsChoiceOption("anilist", "AniList")
-    )
     SettingsPosterPreview(model)
     SettingsSectionHeader(AppStrings.t(lang, "settings.layout"))
     SettingsGroupCard {
@@ -965,9 +1053,6 @@ private fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel, 
         }
         SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_hide_titles"), value = model.continueWatchingHideTitles) {
             onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHideTitles = it)))
-        }
-        SettingsChoiceRow(AppStrings.t(lang, "settings.continue_watching_source"), model.continueWatchingSource, continueWatchingSourceOptions) {
-            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingSource = it)))
         }
     }
 }

@@ -58,6 +58,7 @@ class HomeViewModel @Inject constructor(
     private val providerAdapters: com.fluxa.app.data.repository.library.ProviderAdapters,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
     private val nuvioSyncCoordinator: NuvioSyncCoordinator,
+    private val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,
     private val platformContentGateway: HomePlatformContentGateway,
     private val imdbApiService: ImdbApiService,
     internal val gson: Gson,
@@ -232,6 +233,12 @@ class HomeViewModel @Inject constructor(
         } else {
             _syncingProviders.value - provider
         }
+    }
+    private val _connectErrors = MutableStateFlow<Map<String, String>>(emptyMap())
+    val connectErrors: StateFlow<Map<String, String>> = _connectErrors.asStateFlow()
+
+    fun clearConnectError(provider: String) {
+        _connectErrors.value = _connectErrors.value - provider
     }
     private var externalContinueWatching: List<Meta> = emptyList()
     private var traktWatchedState: TraktWatchedState = TraktWatchedState()
@@ -1072,6 +1079,67 @@ class HomeViewModel @Inject constructor(
         onComplete: (Boolean) -> Unit
     ) {
         syncCoordinator.syncStremio(profile, onProfileUpdated, onComplete)
+    }
+
+    fun connectStremioWithCredentials(
+        email: String,
+        password: String,
+        profile: UserProfile,
+        onProfileUpdated: (UserProfile) -> Unit,
+        onComplete: (Boolean) -> Unit
+    ) {
+        setProviderSyncing("stremio", true)
+        _connectErrors.value = _connectErrors.value - "stremio"
+        viewModelScope.launch {
+            try {
+                val response = repository.login(LoginRequest(email.trim(), password))
+                val result = response.body()?.result
+                if (response.isSuccessful && result != null) {
+                    val updated = profile.copy(authKey = result.user.authKey)
+                    onProfileUpdated(updated)
+                    syncStremioIntegration(updated, onProfileUpdated, onComplete)
+                } else {
+                    setProviderSyncing("stremio", false)
+                    _connectErrors.value = _connectErrors.value + ("stremio" to "invalid_credentials")
+                    onComplete(false)
+                }
+            } catch (e: Exception) {
+                setProviderSyncing("stremio", false)
+                _connectErrors.value = _connectErrors.value + ("stremio" to (e.localizedMessage ?: "network_error"))
+                onComplete(false)
+            }
+        }
+    }
+
+    fun connectNuvioWithCredentials(
+        email: String,
+        password: String,
+        profile: UserProfile,
+        onProfileUpdated: (UserProfile) -> Unit,
+        onComplete: (Boolean) -> Unit
+    ) {
+        setProviderSyncing("nuvio", true)
+        _connectErrors.value = _connectErrors.value - "nuvio"
+        viewModelScope.launch {
+            val result = nuvioAccountImportCoordinator.signIn(email.trim(), password)
+            result.fold(
+                onSuccess = { session ->
+                    val updated = profile.copy(
+                        nuvioAccessToken = session.accessToken,
+                        nuvioRefreshToken = session.refreshToken,
+                        nuvioTokenExpiresAt = session.expiresIn?.let { System.currentTimeMillis() + it * 1000L },
+                        nuvioEmail = session.user?.email ?: email
+                    )
+                    onProfileUpdated(updated)
+                    syncNuvioIntegration(updated, onProfileUpdated, onComplete)
+                },
+                onFailure = {
+                    setProviderSyncing("nuvio", false)
+                    _connectErrors.value = _connectErrors.value + ("nuvio" to "invalid_credentials")
+                    onComplete(false)
+                }
+            )
+        }
     }
 
     private fun buildUserCollectionHomeCategories(profile: UserProfile?, showAboveContinueWatching: Boolean? = null): List<HomeCategory> {

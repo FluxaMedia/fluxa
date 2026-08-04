@@ -38,6 +38,8 @@ class SettingsStore(
             SettingsAction.ManagePluginsRequested -> Unit
             SettingsAction.ConnectStremioRequested -> Unit
             SettingsAction.ConnectNuvioRequested -> Unit
+            is SettingsAction.ConnectStremioWithCredentials -> Unit
+            is SettingsAction.ConnectNuvioWithCredentials -> Unit
             SettingsAction.ConnectTraktRequested -> Unit
             SettingsAction.ConnectSimklRequested -> Unit
             SettingsAction.ConnectAnilistRequested -> Unit

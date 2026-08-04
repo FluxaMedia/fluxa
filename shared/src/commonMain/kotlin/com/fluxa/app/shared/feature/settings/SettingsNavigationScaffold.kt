@@ -64,6 +64,11 @@ internal fun settingsCategoryTitle(category: SettingsCategory, lang: String?): S
     SettingsCategory.Content -> AppStrings.t(lang, "auto.catalogs")
     SettingsCategory.Downloads -> AppStrings.t(lang, "auto.downloads")
     SettingsCategory.Developer -> AppStrings.t(lang, "settings.developer")
+    SettingsCategory.AccountStremio -> AppStrings.t(lang, "brand.stremio")
+    SettingsCategory.AccountNuvio -> AppStrings.t(lang, "brand.nuvio")
+    SettingsCategory.AccountTrakt -> AppStrings.t(lang, "brand.trakt")
+    SettingsCategory.AccountSimkl -> AppStrings.t(lang, "brand.simkl")
+    SettingsCategory.AccountAnilist -> AppStrings.t(lang, "brand.anilist")
 }
 
 @Composable

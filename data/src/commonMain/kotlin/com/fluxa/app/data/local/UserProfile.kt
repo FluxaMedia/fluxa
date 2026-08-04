@@ -32,7 +32,7 @@ data class UserProfile(
     val forceSoftwareAudio: Boolean? = false,
     val audioDecoderMode: String? = null,
     val preferredPlayer: String? = "internal",
-    val continueWatchingSource: String? = "fluxa",
+    val continueWatchingSource: String? = "stremio",
     val syncCwSourceOfTruth: String? = "",
     val syncCwRanking: String? = "last_watched",
     val integrationLibrarySource: String? = "local",

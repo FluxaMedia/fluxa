@@ -65,44 +65,20 @@ internal class HomeContinueWatchingCoordinator(
     private fun upcomingCacheKey(meta: Meta): String = "${meta.id}:${meta.lastVideoId}"
 
     fun buildItems(lang: String, playbackController: HomePlaybackController): List<Meta> {
-        val source = activeProfile()?.safeContinueWatchingSource ?: "fluxa"
-        if (source != "fluxa") {
-            val providerItems = when (source) {
-                "stremio" -> localItems()
-                "trakt" -> externalItems().filter { it.reason.equals("Trakt.tv", ignoreCase = true) }
-                "simkl" -> externalItems().filter { it.reason.equals("Simkl", ignoreCase = true) }
-                "nuvio" -> externalItems().filter { it.reason.equals("Nuvio", ignoreCase = true) }
-                "anilist" -> externalItems().filter { it.reason.equals("AniList", ignoreCase = true) }
-                else -> externalItems() + localItems()
-            }
-            val filteredProviderItems = providerItems.filterNot(playbackController::isForgotten)
-            val ranked = FluxaCoreNative.filterHomeContinueWatching(filteredProviderItems, watchedState())
-            classifyUpcoming(ranked)
-            return ranked.map { assignHomeBadge(it, lang) }
+        val source = activeProfile()?.safeContinueWatchingSource ?: "stremio"
+        val providerItems = when (source) {
+            "trakt" -> externalItems().filter { it.reason.equals("Trakt.tv", ignoreCase = true) }
+            "simkl" -> externalItems().filter { it.reason.equals("Simkl", ignoreCase = true) }
+            "nuvio" -> externalItems().filter { it.reason.equals("Nuvio", ignoreCase = true) }
+            "anilist" -> externalItems().filter { it.reason.equals("AniList", ignoreCase = true) }
+            else -> localItems()
         }
-        val profile = activeProfile()
-        val merged = FluxaCoreNative.mergeContinueWatchingLists(
-            localItems = localItems(),
-            externalItems = externalItems(),
-            sourceOfTruth = profile?.syncCwSourceOfTruth?.toContinueWatchingSourceLabel(),
-            rankingMode = profile?.syncCwRanking ?: "last_watched"
-        )
-            .filterNot(playbackController::isForgotten)
-        val filtered = FluxaCoreNative.filterHomeContinueWatching(merged, watchedState())
-        classifyUpcoming(filtered)
-        return filtered.map { assignHomeBadge(it, lang) }
+        val filteredProviderItems = providerItems.filterNot(playbackController::isForgotten)
+        val ranked = FluxaCoreNative.filterHomeContinueWatching(filteredProviderItems, watchedState())
+        classifyUpcoming(ranked)
+        return ranked.map { assignHomeBadge(it, lang) }
     }
 
-    private fun String.toContinueWatchingSourceLabel(): String? = when (this) {
-        "" -> null
-        "trakt" -> "Trakt.tv"
-        "simkl" -> "Simkl"
-        "nuvio" -> "Nuvio"
-        "anilist" -> "AniList"
-        "local" -> "local"
-        "stremio" -> "Stremio"
-        else -> null
-    }
 
     suspend fun fetchExternal(profile: UserProfile?): List<Meta> {
         if (profile == null) return emptyList()
