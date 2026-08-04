@@ -22,9 +22,9 @@ import java.security.MessageDigest
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import android.util.Base64
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class AndroidProfileDataSource(
     profileManager: ProfileManager,
@@ -36,37 +36,34 @@ private class AndroidProfileStore(
     private val pickerSettingsStore: ProfilePickerSettingsStore
 ) : ProfilePersistence {
     private val avatarPackRepository = ProfileAvatarPackRepository()
+    private val state = MutableStateFlow(snapshot())
 
-    override fun observe(): Flow<ProfileStoreSnapshot> = callbackFlow {
-        fun emit() {
-            val profiles = profileManager.getProfiles()
-            val activeId = profileManager.getLastActiveProfileId()
-            val pickerSettings = pickerSettingsStore.get()
-            trySend(
-                ProfileStoreSnapshot(
-                    activeProfile = profiles.firstOrNull { it.id == activeId }?.toUiModel(),
-                    profiles = profiles.map(UserProfile::toUiModel),
-                    pickerBackgroundUrl = pickerSettings.backgroundUrl,
-                    avatarPacks = pickerSettings.avatarPacks.map { pack ->
-                        ProfileAvatarPackUiModel(
-                            id = pack.id,
-                            repositoryUrl = pack.repositoryUrl,
-                            title = pack.title,
-                            avatars = pack.avatars.map { ProfileAvatarUiModel(name = it.name, url = it.url) }
-                        )
-                    }
-                )
-            )
-        }
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> emit() }
+    init {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> state.value = snapshot() }
         profileManager.registerOnChangeListener(listener)
         pickerSettingsStore.registerOnChangeListener(listener)
-        emit()
-        awaitClose {
-            profileManager.unregisterOnChangeListener(listener)
-            pickerSettingsStore.unregisterOnChangeListener(listener)
-        }
     }
+
+    private fun snapshot(): ProfileStoreSnapshot {
+        val profiles = profileManager.getProfiles()
+        val activeId = profileManager.getLastActiveProfileId()
+        val pickerSettings = pickerSettingsStore.get()
+        return ProfileStoreSnapshot(
+            activeProfile = profiles.firstOrNull { it.id == activeId }?.toUiModel(),
+            profiles = profiles.map(UserProfile::toUiModel),
+            pickerBackgroundUrl = pickerSettings.backgroundUrl,
+            avatarPacks = pickerSettings.avatarPacks.map { pack ->
+                ProfileAvatarPackUiModel(
+                    id = pack.id,
+                    repositoryUrl = pack.repositoryUrl,
+                    title = pack.title,
+                    avatars = pack.avatars.map { ProfileAvatarUiModel(name = it.name, url = it.url) }
+                )
+            }
+        )
+    }
+
+    override fun observe(): Flow<ProfileStoreSnapshot> = state.asStateFlow()
 
     override suspend fun setPickerBackground(url: String?) {
         pickerSettingsStore.save(pickerSettingsStore.get().copy(backgroundUrl = url))
