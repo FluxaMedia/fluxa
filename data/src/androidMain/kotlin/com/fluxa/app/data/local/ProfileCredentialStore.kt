@@ -90,7 +90,7 @@ class ProfileCredentialStore @Inject constructor(
         val bytes = Base64.decode(value, Base64.NO_WRAP)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, bytes.copyOfRange(0, 12)))
-        return bytes.copyOfRange(12, bytes.size).toString(Charsets.UTF_8)
+        return cipher.doFinal(bytes.copyOfRange(12, bytes.size)).toString(Charsets.UTF_8)
     }
 
     private fun key(): SecretKey {
