@@ -72,6 +72,10 @@ class AppleLibraryDataSource(
 
     override suspend fun loadFolder(folder: LibraryFolderUiModel): List<LibraryFolderSectionUiModel> = emptyList()
 
+    override suspend fun setLibrarySource(source: String) {
+        Unit
+    }
+
     fun setOnRefreshRequested(handler: () -> Unit) {
         onRefreshRequested = handler
     }

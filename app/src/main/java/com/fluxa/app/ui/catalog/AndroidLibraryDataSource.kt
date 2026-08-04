@@ -129,6 +129,14 @@ class AndroidLibraryDataSource(
             )
         }
 
+        val availableSources = buildList {
+            add("local")
+            if (!profile?.traktAccessToken.isNullOrBlank()) add("trakt")
+            if (!profile?.simklAccessToken.isNullOrBlank()) add("simkl")
+            if (!profile?.anilistAccessToken.isNullOrBlank()) add("anilist")
+            if (!profile?.nuvioAccessToken.isNullOrBlank()) add("nuvio")
+        }
+
         LibraryUiState(
             isLoading = (isLoading || libraryUiState.isLoading) &&
                 planned.isEmpty() &&
@@ -143,7 +151,9 @@ class AndroidLibraryDataSource(
             completedSectionEnabled = completedSectionEnabled,
             favorites = favorites.toCatalogItems(profile),
             collections = collections,
-            downloadGroups = downloadGroups
+            downloadGroups = downloadGroups,
+            librarySource = profile?.integrationLibrarySource ?: "local",
+            availableLibrarySources = availableSources
         )
     }
 
@@ -184,6 +194,14 @@ class AndroidLibraryDataSource(
 
     override suspend fun cancelDownload(id: String) {
         offlineDownloadManager.cancel(id)
+    }
+
+    override suspend fun setLibrarySource(source: String) {
+        val profile = activeProfile() ?: return
+        val updated = profileManager.updateProfile(profile.id) {
+            it.copy(integrationLibrarySource = source)
+        } ?: return
+        onProfileChanged(updated)
     }
 
     override suspend fun loadFolder(folder: LibraryFolderUiModel): List<LibraryFolderSectionUiModel> {

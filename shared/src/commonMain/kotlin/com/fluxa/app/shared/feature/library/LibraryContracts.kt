@@ -69,7 +69,9 @@ data class LibraryUiState(
     val favorites: List<CatalogItemUiModel> = emptyList(),
     val collections: List<LibraryCollectionUiModel> = emptyList(),
     val downloadGroups: List<LibraryDownloadGroupUiModel> = emptyList(),
-    val folderDetail: LibraryFolderDetailUiState = LibraryFolderDetailUiState()
+    val folderDetail: LibraryFolderDetailUiState = LibraryFolderDetailUiState(),
+    val librarySource: String = "local",
+    val availableLibrarySources: List<String> = listOf("local")
 )
 
 sealed interface LibraryAction {
@@ -82,6 +84,7 @@ sealed interface LibraryAction {
     data class DownloadCancelled(val id: String) : LibraryAction
     data class FolderSelected(val folder: LibraryFolderUiModel) : LibraryAction
     data object FolderClosed : LibraryAction
+    data class SourceChanged(val source: String) : LibraryAction
 }
 
 interface LibraryDataSource {
@@ -92,4 +95,5 @@ interface LibraryDataSource {
     suspend fun deleteCollection(id: String)
     suspend fun cancelDownload(id: String)
     suspend fun loadFolder(folder: LibraryFolderUiModel): List<LibraryFolderSectionUiModel>
+    suspend fun setLibrarySource(source: String)
 }

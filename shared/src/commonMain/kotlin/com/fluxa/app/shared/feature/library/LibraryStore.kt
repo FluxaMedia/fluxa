@@ -36,6 +36,7 @@ class LibraryStore(
             LibraryAction.FolderClosed -> {
                 folderDetail.value = LibraryFolderDetailUiState()
             }
+            is LibraryAction.SourceChanged -> dataSource.setLibrarySource(action.source)
         }
     }
 }

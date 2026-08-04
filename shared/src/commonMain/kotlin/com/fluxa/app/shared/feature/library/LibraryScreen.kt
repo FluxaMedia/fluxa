@@ -156,7 +156,14 @@ fun LibraryScreen(
                                     LibrarySection.Favorites -> state.favorites
                                     else -> emptyList()
                                 }
-                                LibraryTypeDropdown(typeFilter, language) { typeFilter = it }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    LibraryTypeDropdown(typeFilter, language) { typeFilter = it }
+                                    if (state.availableLibrarySources.size > 1) {
+                                        LibrarySourceDropdown(state.librarySource, state.availableLibrarySources, language) {
+                                            onAction(LibraryAction.SourceChanged(it))
+                                        }
+                                    }
+                                }
                                 LibraryItemGrid(filterItems(items, typeFilter), language, onItemSelected)
                             }
                         }
@@ -265,6 +272,24 @@ private fun LibraryTypeDropdown(current: LibraryTypeFilter, language: String?, o
             onSelected = { selected ->
                 LibraryTypeFilter.entries.firstOrNull { it.name == selected }?.let(onSelected)
             }
+        )
+    }
+}
+
+@Composable
+private fun LibrarySourceDropdown(current: String, available: List<String>, language: String?, onSelected: (String) -> Unit) {
+    val options = available.map { source ->
+        DiscoverFilterOptionUiModel(
+            id = source,
+            label = AppStrings.t(language, "settings.cw_source_of_truth_$source")
+        )
+    }
+    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        DiscoverDropdownFilter(
+            label = AppStrings.t(language, "settings.library_source_of_truth"),
+            options = options,
+            selectedId = current,
+            onSelected = { selected -> selected?.let(onSelected) }
         )
     }
 }
