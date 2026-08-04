@@ -678,6 +678,7 @@
   "settings.auto_retry_next_source_desc": "Oynatma başarısız olursa sonraki kaynağı otomatik olarak dener.",
   "settings.try_binge_group_desc": "Sonraki bölüm başlarken aynı Stremio binge group değerine sahip kaynağı tercih eder.",
   "settings.stream_settings": "AKIŞ AYARLARI",
+  "settings.section_playback_general": "GENEL",
   "settings.next_episode_threshold": "Sonraki Bölüm Eşiği",
   "settings.next_episode_threshold_desc": "Oynatma bu noktaya ulaşınca sonraki bölüm kartını gösterir.",
   "settings.watched_threshold": "İzlendi Eşiği",

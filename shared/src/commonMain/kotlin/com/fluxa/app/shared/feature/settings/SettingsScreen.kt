@@ -1275,6 +1275,7 @@ private fun SettingsPlaybackContent(
     )
     val autoplayCountdownOptions = listOf("5", "7", "10", "15").map { SettingsChoiceOption(it, "${it}s") }
 
+    SettingsSectionHeader(AppStrings.t(lang, "settings.section_playback_general"))
     SettingsGroupCard {
         SettingsNavRow(
             AppStrings.t(lang, "auto.subtitles"),
