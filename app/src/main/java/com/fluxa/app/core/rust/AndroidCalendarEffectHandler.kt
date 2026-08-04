@@ -47,8 +47,17 @@ internal class AndroidCalendarEffectHandler(
         val items = effect.payload.list("items").mapNotNull { raw ->
             runCatching { gson.fromJson(gson.toJsonTree(raw), Meta::class.java) }.getOrNull()
         }
-        watchlistManager.replaceExternalContinueWatching(items)
-        return success(effect, mapOf("count" to items.size))
+        val existingById = watchlistManager.getExternalContinueWatchingSnapshot().associateBy { it.id }
+        val merged = items.map { item ->
+            if (item.continueWatchingPoster != null) return@map item
+            val existing = existingById[item.id] ?: return@map item
+            item.copy(
+                continueWatchingPoster = existing.continueWatchingPoster,
+                continueWatchingBackground = existing.continueWatchingBackground
+            )
+        }
+        watchlistManager.replaceExternalContinueWatching(merged)
+        return success(effect, mapOf("count" to merged.size))
     }
 
     private fun updateWidget(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
