@@ -262,14 +262,15 @@ data class UserProfile(
 
     fun withStructuredSettings(): UserProfile {
         return copy(
-            externalAccounts = externalAccounts ?: ExternalAccounts(
-                traktAccessToken = traktAccessToken,
-                traktRefreshToken = traktRefreshToken,
+            externalAccounts = (externalAccounts ?: ExternalAccounts(
                 traktTokenExpiresAt = traktTokenExpiresAt,
                 traktLastSyncAt = traktLastSyncAt,
                 traktLastSyncedItems = traktLastSyncedItems,
                 traktLastContinueWatchingCount = traktLastContinueWatchingCount,
-                traktLastWatchlistCount = traktLastWatchlistCount,
+                traktLastWatchlistCount = traktLastWatchlistCount
+            )).copy(
+                traktAccessToken = traktAccessToken,
+                traktRefreshToken = traktRefreshToken,
                 simklAccessToken = simklAccessToken
             ),
             addonSettings = addonSettings ?: AddonSettings(

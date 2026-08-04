@@ -24,9 +24,9 @@ class ProfileCredentialStore @Inject constructor(
     fun hydrate(profile: UserProfile): UserProfile {
         val credentials = read(profile.id) ?: return profile
         val externalAccounts = profile.externalAccounts?.copy(
-            traktAccessToken = credentials.traktAccessToken ?: profile.externalAccounts.traktAccessToken,
-            traktRefreshToken = credentials.traktRefreshToken ?: profile.externalAccounts.traktRefreshToken,
-            simklAccessToken = credentials.simklAccessToken ?: profile.externalAccounts.simklAccessToken
+            traktAccessToken = credentials.traktAccessToken ?: profile.traktAccessToken,
+            traktRefreshToken = credentials.traktRefreshToken ?: profile.traktRefreshToken,
+            simklAccessToken = credentials.simklAccessToken ?: profile.simklAccessToken
         )
         return profile.copy(
             authKey = credentials.authKey ?: profile.authKey,
@@ -127,9 +127,9 @@ private data class ProfileCredentials(
             pinHash = profile.pinHash,
             nuvioAccessToken = profile.nuvioAccessToken,
             nuvioRefreshToken = profile.nuvioRefreshToken,
-            traktAccessToken = profile.traktAccessToken ?: profile.externalAccounts?.traktAccessToken,
-            traktRefreshToken = profile.traktRefreshToken ?: profile.externalAccounts?.traktRefreshToken,
-            simklAccessToken = profile.simklAccessToken ?: profile.externalAccounts?.simklAccessToken,
+            traktAccessToken = profile.traktAccessToken,
+            traktRefreshToken = profile.traktRefreshToken,
+            simklAccessToken = profile.simklAccessToken,
             anilistAccessToken = profile.anilistAccessToken,
             anilistRefreshToken = profile.anilistRefreshToken,
             tmdbApiKey = profile.tmdbApiKey,
