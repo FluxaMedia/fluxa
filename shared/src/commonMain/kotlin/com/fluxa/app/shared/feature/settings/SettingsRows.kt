@@ -126,7 +126,7 @@ fun SettingsSectionHeader(title: String) {
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         letterSpacing = 0.8.sp,
-        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp, top = 16.dp)
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp, top = 10.dp)
     )
 }
 
@@ -142,7 +142,7 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
                 .clip(shape)
                 .background(FluxaColors.surfaceCard)
                 .border(1.dp, Color.White.copy(alpha = FluxaDimensions.Alpha.hairline), shape)
-                .padding(horizontal = 6.dp),
+                .padding(horizontal = 16.dp),
             content = content,
         )
     }
@@ -152,7 +152,7 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
 private fun SettingsIconChip(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
-            .size(34.dp)
+            .size(40.dp)
             .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.soft))
             .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
         contentAlignment = Alignment.Center,
@@ -179,7 +179,7 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onValueChanged(!value)
             }
-            .padding(vertical = 6.dp),
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -229,7 +229,7 @@ fun SettingsChoiceRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable { showDialog = true }
-            .padding(vertical = 6.dp),
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -572,7 +572,7 @@ fun SettingsActionRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -607,7 +607,7 @@ fun SettingsConnectionRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().settingsRowDivider().settingsFocusRing().clickable(onClick = onClick).padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -674,7 +674,7 @@ fun SettingsSecretFieldRow(
         trailingIcon = {
             IconButtonToggle(revealed) { revealed = !revealed }
         },
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
@@ -734,7 +734,7 @@ fun SettingsNavRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable(onClick = onClick)
-            .padding(vertical = if (description != null) 6.dp else 8.dp),
+            .padding(vertical = if (description != null) 10.dp else 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -745,10 +745,10 @@ fun SettingsNavRow(
                         imageVector = icon,
                         contentDescription = null,
                         tint = LocalSettingsAccentColor.current,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(14.dp))
             }
             Column {
                 Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
@@ -796,7 +796,7 @@ fun SettingsTextFieldRow(
         value = text,
         onValueChange = { text = it },
         label = { Text(label) },
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
