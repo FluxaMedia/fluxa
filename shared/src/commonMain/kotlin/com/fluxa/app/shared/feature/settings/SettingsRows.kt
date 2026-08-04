@@ -57,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -195,6 +196,7 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
         Switch(
             checked = value,
             onCheckedChange = null,
+            modifier = Modifier.scale(0.82f),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = checkedThumbColor,
                 checkedTrackColor = accentColor,
@@ -234,14 +236,23 @@ fun SettingsChoiceRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(
-            currentLabel,
-            color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 140.dp)
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                currentLabel,
+                color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 140.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
     if (showDialog) {
         SettingsChoiceDialog(
