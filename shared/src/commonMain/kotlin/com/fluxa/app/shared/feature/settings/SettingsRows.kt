@@ -136,14 +136,8 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
     val counter = remember { IntArray(1) }
     counter[0] = 0
     CompositionLocalProvider(LocalSettingsGroupRowCounter provides counter) {
-        val shape = RoundedCornerShape(FluxaDimensions.CornerPresets.soft)
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(shape)
-                .background(FluxaColors.surfaceCard)
-                .border(1.dp, Color.White.copy(alpha = FluxaDimensions.Alpha.hairline), shape)
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
             content = content,
         )
     }
