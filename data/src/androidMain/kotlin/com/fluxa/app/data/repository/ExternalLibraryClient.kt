@@ -255,13 +255,15 @@ class ExternalLibraryClient @Inject constructor(
         }
     }
 
+    private fun SimklItem.simklPosterUrl(): String? = effectivePoster?.let { "https://simkl.in/posters/${it}_m.jpg" }
+
     private fun SimklItem.toLibraryMeta(type: String, source: String): Meta? {
         val id = effectiveIds?.imdb ?: effectiveIds?.tmdb ?: effectiveIds?.slug?.let { "simkl:$it" } ?: effectiveIds?.simkl?.let { "simkl:$it" } ?: return null
         return Meta(
             id = id,
             name = effectiveTitle ?: unknownName(null),
             type = type,
-            poster = null,
+            poster = simklPosterUrl(),
             releaseInfo = effectiveYear?.toString(),
             released = effectiveYear?.let { "$it-01-01" },
             reason = source
@@ -280,7 +282,7 @@ class ExternalLibraryClient @Inject constructor(
             id = id,
             name = effectiveTitle ?: unknownName(null),
             type = type,
-            poster = null,
+            poster = simklPosterUrl(),
             releaseInfo = effectiveYear?.toString(),
             released = effectiveYear?.let { "$it-01-01" },
             timeOffset = watchedCount * EPISODE_PROGRESS_UNIT_MS,
