@@ -75,7 +75,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class SettingsChoiceOption(val value: String, val label: String)
@@ -110,7 +109,7 @@ fun Modifier.settingsRowDivider(): Modifier = composed {
     } else {
         drawBehind {
             drawLine(
-                color = Color.White.copy(alpha = FluxaDimensions.Alpha.hairline),
+                color = Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder),
                 start = Offset(0f, 0f),
                 end = Offset(size.width, 0f),
                 strokeWidth = 1.dp.toPx()
@@ -137,7 +136,11 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
     counter[0] = 0
     CompositionLocalProvider(LocalSettingsGroupRowCounter provides counter) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(FluxaColors.surfaceCard)
+                .padding(horizontal = 16.dp),
             content = content,
         )
     }
@@ -324,7 +327,7 @@ fun SettingsStepperRow(
     formatValue: (Int) -> String = { it.toString() },
     onValueChanged: (Int) -> Unit
 ) {
-    val haptics = LocalHapticFeedback.current
+    var showDialog by remember { mutableStateOf(false) }
     val highlighted = LocalSettingsHighlightLabel.current == label
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     LaunchedEffect(highlighted) {
@@ -336,20 +339,75 @@ fun SettingsStepperRow(
             .bringIntoViewRequester(bringIntoViewRequester)
             .settingsHighlight(highlighted)
             .settingsRowDivider()
+            .settingsFocusRing()
+            .clickable { showDialog = true }
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            SettingsIconButton(Icons.Filled.Remove) {
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                onValueChanged((value - step).coerceIn(min, max))
-            }
-            Text(formatValue(value), color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(48.dp))
-            SettingsIconButton(Icons.Filled.Add) {
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                onValueChanged((value + step).coerceIn(min, max))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                formatValue(value),
+                color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+    if (showDialog) {
+        SettingsStepperDialog(
+            title = label,
+            value = value,
+            step = step,
+            min = min,
+            max = max,
+            formatValue = formatValue,
+            onValueChanged = onValueChanged,
+            onDismiss = { showDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun SettingsStepperDialog(
+    title: String,
+    value: Int,
+    step: Int,
+    min: Int,
+    max: Int,
+    formatValue: (Int) -> String,
+    onValueChanged: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(FluxaColors.surfaceRaised)
+                .padding(vertical = 20.dp, horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
+            Spacer(Modifier.height(20.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SettingsIconButton(Icons.Filled.Remove) {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onValueChanged((value - step).coerceIn(min, max))
+                }
+                Text(formatValue(value), color = Color.White, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(64.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                SettingsIconButton(Icons.Filled.Add) {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onValueChanged((value + step).coerceIn(min, max))
+                }
             }
         }
     }
@@ -617,38 +675,40 @@ fun SettingsConnectionRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) {
-                SettingsIconChip(content = icon)
-                Spacer(Modifier.width(14.dp))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label.take(1).uppercase(),
+                    color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
+            Spacer(Modifier.width(14.dp))
             Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
         }
-        if (connected && hasSyncFailure) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(
-                    imageVector = Icons.Filled.Warning,
-                    contentDescription = null,
-                    tint = FluxaColors.errorRed,
-                    modifier = Modifier.size(16.dp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val statusText = if (connected && hasSyncFailure) syncFailedLabel.orEmpty() else if (connected) connectedLabel else null
+            if (statusText != null) {
+                Text(
+                    statusText,
+                    color = if (hasSyncFailure) FluxaColors.errorRed else Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 140.dp)
                 )
-                Text(syncFailedLabel.orEmpty(), color = FluxaColors.errorRed, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
-        } else if (connected) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = FluxaColors.successGreen,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(connectedLabel, color = FluxaColors.successGreen, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-            }
-        } else {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.35f),
-                modifier = Modifier.size(20.dp)
+                tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -661,35 +721,89 @@ fun SettingsSecretFieldRow(
     placeholder: String? = null,
     onValueChanged: (String) -> Unit
 ) {
-    var revealed by remember { mutableStateOf(false) }
-    var text by remember(value) { mutableStateOf(value) }
-    LaunchedEffect(text) {
-        if (text != value) {
-            delay(500)
-            onValueChanged(text)
+    var showDialog by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .settingsRowDivider()
+            .settingsFocusRing()
+            .clickable { showDialog = true }
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (value.isBlank()) placeholder.orEmpty() else "••••••••",
+                color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 140.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
-    androidx.compose.material3.OutlinedTextField(
-        value = text,
-        onValueChange = { text = it },
-        label = { Text(label) },
-        placeholder = placeholder?.let { { Text(it, color = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText)) } },
-        singleLine = true,
-        visualTransformation = if (revealed) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-            IconButtonToggle(revealed) { revealed = !revealed }
-        },
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-            focusedBorderColor = LocalSettingsAccentColor.current,
-            unfocusedBorderColor = Color.White.copy(alpha = FluxaDimensions.Alpha.borderFaint),
-            focusedLabelColor = LocalSettingsAccentColor.current,
-            unfocusedLabelColor = Color.White.copy(alpha = FluxaDimensions.Alpha.faintText),
-            cursorColor = LocalSettingsAccentColor.current
+    if (showDialog) {
+        SettingsTextEditDialog(
+            title = label,
+            value = value,
+            placeholder = placeholder,
+            isSecret = true,
+            onValueChanged = onValueChanged,
+            onDismiss = { showDialog = false }
         )
-    )
+    }
+}
+
+@Composable
+private fun SettingsTextEditDialog(
+    title: String,
+    value: String,
+    placeholder: String? = null,
+    isSecret: Boolean = false,
+    onValueChanged: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var text by remember { mutableStateOf(value) }
+    var revealed by remember { mutableStateOf(false) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = { onValueChanged(text); onDismiss() }) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(FluxaColors.surfaceRaised)
+                .padding(vertical = 20.dp, horizontal = 20.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
+            Spacer(Modifier.height(16.dp))
+            androidx.compose.material3.OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                placeholder = placeholder?.let { { Text(it, color = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText)) } },
+                singleLine = true,
+                visualTransformation = if (isSecret && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
+                trailingIcon = if (isSecret) {
+                    { IconButtonToggle(revealed) { revealed = !revealed } }
+                } else null,
+                modifier = Modifier.fillMaxWidth(),
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = LocalSettingsAccentColor.current,
+                    unfocusedBorderColor = Color.White.copy(alpha = FluxaDimensions.Alpha.borderFaint),
+                    cursorColor = LocalSettingsAccentColor.current
+                )
+            )
+        }
+    }
 }
 
 @Composable
@@ -790,26 +904,42 @@ fun SettingsTextFieldRow(
     value: String,
     onValueChanged: (String) -> Unit
 ) {
-    var text by remember(value) { mutableStateOf(value) }
-    LaunchedEffect(text) {
-        if (text != value) {
-            delay(500)
-            onValueChanged(text)
+    var showDialog by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .settingsRowDivider()
+            .settingsFocusRing()
+            .clickable { showDialog = true }
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                value,
+                color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 140.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
-    androidx.compose.material3.OutlinedTextField(
-        value = text,
-        onValueChange = { text = it },
-        label = { Text(label) },
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-            focusedBorderColor = LocalSettingsAccentColor.current,
-            unfocusedBorderColor = Color.White.copy(alpha = FluxaDimensions.Alpha.borderFaint),
-            focusedLabelColor = LocalSettingsAccentColor.current,
-            unfocusedLabelColor = Color.White.copy(alpha = FluxaDimensions.Alpha.faintText),
-            cursorColor = LocalSettingsAccentColor.current
+    if (showDialog) {
+        SettingsTextEditDialog(
+            title = label,
+            value = value,
+            onValueChanged = onValueChanged,
+            onDismiss = { showDialog = false }
         )
-    )
+    }
 }
