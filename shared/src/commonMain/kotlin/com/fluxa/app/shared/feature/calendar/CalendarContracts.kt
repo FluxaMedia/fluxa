@@ -9,7 +9,8 @@ data class CalendarReleaseUiModel(
     val title: String,
     val subtitle: String,
     val artworkUrl: String?,
-    val item: CatalogItemUiModel
+    val item: CatalogItemUiModel,
+    val isInWatchlist: Boolean = false
 )
 
 data class CalendarUiState(

@@ -448,6 +448,7 @@ fun FluxaApp(
                     state = calendarState,
                     language = state.language,
                     onAction = onCalendarAction,
+                    onBack = { onDestinationSelected(FluxaDestination.Home) },
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Library && libraryState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.library.TvLibraryScreen(

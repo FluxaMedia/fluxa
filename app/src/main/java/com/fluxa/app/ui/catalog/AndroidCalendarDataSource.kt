@@ -17,8 +17,10 @@ class AndroidCalendarDataSource(
 
     override fun observeCalendar(): Flow<CalendarUiState> = combine(
         homeViewModel.calendarUiState,
-        selectedMonth
-    ) { state, selected ->
+        selectedMonth,
+        homeViewModel.watchlist
+    ) { state, selected, watchlist ->
+        val watchlistIds = watchlist.mapTo(HashSet()) { it.id }
         CalendarUiState(
             year = selected.first,
             month = selected.second,
@@ -30,7 +32,8 @@ class AndroidCalendarDataSource(
                     title = item.title,
                     subtitle = item.subtitle.orEmpty(),
                     artworkUrl = item.episodePoster ?: item.poster,
-                    item = catalogItem
+                    item = catalogItem,
+                    isInWatchlist = item.meta.id in watchlistIds
                 )
             },
             isLoading = state.isLoading
@@ -43,11 +46,23 @@ class AndroidCalendarDataSource(
             selectedMonth.value = now.get(Calendar.YEAR) to (now.get(Calendar.MONTH) + 1)
         }
         val selected = selectedMonth.value
-        homeViewModel.loadCalendarMonth(activeProfile(), selected.first, selected.second)
+        homeViewModel.loadCalendarMonth(activeProfile(), selected.first, selected.second, librarySourcePlannedItems())
     }
 
     override suspend fun loadMonth(year: Int, month: Int) {
         selectedMonth.value = year to month.coerceIn(1, 12)
-        homeViewModel.loadCalendarMonth(activeProfile(), selectedMonth.value.first, selectedMonth.value.second)
+        homeViewModel.loadCalendarMonth(activeProfile(), selectedMonth.value.first, selectedMonth.value.second, librarySourcePlannedItems())
+    }
+
+    private fun librarySourcePlannedItems(): List<com.fluxa.app.data.remote.Meta> {
+        val library = homeViewModel.libraryUiState.value
+        return when (activeProfile()?.integrationLibrarySource) {
+            "trakt" -> library.traktPlanned
+            "simkl" -> library.simklPlanned + library.simklWatching
+            "anilist" -> library.anilistPlanned + library.anilistWatching
+            "stremio" -> library.stremioPlanned
+            "nuvio" -> library.nuvioPlanned
+            else -> emptyList()
+        }
     }
 }

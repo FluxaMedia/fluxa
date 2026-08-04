@@ -33,3 +33,13 @@ actual fun localizedShortMonthDay(year: Int, month: Int, day: Int, language: Str
     }
     return SimpleDateFormat("MMM d", locale).format(calendar.time)
 }
+
+actual fun localizedLongDate(year: Int, month: Int, day: Int, language: String?): String {
+    val locale = AppStrings.locale(language)
+    val calendar = JavaCalendar.getInstance(locale).apply {
+        set(JavaCalendar.YEAR, year)
+        set(JavaCalendar.MONTH, month - 1)
+        set(JavaCalendar.DAY_OF_MONTH, day)
+    }
+    return SimpleDateFormat("d MMMM yyyy", locale).format(calendar.time)
+}

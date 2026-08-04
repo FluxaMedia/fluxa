@@ -49,3 +49,18 @@ actual fun localizedShortMonthDay(year: Int, month: Int, day: Int, language: Str
     }
     return formatter.stringFromDate(date)
 }
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun localizedLongDate(year: Int, month: Int, day: Int, language: String?): String {
+    val components = NSDateComponents().apply {
+        this.year = year.toLong()
+        this.month = month.toLong()
+        this.day = day.toLong()
+    }
+    val date = NSCalendar.currentCalendar.dateFromComponents(components) ?: return "$year-$month-$day"
+    val formatter = NSDateFormatter().apply {
+        locale = resolveLocale(language)
+        dateFormat = "d MMMM yyyy"
+    }
+    return formatter.stringFromDate(date)
+}
