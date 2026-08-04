@@ -359,7 +359,7 @@ class MainActivity : FragmentActivity() {
                             if (!profile.simklAccessToken.isNullOrBlank() || !profile.anilistAccessToken.isNullOrBlank()) {
                                 homeViewModel.loadLibraryItems(profile)
                             }
-                            homeViewModel.refreshExternalContinueWatching()
+                            homeViewModel.refreshExternalContinueWatching(profile)
                         }
                     }
 

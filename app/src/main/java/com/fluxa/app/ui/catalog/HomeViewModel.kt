@@ -1041,8 +1041,8 @@ class HomeViewModel @Inject constructor(
         authCoordinator.refreshTokenIfNeeded("trakt", profile, onProfileUpdated)
     }
 
-    fun refreshExternalContinueWatching() {
-        val profile = currentActiveProfile ?: return
+    fun refreshExternalContinueWatching(activeProfile: UserProfile? = currentActiveProfile) {
+        val profile = activeProfile ?: return
         viewModelScope.launch {
             val items = continueWatchingCoordinator.fetchExternal(profile)
             setExternalContinueWatchingState(items)
