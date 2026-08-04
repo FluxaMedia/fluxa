@@ -121,24 +121,14 @@ fun Modifier.settingsRowDivider(): Modifier = composed {
 
 @Composable
 fun SettingsSectionHeader(title: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Text(
+        text = title.uppercase(),
+        color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel),
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        letterSpacing = 0.8.sp,
         modifier = Modifier.padding(start = 4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(4.dp)
-                .background(LocalSettingsAccentColor.current, CircleShape)
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = title.uppercase(),
-            color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel),
-            fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
-            letterSpacing = 0.8.sp,
-        )
-    }
+    )
 }
 
 @Composable
