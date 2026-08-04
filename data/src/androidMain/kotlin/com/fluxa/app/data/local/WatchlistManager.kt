@@ -296,9 +296,19 @@ class WatchlistManager @Inject constructor(
 
     suspend fun replaceExternalContinueWatching(providers: Set<String>, items: List<Meta>) {
         val profileId = pid()
+        val existingByKey = dao.getExternalContinueWatchingSnapshot(profileId)
+            .associateBy { it.provider to it.contentId }
+        val kept = items.filter { it.id.isNotBlank() && (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L }
+            .map { item ->
+                if (!item.continueWatchingPoster.isNullOrBlank()) return@map item
+                val existing = existingByKey[item.externalProviderKey() to item.id] ?: return@map item
+                item.copy(
+                    continueWatchingPoster = existing.continueWatchingPoster,
+                    continueWatchingBackground = existing.continueWatchingBackground
+                )
+            }
         providers.forEach { dao.deleteExternalPlaybackProgressByProvider(profileId, it) }
         val now = System.currentTimeMillis()
-        val kept = items.filter { it.id.isNotBlank() && (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L }
         dao.upsertExternalPlaybackProgress(kept.map { it.toExternalPlaybackProgressEntity(profileId, now) })
     }
 
