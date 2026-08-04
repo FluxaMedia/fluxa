@@ -701,13 +701,15 @@ fun SettingsConnectionRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.classic))
                     .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
                 contentAlignment = Alignment.Center
             ) {
                 if (icon != null) {
-                    icon()
+                    Box(modifier = Modifier.scale(0.6f)) {
+                        icon()
+                    }
                 } else {
                     Text(
                         text = label.take(1).uppercase(),
