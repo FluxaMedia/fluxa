@@ -1042,7 +1042,12 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshExternalContinueWatching() {
-        currentActiveProfile?.let(::loadLibraryData)
+        val profile = currentActiveProfile ?: return
+        viewModelScope.launch {
+            val items = continueWatchingCoordinator.fetchExternal(profile)
+            setExternalContinueWatchingState(items)
+            refreshDynamicRows()
+        }
     }
 
     fun loadLibraryData(activeProfile: UserProfile?) {
