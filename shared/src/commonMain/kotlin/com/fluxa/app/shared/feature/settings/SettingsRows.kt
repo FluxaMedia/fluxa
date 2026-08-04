@@ -135,7 +135,29 @@ fun SettingsGroupCard(content: @Composable androidx.compose.foundation.layout.Co
     val counter = remember { IntArray(1) }
     counter[0] = 0
     CompositionLocalProvider(LocalSettingsGroupRowCounter provides counter) {
-        Column(modifier = Modifier.fillMaxWidth(), content = content)
+        val shape = RoundedCornerShape(FluxaDimensions.CornerPresets.soft)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(FluxaColors.surfaceCard)
+                .border(1.dp, Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder), shape)
+                .padding(horizontal = 16.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun SettingsIconChip(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.soft))
+            .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
     }
 }
 
@@ -162,9 +184,9 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, color = Color.White, fontSize = 15.sp)
+            Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge)
             if (description != null) {
-                Text(description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                Text(description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.secondaryText), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
             }
         }
         Spacer(Modifier.width(12.dp))
@@ -211,7 +233,7 @@ fun SettingsChoiceRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(
             currentLabel,
             color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
@@ -558,7 +580,7 @@ fun SettingsActionRow(
                 Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) { icon() }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text(label, color = if (destructive) FluxaColors.errorRed else Color.White, style = MaterialTheme.typography.bodyLarge)
         }
         if (value != null) {
             Text(
@@ -590,18 +612,10 @@ fun SettingsConnectionRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(11.dp))
-                        .background(Color.White.copy(alpha = FluxaDimensions.Alpha.subtleBorder)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    icon()
-                }
+                SettingsIconChip(content = icon)
                 Spacer(Modifier.width(14.dp))
             }
-            Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge)
         }
         if (connected && hasSyncFailure) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -725,18 +739,20 @@ fun SettingsNavRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             if (icon != null) {
-                androidx.compose.material3.Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(Modifier.width(16.dp))
+                SettingsIconChip {
+                    androidx.compose.material3.Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = LocalSettingsAccentColor.current,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
             }
             Column {
-                Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge)
                 if (description != null) {
-                    Text(description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel), fontSize = 12.5.sp, modifier = Modifier.padding(top = 2.dp))
+                    Text(description, color = Color.White.copy(alpha = FluxaDimensions.Alpha.mutedLabel), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
                 }
             }
         }
