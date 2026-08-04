@@ -1047,6 +1047,7 @@
   "settings.sync_with_desc": "Connect external services for watched state and library sync.",
   "settings.provider_library": "Provider library",
   "settings.connect_account": "Connect",
+  "settings.connected_account": "Connected account",
   "settings.apis": "APIS",
   "settings.apis_desc": "Configure metadata API access.",
   "settings.tmdb_api": "TMDB API",

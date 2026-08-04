@@ -1047,6 +1047,7 @@
   "settings.sync_with_desc": "İzlendi durumu ve kütüphane sync için dış servisleri bağla.",
   "settings.provider_library": "Sağlayıcı kütüphanesi",
   "settings.connect_account": "Bağlan",
+  "settings.connected_account": "Bağlı hesap",
   "settings.apis": "API'LER",
   "settings.apis_desc": "Metadata API erişimini yapılandır.",
   "settings.tmdb_api": "TMDB API",

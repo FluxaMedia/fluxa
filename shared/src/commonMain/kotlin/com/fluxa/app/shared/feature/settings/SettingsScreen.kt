@@ -651,20 +651,29 @@ private fun SettingsAccountDetailContent(
         }
     }
 
+    if (connected) {
+        SettingsConnectedAccountCard(
+            statusLabel = AppStrings.t(lang, "settings.connected_account"),
+            email = email,
+            badgeText = AppStrings.t(lang, "auto.connected")
+        )
+        if (hasSyncFailure) {
+            SettingsGroupCard {
+                SettingsInfoRow(AppStrings.t(lang, "common.error"), AppStrings.t(lang, "integration.sync_failed"))
+            }
+        }
+    } else {
     SettingsSectionHeader(AppStrings.t(lang, "settings.sync_with"))
     SettingsGroupCard {
         SettingsActionRow(
             label = AppStrings.t(lang, titleKey),
-            value = when {
-                !connected -> AppStrings.t(lang, "settings.connect_account")
-                isSyncing -> AppStrings.t(lang, "integration.syncing")
-                else -> AppStrings.t(lang, "auto.connected")
-            },
-            onClick = { if (!connected) onConnect() }
+            value = AppStrings.t(lang, "settings.connect_account"),
+            onClick = onConnect
         )
         if (hasSyncFailure) {
             SettingsInfoRow(AppStrings.t(lang, "common.error"), AppStrings.t(lang, "integration.sync_failed"))
         }
+    }
     }
 
     if (!connected && isCredentialProvider && showCredentialForm) {
@@ -692,27 +701,17 @@ private fun SettingsAccountDetailContent(
     }
 
     if (connected) {
-        SettingsSectionHeader(AppStrings.t(lang, titleKey))
+        SettingsSectionHeader(AppStrings.t(lang, "settings.provider_library"))
         SettingsGroupCard {
-            SettingsActionRow(
-                label = AppStrings.t(lang, "integration.sync_now"),
-                value = when {
+            SettingsInfoRow(
+                AppStrings.t(lang, "integration.sync_now"),
+                when {
                     isSyncing -> AppStrings.t(lang, "integration.syncing")
                     justSynced -> AppStrings.t(lang, "integration.synced")
                     lastSyncAt <= 0L -> AppStrings.t(lang, "integration.never_synced")
                     else -> AppStrings.t(lang, "integration.just_now")
-                },
-                onClick = onSync
+                }
             )
-            SettingsActionRow(
-                label = AppStrings.t(lang, "integration.disconnect"),
-                destructive = true,
-                onClick = { confirmingDisconnect = true }
-            )
-        }
-
-        SettingsSectionHeader(AppStrings.t(lang, "settings.provider_library"))
-        SettingsGroupCard {
             SettingsInfoRow(AppStrings.t(lang, "integration.account_info"), email)
             SettingsInfoRow(AppStrings.t(lang, "integration.imported_items"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktItemCount else model.addonCount))
             SettingsInfoRow(AppStrings.t(lang, "integration.continue_watching"), AppStrings.format(lang, "integration.item_count", if (provider == SettingsAccountProvider.Trakt) model.traktContinueWatchingCount else model.continueWatchingCount))
@@ -741,6 +740,9 @@ private fun SettingsAccountDetailContent(
                 ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(traktCommentsEnabled = it))) }
             }
         }
+
+        SettingsPrimaryButton(AppStrings.t(lang, "integration.sync_now")) { onSync() }
+        SettingsDestructiveLink(AppStrings.t(lang, "integration.disconnect")) { confirmingDisconnect = true }
     }
 
     if (confirmingDisconnect) {

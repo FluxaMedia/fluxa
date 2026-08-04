@@ -811,11 +811,63 @@ private fun IconButtonToggle(revealed: Boolean, onClick: () -> Unit) {
 @Composable
 fun SettingsInfoRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().settingsRowDivider().padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, color = Color.White.copy(alpha = FluxaDimensions.Alpha.iconMuted), style = MaterialTheme.typography.bodyMedium)
         Text(value, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+fun SettingsConnectedAccountCard(statusLabel: String, email: String, badgeText: String) {
+    SettingsGroupCard {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column {
+                Text(statusLabel, color = Color.White.copy(alpha = FluxaDimensions.Alpha.iconMuted), style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(4.dp))
+                Text(email, color = Color.White, style = MaterialTheme.typography.bodyLarge)
+            }
+            Text(
+                badgeText.uppercase(),
+                color = FluxaColors.successGreen,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                letterSpacing = 0.6.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun SettingsPrimaryButton(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.pill))
+            .background(Color.White)
+            .clickable(onClick = onClick)
+            .padding(vertical = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = Color.Black, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+fun SettingsDestructiveLink(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = FluxaColors.errorRed, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
