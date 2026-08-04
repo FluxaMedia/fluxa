@@ -340,6 +340,16 @@ internal fun AppRoutesHost(
             }
         },
         onConnectAnilistRequested = { connectAnilist(context, activeProfile) },
+        onSyncProviderRequested = { provider ->
+            val profile = activeProfile
+            if (profile != null && provider in setOf("simkl", "anilist")) {
+                homeViewModel.loadLibraryData(profile)
+                if (provider == "simkl") {
+                    val updated = profileManager.updateProfile(profile.id) { it.copy(simklLastSyncAt = System.currentTimeMillis()) }
+                    if (updated != null) onActiveProfileChanged(updated)
+                }
+            }
+        },
         onCheckForUpdateRequested = {
             coroutineScope.launch {
                 val update = com.fluxa.app.ui.catalog.UpdateManager.checkUpdate()

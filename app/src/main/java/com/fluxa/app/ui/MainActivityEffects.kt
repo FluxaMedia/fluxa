@@ -185,6 +185,7 @@ private fun ProfileManager.persistOAuthUpdate(provider: String, updated: UserPro
                 traktAccessToken = updated.traktAccessToken,
                 traktRefreshToken = updated.traktRefreshToken,
                 traktTokenExpiresAt = updated.traktTokenExpiresAt,
+                traktUsername = updated.traktUsername,
                 traktLastSyncAt = updated.traktLastSyncAt,
                 traktLastSyncedItems = updated.traktLastSyncedItems,
                 traktLastContinueWatchingCount = updated.traktLastContinueWatchingCount,
@@ -192,12 +193,14 @@ private fun ProfileManager.persistOAuthUpdate(provider: String, updated: UserPro
             )
             "simkl" -> current.copy(
                 simklAccessToken = updated.simklAccessToken,
+                simklUsername = updated.simklUsername,
                 simklLastSyncAt = updated.simklLastSyncAt
             )
             "anilist" -> current.copy(
                 anilistAccessToken = updated.anilistAccessToken,
                 anilistRefreshToken = updated.anilistRefreshToken,
-                anilistTokenExpiresAt = updated.anilistTokenExpiresAt
+                anilistTokenExpiresAt = updated.anilistTokenExpiresAt,
+                anilistUsername = updated.anilistUsername
             )
             else -> current
         }

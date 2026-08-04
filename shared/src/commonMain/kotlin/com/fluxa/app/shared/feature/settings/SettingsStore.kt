@@ -42,6 +42,7 @@ class SettingsStore(
             is SettingsAction.ConnectNuvioWithCredentials -> Unit
             SettingsAction.ConnectTraktRequested -> Unit
             SettingsAction.ConnectSimklRequested -> Unit
+            is SettingsAction.SyncProviderRequested -> Unit
             SettingsAction.ConnectAnilistRequested -> Unit
             SettingsAction.DisconnectSyncRequested -> dataSource.disconnectSync()
             is SettingsAction.DisconnectProviderRequested -> dataSource.disconnectProvider(action.provider)

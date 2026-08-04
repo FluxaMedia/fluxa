@@ -638,6 +638,13 @@ private fun SettingsAccountDetailContent(
             }
         )
     }
+    val onSyncNow = {
+        if (connected && (provider == SettingsAccountProvider.Simkl || provider == SettingsAccountProvider.Anilist)) {
+            onAction(SettingsAction.SyncProviderRequested(providerKey))
+        } else {
+            onSync()
+        }
+    }
     val onConnect = {
         if (isCredentialProvider) {
             showCredentialForm = true
@@ -760,7 +767,7 @@ private fun SettingsAccountDetailContent(
             }
         }
 
-        SettingsPrimaryButton(AppStrings.t(lang, "integration.sync_now")) { onSync() }
+        SettingsPrimaryButton(AppStrings.t(lang, "integration.sync_now")) { onSyncNow() }
         SettingsDestructiveLink(AppStrings.t(lang, "integration.disconnect")) { confirmingDisconnect = true }
     }
 

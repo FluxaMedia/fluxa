@@ -241,6 +241,7 @@ sealed interface SettingsAction {
     data class ConnectNuvioWithCredentials(val email: String, val password: String) : SettingsAction
     data object ConnectTraktRequested : SettingsAction
     data object ConnectSimklRequested : SettingsAction
+    data class SyncProviderRequested(val provider: String) : SettingsAction
     data object ConnectAnilistRequested : SettingsAction
     data object DisconnectSyncRequested : SettingsAction
     data class DisconnectProviderRequested(val provider: String) : SettingsAction

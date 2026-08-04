@@ -97,6 +97,7 @@ fun FluxaAppHost(
     onConnectNuvioWithCredentials: (String, String) -> Unit = { _, _ -> },
     onConnectTraktRequested: () -> Unit = {},
     onConnectSimklRequested: () -> Unit = {},
+    onSyncProviderRequested: (String) -> Unit = {},
     onConnectAnilistRequested: () -> Unit = {},
     onCheckForUpdateRequested: () -> Unit = {},
     onDownloadOpened: (String) -> Unit = {},
@@ -151,6 +152,7 @@ fun FluxaAppHost(
         onConnectNuvioWithCredentials = onConnectNuvioWithCredentials,
         onConnectTraktRequested = onConnectTraktRequested,
         onConnectSimklRequested = onConnectSimklRequested,
+        onSyncProviderRequested = onSyncProviderRequested,
         onConnectAnilistRequested = onConnectAnilistRequested,
         onCheckForUpdateRequested = onCheckForUpdateRequested,
         onDownloadOpened = onDownloadOpened,
@@ -208,6 +210,7 @@ fun FluxaAppHost(
     onConnectNuvioWithCredentials: (String, String) -> Unit = { _, _ -> },
     onConnectTraktRequested: () -> Unit = {},
     onConnectSimklRequested: () -> Unit = {},
+    onSyncProviderRequested: (String) -> Unit = {},
     onConnectAnilistRequested: () -> Unit = {},
     onCheckForUpdateRequested: () -> Unit = {},
     onDownloadOpened: (String) -> Unit = {},
@@ -523,6 +526,7 @@ fun FluxaAppHost(
                 is SettingsAction.ConnectNuvioWithCredentials -> onConnectNuvioWithCredentials(action.email, action.password)
                 SettingsAction.ConnectTraktRequested -> onConnectTraktRequested()
                 SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
+                is SettingsAction.SyncProviderRequested -> onSyncProviderRequested(action.provider)
                 SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
                 SettingsAction.CheckForUpdateRequested -> onCheckForUpdateRequested()
                 else -> scope.launch { settingsStore?.dispatch(action) }

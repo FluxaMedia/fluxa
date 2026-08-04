@@ -89,7 +89,8 @@ internal class AndroidAuthEffectHandler(
                 val response = repository.exchangeSimklCode(payload.string("code"))
                 profile.copy(
                     simklAccessToken = response.accessToken,
-                    simklUsername = repository.getSimklUsername(response.accessToken)
+                    simklUsername = repository.getSimklUsername(response.accessToken),
+                    simklLastSyncAt = System.currentTimeMillis()
                 )
             }
             "anilist" -> {
