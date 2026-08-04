@@ -178,25 +178,25 @@ private fun TopBar(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = AppStrings.t(language, "common.back"),
             tint = Color.White,
-            modifier = Modifier.size(if (showStickyContext) 22.dp else 32.dp).clickable(onClick = onBack)
+            modifier = Modifier.size(22.dp).clickable(onClick = onBack)
         )
         if (showStickyContext && content != null) {
             StickyContentIdentity(content = content, modifier = Modifier.width(130.dp).padding(start = 10.dp, end = 6.dp))
-            Box(modifier = Modifier.weight(1f))
+        }
+        Box(modifier = Modifier.weight(1f))
+        if (content != null) {
             Icon(
                 imageVector = if (content.isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
                 contentDescription = AppStrings.t(language, if (content.isInWatchlist) "auto.in_list" else "auto.my_list"),
                 tint = Color.White,
                 modifier = Modifier.size(22.dp).clickable { onAction(DetailAction.ToggleWatchlist) }
             )
-        } else {
-            Box(modifier = Modifier.weight(1f))
         }
         Icon(
             imageVector = Icons.Filled.Share,
             contentDescription = AppStrings.t(language, "common.share"),
             tint = Color.White,
-            modifier = Modifier.padding(start = if (showStickyContext) 12.dp else 18.dp).size(if (showStickyContext) 22.dp else 28.dp).clickable(onClick = onShareRequested)
+            modifier = Modifier.padding(start = 16.dp).size(22.dp).clickable(onClick = onShareRequested)
         )
     }
 }
@@ -361,12 +361,6 @@ private fun DetailBody(
         if (content.cast.isNotEmpty()) {
             CastSection(members = content.cast, language = language, modifier = Modifier.padding(top = 20.dp))
         }
-        ActionRow(
-            content = content,
-            language = language,
-            onAction = onAction,
-            modifier = Modifier.padding(top = 20.dp)
-        )
         DiscussionSection(AppStrings.t(language, "detail.trakt_comments"), content.traktComments, language)
         DiscussionSection(AppStrings.t(language, "detail.mdblist_discussion"), content.mdblistDiscussion, language)
     }
@@ -688,43 +682,6 @@ private fun CastMemberCard(member: DetailCastMemberUiModel) {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun ActionRow(
-    content: DetailUiModel,
-    language: String?,
-    onAction: (DetailAction) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        ActionItem(
-            icon = if (content.isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
-            label = AppStrings.t(language, if (content.isInWatchlist) "auto.in_list" else "auto.my_list"),
-            onClick = { onAction(DetailAction.ToggleWatchlist) }
-        )
-    }
-}
-
-@Composable
-private fun ActionItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    val isTv = LocalDeviceType.current == DeviceType.TV
-    var focused by remember { mutableStateOf(false) }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (isTv && focused) Color.White else Color.Transparent)
-            .onFocusChanged { focused = it.isFocused }
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Icon(icon, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(24.dp))
-        Text(text = label, color = if (isTv && focused) Color.Black else Color.White.copy(alpha = 0.8f), fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
     }
 }
 
