@@ -75,9 +75,11 @@ internal class HomeHeadlessSyncCoordinator(
             val updated = syncResult?.let { mergeSyncedProfile(gson, base = profile, updated = it, current = activeProfile()) }
             if (updated != null) {
                 setActiveProfile(updated)
-                val fresh = decodeList((result.state["home"] as? Map<*, *>)?.get("externalContinueWatching"))
-                val freshIds = fresh.map { it.id }.toSet()
-                setExternalContinueWatching(fresh + externalContinueWatching().filterNot { it.id in freshIds })
+                if (provider == updated.safeContinueWatchingSource) {
+                    val fresh = decodeList((result.state["home"] as? Map<*, *>)?.get("externalContinueWatching"))
+                    val freshKeys = fresh.map { it.id to it.reason }.toSet()
+                    setExternalContinueWatching(fresh + externalContinueWatching().filterNot { (it.id to it.reason) in freshKeys })
+                }
                 onProfileUpdated(updated)
                 refreshDynamicRows()
                 onSynced?.invoke(updated)
