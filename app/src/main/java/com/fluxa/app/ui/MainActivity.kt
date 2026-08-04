@@ -141,6 +141,14 @@ class MainActivity : FragmentActivity() {
                         val profile = withContext(Dispatchers.IO) {
                             initialProfileForDevice(profileManager, deviceType)
                         }
+                        profile?.avatarUrl?.takeIf(String::isNotBlank)?.let { avatarUrl ->
+                            val request = coil3.request.ImageRequest.Builder(this@MainActivity)
+                                .data(com.fluxa.app.shared.image.sanitizeImageUrl(avatarUrl))
+                                .memoryCacheKey("profile-avatar:$avatarUrl")
+                                .diskCacheKey("profile-avatar:$avatarUrl")
+                                .build()
+                            coil3.SingletonImageLoader.get(this@MainActivity).execute(request)
+                        }
                         loadedInitialProfile = profile
                         profilesReady = true
                     }
@@ -388,6 +396,8 @@ class MainActivity : FragmentActivity() {
 
                     var canPopSettings by remember { mutableStateOf(false) }
                     var settingsPopRequestId by remember { mutableStateOf(0) }
+                    var hasOpenOverlay by remember { mutableStateOf(false) }
+                    var overlayPopRequestId by remember { mutableStateOf(0) }
 
                     val navigateBackSafely = {
                         if (playerRequest != null) {
@@ -408,6 +418,8 @@ class MainActivity : FragmentActivity() {
                     BackHandler(enabled = playerRequest == null) {
                         if (canPopSettings) {
                             settingsPopRequestId++
+                        } else if (hasOpenOverlay) {
+                            overlayPopRequestId++
                         } else {
                             navigateBackSafely()
                         }
@@ -425,6 +437,8 @@ class MainActivity : FragmentActivity() {
                             onActiveProfileChanged = { activeProfile = it },
                             settingsPopRequestId = settingsPopRequestId,
                             onSettingsCanPopChanged = { canPopSettings = it },
+                            overlayPopRequestId = overlayPopRequestId,
+                            onOverlayOpenChanged = { hasOpenOverlay = it },
                             onNavigateToDestination = { destination -> navigateToDestination(destination, false) },
                             onDestinationChanged = { destination -> currentDestination = destination },
                             onPlayerRequestChanged = { playerRequest = it },

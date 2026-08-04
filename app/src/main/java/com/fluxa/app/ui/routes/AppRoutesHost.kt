@@ -66,6 +66,8 @@ internal fun AppRoutesHost(
     navigateBackSafely: () -> Unit,
     settingsPopRequestId: Int,
     onSettingsCanPopChanged: (Boolean) -> Unit,
+    overlayPopRequestId: Int,
+    onOverlayOpenChanged: (Boolean) -> Unit,
     onDestinationChanged: (FluxaDestination) -> Unit = {}
 ) {
     if (playerRequest != null) {
@@ -148,7 +150,7 @@ internal fun AppRoutesHost(
                 is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources -> Unit
             }
         },
-        onDetailBackRequested = navigateBackSafely,
+        onDetailBackRequested = {},
         showNavigationBar = true,
         onCatalogAction = { action ->
             when (action) {
@@ -248,6 +250,8 @@ internal fun AppRoutesHost(
         onSettingsBackRequested = navigateBackSafely,
         settingsPopRequestId = settingsPopRequestId,
         onSettingsCanPopChanged = onSettingsCanPopChanged,
+        overlayPopRequestId = overlayPopRequestId,
+        onOverlayOpenChanged = onOverlayOpenChanged,
         onDestinationChanged = onDestinationChanged,
         onManageAddonsRequested = { onNavigateToDestination(FluxaDestination.AddonStore) },
         onManagePluginsRequested = { onNavigateToDestination(FluxaDestination.Plugins) },
@@ -277,6 +281,40 @@ internal fun AppRoutesHost(
                 homeViewModel.setProviderSyncing("nuvio", true)
                 homeViewModel.syncNuvioIntegration(
                     profile = profile!!,
+                    onProfileUpdated = { updated ->
+                        onActiveProfileChanged(updated)
+                        profileManager.saveProfile(updated)
+                        profileManager.setLastActiveProfile(updated)
+                        homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                    },
+                    onComplete = { homeViewModel.setProviderSyncing("nuvio", false) }
+                )
+            }
+        },
+        onConnectStremioWithCredentials = { email, password ->
+            val profile = activeProfile
+            if (profile != null) {
+                homeViewModel.connectStremioWithCredentials(
+                    email = email,
+                    password = password,
+                    profile = profile,
+                    onProfileUpdated = { updated ->
+                        onActiveProfileChanged(updated)
+                        profileManager.saveProfile(updated)
+                        profileManager.setLastActiveProfile(updated)
+                        homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                    },
+                    onComplete = { homeViewModel.setProviderSyncing("stremio", false) }
+                )
+            }
+        },
+        onConnectNuvioWithCredentials = { email, password ->
+            val profile = activeProfile
+            if (profile != null) {
+                homeViewModel.connectNuvioWithCredentials(
+                    email = email,
+                    password = password,
+                    profile = profile,
                     onProfileUpdated = { updated ->
                         onActiveProfileChanged(updated)
                         profileManager.saveProfile(updated)

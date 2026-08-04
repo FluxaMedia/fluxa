@@ -93,6 +93,8 @@ fun FluxaAppHost(
     onManagePluginsRequested: () -> Unit = {},
     onConnectStremioRequested: () -> Unit = {},
     onConnectNuvioRequested: () -> Unit = {},
+    onConnectStremioWithCredentials: (String, String) -> Unit = { _, _ -> },
+    onConnectNuvioWithCredentials: (String, String) -> Unit = { _, _ -> },
     onConnectTraktRequested: () -> Unit = {},
     onConnectSimklRequested: () -> Unit = {},
     onConnectAnilistRequested: () -> Unit = {},
@@ -101,6 +103,8 @@ fun FluxaAppHost(
     onSettingsBackRequested: () -> Unit = {},
     settingsPopRequestId: Int = 0,
     onSettingsCanPopChanged: (Boolean) -> Unit = {},
+    overlayPopRequestId: Int = 0,
+    onOverlayOpenChanged: (Boolean) -> Unit = {},
     onDestinationChanged: (FluxaDestination) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -143,6 +147,8 @@ fun FluxaAppHost(
         onManagePluginsRequested = onManagePluginsRequested,
         onConnectStremioRequested = onConnectStremioRequested,
         onConnectNuvioRequested = onConnectNuvioRequested,
+        onConnectStremioWithCredentials = onConnectStremioWithCredentials,
+        onConnectNuvioWithCredentials = onConnectNuvioWithCredentials,
         onConnectTraktRequested = onConnectTraktRequested,
         onConnectSimklRequested = onConnectSimklRequested,
         onConnectAnilistRequested = onConnectAnilistRequested,
@@ -151,6 +157,8 @@ fun FluxaAppHost(
         onSettingsBackRequested = onSettingsBackRequested,
         settingsPopRequestId = settingsPopRequestId,
         onSettingsCanPopChanged = onSettingsCanPopChanged,
+        overlayPopRequestId = overlayPopRequestId,
+        onOverlayOpenChanged = onOverlayOpenChanged,
         onDestinationChanged = onDestinationChanged,
         modifier = modifier
     )
@@ -196,6 +204,8 @@ fun FluxaAppHost(
     onManagePluginsRequested: () -> Unit = {},
     onConnectStremioRequested: () -> Unit = {},
     onConnectNuvioRequested: () -> Unit = {},
+    onConnectStremioWithCredentials: (String, String) -> Unit = { _, _ -> },
+    onConnectNuvioWithCredentials: (String, String) -> Unit = { _, _ -> },
     onConnectTraktRequested: () -> Unit = {},
     onConnectSimklRequested: () -> Unit = {},
     onConnectAnilistRequested: () -> Unit = {},
@@ -204,6 +214,8 @@ fun FluxaAppHost(
     onSettingsBackRequested: () -> Unit = {},
     settingsPopRequestId: Int = 0,
     onSettingsCanPopChanged: (Boolean) -> Unit = {},
+    overlayPopRequestId: Int = 0,
+    onOverlayOpenChanged: (Boolean) -> Unit = {},
     onDestinationChanged: (FluxaDestination) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -369,6 +381,28 @@ fun FluxaAppHost(
             appState.popSettingsCategory()
         }
     }
+    LaunchedEffect(
+        appState.uiState.selectedDetail,
+        appState.uiState.showSourceSelection,
+        appState.uiState.selectedCategoryId,
+        appState.uiState.showNotifications
+    ) {
+        val hasOverlay = appState.uiState.selectedDetail != null ||
+            appState.uiState.showSourceSelection ||
+            appState.uiState.selectedCategoryId != null ||
+            appState.uiState.showNotifications
+        onOverlayOpenChanged(hasOverlay)
+    }
+    LaunchedEffect(overlayPopRequestId) {
+        if (overlayPopRequestId > 0) {
+            when {
+                appState.uiState.showSourceSelection -> appState.closeSourceSelection()
+                appState.uiState.selectedDetail != null -> appState.clearDetail()
+                appState.uiState.showNotifications -> appState.closeNotifications()
+                appState.uiState.selectedCategoryId != null -> appState.clearCategory()
+            }
+        }
+    }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val widthClass = if (deviceType == com.fluxa.app.ui.catalog.DeviceType.TV) {
@@ -390,6 +424,7 @@ fun FluxaAppHost(
                             scope.launch { libraryStore.dispatch(LibraryAction.FolderSelected(folder)) }
                         }
                 } else {
+                    pendingAutoPlayId = null
                     appState.selectDetail(action.item)
                 }
             }
@@ -484,6 +519,8 @@ fun FluxaAppHost(
                 SettingsAction.ManagePluginsRequested -> onManagePluginsRequested()
                 SettingsAction.ConnectStremioRequested -> onConnectStremioRequested()
                 SettingsAction.ConnectNuvioRequested -> onConnectNuvioRequested()
+                is SettingsAction.ConnectStremioWithCredentials -> onConnectStremioWithCredentials(action.email, action.password)
+                is SettingsAction.ConnectNuvioWithCredentials -> onConnectNuvioWithCredentials(action.email, action.password)
                 SettingsAction.ConnectTraktRequested -> onConnectTraktRequested()
                 SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
                 SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
