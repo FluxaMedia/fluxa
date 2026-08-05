@@ -61,7 +61,12 @@ internal class EpisodeCalendarLoader(
             }.awaitAll()
         }
             .flatten()
-        val items = calendarContentPlan(rawItems, monthPrefix)
+        val watchedVideoIds = if (profile?.integrationLibrarySource == "simkl") {
+            runCatching { repository.getSimklWatchedEpisodesWithTimestamps(profile).keys }.getOrDefault(emptySet())
+        } else {
+            emptySet()
+        }
+        val items = calendarContentPlan(rawItems, monthPrefix, watchedVideoIds)
 
         EpisodeCalendarLoadResult(items, localItems, externalItems)
     }
@@ -148,10 +153,11 @@ internal class EpisodeCalendarLoader(
         )
     }
 
-    private fun calendarContentPlan(items: List<CalendarUpcomingItem>, monthPrefix: String): List<CalendarUpcomingItem> {
+    private fun calendarContentPlan(items: List<CalendarUpcomingItem>, monthPrefix: String, watchedVideoIds: Set<String> = emptySet()): List<CalendarUpcomingItem> {
         val request = JsonObject().apply {
             add("items", gson.toJsonTree(items))
             addProperty("monthPrefix", monthPrefix)
+            add("watchedVideoIds", gson.toJsonTree(watchedVideoIds))
         }
         return gson.fromJson(
             FluxaCoreUniFfi.coreInvokeValue("calendarContentPlan", request.toString()),

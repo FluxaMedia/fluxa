@@ -41,5 +41,6 @@ fun Meta.isUpNextContinueItem(): Boolean {
     return isSeries &&
         !lastVideoId.isNullOrBlank() &&
         (timeOffset ?: 0L) <= 0L &&
-        (duration ?: 0L) <= 0L
+        (duration ?: 0L) <= 0L &&
+        resumeProgressPercent == null
 }

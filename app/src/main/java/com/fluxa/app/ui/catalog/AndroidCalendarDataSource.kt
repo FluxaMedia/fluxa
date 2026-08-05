@@ -7,6 +7,9 @@ import com.fluxa.app.shared.feature.calendar.CalendarUiState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Calendar
 
 class AndroidCalendarDataSource(
@@ -54,9 +57,16 @@ class AndroidCalendarDataSource(
         homeViewModel.loadCalendarMonth(activeProfile(), selectedMonth.value.first, selectedMonth.value.second, librarySourcePlannedItems())
     }
 
-    private fun librarySourcePlannedItems(): List<com.fluxa.app.data.remote.Meta> {
+    private suspend fun librarySourcePlannedItems(): List<com.fluxa.app.data.remote.Meta> {
+        val profile = activeProfile()
+        if (profile?.integrationLibrarySource != "local") {
+            homeViewModel.loadLibraryItems(profile)
+            withTimeoutOrNull(8_000L) {
+                homeViewModel.libraryUiState.filter { !it.isLoading }.first()
+            }
+        }
         val library = homeViewModel.libraryUiState.value
-        return when (activeProfile()?.integrationLibrarySource) {
+        return when (profile?.integrationLibrarySource) {
             "trakt" -> library.traktPlanned
             "simkl" -> library.simklPlanned + library.simklWatching
             "anilist" -> library.anilistPlanned + library.anilistWatching

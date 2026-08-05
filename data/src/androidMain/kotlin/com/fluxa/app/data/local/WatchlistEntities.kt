@@ -153,6 +153,7 @@ data class ExternalPlaybackProgressEntity(
     val videoId: String?,
     val timeOffset: Long,
     val duration: Long,
+    val resumeProgressPercent: Float? = null,
     val lastEpisodeName: String?,
     val reason: String?,
     val continueWatchingPoster: String?,

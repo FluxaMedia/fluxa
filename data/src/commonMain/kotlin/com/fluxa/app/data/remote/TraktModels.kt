@@ -239,6 +239,7 @@ data class SimklItem(
     val ids: SimklIds? = null,
     val status: String? = null,
     val last_watched_at: String? = null,
+    val next_to_watch: String? = null,
     val seasons: List<SimklSeason>? = null,
     val show: SimklMediaRef? = null,
     val movie: SimklMediaRef? = null
@@ -248,6 +249,10 @@ data class SimklItem(
     val effectiveYear: Int? get() = year ?: show?.year ?: movie?.year
     val effectiveIds: SimklIds? get() = ids ?: show?.ids ?: movie?.ids
     val effectivePoster: String? get() = show?.poster ?: movie?.poster
+    val nextToWatchLocator: Pair<Int, Int>?
+        get() = next_to_watch?.let {
+            Regex("""^S(\d+)E(\d+)$""", RegexOption.IGNORE_CASE).matchEntire(it.trim())
+        }?.groupValues?.let { groups -> groups[1].toIntOrNull()?.let { s -> groups[2].toIntOrNull()?.let { e -> s to e } } }
 }
 
 @Serializable

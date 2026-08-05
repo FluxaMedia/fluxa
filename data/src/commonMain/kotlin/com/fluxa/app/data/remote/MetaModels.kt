@@ -133,6 +133,7 @@ data class Meta(
     val cast: List<CastMember>? = null,
     val timeOffset: Long? = null,
     val duration: Long? = null,
+    val resumeProgressPercent: Float? = null,
     val lastVideoId: String? = null,
     val lastStreamIndex: Int? = null,
     val lastEpisodeName: String? = null,

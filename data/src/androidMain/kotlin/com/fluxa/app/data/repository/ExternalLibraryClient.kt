@@ -11,7 +11,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.SimklEpisode
 import com.fluxa.app.data.remote.SimklItem
-import com.fluxa.app.data.remote.TraktApi
+import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.remote.TraktEpisode
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.domain.ContentIdentity
@@ -59,7 +59,7 @@ query (${'$'}userId: Int) {
 
 @Singleton
 class ExternalLibraryClient @Inject constructor(
-    private val traktApi: TraktApi,
+    private val externalSyncApi: ExternalSyncApi,
     private val addonRepository: AddonRepository,
     private val traktSyncClient: TraktSyncClient,
     private val simklSyncCoordinator: SimklSyncCoordinator
@@ -74,7 +74,7 @@ class ExternalLibraryClient @Inject constructor(
     suspend fun getExternalContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
         supervisorScope {
             val trakt = async { getTraktPlaybackItems(profile, language) }
-            val simkl = async { getSimklContinueWatchingItems(profile) }
+            val simkl = async { getSimklContinueWatchingItems(profile, language) }
             val anilist = async { getAnilistContinueWatchingItems(profile.anilistAccessToken) }
             val combined = trakt.await() + simkl.await() + anilist.await()
             distinctByIdentityKey(combined)
@@ -103,7 +103,7 @@ class ExternalLibraryClient @Inject constructor(
             types.map { (apiType, metaType) ->
                 async {
                     runCatching {
-                        val response = traktApi.getSimklAllItems(
+                        val response = externalSyncApi.getSimklAllItems(
                             type = apiType,
                             status = status,
                             token = "Bearer $token",
@@ -124,15 +124,19 @@ class ExternalLibraryClient @Inject constructor(
     suspend fun getSimklLibraryItems(profile: UserProfile, status: String): List<Meta> = withContext(Dispatchers.IO) {
         val snapshot = simklSyncCoordinator.snapshot(profile)
         val keys = when (status) {
-            "watching" -> listOf("moviesWatching" to "movie", "showsWatching" to "series")
-            "plantowatch" -> listOf("moviesPlanToWatch" to "movie", "showsPlanToWatch" to "series")
-            "completed" -> listOf("moviesCompleted" to "movie", "showsCompleted" to "series")
+            "watching" -> listOf("moviesWatching" to "movie", "showsWatching" to "series", "animeWatching" to "anime")
+            "plantowatch" -> listOf("moviesPlanToWatch" to "movie", "showsPlanToWatch" to "series", "animePlanToWatch" to "anime")
+            "completed" -> listOf("moviesCompleted" to "movie", "showsCompleted" to "series", "animeCompleted" to "anime")
             else -> emptyList()
         }
         keys.flatMap { (key, type) ->
             val response = snapshot.resources[key] ?: return@flatMap emptyList()
-            val items = if (type == "movie") response.movies else response.shows
-            items.mapNotNull { it.toLibraryMeta(type, "Simkl") }
+            val items = when (type) {
+                "movie" -> response.movies
+                "anime" -> response.anime
+                else -> response.shows
+            }
+            items.mapNotNull { it.toLibraryMeta(if (type == "anime") "series" else type, "Simkl") }
         }.let(::distinctByIdentityKey)
     }
 
@@ -144,7 +148,7 @@ class ExternalLibraryClient @Inject constructor(
                 listOf("shows", "anime").map { apiType ->
                     async {
                         runCatching {
-                            val response = traktApi.getSimklAllItems(
+                            val response = externalSyncApi.getSimklAllItems(
                                 type = apiType,
                                 status = status,
                                 token = "Bearer $token",
@@ -161,10 +165,9 @@ class ExternalLibraryClient @Inject constructor(
 
     suspend fun getSimklWatchedEpisodesWithTimestamps(profile: UserProfile): Map<String, Long> = withContext(Dispatchers.IO) {
         val snapshot = simklSyncCoordinator.snapshot(profile)
-        listOf("showsWatching", "showsCompleted")
-            .flatMap { snapshot.resources[it]?.shows.orEmpty() }
-            .flatMap { it.watchedEpisodeTimestamps() }
-            .toMap()
+        val shows = listOf("showsWatching", "showsCompleted").flatMap { snapshot.resources[it]?.shows.orEmpty() }
+        val anime = listOf("animeWatching", "animeCompleted").flatMap { snapshot.resources[it]?.anime.orEmpty() }
+        (shows + anime).flatMap { it.watchedEpisodeTimestamps() }.toMap()
     }
 
     private fun SimklItem.watchedEpisodeTimestamps(): List<Pair<String, Long>> {
@@ -193,7 +196,7 @@ class ExternalLibraryClient @Inject constructor(
         if (token.isNullOrBlank()) return emptyList()
         if (!TraktIntegration.hasClient(traktKey)) return emptyList()
         return try {
-            val rawItems = traktApi.getPlayback(TraktIntegration.bearer(token), traktKey)
+            val rawItems = externalSyncApi.getPlayback(TraktIntegration.bearer(token), traktKey)
                 .filter { item ->
                     val summary = item.movie ?: item.show ?: return@filter false
                     val progress = item.progress?.coerceIn(0f, 100f) ?: return@filter false
@@ -243,19 +246,124 @@ class ExternalLibraryClient @Inject constructor(
         }
     }
 
-    private suspend fun getSimklContinueWatchingItems(profile: UserProfile): List<Meta> {
+    private suspend fun getSimklContinueWatchingItems(profile: UserProfile, language: String): List<Meta> {
         return runCatching {
             val resources = simklSyncCoordinator.snapshot(profile).resources
-            val movies = resources["moviesWatching"]?.movies.orEmpty().mapNotNull { it.toContinueMeta("movie") }
-            val shows = resources["showsWatching"]?.shows.orEmpty().mapNotNull { item -> item.toContinueMeta("series")?.let { item to it } }
+            val playbackSessions = fetchSimklPlaybackSessions(profile)
+            val consumedSessionIds = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
+            val movies = resources["moviesWatching"]?.movies.orEmpty().mapNotNull { item ->
+                resumeMetaFromPlayback(item, "movie", playbackSessions, profile, language, consumedSessionIds)
+                    ?: item.toContinueMeta("movie")
+            }
+            val shows = resources["showsWatching"]?.shows.orEmpty().mapNotNull { item ->
+                val meta = resumeMetaFromPlayback(item, "series", playbackSessions, profile, language, consumedSessionIds)
+                    ?: item.toContinueMeta("series")
+                meta?.let { item to it }
+            }
             val showsWithStills = supervisorScope {
                 shows.map { (item, meta) -> async { attachSimklEpisodeDetails(item, meta) } }.awaitAll()
             }
-            movies + showsWithStills
+            val unmatchedSessions = playbackSessions.filter { it.get("id")?.asInt !in consumedSessionIds }
+            val standaloneSessionItems = supervisorScope {
+                unmatchedSessions.map { session -> async {
+                    runCatching { metaFromPlaybackSession(session, profile, language) }.getOrNull()
+                } }.awaitAll()
+            }.filterNotNull()
+            movies + showsWithStills + standaloneSessionItems
         }.getOrElse {
             Log.w("ExternalLibraryClient", "Failed to load Simkl continue watching items", it)
             emptyList()
         }
+    }
+
+    private suspend fun fetchSimklPlaybackSessions(profile: UserProfile): List<com.google.gson.JsonObject> {
+        val token = profile.simklAccessToken?.takeIf(String::isNotBlank) ?: return emptyList()
+        if (BuildConfig.SIMKL_CLIENT_ID.isBlank()) return emptyList()
+        return runCatching {
+            externalSyncApi.getSimklPlaybackSessions("Bearer $token", BuildConfig.SIMKL_CLIENT_ID)
+        }.getOrDefault(emptyList())
+    }
+
+    private fun com.google.gson.JsonObject.playbackSource(): com.google.gson.JsonObject? =
+        getAsJsonObject("show") ?: getAsJsonObject("movie") ?: getAsJsonObject("anime")
+
+    private suspend fun resumeMetaFromPlayback(
+        item: SimklItem,
+        type: String,
+        playbackSessions: List<com.google.gson.JsonObject>,
+        profile: UserProfile,
+        language: String,
+        consumedSessionIds: MutableSet<Int>
+    ): Meta? {
+        val id = item.effectiveIds?.imdb ?: item.effectiveIds?.tmdb ?: item.effectiveIds?.slug?.let { "simkl:$it" } ?: item.effectiveIds?.simkl?.let { "simkl:$it" } ?: return null
+        val locator = if (type == "series") item.nextEpisodeLocator() else null
+        val session = playbackSessions.firstOrNull { session ->
+            val source = session.playbackSource()
+            val simklId = source?.getAsJsonObject("ids")?.get("simkl")?.takeUnless { it.isJsonNull }?.asInt
+            val imdbId = source?.getAsJsonObject("ids")?.get("imdb")?.takeUnless { it.isJsonNull }?.asString
+            val matchesShow = (simklId != null && simklId == item.effectiveIds?.simkl) || (imdbId != null && imdbId == item.effectiveIds?.imdb)
+            if (!matchesShow) return@firstOrNull false
+            if (locator == null) return@firstOrNull true
+            val episode = session.getAsJsonObject("episode") ?: return@firstOrNull false
+            episode.get("season")?.asInt == locator.first && episode.get("number")?.asInt == locator.second
+        } ?: return null
+        session.get("id")?.asInt?.let { consumedSessionIds.add(it) }
+        val entry = simklPlaybackItemToContinueMetaEntry(session) ?: return null
+        val detail = resolveMetaDetail(type, id, language, profile)
+        return Meta(
+            id = id,
+            name = detail?.name ?: entry.get("name")?.takeUnless { it.isJsonNull }?.asString ?: item.effectiveTitle ?: unknownName(language),
+            type = type,
+            poster = detail?.poster ?: item.simklPosterUrl(),
+            background = detail?.background,
+            logo = detail?.logo,
+            description = detail?.description,
+            releaseInfo = detail?.releaseInfo ?: item.effectiveYear?.toString(),
+            released = detail?.released ?: item.effectiveYear?.let { "$it-01-01" },
+            resumeProgressPercent = entry.get("resumeProgressPercent")?.takeUnless { it.isJsonNull }?.asFloat,
+            lastVideoId = entry.get("lastVideoId")?.takeUnless { it.isJsonNull }?.asString,
+            lastEpisodeName = entry.get("lastEpisodeName")?.takeUnless { it.isJsonNull }?.asString,
+            reason = "Simkl"
+        )
+    }
+
+    private suspend fun metaFromPlaybackSession(session: com.google.gson.JsonObject, profile: UserProfile, language: String): Meta? {
+        val source = session.playbackSource() ?: return null
+        val id = source.getAsJsonObject("ids")?.get("imdb")?.takeUnless { it.isJsonNull }?.asString
+            ?: source.getAsJsonObject("ids")?.get("tmdb")?.takeUnless { it.isJsonNull }?.asString?.let { "tmdb:$it" }
+            ?: source.getAsJsonObject("ids")?.get("simkl")?.takeUnless { it.isJsonNull }?.asInt?.let { "simkl:$it" }
+            ?: return null
+        val type = if (session.getAsJsonObject("movie") != null) "movie" else "series"
+        val entry = simklPlaybackItemToContinueMetaEntry(session) ?: return null
+        val detail = resolveMetaDetail(type, id, language, profile)
+        val posterKey = source.get("poster")?.takeUnless { it.isJsonNull }?.asString
+        val meta = Meta(
+            id = id,
+            name = detail?.name ?: entry.get("name")?.takeUnless { it.isJsonNull }?.asString ?: unknownName(language),
+            type = type,
+            poster = detail?.poster ?: posterKey?.let { "https://simkl.in/posters/${it}_m.jpg" },
+            background = detail?.background,
+            logo = detail?.logo,
+            description = detail?.description,
+            releaseInfo = detail?.releaseInfo ?: source.get("year")?.takeUnless { it.isJsonNull }?.asString,
+            released = detail?.released,
+            resumeProgressPercent = entry.get("resumeProgressPercent")?.takeUnless { it.isJsonNull }?.asFloat,
+            lastVideoId = entry.get("lastVideoId")?.takeUnless { it.isJsonNull }?.asString,
+            lastEpisodeName = entry.get("lastEpisodeName")?.takeUnless { it.isJsonNull }?.asString,
+            reason = "Simkl"
+        )
+        return if (type == "series") {
+            val simklId = source.getAsJsonObject("ids")?.get("simkl")?.takeUnless { it.isJsonNull }?.asInt
+            if (simklId != null) attachEpisodeDetailsBySimklId(simklId, meta) else meta
+        } else {
+            meta
+        }
+    }
+
+    private fun simklPlaybackItemToContinueMetaEntry(session: com.google.gson.JsonObject): com.google.gson.JsonObject? {
+        val request = com.google.gson.JsonObject().apply { add("item", session) }
+        val result = runCatching { FluxaCoreUniFfi.coreInvokeValue("simklPlaybackItemToContinueMeta", request.toString()) }.getOrNull()
+        return result?.takeUnless { it.isJsonNull }?.asJsonObject
     }
 
     private data class SimklEpisodeCacheEntry(val still: String?, val title: String?)
@@ -265,9 +373,20 @@ class ExternalLibraryClient @Inject constructor(
     private suspend fun attachSimklEpisodeDetails(item: SimklItem, meta: Meta): Meta {
         val simklId = item.effectiveIds?.simkl ?: return meta
         val locator = item.nextEpisodeLocator() ?: return meta
+        return attachEpisodeDetailsBySimklId(simklId, locator, meta)
+    }
+
+    private suspend fun attachEpisodeDetailsBySimklId(simklId: Int, meta: Meta): Meta {
+        val locator = meta.lastVideoId?.split(":")?.takeLast(2)?.let { (season, episode) ->
+            season.toIntOrNull()?.let { s -> episode.toIntOrNull()?.let { e -> s to e } }
+        } ?: return meta
+        return attachEpisodeDetailsBySimklId(simklId, locator, meta)
+    }
+
+    private suspend fun attachEpisodeDetailsBySimklId(simklId: Int, locator: Pair<Int, Int>, meta: Meta): Meta {
         val cacheKey = "$simklId:${locator.first}:${locator.second}"
         val fetched = runCatching {
-            traktApi.getSimklTvEpisodes(simklId, BuildConfig.SIMKL_CLIENT_ID)
+            externalSyncApi.getSimklTvEpisodes(simklId, BuildConfig.SIMKL_CLIENT_ID)
                 .firstOrNull { it.season == locator.first && it.episode == locator.second }
         }.getOrNull()
         if (fetched != null) {
@@ -282,17 +401,7 @@ class ExternalLibraryClient @Inject constructor(
         )
     }
 
-    private fun SimklItem.nextEpisodeLocator(): Pair<Int, Int>? {
-        val latestEpisode = seasons.orEmpty()
-            .flatMap { season -> season.episodes.orEmpty().map { season.number to it } }
-            .filter { (_, episode) -> !episode.watchedAt.isNullOrBlank() || (episode.number ?: 0) > 0 }
-            .maxWithOrNull(compareBy<Pair<Int?, SimklEpisode>>({ it.first ?: 0 }, { it.second.number ?: 0 }))
-            ?: return null
-        val season = latestEpisode.first ?: 1
-        val watchedCount = seasons.orEmpty().sumOf { it.episodes.orEmpty().size }
-        val nextEpisode = (latestEpisode.second.number ?: watchedCount) + 1
-        return season to nextEpisode
-    }
+    private fun SimklItem.nextEpisodeLocator(): Pair<Int, Int>? = nextToWatchLocator
 
     private fun SimklItem.simklPosterUrl(): String? = effectivePoster?.let { "https://simkl.in/posters/${it}_m.jpg" }
 
@@ -311,12 +420,7 @@ class ExternalLibraryClient @Inject constructor(
 
     private fun SimklItem.toContinueMeta(type: String): Meta? {
         val id = effectiveIds?.imdb ?: effectiveIds?.tmdb ?: effectiveIds?.slug?.let { "simkl:$it" } ?: effectiveIds?.simkl?.let { "simkl:$it" } ?: return null
-        val latestEpisode = seasons.orEmpty()
-            .flatMap { season -> season.episodes.orEmpty().map { season.number to it } }
-            .filter { (_, episode) -> !episode.watchedAt.isNullOrBlank() || (episode.number ?: 0) > 0 }
-            .maxWithOrNull(compareBy<Pair<Int?, SimklEpisode>>({ it.first ?: 0 }, { it.second.number ?: 0 }))
-        val watchedCount = seasons.orEmpty().sumOf { it.episodes.orEmpty().size }.takeIf { it > 0 } ?: 1
-        val totalUnits = (watchedCount + 1).coerceAtLeast(2)
+        val next = nextToWatchLocator
         return Meta(
             id = id,
             name = effectiveTitle ?: unknownName(null),
@@ -324,10 +428,9 @@ class ExternalLibraryClient @Inject constructor(
             poster = simklPosterUrl(),
             releaseInfo = effectiveYear?.toString(),
             released = effectiveYear?.let { "$it-01-01" },
-            timeOffset = watchedCount * EPISODE_PROGRESS_UNIT_MS,
-            duration = totalUnits * EPISODE_PROGRESS_UNIT_MS,
-            lastVideoId = latestEpisode?.let { "$id:${it.first ?: 1}:${(it.second.number ?: watchedCount) + 1}" },
-            lastEpisodeName = latestEpisode?.second?.number?.let { "Episode ${it + 1}" },
+            timeOffset = 0L,
+            duration = 0L,
+            lastVideoId = next?.let { "$id:${it.first}:${it.second}" },
             reason = "Simkl"
         )
     }
@@ -336,7 +439,7 @@ class ExternalLibraryClient @Inject constructor(
         if (token.isNullOrBlank()) return null
         val authorization = "Bearer $token"
         return try {
-            val viewerResponse = traktApi.anilistGraphQl(
+            val viewerResponse = externalSyncApi.anilistGraphQl(
                 authorization,
                 AnilistGraphQlRequest(query = "query { Viewer { id } }")
             )
@@ -347,7 +450,7 @@ class ExternalLibraryClient @Inject constructor(
                 ?.takeUnless { it.isJsonNull }
                 ?.asInt ?: return null
 
-            val listResponse = traktApi.anilistGraphQl(
+            val listResponse = externalSyncApi.anilistGraphQl(
                 authorization,
                 AnilistGraphQlRequest(
                     query = ANILIST_LIST_QUERY,

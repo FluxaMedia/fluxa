@@ -23,7 +23,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "watchlist_db"
-        ).build()
+        ).fallbackToDestructiveMigration(false).build()
     }
 
     @Provides

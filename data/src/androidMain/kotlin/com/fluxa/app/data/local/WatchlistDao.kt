@@ -284,7 +284,8 @@ interface WatchlistDao {
     @Query(
         """
         SELECT * FROM external_playback_progress
-        WHERE profileId = :profileId AND timeOffset > 0 AND duration > 0
+        WHERE profileId = :profileId
+          AND ((timeOffset > 0 AND duration > 0) OR (type IN ('series', 'tv', 'anime') AND videoId IS NOT NULL AND videoId != '' AND timeOffset <= 0 AND duration <= 0))
         ORDER BY syncedAt DESC
         """
     )
@@ -293,7 +294,8 @@ interface WatchlistDao {
     @Query(
         """
         SELECT * FROM external_playback_progress
-        WHERE profileId = :profileId AND timeOffset > 0 AND duration > 0
+        WHERE profileId = :profileId
+          AND ((timeOffset > 0 AND duration > 0) OR (type IN ('series', 'tv', 'anime') AND videoId IS NOT NULL AND videoId != '' AND timeOffset <= 0 AND duration <= 0))
         ORDER BY syncedAt DESC
         """
     )
@@ -374,7 +376,8 @@ interface WatchlistDao {
     @Query(
         """
         SELECT * FROM external_playback_progress
-        WHERE profileId = :profileId AND provider = :provider AND timeOffset > 0 AND duration > 0
+        WHERE profileId = :profileId AND provider = :provider
+          AND ((timeOffset > 0 AND duration > 0) OR (type IN ('series', 'tv', 'anime') AND videoId IS NOT NULL AND videoId != '' AND timeOffset <= 0 AND duration <= 0))
         ORDER BY syncedAt DESC
         """
     )

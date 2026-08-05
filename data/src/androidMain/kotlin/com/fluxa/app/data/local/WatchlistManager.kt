@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
+import com.fluxa.app.ui.catalog.isUpNextContinueItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -310,7 +311,14 @@ class WatchlistManager @Inject constructor(
         val profileId = pid()
         providers.forEach { dao.deleteExternalPlaybackProgressByProvider(profileId, it) }
         val now = System.currentTimeMillis()
-        val kept = items.filter { it.id.isNotBlank() && (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L }
+        val kept = items.filter {
+            it.id.isNotBlank() &&
+                (
+                    (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L ||
+                        it.isUpNextContinueItem() ||
+                        (it.resumeProgressPercent != null && !it.lastVideoId.isNullOrBlank())
+                )
+        }
         dao.upsertExternalPlaybackProgress(kept.map { it.toExternalPlaybackProgressEntity(profileId, now) })
     }
 
@@ -387,6 +395,7 @@ class WatchlistManager @Inject constructor(
         releaseInfo = releaseInfo,
         timeOffset = timeOffset,
         duration = duration,
+        resumeProgressPercent = resumeProgressPercent,
         lastVideoId = videoId,
         lastEpisodeName = lastEpisodeName,
         reason = reason,
@@ -410,6 +419,7 @@ class WatchlistManager @Inject constructor(
         videoId = lastVideoId,
         timeOffset = timeOffset ?: 0L,
         duration = duration ?: 0L,
+        resumeProgressPercent = resumeProgressPercent,
         lastEpisodeName = lastEpisodeName,
         reason = reason,
         continueWatchingPoster = continueWatchingPoster,

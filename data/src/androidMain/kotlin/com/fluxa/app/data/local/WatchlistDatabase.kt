@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         WatchlistRemovalEntity::class,
         WatchedEpisodeRemovalEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
