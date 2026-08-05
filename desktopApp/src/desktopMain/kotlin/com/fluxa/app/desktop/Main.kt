@@ -17,6 +17,7 @@ import com.fluxa.app.data.repository.StremioAddonManifestClient
 import com.fluxa.app.data.repository.StremioAddonResourceClient
 import com.fluxa.app.desktop.home.DesktopCatalogHomeDataSource
 import com.fluxa.app.desktop.home.DesktopHomeCoordinator
+import com.fluxa.app.desktop.search.DesktopSearchDataSource
 import com.fluxa.app.shared.FluxaAppHost
 import com.fluxa.app.ui.catalog.DeviceType
 import com.google.gson.Gson
@@ -35,9 +36,9 @@ private fun buildDesktopAddonRepository(): AddonRepository {
 }
 
 fun main() = application {
-    val catalogHomeDataSource = remember {
-        DesktopCatalogHomeDataSource(DesktopHomeCoordinator(buildDesktopAddonRepository()))
-    }
+    val addonRepository = remember { buildDesktopAddonRepository() }
+    val catalogHomeDataSource = remember { DesktopCatalogHomeDataSource(DesktopHomeCoordinator(addonRepository)) }
+    val searchDataSource = remember { DesktopSearchDataSource(addonRepository) }
     Window(
         onCloseRequest = ::exitApplication,
         title = "Fluxa",
@@ -45,6 +46,7 @@ fun main() = application {
     ) {
         FluxaAppHost(
             catalogHomeDataSource = catalogHomeDataSource,
+            searchDataSource = searchDataSource,
             deviceType = DeviceType.Desktop,
             showNavigationBar = true,
             modifier = Modifier.fillMaxSize()
