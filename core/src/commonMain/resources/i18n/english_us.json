@@ -1018,6 +1018,7 @@
   "format.elapsed_minutes": "%s min",
   "format.elapsed_hours_minutes": "%s hr %s min",
   "format.elapsed_just_started": "Just started",
+  "format.watched_percent": "%s% watched",
   "brand.trakt": "Trakt.tv",
   "brand.simkl": "Simkl",
   "brand.anilist": "AniList",

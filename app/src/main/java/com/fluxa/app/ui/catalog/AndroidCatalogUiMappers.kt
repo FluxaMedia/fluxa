@@ -29,6 +29,21 @@ private fun preferredHorizontalArtwork(meta: Meta): String? {
         ?: meta.continueWatchingBackground?.takeIf { it.isNotBlank() }
 }
 
+private fun Meta.remainingLabel(language: String?): String? {
+    val offset = timeOffset
+    val total = duration
+    if (offset != null && total != null && offset > 0L && total > 0L) {
+        val remainingMinutes = ((total - offset).coerceAtLeast(0L) / 60_000L).toInt()
+        return when {
+            remainingMinutes < 1 -> AppStrings.t(language, "format.remaining_almost_done")
+            remainingMinutes < 60 -> AppStrings.format(language, "format.remaining_minutes", remainingMinutes)
+            remainingMinutes % 60 == 0 -> AppStrings.format(language, "format.remaining_hours", remainingMinutes / 60)
+            else -> AppStrings.format(language, "format.remaining_hours_minutes", remainingMinutes / 60, remainingMinutes % 60)
+        }
+    }
+    return resumeProgressPercent?.let { AppStrings.format(language, "format.watched_percent", it.toInt()) }
+}
+
 fun Meta.homeHeroBackdrop(seasonPostersOnHero: Boolean = true): String? {
     val seasonPoster = seasonPosters
         ?.maxByOrNull { it.key.toIntOrNull() ?: 0 }
@@ -61,7 +76,7 @@ internal fun Meta.toCatalogCardUiModel(
     val horizontal = effectiveLayout == "horizontal" || episodeStyle
     val square = effectiveLayout == "square"
     val folder = type == "catalog_folder"
-    val progressCard = isUpNextContinueItem() || ((timeOffset ?: 0L) > 0L && (duration ?: 0L) > 0L)
+    val progressCard = isUpNextContinueItem() || ((timeOffset ?: 0L) > 0L && (duration ?: 0L) > 0L) || resumeProgressPercent != null
     val showTitleBar = !(isContinueWatchingCard && profile?.safeContinueWatchingHideTitles == true) &&
         !(profile?.safePosterHideTitles == true || hideTitle == true)
     val width = (when {
@@ -89,9 +104,11 @@ internal fun Meta.toCatalogCardUiModel(
     val requestHeight = if (episodeStyle) 288 else if (folder) {
         when { horizontal -> 216; square -> 224; else -> 336 }
     } else when { horizontal -> 288; square -> 288; else -> 432 }
-    val progress = if (progressCard) {
+    val progress = if ((timeOffset ?: 0L) > 0L && (duration ?: 0L) > 0L) {
         ((timeOffset ?: 0L).toFloat() / (duration ?: 1L).toFloat()).coerceIn(0f, 1f)
-    } else 0f
+    } else {
+        resumeProgressPercent?.let { (it / 100f).coerceIn(0f, 1f) } ?: 0f
+    }
     val rankBase = if (horizontal) imageHeight else width
     val rankBoxWidth = topTenRank?.let {
         when { it >= 10 -> rankBase * 1.24f; it == 1 -> rankBase * 0.62f; else -> rankBase * 0.82f }
@@ -100,6 +117,7 @@ internal fun Meta.toCatalogCardUiModel(
         when { it >= 10 -> rankBase * 0.16f; it == 1 -> rankBase * 0.13f; else -> rankBase * 0.24f }
     } ?: 0.dp
     val upNext = isUpNextContinueItem()
+    val progressLabel = if (progressCard && !upNext) remainingLabel(language) else null
     return CatalogCardUiModel(
         title = name,
         subtitle = if (progressCard) continueWatchingEpisodeLabel(this).orEmpty() else releaseInfo?.take(4) ?: released?.take(4).orEmpty(),
@@ -123,6 +141,7 @@ internal fun Meta.toCatalogCardUiModel(
         showProgressBar = progressCard && !upNext && progress > 0f,
         showUpNextBadge = progressCard && upNext,
         upNextLabel = AppStrings.t(language, "auto.up_next"),
+        progressLabel = progressLabel,
         topTenRank = topTenRank,
         rankNumberBoxWidth = rankBoxWidth,
         rankOffsetX = when { topTenRank == 1 -> 8.dp; (topTenRank ?: 0) >= 10 -> 0.dp; else -> 3.dp },

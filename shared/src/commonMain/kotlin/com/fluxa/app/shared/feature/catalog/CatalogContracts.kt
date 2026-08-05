@@ -27,7 +27,8 @@ data class CatalogResumeUiModel(
     val durationMs: Long?,
     val videoId: String?,
     val streamUrl: String?,
-    val streamTitle: String?
+    val streamTitle: String?,
+    val progressPercent: Float? = null
 )
 
 data class CatalogRowUiModel(

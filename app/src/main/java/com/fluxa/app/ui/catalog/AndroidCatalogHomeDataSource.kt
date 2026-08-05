@@ -231,12 +231,13 @@ private fun LibraryUserCollectionFolder.toSharedUiModel(): LibraryFolderUiModel 
 
 private fun com.fluxa.app.data.remote.Meta.toCatalogResumeUiModel(): CatalogResumeUiModel? {
     val positionMs = timeOffset ?: 0L
-    if (lastVideoId == null && positionMs <= 0L) return null
+    if (lastVideoId == null && positionMs <= 0L && resumeProgressPercent == null) return null
     return CatalogResumeUiModel(
         positionMs = positionMs,
         durationMs = duration,
         videoId = lastVideoId,
         streamUrl = lastStreamUrl,
-        streamTitle = lastStreamTitle
+        streamTitle = lastStreamTitle,
+        progressPercent = resumeProgressPercent
     )
 }

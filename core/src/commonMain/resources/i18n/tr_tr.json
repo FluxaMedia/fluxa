@@ -1018,6 +1018,7 @@
   "format.elapsed_minutes": "%s dk",
   "format.elapsed_hours_minutes": "%s sa %s dk",
   "format.elapsed_just_started": "Yeni başladı",
+  "format.watched_percent": "%%s izlendi",
   "brand.trakt": "Trakt.tv",
   "brand.simkl": "Simkl",
   "brand.anilist": "AniList",

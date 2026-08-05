@@ -178,21 +178,15 @@ fun CatalogCard(
                     }
                 }
                 if (model.showUpNextBadge) {
-                    Text(
+                    CardCornerBadge(
                         text = model.upNextLabel,
-                        color = Color.White,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(2.dp)
-                            .background(
-                                if (model.upNextBadgeAccent) FluxaColors.progressFill
-                                else Color.Black.copy(alpha = FluxaDimensions.Alpha.upNextBadge)
-                            )
-                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        accent = model.upNextBadgeAccent
+                    )
+                } else if (model.progressLabel != null) {
+                    CardCornerBadge(
+                        text = model.progressLabel,
+                        modifier = Modifier.align(Alignment.TopEnd)
                     )
                 }
             }
@@ -228,3 +222,23 @@ private val MOBILE_CARD_BOTTOM_GRADIENT = androidx.compose.ui.graphics.Brush.ver
     colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
     startY = 150f
 )
+
+@Composable
+private fun CardCornerBadge(text: String, modifier: Modifier = Modifier, accent: Boolean = false) {
+    Text(
+        text = text,
+        color = Color.White,
+        fontSize = 9.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.2.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+            .padding(6.dp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(
+                if (accent) FluxaColors.progressFill else Color.Black.copy(alpha = FluxaDimensions.Alpha.upNextBadge)
+            )
+            .padding(horizontal = 6.dp, vertical = 3.dp)
+    )
+}
