@@ -28,7 +28,7 @@ import com.fluxa.app.data.remote.SubtitleData
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.remote.TmdbMeta
 import com.fluxa.app.data.remote.TmdbService
-import com.fluxa.app.data.remote.TraktApi
+import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktRepository
@@ -399,8 +399,11 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
             )
             val streams = if (index == 0) {
                 streamDiscovery.discoverProgressive(request) { streams, completedAddons, loadingAddons ->
+                    val streamsSnapshot = streams.toList()
+                    val completedSnapshot = completedAddons.toList()
+                    val loadingSnapshot = loadingAddons.toList()
                     primeScope.launch {
-                        _streamProgressFlow.emit(StreamProgressUpdate(requestId, streams, completedAddons, loadingAddons))
+                        _streamProgressFlow.emit(StreamProgressUpdate(requestId, streamsSnapshot, completedSnapshot, loadingSnapshot))
                     }
                 }
             } else {
@@ -1014,7 +1017,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
         if (!TraktIntegration.hasClient(BuildConfig.TRAKT_CLIENT_ID)) return emptyList()
         val listId = source.traktListId ?: return emptyList()
         val isSeries = source.mediaType.equals("series", ignoreCase = true) || source.mediaType.equals("show", ignoreCase = true) || source.mediaType.equals("tv", ignoreCase = true)
-        return TraktApi.create().getListItems(
+        return ExternalSyncApi.create().getListItems(
             listId = listId,
             type = if (isSeries) "show" else "movie",
             apiKey = BuildConfig.TRAKT_CLIENT_ID,

@@ -352,6 +352,7 @@ fun FluxaApp(
                     onStreamSelected = { stream ->
                         onDetailAction(DetailAction.StreamSelected(stream, detailState.content.selectedEpisodeId))
                     },
+                    onRetry = { onDetailAction(DetailAction.RetrySourcesRequested) },
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.selectedDetail != null && detailState != null -> DetailScreen(

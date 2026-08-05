@@ -9,6 +9,7 @@ data class DetailRequestUiModel(
     val type: String,
     val source: CatalogSourceUiModel = CatalogSourceUiModel(),
     val initialProgress: Long? = null,
+    val initialProgressPercent: Float? = null,
     val lastVideoId: String? = null,
     val lastStreamIndex: Int? = null,
     val autoPlay: Boolean = false,
@@ -83,12 +84,14 @@ data class DetailUiModel(
     val selectedEpisodeId: String? = null,
     val resumeVideoId: String? = null,
     val resumeProgress: Long = 0L,
+    val resumeProgressPercent: Float? = null,
     val streams: List<DetailStreamUiModel> = emptyList(),
     val isLoadingStreams: Boolean = false,
     val availableAddons: List<String> = emptyList(),
     val loadingAddonNames: List<String> = emptyList(),
     val selectedAddon: String? = null,
-    val hasStreamProviders: Boolean = true
+    val hasStreamProviders: Boolean = true,
+    val addonPriorityOrder: List<String> = emptyList()
 )
 
 data class DetailUiState(
@@ -107,20 +110,25 @@ sealed interface DetailAction {
     data class AddonFilterSelected(val addonName: String?) : DetailAction
     data class DownloadEpisode(val episodeId: String) : DetailAction
     data class DownloadSeason(val season: Int) : DetailAction
+    data object RetrySourcesRequested : DetailAction
 }
 
 sealed interface DetailNavigationEvent {
-    data class PlayStream(val stream: DetailStreamUiModel, val episodeId: String?, val resumeProgress: Long = 0L) : DetailNavigationEvent
-    data class SelectSources(val episodeId: String?, val resumeProgress: Long = 0L) : DetailNavigationEvent
+    data class PlayStream(val stream: DetailStreamUiModel, val episodeId: String?, val resumeProgress: Long = 0L, val resumeProgressPercent: Float? = null) : DetailNavigationEvent
+    data class SelectSources(val episodeId: String?, val resumeProgress: Long = 0L, val resumeProgressPercent: Float? = null) : DetailNavigationEvent
 }
 
 object DetailNavigationLogic {
     fun resumeProgressFor(resumeVideoId: String?, resumeProgress: Long, targetVideoId: String?): Long =
         if (targetVideoId != null && targetVideoId == resumeVideoId) resumeProgress else 0L
 
+    fun resumeProgressPercentFor(resumeVideoId: String?, resumeProgressPercent: Float?, targetVideoId: String?): Float? =
+        if (targetVideoId != null && targetVideoId == resumeVideoId) resumeProgressPercent else null
+
     fun forStream(
         contentResumeVideoId: String?,
         contentResumeProgress: Long,
+        contentResumeProgressPercent: Float? = null,
         stream: DetailStreamUiModel,
         episodeId: String?
     ): DetailNavigationEvent.PlayStream {
@@ -128,7 +136,8 @@ object DetailNavigationLogic {
         return DetailNavigationEvent.PlayStream(
             stream = stream,
             episodeId = episodeId,
-            resumeProgress = resumeProgressFor(contentResumeVideoId, contentResumeProgress, targetVideoId)
+            resumeProgress = resumeProgressFor(contentResumeVideoId, contentResumeProgress, targetVideoId),
+            resumeProgressPercent = resumeProgressPercentFor(contentResumeVideoId, contentResumeProgressPercent, targetVideoId)
         )
     }
 
@@ -136,17 +145,19 @@ object DetailNavigationLogic {
         contentId: String?,
         contentResumeVideoId: String?,
         contentResumeProgress: Long,
+        contentResumeProgressPercent: Float? = null,
         episodeId: String?,
         firstStreamIfCs3: DetailStreamUiModel?,
         fromStart: Boolean = false
     ): DetailNavigationEvent {
         val targetVideoId = episodeId ?: contentResumeVideoId
         val progress = if (fromStart) 0L else resumeProgressFor(contentResumeVideoId, contentResumeProgress, targetVideoId)
+        val progressPercent = if (fromStart) null else resumeProgressPercentFor(contentResumeVideoId, contentResumeProgressPercent, targetVideoId)
         val isCs3 = contentId?.startsWith("cs3:") == true || targetVideoId?.startsWith("cs3:") == true
         return if (isCs3 && firstStreamIfCs3 != null) {
-            DetailNavigationEvent.PlayStream(firstStreamIfCs3, episodeId, progress)
+            DetailNavigationEvent.PlayStream(firstStreamIfCs3, episodeId, progress, progressPercent)
         } else {
-            DetailNavigationEvent.SelectSources(episodeId, progress)
+            DetailNavigationEvent.SelectSources(episodeId, progress, progressPercent)
         }
     }
 }

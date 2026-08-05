@@ -44,6 +44,11 @@ class DetailStore(
                             resumeVideoId = content?.resumeVideoId,
                             resumeProgress = content?.resumeProgress ?: 0L,
                             targetVideoId = action.episodeId
+                        ),
+                        resumeProgressPercent = DetailNavigationLogic.resumeProgressPercentFor(
+                            resumeVideoId = content?.resumeVideoId,
+                            resumeProgressPercent = content?.resumeProgressPercent,
+                            targetVideoId = action.episodeId
                         )
                     )
                 )
@@ -57,6 +62,7 @@ class DetailStore(
                     DetailNavigationLogic.forStream(
                         contentResumeVideoId = content?.resumeVideoId,
                         contentResumeProgress = content?.resumeProgress ?: 0L,
+                        contentResumeProgressPercent = content?.resumeProgressPercent,
                         stream = action.stream,
                         episodeId = action.episodeId
                     )
@@ -70,6 +76,7 @@ class DetailStore(
                         contentId = content?.id,
                         contentResumeVideoId = content?.resumeVideoId,
                         contentResumeProgress = content?.resumeProgress ?: 0L,
+                        contentResumeProgressPercent = content?.resumeProgressPercent,
                         episodeId = episodeId,
                         firstStreamIfCs3 = content?.streams?.firstOrNull(),
                         fromStart = action.fromStart
@@ -77,6 +84,7 @@ class DetailStore(
                 )
             }
             is DetailAction.RelatedItemSelected -> Unit
+            DetailAction.RetrySourcesRequested -> loadSources(state.value.content?.selectedEpisodeId)
         }
     }
 }

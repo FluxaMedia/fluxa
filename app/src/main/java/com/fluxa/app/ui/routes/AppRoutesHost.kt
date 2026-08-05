@@ -140,6 +140,7 @@ internal fun AppRoutesHost(
                             meta = meta,
                             videoId = event.episodeId,
                             initialProgress = event.resumeProgress,
+                            initialProgressPercent = event.resumeProgressPercent,
                             streamIndex = index,
                             initialStreams = streams,
                             lastStreamUrl = event.stream.playableUrl,
@@ -154,6 +155,38 @@ internal fun AppRoutesHost(
         showNavigationBar = true,
         onCatalogAction = { action ->
             when (action) {
+                is com.fluxa.app.shared.feature.catalog.CatalogAction.ItemSelected -> {
+                    val resume = action.item.resume
+                    val streamUrl = resume?.streamUrl
+                    if (!streamUrl.isNullOrBlank()) {
+                        val meta = androidFluxaPlatformServices.catalogHomeDataSource
+                            .resolveMeta(action.item.id, action.item.type)
+                            ?: com.fluxa.app.data.remote.Meta(
+                                id = action.item.id,
+                                name = action.item.card.title,
+                                type = action.item.type,
+                                poster = action.item.card.artworkUrl
+                            )
+                        onPlayerRequestChanged(
+                            PlayerLaunchRequest(
+                                meta = meta,
+                                videoId = resume.videoId,
+                                initialProgress = resume.positionMs,
+                                initialProgressPercent = resume.progressPercent,
+                                streamIndex = 0,
+                                initialStreams = listOf(
+                                    com.fluxa.app.data.remote.Stream(
+                                        name = resume.streamTitle,
+                                        title = resume.streamTitle,
+                                        url = streamUrl
+                                    )
+                                ),
+                                lastStreamUrl = streamUrl,
+                                lastStreamTitle = resume.streamTitle
+                            )
+                        )
+                    }
+                }
                 is com.fluxa.app.shared.feature.catalog.CatalogAction.MarkWatchedRequested -> {
                     androidFluxaPlatformServices.catalogHomeDataSource
                         .resolveMeta(action.item.id, action.item.type)

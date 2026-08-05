@@ -7,6 +7,7 @@ internal data class PlayerLaunchRequest(
     val meta: Meta,
     val videoId: String? = null,
     val initialProgress: Long = 0L,
+    val initialProgressPercent: Float? = null,
     val streamIndex: Int = 0,
     val initialStreams: List<Stream> = emptyList(),
     val lastStreamUrl: String? = null,

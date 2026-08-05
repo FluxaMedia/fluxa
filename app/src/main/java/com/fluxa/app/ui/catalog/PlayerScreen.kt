@@ -12,9 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -68,6 +70,7 @@ private fun deviceLanIpv4(): String? {
 fun PlayerScreen(
     meta: Meta,
     initialProgress: Long = 0L,
+    initialProgressPercent: Float? = null,
     videoId: String? = null,
     onBack: () -> Unit,
     viewModel: HomeViewModel,
@@ -599,6 +602,20 @@ fun PlayerScreen(
         onExternalSubtitlesFetched = { state.currentExternalSubtitleTracks = it },
         onNativeAssTracksExtracted = { state.embeddedNativeAssTracks = it }
     )
+
+    var pendingResumePercent by remember { mutableStateOf(initialProgressPercent) }
+    LaunchedEffect(state.currentVideoId) {
+        if (state.currentVideoId != videoId) pendingResumePercent = null
+    }
+    LaunchedEffect(state.engine.timeline.duration, state.engine.playback.hasStartedPlaying) {
+        val percent = pendingResumePercent ?: return@LaunchedEffect
+        val duration = state.engine.timeline.duration
+        if (state.engine.playback.hasStartedPlaying && duration > 0L) {
+            seekSafely((duration * (percent / 100f)).toLong())
+            pendingResumePercent = null
+        }
+    }
+
     fun playNext() {
         state.nextEpisodePending?.let { next ->
             if (activeProfile?.safeTryBingeGroup == true) {

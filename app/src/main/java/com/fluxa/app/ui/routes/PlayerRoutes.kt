@@ -62,13 +62,15 @@ internal fun PlayerRoute(
                         showSourceSelection = false
                     )
                 )
-            }
+            },
+            onRetry = {}
         )
         return
     }
     PlayerScreen(
         request.meta,
         request.initialProgress,
+        request.initialProgressPercent,
         request.videoId,
         onBack,
         homeViewModel,

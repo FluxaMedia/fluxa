@@ -427,8 +427,24 @@ fun FluxaAppHost(
                             scope.launch { libraryStore.dispatch(LibraryAction.FolderSelected(folder)) }
                         }
                 } else {
-                    pendingAutoPlayId = null
-                    appState.selectDetail(action.item)
+                    val resume = action.item.resume
+                    when {
+                        resume != null && !resume.streamUrl.isNullOrBlank() -> {
+                            // Known stream from a previous session — onCatalogAction below launches the
+                            // player directly, skipping Detail entirely.
+                            pendingAutoPlayId = null
+                        }
+                        resume != null -> {
+                            // Continue-watching item with no saved stream yet — open Detail and
+                            // auto-dispatch Play so it lands straight on source selection.
+                            pendingAutoPlayId = action.item.id
+                            appState.selectDetail(action.item)
+                        }
+                        else -> {
+                            pendingAutoPlayId = null
+                            appState.selectDetail(action.item)
+                        }
+                    }
                 }
             }
             if (action is CatalogAction.PlayRequested && action.item.type != "catalog_folder") {

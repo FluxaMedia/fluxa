@@ -16,9 +16,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -55,29 +57,34 @@ fun SourceSelectionScreen(
     language: String?,
     onBack: () -> Unit,
     onStreamSelected: (DetailStreamUiModel) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var addonFilter by remember(content.id) { mutableStateOf<String?>(null) }
-    val addons = remember(content.streams) {
+    fun addonPriority(name: String): Int = content.addonPriorityOrder.indexOf(name).let { if (it < 0) Int.MAX_VALUE else it }
+    val addons = remember(content.streams, content.addonPriorityOrder) {
         content.streams.map { it.addonName }.filter { it.isNotBlank() }.distinct()
+            .sortedBy(::addonPriority)
     }
-    val visibleStreams = remember(content.streams, addonFilter) {
+    val visibleStreams = remember(content.streams, addonFilter, content.addonPriorityOrder) {
         val filter = addonFilter
-        if (filter == null) content.streams else content.streams.filter { it.addonName == filter }
+        val streams = if (filter == null) content.streams else content.streams.filter { it.addonName == filter }
+        if (filter == null) streams.sortedBy { addonPriority(it.addonName) } else streams
     }
+    val episode = content.selectedEpisodeId?.let { id -> content.seasonEpisodes.firstOrNull { it.id == id } }
 
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
-        Backdrop(content = content)
+        Backdrop(content = content, episode = episode)
         Column(modifier = Modifier.fillMaxSize()) {
-            Header(content = content, language = language, onBack = onBack)
-            if (addons.size > 1) {
-                AddonChips(
-                    addons = addons,
-                    selected = addonFilter,
-                    language = language,
-                    onSelected = { addonFilter = it }
-                )
-            }
+            Header(content = content, episode = episode, language = language, onBack = onBack)
+            AddonChips(
+                addons = addons,
+                loadingAddonNames = content.loadingAddonNames,
+                selected = addonFilter,
+                language = language,
+                onSelected = { addonFilter = it },
+                onRetry = onRetry
+            )
             when {
                 visibleStreams.isEmpty() && content.isLoadingStreams -> Box(
                     modifier = Modifier.fillMaxSize(),
@@ -126,11 +133,12 @@ fun SourceSelectionScreen(
 }
 
 @Composable
-private fun Backdrop(content: DetailUiModel) {
+private fun Backdrop(content: DetailUiModel, episode: DetailEpisodeUiModel?) {
+    val backdropUrl = episode?.thumbnailUrl?.takeIf { it.isNotBlank() } ?: content.backgroundUrl ?: content.posterUrl
     Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
         FluxaRemoteImage(
-            imageUrl = content.backgroundUrl ?: content.posterUrl,
-            cacheKey = "sources-backdrop:${content.id}",
+            imageUrl = backdropUrl,
+            cacheKey = "sources-backdrop:${content.id}:${episode?.id.orEmpty()}",
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -152,16 +160,14 @@ private fun Backdrop(content: DetailUiModel) {
 }
 
 @Composable
-private fun Header(content: DetailUiModel, language: String?, onBack: () -> Unit) {
-    val episode = content.selectedEpisodeId?.let { id ->
-        content.seasonEpisodes.firstOrNull { it.id == id }
-    }
+private fun Header(content: DetailUiModel, episode: DetailEpisodeUiModel?, language: String?, onBack: () -> Unit) {
     var backFocused by remember { mutableStateOf(false) }
+    var descriptionExpanded by remember(episode?.id) { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 12.dp, end = 20.dp, top = 44.dp, bottom = 20.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
@@ -180,26 +186,56 @@ private fun Header(content: DetailUiModel, language: String?, onBack: () -> Unit
             )
         }
         Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
-            Text(
-                text = AppStrings.t(language, "auto.sources"),
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
-            val subtitle = buildString {
-                append(content.title)
-                if (episode?.season != null && episode.number != null) {
-                    append("  ·  S${episode.season} E${episode.number}")
-                }
+            if (!content.logoUrl.isNullOrBlank()) {
+                FluxaRemoteImage(
+                    imageUrl = content.logoUrl,
+                    cacheKey = "sources-logo:${content.id}",
+                    contentDescription = content.title,
+                    modifier = Modifier.heightIn(max = 40.dp).widthIn(max = 220.dp),
+                    contentScale = ContentScale.Fit
+                )
+            } else {
+                Text(
+                    text = content.title,
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            Text(
-                text = subtitle,
-                color = Color.White.copy(alpha = 0.65f),
-                fontSize = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+            val episodeLine = if (episode?.season != null && episode.number != null) {
+                val code = "S${episode.season}, E${episode.number}"
+                if (!episode.title.isNullOrBlank()) "$code: ${episode.title}" else code
+            } else {
+                null
+            }
+            if (episodeLine != null) {
+                Text(
+                    text = episodeLine,
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            if (!episode?.description.isNullOrBlank()) {
+                Text(
+                    text = episode?.description.orEmpty(),
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    maxLines = if (descriptionExpanded) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .padding(top = 3.dp)
+                        .clickable(interactionSource = null, indication = null) {
+                            descriptionExpanded = !descriptionExpanded
+                        }
+                )
+            }
         }
     }
 }
@@ -207,29 +243,79 @@ private fun Header(content: DetailUiModel, language: String?, onBack: () -> Unit
 @Composable
 private fun AddonChips(
     addons: List<String>,
+    loadingAddonNames: List<String>,
     selected: String?,
     language: String?,
-    onSelected: (String?) -> Unit
+    onSelected: (String?) -> Unit,
+    onRetry: () -> Unit
 ) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+    Column(modifier = Modifier.padding(bottom = 16.dp)) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            item(key = "retry") {
+                RetryChip(onClick = onRetry)
+            }
+            item(key = "all") {
+                AddonChip(
+                    label = AppStrings.t(language, "auto.all"),
+                    selected = selected == null,
+                    onClick = { onSelected(null) }
+                )
+            }
+            items(addons, key = { it }) { addon ->
+                AddonChip(
+                    label = addon,
+                    selected = selected == addon,
+                    onClick = { onSelected(addon) }
+                )
+            }
+        }
+        if (loadingAddonNames.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White.copy(alpha = 0.6f),
+                    strokeWidth = 1.5.dp,
+                    modifier = Modifier.size(12.dp)
+                )
+                Text(
+                    text = AppStrings.t(language, "auto.waiting_for_addon")
+                        .replace("{addon}", loadingAddonNames.joinToString(", ")),
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RetryChip(onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(if (focused) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.07f))
+            .onFocusChanged { focused = it.isFocused }
+            .focusable()
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        item(key = "all") {
-            AddonChip(
-                label = AppStrings.t(language, "auto.all"),
-                selected = selected == null,
-                onClick = { onSelected(null) }
-            )
-        }
-        items(addons, key = { it }) { addon ->
-            AddonChip(
-                label = addon,
-                selected = selected == addon,
-                onClick = { onSelected(addon) }
-            )
-        }
+        Icon(
+            imageVector = FluxaIcons.Refresh,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 

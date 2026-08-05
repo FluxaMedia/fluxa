@@ -198,12 +198,13 @@ internal fun PlayerPlaybackSideEffects(
     DisposableEffect(Unit) {
         onDispose {
             scrobblePauseJob?.cancel()
-            val token = latestActiveProfile?.traktAccessToken
-            if (token != null && hasScrobbledStart && !hasScrobbledStop) {
+            if (!hasScrobbledStop) {
                 val progress = PlayerScrobbleCoordinator.progressPercent(latestCurrentPositionMs(), latestDuration)
-                enqueueDurableTraktScrobble("stop", progress)
-                enqueueDurableSimklScrobble("stop", latestCurrentPositionMs(), latestDuration)
-                if (progress >= (latestActiveProfile?.safeWatchedThresholdPercent ?: 80f)) {
+                val traktStop = latestActiveProfile?.traktAccessToken != null && hasScrobbledStart
+                val simklStop = latestActiveProfile?.simklAccessToken != null && hasScrobbledStartSimkl
+                if (traktStop) enqueueDurableTraktScrobble("stop", progress)
+                if (simklStop) enqueueDurableSimklScrobble("stop", latestCurrentPositionMs(), latestDuration)
+                if ((traktStop || simklStop) && progress >= (latestActiveProfile?.safeWatchedThresholdPercent ?: 80f)) {
                     viewModel.markWatchedFromPlayback(meta, latestCurrentVideoId, latestCurrentEpisodeMetaLine, latestNextEpisode, latestDuration)
                 }
             }

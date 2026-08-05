@@ -25,6 +25,7 @@ class AndroidDetailDataSource(
     private val selectedEpisodeIdFlow = MutableStateFlow<String?>(null)
     private var requestedVideoId: String? = null
     private var requestedProgress: Long? = null
+    private var requestedProgressPercent: Float? = null
     private var initialMeta: Meta? = null
 
     fun setInitialMeta(value: Meta?) {
@@ -47,6 +48,8 @@ class AndroidDetailDataSource(
                         ?: state.seasonEpisodes.firstOrNull()?.id
                     val effectiveResumeVideoId = requestedVideoId ?: state.savedPlayback?.lastVideoId
                     val effectiveResumeProgress = requestedProgress ?: state.savedPlayback?.timeOffset ?: 0L
+                    val effectiveResumeProgressPercent = requestedProgressPercent
+                        ?: state.savedPlayback?.resumeProgressPercent?.takeIf { requestedProgress == null }
                     DetailUiModel(
                         id = detail.id,
                         type = detail.type,
@@ -82,12 +85,14 @@ class AndroidDetailDataSource(
                         selectedEpisodeId = currentEpisodeId,
                         resumeVideoId = effectiveResumeVideoId,
                         resumeProgress = effectiveResumeProgress,
+                        resumeProgressPercent = effectiveResumeProgressPercent,
                         streams = state.filteredStreams.toUiModels(),
                         isLoadingStreams = state.isLoadingStreams,
                         availableAddons = state.availableAddons,
                         loadingAddonNames = state.loadingAddonNames,
                         selectedAddon = state.selectedAddon,
-                        hasStreamProviders = state.hasStreamProviders
+                        hasStreamProviders = state.hasStreamProviders,
+                        addonPriorityOrder = state.userAddons.map { it.manifest.name }
                     )
                 },
                 isLoading = state.isLoading
@@ -100,6 +105,7 @@ class AndroidDetailDataSource(
         selectedEpisodeIdFlow.value = request.lastVideoId
         requestedVideoId = request.lastVideoId
         requestedProgress = request.initialProgress
+        requestedProgressPercent = request.initialProgressPercent
         detailViewModel.loadDetail(
             type = request.type,
             id = request.id,
@@ -174,6 +180,6 @@ internal fun com.fluxa.app.data.remote.Stream.toDetailStreamUiModel(): DetailStr
 }
 
 private fun List<com.fluxa.app.data.remote.Stream>.toUiModels(): List<DetailStreamUiModel> =
-    mapNotNull { stream ->
+    toList().mapNotNull { stream ->
         stream.toDetailStreamUiModel()
     }

@@ -36,6 +36,7 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
                 type = item.type,
                 source = item.source,
                 initialProgress = item.resume?.positionMs,
+                initialProgressPercent = item.resume?.progressPercent,
                 lastVideoId = item.resume?.videoId,
                 lastStreamUrl = item.resume?.streamUrl,
                 lastStreamTitle = item.resume?.streamTitle,
@@ -58,8 +59,10 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
                     } else {
                         emptyList()
                     },
+                    selectedEpisodeId = item.resume?.videoId,
                     resumeVideoId = item.resume?.videoId,
-                    resumeProgress = item.resume?.positionMs ?: 0L
+                    resumeProgress = item.resume?.positionMs ?: 0L,
+                    resumeProgressPercent = item.resume?.progressPercent
                 )
             )
         )
