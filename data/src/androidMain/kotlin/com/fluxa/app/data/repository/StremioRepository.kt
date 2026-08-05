@@ -23,7 +23,7 @@ class StremioRepository @Inject constructor(
     private val authService: StremioService, 
     private val introService: IntroDbService, 
     private val aniSkipService: AniSkipService,
-    private val traktApi: TraktApi,
+    private val externalSyncApi: ExternalSyncApi,
     private val addonManifestClient: StremioAddonManifestClient,
     private val addonResourceClient: StremioAddonResourceClient,
     private val externalLibraryClient: ExternalLibraryClient,
@@ -326,9 +326,9 @@ class StremioRepository @Inject constructor(
             if (request != null) {
                 runCatching {
                     if (watched) {
-                        traktApi.addToHistory(TraktIntegration.bearer(traktToken), BuildConfig.TRAKT_CLIENT_ID, request)
+                        externalSyncApi.addToHistory(TraktIntegration.bearer(traktToken), BuildConfig.TRAKT_CLIENT_ID, request)
                     } else {
-                        traktApi.removeFromHistory(TraktIntegration.bearer(traktToken), BuildConfig.TRAKT_CLIENT_ID, request)
+                        externalSyncApi.removeFromHistory(TraktIntegration.bearer(traktToken), BuildConfig.TRAKT_CLIENT_ID, request)
                     }
                 }
             }

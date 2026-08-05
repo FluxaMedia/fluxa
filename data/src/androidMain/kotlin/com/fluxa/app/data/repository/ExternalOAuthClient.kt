@@ -1,7 +1,7 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.remote.ExternalOAuthTokenResponse
-import com.fluxa.app.data.remote.TraktApi
+import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.remote.TraktDeviceCodeRequest
 import com.fluxa.app.data.remote.TraktDeviceCodeResponse
 import com.fluxa.app.data.remote.TraktDeviceTokenRequest
@@ -11,11 +11,11 @@ import com.fluxa.app.data.remote.TraktTokenResponse
 import javax.inject.Inject
 
 class ExternalOAuthClient @Inject constructor(
-    private val traktApi: TraktApi,
+    private val externalSyncApi: ExternalSyncApi,
     private val config: OAuthClientConfig
 ) {
     suspend fun exchangeTraktCode(code: String): TraktTokenResponse {
-        return traktApi.exchangeCode(
+        return externalSyncApi.exchangeCode(
             TraktTokenRequest(
                 code = code,
                 client_id = config.traktClientId,
@@ -26,7 +26,7 @@ class ExternalOAuthClient @Inject constructor(
     }
 
     suspend fun refreshTraktToken(refreshToken: String): TraktTokenResponse {
-        return traktApi.refreshToken(
+        return externalSyncApi.refreshToken(
             TraktRefreshTokenRequest(
                 refresh_token = refreshToken,
                 client_id = config.traktClientId,
@@ -37,7 +37,7 @@ class ExternalOAuthClient @Inject constructor(
     }
 
     suspend fun createTraktDeviceCode(): TraktDeviceCodeResponse {
-        return traktApi.createDeviceCode(
+        return externalSyncApi.createDeviceCode(
             TraktDeviceCodeRequest(
                 client_id = config.traktClientId
             )
@@ -45,7 +45,7 @@ class ExternalOAuthClient @Inject constructor(
     }
 
     suspend fun exchangeTraktDeviceCode(deviceCode: String): retrofit2.Response<TraktTokenResponse> {
-        return traktApi.exchangeDeviceCode(
+        return externalSyncApi.exchangeDeviceCode(
             TraktDeviceTokenRequest(
                 code = deviceCode,
                 client_id = config.traktClientId,
@@ -55,7 +55,7 @@ class ExternalOAuthClient @Inject constructor(
     }
 
     suspend fun exchangeSimklCode(code: String): ExternalOAuthTokenResponse {
-        return traktApi.exchangeSimklCode(
+        return externalSyncApi.exchangeSimklCode(
             clientId = config.simklClientId,
             clientSecret = config.simklClientSecret.orEmpty(),
             grantType = "authorization_code",
@@ -65,7 +65,7 @@ class ExternalOAuthClient @Inject constructor(
     }
 
     suspend fun exchangeAnilistCode(code: String): ExternalOAuthTokenResponse {
-        return traktApi.exchangeAnilistCode(
+        return externalSyncApi.exchangeAnilistCode(
             com.fluxa.app.data.remote.AnilistTokenRequest(
                 client_id = config.anilistClientId,
                 client_secret = config.anilistClientSecret.orEmpty(),
@@ -76,7 +76,7 @@ class ExternalOAuthClient @Inject constructor(
     }
 
     suspend fun getTraktUsername(accessToken: String): String? = runCatching {
-        traktApi.getTraktSettings(TraktIntegration.bearer(accessToken), config.traktClientId)
+        externalSyncApi.getTraktSettings(TraktIntegration.bearer(accessToken), config.traktClientId)
             .getAsJsonObject("user")
             ?.get("username")
             ?.takeUnless { it.isJsonNull }
@@ -84,7 +84,7 @@ class ExternalOAuthClient @Inject constructor(
     }.getOrNull()
 
     suspend fun getSimklUsername(accessToken: String): String? = runCatching {
-        traktApi.getSimklSettings("Bearer $accessToken", config.simklClientId)
+        externalSyncApi.getSimklSettings("Bearer $accessToken", config.simklClientId)
             .getAsJsonObject("user")
             ?.get("name")
             ?.takeUnless { it.isJsonNull }
@@ -92,7 +92,7 @@ class ExternalOAuthClient @Inject constructor(
     }.getOrNull()
 
     suspend fun getAnilistUsername(accessToken: String): String? = runCatching {
-        traktApi.anilistGraphQl(
+        externalSyncApi.anilistGraphQl(
             "Bearer $accessToken",
             com.fluxa.app.data.remote.AnilistGraphQlRequest(query = "query { Viewer { name } }")
         ).getAsJsonObject("data")

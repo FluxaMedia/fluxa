@@ -19,7 +19,7 @@ class TraktScrobbleWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     profileManager: ProfileManager,
-    private val api: TraktApi,
+    private val api: ExternalSyncApi,
     private val oauthClientConfig: OAuthClientConfig
 ) : ProviderSyncPushWorker(appContext, params, profileManager) {
 
@@ -95,7 +95,7 @@ class TraktScrobbleWorker @AssistedInject constructor(
     private suspend fun resolveAccessToken(
         profileManager: ProfileManager,
         profile: UserProfile,
-        api: TraktApi
+        api: ExternalSyncApi
     ): String? {
         val token = profile.traktAccessToken?.takeIf { it.isNotBlank() }
         val refreshToken = profile.traktRefreshToken?.takeIf { it.isNotBlank() }

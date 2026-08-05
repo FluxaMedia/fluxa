@@ -4,7 +4,7 @@ import com.fluxa.app.data.BuildConfig
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.remote.TraktApi
+import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.ExternalSyncAction
 import com.fluxa.app.data.repository.ExternalSyncPolicy
@@ -17,7 +17,7 @@ import retrofit2.Response
 
 class SimklProviderAdapter @Inject constructor(
     private val repository: StremioRepository,
-    private val api: TraktApi,
+    private val api: ExternalSyncApi,
     private val profileManager: ProfileManager
 ) : ProviderAdapter {
     override val id = "simkl"

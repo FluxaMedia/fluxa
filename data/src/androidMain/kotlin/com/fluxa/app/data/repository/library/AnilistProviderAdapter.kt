@@ -5,7 +5,7 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.AnilistGraphQlRequest
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.remote.TraktApi
+import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktIntegration
@@ -22,7 +22,7 @@ private data class AnilistGraphqlQueries(
 
 class AnilistProviderAdapter @Inject constructor(
     private val repository: StremioRepository,
-    private val api: TraktApi,
+    private val api: ExternalSyncApi,
     private val profileManager: ProfileManager,
     private val gson: Gson
 ) : ProviderAdapter {

@@ -23,7 +23,7 @@ import com.google.gson.JsonObject
 @Singleton
 class TraktRepository @Inject constructor(
     @ApplicationContext context: Context,
-    private val traktApi: TraktApi,
+    private val externalSyncApi: ExternalSyncApi,
     private val addonRepository: AddonRepository,
     private val externalLibraryClient: ExternalLibraryClient,
     private val traktSyncClient: TraktSyncClient,
@@ -36,7 +36,7 @@ class TraktRepository @Inject constructor(
 
     private val traktCatalogClient by lazy {
         TraktCatalogClient(
-            traktApi = traktApi,
+            externalSyncApi = externalSyncApi,
             traktKey = TRAKT_KEY,
             unknownName = { AppStrings.t(null, "auto.unknown") }
         )
@@ -52,7 +52,7 @@ class TraktRepository @Inject constructor(
         val key = "snapshot:${profile.id}"
         val cached = syncCache.getString(key, null)?.let { gson.fromJson(it, TraktSnapshotCache::class.java) }
         val activities = runCatching {
-            traktApi.getLastActivities(TraktIntegration.bearer(token), TRAKT_KEY).body()
+            externalSyncApi.getLastActivities(TraktIntegration.bearer(token), TRAKT_KEY).body()
         }.getOrNull()
         if (cached != null && activities != null) {
             val diff = FluxaCoreNative.traktActivityDiff(
@@ -144,7 +144,7 @@ class TraktRepository @Inject constructor(
         runCatching {
             val targetKey = TraktIntegration.contentIdentityKey(meta)
             val auth = TraktIntegration.bearer(token)
-            traktApi.getPlayback(auth, TRAKT_KEY)
+            externalSyncApi.getPlayback(auth, TRAKT_KEY)
                 .firstOrNull { item ->
                     val summary = item.movie ?: item.show ?: return@firstOrNull false
                     val type = if (item.movie != null) "movie" else "series"
@@ -160,16 +160,16 @@ class TraktRepository @Inject constructor(
                     ) == targetKey
                 }
                 ?.id
-                ?.let { traktApi.deletePlayback(it, auth, TRAKT_KEY) }
+                ?.let { externalSyncApi.deletePlayback(it, auth, TRAKT_KEY) }
         }
     }
 
     suspend fun addToHistory(token: String, request: TraktHistorySyncRequest) = withContext(Dispatchers.IO) {
-        traktApi.addToHistory(TraktIntegration.bearer(token), TRAKT_KEY, request)
+        externalSyncApi.addToHistory(TraktIntegration.bearer(token), TRAKT_KEY, request)
     }
 
     suspend fun removeFromHistory(token: String, request: TraktHistorySyncRequest) = withContext(Dispatchers.IO) {
-        traktApi.removeFromHistory(TraktIntegration.bearer(token), TRAKT_KEY, request)
+        externalSyncApi.removeFromHistory(TraktIntegration.bearer(token), TRAKT_KEY, request)
     }
 
     suspend fun getTraktWatchlist(token: String): List<Meta> = getWatchlist(token)
@@ -190,7 +190,7 @@ class TraktRepository @Inject constructor(
     suspend fun getTraktSyncSnapshot(profile: UserProfile, language: String = profile.safeLanguage): TraktSyncSnapshot =
         getSyncSnapshot(profile, language)
 
-    suspend fun refreshTraktToken(refreshToken: String): TraktTokenResponse = traktApi.refreshToken(
+    suspend fun refreshTraktToken(refreshToken: String): TraktTokenResponse = externalSyncApi.refreshToken(
         TraktRefreshTokenRequest(
             refresh_token = refreshToken,
             client_id = oauthClientConfig.traktClientId,

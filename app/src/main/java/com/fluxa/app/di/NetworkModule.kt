@@ -245,13 +245,13 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideTraktApi(@Named("GenericClient") client: OkHttpClient): TraktApi {
+    fun provideExternalSyncApi(@Named("GenericClient") client: OkHttpClient): ExternalSyncApi {
         return Retrofit.Builder()
             .baseUrl("https://api.trakt.tv/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(TraktApi::class.java)
+            .create(ExternalSyncApi::class.java)
     }
 
     @Provides

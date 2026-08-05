@@ -22,7 +22,7 @@ class SimklScrobbleWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     profileManager: ProfileManager,
-    private val api: TraktApi
+    private val api: ExternalSyncApi
 ) : ProviderSyncPushWorker(appContext, params, profileManager) {
 
     override val providerName = "simkl"

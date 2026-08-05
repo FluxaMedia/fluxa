@@ -3,7 +3,7 @@ package com.fluxa.app.data.repository
 import com.fluxa.app.data.BuildConfig
 import com.fluxa.app.data.local.WatchedContentDurationRecord
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.remote.TraktApi
+import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.domain.ContentIdentity
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +14,7 @@ import javax.inject.Singleton
 
 @Singleton
 class TraktSyncClient @Inject constructor(
-    private val traktApi: TraktApi,
+    private val externalSyncApi: ExternalSyncApi,
     private val failureReporter: DataFailureReporter
 ) {
     private val traktKey = BuildConfig.TRAKT_CLIENT_ID
@@ -27,7 +27,7 @@ class TraktSyncClient @Inject constructor(
         if (!TraktIntegration.hasClient(traktKey)) return@withContext DataResult.AuthUnavailable("trakt.watchlist")
         try {
             val auth = TraktIntegration.bearer(token)
-            DataResult.Success(fetchTraktSyncPages { page, limit -> traktApi.getWatchlist(auth, traktKey, page, limit) }
+            DataResult.Success(fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchlist(auth, traktKey, page, limit) }
                 .mapNotNull { item ->
                     val type = if (item.movie != null) "movie" else "series"
                     item.toMeta(type) { AppStrings.t(null, "auto.unknown") }
@@ -41,7 +41,7 @@ class TraktSyncClient @Inject constructor(
         if (!TraktIntegration.hasClient(traktKey)) return@withContext emptyList()
         try {
             val auth = TraktIntegration.bearer(token)
-            fetchTraktSyncPages { page, limit -> traktApi.getWatchlist(auth, traktKey, page, limit) }
+            fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchlist(auth, traktKey, page, limit) }
                 .mapNotNull { item ->
                     val listedAtMs = item.listedAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
                         ?: return@mapNotNull null
@@ -62,8 +62,8 @@ class TraktSyncClient @Inject constructor(
         if (!TraktIntegration.hasClient(traktKey)) return@withContext DataResult.AuthUnavailable("trakt.recentlyWatched")
         try {
             val auth = TraktIntegration.bearer(token)
-            val movies = async { runCatching { fetchTraktSyncPages { page, limit -> traktApi.getWatchedMovies(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
-            val shows = async { runCatching { fetchTraktSyncPages { page, limit -> traktApi.getWatchedShows(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
+            val movies = async { runCatching { fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchedMovies(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
+            val shows = async { runCatching { fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchedShows(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
             DataResult.Success((movies.await().mapNotNull { it.toMeta("movie") { AppStrings.t(null, "auto.unknown") } } +
                 shows.await().mapNotNull { it.toMeta("series") { AppStrings.t(null, "auto.unknown") } })
                 .distinctBy { it.id }
@@ -81,7 +81,7 @@ class TraktSyncClient @Inject constructor(
         if (!TraktIntegration.hasClient(traktKey)) return@withContext DataResult.AuthUnavailable("trakt.watchedEpisodeIds")
         try {
             val auth = TraktIntegration.bearer(token)
-            DataResult.Success(fetchTraktSyncPages { page, limit -> traktApi.getWatchedShows(auth, traktKey, page, limit) }
+            DataResult.Success(fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchedShows(auth, traktKey, page, limit) }
                 .mapNotNull { item ->
                     val show = item.show ?: return@mapNotNull null
                     val seriesId = TraktIntegration.contentIdFrom(show.ids) ?: return@mapNotNull null
@@ -104,7 +104,7 @@ class TraktSyncClient @Inject constructor(
         if (!TraktIntegration.hasClient(traktKey)) return@withContext emptyMap()
         try {
             val auth = TraktIntegration.bearer(token)
-            fetchTraktSyncPages { page, limit -> traktApi.getWatchedShows(auth, traktKey, page, limit) }
+            fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchedShows(auth, traktKey, page, limit) }
                 .flatMap { item ->
                     val show = item.show ?: return@flatMap emptyList()
                     val seriesId = TraktIntegration.contentIdFrom(show.ids) ?: return@flatMap emptyList()
@@ -133,8 +133,8 @@ class TraktSyncClient @Inject constructor(
         if (!TraktIntegration.hasClient(traktKey)) return@withContext DataResult.AuthUnavailable("trakt.watchedState")
         try {
             val auth = TraktIntegration.bearer(token)
-            val movies = async { fetchTraktSyncPages { page, limit -> traktApi.getWatchedMovies(auth, traktKey, page, limit, "full") } }
-            val shows = async { fetchTraktSyncPages { page, limit -> traktApi.getWatchedShows(auth, traktKey, page, limit, "full") } }
+            val movies = async { fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchedMovies(auth, traktKey, page, limit, "full") } }
+            val shows = async { fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchedShows(auth, traktKey, page, limit, "full") } }
             val movieItems = movies.await()
             val showItems = shows.await()
 
@@ -220,8 +220,8 @@ class TraktSyncClient @Inject constructor(
         if (!TraktIntegration.hasClient(traktKey)) return@withContext DataResult.AuthUnavailable("trakt.collection")
         try {
             val auth = TraktIntegration.bearer(token)
-            val movies = async { runCatching { fetchTraktSyncPages { page, limit -> traktApi.getMovieCollection(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
-            val shows = async { runCatching { fetchTraktSyncPages { page, limit -> traktApi.getShowCollection(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
+            val movies = async { runCatching { fetchTraktSyncPages { page, limit -> externalSyncApi.getMovieCollection(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
+            val shows = async { runCatching { fetchTraktSyncPages { page, limit -> externalSyncApi.getShowCollection(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
             DataResult.Success((movies.await().mapNotNull { it.toMeta("movie") { AppStrings.t(null, "auto.unknown") } } +
                 shows.await().mapNotNull { it.toMeta("series") { AppStrings.t(null, "auto.unknown") } })
                 .distinctBy { it.id })
@@ -238,8 +238,8 @@ class TraktSyncClient @Inject constructor(
         if (!TraktIntegration.hasClient(traktKey)) return@withContext DataResult.AuthUnavailable("trakt.favorites")
         try {
             val auth = TraktIntegration.bearer(token)
-            val movies = async { runCatching { fetchTraktSyncPages { page, limit -> traktApi.getFavoriteMovies(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
-            val shows = async { runCatching { fetchTraktSyncPages { page, limit -> traktApi.getFavoriteShows(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
+            val movies = async { runCatching { fetchTraktSyncPages { page, limit -> externalSyncApi.getFavoriteMovies(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
+            val shows = async { runCatching { fetchTraktSyncPages { page, limit -> externalSyncApi.getFavoriteShows(auth, traktKey, page, limit) } }.getOrDefault(emptyList()) }
             DataResult.Success((movies.await().mapNotNull { it.toMeta("movie") { AppStrings.t(null, "auto.unknown") } } +
                 shows.await().mapNotNull { it.toMeta("series") { AppStrings.t(null, "auto.unknown") } })
                 .distinctBy { it.id })

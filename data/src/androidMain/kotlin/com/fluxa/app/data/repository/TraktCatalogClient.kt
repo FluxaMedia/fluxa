@@ -1,7 +1,7 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.remote.TraktApi
+import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.remote.TraktSummary
 import com.fluxa.app.common.AppStrings
 import kotlinx.coroutines.Dispatchers
@@ -9,17 +9,17 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 
 internal class TraktCatalogClient(
-    private val traktApi: TraktApi,
+    private val externalSyncApi: ExternalSyncApi,
     private val traktKey: String,
     private val unknownName: () -> String
 ) {
     suspend fun getHype(language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
         if (!TraktIntegration.hasClient(traktKey)) return@withContext emptyList()
         try {
-            val trendingMovies = async { try { traktApi.getTrendingMovies(traktKey) } catch(e:Exception){ emptyList() } }
-            val trendingShows = async { try { traktApi.getTrendingShows(traktKey) } catch(e:Exception){ emptyList() } }
-            val anticipatedMovies = async { try { traktApi.getAnticipatedMovies(traktKey) } catch(e:Exception){ emptyList() } }
-            val anticipatedShows = async { try { traktApi.getAnticipatedShows(traktKey) } catch(e:Exception){ emptyList() } }
+            val trendingMovies = async { try { externalSyncApi.getTrendingMovies(traktKey) } catch(e:Exception){ emptyList() } }
+            val trendingShows = async { try { externalSyncApi.getTrendingShows(traktKey) } catch(e:Exception){ emptyList() } }
+            val anticipatedMovies = async { try { externalSyncApi.getAnticipatedMovies(traktKey) } catch(e:Exception){ emptyList() } }
+            val anticipatedShows = async { try { externalSyncApi.getAnticipatedShows(traktKey) } catch(e:Exception){ emptyList() } }
             val allItems = mutableListOf<Pair<TraktSummary?, String>>()
             allItems.addAll(trendingMovies.await().map { it.movie to "movie" })
             allItems.addAll(trendingShows.await().map { it.show to "series" })
@@ -37,8 +37,8 @@ internal class TraktCatalogClient(
     suspend fun getTrending(language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
         if (!TraktIntegration.hasClient(traktKey)) return@withContext emptyList()
         try {
-            val trendingMovies = async { try { traktApi.getTrendingMovies(traktKey) } catch (e: Exception) { emptyList() } }
-            val trendingShows = async { try { traktApi.getTrendingShows(traktKey) } catch (e: Exception) { emptyList() } }
+            val trendingMovies = async { try { externalSyncApi.getTrendingMovies(traktKey) } catch (e: Exception) { emptyList() } }
+            val trendingShows = async { try { externalSyncApi.getTrendingShows(traktKey) } catch (e: Exception) { emptyList() } }
 
             val movies = trendingMovies.await().mapNotNull { item ->
                 item.movie?.toTraktMeta(
@@ -62,8 +62,8 @@ internal class TraktCatalogClient(
     suspend fun getAnticipated(language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
         if (!TraktIntegration.hasClient(traktKey)) return@withContext emptyList()
         try {
-            val anticipatedMovies = async { try { traktApi.getAnticipatedMovies(traktKey) } catch (e: Exception) { emptyList() } }
-            val anticipatedShows = async { try { traktApi.getAnticipatedShows(traktKey) } catch (e: Exception) { emptyList() } }
+            val anticipatedMovies = async { try { externalSyncApi.getAnticipatedMovies(traktKey) } catch (e: Exception) { emptyList() } }
+            val anticipatedShows = async { try { externalSyncApi.getAnticipatedShows(traktKey) } catch (e: Exception) { emptyList() } }
 
             val movies = anticipatedMovies.await().mapNotNull { item ->
                 item.movie?.toTraktMeta(
