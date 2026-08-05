@@ -5,8 +5,8 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.domain.discovery.*
 
-import android.util.Log
-import com.fluxa.app.data.BuildConfig
+import com.fluxa.app.common.PlatformLog
+import com.fluxa.app.data.PlatformSecrets
 import kotlinx.coroutines.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -86,14 +86,14 @@ class StremioRepository @Inject constructor(
                 id = id,
                 alternateTypes = alternateTypes
             )
-            Log.d("MetaFetch", "getMetaDetail specificAddon($preferredAddonTransportUrl): ${if (specific != null) "OK name=${specific.name}" else "NULL"}")
+            PlatformLog.d("MetaFetch", "getMetaDetail specificAddon($preferredAddonTransportUrl): ${if (specific != null) "OK name=${specific.name}" else "NULL"}")
             return specific
         }
         val plan = FluxaCoreNative.repositoryMetaDetailPlan(useConfiguredAddons, authKey, localAddons)
-        Log.d("MetaFetch", "getMetaDetail plan: preferAddon=${plan.preferAddonMetaDetail} fallbackStremio=${plan.fallbackToStremioMetaDetail} localAddons=${localAddons?.size}")
+        PlatformLog.d("MetaFetch", "getMetaDetail plan: preferAddon=${plan.preferAddonMetaDetail} fallbackStremio=${plan.fallbackToStremioMetaDetail} localAddons=${localAddons?.size}")
         if (plan.preferAddonMetaDetail) {
             val fromAddon = addonRepository.getAddonMetaDetail(type, id, authKey, localAddons)
-            Log.d("MetaFetch", "getMetaDetail fromAddon: ${if (fromAddon != null) "OK name=${fromAddon.name}" else "NULL"}")
+            PlatformLog.d("MetaFetch", "getMetaDetail fromAddon: ${if (fromAddon != null) "OK name=${fromAddon.name}" else "NULL"}")
             fromAddon?.let { return it }
         }
         return if (plan.fallbackToStremioMetaDetail) {
@@ -267,7 +267,7 @@ class StremioRepository @Inject constructor(
             true
         } catch (e: Exception) {
             failureReporter.report("stremio.library.savePlaybackProgress", e)
-            Log.w("StremioRepository", "Failed to save playback progress for ${meta.id}", e)
+            PlatformLog.w("StremioRepository", "Failed to save playback progress for ${meta.id}", e)
             profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
             false
         }
@@ -281,7 +281,7 @@ class StremioRepository @Inject constructor(
             profileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
         } catch (e: Exception) {
             failureReporter.report("stremio.library.pushWatchlist", e)
-            Log.w("StremioRepository", "Failed to push watchlist for ${meta.id}", e)
+            PlatformLog.w("StremioRepository", "Failed to push watchlist for ${meta.id}", e)
             profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
         }
     }
@@ -295,7 +295,7 @@ class StremioRepository @Inject constructor(
             profileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
         } catch (e: Exception) {
             failureReporter.report("stremio.library.clearPlaybackProgress", e)
-            Log.w("StremioRepository", "Failed to clear playback progress for ${meta.id}", e)
+            PlatformLog.w("StremioRepository", "Failed to clear playback progress for ${meta.id}", e)
             profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
         }
     }
@@ -316,19 +316,19 @@ class StremioRepository @Inject constructor(
             }.onSuccess {
                 stremioProfileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
             }.onFailure { e ->
-                Log.w("StremioRepository", "Failed to sync watched state for ${meta.id}", e)
+                PlatformLog.w("StremioRepository", "Failed to sync watched state for ${meta.id}", e)
                 stremioProfileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
             }
         }
 
-        if (!traktToken.isNullOrBlank() && TraktIntegration.hasClient(BuildConfig.TRAKT_CLIENT_ID)) {
+        if (!traktToken.isNullOrBlank() && TraktIntegration.hasClient(PlatformSecrets.traktClientId)) {
             val request = FluxaCoreNative.traktHistoryRequest(meta, episodes)
             if (request != null) {
                 runCatching {
                     if (watched) {
-                        externalSyncApi.addToHistory(TraktIntegration.bearer(traktToken), BuildConfig.TRAKT_CLIENT_ID, request)
+                        externalSyncApi.addToHistory(TraktIntegration.bearer(traktToken), PlatformSecrets.traktClientId, request)
                     } else {
-                        externalSyncApi.removeFromHistory(TraktIntegration.bearer(traktToken), BuildConfig.TRAKT_CLIENT_ID, request)
+                        externalSyncApi.removeFromHistory(TraktIntegration.bearer(traktToken), PlatformSecrets.traktClientId, request)
                     }
                 }
             }

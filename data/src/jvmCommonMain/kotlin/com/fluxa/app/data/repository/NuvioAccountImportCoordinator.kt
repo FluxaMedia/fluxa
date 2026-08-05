@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
@@ -129,7 +129,7 @@ class NuvioAccountImportCoordinator(
         val addonDtos = try {
             nuvioService.pullAddons(token, profileId = "eq.$primaryIndex").requireBody()
         } catch (error: Exception) {
-            Log.w("NuvioImport", "Import step ${NuvioImportStep.ADDONS} failed; continuing without it", error)
+            PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.ADDONS} failed; continuing without it", error)
             null
         }
         if (addonDtos != null) {
@@ -147,7 +147,7 @@ class NuvioAccountImportCoordinator(
         val plugins = try {
             nuvioService.pullPlugins(token, profileId = "eq.$primaryIndex").requireBody()
         } catch (error: Exception) {
-            Log.w("NuvioImport", "Import step ${NuvioImportStep.PLUGINS} failed; continuing without it", error)
+            PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.PLUGINS} failed; continuing without it", error)
             emptyList<NuvioPluginDto>()
         }
         onStep(NuvioImportStep.PLUGINS)
@@ -155,7 +155,7 @@ class NuvioAccountImportCoordinator(
         val libraryItems = try {
             pullAllLibraryItems(token, primaryIndex, onItemProgress)
         } catch (error: Exception) {
-            Log.w("NuvioImport", "Import step ${NuvioImportStep.LIBRARY} failed; continuing without it", error)
+            PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.LIBRARY} failed; continuing without it", error)
             null
         }
         val libraryJson = gson.toJsonTree(libraryItems.orEmpty()).asJsonArray
@@ -168,13 +168,13 @@ class NuvioAccountImportCoordinator(
         val watchProgressDtos = try {
             nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to primaryIndex)).requireBody()
         } catch (error: Exception) {
-            Log.w("NuvioImport", "Import step ${NuvioImportStep.PROGRESS} failed; keeping existing playback progress", error)
+            PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.PROGRESS} failed; keeping existing playback progress", error)
             null
         }
         val watchedItemDtos = try {
             pullAllWatchedItems(token, primaryIndex)
         } catch (error: Exception) {
-            Log.w("NuvioImport", "Import step ${NuvioImportStep.HISTORY} failed; keeping existing watched episodes", error)
+            PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.HISTORY} failed; keeping existing watched episodes", error)
             null
         }
 
@@ -386,7 +386,7 @@ class NuvioAccountImportCoordinator(
             )
             if (!response.isSuccessful) throw IllegalStateException("Nuvio pushWatchProgress failed (${response.code()})")
         }.onFailure { error ->
-            Log.w("NuvioImport", "Failed to reconcile local progress to Nuvio", error)
+            PlatformLog.w("NuvioImport", "Failed to reconcile local progress to Nuvio", error)
         }
     }
 
@@ -397,7 +397,7 @@ class NuvioAccountImportCoordinator(
     ): T = try {
         call()
     } catch (error: Exception) {
-        Log.w("NuvioImport", "Import step $step failed; continuing without it", error)
+        PlatformLog.w("NuvioImport", "Import step $step failed; continuing without it", error)
         fallback
     }
 

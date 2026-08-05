@@ -217,12 +217,10 @@ class MainActivity : FragmentActivity() {
                     }
 
                     DisposableEffect(Unit) {
-                        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-                            profiles = profileManager.getProfiles()
-                        }
-                        profileManager.registerOnChangeListener(listener)
+                        val listener = { profiles = profileManager.getProfiles() }
+                        profileManager.addChangeListener(listener)
                         profiles = profileManager.getProfiles()
-                        onDispose { profileManager.unregisterOnChangeListener(listener) }
+                        onDispose { profileManager.removeChangeListener(listener) }
                     }
 
                     LaunchedEffect(Unit) {

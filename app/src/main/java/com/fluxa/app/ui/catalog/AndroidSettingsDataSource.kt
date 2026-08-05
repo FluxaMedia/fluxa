@@ -1,6 +1,5 @@
 package com.fluxa.app.ui.catalog
 
-import android.content.SharedPreferences
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.local.ProfileManager
@@ -80,12 +79,12 @@ class AndroidSettingsDataSource(
     }
 
     private fun profileFlow(): Flow<UserProfile?> = callbackFlow {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> launch { profileState.value = activeProfile() } }
-        profileManager.registerOnChangeListener(listener)
+        val listener: () -> Unit = { launch { profileState.value = activeProfile() } }
+        profileManager.addChangeListener(listener)
         val forwardingJob = launch { profileState.collect { trySend(it) } }
         awaitClose {
             forwardingJob.cancel()
-            profileManager.unregisterOnChangeListener(listener)
+            profileManager.removeChangeListener(listener)
         }
     }
 

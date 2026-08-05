@@ -39,9 +39,10 @@ private class AndroidProfileStore(
     private val state = MutableStateFlow(snapshot())
 
     init {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> state.value = snapshot() }
-        profileManager.registerOnChangeListener(listener)
-        pickerSettingsStore.registerOnChangeListener(listener)
+        profileManager.addChangeListener { state.value = snapshot() }
+        pickerSettingsStore.registerOnChangeListener(
+            SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> state.value = snapshot() }
+        )
     }
 
     private fun snapshot(): ProfileStoreSnapshot {

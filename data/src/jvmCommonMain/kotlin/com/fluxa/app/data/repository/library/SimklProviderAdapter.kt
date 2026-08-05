@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository.library
 
-import com.fluxa.app.data.BuildConfig
+import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
@@ -41,7 +41,7 @@ class SimklProviderAdapter @Inject constructor(
 
     override suspend fun pushWatchlist(profile: UserProfile, item: Meta, add: Boolean) {
         withTokenHandling(profile) { token ->
-            val clientId = BuildConfig.SIMKL_CLIENT_ID
+            val clientId = PlatformSecrets.simklClientId
             val imdbId = SimklIntegration.imdbIdFrom(item.id) ?: return@withTokenHandling null
             if (add) {
                 val body = SimklIntegration.watchlistBody(imdbId, item.type == "series")
@@ -55,7 +55,7 @@ class SimklProviderAdapter @Inject constructor(
 
     override suspend fun pushWatched(profile: UserProfile, item: Meta, episodes: List<Video>, watched: Boolean) {
         withTokenHandling(profile) { token ->
-            val clientId = BuildConfig.SIMKL_CLIENT_ID
+            val clientId = PlatformSecrets.simklClientId
             val imdbId = SimklIntegration.imdbIdFrom(item.id) ?: return@withTokenHandling null
             val isSeries = item.type == "series"
             val episodesBySeason = if (isSeries) {

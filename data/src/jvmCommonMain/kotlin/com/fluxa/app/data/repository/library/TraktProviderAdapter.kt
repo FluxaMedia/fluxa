@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository.library
 
-import com.fluxa.app.data.BuildConfig
+import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeLanguage
@@ -45,8 +45,8 @@ class TraktProviderAdapter @Inject constructor(
         val request = TraktIntegration.buildHistoryRequest(item, emptyList()) ?: return
         val bearer = TraktIntegration.bearer(token)
         runCatching {
-            if (add) api.addToWatchlist(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
-            else api.removeFromWatchlist(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
+            if (add) api.addToWatchlist(bearer, PlatformSecrets.traktClientId, request)
+            else api.removeFromWatchlist(bearer, PlatformSecrets.traktClientId, request)
         }.onSuccess { profileManager.clearExternalSyncFailure(profile.id, id) }
             .onFailure { profileManager.recordExternalSyncFailure(profile.id, id) }
     }
@@ -56,8 +56,8 @@ class TraktProviderAdapter @Inject constructor(
         val request = TraktIntegration.buildHistoryRequest(item, episodes) ?: return
         val bearer = TraktIntegration.bearer(token)
         runCatching {
-            if (watched) api.addToHistory(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
-            else api.removeFromHistory(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
+            if (watched) api.addToHistory(bearer, PlatformSecrets.traktClientId, request)
+            else api.removeFromHistory(bearer, PlatformSecrets.traktClientId, request)
         }.onSuccess { profileManager.clearExternalSyncFailure(profile.id, id) }
             .onFailure { profileManager.recordExternalSyncFailure(profile.id, id) }
     }
@@ -67,8 +67,8 @@ class TraktProviderAdapter @Inject constructor(
         val request = TraktIntegration.buildHistoryRequest(item, emptyList()) ?: return
         val bearer = TraktIntegration.bearer(token)
         runCatching {
-            if (favorite) api.addToFavorites(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
-            else api.removeFromFavorites(bearer, BuildConfig.TRAKT_CLIENT_ID, request)
+            if (favorite) api.addToFavorites(bearer, PlatformSecrets.traktClientId, request)
+            else api.removeFromFavorites(bearer, PlatformSecrets.traktClientId, request)
         }.onSuccess { profileManager.clearExternalSyncFailure(profile.id, id) }
             .onFailure { profileManager.recordExternalSyncFailure(profile.id, id) }
     }

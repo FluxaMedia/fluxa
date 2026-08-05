@@ -12,8 +12,10 @@ import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.remote.TmdbService
 import com.fluxa.app.data.platform.AndroidPlatformFileStore
 import com.fluxa.app.data.platform.AndroidPlatformKeyValueStore
+import com.fluxa.app.data.platform.AndroidPlatformSecureStore
 import com.fluxa.app.data.platform.PlatformFileStore
 import com.fluxa.app.data.platform.PlatformKeyValueStore
+import com.fluxa.app.data.platform.PlatformSecureStore
 import android.content.Context
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -48,6 +50,17 @@ object RepositoryModule {
     fun providePluginRepositoryStateStore(@ApplicationContext context: Context): PlatformKeyValueStore {
         return AndroidPlatformKeyValueStore(context.getSharedPreferences("fluxa_plugin_repository_manager", Context.MODE_PRIVATE))
     }
+
+    @Provides
+    @Singleton
+    @Named("ProfilePrefs")
+    fun provideProfilePrefsStore(@ApplicationContext context: Context): PlatformKeyValueStore {
+        return AndroidPlatformKeyValueStore(context.getSharedPreferences("fluxa_profiles", Context.MODE_PRIVATE))
+    }
+
+    @Provides
+    @Singleton
+    fun providePlatformSecureStore(impl: AndroidPlatformSecureStore): PlatformSecureStore = impl
 
     @Provides
     @Singleton

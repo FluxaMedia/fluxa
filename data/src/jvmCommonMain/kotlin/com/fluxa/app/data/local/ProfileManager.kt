@@ -1,36 +1,53 @@
 package com.fluxa.app.data.local
 
-import android.content.Context
-import android.content.SharedPreferences
+import com.fluxa.app.common.epochMillisNow
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.data.platform.PlatformKeyValueStore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import androidx.annotation.WorkerThread
-import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.runBlocking
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Singleton
 class ProfileManager @Inject constructor(
-    @ApplicationContext context: Context,
+    @param:Named("ProfilePrefs") private val prefsStore: PlatformKeyValueStore,
     private val gson: Gson,
     private val credentialStore: ProfileCredentialStore
 ) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("fluxa_profiles", Context.MODE_PRIVATE)
     private val profilesLock = Any()
     @Volatile private var cachedProfiles: List<UserProfile>? = null
+    private val changeListeners = CopyOnWriteArrayList<() -> Unit>()
+    private val stringSetType = object : TypeToken<Set<String>>() {}.type
 
-    @WorkerThread
+    private fun prefsGet(key: String): String? = runBlocking { prefsStore.read(key) }
+
+    private fun prefsPut(key: String, value: String) = runBlocking { prefsStore.write(key, value) }
+
+    private fun prefsRemove(key: String) = runBlocking { prefsStore.remove(key) }
+
+    private fun notifyChanged() {
+        changeListeners.forEach { it() }
+    }
+
+    fun addChangeListener(listener: () -> Unit) {
+        changeListeners.add(listener)
+    }
+
+    fun removeChangeListener(listener: () -> Unit) {
+        changeListeners.remove(listener)
+    }
+
     fun saveProfile(profile: UserProfile) {
         saveProfileInternal(profile, mergeMirroredAddons = true)
     }
 
-    @WorkerThread
     fun saveProfileReplacingLocalAddons(profile: UserProfile) {
         saveProfileInternal(profile, mergeMirroredAddons = false)
     }
 
-    @WorkerThread
     fun updateProfile(profileId: String, transform: (UserProfile) -> UserProfile): UserProfile? = synchronized(profilesLock) {
         val current = getProfiles().firstOrNull { it.id == profileId } ?: return@synchronized null
         transform(current).also(::saveProfile)
@@ -52,16 +69,13 @@ class ProfileManager @Inject constructor(
             } else {
                 profiles.add(persistedProfile)
             }
-            val json = gson.toJson(profiles)
-            prefs.edit()
-                .putString("profiles_list", json)
-                .putStringSet(localAddonsKey(persistedProfile), persistedProfile.safeInstalledLocalAddons.toSet())
-                .apply()
+            prefsPut("profiles_list", gson.toJson(profiles))
+            prefsPut(localAddonsKey(persistedProfile), gson.toJson(persistedProfile.safeInstalledLocalAddons.toSet()))
             cachedProfiles = profiles.map(credentialStore::hydrate)
         }
+        notifyChanged()
     }
 
-    @WorkerThread
     fun recordExternalSyncFailure(profileId: String, provider: String) {
         updateProfile(profileId) { profile ->
             val current = profile.externalSyncFailedProviders.orEmpty()
@@ -69,7 +83,6 @@ class ProfileManager @Inject constructor(
         }
     }
 
-    @WorkerThread
     fun clearExternalSyncFailure(profileId: String, provider: String) {
         updateProfile(profileId) { profile ->
             val current = profile.externalSyncFailedProviders.orEmpty()
@@ -84,12 +97,8 @@ class ProfileManager @Inject constructor(
         }
     }
 
-    @WorkerThread
     private fun loadProfiles(): List<UserProfile> {
-        val json = prefs.getString("profiles_list", null)
-        if (json == null) {
-            return emptyList()
-        }
+        val json = prefsGet("profiles_list") ?: return emptyList()
         val type = object : TypeToken<List<UserProfile>>() {}.type
         val list: List<UserProfile> = gson.fromJson(json, type)
         val hasLegacyCredentials = list.any(credentialStore::hasLegacyCredentials)
@@ -99,7 +108,7 @@ class ProfileManager @Inject constructor(
             credentialStore.hydrate(credentialStore.redact(sanitized))
         }
         if (hasLegacyCredentials) {
-            prefs.edit().putString("profiles_list", gson.toJson(hydrated.map(credentialStore::redact))).apply()
+            prefsPut("profiles_list", gson.toJson(hydrated.map(credentialStore::redact)))
         }
         return hydrated
             .distinctBy { profile ->
@@ -112,7 +121,7 @@ class ProfileManager @Inject constructor(
 
     private fun sanitizeProfile(profile: UserProfile, mergeMirroredAddons: Boolean): UserProfile {
         val mirroredAddons = if (mergeMirroredAddons) {
-            prefs.getStringSet(localAddonsKey(profile), emptySet()).orEmpty()
+            prefsGet(localAddonsKey(profile))?.let { gson.fromJson<Set<String>>(it, stringSetType) }.orEmpty()
         } else {
             emptySet()
         }
@@ -128,44 +137,41 @@ class ProfileManager @Inject constructor(
         return FluxaCoreNative.profileLocalAddonsKey(profile)
     }
 
-    @WorkerThread
     fun deleteProfile(email: String) {
         synchronized(profilesLock) {
             val profiles = getProfiles().filterNot { it.email == email }
             getProfiles().filter { it.email == email }.forEach { credentialStore.remove(it.id) }
-            val json = gson.toJson(profiles)
-            prefs.edit().putString("profiles_list", json).apply()
+            prefsPut("profiles_list", gson.toJson(profiles))
             cachedProfiles = profiles
         }
+        notifyChanged()
     }
 
-    @WorkerThread
     fun deleteProfileById(id: String) {
         synchronized(profilesLock) {
             val profiles = getProfiles().filterNot { it.id == id }
             credentialStore.remove(id)
-            val json = gson.toJson(profiles)
-            prefs.edit().putString("profiles_list", json).apply()
+            prefsPut("profiles_list", gson.toJson(profiles))
             cachedProfiles = profiles
         }
+        notifyChanged()
     }
 
     fun getLastActiveProfileId(): String? {
-        return prefs.getString("last_active_profile_id", null)
+        return prefsGet("last_active_profile_id")
     }
 
     fun setLastActiveProfile(profile: UserProfile?) {
-        val editor = prefs.edit()
         if (profile == null) {
-            editor.remove("last_active_profile_id")
+            prefsRemove("last_active_profile_id")
         } else {
-            editor.putString("last_active_profile_id", profile.id)
+            prefsPut("last_active_profile_id", profile.id)
         }
-        editor.apply()
+        notifyChanged()
     }
 
-    fun canAttemptPin(profileId: String, nowMillis: Long = System.currentTimeMillis()): Boolean {
-        val value = prefs.getString(pinAttemptKey(profileId), null) ?: return true
+    fun canAttemptPin(profileId: String, nowMillis: Long = epochMillisNow()): Boolean {
+        val value = prefsGet(pinAttemptKey(profileId)) ?: return true
         val parts = value.split(':')
         val failures = parts.getOrNull(0)?.toIntOrNull() ?: return true
         val lastFailure = parts.getOrNull(1)?.toLongOrNull() ?: return true
@@ -173,21 +179,15 @@ class ProfileManager @Inject constructor(
         return nowMillis - lastFailure >= delay
     }
 
-    fun recordPinFailure(profileId: String, nowMillis: Long = System.currentTimeMillis()) {
-        val previous = prefs.getString(pinAttemptKey(profileId), null)?.substringBefore(':')?.toIntOrNull() ?: 0
-        prefs.edit().putString(pinAttemptKey(profileId), "${minOf(previous + 1, 5)}:$nowMillis").apply()
+    fun recordPinFailure(profileId: String, nowMillis: Long = epochMillisNow()) {
+        val previous = prefsGet(pinAttemptKey(profileId))?.substringBefore(':')?.toIntOrNull() ?: 0
+        prefsPut(pinAttemptKey(profileId), "${minOf(previous + 1, 5)}:$nowMillis")
+        notifyChanged()
     }
 
     fun clearPinFailures(profileId: String) {
-        prefs.edit().remove(pinAttemptKey(profileId)).apply()
-    }
-
-    fun registerOnChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
-        prefs.registerOnSharedPreferenceChangeListener(listener)
-    }
-
-    fun unregisterOnChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
-        prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        prefsRemove(pinAttemptKey(profileId))
+        notifyChanged()
     }
 
     private fun pinAttemptKey(profileId: String): String = "pin_attempt_$profileId"
