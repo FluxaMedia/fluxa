@@ -31,6 +31,8 @@ import com.fluxa.app.data.repository.StremioAddonResourceClient
 import com.fluxa.app.desktop.addonstore.DesktopAddonRegistry
 import com.fluxa.app.desktop.addonstore.DesktopAddonStoreDataSource
 import com.fluxa.app.desktop.auth.DesktopAuthDataSource
+import com.fluxa.app.desktop.auth.DesktopOAuthCallbackListener
+import com.fluxa.app.desktop.auth.DesktopSimklAnilistAuthCoordinator
 import com.fluxa.app.desktop.auth.DesktopTraktAuthCoordinator
 import com.fluxa.app.desktop.auth.buildDesktopNuvioService
 import com.fluxa.app.desktop.detail.DesktopDetailDataSource
@@ -93,6 +95,7 @@ fun main() = application {
         )
     }
     val traktAuthCoordinator = remember { DesktopTraktAuthCoordinator(profileManager) {} }
+    val simklAnilistCoordinator = remember { DesktopSimklAnilistAuthCoordinator(profileManager) }
     val catalogHomeDataSource = remember { DesktopCatalogHomeDataSource(DesktopHomeCoordinator(addonRepository)) }
     val searchDataSource = remember { DesktopSearchDataSource(addonRepository, addonRegistry) }
     val detailDataSource = remember { DesktopDetailDataSource(addonRepository, watchlistStore, addonRegistry) }
@@ -110,6 +113,12 @@ fun main() = application {
     }
     var currentDestination by remember { mutableStateOf<FluxaDestination?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    remember {
+        DesktopOAuthCallbackListener { service, code, _ ->
+            val activeId = profileManager.getLastActiveProfileId()
+            simklAnilistCoordinator.handleCallback(service, code, activeId, coroutineScope)
+        }.also { it.start() }
+    }
     Window(
         onCloseRequest = ::exitApplication,
         title = "Fluxa",
@@ -153,6 +162,8 @@ fun main() = application {
                     traktAuthCoordinator.connect(activeId, coroutineScope)
                 }
             },
+            onConnectSimklRequested = { simklAnilistCoordinator.connectSimkl() },
+            onConnectAnilistRequested = { simklAnilistCoordinator.connectAnilist() },
             modifier = Modifier.fillMaxSize()
         )
     }
