@@ -396,10 +396,7 @@ private fun SettingsHubContent(
         SettingsNavRow(AppStrings.t(lang, "settings.notifications_title")) { onNavigate(SettingsCategory.Notifications) }
         SettingsNavRow(AppStrings.t(lang, "auto.general")) { onNavigate(SettingsCategory.General) }
         SettingsNavRow(AppStrings.t(lang, "auto.appearance")) { onNavigate(SettingsCategory.Appearance) }
-        SettingsNavRow(
-            AppStrings.t(lang, "auto.playback"),
-            value = if (state.playback.preferredPlayer == "mpv") "MPV" else "ExoPlayer"
-        ) { onNavigate(SettingsCategory.Playback) }
+        SettingsNavRow(AppStrings.t(lang, "auto.playback")) { onNavigate(SettingsCategory.Playback) }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_content"))
@@ -441,7 +438,6 @@ private fun SettingsAccountContent(
     continueWatchingSource: String?,
     onContinueWatchingSourceChanged: (String) -> Unit
 ) {
-    var confirmingDisconnect by remember { mutableStateOf(false) }
     SettingsSectionHeader(AppStrings.t(lang, "auto.account_sync"))
     SettingsGroupCard {
         val syncFailedLabel = AppStrings.t(lang, "integration.sync_failed")
@@ -513,31 +509,6 @@ private fun SettingsAccountContent(
             value = model.integrationLibrarySource,
             options = connectedLibraryOptions
         ) { onAction(SettingsAction.TmdbAccountChanged(model.copy(integrationLibrarySource = it))) }
-    }
-    if (model.hasAnySync) {
-        SettingsGroupCard {
-            SettingsActionRow(AppStrings.t(lang, "auto.disconnect"), destructive = true) { confirmingDisconnect = true }
-        }
-    }
-    if (confirmingDisconnect) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { confirmingDisconnect = false },
-            title = { Text(AppStrings.t(lang, "auto.disconnect")) },
-            text = { Text(AppStrings.t(lang, "settings.disconnect_confirm")) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmingDisconnect = false
-                    onAction(SettingsAction.DisconnectSyncRequested)
-                }) {
-                    Text(AppStrings.t(lang, "auto.disconnect"), color = FluxaColors.errorRed)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmingDisconnect = false }) {
-                    Text(AppStrings.t(lang, "common.cancel"))
-                }
-            }
-        )
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.apis"))

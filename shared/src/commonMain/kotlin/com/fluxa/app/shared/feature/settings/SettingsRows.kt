@@ -207,7 +207,7 @@ fun SettingsChoiceRow(
     LaunchedEffect(highlighted) {
         if (highlighted) bringIntoViewRequester.bringIntoView()
     }
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .bringIntoViewRequester(bringIntoViewRequester)
@@ -215,21 +215,14 @@ fun SettingsChoiceRow(
             .settingsRowDivider()
             .settingsFocusRing()
             .clickable { showDialog = true }
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 10.dp)
     ) {
-        Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                currentLabel,
-                color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 140.dp)
-            )
-            Spacer(Modifier.width(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
@@ -237,6 +230,12 @@ fun SettingsChoiceRow(
                 modifier = Modifier.size(18.dp)
             )
         }
+        Text(
+            currentLabel,
+            color = Color.White.copy(alpha = FluxaDimensions.Alpha.valueText),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 4.dp)
+        )
     }
     if (showDialog) {
         SettingsChoiceDialog(
