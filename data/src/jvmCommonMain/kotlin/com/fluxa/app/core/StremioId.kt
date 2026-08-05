@@ -2,7 +2,7 @@ package com.fluxa.app.core
 
 import com.fluxa.app.core.rust.FluxaCoreNative
 
-internal object StremioId {
+object StremioId {
     fun imdbId(id: String?): String? = id?.let(FluxaCoreNative::contentImdbId)
 
     fun baseContentId(id: String): String = FluxaCoreNative.contentBaseId(id)

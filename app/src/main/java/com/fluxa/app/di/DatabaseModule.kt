@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.Room
 import com.fluxa.app.data.local.AppDatabase
 import com.fluxa.app.data.local.WatchlistDao
-import com.fluxa.app.data.local.WatchlistManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,11 +29,5 @@ object DatabaseModule {
     @Singleton
     fun provideWatchlistDao(database: AppDatabase): WatchlistDao {
         return database.watchlistDao()
-    }
-
-    @Provides
-    @Singleton
-    fun provideWatchlistManager(dao: WatchlistDao): WatchlistManager {
-        return WatchlistManager(dao)
     }
 }

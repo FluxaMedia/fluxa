@@ -1,7 +1,5 @@
 package com.fluxa.app.data.local
 
-import android.content.Context
-import androidx.room.Room
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.ui.catalog.isUpNextContinueItem

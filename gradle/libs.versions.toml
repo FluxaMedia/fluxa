@@ -72,6 +72,7 @@ androidx-browser                    = { group = "androidx.browser",           na
 androidx-room-runtime               = { group = "androidx.room",               name = "room-runtime",                version.ref = "room" }
 androidx-room-ktx                   = { group = "androidx.room",               name = "room-ktx",                    version.ref = "room" }
 androidx-room-compiler              = { group = "androidx.room",               name = "room-compiler",               version.ref = "room" }
+androidx-sqlite-bundled              = { group = "androidx.sqlite",             name = "sqlite-bundled",              version = "2.6.2" }
 
 # Compose (versions managed by BOM — no version.ref here)
 androidx-compose-bom            = { group = "androidx.compose",          name = "compose-bom",              version.ref = "composeBom" }

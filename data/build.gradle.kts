@@ -72,7 +72,7 @@ val generateFluxaCoreUniFfiBindings by tasks.registering(Exec::class) {
     outputs.dir(uniffiKotlinOutDir)
 }
 
-tasks.matching { it.name == "preBuild" || it.name == "compileKotlinDesktop" }.configureEach {
+tasks.matching { it.name == "preBuild" || it.name == "compileKotlinDesktop" || it.name == "kspKotlinDesktop" }.configureEach {
     dependsOn(generateFluxaCoreUniFfiBindings)
 }
 
@@ -96,6 +96,7 @@ kotlin {
                 implementation(project(":core"))
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.androidx.room.runtime)
             }
         }
         commonTest.dependencies {
@@ -123,13 +124,14 @@ kotlin {
                 implementation(libs.bundles.coroutines)
                 implementation(libs.androidx.work.runtime)
                 implementation(libs.androidx.hilt.work)
-                implementation(libs.androidx.room.runtime)
-                implementation(libs.androidx.room.ktx)
                 implementation(libs.okhttp.doh)
             }
         }
         val desktopMain by getting {
             dependsOn(jvmCommonMain)
+            dependencies {
+                implementation(libs.androidx.sqlite.bundled)
+            }
         }
         val nativeMain by creating { dependsOn(commonMain.get()) }
         val appleMain by creating { dependsOn(nativeMain) }
@@ -145,4 +147,9 @@ kotlin {
 dependencies {
     add("kspAndroid", libs.androidx.hilt.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
+    add("kspDesktop", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspTvosArm64", libs.androidx.room.compiler)
+    add("kspTvosSimulatorArm64", libs.androidx.room.compiler)
 }

@@ -1,7 +1,9 @@
 package com.fluxa.app.data.local
 
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 
 @Database(
     entities = [
@@ -20,6 +22,11 @@ import androidx.room.RoomDatabase
     version = 17,
     exportSchema = true
 )
+@ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun watchlistDao(): WatchlistDao
+}
+
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
+    override fun initialize(): AppDatabase
 }

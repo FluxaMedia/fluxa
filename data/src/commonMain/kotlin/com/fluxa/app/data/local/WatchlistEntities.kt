@@ -9,8 +9,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import com.fluxa.app.common.epochMillisNow
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "content_items", primaryKeys = ["profileId", "contentId"])
@@ -25,7 +24,7 @@ data class ContentItemEntity(
     val description: String?,
     val rating: String?,
     val releaseInfo: String?,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -36,8 +35,8 @@ data class ContentItemEntity(
 data class WatchlistEntryEntity(
     val profileId: String,
     val contentId: String,
-    val addedAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = epochMillisNow(),
+    val updatedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -47,7 +46,7 @@ data class WatchlistEntryEntity(
 data class WatchlistRemovalEntity(
     val profileId: String,
     val contentId: String,
-    val removedAt: Long = System.currentTimeMillis()
+    val removedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -68,7 +67,7 @@ data class PlaybackProgressEntity(
     val lastBingeGroup: String? = null,
     val continueWatchingPoster: String?,
     val continueWatchingBackground: String?,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -80,7 +79,7 @@ data class UserFeedbackEntity(
     val profileId: String,
     val contentId: String,
     val isLiked: Boolean?,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = epochMillisNow()
 )
 
 @Entity(tableName = "track_preferences", primaryKeys = ["profileId", "contentId"])
@@ -89,7 +88,7 @@ data class TrackPreferenceEntity(
     val contentId: String,
     val lastAudioLanguage: String?,
     val lastSubtitleLanguage: String?,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -101,8 +100,8 @@ data class WatchedEpisodeEntity(
     val profileId: String,
     val seriesId: String,
     val videoId: String,
-    val watchedAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val watchedAt: Long = epochMillisNow(),
+    val updatedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -113,7 +112,7 @@ data class WatchedEpisodeRemovalEntity(
     val profileId: String,
     val seriesId: String,
     val videoId: String,
-    val removedAt: Long = System.currentTimeMillis()
+    val removedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -130,7 +129,7 @@ data class WatchedContentDurationEntity(
     val contentId: String,
     val videoId: String,
     val duration: Long,
-    val watchedAt: Long = System.currentTimeMillis()
+    val watchedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -158,7 +157,7 @@ data class ExternalPlaybackProgressEntity(
     val reason: String?,
     val continueWatchingPoster: String?,
     val continueWatchingBackground: String?,
-    val syncedAt: Long = System.currentTimeMillis()
+    val syncedAt: Long = epochMillisNow()
 )
 
 @Entity(
@@ -171,7 +170,7 @@ data class ExternalWatchedEpisodeEntity(
     val provider: String,
     val seriesId: String,
     val videoId: String,
-    val syncedAt: Long = System.currentTimeMillis()
+    val syncedAt: Long = epochMillisNow()
 )
 
 data class ContentStateRow(
