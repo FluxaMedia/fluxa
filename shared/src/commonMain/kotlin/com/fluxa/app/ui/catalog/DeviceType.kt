@@ -5,13 +5,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 
-enum class DeviceType { TV, Mobile }
+enum class DeviceType { TV, Mobile, Desktop }
 val LocalDeviceType = compositionLocalOf { DeviceType.TV }
 
 @Composable
 fun Modifier.touchClickable(onClick: () -> Unit): Modifier {
     val deviceType = LocalDeviceType.current
-    return if (deviceType == DeviceType.Mobile) {
+    return if (deviceType != DeviceType.TV) {
         this.clickable(onClick = onClick)
     } else {
         this
