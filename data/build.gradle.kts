@@ -96,7 +96,7 @@ kotlin {
                 implementation(project(":core"))
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.androidx.room.runtime)
+                api(libs.androidx.room.runtime)
             }
         }
         commonTest.dependencies {
