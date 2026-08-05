@@ -24,6 +24,7 @@ import com.fluxa.app.desktop.home.DesktopCatalogHomeDataSource
 import com.fluxa.app.desktop.home.DesktopHomeCoordinator
 import com.fluxa.app.desktop.library.DesktopLibraryDataSource
 import com.fluxa.app.desktop.search.DesktopSearchDataSource
+import com.fluxa.app.desktop.settings.DesktopSettingsDataSource
 import com.fluxa.app.shared.FluxaAppHost
 import com.fluxa.app.ui.catalog.DeviceType
 import com.google.gson.Gson
@@ -58,6 +59,7 @@ fun main() = application {
     val searchDataSource = remember { DesktopSearchDataSource(addonRepository) }
     val detailDataSource = remember { DesktopDetailDataSource(addonRepository, watchlistStore) }
     val libraryDataSource = remember { DesktopLibraryDataSource(watchlistStore) }
+    val settingsDataSource = remember { DesktopSettingsDataSource() }
     Window(
         onCloseRequest = ::exitApplication,
         title = "Fluxa",
@@ -68,6 +70,7 @@ fun main() = application {
             searchDataSource = searchDataSource,
             detailDataSource = detailDataSource,
             libraryDataSource = libraryDataSource,
+            settingsDataSource = settingsDataSource,
             deviceType = DeviceType.Desktop,
             showNavigationBar = true,
             modifier = Modifier.fillMaxSize()
