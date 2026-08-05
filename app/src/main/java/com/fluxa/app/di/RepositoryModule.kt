@@ -9,6 +9,8 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.remote.TmdbService
+import com.fluxa.app.data.platform.AndroidPlatformFileStore
+import com.fluxa.app.data.platform.PlatformFileStore
 import android.content.Context
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -16,6 +18,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
+
+    @Provides
+    @Singleton
+    fun providePlatformFileStore(@ApplicationContext context: Context): PlatformFileStore {
+        return AndroidPlatformFileStore(context.cacheDir)
+    }
 
     @Provides
     @Singleton

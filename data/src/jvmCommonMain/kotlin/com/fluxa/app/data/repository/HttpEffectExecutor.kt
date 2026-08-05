@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.core.rust.models.NativeAddonFetchResult
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -26,7 +26,7 @@ class HttpEffectExecutor @Inject constructor() {
                 NativeAddonFetchResult(url = url, statusCode = response.code, body = response.body.string())
             }
         } catch (e: Exception) {
-            Log.w("HttpEffectExecutor", "HTTP request failed: $url", e)
+            PlatformLog.w("HttpEffectExecutor", "HTTP request failed: $url", e)
             NativeAddonFetchResult(url = url, error = e.message)
         }
     }

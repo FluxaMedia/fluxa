@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.NativeAddonFetchResult
 import com.fluxa.app.core.rust.models.NativeAddonResourceParseResult
@@ -93,7 +93,7 @@ class StremioAddonResourceClient @Inject constructor(
                         }
                     }.awaitAll().forEach(::addAddon)
                 } catch (e: Exception) {
-                    Log.w("StremioRepository", "Failed to load user addons", e)
+                    PlatformLog.w("StremioRepository", "Failed to load user addons", e)
                 }
             }
             normalizedLocalAddons.map { url ->
@@ -103,7 +103,7 @@ class StremioAddonResourceClient @Inject constructor(
                             addonManifestClient.getAddonManifest(url, forceRefresh)
                         }
                     } catch (e: Exception) {
-                        Log.w("StremioRepository", "Failed to load local addon manifest: $url", e)
+                        PlatformLog.w("StremioRepository", "Failed to load local addon manifest: $url", e)
                         null
                     }
                 }
@@ -193,11 +193,11 @@ class StremioAddonResourceClient @Inject constructor(
         is AddonResourceResult.Empty,
         is AddonResourceResult.AddonUnsupported -> null
         is AddonResourceResult.NetworkError -> {
-            Log.w("StremioAddonResourceClient", "Meta request failed: ${result.url} status=${result.statusCode}", result.cause)
+            PlatformLog.w("StremioAddonResourceClient", "Meta request failed: ${result.url} status=${result.statusCode}", result.cause)
             null
         }
         is AddonResourceResult.ParseError -> {
-            Log.w("StremioAddonResourceClient", "Meta parse failed: ${result.url}", result.cause)
+            PlatformLog.w("StremioAddonResourceClient", "Meta parse failed: ${result.url}", result.cause)
             null
         }
     }
@@ -359,11 +359,11 @@ class StremioAddonResourceClient @Inject constructor(
             is AddonResourceResult.Empty,
             is AddonResourceResult.AddonUnsupported -> emptyList()
             is AddonResourceResult.NetworkError -> {
-                Log.w("StremioAddonResourceClient", "$operation request failed: ${result.url} status=${result.statusCode}", result.cause)
+                PlatformLog.w("StremioAddonResourceClient", "$operation request failed: ${result.url} status=${result.statusCode}", result.cause)
                 emptyList()
             }
             is AddonResourceResult.ParseError -> {
-                Log.w("StremioAddonResourceClient", "$operation parse failed: ${result.url}", result.cause)
+                PlatformLog.w("StremioAddonResourceClient", "$operation parse failed: ${result.url}", result.cause)
                 emptyList()
             }
         }

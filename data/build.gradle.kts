@@ -109,6 +109,10 @@ kotlin {
             dependencies {
                 implementation(libs.jna)
                 implementation(libs.gson)
+                implementation(libs.javax.inject)
+                implementation(libs.okhttp)
+                implementation(libs.okhttp.logging)
+                implementation(libs.bundles.retrofit)
             }
         }
         androidMain {
@@ -121,8 +125,6 @@ kotlin {
                 implementation(libs.androidx.hilt.work)
                 implementation(libs.androidx.room.runtime)
                 implementation(libs.androidx.room.ktx)
-                implementation(libs.bundles.retrofit)
-                implementation(libs.okhttp.logging)
                 implementation(libs.okhttp.doh)
             }
         }

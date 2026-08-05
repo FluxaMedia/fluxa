@@ -1,20 +1,18 @@
 package com.fluxa.app.data.repository
 
-import android.content.Context
+import com.fluxa.app.data.platform.PlatformFileStore
 import com.fluxa.app.data.remote.AddonDescriptor
-import com.fluxa.app.data.platform.AndroidPlatformFileStore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AddonPersistentCache @Inject constructor(
-    @ApplicationContext context: Context,
+    fileStore: PlatformFileStore,
     private val gson: Gson
 ) {
-    private val cache = PlatformPersistentCache(AndroidPlatformFileStore(context.cacheDir))
+    private val cache = PlatformPersistentCache(fileStore)
     private val addonDescriptorType = object : TypeToken<AddonDescriptor>() {}.type
     private val addonListType = object : TypeToken<List<AddonDescriptor>>() {}.type
 

@@ -29,6 +29,7 @@ import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.remote.TmdbMeta
 import com.fluxa.app.data.remote.TmdbService
 import com.fluxa.app.data.remote.ExternalSyncApi
+import com.fluxa.app.core.rust.effects.fetchAddonCatalogPage
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktRepository
@@ -982,19 +983,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
                 )
             )
         }
-        return ok(
-            effect,
-            mapOf(
-                "items" to addonRepository.getAddonCatalog(
-                    transportUrl = payload.string("transportUrl"),
-                    type = payload.string("contentType"),
-                    id = payload.string("catalogId"),
-                    skip = payload.number("skip")?.toInt() ?: 0,
-                    genre = payload.stringOrNull("genre"),
-                    search = payload.stringOrNull("search")
-                )
-            )
-        )
+        return fetchAddonCatalogPage(effect, addonRepository)
     }
 
     private suspend fun fetchRemoteCollectionSources(

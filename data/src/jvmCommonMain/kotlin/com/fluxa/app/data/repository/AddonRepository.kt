@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.domain.discovery.supportsStremioResource
 import kotlinx.coroutines.CoroutineScope
@@ -67,7 +67,7 @@ class AddonRepository @Inject constructor(
     ): MetaDetail? {
         val allAddons = getUserAddons(authKey, localAddons)
         val addons = allAddons.filter { it.supportsStremioResource("meta") }
-        Log.d("MetaFetch", "getAddonMetaDetail type=$type id=${id.take(30)}: total=${allAddons.size} supported=${addons.size} names=${addons.map { it.manifest.name }}")
+        PlatformLog.d("MetaFetch", "getAddonMetaDetail type=$type id=${id.take(30)}: total=${allAddons.size} supported=${addons.size} names=${addons.map { it.manifest.name }}")
         if (addons.isEmpty()) return null
 
         return coroutineScope {
@@ -83,12 +83,12 @@ class AddonRepository @Inject constructor(
                     is AddonResourceResult.Success -> return@coroutineScope result.value
                     is AddonResourceResult.Empty,
                     is AddonResourceResult.AddonUnsupported -> Unit
-                    is AddonResourceResult.NetworkError -> Log.w(
+                    is AddonResourceResult.NetworkError -> PlatformLog.w(
                         "AddonRepository",
                         "Meta request failed: ${result.url} status=${result.statusCode}",
                         result.cause
                     )
-                    is AddonResourceResult.ParseError -> Log.w(
+                    is AddonResourceResult.ParseError -> PlatformLog.w(
                         "AddonRepository",
                         "Meta parse failed: ${result.url}",
                         result.cause
@@ -110,16 +110,16 @@ class AddonRepository @Inject constructor(
             .filter { it.isNotBlank() }
             .distinct()
         for (candidateType in types) {
-            Log.d("MetaFetch", "getMetaDetailFromSpecificAddon: url=$transportUrl type=$candidateType id=${id.take(30)}")
+            PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon: url=$transportUrl type=$candidateType id=${id.take(30)}")
             when (val result = addonResourceClient.getMetaDetailFromAddonResult(transportUrl, candidateType, id)) {
                 is AddonResourceResult.Success -> {
-                    Log.d("MetaFetch", "getMetaDetailFromSpecificAddon SUCCESS: type=$candidateType name=${result.value.name} videos=${result.value.videos?.size}")
+                    PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon SUCCESS: type=$candidateType name=${result.value.name} videos=${result.value.videos?.size}")
                     return result.value
                 }
-                is AddonResourceResult.Empty -> Log.d("MetaFetch", "getMetaDetailFromSpecificAddon EMPTY: ${result.url}")
-                is AddonResourceResult.AddonUnsupported -> Log.d("MetaFetch", "getMetaDetailFromSpecificAddon UNSUPPORTED: addon=${result.addonName} type=${result.type}")
-                is AddonResourceResult.NetworkError -> Log.w("MetaFetch", "getMetaDetailFromSpecificAddon NETWORK_ERROR: ${result.url} status=${result.statusCode}", result.cause)
-                is AddonResourceResult.ParseError -> Log.w("MetaFetch", "getMetaDetailFromSpecificAddon PARSE_ERROR: ${result.url}", result.cause)
+                is AddonResourceResult.Empty -> PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon EMPTY: ${result.url}")
+                is AddonResourceResult.AddonUnsupported -> PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon UNSUPPORTED: addon=${result.addonName} type=${result.type}")
+                is AddonResourceResult.NetworkError -> PlatformLog.w("MetaFetch", "getMetaDetailFromSpecificAddon NETWORK_ERROR: ${result.url} status=${result.statusCode}", result.cause)
+                is AddonResourceResult.ParseError -> PlatformLog.w("MetaFetch", "getMetaDetailFromSpecificAddon PARSE_ERROR: ${result.url}", result.cause)
             }
         }
         return null
