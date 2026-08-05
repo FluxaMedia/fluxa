@@ -1,30 +1,29 @@
 package com.fluxa.app.data.repository
 
-import android.content.Context
 import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.data.BuildConfig
+import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.platform.PlatformKeyValueStore
 import com.fluxa.app.data.remote.SimklAllItemsResponse
 import com.fluxa.app.data.remote.ExternalSyncApi
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 data class SimklSyncSnapshot(val resources: Map<String, SimklAllItemsResponse>)
 
 @Singleton
 class SimklSyncCoordinator @Inject constructor(
-    @ApplicationContext context: Context,
+    @param:Named("SimklSyncDelta") private val cache: PlatformKeyValueStore,
     private val gson: Gson,
     private val externalSyncApi: ExternalSyncApi
 ) {
-    private val cache = context.getSharedPreferences("simkl_sync_delta", Context.MODE_PRIVATE)
     private val mutex = Mutex()
 
     suspend fun snapshot(profile: UserProfile): SimklSyncSnapshot = withContext(Dispatchers.IO) {
@@ -33,11 +32,11 @@ class SimklSyncCoordinator @Inject constructor(
 
     private suspend fun snapshotLocked(profile: UserProfile): SimklSyncSnapshot {
         val token = profile.simklAccessToken?.takeIf(String::isNotBlank) ?: return SimklSyncSnapshot(emptyMap())
-        if (BuildConfig.SIMKL_CLIENT_ID.isBlank()) return SimklSyncSnapshot(emptyMap())
+        if (PlatformSecrets.simklClientId.isBlank()) return SimklSyncSnapshot(emptyMap())
         val key = "snapshot:${profile.id}"
-        val previous = cache.getString(key, null)?.let { gson.fromJson(it, SimklCache::class.java) }
+        val previous = cache.read(key)?.let { gson.fromJson(it, SimklCache::class.java) }
             ?.takeIf { it.schemaVersion == CACHE_SCHEMA_VERSION }
-        val activities = runCatching { externalSyncApi.getSimklActivities("Bearer $token", BuildConfig.SIMKL_CLIENT_ID) }.getOrNull()
+        val activities = runCatching { externalSyncApi.getSimklActivities("Bearer $token", PlatformSecrets.simklClientId) }.getOrNull()
             ?: return SimklSyncSnapshot(previous?.resources.orEmpty())
         val definitions = listOf(
             Definition("showsWatching", "shows", "watching"),
@@ -69,15 +68,15 @@ class SimklSyncCoordinator @Inject constructor(
                 when (entry?.action) {
                     "unchanged" -> cached
                     "delta" -> {
-                        val changes = externalSyncApi.getSimklAllItems(definition.type, definition.status, "Bearer $token", BuildConfig.SIMKL_CLIENT_ID, dateFrom = entry.dateFrom)
+                        val changes = externalSyncApi.getSimklAllItems(definition.type, definition.status, "Bearer $token", PlatformSecrets.simklClientId, dateFrom = entry.dateFrom)
                         gson.fromJson(FluxaCoreNative.simklMergeDelta(cached, changes), SimklAllItemsResponse::class.java)
                     }
-                    else -> externalSyncApi.getSimklAllItems(definition.type, definition.status, "Bearer $token", BuildConfig.SIMKL_CLIENT_ID)
+                    else -> externalSyncApi.getSimklAllItems(definition.type, definition.status, "Bearer $token", PlatformSecrets.simklClientId)
                 }
             }.getOrNull()
             definition.key to (next ?: cached ?: SimklAllItemsResponse())
         }
-        cache.edit().putString(key, gson.toJson(SimklCache(activities, resources))).apply()
+        cache.write(key, gson.toJson(SimklCache(activities, resources)))
         return SimklSyncSnapshot(resources)
     }
 

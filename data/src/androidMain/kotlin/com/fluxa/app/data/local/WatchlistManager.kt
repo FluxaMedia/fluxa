@@ -118,8 +118,6 @@ class WatchlistManager @Inject constructor(
         return dao.isInWatchlist(pid(), id)
     }
 
-    data class WatchlistMembershipEntry(val id: String, val active: Boolean, val updatedAt: Long)
-
     suspend fun getWatchlistMembershipSnapshot(): List<WatchlistMembershipEntry> {
         val profileId = pid()
         val active = dao.getWatchlistEntries(profileId).map { WatchlistMembershipEntry(it.contentId, true, it.updatedAt) }

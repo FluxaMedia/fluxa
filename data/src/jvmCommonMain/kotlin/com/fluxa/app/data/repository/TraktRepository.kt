@@ -1,10 +1,10 @@
 package com.fluxa.app.data.repository
 
-import com.fluxa.app.data.BuildConfig
-import android.content.Context
+import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.local.safeLocalAddons
+import com.fluxa.app.data.platform.PlatformKeyValueStore
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.common.AppStrings
 import kotlinx.coroutines.Dispatchers
@@ -14,15 +14,15 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
-import dagger.hilt.android.qualifiers.ApplicationContext
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 
 @Singleton
 class TraktRepository @Inject constructor(
-    @ApplicationContext context: Context,
+    @param:Named("TraktSyncDelta") private val syncCache: PlatformKeyValueStore,
     private val externalSyncApi: ExternalSyncApi,
     private val addonRepository: AddonRepository,
     private val externalLibraryClient: ExternalLibraryClient,
@@ -30,9 +30,8 @@ class TraktRepository @Inject constructor(
     private val gson: Gson,
     private val oauthClientConfig: OAuthClientConfig
 ) {
-    private val TRAKT_KEY = BuildConfig.TRAKT_CLIENT_ID
+    private val TRAKT_KEY = PlatformSecrets.traktClientId
     private val MAX_CONCURRENT_TRAKT_DETAIL_RESOLUTION = 6
-    private val syncCache = context.getSharedPreferences("trakt_sync_delta", Context.MODE_PRIVATE)
 
     private val traktCatalogClient by lazy {
         TraktCatalogClient(
@@ -50,7 +49,7 @@ class TraktRepository @Inject constructor(
         val token = profile.traktAccessToken ?: return@withContext TraktSyncSnapshot(0, 0)
         if (!TraktIntegration.hasClient(TRAKT_KEY)) return@withContext TraktSyncSnapshot(0, 0)
         val key = "snapshot:${profile.id}"
-        val cached = syncCache.getString(key, null)?.let { gson.fromJson(it, TraktSnapshotCache::class.java) }
+        val cached = syncCache.read(key)?.let { gson.fromJson(it, TraktSnapshotCache::class.java) }
         val activities = runCatching {
             externalSyncApi.getLastActivities(TraktIntegration.bearer(token), TRAKT_KEY).body()
         }.getOrNull()
@@ -71,7 +70,7 @@ class TraktRepository @Inject constructor(
         }
         val snapshot = externalLibraryClient.getTraktSyncSnapshot(profile, language)
         if (activities != null) {
-            syncCache.edit().putString(key, gson.toJson(TraktSnapshotCache(activities, snapshot))).apply()
+            syncCache.write(key, gson.toJson(TraktSnapshotCache(activities, snapshot)))
         }
         snapshot
     }

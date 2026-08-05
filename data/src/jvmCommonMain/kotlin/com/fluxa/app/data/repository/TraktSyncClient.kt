@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository
 
-import com.fluxa.app.data.BuildConfig
+import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.WatchedContentDurationRecord
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.ExternalSyncApi
@@ -17,7 +17,7 @@ class TraktSyncClient @Inject constructor(
     private val externalSyncApi: ExternalSyncApi,
     private val failureReporter: DataFailureReporter
 ) {
-    private val traktKey = BuildConfig.TRAKT_CLIENT_ID
+    private val traktKey = PlatformSecrets.traktClientId
 
     suspend fun getWatchlist(token: String): List<Meta> = withContext(Dispatchers.IO) {
         getWatchlistResult(token).getOrReport(emptyList())

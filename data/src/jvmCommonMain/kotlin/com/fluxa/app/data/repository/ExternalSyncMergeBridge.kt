@@ -1,7 +1,7 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
-import com.fluxa.app.data.local.WatchlistManager.WatchlistMembershipEntry
+import com.fluxa.app.data.local.WatchlistMembershipEntry
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 

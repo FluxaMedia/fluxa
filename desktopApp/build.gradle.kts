@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -44,6 +45,16 @@ val rustCoreLibraryPath = rustCoreLibraryDir.resolve(
     }
 ).absolutePath
 
+val desktopLocalProperties = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) localFile.inputStream().use { load(it) }
+}
+
+fun desktopSecret(name: String): String =
+    providers.gradleProperty(name).orNull
+        ?: System.getenv(name)
+        ?: desktopLocalProperties.getProperty(name, "")
+
 tasks.matching { it.name == "run" || it.name == "runDistributable" || it.name == "hotRunDesktop" }.configureEach {
     dependsOn(rootProject.tasks.named("buildFluxaCoreHost"))
     if (this is JavaExec) {
@@ -51,5 +62,8 @@ tasks.matching { it.name == "run" || it.name == "runDistributable" || it.name ==
         // The UniFFI/JNA binding path resolves the library independently of
         // System.load, via JNA's own search (jna.library.path).
         systemProperty("jna.library.path", rustCoreLibraryDir.absolutePath)
+        systemProperty("fluxa.secret.trakt_client_id", desktopSecret("TRAKT_CLIENT_ID"))
+        systemProperty("fluxa.secret.simkl_client_id", desktopSecret("SIMKL_CLIENT_ID"))
+        systemProperty("fluxa.secret.anilist_client_id", desktopSecret("ANILIST_CLIENT_ID"))
     }
 }

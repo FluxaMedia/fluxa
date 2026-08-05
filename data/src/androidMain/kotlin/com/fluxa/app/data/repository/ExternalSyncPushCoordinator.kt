@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
@@ -47,7 +47,7 @@ class ExternalSyncPushCoordinator @Inject constructor(
         adapters.all.filter { plan.isEligible(it.id) }.forEach { adapter ->
             launch {
                 runCatching { adapter.pushWatched(profile, meta, episodes, watched) }
-                    .onFailure { Log.w("ExternalSyncPush", "${adapter.id} pushMarkWatched failed for ${meta.id}", it) }
+                    .onFailure { PlatformLog.w("ExternalSyncPush", "${adapter.id} pushMarkWatched failed for ${meta.id}", it) }
             }
         }
     }
@@ -66,7 +66,7 @@ class ExternalSyncPushCoordinator @Inject constructor(
         adapters.all.filter { plan.isEligible(it.id) }.forEach { adapter ->
             launch {
                 runCatching { adapter.pushWatchlist(profile, meta, isInWatchlist) }
-                    .onFailure { Log.w("ExternalSyncPush", "${adapter.id} pushWatchlist failed for ${meta.id}", it) }
+                    .onFailure { PlatformLog.w("ExternalSyncPush", "${adapter.id} pushWatchlist failed for ${meta.id}", it) }
             }
         }
     }
@@ -84,7 +84,7 @@ class ExternalSyncPushCoordinator @Inject constructor(
         adapters.all.filter { plan.isEligible(it.id) }.forEach { adapter ->
             launch {
                 runCatching { adapter.pushFavorite(profile, meta, isFavorite) }
-                    .onFailure { Log.w("ExternalSyncPush", "${adapter.id} pushFavorite failed for ${meta.id}", it) }
+                    .onFailure { PlatformLog.w("ExternalSyncPush", "${adapter.id} pushFavorite failed for ${meta.id}", it) }
             }
         }
     }
@@ -103,7 +103,7 @@ class ExternalSyncPushCoordinator @Inject constructor(
         return runCatching {
             val value = FluxaCoreUniFfi.coreInvokeValue("externalProviderActionPlan", gson.toJson(payload))
             gson.fromJson(value, ProviderEligibility::class.java)
-        }.onFailure { Log.w("ExternalSyncPush", "externalProviderActionPlan failed for kind=$kind", it) }
+        }.onFailure { PlatformLog.w("ExternalSyncPush", "externalProviderActionPlan failed for kind=$kind", it) }
             .getOrNull()
     }
 }

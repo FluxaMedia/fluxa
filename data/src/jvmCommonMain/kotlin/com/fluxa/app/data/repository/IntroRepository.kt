@@ -1,7 +1,8 @@
 package com.fluxa.app.data.repository
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.google.gson.JsonElement
+import com.google.gson.JsonParser
 import com.fluxa.app.data.remote.AniSkipService
 import com.fluxa.app.data.remote.IntroDbService
 import com.fluxa.app.data.remote.IntroDbSubmissionRequest
@@ -10,7 +11,6 @@ import com.fluxa.app.data.remote.StremioService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
-import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.Locale
 
@@ -42,7 +42,7 @@ internal class IntroRepository(
             if (response.isSuccessful) {
                 IntroDbSubmitResult.Success(response.body()?.status ?: "pending")
             } else {
-                Log.w(TAG, "IntroDB submission failed for $imdbId S${season}E$episode: HTTP ${response.code()}")
+                PlatformLog.w(TAG, "IntroDB submission failed for $imdbId S${season}E$episode: HTTP ${response.code()}")
                 IntroDbSubmitResult.Error(
                     when (response.code()) {
                         401 -> "invalid_key"
@@ -53,7 +53,7 @@ internal class IntroRepository(
                 )
             }
         } catch (e: Exception) {
-            Log.w(TAG, "IntroDB submission failed for $imdbId S${season}E$episode", e)
+            PlatformLog.w(TAG, "IntroDB submission failed for $imdbId S${season}E$episode", e)
             IntroDbSubmitResult.Error("network_error")
         }
     }
@@ -74,7 +74,7 @@ internal class IntroRepository(
                     response.body()?.let { results.addAll(parseIntroDbSegments(it)) }
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "IntroDB lookup failed for $imdbId S${season}E${episode}", e)
+                PlatformLog.w(TAG, "IntroDB lookup failed for $imdbId S${season}E${episode}", e)
             }
         }
         if (useAniSkip) {
@@ -101,7 +101,7 @@ internal class IntroRepository(
                     }
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "AniSkip lookup failed for $imdbId / $title episode $episode", e)
+                PlatformLog.w(TAG, "AniSkip lookup failed for $imdbId / $title episode $episode", e)
             }
         }
         results.distinctBy { "${it.startTime}-${it.type}" }
@@ -197,16 +197,15 @@ internal class IntroRepository(
                 .build()
             val json = httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return null
-                JSONObject(response.body.string())
+                JsonParser.parseString(response.body.string()).asJsonObject
             }
-            val data = json.optJSONArray("data") ?: return null
-            (0 until data.length())
-                .asSequence()
-                .mapNotNull { idx -> data.optJSONObject(idx) }
-                .mapNotNull { item -> item.optInt("mal_id").takeIf { it > 0 } }
-                .firstOrNull()
+            val data = json.getAsJsonArray("data") ?: return null
+            data.asSequence()
+                .filter { it.isJsonObject }
+                .mapNotNull { it.asJsonObject.get("mal_id")?.takeIf { id -> id.isJsonPrimitive }?.asInt }
+                .firstOrNull { it > 0 }
         } catch (e: Exception) {
-            Log.w(TAG, "MAL id resolution failed for $imdbId / $query", e)
+            PlatformLog.w(TAG, "MAL id resolution failed for $imdbId / $query", e)
             null
         }
     }

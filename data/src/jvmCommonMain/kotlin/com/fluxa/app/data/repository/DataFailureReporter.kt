@@ -1,6 +1,6 @@
 package com.fluxa.app.data.repository
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,11 +24,11 @@ class DataFailureReporter @Inject constructor() {
             message = throwable.message ?: throwable::class.java.simpleName
         )
         _latestFailure.value = failure
-        Log.w("DataFailure", "$operation failed: ${failure.message}", throwable)
+        PlatformLog.w("DataFailure", "$operation failed: ${failure.message}", throwable)
     }
 
     fun report(failure: DataFailure) {
         _latestFailure.value = failure
-        Log.w("DataFailure", "${failure.operation} failed: ${failure.message}")
+        PlatformLog.w("DataFailure", "${failure.operation} failed: ${failure.message}")
     }
 }

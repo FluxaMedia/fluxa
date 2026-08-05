@@ -1,6 +1,6 @@
 package com.fluxa.app.core.rust
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.data.repository.PluginNetGuard
 import com.fluxa.core.uniffi.PluginHttpClient
 import com.fluxa.core.uniffi.PluginHttpRequest
@@ -82,7 +82,7 @@ class PluginHttpClientImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.w("PluginHttpClient", "plugin fetch failed: $currentUrl", e)
+            PlatformLog.w("PluginHttpClient", "plugin fetch failed: $currentUrl", e)
             return PluginHttpResponse(
                 status = 0u,
                 headers = emptyMap(),

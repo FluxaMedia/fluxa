@@ -1,8 +1,8 @@
 package com.fluxa.app.data.repository
 
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
-import com.fluxa.app.data.BuildConfig
+import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeLocalAddons
 import com.fluxa.app.data.local.safeLanguage
@@ -64,7 +64,7 @@ class ExternalLibraryClient @Inject constructor(
     private val traktSyncClient: TraktSyncClient,
     private val simklSyncCoordinator: SimklSyncCoordinator
 ) {
-    private val traktKey = BuildConfig.TRAKT_CLIENT_ID
+    private val traktKey = PlatformSecrets.traktClientId
 
     private fun unknownName(language: String?): String = AppStrings.t(language, "auto.unknown")
 
@@ -97,7 +97,7 @@ class ExternalLibraryClient @Inject constructor(
     }
 
     suspend fun getSimklLibraryItems(token: String?, status: String): List<Meta> = withContext(Dispatchers.IO) {
-        if (token.isNullOrBlank() || BuildConfig.SIMKL_CLIENT_ID.isBlank()) return@withContext emptyList()
+        if (token.isNullOrBlank() || PlatformSecrets.simklClientId.isBlank()) return@withContext emptyList()
         val types = listOf("movies" to "movie", "shows" to "series", "anime" to "series")
         supervisorScope {
             types.map { (apiType, metaType) ->
@@ -107,7 +107,7 @@ class ExternalLibraryClient @Inject constructor(
                             type = apiType,
                             status = status,
                             token = "Bearer $token",
-                            apiKey = BuildConfig.SIMKL_CLIENT_ID
+                            apiKey = PlatformSecrets.simklClientId
                         )
                         val items = when (apiType) {
                             "movies" -> response.movies
@@ -141,7 +141,7 @@ class ExternalLibraryClient @Inject constructor(
     }
 
     suspend fun getSimklWatchedEpisodesWithTimestamps(token: String?): Map<String, Long> = withContext(Dispatchers.IO) {
-        if (token.isNullOrBlank() || BuildConfig.SIMKL_CLIENT_ID.isBlank()) return@withContext emptyMap()
+        if (token.isNullOrBlank() || PlatformSecrets.simklClientId.isBlank()) return@withContext emptyMap()
         val statuses = listOf("watching", "completed")
         supervisorScope {
             statuses.flatMap { status ->
@@ -152,7 +152,7 @@ class ExternalLibraryClient @Inject constructor(
                                 type = apiType,
                                 status = status,
                                 token = "Bearer $token",
-                                apiKey = BuildConfig.SIMKL_CLIENT_ID
+                                apiKey = PlatformSecrets.simklClientId
                             )
                             val items = if (apiType == "anime") response.anime else response.shows
                             items.flatMap { it.watchedEpisodeTimestamps() }
@@ -241,7 +241,7 @@ class ExternalLibraryClient @Inject constructor(
                 }.awaitAll().filterNotNull()
             }
         } catch (e: Exception) {
-            Log.w("ExternalLibraryClient", "Failed to load Trakt playback items", e)
+            PlatformLog.w("ExternalLibraryClient", "Failed to load Trakt playback items", e)
             emptyList()
         }
     }
@@ -271,16 +271,16 @@ class ExternalLibraryClient @Inject constructor(
             }.filterNotNull()
             movies + showsWithStills + standaloneSessionItems
         }.getOrElse {
-            Log.w("ExternalLibraryClient", "Failed to load Simkl continue watching items", it)
+            PlatformLog.w("ExternalLibraryClient", "Failed to load Simkl continue watching items", it)
             emptyList()
         }
     }
 
     private suspend fun fetchSimklPlaybackSessions(profile: UserProfile): List<com.google.gson.JsonObject> {
         val token = profile.simklAccessToken?.takeIf(String::isNotBlank) ?: return emptyList()
-        if (BuildConfig.SIMKL_CLIENT_ID.isBlank()) return emptyList()
+        if (PlatformSecrets.simklClientId.isBlank()) return emptyList()
         return runCatching {
-            externalSyncApi.getSimklPlaybackSessions("Bearer $token", BuildConfig.SIMKL_CLIENT_ID)
+            externalSyncApi.getSimklPlaybackSessions("Bearer $token", PlatformSecrets.simklClientId)
         }.getOrDefault(emptyList())
     }
 
@@ -386,7 +386,7 @@ class ExternalLibraryClient @Inject constructor(
     private suspend fun attachEpisodeDetailsBySimklId(simklId: Int, locator: Pair<Int, Int>, meta: Meta): Meta {
         val cacheKey = "$simklId:${locator.first}:${locator.second}"
         val fetched = runCatching {
-            externalSyncApi.getSimklTvEpisodes(simklId, BuildConfig.SIMKL_CLIENT_ID)
+            externalSyncApi.getSimklTvEpisodes(simklId, PlatformSecrets.simklClientId)
                 .firstOrNull { it.season == locator.first && it.episode == locator.second }
         }.getOrNull()
         if (fetched != null) {
@@ -478,7 +478,7 @@ class ExternalLibraryClient @Inject constructor(
             if (envelope.get("ok")?.asBoolean != true) return null
             envelope.getAsJsonObject("value")
         } catch (e: Exception) {
-            Log.w("ExternalLibraryClient", "Failed to load AniList sync data", e)
+            PlatformLog.w("ExternalLibraryClient", "Failed to load AniList sync data", e)
             null
         }
     }

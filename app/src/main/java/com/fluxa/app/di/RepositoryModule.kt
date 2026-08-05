@@ -6,11 +6,14 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Named
 import javax.inject.Singleton
 import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.data.remote.TmdbService
 import com.fluxa.app.data.platform.AndroidPlatformFileStore
+import com.fluxa.app.data.platform.AndroidPlatformKeyValueStore
 import com.fluxa.app.data.platform.PlatformFileStore
+import com.fluxa.app.data.platform.PlatformKeyValueStore
 import android.content.Context
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,6 +26,27 @@ object RepositoryModule {
     @Singleton
     fun providePlatformFileStore(@ApplicationContext context: Context): PlatformFileStore {
         return AndroidPlatformFileStore(context.cacheDir)
+    }
+
+    @Provides
+    @Singleton
+    @Named("SimklSyncDelta")
+    fun provideSimklSyncDeltaStore(@ApplicationContext context: Context): PlatformKeyValueStore {
+        return AndroidPlatformKeyValueStore(context.getSharedPreferences("simkl_sync_delta", Context.MODE_PRIVATE))
+    }
+
+    @Provides
+    @Singleton
+    @Named("TraktSyncDelta")
+    fun provideTraktSyncDeltaStore(@ApplicationContext context: Context): PlatformKeyValueStore {
+        return AndroidPlatformKeyValueStore(context.getSharedPreferences("trakt_sync_delta", Context.MODE_PRIVATE))
+    }
+
+    @Provides
+    @Singleton
+    @Named("PluginRepositoryState")
+    fun providePluginRepositoryStateStore(@ApplicationContext context: Context): PlatformKeyValueStore {
+        return AndroidPlatformKeyValueStore(context.getSharedPreferences("fluxa_plugin_repository_manager", Context.MODE_PRIVATE))
     }
 
     @Provides
@@ -45,20 +69,6 @@ object RepositoryModule {
         resourceClient: StremioAddonResourceClient
     ): AddonRepository {
         return AddonRepository(manifestClient, resourceClient)
-    }
-
-    @Provides
-    @Singleton
-    fun provideTraktRepository(
-        @ApplicationContext context: Context,
-        externalSyncApi: ExternalSyncApi,
-        addonRepository: AddonRepository,
-        externalLibraryClient: ExternalLibraryClient,
-        traktSyncClient: TraktSyncClient,
-        gson: Gson,
-        oauthClientConfig: OAuthClientConfig
-    ): TraktRepository {
-        return TraktRepository(context, externalSyncApi, addonRepository, externalLibraryClient, traktSyncClient, gson, oauthClientConfig)
     }
 
     @Provides

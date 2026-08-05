@@ -1,16 +1,15 @@
 package com.fluxa.app.plugins
 
-import android.content.Context
-import android.util.Log
+import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.core.rust.PluginHttpClientImpl
+import com.fluxa.app.data.platform.PlatformKeyValueStore
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.NuvioPluginDto
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,7 +26,6 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 
-private const val PREFS_NAME = "fluxa_plugin_repository_manager"
 private const val KEY_PERSISTED_STATE = "persisted_state"
 
 data class PluginRepositoryUiModel(
@@ -84,7 +82,7 @@ private data class PersistedPluginsState(
 
 @Singleton
 class PluginRepositoryManager @Inject constructor(
-    @param:ApplicationContext private val context: Context,
+    @param:Named("PluginRepositoryState") private val prefsStore: PlatformKeyValueStore,
     environment: dagger.Lazy<FluxaAndroidHeadlessEnvironment>,
     private val pluginHttpClient: PluginHttpClientImpl,
     @param:Named("PluginScraperClient") private val scraperCodeClient: okhttp3.OkHttpClient,
@@ -97,7 +95,6 @@ class PluginRepositoryManager @Inject constructor(
     private val streamListType = object : TypeToken<List<Stream>>() {}.type
     private val codeCacheMutex = Mutex()
     private val codeCache = mutableMapOf<String, String>()
-    private val prefs by lazy { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
 
     val state: StateFlow<PluginsUiState> by lazy {
         runtime.state
@@ -167,7 +164,7 @@ class PluginRepositoryManager @Inject constructor(
         persistCurrentState()
     }
 
-    private fun persistCurrentState() {
+    private suspend fun persistCurrentState() {
         val current = runtime.state.value.toPluginsUiState()
         val persisted = PersistedPluginsState(
             repositoryUrls = current.repositories.map { it.manifestUrl },
@@ -175,15 +172,15 @@ class PluginRepositoryManager @Inject constructor(
                 scraper.id to PersistedScraperOverride(enabled = scraper.enabled, settings = scraper.settings)
             }
         )
-        prefs.edit().putString(KEY_PERSISTED_STATE, gson.toJson(persisted)).apply()
+        prefsStore.write(KEY_PERSISTED_STATE, gson.toJson(persisted))
     }
 
-    private fun loadPersistedState(): PersistedPluginsState {
-        val json = prefs.getString(KEY_PERSISTED_STATE, null) ?: return PersistedPluginsState()
+    private suspend fun loadPersistedState(): PersistedPluginsState {
+        val json = prefsStore.read(KEY_PERSISTED_STATE) ?: return PersistedPluginsState()
         return try {
             gson.fromJson(json, PersistedPluginsState::class.java) ?: PersistedPluginsState()
         } catch (e: Exception) {
-            Log.w("PluginRepositoryManager", "failed to parse persisted plugin state", e)
+            PlatformLog.w("PluginRepositoryManager", "failed to parse persisted plugin state", e)
             PersistedPluginsState()
         }
     }
@@ -211,7 +208,7 @@ class PluginRepositoryManager @Inject constructor(
             val streams: List<Stream> = gson.fromJson(normalized, streamListType) ?: emptyList()
             streams.map { it.copy(addonName = scraper.name) }
         } catch (e: Exception) {
-            Log.w("PluginRepositoryManager", "scraper ${scraper.id} failed", e)
+            PlatformLog.w("PluginRepositoryManager", "scraper ${scraper.id} failed", e)
             emptyList()
         }
     }
@@ -223,7 +220,7 @@ class PluginRepositoryManager @Inject constructor(
                 val layoutJson = FluxaCoreUniFfi.getPluginScraperSettingsLayout(code, scraper.id)
                 parseSettingsLayout(layoutJson)
             } catch (e: Exception) {
-                Log.w("PluginRepositoryManager", "settings layout for ${scraper.id} failed", e)
+                PlatformLog.w("PluginRepositoryManager", "settings layout for ${scraper.id} failed", e)
                 emptyList()
             }
         }
@@ -277,7 +274,7 @@ class PluginRepositoryManager @Inject constructor(
                 code
             }
         } catch (e: Exception) {
-            Log.w("PluginRepositoryManager", "failed to fetch scraper code for ${scraper.id}", e)
+            PlatformLog.w("PluginRepositoryManager", "failed to fetch scraper code for ${scraper.id}", e)
             null
         }
     }

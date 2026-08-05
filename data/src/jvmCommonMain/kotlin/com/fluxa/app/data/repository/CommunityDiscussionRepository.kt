@@ -1,7 +1,7 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.data.BuildConfig
+import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.remote.StremioService
 import com.fluxa.app.ui.catalog.CommunityComment
 import com.google.gson.Gson
@@ -19,9 +19,9 @@ import javax.inject.Singleton
 class CommunityDiscussionRepository @Inject constructor(private val gson: Gson) {
     suspend fun traktComments(contentId: String, contentType: String): List<CommunityComment> = withContext(Dispatchers.IO) {
         val request = FluxaCoreNative.traktCommentsRequest(contentId, contentType) ?: return@withContext emptyList()
-        if (BuildConfig.TRAKT_CLIENT_ID.isBlank()) return@withContext emptyList()
+        if (PlatformSecrets.traktClientId.isBlank()) return@withContext emptyList()
         val url = "https://api.trakt.tv/${request.resource}/${request.id}/comments/likes?extended=full&limit=100"
-        getJson(url, mapOf("trakt-api-version" to "2", "trakt-api-key" to BuildConfig.TRAKT_CLIENT_ID))
+        getJson(url, mapOf("trakt-api-version" to "2", "trakt-api-key" to PlatformSecrets.traktClientId))
             ?.asJsonArrayOrNull()
             ?.mapNotNull(::traktComment)
             .orEmpty()
