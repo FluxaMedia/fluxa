@@ -318,37 +318,6 @@ tasks.register("checkLegacySourceSets") {
     }
 }
 
-tasks.register("checkNoDesktopTargets") {
-    group = "verification"
-    description = "Fails when desktop application targets or desktop source sets return."
-
-    doLast {
-        val sourceSetViolations = listOf("core", "data", "player", "shared")
-            .map { module -> rootProject.file("$module/src/desktop" + "Main") }
-            .filter { sourceSet -> sourceSet.exists() }
-            .map { sourceSet -> "${sourceSet.relativeTo(rootDir)} must not exist" }
-        val buildFiles = fileTree(rootDir) {
-            include("**/*.gradle.kts", "**/*.gradle")
-            exclude("**/build/**", ".gradle/**")
-        }
-        val forbiddenTokens = listOf(
-            "jvm(\"desktop\")",
-            "desktop" + "Main",
-            "compose.desktop" + ".application"
-        )
-        val buildViolations = buildFiles.files.flatMap { file ->
-            val text = file.readText()
-            forbiddenTokens.filter(text::contains).map { token ->
-                "${file.relativeTo(rootDir)} must not declare $token"
-            }
-        }
-        val violations = sourceSetViolations + buildViolations
-        if (violations.isNotEmpty()) {
-            throw GradleException(violations.joinToString("\n"))
-        }
-    }
-}
-
 tasks.register("checkAppleTypedCatalogBridge") {
     group = "verification"
     description = "Fails when the Apple catalog bridge falls back to JSON or notification handoffs."
@@ -670,7 +639,6 @@ tasks.register("qualityCheck") {
         "checkKmpCommonBoundary",
         "checkSharedTransportModels",
         "checkLegacySourceSets",
-        "checkNoDesktopTargets",
         "checkAppleTypedCatalogBridge",
         "checkAppleTvosKmpBoundary",
         "checkSharedPlayerBoundary",

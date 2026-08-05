@@ -39,6 +39,11 @@ kotlin {
             implementation(libs.androidx.tv.foundation)
             implementation(libs.androidx.tv.material)
         }
+        val desktopMain by getting {
+            dependencies {
+                implementation(libs.coil3.network.okhttp)
+            }
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)

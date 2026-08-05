@@ -72,7 +72,7 @@ val generateFluxaCoreUniFfiBindings by tasks.registering(Exec::class) {
     outputs.dir(uniffiKotlinOutDir)
 }
 
-tasks.matching { it.name == "preBuild" }.configureEach {
+tasks.matching { it.name == "preBuild" || it.name == "compileKotlinDesktop" }.configureEach {
     dependsOn(generateFluxaCoreUniFfiBindings)
 }
 
@@ -103,8 +103,16 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.kotlinx.serialization.json)
         }
-        androidMain {
+        val jvmCommonMain by creating {
+            dependsOn(commonMain.get())
             kotlin.srcDir(uniffiKotlinOutDir)
+            dependencies {
+                implementation(libs.jna)
+                implementation(libs.gson)
+            }
+        }
+        androidMain {
+            dependsOn(jvmCommonMain)
             dependencies {
                 implementation("net.java.dev.jna:jna:${libs.versions.jna.get()}@aar")
                 implementation(libs.androidx.core.ktx)
@@ -118,6 +126,17 @@ kotlin {
                 implementation(libs.okhttp.doh)
             }
         }
+        val desktopMain by getting {
+            dependsOn(jvmCommonMain)
+        }
+        val nativeMain by creating { dependsOn(commonMain.get()) }
+        val appleMain by creating { dependsOn(nativeMain) }
+        val iosMain by creating { dependsOn(appleMain) }
+        val tvosMain by creating { dependsOn(appleMain) }
+        getByName("iosArm64Main").dependsOn(iosMain)
+        getByName("iosSimulatorArm64Main").dependsOn(iosMain)
+        getByName("tvosArm64Main").dependsOn(tvosMain)
+        getByName("tvosSimulatorArm64Main").dependsOn(tvosMain)
     }
 }
 

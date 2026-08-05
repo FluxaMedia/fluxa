@@ -107,6 +107,7 @@ mpv                     = { group = "dev.jdtech.mpv",       name = "libmpv",    
 # Network
 retrofit            = { group = "com.squareup.retrofit2", name = "retrofit",           version.ref = "retrofit" }
 retrofit-gson       = { group = "com.squareup.retrofit2", name = "converter-gson",     version.ref = "retrofit" }
+gson                = { group = "com.google.code.gson",   name = "gson",               version = "2.13.1" }
 okhttp-logging      = { group = "com.squareup.okhttp3",   name = "logging-interceptor",version.ref = "okhttp" }
 okhttp-doh          = { group = "com.squareup.okhttp3",   name = "okhttp-dnsoverhttps",version.ref = "okhttp" }
 okhttp-mockwebserver= { group = "com.squareup.okhttp3",   name = "mockwebserver",      version.ref = "okhttp" }

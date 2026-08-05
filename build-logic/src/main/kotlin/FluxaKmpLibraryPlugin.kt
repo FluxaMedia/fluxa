@@ -26,6 +26,9 @@ class FluxaKmpLibraryPlugin : Plugin<Project> {
             }
             iosArm64()
             iosSimulatorArm64()
+            jvm("desktop") {
+                compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
+            }
 
             targets.configureEach {
                 compilations.configureEach {
