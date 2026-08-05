@@ -1,5 +1,8 @@
 package com.fluxa.app.desktop.settings
 
+import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.desktop.addonstore.DesktopAddonRegistry
 import com.fluxa.app.shared.feature.settings.SettingsAccountUiModel
 import com.fluxa.app.shared.feature.settings.SettingsAddonsUiModel
 import com.fluxa.app.shared.feature.settings.SettingsAdvancedUiModel
@@ -18,13 +21,47 @@ import com.fluxa.app.shared.feature.settings.SettingsUiState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import java.util.prefs.Preferences
 
-class DesktopSettingsDataSource : SettingsDataSource {
+class DesktopSettingsDataSource(
+    private val profileManager: ProfileManager,
+    private val addonRegistry: DesktopAddonRegistry
+) : SettingsDataSource {
     private val prefs: Preferences = Preferences.userRoot().node("com/fluxa/app/desktop/settings")
     private val state = MutableStateFlow(readState())
+    private val activeProfile = MutableStateFlow(currentActiveProfile())
 
-    override fun observeSettings(): Flow<SettingsUiState> = state.asStateFlow()
+    init {
+        profileManager.addChangeListener { activeProfile.value = currentActiveProfile() }
+    }
+
+    private fun currentActiveProfile(): UserProfile? {
+        val activeId = profileManager.getLastActiveProfileId() ?: return null
+        return profileManager.getProfiles().firstOrNull { it.id == activeId }
+    }
+
+    override fun observeSettings(): Flow<SettingsUiState> = combine(state, activeProfile) { base, profile ->
+        base.copy(account = mergeAccount(base.account, profile))
+    }
+
+    private fun mergeAccount(base: SettingsAccountUiModel, profile: UserProfile?): SettingsAccountUiModel = base.copy(
+        displayName = profile?.profileName?.takeIf { it.isNotBlank() } ?: profile?.email.orEmpty(),
+        email = profile?.email.orEmpty(),
+        nuvioEmail = profile?.nuvioEmail,
+        hasStremio = !profile?.authKey.isNullOrBlank(),
+        hasNuvio = !profile?.nuvioAccessToken.isNullOrBlank(),
+        hasTrakt = !profile?.traktAccessToken.isNullOrBlank(),
+        hasSimkl = !profile?.simklAccessToken.isNullOrBlank(),
+        hasAnilist = !profile?.anilistAccessToken.isNullOrBlank(),
+        traktUsername = profile?.traktUsername,
+        simklUsername = profile?.simklUsername,
+        anilistUsername = profile?.anilistUsername,
+        hasAnySync = !profile?.traktAccessToken.isNullOrBlank() ||
+            !profile?.simklAccessToken.isNullOrBlank() ||
+            !profile?.anilistAccessToken.isNullOrBlank(),
+        addonCount = addonRegistry.installedUrls().size
+    )
 
     override suspend fun refreshContentFeeds() = Unit
 
@@ -189,8 +226,43 @@ class DesktopSettingsDataSource : SettingsDataSource {
     override suspend fun toggleHomeFeed(key: String) = Unit
     override suspend fun moveHomeFeed(key: String, direction: Int) = Unit
     override suspend fun toggleTopTenFeed(key: String) = Unit
-    override suspend fun disconnectSync() = Unit
-    override suspend fun disconnectProvider(provider: String) = Unit
+    override suspend fun disconnectSync() {
+        listOf("trakt", "simkl", "anilist").forEach { disconnectProvider(it) }
+    }
+
+    override suspend fun disconnectProvider(provider: String) {
+        val profile = activeProfile.value ?: return
+        val updated = when (provider) {
+            "trakt" -> profile.copy(
+                traktAccessToken = null,
+                traktRefreshToken = null,
+                traktTokenExpiresAt = null,
+                traktUsername = null,
+                traktLastSyncAt = null
+            )
+            "simkl" -> profile.copy(
+                simklAccessToken = null,
+                simklUsername = null,
+                simklLastSyncAt = null
+            )
+            "anilist" -> profile.copy(
+                anilistAccessToken = null,
+                anilistRefreshToken = null,
+                anilistTokenExpiresAt = null,
+                anilistUsername = null
+            )
+            "stremio" -> profile.copy(authKey = "")
+            "nuvio" -> profile.copy(
+                nuvioAccessToken = null,
+                nuvioRefreshToken = null,
+                nuvioTokenExpiresAt = null,
+                nuvioUserId = null,
+                nuvioEmail = null
+            )
+            else -> return
+        }
+        profileManager.saveProfile(updated)
+    }
 
     private fun readState(): SettingsUiState {
         val defaults = SettingsUiState()

@@ -20,6 +20,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.gson)
                 implementation(libs.okhttp)
+                implementation(libs.bundles.retrofit)
                 implementation(compose.desktop.currentOs)
                 implementation(compose.runtime)
                 implementation(compose.foundation)
@@ -50,10 +51,10 @@ val desktopLocalProperties = Properties().apply {
     if (localFile.exists()) localFile.inputStream().use { load(it) }
 }
 
-fun desktopSecret(name: String): String =
+fun desktopSecret(name: String, default: String = ""): String =
     providers.gradleProperty(name).orNull
         ?: System.getenv(name)
-        ?: desktopLocalProperties.getProperty(name, "")
+        ?: desktopLocalProperties.getProperty(name, default)
 
 tasks.matching { it.name == "run" || it.name == "runDistributable" || it.name == "hotRunDesktop" }.configureEach {
     dependsOn(rootProject.tasks.named("buildFluxaCoreHost"))
@@ -63,7 +64,12 @@ tasks.matching { it.name == "run" || it.name == "runDistributable" || it.name ==
         // System.load, via JNA's own search (jna.library.path).
         systemProperty("jna.library.path", rustCoreLibraryDir.absolutePath)
         systemProperty("fluxa.secret.trakt_client_id", desktopSecret("TRAKT_CLIENT_ID"))
+        systemProperty("fluxa.secret.trakt_client_secret", desktopSecret("TRAKT_CLIENT_SECRET"))
         systemProperty("fluxa.secret.simkl_client_id", desktopSecret("SIMKL_CLIENT_ID"))
+        systemProperty("fluxa.secret.simkl_client_secret", desktopSecret("SIMKL_CLIENT_SECRET"))
         systemProperty("fluxa.secret.anilist_client_id", desktopSecret("ANILIST_CLIENT_ID"))
+        systemProperty("fluxa.secret.anilist_client_secret", desktopSecret("ANILIST_CLIENT_SECRET"))
+        systemProperty("fluxa.secret.nuvio_supabase_url", desktopSecret("FLUXA_NUVIO_SUPABASE_URL", "https://api.nuvio.tv/"))
+        systemProperty("fluxa.secret.nuvio_supabase_key", desktopSecret("FLUXA_NUVIO_SUPABASE_KEY", "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN"))
     }
 }
