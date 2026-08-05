@@ -18,7 +18,7 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-interface TraktApi {
+interface ExternalSyncApi {
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
     @GET("sync/last_activities")
     suspend fun getLastActivities(
@@ -194,6 +194,12 @@ interface TraktApi {
         @Header("simkl-api-key") apiKey: String
     ): com.google.gson.JsonObject
 
+    @GET("https://api.simkl.com/sync/playback")
+    suspend fun getSimklPlaybackSessions(
+        @Header("Authorization") token: String,
+        @Header("simkl-api-key") apiKey: String
+    ): List<com.google.gson.JsonObject>
+
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
     @GET("users/settings")
     suspend fun getTraktSettings(
@@ -348,8 +354,8 @@ interface TraktApi {
     
     companion object {
         private const val BASE_URL = "https://api.trakt.tv/"
-        private var instance: TraktApi? = null
-        fun create(): TraktApi {
+        private var instance: ExternalSyncApi? = null
+        fun create(): ExternalSyncApi {
             if (instance == null) {
                 val logging = okhttp3.logging.HttpLoggingInterceptor().apply { level = okhttp3.logging.HttpLoggingInterceptor.Level.NONE }
                 val client = OkHttpClient.Builder()
@@ -362,7 +368,7 @@ interface TraktApi {
                     .callFactory { request -> client.newCall(request) }
                     .addConverterFactory(GsonConverterFactory.create())
                     .build()
-                    .create(TraktApi::class.java)
+                    .create(ExternalSyncApi::class.java)
             }
             return instance!!
         }
