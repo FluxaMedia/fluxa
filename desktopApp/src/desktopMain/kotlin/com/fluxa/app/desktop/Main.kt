@@ -11,6 +11,8 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.fluxa.app.data.local.AndroidWatchlistStore
+import com.fluxa.app.data.local.ProfileCredentialStore
+import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.local.WatchlistStore
 import com.fluxa.app.data.local.buildDesktopAppDatabase
@@ -18,6 +20,8 @@ import com.fluxa.app.data.remote.StremioService
 import com.fluxa.app.data.repository.AddonPersistentCache
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.repository.DesktopPlatformFileStore
+import com.fluxa.app.data.repository.DesktopPlatformKeyValueStore
+import com.fluxa.app.data.repository.DesktopPlatformSecureStore
 import com.fluxa.app.data.repository.HttpEffectExecutor
 import com.fluxa.app.data.repository.RepositoryMemoryCache
 import com.fluxa.app.data.repository.StremioAddonManifestClient
@@ -28,6 +32,7 @@ import com.fluxa.app.desktop.detail.DesktopDetailDataSource
 import com.fluxa.app.desktop.home.DesktopCatalogHomeDataSource
 import com.fluxa.app.desktop.home.DesktopHomeCoordinator
 import com.fluxa.app.desktop.library.DesktopLibraryDataSource
+import com.fluxa.app.desktop.profile.DesktopProfileDataSource
 import com.fluxa.app.desktop.search.DesktopSearchDataSource
 import com.fluxa.app.desktop.settings.DesktopSettingsDataSource
 import com.fluxa.app.shared.FluxaAppHost
@@ -50,24 +55,35 @@ private fun buildDesktopAddonRepository(): AddonRepository {
     return AddonRepository(manifestClient, resourceClient)
 }
 
-private fun buildDesktopWatchlistStore(): WatchlistStore {
+private fun buildDesktopWatchlistManager(): WatchlistManager {
     val databaseFile = File(System.getProperty("user.home"), ".fluxa/fluxa.db")
     val database = buildDesktopAppDatabase(databaseFile)
     val manager = WatchlistManager(database.watchlistDao())
     manager.setActiveProfile(DESKTOP_DEFAULT_PROFILE_ID)
-    return AndroidWatchlistStore(manager)
+    return manager
+}
+
+private fun buildDesktopProfileManager(): ProfileManager {
+    val gson = Gson()
+    val secretsFile = File(System.getProperty("user.home"), ".fluxa/profile_secrets.properties")
+    val prefsFile = File(System.getProperty("user.home"), ".fluxa/profile_prefs.properties")
+    val credentialStore = ProfileCredentialStore(DesktopPlatformSecureStore(secretsFile), gson)
+    return ProfileManager(DesktopPlatformKeyValueStore(prefsFile), gson, credentialStore)
 }
 
 fun main() = application {
     val addonRepository = remember { buildDesktopAddonRepository() }
     val addonRegistry = remember { DesktopAddonRegistry() }
-    val watchlistStore = remember { buildDesktopWatchlistStore() }
+    val watchlistManager = remember { buildDesktopWatchlistManager() }
+    val watchlistStore: WatchlistStore = remember { AndroidWatchlistStore(watchlistManager) }
+    val profileManager = remember { buildDesktopProfileManager() }
     val catalogHomeDataSource = remember { DesktopCatalogHomeDataSource(DesktopHomeCoordinator(addonRepository)) }
     val searchDataSource = remember { DesktopSearchDataSource(addonRepository, addonRegistry) }
     val detailDataSource = remember { DesktopDetailDataSource(addonRepository, watchlistStore, addonRegistry) }
     val libraryDataSource = remember { DesktopLibraryDataSource(watchlistStore) }
     val settingsDataSource = remember { DesktopSettingsDataSource() }
     val addonStoreDataSource = remember { DesktopAddonStoreDataSource(addonRepository, addonRegistry) }
+    val profileDataSource = remember { DesktopProfileDataSource(profileManager) }
     var currentDestination by remember { mutableStateOf<FluxaDestination?>(null) }
     Window(
         onCloseRequest = ::exitApplication,
@@ -81,12 +97,14 @@ fun main() = application {
             libraryDataSource = libraryDataSource,
             settingsDataSource = settingsDataSource,
             addonStoreDataSource = addonStoreDataSource,
+            profileDataSource = profileDataSource,
             deviceType = DeviceType.Desktop,
             showNavigationBar = true,
             destination = currentDestination,
             onDestinationChanged = { currentDestination = it },
             onManageAddonsRequested = { currentDestination = FluxaDestination.AddonStore },
             onAddonStoreBackRequested = { currentDestination = FluxaDestination.Settings },
+            onProfileSelectionCompleted = { profileId -> watchlistManager.setActiveProfile(profileId) },
             modifier = Modifier.fillMaxSize()
         )
     }
