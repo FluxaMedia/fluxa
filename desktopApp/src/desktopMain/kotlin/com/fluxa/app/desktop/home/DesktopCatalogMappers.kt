@@ -8,7 +8,10 @@ import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import com.fluxa.app.ui.catalog.posterCardHeight
 import com.fluxa.app.ui.catalog.posterCardWidth
 
-internal fun Meta.toDesktopCatalogItemUiModel(catalogType: String): CatalogItemUiModel {
+internal fun Meta.toDesktopCatalogItemUiModel(
+    catalogType: String,
+    transportUrl: String = CINEMETA_TRANSPORT_URL
+): CatalogItemUiModel {
     val width = posterCardWidth("medium")
     val height = posterCardHeight("medium")
     val card = CatalogCardUiModel(
@@ -45,7 +48,7 @@ internal fun Meta.toDesktopCatalogItemUiModel(catalogType: String): CatalogItemU
         id = id,
         type = type,
         card = card,
-        source = CatalogSourceUiModel(addonTransportUrl = CINEMETA_TRANSPORT_URL, catalogType = catalogType),
+        source = CatalogSourceUiModel(addonTransportUrl = transportUrl, catalogType = catalogType),
         description = description,
         ageRating = ageRating,
         seasonsCount = seasonsCount,

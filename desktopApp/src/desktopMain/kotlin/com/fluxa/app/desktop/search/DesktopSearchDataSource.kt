@@ -1,8 +1,7 @@
 package com.fluxa.app.desktop.search
 
-import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.repository.AddonRepository
-import com.fluxa.app.desktop.home.CINEMETA_TRANSPORT_URL
+import com.fluxa.app.desktop.addonstore.DesktopAddonRegistry
 import com.fluxa.app.desktop.home.toDesktopCatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
@@ -21,15 +20,9 @@ import kotlinx.coroutines.launch
 private const val SEARCH_DEBOUNCE_MS = 350L
 private const val MAX_RECENT_ITEMS = 10
 
-private data class DesktopSearchSource(val type: String, val catalogId: String, val titleKey: String)
-
-private val desktopSearchSources = listOf(
-    DesktopSearchSource(type = "movie", catalogId = "top", titleKey = "auto.movies"),
-    DesktopSearchSource(type = "series", catalogId = "top", titleKey = "auto.series")
-)
-
 class DesktopSearchDataSource(
     private val addonRepository: AddonRepository,
+    private val addonRegistry: DesktopAddonRegistry,
     private val language: String? = null
 ) : SearchDataSource {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -47,15 +40,26 @@ class DesktopSearchDataSource(
         state.value = state.value.copy(query = query, isLoading = true)
         searchJob = scope.launch {
             delay(SEARCH_DEBOUNCE_MS)
-            val rows = desktopSearchSources.mapNotNull { source ->
-                val metas = runCatching {
-                    addonRepository.getAddonCatalog(CINEMETA_TRANSPORT_URL, source.type, source.catalogId, search = query)
-                }.getOrDefault(emptyList())
-                if (metas.isEmpty()) return@mapNotNull null
+            val resultRows = runCatching {
+                addonRepository.searchRows(
+                    query = query,
+                    language = language ?: "en",
+                    authKey = "",
+                    localAddons = addonRegistry.enabledUrls()
+                )
+            }.getOrDefault(emptyList())
+            val rows = resultRows.map { row ->
                 CatalogRowUiModel(
-                    id = "search:${source.type}:${source.catalogId}",
-                    title = AppStrings.t(language, source.titleKey),
-                    items = metas.map { it.toDesktopCatalogItemUiModel(source.type) }
+                    id = row.id,
+                    title = row.title,
+                    items = row.items.map { meta ->
+                        val transportUrl = row.sourceAddonTransportUrl
+                        if (transportUrl != null) {
+                            meta.toDesktopCatalogItemUiModel(row.type, transportUrl)
+                        } else {
+                            meta.toDesktopCatalogItemUiModel(row.type)
+                        }
+                    }
                 )
             }
             if (state.value.query == query) {

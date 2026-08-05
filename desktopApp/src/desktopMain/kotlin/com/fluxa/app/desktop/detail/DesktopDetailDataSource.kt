@@ -1,11 +1,14 @@
 package com.fluxa.app.desktop.detail
 
 import com.fluxa.app.data.local.WatchlistStore
+import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.AddonRepository
+import com.fluxa.app.desktop.addonstore.DesktopAddonRegistry
 import com.fluxa.app.desktop.home.CINEMETA_TRANSPORT_URL
+import com.fluxa.app.domain.discovery.supportsStremioResource
 import com.fluxa.app.shared.feature.detail.DetailCastMemberUiModel
 import com.fluxa.app.shared.feature.detail.DetailDataSource
 import com.fluxa.app.shared.feature.detail.DetailEpisodeUiModel
@@ -13,13 +16,17 @@ import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class DesktopDetailDataSource(
     private val addonRepository: AddonRepository,
-    private val watchlistStore: WatchlistStore
+    private val watchlistStore: WatchlistStore,
+    private val addonRegistry: DesktopAddonRegistry
 ) : DetailDataSource {
     private val state = MutableStateFlow(DetailUiState())
     private var metaDetail: MetaDetail? = null
@@ -72,25 +79,36 @@ class DesktopDetailDataSource(
 
     override suspend fun loadSources(contentId: String, contentType: String, episodeId: String?) {
         state.value = state.value.copy(content = state.value.content?.copy(isLoadingStreams = true))
-        val streams = runCatching {
-            addonRepository.getStreamsFromAddon(addonTransportUrl, addonName = "Cinemeta", type = contentType, id = episodeId ?: contentId)
-        }.getOrDefault(emptyList())
-        val uiStreams = streams.mapNotNull { stream ->
-            val url = stream.url ?: return@mapNotNull null
-            DetailStreamUiModel(
-                addonName = "Cinemeta",
-                title = stream.title ?: stream.name ?: url,
-                playableUrl = url
-            )
+        val targetId = episodeId ?: contentId
+        val streamAddons = addonRegistry.enabledUrls().mapNotNull { url ->
+            val descriptor = runCatching { addonRepository.getAddonManifest(url) }.getOrNull()
+            descriptor?.takeIf { it.supportsStremioResource("stream", contentType, targetId) }
+        }
+        val uiStreams = coroutineScope {
+            streamAddons.map { addon -> async { fetchStreams(addon, contentType, targetId) } }.awaitAll().flatten()
         }
         state.value = state.value.copy(
             content = state.value.content?.copy(
                 streams = uiStreams,
                 isLoadingStreams = false,
                 availableAddons = uiStreams.map { it.addonName }.distinct(),
-                hasStreamProviders = false
+                hasStreamProviders = streamAddons.isNotEmpty()
             )
         )
+    }
+
+    private suspend fun fetchStreams(addon: AddonDescriptor, contentType: String, targetId: String): List<DetailStreamUiModel> {
+        val streams = runCatching {
+            addonRepository.getStreamsFromAddon(addon.transportUrl, addon.manifest.name, contentType, targetId)
+        }.getOrDefault(emptyList())
+        return streams.mapNotNull { stream ->
+            val url = stream.url ?: return@mapNotNull null
+            DetailStreamUiModel(
+                addonName = addon.manifest.name,
+                title = stream.title ?: stream.name ?: url,
+                playableUrl = url
+            )
+        }
     }
 
     override suspend fun selectAddonFilter(addonName: String?) = Unit

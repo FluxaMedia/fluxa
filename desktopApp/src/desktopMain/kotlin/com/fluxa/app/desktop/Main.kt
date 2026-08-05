@@ -1,7 +1,10 @@
 package com.fluxa.app.desktop
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -19,6 +22,8 @@ import com.fluxa.app.data.repository.HttpEffectExecutor
 import com.fluxa.app.data.repository.RepositoryMemoryCache
 import com.fluxa.app.data.repository.StremioAddonManifestClient
 import com.fluxa.app.data.repository.StremioAddonResourceClient
+import com.fluxa.app.desktop.addonstore.DesktopAddonRegistry
+import com.fluxa.app.desktop.addonstore.DesktopAddonStoreDataSource
 import com.fluxa.app.desktop.detail.DesktopDetailDataSource
 import com.fluxa.app.desktop.home.DesktopCatalogHomeDataSource
 import com.fluxa.app.desktop.home.DesktopHomeCoordinator
@@ -26,6 +31,7 @@ import com.fluxa.app.desktop.library.DesktopLibraryDataSource
 import com.fluxa.app.desktop.search.DesktopSearchDataSource
 import com.fluxa.app.desktop.settings.DesktopSettingsDataSource
 import com.fluxa.app.shared.FluxaAppHost
+import com.fluxa.app.shared.FluxaDestination
 import com.fluxa.app.ui.catalog.DeviceType
 import com.google.gson.Gson
 import java.io.File
@@ -54,12 +60,15 @@ private fun buildDesktopWatchlistStore(): WatchlistStore {
 
 fun main() = application {
     val addonRepository = remember { buildDesktopAddonRepository() }
+    val addonRegistry = remember { DesktopAddonRegistry() }
     val watchlistStore = remember { buildDesktopWatchlistStore() }
     val catalogHomeDataSource = remember { DesktopCatalogHomeDataSource(DesktopHomeCoordinator(addonRepository)) }
-    val searchDataSource = remember { DesktopSearchDataSource(addonRepository) }
-    val detailDataSource = remember { DesktopDetailDataSource(addonRepository, watchlistStore) }
+    val searchDataSource = remember { DesktopSearchDataSource(addonRepository, addonRegistry) }
+    val detailDataSource = remember { DesktopDetailDataSource(addonRepository, watchlistStore, addonRegistry) }
     val libraryDataSource = remember { DesktopLibraryDataSource(watchlistStore) }
     val settingsDataSource = remember { DesktopSettingsDataSource() }
+    val addonStoreDataSource = remember { DesktopAddonStoreDataSource(addonRepository, addonRegistry) }
+    var currentDestination by remember { mutableStateOf<FluxaDestination?>(null) }
     Window(
         onCloseRequest = ::exitApplication,
         title = "Fluxa",
@@ -71,8 +80,13 @@ fun main() = application {
             detailDataSource = detailDataSource,
             libraryDataSource = libraryDataSource,
             settingsDataSource = settingsDataSource,
+            addonStoreDataSource = addonStoreDataSource,
             deviceType = DeviceType.Desktop,
             showNavigationBar = true,
+            destination = currentDestination,
+            onDestinationChanged = { currentDestination = it },
+            onManageAddonsRequested = { currentDestination = FluxaDestination.AddonStore },
+            onAddonStoreBackRequested = { currentDestination = FluxaDestination.Settings },
             modifier = Modifier.fillMaxSize()
         )
     }
