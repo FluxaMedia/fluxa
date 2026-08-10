@@ -76,21 +76,6 @@ data class TraktPlaybackItem(
 data class TraktSummary(val title: String?, val year: Int?, val ids: TraktIds, val runtime: Int? = null)
 
 @Serializable
-data class TraktWatchedProgressItem(
-    val show: TraktSummary? = null,
-    val progress: TraktWatchedProgressDetail? = null
-)
-
-@Serializable
-data class TraktWatchedProgressDetail(
-    val last_watched_at: String? = null,
-    val next_episode: TraktEpisode? = null
-) {
-    val lastWatchedAt: String? get() = last_watched_at
-    val nextEpisode: TraktEpisode? get() = next_episode
-}
-
-@Serializable
 data class TraktHistoryItem(
     val id: Long?,
     val watched_at: String?,

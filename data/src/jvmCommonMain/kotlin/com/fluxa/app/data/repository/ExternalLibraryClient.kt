@@ -59,20 +59,15 @@ query (${'$'}userId: Int) {
 class ExternalLibraryClient @Inject constructor(
     private val externalSyncApi: ExternalSyncApi,
     private val traktSyncClient: TraktSyncClient,
-    private val simklSyncCoordinator: SimklSyncCoordinator
+    private val simklSyncCoordinator: SimklSyncCoordinator,
+    private val gson: com.google.gson.Gson
 ) {
     private val traktKey = PlatformSecrets.traktClientId
 
     private fun unknownName(language: String?): String = AppStrings.t(language, "auto.unknown")
 
     suspend fun getTraktContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> =
-        withContext(Dispatchers.IO) {
-            val inProgress = getTraktPlaybackItems(profile, language)
-            val upNext = getTraktUpNextItems(profile, language)
-            (inProgress + upNext)
-                .groupBy { it.id }
-                .map { (_, metas) -> metas.maxBy { it.lastWatchedAt ?: Long.MIN_VALUE } }
-        }
+        withContext(Dispatchers.IO) { getTraktContinueWatchingItems(profile, language) }
 
     suspend fun getSimklContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> =
         withContext(Dispatchers.IO) { getSimklContinueWatchingItems(profile, language) }
@@ -86,7 +81,7 @@ class ExternalLibraryClient @Inject constructor(
             return@withContext TraktSyncSnapshot(0, 0)
         }
         supervisorScope {
-            val continueWatching = async { getTraktPlaybackItems(profile, language).size }
+            val continueWatching = async { getTraktContinueWatchingItems(profile, language).size }
             val watchlist = async { traktSyncClient.getWatchlist(token).size }
             TraktSyncSnapshot(
                 continueWatchingCount = continueWatching.await(),
@@ -190,70 +185,53 @@ class ExternalLibraryClient @Inject constructor(
         return items.filterIndexed { index, _ -> seen.add(keys[index]) }
     }
 
-    private suspend fun getTraktPlaybackItems(profile: UserProfile, language: String): List<Meta> {
-        val token = profile.traktAccessToken
-        if (token.isNullOrBlank() || !TraktIntegration.hasClient(traktKey)) return emptyList()
-        return try {
-            externalSyncApi.getPlayback(TraktIntegration.bearer(token), traktKey)
-                .mapNotNull { item ->
-                    val summary = item.movie ?: item.show ?: return@mapNotNull null
-                    val progress = item.progress?.coerceIn(0f, 100f) ?: return@mapNotNull null
-                    if (progress <= 0f || progress >= 95f) return@mapNotNull null
-                    val type = if (item.movie != null) "movie" else "series"
-                    val id = TraktIntegration.contentIdFrom(summary.ids) ?: return@mapNotNull null
-                    val runtimeMinutes = item.episode?.runtime ?: summary.runtime
-                    val duration = runtimeMinutes?.takeIf { it > 0 }?.times(60_000L)
-                    val lastVideoId = if (type == "series" && item.episode != null) {
-                        "$id:${item.episode.season}:${item.episode.number}"
-                    } else null
-                    Meta(
-                        id = id,
-                        name = summary.title ?: unknownName(language),
-                        type = type,
-                        releaseInfo = summary.year?.toString(),
-                        released = summary.year?.let { "$it-01-01" },
-                        timeOffset = duration?.let { ((it * progress) / 100f).toLong() },
-                        duration = duration,
-                        resumeProgressPercent = progress,
-                        lastVideoId = lastVideoId,
-                        lastEpisodeName = item.episode?.title,
-                        lastWatchedAt = item.paused_at?.let {
-                            runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull()
-                        },
-                        reason = "Trakt.tv"
-                    )
-                }
-        } catch (e: Exception) {
-            PlatformLog.w("ExternalLibraryClient", "Failed to load Trakt playback items", e)
-            emptyList()
-        }
+    private fun coreInvokeArray(method: String, argsJson: com.google.gson.JsonElement): List<com.google.gson.JsonObject> =
+        FluxaCoreUniFfi.coreInvokeValue(method, argsJson.toString())
+            .takeUnless { it.isJsonNull }
+            ?.asJsonArray
+            ?.map { it.asJsonObject }
+            .orEmpty()
+
+    private fun com.google.gson.JsonObject.toTraktMeta(language: String): Meta? {
+        val id = get("id")?.takeUnless { it.isJsonNull }?.asString?.takeIf(String::isNotBlank) ?: return null
+        return Meta(
+            id = id,
+            name = get("name")?.takeUnless { it.isJsonNull }?.asString?.takeIf(String::isNotBlank) ?: unknownName(language),
+            type = get("type")?.takeUnless { it.isJsonNull }?.asString ?: "series",
+            poster = get("poster")?.takeUnless { it.isJsonNull }?.asString,
+            background = get("background")?.takeUnless { it.isJsonNull }?.asString,
+            logo = get("logo")?.takeUnless { it.isJsonNull }?.asString,
+            resumeProgressPercent = get("resumeProgressPercent")?.takeUnless { it.isJsonNull }?.asFloat,
+            lastVideoId = get("lastVideoId")?.takeUnless { it.isJsonNull }?.asString,
+            lastEpisodeName = get("lastEpisodeName")?.takeUnless { it.isJsonNull }?.asString,
+            lastWatchedAt = get("savedAt")?.takeUnless { it.isJsonNull }?.asString
+                ?.takeIf(String::isNotBlank)
+                ?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() },
+            reason = "Trakt.tv",
+            continueWatchingPoster = get("poster")?.takeUnless { it.isJsonNull }?.asString,
+            continueWatchingBackground = get("background")?.takeUnless { it.isJsonNull }?.asString,
+        )
     }
 
-    private suspend fun getTraktUpNextItems(profile: UserProfile, language: String): List<Meta> {
+    private suspend fun getTraktContinueWatchingItems(profile: UserProfile, language: String): List<Meta> {
         val token = profile.traktAccessToken
         if (token.isNullOrBlank() || !TraktIntegration.hasClient(traktKey)) return emptyList()
         return try {
-            externalSyncApi.getWatchedProgress(TraktIntegration.bearer(token), traktKey)
-                .mapNotNull { item ->
-                    val summary = item.show ?: return@mapNotNull null
-                    val nextEpisode = item.progress?.nextEpisode ?: return@mapNotNull null
-                    val id = TraktIntegration.contentIdFrom(summary.ids) ?: return@mapNotNull null
-                    Meta(
-                        id = id,
-                        name = summary.title ?: unknownName(language),
-                        type = "series",
-                        releaseInfo = summary.year?.toString(),
-                        released = summary.year?.let { "$it-01-01" },
-                        lastVideoId = "$id:${nextEpisode.season}:${nextEpisode.number}",
-                        lastEpisodeName = nextEpisode.title,
-                        lastWatchedAt = item.progress.lastWatchedAt?.let {
-                            runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull()
-                        },
-                        reason = "Trakt.tv"
-                    )
-                }
+            val auth = TraktIntegration.bearer(token)
+            val libraryItems = coreInvokeArray(
+                "traktPlaybackItemsToLibrary",
+                gson.toJsonTree(externalSyncApi.getPlayback(auth, traktKey)),
+            )
+            val upNextItems = coreInvokeArray(
+                "traktUpNextToItems",
+                externalSyncApi.getUpNext(auth, traktKey),
+            )
+            coreInvokeArray(
+                "traktPlaybackItemsDedup",
+                gson.toJsonTree(libraryItems + upNextItems),
+            ).mapNotNull { it.toTraktMeta(language) }
         } catch (e: Exception) {
-            PlatformLog.w("ExternalLibraryClient", "Failed to load Trakt watched-progress items", e)
+            PlatformLog.w("ExternalLibraryClient", "Failed to load Trakt continue watching items", e)
             emptyList()
         }
     }

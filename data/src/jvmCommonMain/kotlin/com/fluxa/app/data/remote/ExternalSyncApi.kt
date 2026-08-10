@@ -1,6 +1,7 @@
 package com.fluxa.app.data.remote
 
 import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import okhttp3.OkHttpClient
 import retrofit2.Response
@@ -67,17 +68,19 @@ interface ExternalSyncApi {
     @GET("sync/playback")
     suspend fun getPlayback(
         @Header("Authorization") token: String,
-        @Header("trakt-api-key") apiKey: String
+        @Header("trakt-api-key") apiKey: String,
+        @Query("extended") extended: String = "full,images"
     ): List<TraktPlaybackItem>
 
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
-    @GET("sync/progress/watched")
-    suspend fun getWatchedProgress(
+    @GET("sync/progress/up_next")
+    suspend fun getUpNext(
         @Header("Authorization") token: String,
         @Header("trakt-api-key") apiKey: String,
+        @Query("extended") extended: String = "full,images",
         @Query("page") page: Int = 1,
         @Query("limit") limit: Int = 1000
-    ): List<TraktWatchedProgressItem>
+    ): JsonArray
 
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
     @DELETE("sync/playback/{id}")
