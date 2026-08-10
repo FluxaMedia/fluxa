@@ -110,4 +110,22 @@ class StremioAddonResourceClientTest {
         assertEquals("Rotten Tomatoes 1080p", detail.trailers!![0].title)
         assertEquals("https://imdb-video.media-imdb.com/trailer.m3u8", detail.trailers!![1].url)
     }
+    @Test
+    fun metaDetailKeepsTmdbIdAliasesForPluginStreamResolution() {
+        val detail = decodeMetaDetailPayload(
+            """
+                {
+                  "meta": {
+                    "id": "tt2861424",
+                    "name": "Rick and Morty",
+                    "type": "series",
+                    "_tmdbId": "60625"
+                  }
+                }
+            """.trimIndent()
+        )!!
+
+        assertEquals("60625", detail.tmdbId)
+    }
+
 }

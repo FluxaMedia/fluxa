@@ -10,6 +10,7 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import okhttp3.OkHttpClient
 
@@ -25,9 +26,15 @@ internal object TrailerResolver {
         return DataSource.Factory { TrailerRangeDataSource(upstream.createDataSource()) }
     }
 
-    fun createMobileTrailerPlayer(context: android.content.Context, url: String): ExoPlayer {
+    fun createAutoplayTrailerPlayer(context: android.content.Context, url: String): ExoPlayer {
         val trackSelector = DefaultTrackSelector(context).apply {
-            setParameters(buildUponParameters().setMaxVideoSize(1280, 720))
+            setParameters(
+                buildUponParameters()
+                    .setMaxVideoSize(1280, 720)
+                    // Home/detail autoplay trailers are muted by design. Prevent MediaCodec
+                    // and the audio DSP path from decoding a track that can never be heard.
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+            )
         }
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(250, 750, 150, 250)
@@ -37,6 +44,10 @@ internal object TrailerResolver {
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
             .setMediaSourceFactory(DefaultMediaSourceFactory(mediaDataSourceFactory()))
+            .setUsePlatformDiagnostics(false)
+            // A background hero trailer must never trigger a TV display refresh-rate/mode
+            // switch. Main content playback still owns the normal frame-rate strategy.
+            .setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF)
             .build()
             .apply {
                 setMediaItem(MediaItem.fromUri(url))
@@ -53,7 +64,7 @@ internal object DetailTrailerPreloader {
         if (preparedUrl == url && preparedPlayer != null) return
         discard()
         preparedUrl = url
-        preparedPlayer = TrailerResolver.createMobileTrailerPlayer(context.applicationContext, url)
+        preparedPlayer = TrailerResolver.createAutoplayTrailerPlayer(context.applicationContext, url)
     }
 
     fun takeOrCreate(context: android.content.Context, url: String): ExoPlayer {
@@ -63,7 +74,7 @@ internal object DetailTrailerPreloader {
             preparedPlayer = null
             if (player != null) return player
         }
-        return TrailerResolver.createMobileTrailerPlayer(context.applicationContext, url)
+        return TrailerResolver.createAutoplayTrailerPlayer(context.applicationContext, url)
     }
 
     fun discard() {

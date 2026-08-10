@@ -13,7 +13,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.fluxa.app.shared.feature.player.TrailerCue
@@ -61,9 +60,14 @@ internal fun HeroTrailerVideoSurface(
     }
 
     LaunchedEffect(exoPlayer, cues) {
+        var lastCueText = ""
         while (isActive) {
             val positionSeconds = exoPlayer.currentPosition / 1000.0
-            onActiveSubtitleChanged(cues.firstOrNull { positionSeconds in it.start..it.end }?.text.orEmpty())
+            val cueText = cues.firstOrNull { positionSeconds in it.start..it.end }?.text.orEmpty()
+            if (cueText != lastCueText) {
+                lastCueText = cueText
+                onActiveSubtitleChanged(cueText)
+            }
             delay(200)
         }
     }

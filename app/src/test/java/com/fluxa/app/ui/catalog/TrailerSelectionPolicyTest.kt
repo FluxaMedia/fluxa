@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.remote.DetailTrailer
+import com.fluxa.app.shared.feature.player.JvmTrailerPlaybackResolver
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -14,6 +15,20 @@ class TrailerSelectionPolicyTest {
         )
 
         assertEquals("https://video.example/imdb.m3u8", selectBestDirectTrailerUrl(trailers))
+    }
+
+    @Test
+    fun desktopQualityCapPrefers1080pOver4kTrailerioVariant() {
+        val trailers = listOf(
+            trailer("IMDb 4K", "https://video.example/imdb-4k.m3u8"),
+            trailer("Trailerio 1080p", "https://video.example/trailerio-1080.mp4"),
+            trailer("Trailerio 720p", "https://video.example/trailerio-720.mp4")
+        )
+
+        assertEquals(
+            "https://video.example/trailerio-1080.mp4",
+            JvmTrailerPlaybackResolver.selectBestDirectTrailerUrl(trailers, maxHeight = 1080)
+        )
     }
 
     @Test
