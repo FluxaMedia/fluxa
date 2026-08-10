@@ -1,7 +1,6 @@
 package com.fluxa.app.data.repository.library
 
 import com.fluxa.app.common.PlatformLog
-import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.ThirdPartyProviderId
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.providerDataOwner
@@ -52,9 +51,7 @@ class ProviderContinueWatchingRepository @Inject constructor(
                 .onFailure { PlatformLog.w("ProviderContinueWatching", "${providerId.key} sync failed", it) }
                 .getOrNull()
             if (remote != null && isEpochCurrent(profile.id, providerId, expectedEpoch)) {
-                val pure = FluxaCoreNative.mergeContinueWatchingDuplicates(
-                    remote.map { it.withProviderReason(providerId) }
-                )
+                val pure = remote.map { it.withProviderReason(providerId) }
                 if (!store.replaceContinueWatching(writeLease, pure)) {
                     return ProviderContinueWatchingSnapshot(
                         providerId,
@@ -70,7 +67,7 @@ class ProviderContinueWatchingRepository @Inject constructor(
         return ProviderContinueWatchingSnapshot(
             providerId = providerId,
             accountId = owner.providerAccountId,
-            items = FluxaCoreNative.mergeContinueWatchingDuplicates(store.getContinueWatching(owner)),
+            items = store.getContinueWatching(owner),
             fromCache = true
         )
     }
@@ -84,9 +81,7 @@ class ProviderContinueWatchingRepository @Inject constructor(
         val owner = adapter.dataOwner(profile) ?: return null
         val expectedEpoch = currentEpoch(profile.id, providerId)
         val writeLease = store.lease(owner)
-        val pure = FluxaCoreNative.mergeContinueWatchingDuplicates(
-            items.map { it.withProviderReason(providerId) }
-        )
+        val pure = items.map { it.withProviderReason(providerId) }
         if (!isEpochCurrent(profile.id, providerId, expectedEpoch)) return null
         if (!store.replaceContinueWatching(writeLease, pure)) return null
         return ProviderContinueWatchingSnapshot(providerId, owner.providerAccountId, pure, fromCache = false)
@@ -102,7 +97,7 @@ class ProviderContinueWatchingRepository @Inject constructor(
         return ProviderContinueWatchingSnapshot(
             providerId = providerId,
             accountId = owner.providerAccountId,
-            items = FluxaCoreNative.mergeContinueWatchingDuplicates(store.getContinueWatching(owner)),
+            items = store.getContinueWatching(owner),
             fromCache = true
         )
     }

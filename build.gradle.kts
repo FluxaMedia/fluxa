@@ -76,9 +76,6 @@ val rustCoreDelegateFiles = mapOf(
     "app/src/main/java/com/fluxa/app/ui/catalog/AndroidStreamSourceSelectionPolicy.kt" to listOf(
         "FluxaCoreNative.selectStreamIndex"
     ),
-    "app/src/main/java/com/fluxa/app/ui/catalog/ContinueWatchingListMerger.kt" to listOf(
-        "FluxaCoreNative.mergeContinueWatchingDuplicates"
-    ),
     "data/src/androidMain/kotlin/com/fluxa/app/domain/discovery/DiscoverCatalogContentLoader.kt" to listOf(
         "FluxaCoreNative.filterDiscoverResults",
         "FluxaCoreNative.discoverCatalogCacheKey",

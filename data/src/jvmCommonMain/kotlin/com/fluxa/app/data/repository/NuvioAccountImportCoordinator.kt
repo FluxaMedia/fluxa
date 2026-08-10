@@ -25,7 +25,6 @@ import com.fluxa.app.data.remote.NuvioService
 import com.fluxa.app.data.remote.NuvioSession
 import com.fluxa.app.data.remote.NuvioSessionDto
 import com.fluxa.app.data.remote.toDto
-import com.fluxa.app.core.rust.FluxaCoreNative
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -243,9 +242,8 @@ class NuvioAccountImportCoordinator(
                 gson.toJsonTree(watchedItemDtos.orEmpty()).asJsonArray
             )
             val libraryByContentId = libraryItems.orEmpty().associateBy { it.contentId }
-            val progressItems = FluxaCoreNative.mergeContinueWatchingDuplicates(progressSync.continueWatching
+            val progressItems = progressSync.continueWatching
                 .mapNotNull { dto -> dto.toContinueWatchingMeta(libraryByContentId[dto.contentId]) }
-            )
             ensureNuvioOwnerStillConnected(profile.id, providerOwner)
             check(providerDataStore.replaceContinueWatching(providerWriteLease, progressItems)) {
                 "Nuvio account changed or disconnected while progress was syncing"

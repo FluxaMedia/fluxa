@@ -715,12 +715,6 @@ object FluxaCoreNative {
         return FluxaCoreUniFfi.coreInvokeValue("selectStreamIndex", args.toString()).asInt
     }
 
-    fun mergeContinueWatchingDuplicates(items: List<Meta>): List<Meta> {
-        val args = JsonObject().apply { addProperty("itemsJson", gson.toJson(items)) }
-        val value = FluxaCoreUniFfi.coreInvokeValue("mergeContinueWatchingDuplicates", args.toString())
-        return gson.fromJson(value, metaListType) ?: emptyList()
-    }
-
     fun mergeContinueWatchingLists(
         localItems: List<Meta>,
         externalItems: List<Meta>,

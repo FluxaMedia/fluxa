@@ -1,7 +1,6 @@
 package com.fluxa.app.data.repository.library
 
 import com.fluxa.app.common.PlatformLog
-import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.ProviderDataOwner
 import com.fluxa.app.data.local.ThirdPartyProviderId
@@ -379,9 +378,7 @@ class ThirdPartyProviderRepository @Inject constructor(
         val plannedItems = planned.await().providerTagged(adapter.providerId)
         val watchingItems = watching.await().providerTagged(adapter.providerId)
         val completedItems = completed.await().providerTagged(adapter.providerId)
-        val continueWatchingItems = FluxaCoreNative.mergeContinueWatchingDuplicates(
-            continueWatching.await().providerTagged(adapter.providerId)
-        )
+        val continueWatchingItems = continueWatching.await().providerTagged(adapter.providerId)
         val favoriteItems = favorites.await().providerTagged(adapter.providerId)
         val collectionItems = collection.await().providerTagged(adapter.providerId)
         val watchedBySeries = watchedEpisodeTimestamps.await()?.toWatchedIdsBySeries().orEmpty()
