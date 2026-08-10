@@ -81,6 +81,10 @@ export async function coreTraktPlaybackItemsToLibrary(
   return coreInvoke("traktPlaybackItemsToLibrary", itemsJson);
 }
 
+export async function coreTraktUpNextToItems(itemsJson: string): Promise<unknown[] | null> {
+  return coreInvoke('traktUpNextToItems', itemsJson);
+}
+
 export async function coreTraktWatchedShowsToItems(
   showsJson: string,
 ): Promise<unknown[] | null> {
@@ -176,6 +180,16 @@ export async function coreSimklWatchingToItems(
   return coreInvoke(
     "simklWatchingToItems",
     JSON.stringify({ showsJson, moviesJson }),
+  );
+}
+
+export async function coreSimklMergePlaybackProgress(
+  itemsJson: string,
+  playbackJson: string,
+): Promise<unknown[] | null> {
+  return coreInvoke(
+    "simklMergePlaybackProgress",
+    JSON.stringify({ itemsJson, playbackJson }),
   );
 }
 

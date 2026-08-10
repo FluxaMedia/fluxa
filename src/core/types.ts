@@ -120,6 +120,7 @@ export interface Stream {
   playableUrl?: string;
   isTorrent?: boolean;
   sources?: string[];
+  extra?: Record<string, unknown>;
 }
 
 export interface BehaviorHints {
@@ -170,6 +171,7 @@ export interface LibraryItem {
   logo?: string;
   timeOffset?: number;
   duration?: number;
+  resumeProgressPercent?: number;
   lastVideoId?: string;
   lastStreamIndex?: number;
   lastStreamUrl?: string;

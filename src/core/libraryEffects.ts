@@ -42,6 +42,11 @@ import { fetchAniListCalendarItems } from "./anilistExternalSync";
 import { getOAuthClientId, refreshTraktProfile } from "./traktSync";
 import { notify } from "./notifications";
 import { t } from "../i18n";
+import { invoke } from "@tauri-apps/api/core";
+
+function debugLog(msg: string) {
+  void invoke("debug_log", { msg }).catch(() => {});
+}
 import type { LibraryItem } from "./types";
 
 const calendarCache = new Map<string, unknown>();
@@ -418,9 +423,15 @@ export async function writePlaybackProgress(
   invalidateCalendarCache();
   if (plan.externalProgress) {
     const meta = progress.meta as Record<string, unknown> | undefined;
-    void loadActiveProfile().then((profile) =>
-      pushPlaybackProgressExternal(plan.externalProgress!, meta ?? {}, profile)
-    );
+    const refreshContinueWatching = progress.refreshExternalContinueWatching === true;
+    debugLog(`writePlaybackProgress: pushing external progress contentId=${plan.contentId} refreshContinueWatching=${refreshContinueWatching}`);
+    const push = loadActiveProfile().then((profile) =>
+      pushPlaybackProgressExternal(plan.externalProgress!, meta ?? {}, profile, refreshContinueWatching)
+    ).then(() => debugLog(`writePlaybackProgress: external progress push settled contentId=${plan.contentId}`));
+    if (refreshContinueWatching) await push;
+    else void push;
+  } else {
+    debugLog('writePlaybackProgress: no externalProgress in plan, skipping external push');
   }
   return {};
 }

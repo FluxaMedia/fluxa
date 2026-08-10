@@ -65,6 +65,7 @@ export default function App() {
   const {
     detailMeta, setDetailMeta, detailInitialEpisode, setDetailInitialEpisode,
     detailAutoShowStreams, setDetailAutoShowStreams, detailResumeAt, setDetailResumeAt,
+    detailResumePercent,
     detailPlaybackError, setDetailPlaybackError, discoverInitialGenre, setDiscoverInitialGenre,
     guardedPlayRef, handleNavigateDetail, handleResumeFromContinueWatching,
     handleStartOverContinueWatching, handlePlayManually, resetDetail,
@@ -144,17 +145,18 @@ export default function App() {
     resumeAt?: number,
     totalDuration?: number,
     sourceCandidates?: Stream[],
+    resumePercent?: number,
   ) => {
     setDetailPlaybackError(null);
     const isP2P = !!(stream.isTorrent || stream.infoHash);
     if (!isP2P) {
-      await handlePlay(stream, meta, episode, resumeAt, totalDuration, sourceCandidates);
+      await handlePlay(stream, meta, episode, resumeAt, totalDuration, sourceCandidates, undefined, resumePercent);
       return;
     }
 
     const prefs = appPrefs(stateRef.current);
     const p2pEnabled = prefBool(prefs, 'p2pEnabled', true);
-    const proceed = () => void handlePlay(stream, meta, episode, resumeAt, totalDuration, sourceCandidates);
+    const proceed = () => void handlePlay(stream, meta, episode, resumeAt, totalDuration, sourceCandidates, undefined, resumePercent);
 
     if (!p2pEnabled) {
       setP2PDialog({ mode: 'disabled', pendingPlay: proceed });
@@ -407,7 +409,7 @@ export default function App() {
             key={detailMeta!.id}
             meta={detailMeta!}
             onDispatch={dispatch}
-            onPlay={(stream, meta, episode, resumeAt, sourceCandidates) => void guardedPlay(stream, meta, episode, resumeAt !== undefined ? resumeAt : (detailAutoShowStreams ? detailResumeAt : undefined), undefined, sourceCandidates)}
+            onPlay={(stream, meta, episode, resumeAt, sourceCandidates) => void guardedPlay(stream, meta, episode, resumeAt !== undefined ? resumeAt : (detailAutoShowStreams ? detailResumeAt : undefined), undefined, sourceCandidates, resumeAt === undefined && detailAutoShowStreams ? detailResumePercent : undefined)}
             onNavigateDetail={handleNavigateDetail}
             onNavigateGenre={(genre) => { setDiscoverInitialGenre(genre); setDetailMeta(null); navigateRoute('discover'); }}
             onBack={() => { void closePlayer(); resetDetail(); }}

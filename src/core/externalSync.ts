@@ -5,11 +5,17 @@ import { syncSimklNow, pushMarkWatchedSimkl, dropSimklPlaybackProgress } from '.
 import { pushStremioPlaybackProgress, syncStremioNow } from './stremioExternalSync';
 import { pushLibraryStatusAniList, syncAniListNow } from './anilistExternalSync';
 import { nuvioPushWatchProgress } from './nuvioApi';
+import { simklScrobble, traktScrobble } from './scrobble';
 import { loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistProgressMerge, profileStorageKey } from './libraryOps';
 import { providerAdapters } from './providers';
 import type { PushWatchedArgs, WatchedEpisodeInfo, WatchProgressInfo } from './providers';
 import type { UserProfile } from './types';
 import type { ImportCategory } from './importCategories';
+import { invoke } from '@tauri-apps/api/core';
+
+function debugLog(msg: string) {
+  void invoke('debug_log', { msg }).catch(() => {});
+}
 
 export { enqueueTraktScrobble } from './traktSync';
 export { replaceExternalContinueWatching } from './externalSyncUtils';
@@ -140,14 +146,25 @@ export async function pushPlaybackProgressExternal(
   progress: WatchProgressInfo,
   meta: Record<string, unknown>,
   profile: UserProfile | null,
+  refreshContinueWatching = false,
 ): Promise<void> {
   if (!profile) return;
   const plan = await coreInvoke<{
-    stremio: boolean; nuvio: boolean;
+    trakt: boolean; simkl: boolean; stremio: boolean; nuvio: boolean;
     progressEntry?: { content_id: string; content_type: string; video_id: string; position: number; duration: number; last_watched: number; season?: number; episode?: number };
   }>('externalProviderActionPlan', JSON.stringify({ kind: 'progress', profile, progress, nowMs: Date.now() }));
+  debugLog(`pushPlaybackProgressExternal: videoId=${progress.videoId} position=${progress.positionSeconds} duration=${progress.durationSeconds} plan=${plan ? JSON.stringify({ trakt: plan.trakt, simkl: plan.simkl, stremio: plan.stremio, nuvio: plan.nuvio }) : 'null'} refreshContinueWatching=${refreshContinueWatching}`);
   if (!plan) return;
   const tasks: Promise<void>[] = [];
+  const episode = progress.season != null && progress.episode != null
+    ? { id: progress.videoId, season: progress.season, episode: progress.episode, number: progress.episode }
+    : null;
+  if (plan.trakt) {
+    tasks.push(traktScrobble(profile, meta as unknown as import('./types').Meta, episode, progress.positionSeconds, progress.durationSeconds, 'pause').then(() => undefined).catch(() => undefined));
+  }
+  if (plan.simkl) {
+    tasks.push(simklScrobble(profile, meta as unknown as import('./types').Meta, episode, progress.positionSeconds, progress.durationSeconds, 'pause').then(() => undefined).catch(() => undefined));
+  }
   if (plan.stremio) {
     tasks.push(pushStremioPlaybackProgress(meta, progress, profile).catch(() => undefined));
   }
@@ -159,6 +176,20 @@ export async function pushPlaybackProgressExternal(
     })().catch(() => undefined));
   }
   await Promise.all(tasks);
+  if (refreshContinueWatching && plan.simkl && profile.simklAccessToken) {
+    debugLog('pushPlaybackProgressExternal: refreshing simkl continue-watching after push');
+    const clientId = await getOAuthClientId('simkl');
+    const result = await syncSimklNow({
+      token: profile.simklAccessToken,
+      clientId,
+      profile,
+      categories: ['continueWatching'],
+      force: true,
+    }).catch((error) => ({ synced: false, error: error instanceof Error ? error.message : String(error) }));
+    debugLog(`pushPlaybackProgressExternal: simkl continue-watching refresh result=${JSON.stringify(result)}`);
+  } else if (refreshContinueWatching) {
+    debugLog(`pushPlaybackProgressExternal: refresh requested but skipped simkl=${plan.simkl} hasToken=${!!profile.simklAccessToken}`);
+  }
 }
 
 export async function pushFavoriteExternal(

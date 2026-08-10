@@ -279,7 +279,9 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
       && pi.lastEpisodeName === ni.lastEpisodeName
       && pi.lastEpisodeSeason === ni.lastEpisodeSeason
       && pi.lastEpisodeNumber === ni.lastEpisodeNumber
-      && pi.lastEpisodeThumbnail === ni.lastEpisodeThumbnail;
+      && pi.lastEpisodeThumbnail === ni.lastEpisodeThumbnail
+      && pi.continueWatchingBadge === ni.continueWatchingBadge
+      && pi.resumeProgressPercent === ni.resumeProgressPercent;
   });
 });
 

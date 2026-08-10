@@ -5,7 +5,7 @@ import {
   coreTraktMarkWatchedBody,
   coreTraktPlaybackItemsDedup,
   coreTraktPlaybackItemsToLibrary,
-  coreTraktWatchedShowsToItems,
+  coreTraktUpNextToItems,
   coreTraktWatchlistToItems,
   coreTraktWatchedToIds,
   httpExecuteText,
@@ -16,10 +16,18 @@ import { loadPrefs, profileStorageKey } from './libraryOps';
 import { saveProviderLibrary } from './providerLibraries';
 import { platformFetch } from './httpClient';
 import { refreshTraktProfile, traktHeaders } from './traktSync';
-import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
+import { replaceExternalContinueWatching } from './externalSyncUtils';
 import type { ImportCategory } from './importCategories';
+import { invoke } from '@tauri-apps/api/core';
+
+function debugLog(msg: string) {
+  void invoke('debug_log', { msg }).catch(() => {});
+}
+
+const TRAKT_CACHE_VERSION = 3;
 
 type TraktDeltaCache = {
+  version?: number;
   activities?: Record<string, unknown>;
   playbackItems?: Record<string, unknown>[];
   watchlistMovies?: Record<string, unknown>[];
@@ -27,6 +35,70 @@ type TraktDeltaCache = {
   watchedMovies?: Record<string, unknown>[];
   watchedShows?: Record<string, unknown>[];
 };
+
+const TRAKT_SHOW_ARTWORK_CACHE_KEY = 'trakt_show_artwork_cache';
+const TRAKT_SHOW_ARTWORK_TTL_MS = 24 * 60 * 60 * 1000;
+const TRAKT_SHOW_ARTWORK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+type TraktShowArtwork = { poster: string | null; background: string | null; logo: string | null };
+type TraktShowArtworkCacheEntry = { fetchedAt: number; artwork: TraktShowArtwork };
+type TraktShowArtworkCache = Record<string, TraktShowArtworkCacheEntry>;
+
+async function resolveTraktShowArtwork(items: Record<string, unknown>[], headers: HeadersInit): Promise<Record<string, unknown>[]> {
+  const needsArtwork = items.filter((item) => item.type === 'series' && typeof item.id === 'string' && !item.poster);
+  if (needsArtwork.length === 0) return items;
+
+  const diskCache = (await storageRead<TraktShowArtworkCache>(TRAKT_SHOW_ARTWORK_CACHE_KEY)) ?? {};
+  let diskCacheDirty = false;
+  const now = Date.now();
+  const inFlight = new Map<string, Promise<TraktShowArtwork>>();
+  const fetchArtwork = (id: string) => {
+    let pending = inFlight.get(id);
+    if (pending) return pending;
+    const cached = diskCache[id];
+    if (cached && now - cached.fetchedAt < TRAKT_SHOW_ARTWORK_TTL_MS) {
+      pending = Promise.resolve(cached.artwork);
+    } else {
+      pending = platformFetch(`https://api.trakt.tv/shows/${encodeURIComponent(id)}?extended=full,images`, { headers })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((show: Record<string, unknown> | null) => {
+          const images = show?.images as Record<string, unknown> | undefined;
+          const firstOf = (kind: string) => {
+            const value = images?.[kind];
+            return Array.isArray(value) && typeof value[0] === 'string' ? `https://${value[0]}` : null;
+          };
+          const artwork: TraktShowArtwork = { poster: firstOf('poster'), background: firstOf('fanart'), logo: firstOf('logo') };
+          diskCache[id] = { fetchedAt: now, artwork };
+          diskCacheDirty = true;
+          return artwork;
+        })
+        .catch(() => ({ poster: null, background: null, logo: null }));
+    }
+    inFlight.set(id, pending);
+    return pending;
+  };
+
+  const CONCURRENCY = 4;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < needsArtwork.length) {
+      const item = needsArtwork[cursor++];
+      const artwork = await fetchArtwork(item.id as string);
+      if (artwork.poster) item.poster = artwork.poster;
+      if (artwork.background) item.background = artwork.background;
+      if (artwork.logo) item.logo = artwork.logo;
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, needsArtwork.length) }, worker));
+
+  if (diskCacheDirty) {
+    for (const [key, entry] of Object.entries(diskCache)) {
+      if (now - entry.fetchedAt > TRAKT_SHOW_ARTWORK_MAX_AGE_MS) delete diskCache[key];
+    }
+    await storageWrite(TRAKT_SHOW_ARTWORK_CACHE_KEY, diskCache);
+  }
+  return items;
+}
 
 async function fetchAllPages(url: string, headers: HeadersInit, limit: number): Promise<Record<string, unknown>[]> {
   type PaginationPlan = { items: Record<string, unknown>[]; done: boolean; page: number; requestUrl?: string | null };
@@ -59,6 +131,7 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   const categories = payload.categories as ImportCategory[] | undefined;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
   const dryRun = payload.dryRun === true;
+  const force = payload.force === true;
 
   let headers = traktHeaders(token, clientId);
   const activeToken = token;
@@ -74,7 +147,10 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
 
   const profileId = typeof profile?.id === 'string' ? profile.id : 'default';
   const cacheKey = `trakt_delta_cache_${profileId}`;
-  const cache = (await storageRead<TraktDeltaCache>(cacheKey)) ?? {};
+  const cachedRaw = (await storageRead<TraktDeltaCache>(cacheKey)) ?? {};
+  const cacheStale = cachedRaw.version !== TRAKT_CACHE_VERSION;
+  const cache = cacheStale ? {} : cachedRaw;
+  debugLog(`syncTraktNow: cachedVersion=${cachedRaw.version} expected=${TRAKT_CACHE_VERSION} cacheStale=${cacheStale}`);
 
   let activities: Record<string, unknown> | undefined;
   try {
@@ -91,18 +167,18 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   } = await coreTraktActivityDiff({
     previous: cache.activities ?? null,
     current: activities ?? null,
-    hasPlayback: Boolean(cache.playbackItems),
-    hasWatchlistMovies: Boolean(cache.watchlistMovies),
-    hasWatchlistShows: Boolean(cache.watchlistShows),
-    hasWatchedMovies: Boolean(cache.watchedMovies),
-    hasWatchedShows: Boolean(cache.watchedShows),
+    hasPlayback: !force && Boolean(cache.playbackItems),
+    hasWatchlistMovies: !force && Boolean(cache.watchlistMovies),
+    hasWatchlistShows: !force && Boolean(cache.watchlistShows),
+    hasWatchedMovies: !force && Boolean(cache.watchedMovies),
+    hasWatchedShows: !force && Boolean(cache.watchedShows),
   });
 
   let playbackItems: Record<string, unknown>[];
   if (playbackChanged) {
     const responses = await Promise.all([
-      fetchWithRefresh((h) => platformFetch('https://api.trakt.tv/sync/playback/movies', { headers: h })),
-      fetchWithRefresh((h) => platformFetch('https://api.trakt.tv/sync/playback/episodes', { headers: h })),
+      fetchWithRefresh((h) => platformFetch('https://api.trakt.tv/sync/playback/movies?extended=full,images', { headers: h })),
+      fetchWithRefresh((h) => platformFetch('https://api.trakt.tv/sync/playback/episodes?extended=full,images', { headers: h })),
     ]);
     const failedResponse = responses.find((response) => !response.ok);
     if (failedResponse) {
@@ -114,7 +190,7 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     playbackItems = cache.playbackItems ?? [];
   }
   const allItems = ((await coreTraktPlaybackItemsToLibrary(JSON.stringify(playbackItems))) ?? []) as Record<string, unknown>[];
-  let items = await enrichWithAddonMeta(allItems);
+  let items = allItems;
 
   const prefs = await loadPrefs();
   const librarySource = String((prefs as Record<string, unknown>).integrationLibrarySource ?? 'local');
@@ -124,20 +200,27 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   let watchedCount = 0;
   try {
     const [watchlistMovies, watchlistShows, watchedMovies, watchedShows] = await Promise.all([
-      watchlistMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies/rank', headers, 250) : Promise.resolve(cache.watchlistMovies ?? []),
-      watchlistShowsChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/shows/rank', headers, 250) : Promise.resolve(cache.watchlistShows ?? []),
-      watchedMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watched/movies', headers, 250) : Promise.resolve(cache.watchedMovies ?? []),
-      watchedShowsChanged ? fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=full', headers, 100) : Promise.resolve(cache.watchedShows ?? []),
+      watchlistMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies/rank?extended=full,images', headers, 250) : Promise.resolve(cache.watchlistMovies ?? []),
+      watchlistShowsChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/shows/rank?extended=full,images', headers, 250) : Promise.resolve(cache.watchlistShows ?? []),
+      watchedMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watched/movies?extended=full,images', headers, 250) : Promise.resolve(cache.watchedMovies ?? []),
+      watchedShowsChanged ? fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=full,images', headers, 100) : Promise.resolve(cache.watchedShows ?? []),
     ]);
 
-    const watchedShowItems = ((await coreTraktWatchedShowsToItems(JSON.stringify(watchedShows))) ?? []) as Record<string, unknown>[];
-    const rawItems = ((await coreTraktPlaybackItemsDedup(JSON.stringify([...allItems, ...watchedShowItems]))) ?? []) as Record<string, unknown>[];
-    items = await enrichWithAddonMeta(rawItems);
+    const upNext = await fetchAllPages('https://api.trakt.tv/sync/progress/up_next?extended=full,images', headers, 100);
+    const upNextItems = ((await coreTraktUpNextToItems(JSON.stringify(upNext))) ?? []) as Record<string, unknown>[];
+    const rawItems = ((await coreTraktPlaybackItemsDedup(JSON.stringify([...allItems, ...upNextItems]))) ?? []) as Record<string, unknown>[];
+    items = await resolveTraktShowArtwork(rawItems, headers);
 
-    const watchlistItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
+    const watchlistItemsRaw = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
     const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
-    const completedItems = ((await coreTraktWatchlistToItems(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? []) as Record<string, unknown>[];
-    const favoriteItems = isSelectedLibrarySource ? await fetchTraktFavorites(token, clientId).catch(() => []) : [];
+    const completedItemsRaw = ((await coreTraktWatchlistToItems(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? []) as Record<string, unknown>[];
+    const favoriteItemsRaw = isSelectedLibrarySource ? await fetchTraktFavorites(token, clientId).catch(() => []) : [];
+    const [watchlistItems, completedItems, favoriteItems] = await Promise.all([
+      resolveTraktShowArtwork(watchlistItemsRaw, headers),
+      resolveTraktShowArtwork(completedItemsRaw, headers),
+      resolveTraktShowArtwork(favoriteItemsRaw, headers),
+    ]);
+    debugLog(`syncTraktNow: completedItems=${JSON.stringify(completedItems.map((item) => ({ id: item.id, name: item.name, poster: item.poster, background: item.background })))}`);
     watchlistCount = watchlistItems.length;
     watchedCount = Object.values(watchedIds).filter(Boolean).length;
 
@@ -146,9 +229,11 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     }
 
     if (activities) {
-      await storageWrite(cacheKey, { activities, playbackItems, watchlistMovies, watchlistShows, watchedMovies, watchedShows } satisfies TraktDeltaCache);
+      await storageWrite(cacheKey, { version: TRAKT_CACHE_VERSION, activities, playbackItems, watchlistMovies, watchlistShows, watchedMovies, watchedShows } satisfies TraktDeltaCache);
     }
-  } catch {}
+  } catch (error) {
+    debugLog(`syncTraktNow: watchlist/completed block threw ${error instanceof Error ? `${error.message}\n${error.stack}` : String(error)}`);
+  }
 
   if (wants('continueWatching') && !dryRun) {
     await replaceExternalContinueWatching({ items, provider: 'trakt', profileKey });
@@ -240,8 +325,8 @@ export async function pushFavoriteTrakt(
 export async function fetchTraktFavorites(token: string, clientId: string): Promise<Record<string, unknown>[]> {
   const headers = traktHeaders(token, clientId);
   const [movies, shows] = await Promise.all([
-    fetchAllPages('https://api.trakt.tv/sync/favorites/movies/added/desc', headers, 250),
-    fetchAllPages('https://api.trakt.tv/sync/favorites/shows/added/desc', headers, 250),
+    fetchAllPages('https://api.trakt.tv/sync/favorites/movies/added/desc?extended=full,images', headers, 250),
+    fetchAllPages('https://api.trakt.tv/sync/favorites/shows/added/desc?extended=full,images', headers, 250),
   ]);
   return ((await coreTraktWatchlistToItems(JSON.stringify(movies), JSON.stringify(shows))) ?? []) as Record<string, unknown>[];
 }

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import * as Sentry from '@sentry/react';
 import { dispatchAction, coreDetectAnimePlayback, coreInvoke, corePlaybackIntroLookupContentId, corePlaybackPreparePlan, coreResolveNextEpisode, coreCanPrefetchNextEpisode, coreSelectNextEpisodeStream, coreStreamShellPlan, coreTorrentStatusInfo, coreTorrentReadyBudget } from '../core/engine';
+import { subscribePlayerStatus } from '../core/playerStatusStore';
 
 function debugLog(msg: string) {
   void invoke('debug_log', { msg }).catch(() => {});
@@ -102,7 +103,7 @@ interface UsePlayerResult {
   playerPlaybackError: string | null;
   playerSubtitleWarning: string[] | null;
   dismissSubtitleWarning: () => void;
-  handlePlay: (stream: Stream, meta?: Meta, episode?: Video | null, resumeAtSeconds?: number, totalDurationSeconds?: number, sourceCandidates?: Stream[], openSourcePickerOnFailure?: boolean) => Promise<void>;
+  handlePlay: (stream: Stream, meta?: Meta, episode?: Video | null, resumeAtSeconds?: number, totalDurationSeconds?: number, sourceCandidates?: Stream[], openSourcePickerOnFailure?: boolean, resumePercent?: number) => Promise<void>;
   closePlayer: () => Promise<void>;
   notifyFirstFrame: () => void;
   flushProgressOnQuit: () => Promise<void>;
@@ -140,6 +141,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   const attemptedSourceKeysRef = useRef<Set<string>>(new Set());
   const lastResumeAtSecondsRef = useRef<number | undefined>(undefined);
   const lastTotalDurationSecondsRef = useRef<number | undefined>(undefined);
+  const pendingResumePercentRef = useRef<number | null>(null);
   const playingNextEpisodeRef = useRef<Video | null>(null);
   const prefetchedNextEpRef = useRef<{ episodeId: string; stream: Stream } | null>(null);
   const playerUsesTorrentRef = useRef(false);
@@ -155,6 +157,20 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   useEffect(() => { activeProfileRef.current = activeProfile; }, [activeProfile]);
   useEffect(() => { playerUsesTorrentRef.current = playerUsesTorrent; }, [playerUsesTorrent]);
   useEffect(() => { playerLoadingOverlayRef.current = playerLoadingOverlay; }, [playerLoadingOverlay]);
+
+  useEffect(() => {
+    if (!playerUrl) return;
+    const unsubscribe = subscribePlayerStatus((status) => {
+      const percent = pendingResumePercentRef.current;
+      if (percent === null) return;
+      const duration = Number.parseFloat(status.duration ?? '');
+      if (!Number.isFinite(duration) || duration <= 0) return;
+      pendingResumePercentRef.current = null;
+      const seconds = (percent / 100) * duration;
+      void invoke('player_command', { command: `set time-pos ${seconds.toFixed(3)}` }).catch(() => undefined);
+    });
+    return unsubscribe;
+  }, [playerUrl]);
 
   const setLoadingStatus = useCallback((status: string) => {
     setPlayerLoadingOverlay((prev) => (prev ? { ...prev, status } : prev));
@@ -359,6 +375,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
       lastResumeAtSecondsRef.current = undefined;
       lastTotalDurationSecondsRef.current = undefined;
       lastPlaybackStatusRef.current = null;
+      pendingResumePercentRef.current = null;
     }
   }, [stateRef, updateState, dispatchScrobbleLifecycle]);
 
@@ -375,7 +392,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   });
 
   const handlePlay = usePlayerPlaybackStart({
-    stateRef, onEpisodePlaybackFailed, playbackScope: playbackScopeRef.current, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage,
+    stateRef, onEpisodePlaybackFailed, playbackScope: playbackScopeRef.current, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, pendingResumePercentRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage,
   });
   const handleNativePlayerError = useCallback(async (message: string) => {
     const nextSource = await nextRetrySource(playingStreamRef.current);

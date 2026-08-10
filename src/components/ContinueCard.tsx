@@ -1,4 +1,5 @@
 import React from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { Check, Info, Play, RotateCcw, Trash2 } from "lucide-react";
 import type { LibraryItem, Meta } from "../core/types";
 import {
@@ -10,6 +11,10 @@ import {
 import { ContextMenu } from "./ui/ContextMenu";
 import { usePosterSrc } from "../hooks/usePosterSrc";
 import { t } from "../i18n";
+
+function debugLog(msg: string) {
+  void invoke("debug_log", { msg }).catch(() => {});
+}
 
 function resolveBadge(
   badge: string | undefined,
@@ -91,6 +96,7 @@ export function ContinueCard({
     continueWatchingBadge?: string;
     newEpisodeReleasedAt?: string;
     unwatchedAhead?: number;
+    resumeProgressPercent?: number;
   };
 
   React.useEffect(() => {
@@ -128,21 +134,28 @@ export function ContinueCard({
     ? lib.duration
     : null;
   const hasProgress = timeOffset !== null && duration !== null;
-  const progress = hasProgress ? timeOffset / duration : null;
-  const isUpNext = meta.type === "series" && progress !== null &&
-    (progress < 0.005 || progress >= 0.995);
+  const resumePercent = typeof lib.resumeProgressPercent === "number" && Number.isFinite(lib.resumeProgressPercent)
+    ? lib.resumeProgressPercent / 100
+    : null;
+  const percentOnly = !hasProgress && resumePercent !== null;
+  const progress = hasProgress ? timeOffset / duration : resumePercent;
+  const isUpNext = meta.type === "series" &&
+    (lib.continueWatchingBadge === "upNext" || (progress !== null && (progress < 0.005 || progress >= 0.995)));
   const remainingText = !isUpNext && progress !== null
     ? progressDirection === "watched"
-      ? remainingFormat === "percent"
+      ? (remainingFormat === "percent" || percentOnly)
         ? t("format.watched_percent", Math.round(progress * 100))
         : formatWatched(timeOffset ?? 0)
-      : remainingFormat === "percent"
+      : (remainingFormat === "percent" || percentOnly)
       ? t("format.remaining_percent", Math.round((1 - progress) * 100))
       : formatRemaining(timeOffset ?? 0, duration ?? 0)
     : null;
   const scheduledText = lib.continueWatchingBadge === "scheduledEpisode"
     ? formatReleaseCountdown(lib.newEpisodeReleasedAt)
     : null;
+  if (meta.id === "tt6741278") {
+    debugLog(`ContinueCard render id=${meta.id} continueWatchingBadge=${JSON.stringify(lib.continueWatchingBadge)} resumeProgressPercent=${JSON.stringify(lib.resumeProgressPercent)} timeOffset=${JSON.stringify(lib.timeOffset)} duration=${JSON.stringify(lib.duration)} hasProgress=${hasProgress} resumePercent=${resumePercent} progress=${progress} isUpNext=${isUpNext} remainingText=${remainingText}`);
+  }
   const badge = resolveBadge(
     lib.continueWatchingBadge,
     meta.type,

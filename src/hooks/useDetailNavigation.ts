@@ -11,13 +11,25 @@ type GuardedPlay = (
   resumeAt?: number,
   totalDuration?: number,
   sourceCandidates?: Stream[],
+  resumePercent?: number,
 ) => Promise<void>;
+
+function resolveResumePercent(item: LibraryItem): number | undefined {
+  if (typeof item.resumeProgressPercent === 'number' && Number.isFinite(item.resumeProgressPercent)) {
+    return item.resumeProgressPercent;
+  }
+  if (typeof item.timeOffset === 'number' && typeof item.duration === 'number' && item.duration > 0) {
+    return (item.timeOffset / item.duration) * 100;
+  }
+  return undefined;
+}
 
 export function useDetailNavigation() {
   const [detailMeta, setDetailMeta] = useState<Meta | null>(null);
   const [detailInitialEpisode, setDetailInitialEpisode] = useState<Video | null>(null);
   const [detailAutoShowStreams, setDetailAutoShowStreams] = useState(false);
   const [detailResumeAt, setDetailResumeAt] = useState<number | undefined>(undefined);
+  const [detailResumePercent, setDetailResumePercent] = useState<number | undefined>(undefined);
   const [detailPlaybackError, setDetailPlaybackError] = useState<string | null>(null);
   const [discoverInitialGenre, setDiscoverInitialGenre] = useState<string | null>(null);
   const artworkPrefetchRef = useRef<Promise<unknown> | null>(null);
@@ -48,7 +60,8 @@ export function useDetailNavigation() {
       number: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
       thumbnail: matchedVideo?.thumbnail ?? item.lastEpisodeThumbnail,
     } : null;
-    const resumeAt = resumeAtOverride ?? item.timeOffset;
+    const resumePercent = resumeAtOverride === undefined ? resolveResumePercent(item) : undefined;
+    const resumeAt = resumeAtOverride ?? (resumePercent === undefined ? item.timeOffset : undefined);
 
     prefetchArtworkFor(meta, episode);
 
@@ -63,10 +76,11 @@ export function useDetailNavigation() {
         setDetailInitialEpisode(episode);
         setDetailAutoShowStreams(true);
         setDetailResumeAt(resumeAt ?? undefined);
+        setDetailResumePercent(resumePercent);
         setDetailMeta(meta);
         return;
       }
-      await guardedPlayRef.current(resumeStream, meta, episode, resumeAt, item.duration);
+      await guardedPlayRef.current(resumeStream, meta, episode, resumeAt, item.duration, undefined, resumePercent);
     })();
   }, []);
 
@@ -84,9 +98,11 @@ export function useDetailNavigation() {
       number: item.lastEpisodeNumber,
       thumbnail: item.lastEpisodeThumbnail,
     } : null;
+    const resumePercent = resolveResumePercent(item);
     setDetailInitialEpisode(episode);
     setDetailAutoShowStreams(true);
-    setDetailResumeAt(item.timeOffset ?? undefined);
+    setDetailResumeAt(resumePercent === undefined ? item.timeOffset ?? undefined : undefined);
+    setDetailResumePercent(resumePercent);
     setDetailMeta(meta);
   }, []);
 
@@ -95,6 +111,7 @@ export function useDetailNavigation() {
     setDetailInitialEpisode(null);
     setDetailAutoShowStreams(false);
     setDetailResumeAt(undefined);
+    setDetailResumePercent(undefined);
   }, []);
 
   return {
@@ -102,6 +119,7 @@ export function useDetailNavigation() {
     detailInitialEpisode, setDetailInitialEpisode,
     detailAutoShowStreams, setDetailAutoShowStreams,
     detailResumeAt, setDetailResumeAt,
+    detailResumePercent, setDetailResumePercent,
     detailPlaybackError, setDetailPlaybackError,
     discoverInitialGenre, setDiscoverInitialGenre,
     guardedPlayRef,

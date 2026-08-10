@@ -1,6 +1,7 @@
 import {
   coreInvoke,
   coreSimklMergeDelta,
+  coreSimklMergePlaybackProgress,
   coreSimklResourceSyncPlan,
   coreSimklWatchedToIds,
   coreSimklWatchingToItems,
@@ -10,21 +11,106 @@ import {
 } from './engine';
 import { loadActiveProfile, profileStorageKey } from './libraryOps';
 import { _appVersion, platformFetch } from './httpClient';
-import { enrichWithAddonMeta, replaceExternalContinueWatching } from './externalSyncUtils';
+import { replaceExternalContinueWatching } from './externalSyncUtils';
 import { saveProviderLibrary } from './providerLibraries';
 import { getOAuthClientId } from './traktSync';
 import type { ImportCategory } from './importCategories';
+import { invoke } from '@tauri-apps/api/core';
+
+function debugLog(msg: string) {
+  void invoke('debug_log', { msg }).catch(() => {});
+}
 
 type SimklDeltaCache = {
   activities?: Record<string, unknown>;
   resources: Record<string, unknown>;
 };
 
+const SIMKL_EPISODE_LIST_CACHE_KEY = 'simkl_episode_list_cache';
+const SIMKL_EPISODE_LIST_TTL_MS = 24 * 60 * 60 * 1000;
+const SIMKL_EPISODE_LIST_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+type SimklEpisodeListCacheEntry = { fetchedAt: number; episodes: Record<string, unknown>[] };
+type SimklEpisodeListCache = Record<string, SimklEpisodeListCacheEntry>;
+
+async function resolveSimklEpisodeThumbnails(
+  items: Record<string, unknown>[],
+  headers: HeadersInit,
+  query: string,
+): Promise<Record<string, unknown>[]> {
+  const needsThumbnail = items.filter((item) =>
+    item.type === 'series' &&
+    typeof item.simklId === 'number' &&
+    typeof item.lastEpisodeNumber === 'number' &&
+    !item.lastEpisodeThumbnail,
+  );
+  if (needsThumbnail.length === 0) return items;
+
+  const diskCache = (await storageRead<SimklEpisodeListCache>(SIMKL_EPISODE_LIST_CACHE_KEY)) ?? {};
+  let diskCacheDirty = false;
+  const now = Date.now();
+  const episodeListCache = new Map<string, Promise<Record<string, unknown>[]>>();
+  const fetchEpisodeList = (simklId: number, isAnime: boolean) => {
+    const cacheKey = `${isAnime ? 'anime' : 'tv'}:${simklId}`;
+    let pending = episodeListCache.get(cacheKey);
+    if (pending) return pending;
+    const cached = diskCache[cacheKey];
+    if (cached && now - cached.fetchedAt < SIMKL_EPISODE_LIST_TTL_MS) {
+      pending = Promise.resolve(cached.episodes);
+    } else {
+      const path = isAnime ? 'anime' : 'tv';
+      pending = platformFetch(`https://api.simkl.com/${path}/episodes/${simklId}?${query}`, { headers, signal: AbortSignal.timeout(10_000) })
+        .then((res) => (res.ok ? res.json() : []))
+        .then((list) => (Array.isArray(list) ? list as Record<string, unknown>[] : []))
+        .then((episodes) => {
+          diskCache[cacheKey] = { fetchedAt: now, episodes };
+          diskCacheDirty = true;
+          return episodes;
+        })
+        .catch(() => []);
+    }
+    episodeListCache.set(cacheKey, pending);
+    return pending;
+  };
+
+  const CONCURRENCY = 4;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < needsThumbnail.length) {
+      const item = needsThumbnail[cursor++];
+      const simklId = item.simklId as number;
+      const isAnime = item.isAnime === true;
+      const season = typeof item.lastEpisodeSeason === 'number' ? item.lastEpisodeSeason : undefined;
+      const number = item.lastEpisodeNumber as number;
+      const episodes = await fetchEpisodeList(simklId, isAnime);
+      const match = isAnime
+        ? episodes.find((ep) => {
+            const tvdb = ep.tvdb as Record<string, unknown> | undefined;
+            if (season != null && tvdb && tvdb.season === season && tvdb.episode === number) return true;
+            return ep.episode === number;
+          })
+        : episodes.find((ep) => ep.season === season && ep.episode === number);
+      const img = match && typeof match.img === 'string' ? match.img : undefined;
+      if (img) item.lastEpisodeThumbnail = img.startsWith('http') ? img : `https://simkl.in/episodes/${img}_w.webp`;
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, needsThumbnail.length) }, worker));
+
+  if (diskCacheDirty) {
+    for (const [key, entry] of Object.entries(diskCache)) {
+      if (now - entry.fetchedAt > SIMKL_EPISODE_LIST_MAX_AGE_MS) delete diskCache[key];
+    }
+    await storageWrite(SIMKL_EPISODE_LIST_CACHE_KEY, diskCache);
+  }
+  return items;
+}
+
 export async function syncSimklNow(payload: Record<string, unknown>): Promise<unknown> {
   const token = typeof payload.token === 'string' ? payload.token : undefined;
   const clientId = typeof payload.clientId === 'string' && payload.clientId ? payload.clientId : '';
   if (!token) return { synced: false, error: 'Simkl is not connected' };
   const categories = payload.categories as ImportCategory[] | undefined;
+  const force = payload.force === true;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
   const dryRun = payload.dryRun === true;
 
@@ -56,6 +142,8 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
     ['moviesPlanToWatch', 'movies', 'plantowatch', 'movies'],
     ['showsCompleted', 'tv_shows', 'completed', 'shows'],
     ['moviesCompleted', 'movies', 'completed', 'movies'],
+    ['episodesPlayback', 'tv_shows', 'playback', 'episodes'],
+    ['moviesPlayback', 'movies', 'playback', 'movies'],
   ] as const;
   const plan = await coreSimklResourceSyncPlan({
     previous: cache.activities ?? null,
@@ -63,16 +151,34 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
     resources: resources.map(([key, type, status]) => ({ key, type, status, hasCached: Boolean(cache.resources[key]) })),
   });
   const planByKey = new Map(plan.map((entry) => [entry.key, entry]));
+  for (const [key] of resources) {
+    if (key === 'episodesPlayback' || key === 'moviesPlayback') {
+      debugLog(`syncSimklNow: resource=${key} action=${planByKey.get(key)?.action} force=${force} hasCached=${Boolean(cache.resources[key])}`);
+    }
+  }
   let nextResources: unknown[];
   try {
     nextResources = await Promise.all(resources.map(async ([key, , status, path]) => {
       const entry = planByKey.get(key);
-      if (!entry || entry.action === 'unchanged') return cache.resources[key];
-      const dateFrom = entry.action === 'delta' && entry.dateFrom ? `&date_from=${encodeURIComponent(entry.dateFrom)}` : '';
+      if (!force && (!entry || entry.action === 'unchanged')) return cache.resources[key];
+      if (status === 'playback') {
+        const response = await platformFetch(`https://api.simkl.com/sync/playback/${path}?${query}`, { headers, signal: AbortSignal.timeout(60_000) });
+        if (!response.ok) throw new Error(`Simkl sync failed: HTTP ${response.status}`);
+        const json = await response.json();
+        debugLog(`syncSimklNow: fetched playback key=${key} count=${Array.isArray(json) ? json.length : 'n/a'} raw=${JSON.stringify(json).slice(0, 2000)}`);
+        return json;
+      }
+      if (force) {
+        const response = await platformFetch(`https://api.simkl.com/sync/all-items/${path}/${status}?extended=full&episode_watched_at=yes&${query}`, { headers, signal: AbortSignal.timeout(60_000) });
+        if (!response.ok) throw new Error(`Simkl sync failed: HTTP ${response.status}`);
+        return response.json();
+      }
+      const resolvedEntry = entry!;
+      const dateFrom = resolvedEntry.action === 'delta' && resolvedEntry.dateFrom ? `&date_from=${encodeURIComponent(resolvedEntry.dateFrom)}` : '';
       const response = await platformFetch(`https://api.simkl.com/sync/all-items/${path}/${status}?extended=full&episode_watched_at=yes&${query}${dateFrom}`, { headers, signal: AbortSignal.timeout(60_000) });
       if (!response.ok) throw new Error(`Simkl sync failed: HTTP ${response.status}`);
       const changes = await response.json();
-      return entry.action === 'full' ? changes : coreSimklMergeDelta(JSON.stringify(cache.resources[key] ?? null), JSON.stringify(changes));
+      return resolvedEntry.action === 'full' ? changes : coreSimklMergeDelta(JSON.stringify(cache.resources[key] ?? null), JSON.stringify(changes));
     }));
   } catch (error) {
     return { synced: false, error: error instanceof Error ? error.message : String(error) };
@@ -80,11 +186,20 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   for (const [index, [key]] of resources.entries()) cache.resources[key] = nextResources[index];
   cache.activities = activities;
   await storageWrite(cacheKey, cache);
-  const [shows, movies, wlShows, wlMovies, doneShows, doneMovies] = nextResources;
+  const [shows, movies, wlShows, wlMovies, doneShows, doneMovies, episodesPlayback, moviesPlayback] = nextResources;
   const showsData = JSON.stringify(shows);
   const moviesData = JSON.stringify(movies);
   const rawItems = ((await coreSimklWatchingToItems(showsData, moviesData)) ?? []) as Record<string, unknown>[];
-  const items = await enrichWithAddonMeta(rawItems);
+  debugLog(`syncSimklNow: rawItems=${JSON.stringify(rawItems.map((item) => ({ id: item.id, lastEpisodeSeason: item.lastEpisodeSeason, lastEpisodeNumber: item.lastEpisodeNumber, badge: item.continueWatchingBadge, poster: item.poster, background: item.background, simklId: item.simklId })))}`);
+  const playbackData = JSON.stringify([
+    ...(Array.isArray(episodesPlayback) ? episodesPlayback : []),
+    ...(Array.isArray(moviesPlayback) ? moviesPlayback : []),
+  ]);
+  const mergedItems = ((await coreSimklMergePlaybackProgress(JSON.stringify(rawItems), playbackData)) ?? rawItems) as Record<string, unknown>[];
+  const items = wants('continueWatching')
+    ? await resolveSimklEpisodeThumbnails(mergedItems, headers, query).catch(() => mergedItems)
+    : mergedItems;
+  debugLog(`syncSimklNow: progressItems=${JSON.stringify(items.map((item) => ({ id: item.id, resumeProgressPercent: item.resumeProgressPercent, badge: item.continueWatchingBadge, poster: item.poster, background: item.background, lastEpisodeThumbnail: item.lastEpisodeThumbnail })))}`);
   if (wants('continueWatching') && !dryRun) {
     await replaceExternalContinueWatching({ items, provider: 'simkl', profileKey });
     const { promoteExternalProgress } = await import('./externalSync');
@@ -94,10 +209,12 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   const wlShowsData = JSON.stringify(wlShows);
   const wlMoviesData = JSON.stringify(wlMovies);
   const watchlistItems = ((await coreSimklWatchlistToItems(wlShowsData, wlMoviesData)) ?? []) as Record<string, unknown>[];
-  if (!dryRun) await saveProviderLibrary('simkl', { watchlist: watchlistItems, watching: items, completed: [], dropped: [], favorites: [] }, profileKey);
 
   const doneShowsData = JSON.stringify(doneShows);
   const doneMoviesData = JSON.stringify(doneMovies);
+  const completedItems = ((await coreSimklWatchlistToItems(doneShowsData, doneMoviesData)) ?? []) as Record<string, unknown>[];
+  if (!dryRun) await saveProviderLibrary('simkl', { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: [] }, profileKey);
+
   const watchedMap = ((await coreSimklWatchedToIds(doneShowsData, doneMoviesData)) ?? {}) as Record<string, boolean>;
 
   const watchlistCount = watchlistItems.length;
