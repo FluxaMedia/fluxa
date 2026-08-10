@@ -1,318 +1,104 @@
 package com.fluxa.app.plugins
 
-import com.fluxa.app.common.PlatformLog
+import com.fluxa.app.shared.feature.plugins.enabledManifestUrls
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
-import com.fluxa.app.core.rust.FluxaCoreUniFfi
-import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.core.rust.PluginHttpClientImpl
 import com.fluxa.app.data.platform.PlatformKeyValueStore
-import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.plugins.NuvioPluginRepositoryEngine
+import com.fluxa.app.data.plugins.NuvioPluginRepositoryUiModel
+import com.fluxa.app.data.plugins.NuvioPluginScraperUiModel
+import com.fluxa.app.data.plugins.NuvioPluginSettingsFieldUiModel
+import com.fluxa.app.data.plugins.NuvioPluginSettingsOptionUiModel
+import com.fluxa.app.data.plugins.NuvioPluginsUiState
+import com.fluxa.app.data.plugins.resolveNuvioPluginTmdbId
 import com.fluxa.app.data.remote.NuvioPluginDto
+import com.fluxa.app.data.remote.TmdbService
+import com.fluxa.app.data.remote.Stream
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import okhttp3.Request
+import okhttp3.OkHttpClient
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 
-private const val KEY_PERSISTED_STATE = "persisted_state"
+typealias PluginRepositoryUiModel = NuvioPluginRepositoryUiModel
+typealias PluginScraperUiModel = NuvioPluginScraperUiModel
+typealias PluginsUiState = NuvioPluginsUiState
+typealias PluginSettingsOptionUiModel = NuvioPluginSettingsOptionUiModel
+typealias PluginSettingsFieldUiModel = NuvioPluginSettingsFieldUiModel
 
-data class PluginRepositoryUiModel(
-    val manifestUrl: String,
-    val name: String,
-    val description: String?,
-    val scraperCount: Int
-)
-
-data class PluginScraperUiModel(
-    val id: String,
-    val name: String,
-    val repositoryUrl: String,
-    val filename: String,
-    val enabled: Boolean,
-    val supportedTypes: List<String>,
-    val hasSettings: Boolean = false,
-    val settings: Map<String, Any?> = emptyMap()
-)
-
-data class PluginsUiState(
-    val repositories: List<PluginRepositoryUiModel> = emptyList(),
-    val scrapers: List<PluginScraperUiModel> = emptyList(),
-    val addingRepositoryUrl: String? = null,
-    val error: String? = null
-)
-
-data class PluginSettingsOptionUiModel(
-    val label: String,
-    val value: String
-)
-
-data class PluginSettingsFieldUiModel(
-    val key: String,
-    val type: String,
-    val label: String,
-    val description: String? = null,
-    val placeholder: String? = null,
-    val isPassword: Boolean = false,
-    val defaultValue: String? = null,
-    val defaultBoolean: Boolean = false,
-    val options: List<PluginSettingsOptionUiModel> = emptyList()
-)
-
-private data class PersistedScraperOverride(
-    val enabled: Boolean = true,
-    val settings: Map<String, Any?> = emptyMap()
-)
-
-private data class PersistedPluginsState(
-    val repositoryUrls: List<String> = emptyList(),
-    val scraperOverrides: Map<String, PersistedScraperOverride> = emptyMap()
-)
-
+/** Android dependency-injection wrapper around the JVM-shared Nuvio plugin engine. */
 @Singleton
 class PluginRepositoryManager @Inject constructor(
-    @param:Named("PluginRepositoryState") private val prefsStore: PlatformKeyValueStore,
+    @param:Named("PluginRepositoryState") prefsStore: PlatformKeyValueStore,
     environment: dagger.Lazy<FluxaAndroidHeadlessEnvironment>,
-    private val pluginHttpClient: PluginHttpClientImpl,
-    @param:Named("PluginScraperClient") private val scraperCodeClient: okhttp3.OkHttpClient,
-    private val gson: Gson
+    pluginHttpClient: PluginHttpClientImpl,
+    @param:Named("PluginScraperClient") scraperCodeClient: OkHttpClient,
+    tmdbService: TmdbService,
+    profileManager: ProfileManager,
+    gson: Gson,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val runtime by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        FluxaHeadlessRuntimeFactory.createUniFfi(environment.get())
-    }
-    private val streamListType = object : TypeToken<List<Stream>>() {}.type
-    private val codeCacheMutex = Mutex()
-    private val codeCache = mutableMapOf<String, String>()
+    private val delegate = NuvioPluginRepositoryEngine(
+        prefsStore = prefsStore,
+        environmentProvider = environment::get,
+        pluginHttpClient = pluginHttpClient,
+        scraperCodeClient = scraperCodeClient,
+        gson = gson,
+        pluginTmdbIdResolver = { contentId, mediaType ->
+            val activeProfileId = profileManager.getLastActiveProfileId()
+            val apiKey = profileManager.getProfiles()
+                .firstOrNull { it.id == activeProfileId }
+                ?.safeTmdbApiKey
+                .orEmpty()
+            resolveNuvioPluginTmdbId(tmdbService, contentId, mediaType, apiKey)
+        },
+        logTag = "PluginRepositoryManager",
+    )
 
-    val state: StateFlow<PluginsUiState> by lazy {
-        runtime.state
-            .map { it.toPluginsUiState() }
-            .stateIn(scope, SharingStarted.Eagerly, PluginsUiState())
-    }
+    val state: StateFlow<PluginsUiState> get() = delegate.state
 
-    init {
-        scope.launch { restorePersistedRepositories() }
-    }
+    suspend fun addRepository(manifestUrl: String) = delegate.addRepository(manifestUrl)
 
-    private suspend fun restorePersistedRepositories() {
-        val saved = loadPersistedState()
-        saved.repositoryUrls.forEach { manifestUrl ->
-            runtime.dispatch(mapOf("type" to "pluginRepositoryAddRequested", "manifestUrl" to manifestUrl))
-        }
-        saved.scraperOverrides.forEach { (scraperId, override) ->
-            if (!override.enabled) {
-                runtime.dispatch(mapOf("type" to "pluginScraperToggled", "scraperId" to scraperId, "enabled" to false))
-            }
-            if (override.settings.isNotEmpty()) {
-                runtime.dispatch(mapOf("type" to "pluginScraperSettingsUpdated", "scraperId" to scraperId, "settings" to override.settings))
-            }
-        }
+    /** Reconciles enabled repository URLs from the currently active Nuvio profile. */
+    suspend fun syncNuvioPlugins(plugins: List<NuvioPluginDto>) {
+        delegate.syncNuvioRepositoryUrls(plugins.enabledManifestUrls())
     }
 
-    suspend fun addRepository(manifestUrl: String) {
-        runtime.dispatch(mapOf("type" to "pluginRepositoryAddRequested", "manifestUrl" to manifestUrl))
-        persistCurrentState()
-    }
+    @Deprecated("Use syncNuvioPlugins")
+    suspend fun importNuvioPlugins(plugins: List<NuvioPluginDto>) = syncNuvioPlugins(plugins)
 
-    /** Imports the repository-backed scrapers saved in a Nuvio account.
-     *
-     * Nuvio sync is additive: a user can still keep device-only repositories,
-     * and duplicate URLs are naturally upserted by the headless plugin state.
-     */
-    suspend fun importNuvioPlugins(plugins: List<NuvioPluginDto>) {
-        plugins
-            .asSequence()
-            .filter { it.enabled }
-            .sortedBy { it.sortOrder }
-            .mapNotNull { it.manifestUrl?.trim()?.takeIf(String::isNotEmpty) }
-            .distinct()
-            .forEach { manifestUrl ->
-                runtime.dispatch(mapOf("type" to "pluginRepositoryAddRequested", "manifestUrl" to manifestUrl))
-            }
-        persistCurrentState()
-    }
+    suspend fun removeRepository(manifestUrl: String) = delegate.removeRepository(manifestUrl)
 
-    suspend fun removeRepository(manifestUrl: String) {
-        runtime.dispatch(mapOf("type" to "pluginRepositoryRemoveRequested", "manifestUrl" to manifestUrl))
-        persistCurrentState()
-    }
+    suspend fun refreshRepository(manifestUrl: String) = delegate.refreshRepository(manifestUrl)
 
-    suspend fun refreshRepository(manifestUrl: String) {
-        runtime.dispatch(mapOf("type" to "pluginRepositoryAddRequested", "manifestUrl" to manifestUrl))
-        persistCurrentState()
-    }
+    suspend fun refreshAllRepositories() = delegate.refreshAllRepositories()
 
-    suspend fun toggleScraper(scraperId: String, enabled: Boolean) {
-        runtime.dispatch(mapOf("type" to "pluginScraperToggled", "scraperId" to scraperId, "enabled" to enabled))
-        persistCurrentState()
-    }
+    suspend fun toggleScraper(scraperId: String, enabled: Boolean) =
+        delegate.toggleScraper(scraperId, enabled)
 
-    suspend fun updateScraperSettings(scraperId: String, settings: Map<String, Any?>) {
-        runtime.dispatch(mapOf("type" to "pluginScraperSettingsUpdated", "scraperId" to scraperId, "settings" to settings))
-        persistCurrentState()
-    }
+    suspend fun updateScraperSettings(scraperId: String, settings: Map<String, Any?>) =
+        delegate.updateScraperSettings(scraperId, settings)
 
-    private suspend fun persistCurrentState() {
-        val current = runtime.state.value.toPluginsUiState()
-        val persisted = PersistedPluginsState(
-            repositoryUrls = current.repositories.map { it.manifestUrl },
-            scraperOverrides = current.scrapers.associate { scraper ->
-                scraper.id to PersistedScraperOverride(enabled = scraper.enabled, settings = scraper.settings)
-            }
-        )
-        prefsStore.write(KEY_PERSISTED_STATE, gson.toJson(persisted))
-    }
+    suspend fun executeEnabledScrapers(
+        contentId: String,
+        mediaType: String,
+        season: Int?,
+        episode: Int?,
+    ): List<Stream> = delegate.executeEnabledScrapers(contentId, mediaType, season, episode)
 
-    private suspend fun loadPersistedState(): PersistedPluginsState {
-        val json = prefsStore.read(KEY_PERSISTED_STATE) ?: return PersistedPluginsState()
-        return try {
-            gson.fromJson(json, PersistedPluginsState::class.java) ?: PersistedPluginsState()
-        } catch (e: Exception) {
-            PlatformLog.w("PluginRepositoryManager", "failed to parse persisted plugin state", e)
-            PersistedPluginsState()
-        }
-    }
+    fun hasCompatibleEnabledScrapers(mediaType: String): Boolean =
+        delegate.hasCompatibleEnabledScrapers(mediaType)
 
     suspend fun executeScraper(
         scraper: PluginScraperUiModel,
         tmdbId: String,
         mediaType: String,
         season: Int?,
-        episode: Int?
-    ): List<Stream> = withContext(Dispatchers.IO) {
-        val code = fetchScraperCode(scraper) ?: return@withContext emptyList()
-        try {
-            val rawJson = FluxaCoreUniFfi.executePluginScraper(
-                pluginHttpClient,
-                code,
-                scraper.id,
-                gson.toJson(scraper.settings),
-                tmdbId,
-                mediaType,
-                season,
-                episode
-            )
-            val normalized = FluxaCoreUniFfi.coreInvokeValue("pluginStreamResultsToStreams", rawJson)
-            val streams: List<Stream> = gson.fromJson(normalized, streamListType) ?: emptyList()
-            streams.map { it.copy(addonName = scraper.name) }
-        } catch (e: Exception) {
-            PlatformLog.w("PluginRepositoryManager", "scraper ${scraper.id} failed", e)
-            emptyList()
-        }
-    }
+        episode: Int?,
+    ): List<Stream> = delegate.executeScraper(scraper, tmdbId, mediaType, season, episode)
 
-    suspend fun getSettingsLayout(scraper: PluginScraperUiModel): List<PluginSettingsFieldUiModel> =
-        withContext(Dispatchers.IO) {
-            val code = fetchScraperCode(scraper) ?: return@withContext emptyList()
-            try {
-                val layoutJson = FluxaCoreUniFfi.getPluginScraperSettingsLayout(code, scraper.id)
-                parseSettingsLayout(layoutJson)
-            } catch (e: Exception) {
-                PlatformLog.w("PluginRepositoryManager", "settings layout for ${scraper.id} failed", e)
-                emptyList()
-            }
-        }
-
-    private fun parseSettingsLayout(layoutJson: String): List<PluginSettingsFieldUiModel> {
-        val elements = try {
-            com.google.gson.JsonParser.parseString(layoutJson).asJsonArray
-        } catch (e: Exception) {
-            return emptyList()
-        }
-        return elements.mapNotNull { element ->
-            val field = element.asJsonObject
-            val type = field.get("type")?.asString ?: return@mapNotNull null
-            val key = field.get("key")?.asString ?: ""
-            val label = field.get("label")?.asString ?: ""
-            val optionsArray = field.get("options")?.takeIf { it.isJsonArray }?.asJsonArray
-            val options = optionsArray?.map { option ->
-                val optionObject = option.asJsonObject
-                PluginSettingsOptionUiModel(
-                    label = optionObject.get("label")?.asString ?: "",
-                    value = optionObject.get("value")?.asString ?: ""
-                )
-            } ?: emptyList()
-            val defaultValueElement = field.get("defaultValue")
-            val defaultIsBoolean = defaultValueElement?.isJsonPrimitive == true &&
-                defaultValueElement.asJsonPrimitive.isBoolean
-            PluginSettingsFieldUiModel(
-                key = key,
-                type = type,
-                label = label,
-                description = field.get("description")?.asString,
-                placeholder = field.get("placeholder")?.asString,
-                isPassword = field.get("isPassword")?.asBoolean ?: false,
-                defaultValue = if (!defaultIsBoolean) defaultValueElement?.takeIf { !it.isJsonNull }?.asString else null,
-                defaultBoolean = if (defaultIsBoolean) defaultValueElement.asBoolean else false,
-                options = options
-            )
-        }
-    }
-
-    private suspend fun fetchScraperCode(scraper: PluginScraperUiModel): String? = codeCacheMutex.withLock {
-        codeCache[scraper.id]?.let { return@withLock it }
-        val url = resolveScraperUrl(scraper.repositoryUrl, scraper.filename)
-        try {
-            val request = Request.Builder().url(url).build()
-            scraperCodeClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withLock null
-                val code = response.body.string()
-                if (code.isBlank()) return@withLock null
-                codeCache[scraper.id] = code
-                code
-            }
-        } catch (e: Exception) {
-            PlatformLog.w("PluginRepositoryManager", "failed to fetch scraper code for ${scraper.id}", e)
-            null
-        }
-    }
-
-    private fun resolveScraperUrl(repositoryUrl: String, filename: String): String {
-        val base = repositoryUrl.substringBeforeLast('/', missingDelimiterValue = repositoryUrl)
-        return "$base/$filename"
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun Map<String, Any?>.toPluginsUiState(): PluginsUiState {
-        val plugins = this["plugins"] as? Map<String, Any?> ?: return PluginsUiState()
-        val repositories = (plugins["repositories"] as? List<Map<String, Any?>>).orEmpty().map { repo ->
-            PluginRepositoryUiModel(
-                manifestUrl = repo["manifestUrl"] as? String ?: "",
-                name = repo["name"] as? String ?: "",
-                description = repo["description"] as? String,
-                scraperCount = (repo["scraperCount"] as? Double)?.toInt() ?: 0
-            )
-        }
-        val scrapers = (plugins["scrapers"] as? List<Map<String, Any?>>).orEmpty().map { scraper ->
-            PluginScraperUiModel(
-                id = scraper["id"] as? String ?: "",
-                name = scraper["name"] as? String ?: "",
-                repositoryUrl = scraper["repositoryUrl"] as? String ?: "",
-                filename = scraper["filename"] as? String ?: "",
-                enabled = scraper["enabled"] as? Boolean ?: true,
-                supportedTypes = (scraper["supportedTypes"] as? List<String>).orEmpty(),
-                hasSettings = scraper["hasSettings"] as? Boolean ?: false,
-                settings = (scraper["settings"] as? Map<String, Any?>).orEmpty()
-            )
-        }
-        val error = (plugins["error"] as? Map<*, *>)?.get("code") as? String
-        return PluginsUiState(
-            repositories = repositories,
-            scrapers = scrapers,
-            addingRepositoryUrl = plugins["addingRepositoryUrl"] as? String,
-            error = error
-        )
-    }
+    suspend fun getSettingsLayout(
+        scraper: PluginScraperUiModel,
+    ): List<PluginSettingsFieldUiModel> = delegate.getSettingsLayout(scraper)
 }

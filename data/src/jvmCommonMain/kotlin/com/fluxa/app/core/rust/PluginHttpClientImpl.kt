@@ -50,6 +50,13 @@ class PluginHttpClientImpl @Inject constructor(
                 }
                 val httpRequest = Request.Builder().url(currentUrl)
                 request.headers.forEach { (key, value) -> httpRequest.header(key, value) }
+                if (request.headers.keys.none { it.equals("User-Agent", ignoreCase = true) }) {
+                    httpRequest.header(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                            "(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
+                    )
+                }
                 val method = request.method.ifBlank { "GET" }.uppercase()
                 val body = request.body?.let { raw ->
                     val contentType = request.headers.entries

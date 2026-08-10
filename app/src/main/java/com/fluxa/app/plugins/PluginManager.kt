@@ -3,8 +3,6 @@ package com.fluxa.app.plugins
 import android.content.Context
 import android.util.Log
 import com.fluxa.app.BuildConfig
-import com.fluxa.app.compat.cloudstream3.APIHolder
-import com.fluxa.app.core.rust.FluxaCoreNative
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.AcraApplication
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionLoader
@@ -14,65 +12,60 @@ import com.fluxa.app.plugins.cloudstream.PluginInfo
 import com.fluxa.app.plugins.cloudstream.PluginRepositoryEntry
 import com.fluxa.app.plugins.cloudstream.RepositoryManifest
 import com.fluxa.app.plugins.cloudstream.RepositoryResult
+import com.fluxa.app.domain.background.BackgroundTaskScheduler
 import com.fluxa.app.plugins.cloudstream.SIGNATURE_ERROR
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
-import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "PluginManager"
-private const val PREFS_NAME = "fluxa_plugin_manager"
-private const val KEY_INSTALLED_PLUGINS = "installed_plugins"
-private const val KEY_REPOSITORIES = "repositories"
-private const val KEY_AUTOMATIC_UPDATES_ENABLED = "automatic_updates_enabled"
 
 private inline fun logDebug(message: () -> String) {
     if (BuildConfig.DEBUG) Log.d(TAG, message())
 }
 
 @Singleton
-class PluginManager @Inject constructor(@param:ApplicationContext private val context: Context) {
-    
+class PluginManager @Inject constructor(
+    @param:ApplicationContext private val context: Context,
+    private val backgroundTaskScheduler: BackgroundTaskScheduler,
+) {
+
     private val loader = ExternalExtensionLoader(context)
+    private val stateStore = CloudStreamPluginStateStore(context)
+    private val runtime = CloudStreamPluginRuntime(loader)
     private val repoParser = ExternalRepoParser()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    
+
     private val mutex = Mutex()
-    
+
     // State flows for reactive UI updates
     private val _installedPlugins = MutableStateFlow<List<InstalledPlugin>>(emptyList())
     val installedPlugins: StateFlow<List<InstalledPlugin>> = _installedPlugins
-    
+
     private val _repositories = MutableStateFlow<List<PluginRepositoryEntry>>(emptyList())
     val repositories: StateFlow<List<PluginRepositoryEntry>> = _repositories
-    
+
     private val _availablePlugins = MutableStateFlow<List<PluginInfo>>(emptyList())
     val availablePlugins: StateFlow<List<PluginInfo>> = _availablePlugins
-    
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
     private val _automaticUpdatesEnabled = MutableStateFlow(false)
     val automaticUpdatesEnabled: StateFlow<Boolean> = _automaticUpdatesEnabled
-    
-    private val _loadedApis = MutableStateFlow<List<MainAPI>>(emptyList())
-    val loadedApis: StateFlow<List<MainAPI>> = _loadedApis
-    
+
+    val loadedApis: StateFlow<List<MainAPI>> = runtime.loadedApis
+
     init {
         // Initialize AcraApplication context for plugins
         AcraApplication.init(context.applicationContext as android.app.Application)
@@ -86,74 +79,56 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
     // ==================== State Persistence ====================
 
     private suspend fun loadSavedState() {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
-        // Load installed plugins
-        val pluginsJson = prefs.getString(KEY_INSTALLED_PLUGINS, "[]") ?: "[]"
-        val reposJson = prefs.getString(KEY_REPOSITORIES, "[]") ?: "[]"
-        val parsedRepositories = PluginStateCodec.parseRepositories(reposJson)
-        val trustedRepositories = parsedRepositories.filter { it.publisherPublicKey.isNotBlank() }
+        val stored = stateStore.load()
+        val trustedRepositories = stored.repositories.filter { it.publisherPublicKey.isNotBlank() }
         val trustedRepositoryUrls = trustedRepositories.map { it.url }.toSet()
-        _installedPlugins.value = PluginStateCodec.parseInstalledPlugins(pluginsJson).filter { plugin ->
+        _installedPlugins.value = stored.installedPlugins.filter { plugin ->
             plugin.repositoryUrl == null || plugin.repositoryUrl in trustedRepositoryUrls
         }
         _repositories.value = trustedRepositories
-        _automaticUpdatesEnabled.value = prefs.getBoolean(KEY_AUTOMATIC_UPDATES_ENABLED, false)
-        if (trustedRepositories.size != parsedRepositories.size) {
-            saveState()
-        }
+        _automaticUpdatesEnabled.value = stored.automaticUpdatesEnabled
+        if (trustedRepositories.size != stored.repositories.size) saveState()
 
-        if (_automaticUpdatesEnabled.value) {
-            PluginAutoUpdateWorker.enqueue(context)
-        }
+        if (_automaticUpdatesEnabled.value) backgroundTaskScheduler.schedulePluginAutoUpdate()
+        runtime.loadAll(_installedPlugins.value)
+    }
 
-        loadAllInstalledPlugins()
-    }
-    
-    private fun saveState() {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        
-        prefs.edit().apply {
-            putString(KEY_INSTALLED_PLUGINS, PluginStateCodec.installedPluginsToJson(_installedPlugins.value))
-            putString(KEY_REPOSITORIES, PluginStateCodec.repositoriesToJson(_repositories.value))
-            apply()
-        }
-    }
+    private fun saveState() = stateStore.save(
+        installedPlugins = _installedPlugins.value,
+        repositories = _repositories.value,
+    )
 
     fun setAutomaticUpdatesEnabled(enabled: Boolean) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_AUTOMATIC_UPDATES_ENABLED, enabled)
-            .apply()
+        stateStore.setAutomaticUpdatesEnabled(enabled)
         _automaticUpdatesEnabled.value = enabled
         if (enabled) {
-            PluginAutoUpdateWorker.enqueue(context)
+            backgroundTaskScheduler.schedulePluginAutoUpdate()
         } else {
-            PluginAutoUpdateWorker.cancel(context)
+            backgroundTaskScheduler.cancelPluginAutoUpdate()
         }
     }
-    
+
     // ==================== Repository Management ====================
-    
+
     /**
      * Add a new repository URL
      */
     suspend fun addRepository(url: String, publisherPublicKey: String): Result<RepositoryManifest> = mutex.withLock {
         _isLoading.value = true
-        
+
         return try {
-            val trustedUrl = normalizeRepositoryUrl(expandShortcode(url))
-            if (!isSecureRemoteUrl(trustedUrl)) {
+            val trustedUrl = normalizeCloudStreamRepositoryUrl(expandCloudStreamRepositoryShortcode(url))
+            if (!isSecureCloudStreamPluginUrl(trustedUrl)) {
                 return Result.failure(Exception("Repository URL must use HTTPS"))
             }
             if (publisherPublicKey.isBlank()) {
                 return Result.failure(Exception(SIGNATURE_ERROR))
             }
             // Check if already exists
-            if (_repositories.value.any { sameUrl(it.url, trustedUrl) }) {
+            if (_repositories.value.any { sameCloudStreamRepositoryUrl(it.url, trustedUrl) }) {
                 return Result.failure(Exception("Repository already exists"))
             }
-            
+
             // Fetch and parse
             when (val result = repoParser.fetchRepository(trustedUrl, publisherPublicKey)) {
                 is RepositoryResult.Success -> {
@@ -164,13 +139,13 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                         description = result.manifest.description,
                         iconUrl = result.manifest.iconUrl
                     )
-                    
+
                     _repositories.value = _repositories.value + entry
                     saveState()
-                    
+
                     // Refresh available plugins
                     refreshAvailablePlugins()
-                    
+
                     Result.success(result.manifest)
                 }
                 is RepositoryResult.Error -> {
@@ -184,30 +159,30 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             _isLoading.value = false
         }
     }
-    
+
     /**
      * Remove a repository
      */
     suspend fun removeRepository(url: String) = mutex.withLock {
-        val pluginsFromRepo = _installedPlugins.value.filter { it.repositoryUrl != null && sameUrl(it.repositoryUrl, url) }
+        val pluginsFromRepo = _installedPlugins.value.filter { it.repositoryUrl != null && sameCloudStreamRepositoryUrl(it.repositoryUrl, url) }
         pluginsFromRepo.forEach { plugin ->
-            unloadPlugin(plugin)
-            loader.deleteExtensionFile(plugin.installKey())
+            runtime.unload(plugin)
+            loader.deleteExtensionFile(plugin.cloudStreamInstallKey())
         }
-        _installedPlugins.value = _installedPlugins.value.filter { it.repositoryUrl == null || !sameUrl(it.repositoryUrl, url) }
-        _repositories.value = _repositories.value.filter { !sameUrl(it.url, url) }
+        _installedPlugins.value = _installedPlugins.value.filter { it.repositoryUrl == null || !sameCloudStreamRepositoryUrl(it.repositoryUrl, url) }
+        _repositories.value = _repositories.value.filter { !sameCloudStreamRepositoryUrl(it.url, url) }
         saveState()
         refreshAvailablePlugins()
     }
-    
+
     /**
      * Refresh available plugins from all repositories
      */
     suspend fun refreshAvailablePlugins() {
         _isLoading.value = true
-        
+
         val allPlugins = mutableListOf<Pair<PluginRepositoryEntry, PluginInfo>>()
-        
+
         _repositories.value.forEach { repoEntry ->
             try {
                 when (val result = repoParser.fetchRepository(repoEntry.url, repoEntry.publisherPublicKey)) {
@@ -222,21 +197,21 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                 Log.e(TAG, "Error fetching ${repoEntry.url}", e)
             }
         }
-        
-        val installedKeys = _installedPlugins.value.map { it.installKey() }.toSet()
+
+        val installedKeys = _installedPlugins.value.map { it.cloudStreamInstallKey() }.toSet()
         _availablePlugins.value = allPlugins
-            .filter { (repo, plugin) -> pluginInstallId(repo.url, plugin.internalName) !in installedKeys }
+            .filter { (repo, plugin) -> cloudStreamPluginInstallId(repo.url, plugin.internalName) !in installedKeys }
             .map { it.second }
-        
+
         _isLoading.value = false
     }
-    
+
     /**
      * Get plugins from a specific repository URL (for dialog display)
      */
     suspend fun getPluginsFromRepository(repoUrl: String): List<PluginInfo> {
         return try {
-            val repository = _repositories.value.firstOrNull { sameUrl(it.url, repoUrl) }
+            val repository = _repositories.value.firstOrNull { sameCloudStreamRepositoryUrl(it.url, repoUrl) }
                 ?: return emptyList()
             when (val result = repoParser.fetchRepository(repository.url, repository.publisherPublicKey)) {
                 is RepositoryResult.Success -> result.manifest.plugins
@@ -256,38 +231,38 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
     }
 
     fun pluginInstallKey(repositoryUrl: String?, internalName: String): String =
-        pluginInstallId(repositoryUrl, internalName)
+        cloudStreamPluginInstallId(repositoryUrl, internalName)
 
     fun isPluginInstalled(repositoryUrl: String?, internalName: String): Boolean {
-        val installId = pluginInstallId(repositoryUrl, internalName)
-        return _installedPlugins.value.any { it.installKey() == installId }
+        val installId = cloudStreamPluginInstallId(repositoryUrl, internalName)
+        return _installedPlugins.value.any { it.cloudStreamInstallKey() == installId }
     }
-    
+
     // ==================== Plugin Installation ====================
-    
+
     /**
      * Install a plugin from a PluginInfo
      */
     suspend fun installPlugin(pluginInfo: PluginInfo, repoUrl: String?): Result<InstalledPlugin> = mutex.withLock {
         _isLoading.value = true
-        
+
         return try {
-            if (repoUrl.isNullOrBlank() || !_repositories.value.any { sameUrl(it.url, repoUrl) }) {
+            if (repoUrl.isNullOrBlank() || !_repositories.value.any { sameCloudStreamRepositoryUrl(it.url, repoUrl) }) {
                 return Result.failure(Exception("Plugin must come from a trusted repository"))
             }
             val trustedPlugin = verifiedRepositoryPlugin(repoUrl, pluginInfo)
                 ?: return Result.failure(Exception("Plugin is not present in the signed repository manifest"))
-            if (!isSecureRemoteUrl(trustedPlugin.url)) {
+            if (!isSecureCloudStreamPluginUrl(trustedPlugin.url)) {
                 return Result.failure(Exception("Plugin download URL must use HTTPS"))
             }
             // Check if already installed
-            val installId = pluginInstallId(repoUrl, pluginInfo.internalName)
-            if (_installedPlugins.value.any { it.installKey() == installId }) {
+            val installId = cloudStreamPluginInstallId(repoUrl, pluginInfo.internalName)
+            if (_installedPlugins.value.any { it.cloudStreamInstallKey() == installId }) {
                 return Result.failure(Exception("Plugin already installed"))
             }
-            
+
             logDebug { "Installing plugin: ${trustedPlugin.internalName} from ${trustedPlugin.url}" }
-            
+
             // Download the .cs3 file
             val file = loader.downloadExtension(
                 scraperId = installId,
@@ -298,7 +273,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             }
             logDebug { "Downloaded plugin: ${file.absolutePath}" }
 
-            verifyPluginChecksum(file, trustedPlugin.sha256)?.let { error ->
+            verifyCloudStreamPluginChecksum(file, trustedPlugin.sha256)?.let { error ->
                 loader.deleteExtensionFile(installId)
                 return Result.failure(Exception(error))
             }
@@ -306,7 +281,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                 loader.deleteExtensionFile(installId)
                 return Result.failure(Exception("Plugin validation failed"))
             }
-            
+
             // Create installed plugin record
             val installed = InstalledPlugin(
                 installId = installId,
@@ -320,9 +295,9 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                 sha256 = trustedPlugin.sha256?.lowercase(),
                 iconUrl = trustedPlugin.iconUrl
             )
-            
+
             logDebug { "Loading plugin: ${trustedPlugin.internalName}" }
-            if (!loadPlugin(installed)) {
+            if (!runtime.load(installed)) {
                 loader.unloadExtension(installId)
                 loader.deleteExtensionFile(installId)
                 return Result.failure(Exception("Plugin could not be loaded"))
@@ -332,12 +307,12 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             _installedPlugins.value = _installedPlugins.value + installed
             saveState()
             logDebug { "Saved plugin to installed list: ${trustedPlugin.internalName}" }
-            
+
             // Refresh available plugins (remove from available)
-            _availablePlugins.value = _availablePlugins.value.filter { 
-                pluginInstallId(repoUrl, it.internalName) != installId
+            _availablePlugins.value = _availablePlugins.value.filter {
+                cloudStreamPluginInstallId(repoUrl, it.internalName) != installId
             }
-            
+
             Result.success(installed)
         } catch (t: Throwable) {
             Log.e(TAG, "Error installing plugin ${pluginInfo.internalName}", t)
@@ -352,23 +327,23 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
      */
     suspend fun installPluginFromUrl(url: String, name: String): Result<InstalledPlugin> = mutex.withLock {
         _isLoading.value = true
-        
+
         return try {
             if (!BuildConfig.DEBUG) {
                 return Result.failure(Exception("Direct plugin URL installation is disabled"))
             }
-            if (!isSecureRemoteUrl(url)) {
+            if (!isSecureCloudStreamPluginUrl(url)) {
                 return Result.failure(Exception("Plugin download URL must use HTTPS"))
             }
             // Generate internal name from URL
             val internalName = PluginStateCodec.sha256(url).take(16)
-            val installId = pluginInstallId(null, internalName)
-            
+            val installId = cloudStreamPluginInstallId(null, internalName)
+
             // Check if already installed
-            if (_installedPlugins.value.any { it.installKey() == installId }) {
+            if (_installedPlugins.value.any { it.cloudStreamInstallKey() == installId }) {
                 return Result.failure(Exception("Plugin already installed"))
             }
-            
+
             // Download
             val file = loader.downloadExtension(installId, url)
                 ?: return Result.failure(Exception("Failed to download plugin"))
@@ -376,7 +351,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                 loader.deleteExtensionFile(installId)
                 return Result.failure(Exception("Plugin validation failed"))
             }
-            
+
             val installed = InstalledPlugin(
                 installId = installId,
                 internalName = internalName,
@@ -388,8 +363,8 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                 repositoryUrl = null,
                 sha256 = sha256(file)
             )
-            
-            if (!loadPlugin(installed)) {
+
+            if (!runtime.load(installed)) {
                 loader.unloadExtension(installId)
                 loader.deleteExtensionFile(installId)
                 return Result.failure(Exception("Plugin could not be loaded"))
@@ -397,7 +372,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
 
             _installedPlugins.value = _installedPlugins.value + installed
             saveState()
-            
+
             Result.success(installed)
         } catch (e: Exception) {
             Log.e(TAG, "Error installing plugin from URL", e)
@@ -406,7 +381,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             _isLoading.value = false
         }
     }
-    
+
     /**
      * Uninstall a plugin
      */
@@ -417,26 +392,26 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
     }
 
     suspend fun uninstallPlugin(repositoryUrl: String?, internalName: String) = mutex.withLock {
-        val installId = pluginInstallId(repositoryUrl, internalName)
-        val plugin = _installedPlugins.value.find { it.installKey() == installId }
+        val installId = cloudStreamPluginInstallId(repositoryUrl, internalName)
+        val plugin = _installedPlugins.value.find { it.cloudStreamInstallKey() == installId }
             ?: return@withLock
         uninstallPluginLocked(plugin)
     }
 
     private suspend fun uninstallPluginLocked(plugin: InstalledPlugin) {
-        unloadPlugin(plugin)
-        
+        runtime.unload(plugin)
+
         // Delete file
-        loader.deleteExtensionFile(plugin.installKey())
-        
+        loader.deleteExtensionFile(plugin.cloudStreamInstallKey())
+
         // Remove from list
-        _installedPlugins.value = _installedPlugins.value.filter { it.installKey() != plugin.installKey() }
+        _installedPlugins.value = _installedPlugins.value.filter { it.cloudStreamInstallKey() != plugin.cloudStreamInstallKey() }
         saveState()
-        
+
         // Refresh available plugins
         refreshAvailablePlugins()
     }
-    
+
     /**
      * Update a plugin to a newer version - thread-safe public API
      */
@@ -448,7 +423,7 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             ?: return@withLock Result.failure(Exception("Plugin is not installed"))
         updatePluginInternal(oldPlugin, newPluginInfo)
     }
-    
+
     /**
      * Internal update logic without lock - for use when already holding mutex
      */
@@ -457,11 +432,11 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
         newPluginInfo: PluginInfo
     ): Result<InstalledPlugin> {
         _isLoading.value = true
-        
+
         return try {
             val internalName = oldPlugin.internalName
-            val installId = oldPlugin.installKey()
-            if (oldPlugin.repositoryUrl.isNullOrBlank() || _repositories.value.none { sameUrl(it.url, oldPlugin.repositoryUrl) }) {
+            val installId = oldPlugin.cloudStreamInstallKey()
+            if (oldPlugin.repositoryUrl.isNullOrBlank() || _repositories.value.none { sameCloudStreamRepositoryUrl(it.url, oldPlugin.repositoryUrl) }) {
                 return Result.failure(Exception("Plugin update repository is not trusted"))
             }
             val trustedPlugin = verifiedRepositoryPlugin(oldPlugin.repositoryUrl, newPluginInfo)
@@ -469,13 +444,13 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             if (trustedPlugin.internalName != internalName) {
                 return Result.failure(Exception("Plugin update identity does not match"))
             }
-            if (!isSecureRemoteUrl(trustedPlugin.url)) {
+            if (!isSecureCloudStreamPluginUrl(trustedPlugin.url)) {
                 return Result.failure(Exception("Plugin download URL must use HTTPS"))
             }
             val temporaryFile = loader.downloadExtensionToTemporaryFile(installId, trustedPlugin.url)
                 ?: return Result.failure(Exception("Failed to download update"))
 
-            verifyPluginChecksum(temporaryFile, trustedPlugin.sha256)?.let { error ->
+            verifyCloudStreamPluginChecksum(temporaryFile, trustedPlugin.sha256)?.let { error ->
                 loader.discardTemporaryExtension(temporaryFile)
                 return Result.failure(Exception(error))
             }
@@ -485,13 +460,13 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                 return Result.failure(Exception("Plugin validation failed"))
             }
 
-            unloadPlugin(oldPlugin)
+            runtime.unload(oldPlugin)
             val replacement = loader.promoteTemporaryExtension(installId, temporaryFile)
                 ?: run {
-                    loadPlugin(oldPlugin)
+                    runtime.load(oldPlugin)
                     return Result.failure(Exception("Failed to install update"))
                 }
-            
+
             val updated = InstalledPlugin(
                 installId = installId,
                 internalName = internalName,
@@ -504,19 +479,19 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
                 sha256 = trustedPlugin.sha256?.lowercase(),
                 iconUrl = trustedPlugin.iconUrl
             )
-            
-            if (!loadPlugin(updated)) {
+
+            if (!runtime.load(updated)) {
                 loader.restoreExtension(replacement)
-                loadPlugin(oldPlugin)
+                runtime.load(oldPlugin)
                 return Result.failure(Exception("Plugin update could not be loaded"))
             }
 
             _installedPlugins.value = _installedPlugins.value.map {
-                if (it.installKey() == installId) updated else it
+                if (it.cloudStreamInstallKey() == installId) updated else it
             }
             saveState()
             loader.finalizeExtensionReplacement(replacement)
-            
+
             Result.success(updated)
         } catch (t: Throwable) {
             Log.e(TAG, "Error updating plugin ${oldPlugin.internalName}", t)
@@ -525,109 +500,18 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
             _isLoading.value = false
         }
     }
-    
-    // ==================== Plugin Loading ====================
-    
-    /**
-     * Load a single plugin
-     */
-    private suspend fun loadPlugin(installed: InstalledPlugin): Boolean {
-        try {
-            logDebug { "[loadPlugin] Starting to load: ${installed.internalName}" }
-            
-            val file = File(installed.filePath)
-            if (!file.exists()) {
-                Log.e(TAG, "[loadPlugin] Plugin file NOT FOUND: ${installed.filePath}")
-                return false
-            }
-            logDebug { "[loadPlugin] File exists: ${file.absolutePath}, size=${file.length()}" }
-            
-            val apis = loader.loadApisFromFile(installed.installKey(), file)
-            if (apis.isNotEmpty()) {
-                _loadedApis.update { current -> (current + apis).distinctBy { "${it.sourcePlugin}:${it.name}" } }
-                logDebug { "[loadPlugin] SUCCESS: Loaded ${installed.name} with ${apis.size} APIs" }
-                return true
-            } else {
-                Log.e(TAG, "[loadPlugin] FAILED: ${installed.name} - No APIs loaded!")
-                return false
-            }
-        } catch (t: Throwable) {
-            Log.e(TAG, "[loadPlugin] EXCEPTION loading ${installed.internalName}", t)
-            return false
-        }
-    }
-    
-    /**
-     * Load all installed plugins
-     */
-    private suspend fun loadAllInstalledPlugins() {
-        coroutineScope {
-            val deferred = _installedPlugins.value.map { plugin ->
-                async { loadPlugin(plugin) }
-            }
-            deferred.awaitAll()
-        }
-        
-        logDebug { "Loaded ${_loadedApis.value.size} plugins" }
-    }
-    
-    /**
-     * Unload a plugin from memory
-     */
-    private fun unloadPlugin(plugin: InstalledPlugin) {
-        val installId = plugin.installKey()
-        loader.unloadExtension(installId)
-        _loadedApis.value = _loadedApis.value.filter { 
-            it.sourcePlugin?.contains(installId) != true
-        }
-        logDebug { "Unloaded plugin ${plugin.internalName}" }
-    }
-    
-    /**
-     * Reload all plugins
-     */
+
     suspend fun reloadAllPlugins() {
-        _loadedApis.value = emptyList()
-        APIHolder.clearProviders()
-        loader.clearCaches()
-        loadAllInstalledPlugins()
+        runtime.reloadAll(_installedPlugins.value)
     }
-    
+
     fun close() {
         scope.cancel()
-        loader.clearCaches()
-    }
-
-    private fun isSecureRemoteUrl(url: String): Boolean {
-        return FluxaCoreNative.pluginIsSecureRemoteUrl(url)
-    }
-
-    private fun expandShortcode(input: String): String {
-        val trimmed = input.trim()
-        // Already a full URL
-        if (trimmed.contains("://")) return trimmed
-        // github.com/owner/repo — prepend https://
-        if (trimmed.startsWith("github.com/") || trimmed.startsWith("www.github.com/")) {
-            return "https://$trimmed"
-        }
-        // owner/repo — GitHub shorthand → raw.githubusercontent.com builds branch
-        val githubShorthand = Regex("^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$")
-        if (trimmed.matches(githubShorthand)) {
-            return "https://raw.githubusercontent.com/$trimmed/builds"
-        }
-        return trimmed
-    }
-
-    private fun normalizeRepositoryUrl(url: String): String {
-        return FluxaCoreNative.normalizePluginRepositoryUrl(url)
-    }
-
-    private fun sameUrl(left: String, right: String): Boolean {
-        return FluxaCoreNative.pluginSameRepositoryUrl(left, right)
+        runtime.close()
     }
 
     private suspend fun verifiedRepositoryPlugin(repoUrl: String, requested: PluginInfo): PluginInfo? {
-        val repository = _repositories.value.firstOrNull { sameUrl(it.url, repoUrl) } ?: return null
+        val repository = _repositories.value.firstOrNull { sameCloudStreamRepositoryUrl(it.url, repoUrl) } ?: return null
         val result = repoParser.fetchRepository(repository.url, repository.publisherPublicKey)
         val manifest = (result as? RepositoryResult.Success)?.manifest ?: return null
         return manifest.plugins.firstOrNull { candidate ->
@@ -638,40 +522,8 @@ class PluginManager @Inject constructor(@param:ApplicationContext private val co
         }
     }
 
-    private fun pluginInstallId(repositoryUrl: String?, internalName: String): String {
-        val scope = repositoryUrl?.takeIf { it.isNotBlank() } ?: "manual"
-        return PluginStateCodec.sha256("$scope:$internalName").take(24)
-    }
-
-    private fun InstalledPlugin.installKey(): String =
-        installId ?: pluginInstallId(repositoryUrl, internalName)
-
-    private fun verifyPluginChecksum(file: File, expectedSha256: String?): String? {
-        val expected = expectedSha256?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: run {
-            return "Plugin checksum is required"
-        }
-        if (!expected.matches(Regex("^[a-f0-9]{64}$"))) {
-            return "Invalid plugin checksum"
-        }
-        val actual = sha256(file)
-        return if (actual == expected) null else "Plugin checksum verification failed"
-    }
-
-    private fun sha256(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            while (true) {
-                val read = input.read(buffer)
-                if (read <= 0) break
-                digest.update(buffer, 0, read)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-
     // ==================== Auto Update Functions ====================
-    
+
     /**
      * Check all installed plugins for updates from their repositories.
      * Auto-updates plugins in background if newer version found.

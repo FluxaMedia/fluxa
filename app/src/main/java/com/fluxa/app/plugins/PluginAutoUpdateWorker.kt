@@ -10,15 +10,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import java.util.concurrent.TimeUnit
 import androidx.hilt.work.HiltWorker
 import com.fluxa.app.R
 import com.fluxa.app.common.AppStrings
@@ -124,28 +117,10 @@ class PluginAutoUpdateWorker @AssistedInject constructor(
 
     companion object {
         private const val TAG = "PluginAutoUpdateWorker"
-        private const val UNIQUE_WORK_NAME = "plugin_auto_update"
+        internal const val UNIQUE_WORK_NAME = "plugin_auto_update"
         private const val PLUGIN_UPDATE_CHANNEL_ID = "plugin_updates"
         private const val PLUGIN_UPDATE_NOTIFICATION_ID = 0x50_00
         private const val PLUGIN_UPDATE_FAILED_NOTIFICATION_ID = 0x50_01
-
-        fun enqueue(context: Context) {
-            val work = OneTimeWorkRequestBuilder<PluginAutoUpdateWorker>()
-                .setInitialDelay(5, TimeUnit.SECONDS)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                )
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .build()
-
-            WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, work)
-        }
-
-        fun cancel(context: Context) {
-            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
-        }
     }
+
 }
