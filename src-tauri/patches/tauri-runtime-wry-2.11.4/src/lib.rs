@@ -879,7 +879,14 @@ impl WindowBuilder for WindowBuilderWrapper {
 
     #[cfg(any(not(target_os = "macos"), feature = "macos-private-api"))]
     {
-      window = window.transparent(config.transparent);
+      #[cfg(target_os = "linux")]
+      {
+        window = window.transparent(false);
+      }
+      #[cfg(not(target_os = "linux"))]
+      {
+        window = window.transparent(config.transparent);
+      }
     }
     #[cfg(all(
       target_os = "macos",
