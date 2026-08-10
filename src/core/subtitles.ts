@@ -1,4 +1,4 @@
-import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex, coreSubtitleLanguageDedupKeepIndices } from './engine';
+import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex } from './engine';
 import { invoke } from '@tauri-apps/api/core';
 import {
   coreResourceFetchPlan,
@@ -96,11 +96,7 @@ export async function resolvePlaybackSubtitles(
     subtitles.unshift(preferred);
   }
 
-  const keepIndices = new Set(
-    await coreSubtitleLanguageDedupKeepIndices(subtitles.map((subtitle) => subtitle.lang)),
-  );
-  const limitedSubtitles = subtitles.filter((_, index) => keepIndices.has(index));
-  return { subtitles: limitedSubtitles, failedAddons };
+  return { subtitles, failedAddons };
 }
 
 async function tryFetchSubtitleResource(resourceUrl: string): Promise<unknown[]> {

@@ -88,12 +88,11 @@ export function usePlayerMpvLifecycle(options: Options) {
     debugLog(`subtitles: resolved=${subtitles.length}, failedAddons=${failedAddons.join(',') || 'none'}`);
     setPlayerSubtitleUrl(subtitles.find((subtitle) => /^https?:\/\//i.test(subtitle.url))?.url);
     const failedTrackAddons: string[] = [];
-    for (let index = 0; index < subtitles.length; index++) {
-      const subtitle = subtitles[index];
-      await embeddedMpvAddSubtitle(subtitle.url, subtitle.addonName ?? subtitle.label, subtitle.lang).catch(() => { if (subtitle.addonName) failedTrackAddons.push(subtitle.addonName); });
-      if (isCancelled(generation)) return;
-      if (index + 1 < subtitles.length) await new Promise((resolve) => setTimeout(resolve, 550));
-    }
+    await Promise.all(subtitles.map((subtitle) =>
+      embeddedMpvAddSubtitle(subtitle.url, subtitle.addonName ?? subtitle.label, subtitle.lang)
+        .catch(() => { if (subtitle.addonName) failedTrackAddons.push(subtitle.addonName); }),
+    ));
+    if (isCancelled(generation)) return;
     if (!isCancelled(generation)) setPlayerSubtitleWarning(Array.from(new Set([...failedAddons, ...failedTrackAddons])).length ? Array.from(new Set([...failedAddons, ...failedTrackAddons])) : null);
   }, [artworkPrefetchRef, debugLog, inNativePlayerRef, isCancelled, mpvInitializedRef, pendingArtworkRef, playerUsesTorrentRef, setPlayerSubtitleUrl, setPlayerSubtitleWarning, setPlayerTitle, setPlayerUrl, setPlayerUsesTorrent, stateRef, stopTorrent]);
 }

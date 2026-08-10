@@ -203,16 +203,6 @@ export async function coreFindPreferredSubtitleIndex(
   )) ?? -1;
 }
 
-export async function coreSubtitleLanguageDedupKeepIndices(
-  languages: (string | null | undefined)[],
-  maxPerLanguage = 2,
-): Promise<number[]> {
-  return (await coreInvoke<number[]>(
-    "subtitleLanguageDedupKeepIndices",
-    JSON.stringify({ languages: languages.map((lang) => lang ?? null), maxPerLanguage }),
-  )) ?? languages.map((_, index) => index);
-}
-
 export async function coreParseVideoId(id: string): Promise<{
   imdb?: string;
   tmdb?: string;
