@@ -88,6 +88,8 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
         .name("vulkan-player-render".into())
         .spawn(move || {
             let mut last_present = Instant::now();
+            let mut last_context_error: Option<String> = None;
+            let mut last_render_error: Option<String> = None;
             loop {
                 let w = shared.width.load(Ordering::Acquire);
                 let h = shared.height.load(Ordering::Acquire);
@@ -135,12 +137,21 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
                                     &ext_ptrs,
                                 ) {
                                     Ok(()) => {
+                                        last_context_error = None;
                                         shared.mpv_context_ready.store(true, Ordering::Release)
                                     }
                                     Err(e) => {
                                         log::error!(
                                             "linux_player_surface: mpv Vulkan context failed: {e}"
                                         );
+                                        if last_context_error.as_deref() != Some(e.as_str()) {
+                                            crate::diagnostics::report(
+                                                &app,
+                                                format!("linux_player_surface: mpv Vulkan context failed: {e}"),
+                                                sentry::Level::Error,
+                                            );
+                                            last_context_error = Some(e.clone());
+                                        }
                                         wire_error = true;
                                     }
                                 }
@@ -188,6 +199,7 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
                 match result {
                     Ok(()) => {
                         last_present = Instant::now();
+                        last_render_error = None;
                         if let Ok(mut guard) = state.player_render_state.lock() {
                             if let Some(r) = guard.as_mut() {
                                 r.report_swap();
@@ -196,6 +208,14 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
                     }
                     Err(e) => {
                         log::warn!("linux_player_surface: Vulkan render failed: {e}");
+                        if last_render_error.as_deref() != Some(e.as_str()) {
+                            crate::diagnostics::report(
+                                &app,
+                                format!("linux_player_surface: Vulkan render failed: {e}"),
+                                sentry::Level::Error,
+                            );
+                            last_render_error = Some(e.clone());
+                        }
                         std::thread::sleep(Duration::from_millis(50));
                     }
                 }
@@ -634,12 +654,26 @@ impl SurfaceTick {
                                         *self.vulkan_state.borrow_mut() =
                                             Some(VulkanState { shared, surface_handle })
                                     }
-                                    Err(e) => log::error!(
-                                        "linux_player_surface: Vulkan context creation failed: {e}"
-                                    ),
+                                    Err(e) => {
+                                        log::error!(
+                                            "linux_player_surface: Vulkan context creation failed: {e}"
+                                        );
+                                        crate::diagnostics::report(
+                                            &self.app,
+                                            format!("linux_player_surface: Vulkan context creation failed: {e}"),
+                                            sentry::Level::Error,
+                                        );
+                                    }
                                 }
                             }
-                            Err(e) => log::error!("linux_player_surface: {e}"),
+                            Err(e) => {
+                                log::error!("linux_player_surface: {e}");
+                                crate::diagnostics::report(
+                                    &self.app,
+                                    format!("linux_player_surface: {e}"),
+                                    sentry::Level::Error,
+                                );
+                            }
                         }
                     }
                 }
@@ -844,6 +878,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
             // Render callback: called by GTK when gl_area.queue_render() is invoked.
             if backend == RenderBackend::OpenGl {
                 let render_app = app_handle.clone();
+                let last_gl_render_error: RefCell<Option<String>> = RefCell::new(None);
                 gl_area.connect_render(move |area, _ctx| {
                     let state = render_app.state::<DesktopState>();
                     if state.pending_hide.load(std::sync::atomic::Ordering::Acquire) {
@@ -866,6 +901,16 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                     if let Some(r) = renderer.as_mut() {
                         if let Err(e) = r.render_opengl_frame(w, h) {
                             log::warn!("mpv OpenGL render failed: {e}");
+                            if last_gl_render_error.borrow().as_deref() != Some(e.as_str()) {
+                                crate::diagnostics::report(
+                                    &render_app,
+                                    format!("mpv OpenGL render failed: {e}"),
+                                    sentry::Level::Error,
+                                );
+                                *last_gl_render_error.borrow_mut() = Some(e.clone());
+                            }
+                        } else {
+                            *last_gl_render_error.borrow_mut() = None;
                         }
                         r.report_swap();
                     }

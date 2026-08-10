@@ -514,6 +514,8 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
 
         let mut visible = false;
         let mut last_size = (init_w, init_h);
+        let mut last_gl_render_error: Option<String> = None;
+        let mut last_vk_render_error: Option<String> = None;
 
         loop {
             while let Ok(cmd) = receiver.try_recv() {
@@ -689,7 +691,19 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
 
                             let mut renderer = state.player_render_state.lock().unwrap();
                             if let Some(r) = renderer.as_mut() {
-                                let _ = r.render_opengl_frame(last_size.0, last_size.1);
+                                if let Err(e) = r.render_opengl_frame(last_size.0, last_size.1) {
+                                    log::error!("macos_player_surface: OpenGL render failed: {e}");
+                                    if last_gl_render_error.as_deref() != Some(e.as_str()) {
+                                        crate::diagnostics::report(
+                                            &app,
+                                            format!("macos_player_surface: OpenGL render failed: {e}"),
+                                            sentry::Level::Error,
+                                        );
+                                        last_gl_render_error = Some(e.clone());
+                                    }
+                                } else {
+                                    last_gl_render_error = None;
+                                }
                             }
                         }
                         let flush_start = std::time::Instant::now();
@@ -733,9 +747,20 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                                 },
                             );
                             match result {
-                                Ok(()) => r.report_swap(),
+                                Ok(()) => {
+                                    r.report_swap();
+                                    last_vk_render_error = None;
+                                }
                                 Err(e) => {
-                                    log::warn!("macos_player_surface: Vulkan render failed: {e}")
+                                    log::warn!("macos_player_surface: Vulkan render failed: {e}");
+                                    if last_vk_render_error.as_deref() != Some(e.as_str()) {
+                                        crate::diagnostics::report(
+                                            &app,
+                                            format!("macos_player_surface: Vulkan render failed: {e}"),
+                                            sentry::Level::Error,
+                                        );
+                                        last_vk_render_error = Some(e.clone());
+                                    }
                                 }
                             }
                         }
