@@ -22,7 +22,6 @@ interface WatchlistStore {
     fun setActiveProfile(profileId: String)
     fun observeWatchlist(): Flow<List<Meta>>
     fun observeContinueWatching(): Flow<List<Meta>>
-    fun observeExternalContinueWatching(): Flow<List<Meta>>
     fun observeLiked(): Flow<List<Meta>>
     fun observeTotalWatchedDuration(): Flow<Long>
     suspend fun watchlistSnapshot(): List<Meta>

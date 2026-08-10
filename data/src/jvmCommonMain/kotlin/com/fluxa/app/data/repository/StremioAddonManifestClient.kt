@@ -59,6 +59,23 @@ class StremioAddonManifestClient @Inject constructor(
         return FluxaCoreNative.resolveManifestAssets(descriptor)?.manifest?.logo
     }
 
+
+    /**
+     * Cache-only manifest lookup. Unlike [getAddonManifest], this never performs
+     * network I/O. It is used by Nuvio Continue Watching enrichment so probing
+     * metadata cannot accidentally touch subtitle/stream-only add-ons.
+     */
+    suspend fun getCachedAddonManifest(transportUrl: String): AddonDescriptor? = withContext(Dispatchers.IO) {
+        val fetchPlan = FluxaCoreNative.manifestFetchPlan(transportUrl) ?: return@withContext null
+        val cacheKey = fetchPlan.cacheKey
+        getCached<AddonDescriptor>(cacheKey)?.let { return@withContext it.withResolvedManifestAssets() }
+        persistentCache.getManifest(cacheKey)?.let {
+            putCache(cacheKey, it)
+            return@withContext it.withResolvedManifestAssets()
+        }
+        null
+    }
+
     suspend fun getAddonManifest(
         transportUrl: String,
         forceRefresh: Boolean = false

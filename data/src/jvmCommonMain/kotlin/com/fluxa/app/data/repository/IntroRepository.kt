@@ -19,7 +19,7 @@ sealed interface IntroDbSubmitResult {
     data class Error(val reason: String) : IntroDbSubmitResult
 }
 
-internal class IntroRepository(
+class IntroRepository(
     private val introService: IntroDbService,
     private val aniSkipService: AniSkipService
 ) {

@@ -4,23 +4,17 @@ import android.content.SharedPreferences
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.ProfilePickerSettingsStore
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.data.local.safeAccentColorArgb
-import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.repository.ProfileAvatarPackRepository
 import com.fluxa.app.common.PinHasher
 import com.fluxa.app.shared.feature.profile.ProfileAvatarPackUiModel
 import com.fluxa.app.shared.feature.profile.ProfileAvatarUiModel
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
-import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
-import com.fluxa.app.shared.feature.profile.ProfilePersistence
+import com.fluxa.app.shared.feature.profile.JvmPbkdf2PinHasher
+import com.fluxa.app.shared.feature.profile.ProfileBase64Codec
+import com.fluxa.app.shared.feature.profile.ProfileManagerPersistence
 import com.fluxa.app.shared.feature.profile.ProfileStoreSnapshot
-import com.fluxa.app.shared.feature.profile.ProfileUiModel
 import com.fluxa.app.shared.feature.profile.SharedProfileDataSource
-import java.util.UUID
-import java.security.SecureRandom
-import java.security.MessageDigest
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.PBEKeySpec
+import com.fluxa.app.shared.feature.profile.toProfileUiModel
 import android.util.Base64
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,9 +26,14 @@ class AndroidProfileDataSource(
 ) : ProfileDataSource by SharedProfileDataSource(AndroidProfileStore(profileManager, pickerSettingsStore))
 
 private class AndroidProfileStore(
-    private val profileManager: ProfileManager,
-    private val pickerSettingsStore: ProfilePickerSettingsStore
-) : ProfilePersistence {
+    profileManager: ProfileManager,
+    private val pickerSettingsStore: ProfilePickerSettingsStore,
+) : ProfileManagerPersistence(
+    profileManager = profileManager,
+    initializeNewProfile = { profile ->
+        profile.copy(localAddons = listOf("https://v3-cinemeta.strem.io/manifest.json"))
+    },
+) {
     private val avatarPackRepository = ProfileAvatarPackRepository()
     private val state = MutableStateFlow(snapshot())
 
@@ -50,8 +49,8 @@ private class AndroidProfileStore(
         val activeId = profileManager.getLastActiveProfileId()
         val pickerSettings = pickerSettingsStore.get()
         return ProfileStoreSnapshot(
-            activeProfile = profiles.firstOrNull { it.id == activeId }?.toUiModel(),
-            profiles = profiles.map(UserProfile::toUiModel),
+            activeProfile = profiles.firstOrNull { it.id == activeId }?.toProfileUiModel(),
+            profiles = profiles.map(UserProfile::toProfileUiModel),
             pickerBackgroundUrl = pickerSettings.backgroundUrl,
             avatarPacks = pickerSettings.avatarPacks.map { pack ->
                 ProfileAvatarPackUiModel(
@@ -91,88 +90,20 @@ private class AndroidProfileStore(
         }
     }
 
-    override suspend fun pinHash(profileId: String): String? =
-        profileManager.getProfiles().firstOrNull { it.id == profileId }?.pinHash
+    private val pinHasher = JvmPbkdf2PinHasher(AndroidBase64Codec)
 
-    override suspend fun createPinHash(pin: String): String = AndroidPinHasher.hash(pin)
+    override suspend fun createPinHash(pin: String): String = pinHasher.hash(pin)
 
     override suspend fun verifyPin(profileId: String, pin: String, storedHash: String): Boolean {
-        if (AndroidPinHasher.verify(pin, storedHash)) return true
+        if (pinHasher.verify(pin, storedHash)) return true
         if (storedHash.length != 64 || PinHasher.hash(pin) != storedHash) return false
-        profileManager.updateProfile(profileId) { it.copy(pinHash = AndroidPinHasher.hash(pin)) }
+        profileManager.updateProfile(profileId) { it.copy(pinHash = pinHasher.hash(pin)) }
         return true
     }
-
-    override suspend fun canAttemptPin(profileId: String): Boolean = profileManager.canAttemptPin(profileId)
-
-    override suspend fun recordPinFailure(profileId: String) {
-        profileManager.recordPinFailure(profileId)
-    }
-
-    override suspend fun clearPinFailures(profileId: String) {
-        profileManager.clearPinFailures(profileId)
-    }
-
-    override suspend fun activate(profileId: String) {
-        profileManager.setLastActiveProfile(profileManager.getProfiles().firstOrNull { it.id == profileId })
-    }
-
-    override suspend fun delete(profileId: String) {
-        profileManager.deleteProfileById(profileId)
-    }
-
-    override suspend fun save(edit: ProfileEditUiModel, pinHash: String?): String {
-        val existing = edit.id?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
-        val profile = existing?.copy(
-            profileName = edit.name,
-            avatarUrl = edit.avatarUrl,
-            pinHash = pinHash,
-            biometricEnabled = edit.biometricEnabled
-        ) ?: UserProfile(
-            id = UUID.randomUUID().toString(),
-            email = edit.name,
-            profileName = edit.name,
-            authKey = "",
-            language = "en",
-            avatarUrl = edit.avatarUrl,
-            pinHash = pinHash,
-            biometricEnabled = edit.biometricEnabled,
-            localAddons = listOf("https://v3-cinemeta.strem.io/manifest.json")
-        )
-        profileManager.saveProfile(profile)
-        return profile.id
-    }
 }
 
-private object AndroidPinHasher {
-    private const val ITERATIONS = 210_000
-    private const val KEY_LENGTH_BITS = 256
-
-    fun hash(pin: String): String {
-        val salt = ByteArray(16).also(SecureRandom()::nextBytes)
-        val derived = derive(pin, salt)
-        return "pbkdf2-sha256:$ITERATIONS:${Base64.encodeToString(salt, Base64.NO_WRAP)}:${Base64.encodeToString(derived, Base64.NO_WRAP)}"
-    }
-
-    fun verify(pin: String, storedHash: String): Boolean {
-        val parts = storedHash.split(':')
-        if (parts.size != 4 || parts[0] != "pbkdf2-sha256") return false
-        val iterations = parts[1].toIntOrNull() ?: return false
-        val salt = runCatching { Base64.decode(parts[2], Base64.NO_WRAP) }.getOrNull() ?: return false
-        val expected = runCatching { Base64.decode(parts[3], Base64.NO_WRAP) }.getOrNull() ?: return false
-        return MessageDigest.isEqual(derive(pin, salt, iterations), expected)
-    }
-
-    private fun derive(pin: String, salt: ByteArray, iterations: Int = ITERATIONS): ByteArray =
-        SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(PBEKeySpec(pin.toCharArray(), salt, iterations, KEY_LENGTH_BITS)).encoded
+private object AndroidBase64Codec : ProfileBase64Codec {
+    override fun encode(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.NO_WRAP)
+    override fun decode(value: String): ByteArray? =
+        runCatching { Base64.decode(value, Base64.NO_WRAP) }.getOrNull()
 }
-
-private fun UserProfile.toUiModel(): ProfileUiModel = ProfileUiModel(
-    id = id,
-    name = profileName?.takeIf { it.isNotBlank() } ?: email,
-    avatarUrl = avatarUrl,
-    language = safeLanguage,
-    accentColorArgb = safeAccentColorArgb.toLong() and 0xffffffffL,
-    hasPin = !pinHash.isNullOrBlank(),
-    biometricEnabled = biometricEnabled == true
-)

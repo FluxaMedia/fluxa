@@ -18,7 +18,6 @@ class InMemoryWatchlistStore : WatchlistStore {
 
     override fun observeWatchlist(): Flow<List<Meta>> = watchlist
     override fun observeContinueWatching(): Flow<List<Meta>> = progress
-    override fun observeExternalContinueWatching(): Flow<List<Meta>> = externalProgress
     override fun observeLiked(): Flow<List<Meta>> = liked
     override fun observeTotalWatchedDuration(): Flow<Long> = watchedDuration
     override suspend fun watchlistSnapshot(): List<Meta> = watchlist.value

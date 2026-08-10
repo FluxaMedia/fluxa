@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.catalog.stableLazyKey
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.CatalogCard
@@ -144,7 +145,7 @@ private fun LibraryFolderSectionRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(section.items, key = { "${it.type}:${it.id}" }) { item ->
+            items(section.items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
                 CatalogCard(model = item.card, onClick = { onItemSelected(item) })
             }
         }

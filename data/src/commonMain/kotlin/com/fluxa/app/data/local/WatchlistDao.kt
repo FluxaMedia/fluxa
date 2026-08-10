@@ -9,6 +9,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -258,46 +259,45 @@ interface WatchlistDao {
     @Query("SELECT isLiked FROM user_feedback WHERE profileId = :profileId AND contentId = :contentId LIMIT 1")
     suspend fun getFeedback(profileId: String, contentId: String): Boolean?
 
+    @Query("SELECT videoId FROM watched_episodes WHERE profileId = :profileId AND seriesId = :seriesId")
+    suspend fun getLocalWatchedEpisodeIds(profileId: String, seriesId: String): List<String>
+
     @Query(
-        """
-        SELECT videoId FROM watched_episodes WHERE profileId = :profileId AND seriesId = :seriesId
-        UNION
-        SELECT videoId FROM external_watched_episodes WHERE profileId = :profileId AND seriesId = :seriesId
-        """
+        "SELECT videoId FROM external_watched_episodes " +
+            "WHERE profileId = :profileId AND provider = :providerNamespace AND seriesId = :seriesId"
     )
-    suspend fun getWatchedEpisodeIds(profileId: String, seriesId: String): List<String>
+    suspend fun getExternalWatchedEpisodeIds(
+        profileId: String,
+        providerNamespace: String,
+        seriesId: String
+    ): List<String>
 
     @Query(
         """
         SELECT COALESCE(SUM(duration), 0) FROM (
             SELECT MAX(duration) AS duration
             FROM watched_content_durations
-            WHERE profileId = :profileId
+            WHERE profileId = :profileId AND source = 'local'
             GROUP BY contentId, videoId
         )
         """
     )
     fun observeTotalWatchedContentDuration(profileId: String): Flow<Long>
 
-    @Query(
-        """
-        SELECT * FROM external_playback_progress
-        WHERE profileId = :profileId
-          AND ((timeOffset > 0 AND duration > 0) OR (type IN ('series', 'tv', 'anime') AND videoId IS NOT NULL AND videoId != '' AND timeOffset <= 0 AND duration <= 0))
-        ORDER BY syncedAt DESC
-        """
-    )
-    fun observeExternalContinueWatching(profileId: String): Flow<List<ExternalPlaybackProgressEntity>>
+
 
     @Query(
         """
         SELECT * FROM external_playback_progress
-        WHERE profileId = :profileId
+        WHERE profileId = :profileId AND provider = :providerNamespace
           AND ((timeOffset > 0 AND duration > 0) OR (type IN ('series', 'tv', 'anime') AND videoId IS NOT NULL AND videoId != '' AND timeOffset <= 0 AND duration <= 0))
         ORDER BY syncedAt DESC
         """
     )
-    suspend fun getExternalContinueWatchingSnapshot(profileId: String): List<ExternalPlaybackProgressEntity>
+    suspend fun getExternalContinueWatchingSnapshotByProvider(
+        profileId: String,
+        providerNamespace: String
+    ): List<ExternalPlaybackProgressEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertContent(item: ContentItemEntity)
@@ -371,6 +371,9 @@ interface WatchlistDao {
     @Query("DELETE FROM external_playback_progress WHERE profileId = :profileId AND provider = :provider")
     suspend fun deleteExternalPlaybackProgressByProvider(profileId: String, provider: String)
 
+    @Query("DELETE FROM external_playback_progress WHERE profileId = :profileId AND provider LIKE :providerPrefix || '%' ")
+    suspend fun deleteExternalPlaybackProgressByProviderPrefix(profileId: String, providerPrefix: String)
+
     @Query(
         """
         SELECT * FROM external_playback_progress
@@ -384,6 +387,85 @@ interface WatchlistDao {
     @Query("DELETE FROM external_watched_episodes WHERE profileId = :profileId AND provider = :provider")
     suspend fun deleteExternalWatchedEpisodes(profileId: String, provider: String)
 
+    @Query("DELETE FROM external_watched_episodes WHERE profileId = :profileId AND provider LIKE :providerPrefix || '%' ")
+    suspend fun deleteExternalWatchedEpisodesByProviderPrefix(profileId: String, providerPrefix: String)
+
     @Query("DELETE FROM watched_content_durations WHERE profileId = :profileId AND source = :source")
     suspend fun deleteWatchedContentDurationsBySource(profileId: String, source: String)
+
+    @Query("DELETE FROM watched_content_durations WHERE profileId = :profileId AND source LIKE :sourcePrefix || '%' ")
+    suspend fun deleteWatchedContentDurationsBySourcePrefix(profileId: String, sourcePrefix: String)
+    @Transaction
+    suspend fun replaceExternalPlaybackProgressForProvider(
+        profileId: String,
+        provider: String,
+        items: List<ExternalPlaybackProgressEntity>
+    ) {
+        deleteExternalPlaybackProgressByProvider(profileId, provider)
+        if (items.isNotEmpty()) upsertExternalPlaybackProgress(items)
+    }
+
+    @Transaction
+    suspend fun replaceExternalWatchedEpisodesForProvider(
+        profileId: String,
+        provider: String,
+        items: List<ExternalWatchedEpisodeEntity>
+    ) {
+        deleteExternalWatchedEpisodes(profileId, provider)
+        if (items.isNotEmpty()) upsertExternalWatchedEpisodes(items)
+    }
+
+    @Transaction
+    suspend fun replaceExternalProviderSnapshot(
+        profileId: String,
+        provider: String,
+        progressItems: List<ExternalPlaybackProgressEntity>,
+        watchedEpisodeItems: List<ExternalWatchedEpisodeEntity>
+    ) {
+        deleteExternalPlaybackProgressByProvider(profileId, provider)
+        deleteExternalWatchedEpisodes(profileId, provider)
+        if (progressItems.isNotEmpty()) upsertExternalPlaybackProgress(progressItems)
+        if (watchedEpisodeItems.isNotEmpty()) upsertExternalWatchedEpisodes(watchedEpisodeItems)
+    }
+
+    @Transaction
+    suspend fun replaceWatchedDurationsForSource(
+        profileId: String,
+        source: String,
+        items: List<WatchedContentDurationEntity>
+    ) {
+        deleteWatchedContentDurationsBySource(profileId, source)
+        if (items.isNotEmpty()) upsertWatchedContentDurations(items)
+    }
+
+    @Transaction
+    suspend fun clearExternalProviderData(
+        profileId: String,
+        providerNamespace: String,
+        legacyProvider: String
+    ) {
+        deleteExternalPlaybackProgressByProvider(profileId, providerNamespace)
+        deleteExternalWatchedEpisodes(profileId, providerNamespace)
+        deleteWatchedContentDurationsBySource(profileId, providerNamespace)
+        if (legacyProvider != providerNamespace) {
+            deleteExternalPlaybackProgressByProvider(profileId, legacyProvider)
+            deleteExternalWatchedEpisodes(profileId, legacyProvider)
+            deleteWatchedContentDurationsBySource(profileId, legacyProvider)
+        }
+    }
+
+    @Transaction
+    suspend fun clearAllExternalProviderAccounts(
+        profileId: String,
+        providerPrefix: String,
+        legacyProvider: String
+    ) {
+        deleteExternalPlaybackProgressByProviderPrefix(profileId, providerPrefix)
+        deleteExternalWatchedEpisodesByProviderPrefix(profileId, providerPrefix)
+        deleteWatchedContentDurationsBySourcePrefix(profileId, providerPrefix)
+        deleteExternalPlaybackProgressByProvider(profileId, legacyProvider)
+        deleteExternalWatchedEpisodes(profileId, legacyProvider)
+        deleteWatchedContentDurationsBySource(profileId, legacyProvider)
+    }
+
 }

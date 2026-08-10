@@ -125,12 +125,15 @@ class ProfileManager @Inject constructor(
         } else {
             emptySet()
         }
-        return FluxaCoreNative.sanitizeProfile(
+        val sanitized = FluxaCoreNative.sanitizeProfile(
             profile = profile,
             mirroredAddons = mirroredAddons,
             mergeMirroredAddons = mergeMirroredAddons,
             type = UserProfile::class.java
         ) ?: profile.withStructuredSettings()
+        return sanitized
+            .withKotlinOwnedProviderStateFrom(profile)
+            .withPinnedLegacyStremioIdentity()
     }
 
     private fun localAddonsKey(profile: UserProfile): String {
@@ -191,4 +194,16 @@ class ProfileManager @Inject constructor(
     }
 
     private fun pinAttemptKey(profileId: String): String = "pin_attempt_$profileId"
+}
+
+private fun UserProfile.withKotlinOwnedProviderStateFrom(source: UserProfile): UserProfile = copy(
+    stremioUserId = source.stremioUserId,
+    stremioEmail = source.stremioEmail,
+    providerSyncTimestamps = source.providerSyncTimestamps,
+)
+
+private fun UserProfile.withPinnedLegacyStremioIdentity(): UserProfile {
+    if (authKey.isBlank()) return this
+    if (!stremioUserId.isNullOrBlank() || !stremioEmail.isNullOrBlank()) return this
+    return copy(stremioEmail = email.takeIf(String::isNotBlank))
 }

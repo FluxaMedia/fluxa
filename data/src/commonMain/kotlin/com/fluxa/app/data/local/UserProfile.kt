@@ -1,12 +1,14 @@
 package com.fluxa.app.data.local
 
 import com.fluxa.app.common.Constants
-import com.fluxa.app.data.remote.Meta
 
 data class UserProfile(
     val id: String,
     val email: String,
     val authKey: String,
+    /** Stable Stremio account identity; independent from the Fluxa profile email. */
+    val stremioUserId: String? = null,
+    val stremioEmail: String? = null,
     val profileName: String? = null,
     val colorArgb: Int = 0xFFFFFFFF.toInt(),
     val avatarUrl: String? = null,
@@ -32,7 +34,8 @@ data class UserProfile(
     val forceSoftwareAudio: Boolean? = false,
     val audioDecoderMode: String? = null,
     val preferredPlayer: String? = "internal",
-    val continueWatchingSource: String? = "stremio",
+    val externalPlayerTarget: String? = null,
+    val continueWatchingSource: String? = "local",
     val syncCwSourceOfTruth: String? = "",
     val syncCwRanking: String? = "last_watched",
     val integrationLibrarySource: String? = "local",
@@ -45,8 +48,8 @@ data class UserProfile(
     val nuvioEmail: String? = null,
     val nuvioProfileIndex: Int? = null,
     val nuvioLastSyncAt: Long? = null,
-    val nuvioLibrarySnapshot: List<Meta>? = null,
     val externalSyncFailedProviders: Set<String>? = null,
+    val providerSyncTimestamps: Map<String, Long>? = null,
     val traktAccessToken: String? = null,
     val traktRefreshToken: String? = null,
     val traktTokenExpiresAt: Long? = null,
@@ -85,7 +88,13 @@ data class UserProfile(
     val continueWatchingHideTitles: Boolean? = false,
     val heroFollowsFocusedItem: Boolean? = false,
     val blurUnwatchedEpisodes: Boolean? = false,
-    val episodeCardsLayout: String? = "list",
+    val detailScreenStyle: String? = "cinematic",
+    val detailPreferClearlogo: Boolean? = true,
+    val detailShowEpisodeDescriptions: Boolean? = true,
+    val detailShowCast: Boolean? = true,
+    val detailShowRecommendations: Boolean? = true,
+    val detailCollapsingHero: Boolean? = true,
+    val episodeCardsLayout: String? = "carousel",
     val expandedPostersEnabled: Boolean? = false,
     val expandedPostersDelaySeconds: Int? = 2,
     val trailerOnHomeHeroEnabled: Boolean? = false,
@@ -191,7 +200,21 @@ data class UserProfile(
     val safeContinueWatchingHideTitles: Boolean get() = continueWatchingHideTitles ?: appearanceSettings?.continueWatchingHideTitles ?: false
     val safeHeroFollowsFocusedItem: Boolean get() = heroFollowsFocusedItem ?: false
     val safeBlurUnwatchedEpisodes: Boolean get() = blurUnwatchedEpisodes ?: false
-    val safeEpisodeCardsLayout: String get() = episodeCardsLayout ?: "list"
+    val safeDetailScreenStyle: String get() = when (val style = detailScreenStyle ?: appearanceSettings?.detailScreenStyle) {
+        "classic", "compact" -> style
+        else -> "cinematic"
+    }
+    val safeDetailPreferClearlogo: Boolean get() = detailPreferClearlogo ?: appearanceSettings?.detailPreferClearlogo ?: true
+    val safeDetailShowEpisodeDescriptions: Boolean get() = detailShowEpisodeDescriptions ?: appearanceSettings?.detailShowEpisodeDescriptions ?: true
+    val safeDetailShowCast: Boolean get() = detailShowCast ?: appearanceSettings?.detailShowCast ?: true
+    val safeDetailShowRecommendations: Boolean get() = detailShowRecommendations ?: appearanceSettings?.detailShowRecommendations ?: true
+    val safeDetailCollapsingHero: Boolean get() = detailCollapsingHero ?: appearanceSettings?.detailCollapsingHero ?: true
+    val safeEpisodeCardsLayout: String get() = when (val layout = episodeCardsLayout ?: appearanceSettings?.episodeCardsLayout) {
+        "list" -> "list"
+        "two_column" -> "two_column"
+        "carousel", "horizontal", "grid" -> "carousel"
+        else -> "carousel"
+    }
     val safeExpandedPostersEnabled: Boolean get() = expandedPostersEnabled ?: false
     val safeExpandedPostersDelaySeconds: Int get() = (expandedPostersDelaySeconds ?: 2).coerceIn(0, 10)
     val safeTrailerOnHomeHeroEnabled: Boolean get() = trailerOnHomeHeroEnabled ?: false
@@ -297,6 +320,7 @@ data class UserProfile(
                 forceSoftwareAudio = forceSoftwareAudio,
                 audioDecoderMode = audioDecoderMode,
                 preferredPlayer = preferredPlayer,
+                externalPlayerTarget = externalPlayerTarget,
                 autoSkipIntro = autoSkipIntro,
                 autoPlayNextEpisode = autoPlayNextEpisode,
                 nextEpisodeThresholdPercent = nextEpisodeThresholdPercent,
@@ -351,6 +375,13 @@ data class UserProfile(
                 posterLandscapeMode = posterLandscapeMode,
                 posterHideTitles = posterHideTitles,
                 detailEpisodeViewMode = detailEpisodeViewMode,
+                detailScreenStyle = detailScreenStyle,
+                detailPreferClearlogo = detailPreferClearlogo,
+                detailShowEpisodeDescriptions = detailShowEpisodeDescriptions,
+                detailShowCast = detailShowCast,
+                detailShowRecommendations = detailShowRecommendations,
+                detailCollapsingHero = detailCollapsingHero,
+                episodeCardsLayout = episodeCardsLayout,
                 detailSeasonSelectorMode = detailSeasonSelectorMode,
                 detailSeasonPostersOnHero = detailSeasonPostersOnHero,
                 homeSeasonPostersOnHero = homeSeasonPostersOnHero,

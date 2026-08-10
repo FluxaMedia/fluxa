@@ -78,8 +78,10 @@ internal class HomeTraktCoordinator(
             traktRepository.getTraktWatchedState(token)
         } ?: TraktWatchedState()
         setWatchedState(watchedState)
-        watchlistManager.replaceExternalWatchedEpisodes("trakt", watchedState.episodeIdsBySeries)
-        watchlistManager.replaceExternalWatchedContentDurations("trakt", watchedState.durationRecords)
+        profile?.providerDataOwner(ThirdPartyProviderId.TRAKT)?.let { owner ->
+            watchlistManager.replaceExternalWatchedEpisodes(owner, watchedState.episodeIdsBySeries)
+            watchlistManager.replaceExternalWatchedContentDurations(owner, watchedState.durationRecords)
+        }
     }
 
     fun refreshExternalContinueWatching() {

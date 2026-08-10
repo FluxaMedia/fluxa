@@ -40,19 +40,6 @@ interface PlatformFileStore {
     suspend fun exists(path: String): Boolean
 }
 
-data class PlatformScheduledWork(
-    val id: String,
-    val earliestRunAtMillis: Long,
-    val payload: Map<String, String> = emptyMap(),
-    val requiresNetwork: Boolean = false,
-    val requiresUnmeteredNetwork: Boolean = false
-)
-
-interface PlatformWorkScheduler {
-    suspend fun schedule(work: PlatformScheduledWork)
-    suspend fun cancel(id: String)
-}
-
 interface PlatformClock {
     fun currentTimeMillis(): Long
 }
@@ -71,7 +58,6 @@ interface PlatformDataServices {
     val keyValueStore: PlatformKeyValueStore
     val secureStore: PlatformSecureStore
     val fileStore: PlatformFileStore
-    val workScheduler: PlatformWorkScheduler
     val clock: PlatformClock
     val capabilities: PlatformCapabilities
 }

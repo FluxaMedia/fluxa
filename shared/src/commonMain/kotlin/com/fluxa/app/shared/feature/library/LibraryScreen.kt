@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -50,16 +49,20 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.catalog.stableLazyKey
+import com.fluxa.app.shared.feature.localmedia.LocalMediaKind
+import com.fluxa.app.shared.feature.localmedia.LocalMediaSourceInput
+import com.fluxa.app.shared.feature.localmedia.LocalMediaSourceType
 import com.fluxa.app.shared.feature.discover.DiscoverDropdownFilter
 import com.fluxa.app.shared.feature.discover.DiscoverFilterOptionUiModel
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
-import com.fluxa.app.ui.catalog.LocalWindowWidthClass
-import com.fluxa.app.ui.catalog.gridColumns
 
 @Composable
 fun LibraryScreen(
@@ -121,12 +124,14 @@ fun LibraryScreen(
                                 LibrarySection.Planned to state.planned.size,
                                 LibrarySection.Completed to state.completed.size,
                                 LibrarySection.Favorites to state.favorites.size,
+                                LibrarySection.LocalMedia to state.localMediaRows.sumOf { it.items.size },
                                 LibrarySection.Downloads to state.downloadGroups.size,
                                 LibrarySection.Collections to state.collections.size
                             ),
                             plannedLabelKey = state.plannedLabelKey,
                             completedLabelKey = state.completedLabelKey,
                             completedSectionEnabled = state.completedSectionEnabled,
+                            localMediaSupported = state.localMediaSupported,
                             onSectionSelected = { section = it },
                             language = language
                         )
@@ -144,6 +149,12 @@ fun LibraryScreen(
                                 onRenameClick = { editingCollectionId = it },
                                 onDeleteClick = { onAction(LibraryAction.CollectionDeleted(it)) }
                             )
+                            section == LibrarySection.LocalMedia -> LocalMediaLibrarySection(
+                                state = state,
+                                language = language,
+                                onAction = onAction,
+                                onItemSelected = onItemSelected,
+                            )
                             section == LibrarySection.Downloads -> LibraryDownloadFoldersSection(
                                 groups = state.downloadGroups,
                                 language = language,
@@ -154,7 +165,7 @@ fun LibraryScreen(
                                     LibrarySection.Planned -> state.planned
                                     LibrarySection.Completed -> state.completed
                                     LibrarySection.Favorites -> state.favorites
-                                    else -> emptyList()
+                                    LibrarySection.LocalMedia, LibrarySection.Downloads, LibrarySection.Collections -> emptyList()
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     LibraryTypeDropdown(typeFilter, language) { typeFilter = it }
@@ -215,10 +226,14 @@ private fun LibrarySectionChips(
     plannedLabelKey: String,
     completedLabelKey: String,
     completedSectionEnabled: Boolean,
+    localMediaSupported: Boolean,
     onSectionSelected: (LibrarySection) -> Unit,
     language: String?
 ) {
-    val visibleSections = LibrarySection.entries.filter { it != LibrarySection.Completed || completedSectionEnabled }
+    val visibleSections = LibrarySection.entries.filter { entry ->
+        (entry != LibrarySection.Completed || completedSectionEnabled) &&
+            (entry != LibrarySection.LocalMedia || localMediaSupported)
+    }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -230,6 +245,7 @@ private fun LibrarySectionChips(
                 LibrarySection.Planned -> AppStrings.t(language, plannedLabelKey)
                 LibrarySection.Completed -> AppStrings.t(language, completedLabelKey)
                 LibrarySection.Favorites -> AppStrings.t(language, "auto.favorites")
+                LibrarySection.LocalMedia -> AppStrings.t(language, "library.local_media")
                 LibrarySection.Downloads -> AppStrings.t(language, "auto.downloads")
                 LibrarySection.Collections -> AppStrings.t(language, "auto.my_collections")
             }
@@ -296,9 +312,9 @@ private fun LibrarySourceDropdown(current: String, available: List<String>, lang
 
 @Composable
 private fun LibraryItemGrid(
-    items: List<com.fluxa.app.shared.feature.catalog.CatalogItemUiModel>,
+    items: List<CatalogItemUiModel>,
     language: String?,
-    onItemSelected: (com.fluxa.app.shared.feature.catalog.CatalogItemUiModel) -> Unit
+    onItemSelected: (CatalogItemUiModel) -> Unit
 ) {
     if (items.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -307,16 +323,223 @@ private fun LibraryItemGrid(
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(LocalWindowWidthClass.current.gridColumns()),
+        columns = com.fluxa.app.ui.catalog.rememberCatalogGridCells(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize().focusRestorer()
     ) {
-        items(items, key = { "${it.type}:${it.id}" }) { item ->
-            CatalogCard(model = item.card.copy(showTitleBar = true), onClick = { onItemSelected(item) })
+        items(items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
+            val card = remember(item.card) { item.card.copy(showTitleBar = true) }
+            CatalogCard(model = card, onClick = { onItemSelected(item) })
         }
     }
+}
+
+@Composable
+private fun LocalMediaLibrarySection(
+    state: LibraryUiState,
+    language: String?,
+    onAction: (LibraryAction) -> Unit,
+    onItemSelected: (CatalogItemUiModel) -> Unit,
+) {
+    var showNasDialog by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            item {
+                TextButton(onClick = { onAction(LibraryAction.LocalMediaFolderPickerRequested(LocalMediaKind.Movies)) }) {
+                    Text(AppStrings.t(language, "library.local_media_add_movies_folder"), color = Color.White)
+                }
+            }
+            item {
+                TextButton(onClick = { onAction(LibraryAction.LocalMediaFolderPickerRequested(LocalMediaKind.TvShows)) }) {
+                    Text(AppStrings.t(language, "library.local_media_add_tv_folder"), color = Color.White)
+                }
+            }
+            item {
+                TextButton(onClick = { onAction(LibraryAction.LocalMediaFolderPickerRequested(LocalMediaKind.Anime)) }) {
+                    Text(AppStrings.t(language, "library.local_media_add_anime_folder"), color = Color.White)
+                }
+            }
+            item {
+                TextButton(onClick = { showNasDialog = true }) {
+                    Text(AppStrings.t(language, "library.local_media_add_nas"), color = Color.White)
+                }
+            }
+            item {
+                TextButton(
+                    onClick = { onAction(LibraryAction.LocalMediaScanRequested()) },
+                    enabled = !state.localMediaIsScanning,
+                ) {
+                    Text(
+                        AppStrings.t(language, if (state.localMediaIsScanning) "library.local_media_scanning" else "library.local_media_scan"),
+                        color = Color.White,
+                    )
+                }
+            }
+        }
+        if (state.localMediaSources.isNotEmpty()) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(state.localMediaSources, key = { it.id }) { source ->
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(alpha = 0.05f))
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(source.displayName, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                "${source.kind.label(language)} · ${source.sourceType.label(language)}",
+                                color = Color.White.copy(alpha = 0.45f),
+                                fontSize = 10.sp,
+                            )
+                        }
+                        TextButton(onClick = { onAction(LibraryAction.LocalMediaSourceRemoved(source.id)) }) {
+                            Text(AppStrings.t(language, "library.local_media_remove"), color = FluxaColors.errorRed, fontSize = 10.sp)
+                        }
+                    }
+                }
+            }
+        }
+        if (state.localMediaError != null) {
+            Text(
+                state.localMediaError,
+                color = FluxaColors.errorRed,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
+        Text(
+            "${state.localMediaIndexedFileCount} ${AppStrings.t(language, "library.local_media_files_indexed")}" +
+                if (state.localMediaUnmatchedFileCount > 0) " · ${state.localMediaUnmatchedFileCount} ${AppStrings.t(language, "library.local_media_unmatched")}" else "",
+            color = Color.White.copy(alpha = 0.45f),
+            fontSize = 11.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        if (state.localMediaRows.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(AppStrings.t(language, "library.local_media_empty"), color = Color.White.copy(alpha = 0.5f))
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                items(state.localMediaRows, key = { it.id }) { row ->
+                    Column {
+                        Text(
+                            row.title,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        )
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            items(row.items, key = { it.stableLazyKey() }) { item ->
+                                CatalogCard(model = item.card, onClick = { onItemSelected(item) })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (showNasDialog) {
+        LocalMediaNasDialog(
+            language = language,
+            onDismiss = { showNasDialog = false },
+            onConfirm = {
+                onAction(LibraryAction.LocalMediaSourceAdded(it))
+                onAction(LibraryAction.LocalMediaScanRequested())
+                showNasDialog = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun LocalMediaNasDialog(
+    language: String?,
+    onDismiss: () -> Unit,
+    onConfirm: (LocalMediaSourceInput) -> Unit,
+) {
+    var kind by remember { mutableStateOf(LocalMediaKind.Movies) }
+    var sourceType by remember { mutableStateOf(LocalMediaSourceType.Smb) }
+    var location by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(AppStrings.t(language, "library.local_media_add_nas_library"), color = Color.White) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LocalMediaKind.entries.forEach { candidate ->
+                        TextButton(onClick = { kind = candidate }) {
+                            Text(candidate.label(language), color = if (kind == candidate) Color.White else Color.White.copy(alpha = 0.45f))
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(LocalMediaSourceType.Smb, LocalMediaSourceType.WebDav).forEach { candidate ->
+                        TextButton(onClick = { sourceType = candidate }) {
+                            Text(candidate.label(language), color = if (sourceType == candidate) Color.White else Color.White.copy(alpha = 0.45f))
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text(if (sourceType == LocalMediaSourceType.Smb) "smb://server/share/Movies" else "https://server/dav/Movies/") },
+                    singleLine = true,
+                )
+                OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text(AppStrings.t(language, "library.local_media_username_optional")) }, singleLine = true)
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(AppStrings.t(language, "library.local_media_password_optional")) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(LocalMediaSourceInput(kind, sourceType, location.trim(), username = username, password = password))
+                },
+                enabled = location.isNotBlank(),
+            ) { Text(AppStrings.t(language, "library.local_media_add"), color = Color.White) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(AppStrings.t(language, "auto.cancel"), color = Color.White.copy(alpha = 0.6f)) } },
+        containerColor = Color(0xFF1A1D26),
+    )
+}
+
+private fun LocalMediaKind.label(language: String?): String = when (this) {
+    LocalMediaKind.Movies -> AppStrings.t(language, "library.local_media_movies")
+    LocalMediaKind.TvShows -> AppStrings.t(language, "library.local_media_tv_shows")
+    LocalMediaKind.Anime -> AppStrings.t(language, "auto.anime")
+}
+
+private fun LocalMediaSourceType.label(language: String?): String = when (this) {
+    LocalMediaSourceType.LocalFolder -> AppStrings.t(language, "library.local_media_folder")
+    LocalMediaSourceType.Smb -> "SMB"
+    LocalMediaSourceType.WebDav -> "WebDAV"
 }
 
 @Composable

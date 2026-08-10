@@ -3,15 +3,10 @@ package com.fluxa.app.data.repository
 import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeLanguage
-import com.fluxa.app.data.local.safeLocalAddons
 import com.fluxa.app.data.platform.PlatformKeyValueStore
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.common.AppStrings
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Named
@@ -24,14 +19,12 @@ import com.google.gson.JsonObject
 class TraktRepository @Inject constructor(
     @param:Named("TraktSyncDelta") private val syncCache: PlatformKeyValueStore,
     private val externalSyncApi: ExternalSyncApi,
-    private val addonRepository: AddonRepository,
     private val externalLibraryClient: ExternalLibraryClient,
     private val traktSyncClient: TraktSyncClient,
     private val gson: Gson,
     private val oauthClientConfig: OAuthClientConfig
 ) {
     private val TRAKT_KEY = PlatformSecrets.traktClientId
-    private val MAX_CONCURRENT_TRAKT_DETAIL_RESOLUTION = 6
 
     private val traktCatalogClient by lazy {
         TraktCatalogClient(
@@ -41,8 +34,8 @@ class TraktRepository @Inject constructor(
         )
     }
 
-    suspend fun getExternalContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
-        externalLibraryClient.getExternalContinueWatching(profile, language)
+    suspend fun getTraktContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
+        externalLibraryClient.getTraktContinueWatching(profile, language)
     }
 
     suspend fun getSyncSnapshot(profile: UserProfile, language: String = profile.safeLanguage): TraktSyncSnapshot = withContext(Dispatchers.IO) {
@@ -85,30 +78,10 @@ class TraktRepository @Inject constructor(
         traktSyncClient.getWatchlistWithListedAt(token)
     }
 
-    suspend fun getRecentlyWatched(token: String, language: String = "en", profile: UserProfile? = null): List<Meta> = withContext(Dispatchers.IO) {
+    /** Trakt-owned history only. No add-on, TMDB, local, or other-provider enrichment. */
+    suspend fun getRecentlyWatched(token: String): List<Meta> = withContext(Dispatchers.IO) {
         if (!TraktIntegration.hasClient(TRAKT_KEY)) return@withContext emptyList()
-        try {
-            val metas = traktSyncClient.getRecentlyWatched(token)
-            if (profile == null) {
-                metas
-            } else {
-                val detailSemaphore = Semaphore(MAX_CONCURRENT_TRAKT_DETAIL_RESOLUTION)
-                metas.map { meta ->
-                    async {
-                        detailSemaphore.withPermit {
-                            val detail = runCatching { addonRepository.getAddonMetaDetail(meta.type, meta.id, profile.authKey, profile.safeLocalAddons) }.getOrNull()
-                            if (detail == null) meta else meta.copy(
-                                poster = detail.poster,
-                                background = detail.background,
-                                logo = detail.logo,
-                                description = detail.description
-                            )
-                        }
-                    }
-                }
-                    .awaitAll()
-            }
-        } catch(e: Exception) { emptyList() }
+        runCatching { traktSyncClient.getRecentlyWatched(token) }.getOrDefault(emptyList())
     }
 
     suspend fun getWatchedEpisodeIds(token: String): Map<String, Set<String>> = withContext(Dispatchers.IO) {
@@ -137,13 +110,13 @@ class TraktRepository @Inject constructor(
 
     suspend fun getAnticipated(language: String = "en"): List<Meta> = traktCatalogClient.getAnticipated(language)
 
-    suspend fun clearPlaybackProgress(token: String?, meta: Meta) = withContext(Dispatchers.IO) {
-        if (token.isNullOrBlank()) return@withContext
-        if (!TraktIntegration.hasClient(TRAKT_KEY)) return@withContext
+    suspend fun clearPlaybackProgress(token: String?, meta: Meta): Boolean = withContext(Dispatchers.IO) {
+        if (token.isNullOrBlank()) return@withContext false
+        if (!TraktIntegration.hasClient(TRAKT_KEY)) return@withContext false
         runCatching {
             val targetKey = TraktIntegration.contentIdentityKey(meta)
             val auth = TraktIntegration.bearer(token)
-            externalSyncApi.getPlayback(auth, TRAKT_KEY)
+            val playbackId = externalSyncApi.getPlayback(auth, TRAKT_KEY)
                 .firstOrNull { item ->
                     val summary = item.movie ?: item.show ?: return@firstOrNull false
                     val type = if (item.movie != null) "movie" else "series"
@@ -159,8 +132,8 @@ class TraktRepository @Inject constructor(
                     ) == targetKey
                 }
                 ?.id
-                ?.let { externalSyncApi.deletePlayback(it, auth, TRAKT_KEY) }
-        }
+            playbackId == null || externalSyncApi.deletePlayback(playbackId, auth, TRAKT_KEY).isSuccessful
+        }.getOrDefault(false)
     }
 
     suspend fun addToHistory(token: String, request: TraktHistorySyncRequest) = withContext(Dispatchers.IO) {
@@ -175,8 +148,7 @@ class TraktRepository @Inject constructor(
 
     suspend fun getTraktWatchlistWithListedAt(token: String): List<Pair<Meta, Long>> = getWatchlistWithListedAt(token)
 
-    suspend fun getTraktRecentlyWatched(token: String, language: String = "en", profile: UserProfile? = null): List<Meta> =
-        getRecentlyWatched(token, language, profile)
+    suspend fun getTraktRecentlyWatched(token: String): List<Meta> = getRecentlyWatched(token)
 
     suspend fun getTraktCollection(token: String): List<Meta> = getCollection(token)
 
@@ -198,6 +170,6 @@ class TraktRepository @Inject constructor(
         )
     )
 
-    suspend fun clearTraktPlaybackProgress(token: String?, meta: Meta) = clearPlaybackProgress(token, meta)
+    suspend fun clearTraktPlaybackProgress(token: String?, meta: Meta): Boolean = clearPlaybackProgress(token, meta)
 
 }

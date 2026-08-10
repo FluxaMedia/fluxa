@@ -1,15 +1,11 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.NuvioLibraryItem
 import com.fluxa.app.data.remote.Video
 
 object NuvioSyncRequests {
-    fun collection(collection: LibraryUserCollection): Map<String, Any?> =
-        FluxaCoreNative.nuvioRequest("nuvioCollectionRequest", collection)
-
     fun libraryItem(meta: Meta, addedAt: Long): Map<String, Any?> =
         FluxaCoreNative.nuvioRequest("nuvioLibraryItemRequest", mapOf("item" to meta, "addedAt" to addedAt))
 

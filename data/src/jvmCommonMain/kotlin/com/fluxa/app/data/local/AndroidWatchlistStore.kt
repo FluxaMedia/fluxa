@@ -12,7 +12,6 @@ class AndroidWatchlistStore @Inject constructor(
     override fun setActiveProfile(profileId: String) = manager.setActiveProfile(profileId)
     override fun observeWatchlist(): Flow<List<Meta>> = manager.getWatchlistFlow()
     override fun observeContinueWatching(): Flow<List<Meta>> = manager.getContinueWatchingFlow()
-    override fun observeExternalContinueWatching(): Flow<List<Meta>> = manager.getExternalContinueWatchingFlow()
     override fun observeLiked(): Flow<List<Meta>> = manager.getLikedFlow()
     override fun observeTotalWatchedDuration(): Flow<Long> = manager.getTotalWatchedContentDurationFlow()
     override suspend fun watchlistSnapshot(): List<Meta> = manager.getWatchlistSnapshot()

@@ -1,6 +1,7 @@
 package com.fluxa.app.data.platform
 
 import android.content.SharedPreferences
+import com.google.gson.Gson
 import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -36,9 +37,21 @@ class AndroidPlatformHttpClient(
 }
 
 class AndroidPlatformKeyValueStore(
-    private val preferences: SharedPreferences
+    private val preferences: SharedPreferences,
+    private val gson: Gson = Gson()
 ) : PlatformKeyValueStore {
-    override suspend fun read(key: String): String? = preferences.getString(key, null)
+    /**
+     * Reads both the current string representation and legacy SharedPreferences
+     * values. Older Fluxa builds stored some profile fields as StringSet; calling
+     * getString for those keys throws ClassCastException before migration can run.
+     */
+    override suspend fun read(key: String): String? = when (val value = preferences.all[key]) {
+        null -> null
+        is String -> value
+        is Set<*> -> gson.toJson(value.filterIsInstance<String>())
+        is Boolean, is Int, is Long, is Float -> value.toString()
+        else -> null
+    }
 
     override suspend fun write(key: String, value: String) {
         preferences.edit().putString(key, value).apply()

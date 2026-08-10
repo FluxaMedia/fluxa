@@ -27,7 +27,9 @@ data class NuvioProfileDto(
     val name: String?,
     @SerializedName("avatar_color_hex") val avatarColorHex: String?,
     @SerializedName("avatar_id") val avatarId: String?,
-    @SerializedName("avatar_url") val avatarUrl: String?
+    @SerializedName("avatar_url") val avatarUrl: String?,
+    @SerializedName("uses_primary_addons") val usesPrimaryAddons: Boolean = false,
+    @SerializedName("uses_primary_plugins") val usesPrimaryPlugins: Boolean = false
 ) {
     fun toDomain(): NuvioProfile = NuvioProfile(id, userId, profileIndex, name, avatarColorHex, avatarId, avatarUrl)
 }
@@ -64,6 +66,23 @@ data class NuvioLibraryItemDto(
     )
 }
 
+data class NuvioLibraryDeltaEventDto(
+    @SerializedName("event_id") val eventId: Long,
+    val operation: String,
+    @SerializedName("content_id") val contentId: String,
+    @SerializedName("content_type") val contentType: String,
+    val name: String? = null,
+    val poster: String? = null,
+    val background: String? = null,
+    val description: String? = null,
+    @SerializedName("release_info") val releaseInfo: String? = null,
+    @SerializedName("imdb_rating") val imdbRating: Double? = null,
+    val genres: List<String>? = null,
+    @SerializedName("poster_shape") val posterShape: String? = null,
+    @SerializedName("addon_base_url") val addonBaseUrl: String? = null,
+    @SerializedName("added_at") val addedAt: Long? = null
+)
+
 /**
  * A Nuvio account stores plugin repositories separately from Stremio-style
  * addons. Earlier server revisions used different names for the repository
@@ -96,6 +115,20 @@ data class NuvioWatchProgressDto(
     )
 }
 
+data class NuvioWatchProgressDeltaEventDto(
+    @SerializedName("event_id") val eventId: Long,
+    val operation: String,
+    @SerializedName("progress_key") val progressKey: String? = null,
+    @SerializedName("content_id") val contentId: String,
+    @SerializedName("content_type") val contentType: String,
+    @SerializedName("video_id") val videoId: String? = null,
+    val season: Int? = null,
+    val episode: Int? = null,
+    val position: Long? = null,
+    val duration: Long? = null,
+    @SerializedName("last_watched") val lastWatched: Long? = null
+)
+
 data class NuvioWatchedItemDto(
     @SerializedName("content_id") val contentId: String,
     @SerializedName("content_type") val contentType: String,
@@ -106,6 +139,17 @@ data class NuvioWatchedItemDto(
 ) {
     fun toDomain(): NuvioWatchedItem = NuvioWatchedItem(contentId, contentType, title, season, episode, watchedAt)
 }
+
+data class NuvioWatchedItemDeltaEventDto(
+    @SerializedName("event_id") val eventId: Long,
+    val operation: String,
+    @SerializedName("content_id") val contentId: String,
+    @SerializedName("content_type") val contentType: String,
+    val title: String? = null,
+    val season: Int? = null,
+    val episode: Int? = null,
+    @SerializedName("watched_at") val watchedAt: Long? = null
+)
 
 data class NuvioCollectionFolderSourceDto(
     val provider: String? = null,

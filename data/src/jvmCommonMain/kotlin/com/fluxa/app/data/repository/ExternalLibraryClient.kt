@@ -4,11 +4,9 @@ import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.data.local.safeLocalAddons
 import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.remote.AnilistGraphQlRequest
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.SimklEpisode
 import com.fluxa.app.data.remote.SimklItem
 import com.fluxa.app.data.remote.ExternalSyncApi
@@ -60,7 +58,6 @@ query (${'$'}userId: Int) {
 @Singleton
 class ExternalLibraryClient @Inject constructor(
     private val externalSyncApi: ExternalSyncApi,
-    private val addonRepository: AddonRepository,
     private val traktSyncClient: TraktSyncClient,
     private val simklSyncCoordinator: SimklSyncCoordinator
 ) {
@@ -68,18 +65,14 @@ class ExternalLibraryClient @Inject constructor(
 
     private fun unknownName(language: String?): String = AppStrings.t(language, "auto.unknown")
 
-    private suspend fun resolveMetaDetail(type: String, id: String, language: String, profile: UserProfile): MetaDetail? {
-        return addonRepository.getAddonMetaDetail(type, id, profile.authKey, profile.safeLocalAddons)
-    }
-    suspend fun getExternalContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
-        supervisorScope {
-            val trakt = async { getTraktPlaybackItems(profile, language) }
-            val simkl = async { getSimklContinueWatchingItems(profile, language) }
-            val anilist = async { getAnilistContinueWatchingItems(profile.anilistAccessToken) }
-            val combined = trakt.await() + simkl.await() + anilist.await()
-            distinctByIdentityKey(combined)
-        }
-    }
+    suspend fun getTraktContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> =
+        withContext(Dispatchers.IO) { getTraktPlaybackItems(profile, language) }
+
+    suspend fun getSimklContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> =
+        withContext(Dispatchers.IO) { getSimklContinueWatchingItems(profile, language) }
+
+    suspend fun getAnilistContinueWatching(profile: UserProfile): List<Meta> =
+        withContext(Dispatchers.IO) { getAnilistContinueWatchingItems(profile.anilistAccessToken) }
 
     suspend fun getTraktSyncSnapshot(profile: UserProfile, language: String = profile.safeLanguage): TraktSyncSnapshot = withContext(Dispatchers.IO) {
         val token = profile.traktAccessToken
@@ -193,53 +186,37 @@ class ExternalLibraryClient @Inject constructor(
 
     private suspend fun getTraktPlaybackItems(profile: UserProfile, language: String): List<Meta> {
         val token = profile.traktAccessToken
-        if (token.isNullOrBlank()) return emptyList()
-        if (!TraktIntegration.hasClient(traktKey)) return emptyList()
+        if (token.isNullOrBlank() || !TraktIntegration.hasClient(traktKey)) return emptyList()
         return try {
-            val rawItems = externalSyncApi.getPlayback(TraktIntegration.bearer(token), traktKey)
-                .filter { item ->
-                    val summary = item.movie ?: item.show ?: return@filter false
-                    val progress = item.progress?.coerceIn(0f, 100f) ?: return@filter false
-                    TraktIntegration.contentIdFrom(summary.ids) != null && progress > 0f && progress < 95f
+            externalSyncApi.getPlayback(TraktIntegration.bearer(token), traktKey)
+                .mapNotNull { item ->
+                    val summary = item.movie ?: item.show ?: return@mapNotNull null
+                    val progress = item.progress?.coerceIn(0f, 100f) ?: return@mapNotNull null
+                    if (progress <= 0f || progress >= 95f) return@mapNotNull null
+                    val type = if (item.movie != null) "movie" else "series"
+                    val id = TraktIntegration.contentIdFrom(summary.ids) ?: return@mapNotNull null
+                    val runtimeMinutes = item.episode?.runtime ?: summary.runtime
+                    val duration = runtimeMinutes?.takeIf { it > 0 }?.times(60_000L)
+                    val lastVideoId = if (type == "series" && item.episode != null) {
+                        "$id:${item.episode.season}:${item.episode.number}"
+                    } else null
+                    Meta(
+                        id = id,
+                        name = summary.title ?: unknownName(language),
+                        type = type,
+                        releaseInfo = summary.year?.toString(),
+                        released = summary.year?.let { "$it-01-01" },
+                        timeOffset = duration?.let { ((it * progress) / 100f).toLong() },
+                        duration = duration,
+                        resumeProgressPercent = progress,
+                        lastVideoId = lastVideoId,
+                        lastEpisodeName = item.episode?.title,
+                        lastWatchedAt = item.paused_at?.let {
+                            runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull()
+                        },
+                        reason = "Trakt.tv"
+                    )
                 }
-            if (rawItems.isEmpty()) return emptyList()
-            val semaphore = Semaphore(4)
-            supervisorScope {
-                rawItems.map { item ->
-                    async {
-                        runCatching {
-                            semaphore.withPermit {
-                                val summary = item.movie ?: item.show ?: return@withPermit null
-                                val type = if (item.movie != null) "movie" else "series"
-                                val id = TraktIntegration.contentIdFrom(summary.ids) ?: return@withPermit null
-                                val progress = item.progress?.coerceIn(0f, 100f) ?: return@withPermit null
-                                val lastVideoId = if (type == "series" && item.episode != null) "$id:${item.episode.season}:${item.episode.number}" else null
-                                val detail = resolveMetaDetail(type, id, language, profile)
-                                val duration = estimatedDurationMs(type, detail)
-                                val episodeArtwork = findEpisodeArtwork(detail, lastVideoId, item.episode)
-                                Meta(
-                                    id = id,
-                                    name = detail?.name ?: summary.title ?: unknownName(language),
-                                    type = type,
-                                    poster = detail?.poster,
-                                    background = detail?.background,
-                                    logo = detail?.logo,
-                                    description = detail?.description,
-                                    releaseInfo = detail?.releaseInfo ?: summary.year?.toString(),
-                                    released = detail?.released ?: summary.year?.let { "$it-01-01" },
-                                    timeOffset = ((duration * progress) / 100f).toLong(),
-                                    duration = duration,
-                                    lastVideoId = lastVideoId,
-                                    lastEpisodeName = item.episode?.title,
-                                    reason = "Trakt.tv",
-                                    continueWatchingPoster = if (type == "series") episodeArtwork else detail?.poster,
-                                    continueWatchingBackground = if (type == "series") episodeArtwork else detail?.background
-                                )
-                            }
-                        }.getOrNull()
-                    }
-                }.awaitAll().filterNotNull()
-            }
         } catch (e: Exception) {
             PlatformLog.w("ExternalLibraryClient", "Failed to load Trakt playback items", e)
             emptyList()
@@ -252,11 +229,11 @@ class ExternalLibraryClient @Inject constructor(
             val playbackSessions = fetchSimklPlaybackSessions(profile)
             val consumedSessionIds = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
             val movies = resources["moviesWatching"]?.movies.orEmpty().mapNotNull { item ->
-                resumeMetaFromPlayback(item, "movie", playbackSessions, profile, language, consumedSessionIds)
+                resumeMetaFromPlayback(item, "movie", playbackSessions, language, consumedSessionIds)
                     ?: item.toContinueMeta("movie")
             }
             val shows = resources["showsWatching"]?.shows.orEmpty().mapNotNull { item ->
-                val meta = resumeMetaFromPlayback(item, "series", playbackSessions, profile, language, consumedSessionIds)
+                val meta = resumeMetaFromPlayback(item, "series", playbackSessions, language, consumedSessionIds)
                     ?: item.toContinueMeta("series")
                 meta?.let { item to it }
             }
@@ -266,7 +243,7 @@ class ExternalLibraryClient @Inject constructor(
             val unmatchedSessions = playbackSessions.filter { it.get("id")?.asInt !in consumedSessionIds }
             val standaloneSessionItems = supervisorScope {
                 unmatchedSessions.map { session -> async {
-                    runCatching { metaFromPlaybackSession(session, profile, language) }.getOrNull()
+                    runCatching { metaFromPlaybackSession(session, language) }.getOrNull()
                 } }.awaitAll()
             }.filterNotNull()
             movies + showsWithStills + standaloneSessionItems
@@ -291,7 +268,6 @@ class ExternalLibraryClient @Inject constructor(
         item: SimklItem,
         type: String,
         playbackSessions: List<com.google.gson.JsonObject>,
-        profile: UserProfile,
         language: String,
         consumedSessionIds: MutableSet<Int>
     ): Meta? {
@@ -309,17 +285,13 @@ class ExternalLibraryClient @Inject constructor(
         } ?: return null
         session.get("id")?.asInt?.let { consumedSessionIds.add(it) }
         val entry = simklPlaybackItemToContinueMetaEntry(session) ?: return null
-        val detail = resolveMetaDetail(type, id, language, profile)
         return Meta(
             id = id,
-            name = detail?.name ?: entry.get("name")?.takeUnless { it.isJsonNull }?.asString ?: item.effectiveTitle ?: unknownName(language),
+            name = entry.get("name")?.takeUnless { it.isJsonNull }?.asString ?: item.effectiveTitle ?: unknownName(language),
             type = type,
-            poster = detail?.poster ?: item.simklPosterUrl(),
-            background = detail?.background,
-            logo = detail?.logo,
-            description = detail?.description,
-            releaseInfo = detail?.releaseInfo ?: item.effectiveYear?.toString(),
-            released = detail?.released ?: item.effectiveYear?.let { "$it-01-01" },
+            poster = item.simklPosterUrl(),
+            releaseInfo = item.effectiveYear?.toString(),
+            released = item.effectiveYear?.let { "$it-01-01" },
             resumeProgressPercent = entry.get("resumeProgressPercent")?.takeUnless { it.isJsonNull }?.asFloat,
             lastVideoId = entry.get("lastVideoId")?.takeUnless { it.isJsonNull }?.asString,
             lastEpisodeName = entry.get("lastEpisodeName")?.takeUnless { it.isJsonNull }?.asString,
@@ -327,7 +299,7 @@ class ExternalLibraryClient @Inject constructor(
         )
     }
 
-    private suspend fun metaFromPlaybackSession(session: com.google.gson.JsonObject, profile: UserProfile, language: String): Meta? {
+    private suspend fun metaFromPlaybackSession(session: com.google.gson.JsonObject, language: String): Meta? {
         val source = session.playbackSource() ?: return null
         val id = source.getAsJsonObject("ids")?.get("imdb")?.takeUnless { it.isJsonNull }?.asString
             ?: source.getAsJsonObject("ids")?.get("tmdb")?.takeUnless { it.isJsonNull }?.asString?.let { "tmdb:$it" }
@@ -335,18 +307,13 @@ class ExternalLibraryClient @Inject constructor(
             ?: return null
         val type = if (session.getAsJsonObject("movie") != null) "movie" else "series"
         val entry = simklPlaybackItemToContinueMetaEntry(session) ?: return null
-        val detail = resolveMetaDetail(type, id, language, profile)
         val posterKey = source.get("poster")?.takeUnless { it.isJsonNull }?.asString
         val meta = Meta(
             id = id,
-            name = detail?.name ?: entry.get("name")?.takeUnless { it.isJsonNull }?.asString ?: unknownName(language),
+            name = entry.get("name")?.takeUnless { it.isJsonNull }?.asString ?: unknownName(language),
             type = type,
-            poster = detail?.poster ?: posterKey?.let { "https://simkl.in/posters/${it}_m.jpg" },
-            background = detail?.background,
-            logo = detail?.logo,
-            description = detail?.description,
-            releaseInfo = detail?.releaseInfo ?: source.get("year")?.takeUnless { it.isJsonNull }?.asString,
-            released = detail?.released,
+            poster = posterKey?.let { "https://simkl.in/posters/${it}_m.jpg" },
+            releaseInfo = source.get("year")?.takeUnless { it.isJsonNull }?.asString,
             resumeProgressPercent = entry.get("resumeProgressPercent")?.takeUnless { it.isJsonNull }?.asFloat,
             lastVideoId = entry.get("lastVideoId")?.takeUnless { it.isJsonNull }?.asString,
             lastEpisodeName = entry.get("lastEpisodeName")?.takeUnless { it.isJsonNull }?.asString,
@@ -548,29 +515,4 @@ class ExternalLibraryClient @Inject constructor(
         )
     }
 
-    private fun findEpisodeArtwork(detail: MetaDetail?, lastVideoId: String?, episode: TraktEpisode?): String? {
-        val videos = detail?.videos.orEmpty()
-        if (videos.isEmpty()) return null
-        lastVideoId?.let { videoId ->
-            videos.firstOrNull { it.id == videoId }?.thumbnail?.let { return it }
-        }
-        val season = episode?.season ?: return null
-        val number = episode.number
-        return videos.firstOrNull {
-            it.season == season && it.number == number
-        }?.thumbnail
-    }
-
-    private fun estimatedDurationMs(type: String, detail: MetaDetail? = null): Long {
-        return parseRuntimeMinutes(detail?.runtime)?.takeIf { it > 0 }?.let { it * 60_000L }
-            ?: if (type == "movie") 120 * 60_000L else EPISODE_PROGRESS_UNIT_MS
-    }
-
-    private fun parseRuntimeMinutes(value: String?): Long? {
-        if (value.isNullOrBlank()) return null
-        val hours = Regex("""(\d+)\s*h""", RegexOption.IGNORE_CASE).find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
-        val minutes = Regex("""(\d+)\s*m""", RegexOption.IGNORE_CASE).find(value)?.groupValues?.getOrNull(1)?.toLongOrNull()
-            ?: Regex("""(\d+)""").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull()
-        return (hours * 60L + (minutes ?: 0L)).takeIf { it > 0 }
-    }
 }

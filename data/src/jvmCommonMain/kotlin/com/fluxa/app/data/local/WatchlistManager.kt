@@ -40,18 +40,6 @@ class WatchlistManager @Inject constructor(
         }
     }
 
-    fun getExternalContinueWatchingFlow(): Flow<List<Meta>> {
-        return _activeProfileId.flatMapLatest { profileId ->
-            dao.observeExternalContinueWatching(profileId).map { rows -> rows.map { it.toMeta() } }
-        }
-    }
-
-    fun getExternalContinueWatchingFlowByProvider(provider: String): Flow<List<Meta>> {
-        return _activeProfileId.flatMapLatest { profileId ->
-            dao.observeExternalContinueWatchingByProvider(profileId, provider).map { rows -> rows.map { it.toMeta() } }
-        }
-    }
-
     fun getLikedFlow(): Flow<List<Meta>> {
         return _activeProfileId.flatMapLatest { profileId ->
             dao.observeLiked(profileId).map { rows -> rows.map { it.toMeta() } }
@@ -92,12 +80,11 @@ class WatchlistManager @Inject constructor(
         return dao.getContinueWatchingSnapshot(profileId).map { it.toMeta() }
     }
 
-    suspend fun getExternalContinueWatchingSnapshot(): List<Meta> {
-        return dao.getExternalContinueWatchingSnapshot(pid()).map { it.toMeta() }
-    }
-
-    suspend fun getExternalContinueWatchingSnapshotForProfile(profileId: String): List<Meta> {
-        return dao.getExternalContinueWatchingSnapshot(profileId).map { it.toMeta() }
+    suspend fun getExternalContinueWatchingSnapshot(owner: ProviderDataOwner): List<Meta> {
+        return dao.getExternalContinueWatchingSnapshotByProvider(
+            owner.appProfileId,
+            owner.storageNamespace
+        ).map { it.toMeta() }
     }
 
     suspend fun toggleWatchlist(item: Meta) {
@@ -221,8 +208,11 @@ class WatchlistManager @Inject constructor(
     }
 
     suspend fun getLocalWatchedVideoIds(seriesId: String): Set<String> {
-        return dao.getWatchedEpisodeIds(pid(), seriesId).toSet()
+        return dao.getLocalWatchedEpisodeIds(pid(), seriesId).toSet()
     }
+
+    suspend fun getProviderWatchedVideoIds(owner: ProviderDataOwner, seriesId: String): Set<String> =
+        dao.getExternalWatchedEpisodeIds(owner.appProfileId, owner.storageNamespace, seriesId).toSet()
 
     suspend fun markEpisodeWatched(seriesId: String, videoId: String, watched: Boolean = true): Set<String> {
         return markEpisodesWatched(seriesId, listOf(videoId), watched)
@@ -242,25 +232,23 @@ class WatchlistManager @Inject constructor(
         )
     }
 
-    suspend fun replaceExternalWatchedContentDurations(provider: String, records: Collection<WatchedContentDurationRecord>) {
-        val profileId = pid()
-        val source = provider.ifBlank { "external" }
-        dao.deleteWatchedContentDurationsBySource(profileId, source)
+    suspend fun replaceExternalWatchedContentDurations(owner: ProviderDataOwner, records: Collection<WatchedContentDurationRecord>) {
+        val profileId = owner.appProfileId
+        val source = owner.storageNamespace
         val now = System.currentTimeMillis()
-        dao.upsertWatchedContentDurations(
-            records.mapNotNull { record ->
-                val duration = record.duration.takeIf { it > 0L } ?: return@mapNotNull null
-                val contentId = record.contentId.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                WatchedContentDurationEntity(
-                    profileId = profileId,
-                    source = source,
-                    contentId = contentId,
-                    videoId = record.videoId?.takeIf { it.isNotBlank() } ?: contentId,
-                    duration = duration,
-                    watchedAt = now
-                )
-            }
-        )
+        val entities = records.mapNotNull { record ->
+            val duration = record.duration.takeIf { it > 0L } ?: return@mapNotNull null
+            val contentId = record.contentId.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            WatchedContentDurationEntity(
+                profileId = profileId,
+                source = source,
+                contentId = contentId,
+                videoId = record.videoId?.takeIf { it.isNotBlank() } ?: contentId,
+                duration = duration,
+                watchedAt = now
+            )
+        }
+        dao.replaceWatchedDurationsForSource(profileId, source, entities)
     }
 
     suspend fun markEpisodesWatched(
@@ -299,45 +287,102 @@ class WatchlistManager @Inject constructor(
         dao.deleteAllWatchedEpisodes(pid())
     }
 
-    suspend fun replaceExternalContinueWatching(items: List<Meta>) {
-        replaceExternalContinueWatching(items.map { it.externalProviderKey() }.toSet(), items)
-    }
-
-    suspend fun replaceExternalContinueWatching(providers: Set<String>, items: List<Meta>) {
-        val profileId = pid()
-        providers.forEach { dao.deleteExternalPlaybackProgressByProvider(profileId, it) }
+    /**
+     * Replaces exactly one provider account namespace. Items are never merged with
+     * local progress or with another third-party provider.
+     */
+    suspend fun replaceExternalContinueWatching(owner: ProviderDataOwner, items: List<Meta>) {
         val now = System.currentTimeMillis()
         val kept = items.filter {
             it.id.isNotBlank() &&
                 (
-                    (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L ||
+                    ((it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L) ||
                         it.isUpNextContinueItem() ||
                         (it.resumeProgressPercent != null && !it.lastVideoId.isNullOrBlank())
                 )
         }
-        dao.upsertExternalPlaybackProgress(kept.map { it.toExternalPlaybackProgressEntity(profileId, now) })
+        dao.replaceExternalPlaybackProgressForProvider(
+            owner.appProfileId,
+            owner.storageNamespace,
+            kept.map { it.toExternalPlaybackProgressEntity(owner, now) }
+        )
     }
 
-    suspend fun replaceExternalWatchedEpisodes(provider: String, episodesBySeries: Map<String, Set<String>>) {
-        val profileId = pid()
-        val normalizedProvider = provider.ifBlank { "external" }
+    suspend fun clearProviderData(owner: ProviderDataOwner) {
+        // Old builds used an account-less provider key. Never read that data into a
+        // new account, but remove it when the provider is disconnected.
+        dao.clearExternalProviderData(
+            profileId = owner.appProfileId,
+            providerNamespace = owner.storageNamespace,
+            legacyProvider = owner.providerId.key
+        )
+    }
+
+    suspend fun clearAllProviderAccounts(profileId: String, providerId: ThirdPartyProviderId) {
+        val prefix = "${providerId.key}::"
+        dao.clearAllExternalProviderAccounts(
+            profileId = profileId,
+            providerPrefix = prefix,
+            legacyProvider = providerId.key
+        )
+    }
+
+    suspend fun replaceExternalWatchedEpisodes(owner: ProviderDataOwner, episodesBySeries: Map<String, Set<String>>) {
+        val profileId = owner.appProfileId
+        val normalizedProvider = owner.storageNamespace
         val now = System.currentTimeMillis()
-        dao.deleteExternalWatchedEpisodes(profileId, normalizedProvider)
-        dao.upsertExternalWatchedEpisodes(
-            episodesBySeries.flatMap { (seriesId, videoIds) ->
-                videoIds
-                    .filter { it.isNotBlank() }
-                    .distinct()
-                    .map { videoId ->
-                        ExternalWatchedEpisodeEntity(
-                            profileId = profileId,
-                            provider = normalizedProvider,
-                            seriesId = seriesId,
-                            videoId = videoId,
-                            syncedAt = now
-                        )
-                    }
+        val entities = episodesBySeries.flatMap { (seriesId, videoIds) ->
+            videoIds
+                .filter { it.isNotBlank() }
+                .distinct()
+                .map { videoId ->
+                    ExternalWatchedEpisodeEntity(
+                        profileId = profileId,
+                        provider = normalizedProvider,
+                        seriesId = seriesId,
+                        videoId = videoId,
+                        syncedAt = now
+                    )
+                }
+        }
+        dao.replaceExternalWatchedEpisodesForProvider(profileId, normalizedProvider, entities)
+    }
+
+    suspend fun replaceExternalProviderSnapshot(
+        owner: ProviderDataOwner,
+        continueWatching: List<Meta>,
+        watchedEpisodesBySeries: Map<String, Set<String>>
+    ) {
+        val now = System.currentTimeMillis()
+        val progressEntities = continueWatching
+            .filter { item ->
+                item.id.isNotBlank() &&
+                    (
+                        ((item.timeOffset ?: 0L) > 0L && (item.duration ?: 0L) > 0L) ||
+                            item.isUpNextContinueItem() ||
+                            (item.resumeProgressPercent != null && !item.lastVideoId.isNullOrBlank())
+                    )
             }
+            .map { it.toExternalPlaybackProgressEntity(owner, now) }
+        val watchedEntities = watchedEpisodesBySeries.flatMap { (seriesId, videoIds) ->
+            videoIds
+                .filter(String::isNotBlank)
+                .distinct()
+                .map { videoId ->
+                    ExternalWatchedEpisodeEntity(
+                        profileId = owner.appProfileId,
+                        provider = owner.storageNamespace,
+                        seriesId = seriesId,
+                        videoId = videoId,
+                        syncedAt = now
+                    )
+                }
+        }
+        dao.replaceExternalProviderSnapshot(
+            profileId = owner.appProfileId,
+            provider = owner.storageNamespace,
+            progressItems = progressEntities,
+            watchedEpisodeItems = watchedEntities
         )
     }
 
@@ -400,9 +445,9 @@ class WatchlistManager @Inject constructor(
         continueWatchingBackground = continueWatchingBackground
     )
 
-    private fun Meta.toExternalPlaybackProgressEntity(profileId: String, fallbackSyncedAt: Long) = ExternalPlaybackProgressEntity(
-        profileId = profileId,
-        provider = externalProviderKey(),
+    private fun Meta.toExternalPlaybackProgressEntity(owner: ProviderDataOwner, fallbackSyncedAt: Long) = ExternalPlaybackProgressEntity(
+        profileId = owner.appProfileId,
+        provider = owner.storageNamespace,
         contentId = id,
         name = name,
         type = type,
@@ -423,17 +468,4 @@ class WatchlistManager @Inject constructor(
         syncedAt = lastWatchedAt ?: fallbackSyncedAt
     )
 
-    private fun Meta.externalProviderKey(): String {
-        return when {
-            reason.equals("Trakt.tv", ignoreCase = true) -> "trakt"
-            reason.equals("MyAnimeList", ignoreCase = true) -> "mal"
-            reason.equals("Simkl", ignoreCase = true) -> "simkl"
-            reason.equals("Nuvio", ignoreCase = true) -> "nuvio"
-            reason.equals("AniList", ignoreCase = true) -> "anilist"
-            id.startsWith("mal:", ignoreCase = true) -> "mal"
-            id.startsWith("simkl:", ignoreCase = true) -> "simkl"
-            id.startsWith("anilist:", ignoreCase = true) -> "anilist"
-            else -> "nuvio"
-        }
-    }
 }

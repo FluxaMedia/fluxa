@@ -4,6 +4,7 @@ import com.fluxa.app.common.PlatformLog
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.domain.discovery.supportsStremioResource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,11 +29,17 @@ class AddonRepository @Inject constructor(
     private val metaDetailRepositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val metaDetailCache = ConcurrentHashMap<String, Pair<Long, MetaDetail?>>()
     private val metaDetailInFlight = ConcurrentHashMap<String, Deferred<MetaDetail?>>()
+    private val specificMetaDetailCache = ConcurrentHashMap<String, Pair<Long, MetaDetail>>()
+    private val specificMetaDetailInFlight = ConcurrentHashMap<String, Deferred<AddonResourceResult<MetaDetail>>>()
 
     suspend fun getAddonManifest(
         transportUrl: String,
         forceRefresh: Boolean = false
     ): AddonDescriptor? = addonManifestClient.getAddonManifest(transportUrl, forceRefresh)
+
+    /** Cache-only manifest lookup; guaranteed not to make a network request. */
+    suspend fun getCachedAddonManifest(transportUrl: String): AddonDescriptor? =
+        addonManifestClient.getCachedAddonManifest(transportUrl)
 
     suspend fun getAddonMetaDetail(
         type: String,
@@ -40,13 +47,22 @@ class AddonRepository @Inject constructor(
         authKey: String,
         localAddons: List<String>? = emptyList()
     ): MetaDetail? {
-        val cacheKey = "$type:$id"
+        val normalizedLocalAddons = localAddons.orEmpty()
+            .asSequence()
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .sorted()
+            .joinToString("|")
+        val cacheKey = "$type:$id:${authKey.hashCode()}:${normalizedLocalAddons.hashCode()}"
         metaDetailCache[cacheKey]?.let { (cachedAt, value) ->
             if (System.currentTimeMillis() - cachedAt < META_DETAIL_CACHE_TTL_MS) return value
         }
 
         val deferred = metaDetailInFlight.computeIfAbsent(cacheKey) {
-            metaDetailRepositoryScope.async {
+            // LAZY matters here: an eagerly-started Deferred can finish and attempt to
+            // remove itself before ConcurrentHashMap.computeIfAbsent publishes it.
+            // Starting only after insertion keeps single-flight entries self-cleaning.
+            metaDetailRepositoryScope.async(start = CoroutineStart.LAZY) {
                 try {
                     fetchAddonMetaDetailUncached(type, id, authKey, localAddons)
                 } finally {
@@ -54,6 +70,7 @@ class AddonRepository @Inject constructor(
                 }
             }
         }
+        deferred.start()
         val result = deferred.await()
         metaDetailCache[cacheKey] = System.currentTimeMillis() to result
         return result
@@ -111,9 +128,14 @@ class AddonRepository @Inject constructor(
             .distinct()
         for (candidateType in types) {
             PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon: url=$transportUrl type=$candidateType id=${id.take(30)}")
-            when (val result = addonResourceClient.getMetaDetailFromAddonResult(transportUrl, candidateType, id)) {
+            when (val result = getSpecificMetaDetailResult(transportUrl, candidateType, id)) {
                 is AddonResourceResult.Success -> {
-                    PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon SUCCESS: type=$candidateType name=${result.value.name} videos=${result.value.videos?.size}")
+                    val episodeSuffix = if (candidateType.equals("series", ignoreCase = true) || candidateType.equals("tv", ignoreCase = true)) {
+                        " episodes=${result.value.videos?.size ?: 0}"
+                    } else {
+                        ""
+                    }
+                    PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon SUCCESS: type=$candidateType name=${result.value.name}$episodeSuffix")
                     return result.value
                 }
                 is AddonResourceResult.Empty -> PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon EMPTY: ${result.url}")
@@ -123,6 +145,37 @@ class AddonRepository @Inject constructor(
             }
         }
         return null
+    }
+
+    private suspend fun getSpecificMetaDetailResult(
+        transportUrl: String,
+        type: String,
+        id: String,
+    ): AddonResourceResult<MetaDetail> {
+        val cacheKey = "${transportUrl.trimEnd('/')}:$type:$id"
+        specificMetaDetailCache[cacheKey]?.let { (cachedAt, detail) ->
+            if (System.currentTimeMillis() - cachedAt < META_DETAIL_CACHE_TTL_MS) {
+                PlatformLog.d("MetaFetch", "specific meta cache hit type=$type id=${id.take(30)}")
+                return AddonResourceResult.Success(detail, transportUrl)
+            }
+            specificMetaDetailCache.remove(cacheKey)
+        }
+
+        val deferred = specificMetaDetailInFlight.computeIfAbsent(cacheKey) {
+            metaDetailRepositoryScope.async(start = CoroutineStart.LAZY) {
+                try {
+                    val result = addonResourceClient.getMetaDetailFromAddonResult(transportUrl, type, id)
+                    if (result is AddonResourceResult.Success) {
+                        specificMetaDetailCache[cacheKey] = System.currentTimeMillis() to result.value
+                    }
+                    result
+                } finally {
+                    specificMetaDetailInFlight.remove(cacheKey)
+                }
+            }
+        }
+        deferred.start()
+        return deferred.await()
     }
 
     suspend fun getUserAddons(

@@ -20,18 +20,20 @@ fun LibraryFolderUiModel.tileShape(): FolderTileShape = when (shape?.trim()?.low
 fun LibraryFolderUiModel.effectiveCoverUrl(): String? =
     coverImageUrl?.takeIf { it.isNotBlank() } ?: imageUrl?.takeIf { it.isNotBlank() }
 
-fun LibraryFolderUiModel.toCatalogCardUiModel(widthPreset: String = "medium"): CatalogCardUiModel {
+fun LibraryFolderUiModel.toCatalogCardUiModel(
+    widthPreset: String = "medium",
+    deviceType: DeviceType = DeviceType.Mobile,
+): CatalogCardUiModel {
     val staticArtwork = effectiveCoverUrl()
-    val artwork = focusGifUrl
-        ?.takeIf { it.isNotBlank() && focusGifEnabled }
-        ?: staticArtwork
+    val animatedArtwork = focusGifUrl?.takeIf { it.isNotBlank() && focusGifEnabled }
+    val artwork = staticArtwork ?: animatedArtwork
     val shape = tileShape()
     val width = when (shape) {
-        FolderTileShape.Landscape -> horizontalCardWidth(widthPreset, DeviceType.Mobile)
+        FolderTileShape.Landscape -> horizontalCardWidth(widthPreset, deviceType)
         else -> posterCardWidth(widthPreset)
     }
     val imageHeight = when (shape) {
-        FolderTileShape.Landscape -> horizontalCardHeight(widthPreset, DeviceType.Mobile)
+        FolderTileShape.Landscape -> horizontalCardHeight(widthPreset, deviceType)
         FolderTileShape.Square -> posterCardWidth(widthPreset)
         FolderTileShape.Poster -> posterCardHeight(widthPreset)
     }
@@ -43,6 +45,8 @@ fun LibraryFolderUiModel.toCatalogCardUiModel(widthPreset: String = "medium"): C
         artworkUrl = artwork,
         artworkMemoryCacheKey = "collection-folder:$id",
         artworkDiskCacheKey = "collection-folder:$id",
+        animatedArtworkUrl = animatedArtwork.takeIf { staticArtwork != null },
+        animatedArtworkMemoryCacheKey = "collection-folder-animated:$id",
         requestWidthPx = if (shape == FolderTileShape.Landscape) 384 else 224,
         requestHeightPx = when (shape) {
             FolderTileShape.Landscape -> 216

@@ -1,21 +1,29 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.common.PlatformLog
+import com.fluxa.app.data.local.LibraryCatalogSource
+import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.LibraryUserCollection
+import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.ProviderDataOwner
+import com.fluxa.app.data.local.ThirdPartyProviderId
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.providerDataOwner
+import com.fluxa.app.data.local.withProviderLastSyncAt
 import com.fluxa.app.data.local.WatchlistManager
+import com.fluxa.app.data.repository.library.ProviderDataStore
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.NuvioAvatarDto
+import com.fluxa.app.data.remote.NuvioCollection
+import com.fluxa.app.data.remote.NuvioCollectionFolder
+import com.fluxa.app.data.remote.NuvioCollectionFolderSource
 import com.fluxa.app.data.remote.NuvioCredentials
-import com.fluxa.app.data.remote.NuvioLibraryItemDto
 import com.fluxa.app.data.remote.NuvioProfileDto
 import com.fluxa.app.data.remote.NuvioPluginDto
 import com.fluxa.app.data.remote.NuvioService
 import com.fluxa.app.data.remote.NuvioSession
 import com.fluxa.app.data.remote.NuvioSessionDto
-import com.fluxa.app.data.remote.NuvioWatchProgressDto
-import com.fluxa.app.data.remote.NuvioWatchedItemDto
 import com.fluxa.app.data.remote.toDto
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.google.gson.Gson
@@ -29,7 +37,8 @@ class NuvioAccountImportCoordinator(
     private val nuvioService: NuvioService,
     private val profileManager: ProfileManager,
     private val watchlistManager: WatchlistManager,
-    private val addonRepository: AddonRepository,
+    private val providerDataStore: ProviderDataStore,
+    private val deltaSyncEngine: NuvioDeltaSyncEngine,
     private val supabaseUrl: String,
     private val gson: Gson
 ) {
@@ -37,7 +46,12 @@ class NuvioAccountImportCoordinator(
         val refreshToken = profile.nuvioRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
         val expiresAt = profile.nuvioTokenExpiresAt ?: 0L
         if (!profile.nuvioAccessToken.isNullOrBlank() && expiresAt > System.currentTimeMillis() + 60_000L) return profile
+        val expectedOwner = profile.providerDataOwner(ThirdPartyProviderId.NUVIO)
         val session = nuvioService.refreshToken(request = com.fluxa.app.data.remote.NuvioRefreshRequest(refreshToken).toDto()).requireBody().toDomain()
+        val currentProfile = profileManager.getProfiles().firstOrNull { it.id == profile.id }
+        if (expectedOwner != null && currentProfile?.providerDataOwner(ThirdPartyProviderId.NUVIO) != expectedOwner) {
+            throw IllegalStateException("Nuvio account changed or disconnected during token refresh")
+        }
         val refreshed = profile.copy(
             nuvioAccessToken = session.accessToken,
             nuvioRefreshToken = session.refreshToken.ifBlank { refreshToken },
@@ -47,6 +61,32 @@ class NuvioAccountImportCoordinator(
         )
         profileManager.saveProfile(refreshed)
         return refreshed
+    }
+
+    /** Pulls the plugin snapshot for the active Nuvio profile, honoring uses_primary_plugins. */
+    suspend fun pullPluginsForProfile(profile: UserProfile): List<NuvioPluginDto> {
+        val refreshedProfile = refreshProfileIfNeeded(profile)
+        val accessToken = refreshedProfile.nuvioAccessToken?.takeIf { it.isNotBlank() }
+            ?: return emptyList()
+        val authorization = "Bearer $accessToken"
+        val profiles = runCatching {
+            nuvioService.pullProfiles(authorization).requireBody()
+        }.getOrDefault(emptyList())
+        val requestedIndex = refreshedProfile.nuvioProfileIndex
+        val profileIndex = when {
+            requestedIndex != null && profiles.isEmpty() -> requestedIndex
+            requestedIndex != null && profiles.any { it.profileIndex == requestedIndex } -> requestedIndex
+            else -> profiles.minByOrNull { it.profileIndex }?.profileIndex ?: requestedIndex ?: 1
+        }
+        val effectiveScopes = nuvioService.resolveEffectiveProfileScopes(
+            authorization = authorization,
+            profileIndex = profileIndex,
+            knownProfiles = profiles,
+        )
+        return nuvioService.pullPlugins(
+            authorization = authorization,
+            profileId = "eq.${effectiveScopes.plugins}",
+        ).requireBody()
     }
 
     suspend fun signIn(email: String, password: String): Result<NuvioSession> = authenticate {
@@ -108,7 +148,7 @@ class NuvioAccountImportCoordinator(
             nuvioEmail = session.user?.email ?: baseProfile.email
         )
         val token = "Bearer ${session.accessToken}"
-        profileManager.saveProfileReplacingLocalAddons(connectedProfile)
+        profileManager.saveProfile(connectedProfile)
         profileManager.setLastActiveProfile(connectedProfile)
         watchlistManager.setActiveProfile(baseProfile.id)
 
@@ -118,16 +158,29 @@ class NuvioAccountImportCoordinator(
         val avatarDtos = importOrDefault(NuvioImportStep.PROFILE, emptyList()) {
             nuvioService.listAvatars().requireBody()
         }
-        val primaryIndex = profileDtos.firstOrNull { it.profileIndex == connectedProfile.nuvioProfileIndex }?.profileIndex
-            ?: profileDtos.minByOrNull { it.profileIndex }?.profileIndex ?: 1
+        val requestedProfileIndex = connectedProfile.nuvioProfileIndex
+        val primaryIndex = when {
+            requestedProfileIndex != null && profileDtos.isEmpty() -> requestedProfileIndex
+            requestedProfileIndex != null && profileDtos.any { it.profileIndex == requestedProfileIndex } -> requestedProfileIndex
+            else -> profileDtos.minByOrNull { it.profileIndex }?.profileIndex ?: requestedProfileIndex ?: 1
+        }
+        val effectiveScopes = nuvioService.resolveEffectiveProfileScopes(
+            authorization = token,
+            profileIndex = primaryIndex,
+            knownProfiles = profileDtos,
+        )
 
         var profile = mergeProfiles(baseProfile, connectedProfile, profileDtos, avatarDtos, primaryIndex)
         profileManager.setLastActiveProfile(profile)
         watchlistManager.setActiveProfile(profile.id)
+        val providerOwner = profile.providerDataOwner(ThirdPartyProviderId.NUVIO)
+            ?: throw IllegalStateException("Nuvio account identity is unavailable")
+        val providerWriteLease = providerDataStore.lease(providerOwner)
+        ensureNuvioOwnerStillConnected(profile.id, providerOwner)
         onStep(NuvioImportStep.PROFILE)
 
         val addonDtos = try {
-            nuvioService.pullAddons(token, profileId = "eq.$primaryIndex").requireBody()
+            nuvioService.pullAddons(token, profileId = "eq.${effectiveScopes.addons}").requireBody()
         } catch (error: Exception) {
             PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.ADDONS} failed; continuing without it", error)
             null
@@ -136,70 +189,78 @@ class NuvioAccountImportCoordinator(
             addonDtos.forEachIndexed { index, addon ->
                 onItemProgress(index + 1, addonDtos.size, addon.name ?: addon.url)
             }
-            val addonState = NuvioImportPolicy.addonState(addonDtos.map { it.toDomain() })
-            profile = profile.copy(
-                localAddons = addonState.installedUrls,
-                disabledLocalAddons = addonState.disabledUrls
-            )
+            // Provider add-ons remain a Nuvio snapshot. They are deliberately not
+            // copied into Fluxa's localAddons/disabledLocalAddons lists.
         }
         onStep(NuvioImportStep.ADDONS)
 
         val plugins = try {
-            nuvioService.pullPlugins(token, profileId = "eq.$primaryIndex").requireBody()
+            nuvioService.pullPlugins(token, profileId = "eq.${effectiveScopes.plugins}").requireBody()
         } catch (error: Exception) {
             PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.PLUGINS} failed; continuing without it", error)
             emptyList<NuvioPluginDto>()
         }
         onStep(NuvioImportStep.PLUGINS)
 
+        val syncScope = profile.nuvioSyncScope()
+            ?: throw IllegalStateException("Nuvio sync scope is unavailable")
         val libraryItems = try {
-            pullAllLibraryItems(token, primaryIndex, onItemProgress)
+            deltaSyncEngine.syncLibrary(token, syncScope, primaryIndex).also { items ->
+                items.forEachIndexed { index, item ->
+                    onItemProgress(index + 1, items.size, item.name)
+                }
+            }
         } catch (error: Exception) {
             PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.LIBRARY} failed; continuing without it", error)
             null
         }
         val libraryJson = gson.toJsonTree(libraryItems.orEmpty()).asJsonArray
-        if (libraryItems != null) {
-            val watchlistItems = gson.fromJson(NuvioCoreBridge.libraryToWatchlist(libraryJson), Array<Meta>::class.java).toList()
-            profile = profile.copy(nuvioLibrarySnapshot = watchlistItems)
-        }
+        // The library is consumed through NuvioProviderAdapter. It is not
+        // mirrored into the local profile or local watchlist.
         onStep(NuvioImportStep.LIBRARY)
 
-        val watchProgressDtos = try {
-            nuvioService.pullWatchProgress(token, mapOf("p_profile_id" to primaryIndex)).requireBody()
+        val progressSync = try {
+            deltaSyncEngine.syncProgress(token, syncScope, primaryIndex)
         } catch (error: Exception) {
             PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.PROGRESS} failed; keeping existing playback progress", error)
             null
         }
         val watchedItemDtos = try {
-            pullAllWatchedItems(token, primaryIndex)
+            deltaSyncEngine.syncHistory(token, syncScope, primaryIndex)
         } catch (error: Exception) {
             PlatformLog.w("NuvioImport", "Import step ${NuvioImportStep.HISTORY} failed; keeping existing watched episodes", error)
             null
         }
 
-        if (watchProgressDtos != null) {
-            val watchProgressJson = gson.toJsonTree(watchProgressDtos).asJsonArray
-            val addonMetas = fetchAddonMetaNeeds(watchProgressJson, libraryJson, profile.localAddons, onItemProgress)
+        if (progressSync != null) {
+            val watchProgressJson = gson.toJsonTree(progressSync.progress).asJsonArray
+            // Nuvio is authoritative here. Never enrich its progress with metadata add-ons.
+            val addonMetas = JsonObject()
             val mergePlan = NuvioCoreBridge.importMergePlan(
                 libraryJson,
                 addonMetas,
                 watchProgressJson,
                 gson.toJsonTree(watchedItemDtos.orEmpty()).asJsonArray
             )
-            val progressItems = mergePlan.getAsJsonObject("progress").entrySet().mapNotNull { (_, value) ->
-                progressEntryToMeta(value.asJsonObject)
+            val libraryByContentId = libraryItems.orEmpty().associateBy { it.contentId }
+            val progressItems = FluxaCoreNative.mergeContinueWatchingDuplicates(progressSync.continueWatching
+                .mapNotNull { dto -> dto.toContinueWatchingMeta(libraryByContentId[dto.contentId]) }
+            )
+            ensureNuvioOwnerStillConnected(profile.id, providerOwner)
+            check(providerDataStore.replaceContinueWatching(providerWriteLease, progressItems)) {
+                "Nuvio account changed or disconnected while progress was syncing"
             }
-            watchlistManager.replaceExternalContinueWatching(setOf("nuvio"), progressItems)
 
             val watchedBySeries = mutableMapOf<String, MutableSet<String>>()
             mergePlan.getAsJsonObject("watched").entrySet().forEach { (key, value) ->
                 if (!value.asBoolean) return@forEach
-                val seriesId = key.substringBefore(':')
-                watchedBySeries.getOrPut(seriesId, ::mutableSetOf).add(key)
+                val (seriesId, normalizedVideoId) = providerEpisodeSeriesId(key) ?: return@forEach
+                watchedBySeries.getOrPut(seriesId, ::mutableSetOf).add(normalizedVideoId)
             }
-            watchlistManager.replaceExternalWatchedEpisodes("nuvio", watchedBySeries)
-            reconcileLocalProgressToNuvio(token, primaryIndex, watchProgressDtos)
+            ensureNuvioOwnerStillConnected(profile.id, providerOwner)
+            check(providerDataStore.replaceWatchedEpisodes(providerWriteLease, watchedBySeries)) {
+                "Nuvio account changed or disconnected while history was syncing"
+            }
         }
         onStep(NuvioImportStep.PROGRESS)
         onStep(NuvioImportStep.HISTORY)
@@ -207,18 +268,29 @@ class NuvioAccountImportCoordinator(
         val collectionRows = importOrDefault(NuvioImportStep.COLLECTIONS, emptyList()) {
             nuvioService.pullCollections(token, mapOf("p_profile_id" to primaryIndex)).requireBody()
         }
-        val flatCollections = collectionRows.flatMap { it.collectionsJson.orEmpty() }
-        if (flatCollections.isNotEmpty()) {
-            val mappedCollections = gson.toJsonTree(flatCollections).asJsonArray.let(NuvioCoreBridge::mapCollections)
-            profile = profile.copy(
-                libraryCollections = gson.fromJson(mappedCollections, Array<LibraryUserCollection>::class.java).toList()
-            )
+        val flatCollections = collectionRows.flatMap { row ->
+            row.collectionsJson.orEmpty().map { it.toDomain() }
+        }
+        val importedCollections = flatCollections.mapIndexed { index, collection ->
+            collection.toLibraryUserCollection(primaryIndex, index)
         }
         onStep(NuvioImportStep.COLLECTIONS)
 
-        profile = profile.copy(nuvioLastSyncAt = System.currentTimeMillis())
+        val syncedAt = System.currentTimeMillis()
+        profile = profile
+            .copy(nuvioLastSyncAt = syncedAt)
+            .withProviderLastSyncAt(ThirdPartyProviderId.NUVIO, syncedAt)
         val latestProfile = profileManager.getProfiles().firstOrNull { it.id == profile.id }
-        val finalProfile = (latestProfile ?: profile).copy(
+            ?: throw IllegalStateException("Fluxa profile was removed during Nuvio sync")
+        ensureNuvioOwnerStillConnected(profile.id, providerOwner, latestProfile)
+        // Collections are profile-owned data. Nuvio collections are imported into the
+        // same profile collection store and merged with collections created locally in
+        // Fluxa, so selecting Simkl/Trakt/etc. as the library source cannot hide them.
+        val mergedCollections = mergeProfileCollections(
+            existing = latestProfile.safeLibraryCollections,
+            imported = importedCollections,
+        )
+        val finalProfile = latestProfile.copy(
             email = profile.email,
             nuvioAccessToken = profile.nuvioAccessToken,
             nuvioRefreshToken = profile.nuvioRefreshToken,
@@ -226,20 +298,31 @@ class NuvioAccountImportCoordinator(
             nuvioUserId = profile.nuvioUserId,
             nuvioEmail = profile.nuvioEmail,
             nuvioProfileIndex = profile.nuvioProfileIndex,
-            localAddons = profile.localAddons,
-            disabledLocalAddons = profile.disabledLocalAddons,
-            libraryCollections = profile.libraryCollections,
             nuvioLastSyncAt = profile.nuvioLastSyncAt,
-            nuvioLibrarySnapshot = profile.nuvioLibrarySnapshot
+            providerSyncTimestamps = profile.providerSyncTimestamps,
+            libraryCollections = mergedCollections,
         )
-        profileManager.saveProfileReplacingLocalAddons(finalProfile)
+        profileManager.saveProfile(finalProfile)
         profileManager.setLastActiveProfile(finalProfile)
         profileManager.clearExternalSyncFailure(finalProfile.id, "nuvio")
         return NuvioImportResult(
             profile = finalProfile,
-            externalContinueWatching = watchlistManager.getExternalContinueWatchingSnapshot(),
+            externalContinueWatching = finalProfile.providerDataOwner(ThirdPartyProviderId.NUVIO)
+                ?.let { providerDataStore.getContinueWatching(it) }
+                .orEmpty(),
             plugins = plugins
         )
+    }
+
+    private fun ensureNuvioOwnerStillConnected(
+        profileId: String,
+        expectedOwner: ProviderDataOwner,
+        currentProfile: UserProfile? = profileManager.getProfiles().firstOrNull { it.id == profileId }
+    ) {
+        val currentOwner = currentProfile?.providerDataOwner(ThirdPartyProviderId.NUVIO)
+        if (currentOwner != expectedOwner || currentProfile?.nuvioAccessToken.isNullOrBlank()) {
+            throw IllegalStateException("Nuvio account changed or disconnected during sync")
+        }
     }
 
     private fun mergeProfiles(
@@ -297,148 +380,120 @@ class NuvioAccountImportCoordinator(
             ?: connectedProfile.copy(nuvioProfileIndex = primaryIndex)
     }
 
-    private suspend fun fetchAddonMetaNeeds(
-        watchProgressJson: JsonArray,
-        libraryJson: JsonArray,
-        localAddons: List<String>?,
-        onItemProgress: (index: Int, total: Int, title: String) -> Unit
-    ): JsonObject {
-        val needs = NuvioCoreBridge.progressMetaNeeds(watchProgressJson, libraryJson)
-        val addonMetas = JsonObject()
-        needs.forEachIndexed { index, need ->
-            val obj = need.asJsonObject
-            val contentId = obj.get("contentId")?.takeUnless { it.isJsonNull }?.asString ?: return@forEachIndexed
-            val contentType = obj.get("contentType")?.takeUnless { it.isJsonNull }?.asString ?: return@forEachIndexed
-            val detail = runCatching {
-                addonRepository.getAddonMetaDetail(type = contentType, id = contentId, authKey = "", localAddons = localAddons)
-            }.getOrNull() ?: return@forEachIndexed
-            onItemProgress(index + 1, needs.size(), detail.name)
-            val metaJson = JsonObject().apply {
-                addProperty("name", detail.name)
-                detail.poster?.let { addProperty("poster", it) }
-                detail.background?.let { addProperty("background", it) }
-                add(
-                    "videos",
-                    gson.toJsonTree(
-                        detail.videos.orEmpty().map { video ->
-                            mapOf("season" to video.season, "episode" to video.number, "title" to video.name, "thumbnail" to video.thumbnail)
-                        }
-                    )
-                )
-            }
-            addonMetas.add(contentId, metaJson)
-        }
-        return addonMetas
-    }
-
-    private fun progressEntryToMeta(entry: JsonObject): Meta? {
-        val meta = entry.getAsJsonObject("meta") ?: return null
-        val id = meta.get("id")?.takeUnless { it.isJsonNull }?.asString ?: return null
-        val thumbnail = entry.get("lastEpisodeThumbnail")?.takeUnless { it.isJsonNull }?.asString
-        val savedAt = entry.get("savedAt")?.takeUnless { it.isJsonNull }?.asString
-        val lastWatchedAt = savedAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
-        return Meta(
-            id = id,
-            name = meta.get("name")?.takeUnless { it.isJsonNull }?.asString ?: id,
-            type = meta.get("type")?.takeUnless { it.isJsonNull }?.asString ?: "",
-            poster = meta.get("poster")?.takeUnless { it.isJsonNull }?.asString,
-            background = meta.get("background")?.takeUnless { it.isJsonNull }?.asString,
-            timeOffset = entry.get("timeOffset")?.takeUnless { it.isJsonNull }?.asLong,
-            duration = entry.get("duration")?.takeUnless { it.isJsonNull }?.asLong,
-            lastVideoId = entry.get("lastVideoId")?.takeUnless { it.isJsonNull }?.asString,
-            lastEpisodeName = entry.get("lastEpisodeName")?.takeUnless { it.isJsonNull }?.asString,
-            lastWatchedAt = lastWatchedAt,
-            reason = "Nuvio",
-            continueWatchingPoster = thumbnail,
-            continueWatchingBackground = thumbnail
-        )
-    }
-
-    private suspend fun reconcileLocalProgressToNuvio(
-        token: String,
-        profileIndex: Int,
-        remoteProgress: List<NuvioWatchProgressDto>
-    ) {
-        val localItems = watchlistManager.getContinueWatchingSnapshot()
-            .filter { (it.timeOffset ?: 0L) > 0L && (it.duration ?: 0L) > 0L }
-        if (localItems.isEmpty()) return
-
-        val remoteByKey = remoteProgress.associateBy { dto ->
-            val season = dto.season
-            val episode = dto.episode
-            if (season != null && episode != null) "${dto.contentId}:$season:$episode" else dto.contentId
-        }
-
-        val entries = localItems.mapNotNull { meta ->
-            val localUpdatedAt = meta.lastWatchedAt ?: return@mapNotNull null
-            val locator = meta.lastVideoId?.let { FluxaCoreNative.parseEpisodeLocator(it) }
-            val key = if (locator != null) "${meta.id}:${locator.season}:${locator.episode}" else meta.id
-            val remote = remoteByKey[key]
-            if (remote != null && remote.lastWatched >= localUpdatedAt) return@mapNotNull null
-            NuvioSyncRequests.playbackProgress(meta, meta.lastVideoId, meta.timeOffset ?: 0L, meta.duration ?: 0L, localUpdatedAt)
-        }
-        if (entries.isEmpty()) return
-
-        runCatching {
-            val response = nuvioService.pushWatchProgress(
-                "Bearer $token",
-                mapOf("p_profile_id" to profileIndex, "p_entries" to entries)
-            )
-            if (!response.isSuccessful) throw IllegalStateException("Nuvio pushWatchProgress failed (${response.code()})")
-        }.onFailure { error ->
-            PlatformLog.w("NuvioImport", "Failed to reconcile local progress to Nuvio", error)
-        }
-    }
-
     private suspend fun <T> importOrDefault(
         step: NuvioImportStep,
-        fallback: T,
-        call: suspend () -> T
+        defaultValue: T,
+        block: suspend () -> T,
     ): T = try {
-        call()
+        block()
     } catch (error: Exception) {
-        PlatformLog.w("NuvioImport", "Import step $step failed; continuing without it", error)
-        fallback
+        PlatformLog.w(
+            "NuvioImport",
+            "Import step $step failed; continuing with the existing/default value",
+            error,
+        )
+        defaultValue
     }
 
-    private suspend fun pullAllLibraryItems(
-        token: String,
-        profileIndex: Int,
-        onItemProgress: (index: Int, total: Int, title: String) -> Unit
-    ): List<NuvioLibraryItemDto> {
-        val items = mutableListOf<NuvioLibraryItemDto>()
-        var offset = 0
-        do {
-            val page = nuvioService.pullLibrary(
-                token,
-                mapOf("p_profile_id" to profileIndex, "p_limit" to NUVIO_PAGE_SIZE, "p_offset" to offset)
-            ).requireBody()
-            items += page
-            page.forEachIndexed { index, item ->
-                onItemProgress(offset + index + 1, offset + page.size, item.name)
-            }
-            offset += page.size
-        } while (page.size == NUVIO_PAGE_SIZE)
-        return items
-    }
+}
 
-    private suspend fun pullAllWatchedItems(token: String, profileIndex: Int): List<NuvioWatchedItemDto> {
-        val items = mutableListOf<NuvioWatchedItemDto>()
-        var pageNumber = 1
-        do {
-            val page = nuvioService.pullWatchedItems(
-                token,
-                mapOf("p_profile_id" to profileIndex, "p_page" to pageNumber, "p_page_size" to NUVIO_PAGE_SIZE)
-            ).requireBody()
-            items += page
-            pageNumber += 1
-        } while (page.size == NUVIO_PAGE_SIZE)
-        return items
-    }
 
-    private companion object {
-        const val NUVIO_PAGE_SIZE = 500
-    }
+private fun mergeProfileCollections(
+    existing: List<LibraryUserCollection>,
+    imported: List<LibraryUserCollection>,
+): List<LibraryUserCollection> {
+    if (imported.isEmpty()) return existing
+    val merged = LinkedHashMap<String, LibraryUserCollection>(existing.size + imported.size)
+    existing.forEach { collection -> merged[collection.id] = collection }
+    imported.forEach { collection -> merged[collection.id] = collection }
+    return merged.values.toList()
+}
+
+private fun NuvioCollection.toLibraryUserCollection(profileIndex: Int, index: Int): LibraryUserCollection {
+    val resolvedTitle = title?.trim().takeUnless { it.isNullOrBlank() } ?: "Collection ${index + 1}"
+    val resolvedId = id?.trim().takeUnless { it.isNullOrBlank() }
+        ?: "nuvio_${profileIndex}_${resolvedTitle.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').ifBlank { index.toString() }}"
+    return LibraryUserCollection(
+        id = resolvedId,
+        title = resolvedTitle,
+        imageUrl = backdropImageUrl,
+        showOnHome = showOnHome ?: false,
+        folders = folders.orEmpty().mapIndexed { folderIndex, folder ->
+            folder.toLibraryUserCollectionFolder(resolvedId, folderIndex)
+        },
+        showAllTab = showAllTab ?: true,
+        viewMode = viewMode ?: "FOLLOW_LAYOUT",
+        pinToTop = pinToTop ?: false,
+        focusGlowEnabled = focusGlowEnabled ?: true,
+        community = community,
+    )
+}
+
+private fun NuvioCollectionFolder.toLibraryUserCollectionFolder(
+    collectionId: String,
+    index: Int,
+): LibraryUserCollectionFolder {
+    val resolvedTitle = title?.trim().takeUnless { it.isNullOrBlank() } ?: "Folder ${index + 1}"
+    val resolvedId = id?.trim().takeUnless { it.isNullOrBlank() }
+        ?: "${collectionId}_folder_$index"
+    val sourceRows = catalogSources.orEmpty()
+    val addonSources = sourceRows.mapNotNull(NuvioCollectionFolderSource::toLibraryCatalogSourceOrNull)
+    val remoteSources = sourceRows.mapNotNull(NuvioCollectionFolderSource::toLibraryRemoteSourceOrNull)
+    return LibraryUserCollectionFolder(
+        id = resolvedId,
+        title = resolvedTitle,
+        imageUrl = coverImageUrl,
+        shape = tileShape ?: "poster",
+        hideTitle = hideTitle ?: false,
+        focusGifEnabled = focusGifEnabled ?: true,
+        catalogSources = addonSources,
+        sources = remoteSources,
+        coverEmoji = coverEmoji,
+        coverImageUrl = coverImageUrl,
+        focusGifUrl = focusGifUrl,
+        titleLogoUrl = titleLogoUrl,
+        heroBackdropUrl = heroBackdropUrl,
+        heroVideoUrl = heroVideoUrl,
+    )
+}
+
+private fun NuvioCollectionFolderSource.toLibraryCatalogSourceOrNull(): LibraryCatalogSource? {
+    val resolvedCatalogId = catalogId?.trim().takeUnless { it.isNullOrBlank() } ?: return null
+    val resolvedType = type?.trim().takeUnless { it.isNullOrBlank() } ?: return null
+    return LibraryCatalogSource(
+        addonId = addonId?.takeIf(String::isNotBlank),
+        catalogId = resolvedCatalogId,
+        type = resolvedType,
+        genre = genre?.takeIf(String::isNotBlank),
+        displayName = title?.takeIf(String::isNotBlank),
+    )
+}
+
+private fun NuvioCollectionFolderSource.toLibraryRemoteSourceOrNull(): LibraryRemoteSource? {
+    val resolvedProvider = provider
+        ?.trim()
+        ?.lowercase()
+        ?.takeIf { it == "trakt" || it == "tmdb" }
+        ?: when {
+            traktListId != null -> "trakt"
+            tmdbId != null -> "tmdb"
+            else -> return null
+        }
+    return LibraryRemoteSource(
+        provider = resolvedProvider,
+        title = title,
+        mediaType = mediaType,
+        traktListId = traktListId,
+        tmdbSourceType = tmdbSourceType,
+        tmdbId = tmdbId,
+        sortBy = sortBy,
+        sortHow = sortHow,
+        filters = filters,
+        addonId = addonId,
+        catalogId = catalogId,
+        type = type,
+        genre = genre,
+    )
 }
 
 data class NuvioImportResult(
@@ -456,4 +511,14 @@ private fun NuvioProfileDto.withResolvedAvatarUrl(avatars: List<NuvioAvatarDto>,
 private fun <T> Response<T>.requireBody(): T {
     if (!isSuccessful) throw IllegalStateException("Nuvio request failed (${code()})")
     return body() ?: throw IllegalStateException("Nuvio returned an empty response")
+}
+
+
+private fun providerEpisodeSeriesId(videoId: String): Pair<String, String>? {
+    val parts = videoId.split(':')
+    if (parts.size < 3) return null
+    val season = parts[parts.lastIndex - 1].toIntOrNull() ?: return null
+    val episode = parts.last().toIntOrNull() ?: return null
+    val seriesId = parts.dropLast(2).joinToString(":").takeIf(String::isNotBlank) ?: return null
+    return seriesId to "$seriesId:$season:$episode"
 }

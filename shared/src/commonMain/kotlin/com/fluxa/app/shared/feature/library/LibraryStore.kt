@@ -37,6 +37,10 @@ class LibraryStore(
                 folderDetail.value = LibraryFolderDetailUiState()
             }
             is LibraryAction.SourceChanged -> dataSource.setLibrarySource(action.source)
+            is LibraryAction.LocalMediaFolderPickerRequested -> Unit
+            is LibraryAction.LocalMediaSourceAdded -> dataSource.addLocalMediaSource(action.source)
+            is LibraryAction.LocalMediaSourceRemoved -> dataSource.removeLocalMediaSource(action.sourceId)
+            is LibraryAction.LocalMediaScanRequested -> dataSource.scanLocalMedia(action.forceMetadata)
         }
     }
 }

@@ -46,6 +46,13 @@ object RepositoryModule {
 
     @Provides
     @Singleton
+    @Named("NuvioSyncDelta")
+    fun provideNuvioSyncDeltaStore(@ApplicationContext context: Context): PlatformKeyValueStore {
+        return AndroidPlatformKeyValueStore(context.getSharedPreferences("nuvio_sync_delta", Context.MODE_PRIVATE))
+    }
+
+    @Provides
+    @Singleton
     @Named("PluginRepositoryState")
     fun providePluginRepositoryStateStore(@ApplicationContext context: Context): PlatformKeyValueStore {
         return AndroidPlatformKeyValueStore(context.getSharedPreferences("fluxa_plugin_repository_manager", Context.MODE_PRIVATE))
@@ -69,9 +76,7 @@ object RepositoryModule {
             traktClientId = com.fluxa.app.BuildConfig.TRAKT_CLIENT_ID,
             traktClientSecret = com.fluxa.app.BuildConfig.TRAKT_CLIENT_SECRET.takeIf { it.isNotBlank() },
             simklClientId = com.fluxa.app.BuildConfig.SIMKL_CLIENT_ID,
-            simklClientSecret = com.fluxa.app.BuildConfig.SIMKL_CLIENT_SECRET.takeIf { it.isNotBlank() },
-            anilistClientId = com.fluxa.app.BuildConfig.ANILIST_CLIENT_ID,
-            anilistClientSecret = com.fluxa.app.BuildConfig.ANILIST_CLIENT_SECRET.takeIf { it.isNotBlank() }
+            anilistClientId = com.fluxa.app.BuildConfig.ANILIST_CLIENT_ID
         )
     }
 

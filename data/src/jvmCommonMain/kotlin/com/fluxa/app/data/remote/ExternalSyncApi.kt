@@ -162,14 +162,11 @@ interface ExternalSyncApi {
     @POST("https://api.simkl.com/oauth/token")
     suspend fun exchangeSimklCode(
         @Field("client_id") clientId: String,
-        @Field("client_secret") clientSecret: String,
+        @Field("code_verifier") codeVerifier: String,
         @Field("grant_type") grantType: String,
         @Field("code") code: String,
         @Field("redirect_uri") redirectUri: String
     ): ExternalOAuthTokenResponse
-
-    @POST("https://anilist.co/api/v2/oauth/token")
-    suspend fun exchangeAnilistCode(@Body request: AnilistTokenRequest): ExternalOAuthTokenResponse
 
     @GET("https://api.simkl.com/sync/all-items/{type}/{status}")
     suspend fun getSimklAllItems(

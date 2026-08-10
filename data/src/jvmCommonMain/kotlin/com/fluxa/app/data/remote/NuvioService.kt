@@ -65,8 +65,21 @@ interface NuvioService {
         @Query("profile_id") profileId: String
     ): Response<Unit>
 
+    /** Legacy full-replace endpoint. Keep only for compatibility; never send partial state. */
     @POST("rest/v1/rpc/sync_push_library")
     suspend fun pushLibrary(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_push_library_items")
+    suspend fun pushLibraryItems(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_delete_library_items")
+    suspend fun deleteLibraryItems(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_get_library_delta_cursor")
+    suspend fun getLibraryDeltaCursor(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Long>
+
+    @POST("rest/v1/rpc/sync_pull_library_delta")
+    suspend fun pullLibraryDelta(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioLibraryDeltaEventDto>>
 
     @POST("rest/v1/rpc/sync_push_watch_progress")
     suspend fun pushWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Unit>
@@ -92,8 +105,20 @@ interface NuvioService {
     @POST("rest/v1/rpc/sync_pull_watch_progress")
     suspend fun pullWatchProgress(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioWatchProgressDto>>
 
+    @POST("rest/v1/rpc/sync_get_watch_progress_delta_cursor")
+    suspend fun getWatchProgressDeltaCursor(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Long>
+
+    @POST("rest/v1/rpc/sync_pull_watch_progress_delta")
+    suspend fun pullWatchProgressDelta(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioWatchProgressDeltaEventDto>>
+
     @POST("rest/v1/rpc/sync_pull_watched_items")
     suspend fun pullWatchedItems(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioWatchedItemDto>>
+
+    @POST("rest/v1/rpc/sync_get_watched_items_delta_cursor")
+    suspend fun getWatchedItemsDeltaCursor(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Long>
+
+    @POST("rest/v1/rpc/sync_pull_watched_items_delta")
+    suspend fun pullWatchedItemsDelta(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioWatchedItemDeltaEventDto>>
 
     @POST("rest/v1/rpc/sync_pull_collections")
     suspend fun pullCollections(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<List<NuvioCollectionRowDto>>

@@ -1,151 +1,408 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.ThirdPartyProviderId
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.data.local.safeDisabledLocalAddonIds
-import com.fluxa.app.data.local.LibraryUserCollection
+import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.remote.MetaDetail
+import com.fluxa.app.data.remote.NuvioLibraryItemDto
 import com.fluxa.app.data.remote.NuvioRefreshRequest
-import com.fluxa.app.data.remote.toDto
 import com.fluxa.app.data.remote.NuvioService
+import com.fluxa.app.data.remote.NuvioWatchProgressDto
+import com.fluxa.app.data.remote.NuvioWatchedItemDto
 import com.fluxa.app.data.remote.Video
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.fluxa.app.data.remote.toDto
+import com.fluxa.app.domain.discovery.supportsStremioResource
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.Response
 import javax.inject.Inject
 
 class NuvioSyncCoordinator @Inject constructor(
     private val nuvioService: NuvioService,
     private val profileManager: ProfileManager,
-    private val gson: Gson
+    private val addonRepository: AddonRepository,
+    private val deltaSyncEngine: NuvioDeltaSyncEngine,
+    private val gson: com.google.gson.Gson,
 ) {
-    suspend fun isHealthy(): Boolean {
-        return runCatching { nuvioService.healthCheck().bodyOrNull()?.status?.lowercase() in setOf("healthy", "ok") }.getOrDefault(false)
+
+    suspend fun fetchAddonCount(profile: UserProfile): Int {
+        val context = syncContext(profile) ?: return 0
+        val effective = nuvioService.resolveEffectiveProfileScopes(
+            context.authorization,
+            context.profileIndex,
+        )
+        return nuvioService.pullAddons(
+            authorization = context.authorization,
+            profileId = "eq.${effective.addons}",
+        ).bodyOrNull().orEmpty().size
     }
 
-    suspend fun pushCollections(profile: UserProfile) {
-        val current = freshProfile(profile) ?: return
-        val token = current.nuvioAccessToken ?: return
-        val index = current.nuvioProfileIndex ?: return
-        nuvioService.pushCollections(
-            "Bearer $token",
-            mapOf(
-                "p_profile_id" to index,
-                "p_collections_json" to current.safeLibraryCollections.map(NuvioSyncRequests::collection)
-            )
-        ).requireSuccess()
-        profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
+    suspend fun fetchLibrary(profile: UserProfile): List<Meta> {
+        val context = syncContext(profile) ?: return emptyList()
+        return deltaSyncEngine.syncLibrary(
+            context.authorization,
+            context.scope,
+            context.profileIndex,
+        ).map { dto -> dto.toLibraryMeta() }
     }
 
-    suspend fun pushAddons(profile: UserProfile) {
-        val current = freshProfile(profile) ?: return
-        val token = current.nuvioAccessToken ?: return
-        val index = current.nuvioProfileIndex ?: return
-        val disabled = current.safeDisabledLocalAddonIds
-        val desired = current.safeInstalledLocalAddons.mapIndexed { sortOrder, url ->
-            mapOf(
-                "url" to url,
-                "name" to url,
-                "enabled" to (com.fluxa.app.domain.discovery.StremioAddonUrls.identity(url) !in disabled),
-                "sort_order" to sortOrder
+    /**
+     * Nuvio is the source of truth for progress. Raw progress remains keyed by
+     * `progress_key`; only the final Continue Watching projection collapses a
+     * series to its newest episode.
+     */
+    suspend fun fetchContinueWatching(profile: UserProfile): List<Meta> = coroutineScope {
+        val context = syncContext(profile) ?: return@coroutineScope emptyList()
+
+        val libraryRequest = async {
+            deltaSyncEngine.syncLibrary(
+                context.authorization,
+                context.scope,
+                context.profileIndex,
             )
         }
-        val authorization = "Bearer $token"
-        val existing = nuvioService.pullAddons(authorization, profileId = "eq.$index").body()?.map { it.toDomain() }
-            ?: throw IllegalStateException("Unable to load Nuvio add-ons")
-        val desiredByUrl = desired.associateBy { it["url"] as String }
-        nuvioService.pushAddons(
-            authorization,
-            mapOf(
-                "p_profile_id" to index,
-                "p_addons" to desired
+        val progressRequest = async {
+            deltaSyncEngine.syncProgress(
+                context.authorization,
+                context.scope,
+                context.profileIndex,
             )
-        ).requireSuccess()
-        existing.forEach { addon ->
-            val desiredAddon = desiredByUrl[addon.url]
-            if (desiredAddon == null) {
-                addon.id?.let { id ->
-                    nuvioService.deleteAddon(authorization, "eq.$id", "eq.$index").requireSuccess()
-                }
-            } else {
-                addon.id?.let { id ->
-                    nuvioService.updateAddon(authorization, "eq.$id", "eq.$index", desiredAddon).requireSuccess()
+        }
+
+        val library = libraryRequest.await().associateBy { it.nuvioLibraryIdentity() }
+        val progress = progressRequest.await().continueWatching
+        if (progress.isEmpty()) return@coroutineScope emptyList()
+
+        val needsMetadata = NuvioCoreBridge.progressMetaNeeds(
+            gson.toJsonTree(progress),
+            gson.toJsonTree(library.values),
+        ).mapNotNull { need ->
+            need.asJsonObject.get("progressKey")?.asString
+                ?.let { key -> progress.firstOrNull { it.canonicalProgressKey() == key } }
+        }
+        val metadataByProgressKey = if (needsMetadata.isEmpty()) {
+            emptyMap()
+        } else {
+            resolveNuvioProgressMetadata(
+                authorization = context.authorization,
+                profileIndex = context.profileIndex,
+                progress = needsMetadata,
+                library = library,
+            )
+        }
+
+        progress.mapNotNull { dto ->
+            dto.toContinueWatchingMeta(
+                libraryItem = library[dto.nuvioLibraryIdentity()],
+                metadataDetail = metadataByProgressKey[dto.canonicalProgressKey()],
+            )
+        }
+    }
+
+    /** Recent Nuvio watch-history projection for provider library UI. */
+    suspend fun fetchWatched(profile: UserProfile): List<Meta> {
+        val context = syncContext(profile) ?: return emptyList()
+        val history = deltaSyncEngine.syncHistory(
+            context.authorization,
+            context.scope,
+            context.profileIndex,
+        )
+        val latestByContent = LinkedHashMap<String, NuvioWatchedItemDto>()
+        history.sortedByDescending { it.watchedAt ?: Long.MIN_VALUE }.forEach { item ->
+            val key = "${item.contentType.trim().lowercase()}:${item.contentId.trim()}"
+            latestByContent.putIfAbsent(key, item)
+        }
+        return latestByContent.values.map { item ->
+            val episodeCode = if (item.season != null && item.episode != null) {
+                "S${item.season} E${item.episode}"
+            } else null
+            Meta(
+                id = item.contentId,
+                name = item.title?.takeIf(String::isNotBlank) ?: item.contentId,
+                type = item.contentType,
+                lastEpisodeName = episodeCode,
+                lastWatchedAt = item.watchedAt,
+                reason = ThirdPartyProviderId.NUVIO.reasonLabel,
+            )
+        }
+    }
+
+    suspend fun fetchWatchedEpisodeTimestamps(profile: UserProfile): Map<String, Long> {
+        val context = syncContext(profile) ?: return emptyMap()
+        return deltaSyncEngine.syncHistory(
+            context.authorization,
+            context.scope,
+            context.profileIndex,
+        ).mapNotNull { item ->
+            val season = item.season ?: return@mapNotNull null
+            val episode = item.episode ?: return@mapNotNull null
+            val watchedAt = item.watchedAt ?: return@mapNotNull null
+            "${item.contentId}:$season:$episode" to watchedAt
+        }.toMap()
+    }
+
+    /**
+     * Resolve metadata without probing unknown add-ons. A library item's
+     * `addon_base_url` is a trusted metadata source and is tried directly. Any
+     * fallback add-ons must already have a cached manifest that declares `meta`;
+     * cache misses are skipped, so subtitle/stream-only add-ons receive no
+     * manifest or /meta request from this Continue Watching path.
+     */
+    private suspend fun resolveNuvioProgressMetadata(
+        authorization: String,
+        profileIndex: Int,
+        progress: List<NuvioWatchProgressDto>,
+        library: Map<String, NuvioLibraryItemDto>,
+    ): Map<String, MetaDetail> = coroutineScope {
+        val effective = nuvioService.resolveEffectiveProfileScopes(authorization, profileIndex)
+        val enabledAddons = nuvioService.pullAddons(
+            authorization = authorization,
+            profileId = "eq.${effective.addons}",
+        ).bodyOrNull().orEmpty()
+            .filter { it.enabled && it.url.isNotBlank() }
+            .sortedBy { it.sortOrder }
+        if (enabledAddons.isEmpty()) return@coroutineScope emptyMap()
+
+        val cachedManifestSemaphore = Semaphore(4)
+        val cachedMetadataAddons = enabledAddons.map { addon ->
+            async {
+                cachedManifestSemaphore.withPermit {
+                    addonRepository.getCachedAddonManifest(addon.url)
                 }
             }
-        }
-        profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
-    }
-    private val watchlistMutexes = mutableMapOf<String, kotlinx.coroutines.sync.Mutex>()
-    private val watchlistMutexesLock = Any()
+        }.awaitAll()
+            .filterNotNull()
+            .filter { descriptor -> descriptor.supportsStremioResource("meta") }
 
-    suspend fun pushWatchlist(profile: UserProfile, meta: Meta, isInWatchlist: Boolean) {
-        val queueKey = "${profile.nuvioUserId ?: profile.id}:${profile.nuvioProfileIndex ?: 1}"
-        val mutex = synchronized(watchlistMutexesLock) {
-            watchlistMutexes.getOrPut(queueKey) { kotlinx.coroutines.sync.Mutex() }
+        val semaphore = Semaphore(4)
+        progress
+            .distinctBy { it.canonicalProgressKey() }
+            .map { entry ->
+                async {
+                    semaphore.withPermit {
+                        val preferredUrl = library[entry.nuvioLibraryIdentity()]?.addonBaseUrl
+                            ?.takeIf(String::isNotBlank)
+                            ?.let { source ->
+                                enabledAddons.firstOrNull { sameAddonTransport(it.url, source) }?.url
+                            }
+                        val preferredDetail = preferredUrl?.let { source ->
+                            resolveFromKnownMetadataAddon(entry, source)
+                        }
+                        val detail = preferredDetail ?: resolveFromCachedMetadataAddons(
+                            entry,
+                            cachedMetadataAddons.filterNot { descriptor ->
+                                preferredUrl != null && sameAddonTransport(descriptor.transportUrl, preferredUrl)
+                            },
+                        )
+                        detail?.let { entry.canonicalProgressKey() to it }
+                    }
+                }
+            }
+            .awaitAll()
+            .filterNotNull()
+            .toMap()
+    }
+
+    private suspend fun resolveFromKnownMetadataAddon(
+        progress: NuvioWatchProgressDto,
+        transportUrl: String,
+    ): MetaDetail? {
+        val candidateTypes = progress.candidateMetaTypes()
+        if (candidateTypes.isEmpty()) return null
+        return withTimeoutOrNull(2_500L) {
+            addonRepository.getMetaDetailFromSpecificAddon(
+                transportUrl = transportUrl,
+                type = candidateTypes.first(),
+                id = progress.contentId,
+                alternateTypes = candidateTypes.drop(1),
+            )
         }
-        mutex.lock()
-        try {
-            val current = freshProfile(profile) ?: return
-            val token = current.nuvioAccessToken ?: return
-            val index = current.nuvioProfileIndex ?: return
-            val remote = nuvioService.pullLibrary("Bearer $token", mapOf("p_profile_id" to index, "p_limit" to 500, "p_offset" to 0)).bodyOrNull()?.map { it.toDomain() }
-                ?.map(NuvioSyncRequests::libraryItem)
-                ?: return
-            val updatedJson = NuvioCoreBridge.libraryMutationPlan(
-                remote = gson.toJsonTree(remote),
-                item = gson.toJsonTree(meta),
-                command = if (isInWatchlist) "add" else "remove",
-                nowMs = System.currentTimeMillis()
-            ) ?: return
-            val updated: List<Map<String, Any?>> = gson.fromJson(updatedJson, object : TypeToken<List<Map<String, Any?>>>() {}.type)
-            nuvioService.pushLibrary(
-                "Bearer $token",
-                mapOf(
-                    "p_profile_id" to index,
-                    "p_items" to updated
+    }
+
+    private suspend fun resolveFromCachedMetadataAddons(
+        progress: NuvioWatchProgressDto,
+        addons: List<AddonDescriptor>,
+    ): MetaDetail? {
+        val candidateTypes = progress.candidateMetaTypes()
+        for (addon in addons) {
+            val supportedTypes = candidateTypes.filter { type ->
+                addon.supportsStremioResource("meta", type, progress.contentId)
+            }
+            if (supportedTypes.isEmpty()) continue
+            val detail = withTimeoutOrNull(2_500L) {
+                addonRepository.getMetaDetailFromSpecificAddon(
+                    transportUrl = addon.transportUrl,
+                    type = supportedTypes.first(),
+                    id = progress.contentId,
+                    alternateTypes = supportedTypes.drop(1),
                 )
-            ).requireSuccess()
-            profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
-        } finally {
-            mutex.unlock()
+            }
+            if (detail != null) return detail
         }
+        return null
     }
 
-    suspend fun pushWatched(profile: UserProfile, meta: Meta, episodes: List<Video>, watched: Boolean) {
-        val current = freshProfile(profile) ?: return
-        val token = current.nuvioAccessToken ?: return
-        val index = current.nuvioProfileIndex ?: return
+    suspend fun isHealthy(): Boolean = runCatching {
+        nuvioService.healthCheck().bodyOrNull()?.status?.lowercase() in setOf("healthy", "ok")
+    }.getOrDefault(false)
+
+    /** Uses the v1.2 incremental library mutation endpoints; never legacy full replace. */
+    suspend fun pushWatchlist(profile: UserProfile, meta: Meta, isInWatchlist: Boolean): Boolean {
+        val context = syncContext(profile) ?: return false
+        if (isInWatchlist) {
+            val item = NuvioSyncRequests.libraryItem(meta, System.currentTimeMillis())
+                .toMutableMap()
+                .apply {
+                    this["content_id"] = meta.id.trim()
+                    this["content_type"] = canonicalNuvioContentType(meta.type)
+                }
+            nuvioService.pushLibraryItems(
+                context.authorization,
+                mapOf(
+                    "p_profile_id" to context.profileIndex,
+                    "p_items" to listOf(item),
+                ),
+            ).requireSuccess()
+        } else {
+            nuvioService.deleteLibraryItems(
+                context.authorization,
+                mapOf(
+                    "p_profile_id" to context.profileIndex,
+                    "p_keys" to listOf(
+                        mapOf(
+                            "content_id" to meta.id,
+                            "content_type" to canonicalNuvioContentType(meta.type),
+                        ),
+                    ),
+                ),
+            ).requireSuccess()
+        }
+        deltaSyncEngine.invalidate(context.scope, "library")
+        stampSync(context.profile)
+        return true
+    }
+
+    suspend fun pushWatched(
+        profile: UserProfile,
+        meta: Meta,
+        episodes: List<Video>,
+        watched: Boolean,
+    ): Boolean {
+        val context = syncContext(profile) ?: return false
         val items = NuvioSyncRequests.watchedItems(meta, episodes, System.currentTimeMillis())
-        if (items.isEmpty()) return
+            .map { item ->
+                item.toMutableMap().apply {
+                    this["content_id"] = meta.id.trim()
+                    this["content_type"] = canonicalNuvioContentType(meta.type)
+                }
+            }
+        if (items.isEmpty()) return false
         val keys = items.map { item ->
             mapOf(
                 "content_id" to item["content_id"],
                 "season" to item["season"],
-                "episode" to item["episode"]
+                "episode" to item["episode"],
             )
         }
         if (watched) {
-            nuvioService.pushWatchedItems("Bearer $token", mapOf("p_profile_id" to index, "p_items" to items)).requireSuccess()
+            nuvioService.pushWatchedItems(
+                context.authorization,
+                mapOf("p_profile_id" to context.profileIndex, "p_items" to items),
+            ).requireSuccess()
         } else {
-            nuvioService.deleteWatchedItems("Bearer $token", mapOf("p_profile_id" to index, "p_keys" to keys)).requireSuccess()
+            nuvioService.deleteWatchedItems(
+                context.authorization,
+                mapOf("p_profile_id" to context.profileIndex, "p_keys" to keys),
+            ).requireSuccess()
         }
-        profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
+        deltaSyncEngine.invalidate(context.scope, "history")
+        stampSync(context.profile)
+        return true
     }
 
-    suspend fun pushPlaybackProgress(profile: UserProfile, meta: Meta, videoId: String?, position: Long, duration: Long) {
-        if (duration <= 0L) return
-        val current = freshProfile(profile) ?: return
-        val token = current.nuvioAccessToken ?: return
-        val index = current.nuvioProfileIndex ?: return
-        val entry = NuvioSyncRequests.playbackProgress(meta, videoId, position, duration, System.currentTimeMillis())
-        nuvioService.pushWatchProgress(
-            "Bearer $token",
+    suspend fun clearPlaybackProgress(profile: UserProfile, meta: Meta): Boolean {
+        val context = syncContext(profile) ?: return false
+        val progressKey = meta.nuvioProgressKey()
+        nuvioService.deleteWatchProgress(
+            context.authorization,
             mapOf(
-                "p_profile_id" to index,
-                "p_entries" to listOf(entry)
-            )
+                "p_profile_id" to context.profileIndex,
+                "p_progress_key" to progressKey,
+            ),
         ).requireSuccess()
-        profileManager.updateProfile(current.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
+        deltaSyncEngine.invalidate(context.scope, "progress")
+        stampSync(context.profile)
+        return true
+    }
+
+    suspend fun pushPlaybackProgress(
+        profile: UserProfile,
+        meta: Meta,
+        videoId: String?,
+        position: Long,
+        duration: Long,
+    ) {
+        if (duration <= 0L) return
+        val context = syncContext(profile) ?: return
+        val entry = NuvioSyncRequests.playbackProgress(
+            meta,
+            videoId,
+            position,
+            duration,
+            System.currentTimeMillis(),
+        ).toMutableMap()
+        // Nuvio v1.2 computes progress_key server-side. Ensure the canonical
+        // content identity plus S/E fields are present and do not send a stale key.
+        entry.remove("progress_key")
+        entry["content_id"] = meta.id.trim()
+        entry["content_type"] = canonicalNuvioContentType(meta.type)
+        val locator = meta.episodeLocator(videoId)
+        locator?.let { (season, episode) ->
+            entry["season"] = season
+            entry["episode"] = episode
+        }
+        val resolvedVideoId = videoId?.trim()?.takeIf(String::isNotBlank)
+            ?: if (canonicalNuvioContentType(meta.type) == "movie") {
+                meta.id.trim()
+            } else {
+                locator?.let { (season, episode) -> "${meta.id.trim()}:$season:$episode" }
+            }
+            ?: return
+        entry["video_id"] = resolvedVideoId
+        nuvioService.pushWatchProgress(
+            context.authorization,
+            mapOf(
+                "p_profile_id" to context.profileIndex,
+                "p_entries" to listOf(entry),
+            ),
+        ).requireSuccess()
+        deltaSyncEngine.invalidate(context.scope, "progress")
+        // Nuvio may auto-upsert watched history when progress crosses completion.
+        deltaSyncEngine.invalidate(context.scope, "history")
+        stampSync(context.profile)
+    }
+
+    private suspend fun syncContext(profile: UserProfile): NuvioContext? {
+        val current = freshProfile(profile) ?: return null
+        val token = current.nuvioAccessToken?.takeIf(String::isNotBlank) ?: return null
+        val index = current.nuvioProfileIndex ?: return null
+        val scope = current.nuvioSyncScope() ?: return null
+        return NuvioContext(
+            profile = current,
+            authorization = "Bearer $token",
+            profileIndex = index,
+            scope = scope,
+        )
+    }
+
+    private fun stampSync(profile: UserProfile) {
+        profileManager.updateProfile(profile.id) { it.copy(nuvioLastSyncAt = System.currentTimeMillis()) }
     }
 
     private suspend fun freshProfile(profile: UserProfile): UserProfile? {
@@ -153,15 +410,97 @@ class NuvioSyncCoordinator @Inject constructor(
         val expiresAt = profile.nuvioTokenExpiresAt ?: 0L
         if (expiresAt > System.currentTimeMillis() + 60_000L) return profile
         val refreshToken = profile.nuvioRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
-        val session = nuvioService.refreshToken(request = NuvioRefreshRequest(refreshToken).toDto()).bodyOrNull()?.toDomain()
-            ?: throw IllegalStateException("Nuvio token refresh failed")
+        val session = nuvioService.refreshToken(
+            request = NuvioRefreshRequest(refreshToken).toDto(),
+        ).bodyOrNull()?.toDomain() ?: throw IllegalStateException("Nuvio token refresh failed")
         return profile.copy(
             nuvioAccessToken = session.accessToken.ifBlank { accessToken },
             nuvioRefreshToken = session.refreshToken.ifBlank { refreshToken },
             nuvioTokenExpiresAt = session.expiresIn?.let { System.currentTimeMillis() + it * 1000L },
             nuvioUserId = session.user?.id ?: profile.nuvioUserId,
-            nuvioEmail = session.user?.email ?: profile.nuvioEmail
+            nuvioEmail = session.user?.email ?: profile.nuvioEmail,
         ).also(profileManager::saveProfile)
+    }
+}
+
+private data class NuvioContext(
+    val profile: UserProfile,
+    val authorization: String,
+    val profileIndex: Int,
+    val scope: String,
+)
+
+private fun NuvioLibraryItemDto.toLibraryMeta(): Meta {
+    val item = toDomain()
+    return Meta(
+        id = item.contentId,
+        name = item.name,
+        type = item.contentType,
+        poster = item.poster,
+        background = item.background,
+        description = item.description,
+        releaseInfo = item.releaseInfo,
+        imdbRating = item.imdbRating?.toString(),
+        genres = item.genres,
+        reason = ThirdPartyProviderId.NUVIO.reasonLabel,
+    )
+}
+
+private fun NuvioWatchProgressDto.candidateMetaTypes(): List<String> {
+    val alternateTypes = when (contentType.trim().lowercase()) {
+        "series", "show", "tv", "anime" -> listOf("series", "show", "tv", "anime")
+        "movie", "film" -> listOf("movie")
+        else -> emptyList()
+    }
+    return (listOf(contentType) + alternateTypes)
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinct()
+}
+
+private fun sameAddonTransport(first: String, second: String): Boolean =
+    normalizedAddonIdentity(first) == normalizedAddonIdentity(second)
+
+private fun normalizedAddonIdentity(value: String): String = value.trim()
+    .trimEnd('/')
+    .removeSuffix("/manifest.json")
+    .trimEnd('/')
+    .lowercase()
+
+private fun canonicalNuvioContentType(type: String): String = when (type.trim().lowercase()) {
+    "series", "show", "tv", "anime" -> "series"
+    else -> "movie"
+}
+
+private fun NuvioLibraryItemDto.nuvioLibraryIdentity(): String =
+    "${canonicalNuvioContentType(contentType)}:${contentId.trim()}"
+
+private fun NuvioWatchProgressDto.nuvioLibraryIdentity(): String =
+    "${canonicalNuvioContentType(contentType)}:${contentId.trim()}"
+
+private fun Meta.episodeLocator(videoId: String?): Pair<Int, Int>? {
+    val fromId = videoId?.split(':')?.let { parts ->
+        if (parts.size < 3) null else {
+            val season = parts[parts.lastIndex - 1].toIntOrNull()
+            val episode = parts.last().toIntOrNull()
+            if (season != null && episode != null) season to episode else null
+        }
+    }
+    if (fromId != null) return fromId
+    val label = lastEpisodeName ?: return null
+    val match = Regex("(?i)\\bS(\\d+)\\s*E(\\d+)\\b").find(label) ?: return null
+    return match.groupValues[1].toIntOrNull()?.let { season ->
+        match.groupValues[2].toIntOrNull()?.let { episode -> season to episode }
+    }
+}
+
+private fun Meta.nuvioProgressKey(): String {
+    val contentId = id.trim()
+    val locator = episodeLocator(lastVideoId)
+    return if (canonicalNuvioContentType(type) == "series" && locator != null) {
+        "${contentId}_s${locator.first}e${locator.second}"
+    } else {
+        contentId
     }
 }
 

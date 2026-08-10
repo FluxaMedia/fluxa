@@ -34,6 +34,48 @@ object NuvioCoreBridge {
         }
     ).asJsonArray
 
+    fun progressSyncRequestPlan(state: JsonObject): JsonObject = invoke(
+        "nuvioProgressSyncRequestPlan",
+        JsonObject().apply { add("state", state) }
+    ).asJsonObject
+
+    fun applyProgressSync(
+        state: JsonObject,
+        snapshot: JsonElement,
+        snapshotCursor: Long?,
+        events: JsonElement,
+    ): JsonObject = invoke(
+        "nuvioApplyProgressSync",
+        JsonObject().apply {
+            add("state", state)
+            add("snapshot", snapshot)
+            snapshotCursor?.let { addProperty("snapshotCursor", it) }
+            add("events", events)
+        }
+    ).asJsonObject
+
+    fun deltaSyncRequestPlan(state: JsonObject): JsonObject = invoke(
+        "nuvioDeltaSyncRequestPlan",
+        JsonObject().apply { add("state", state) },
+    ).asJsonObject
+
+    fun applyDeltaSync(
+        resource: String,
+        state: JsonObject,
+        snapshot: JsonElement,
+        snapshotCursor: Long?,
+        events: JsonElement,
+    ): JsonObject = invoke(
+        "nuvioApplyDeltaSync",
+        JsonObject().apply {
+            addProperty("resource", resource)
+            add("state", state)
+            add("snapshot", snapshot)
+            snapshotCursor?.let { addProperty("snapshotCursor", it) }
+            add("events", events)
+        },
+    ).asJsonObject
+
     fun importMergePlan(
         library: JsonElement,
         addonMetas: JsonObject,

@@ -97,8 +97,10 @@ class StremioRepository @Inject constructor(
             fromAddon?.let { return it }
         }
         return if (plan.fallbackToStremioMetaDetail) {
-            val body = authService.getMetaDetail(type, id).string()
-            runCatching { stremioMetaJson.decodeFromString<MetaDetailResponse>(body) }.getOrNull()?.meta
+            authService.getMetaDetail(type, id).use { responseBody ->
+                val body = responseBody.string()
+                runCatching { stremioMetaJson.decodeFromString<MetaDetailResponse>(body) }.getOrNull()?.meta
+            }
         } else {
             null
         }
@@ -173,18 +175,14 @@ class StremioRepository @Inject constructor(
     suspend fun exchangeTraktDeviceCode(deviceCode: String): retrofit2.Response<TraktTokenResponse> =
         oauthClient.exchangeTraktDeviceCode(deviceCode)
 
-    suspend fun exchangeSimklCode(code: String): ExternalOAuthTokenResponse = oauthClient.exchangeSimklCode(code)
-
-    suspend fun exchangeAnilistCode(code: String): ExternalOAuthTokenResponse = oauthClient.exchangeAnilistCode(code)
+    suspend fun exchangeSimklCode(code: String, codeVerifier: String): ExternalOAuthTokenResponse =
+        oauthClient.exchangeSimklCode(code, codeVerifier)
 
     suspend fun getTraktUsername(accessToken: String): String? = oauthClient.getTraktUsername(accessToken)
 
     suspend fun getSimklUsername(accessToken: String): String? = oauthClient.getSimklUsername(accessToken)
 
     suspend fun getAnilistUsername(accessToken: String): String? = oauthClient.getAnilistUsername(accessToken)
-
-    suspend fun getExternalContinueWatching(profile: UserProfile, language: String = profile.safeLanguage): List<Meta> =
-        externalLibraryClient.getExternalContinueWatching(profile, language)
 
     suspend fun getSimklLibraryItems(token: String?, status: String): List<Meta> =
         externalLibraryClient.getSimklLibraryItems(token, status)
@@ -286,17 +284,23 @@ class StremioRepository @Inject constructor(
         }
     }
 
-    suspend fun clearPlaybackProgress(authKey: String, meta: Meta) = withContext(Dispatchers.IO) {
+    suspend fun clearPlaybackProgress(authKey: String, meta: Meta): Boolean = withContext(Dispatchers.IO) {
         val profileId = profileIdForAuthKey(authKey)
         try {
-            FluxaCoreNative.clearPlaybackProgressItem(meta)?.let { item ->
-                authService.datastorePut(DatastorePutRequest(authKey, "library", listOf(item)))
+            val item = FluxaCoreNative.clearPlaybackProgressItem(meta) ?: return@withContext false
+            val success = authService.datastorePut(
+                DatastorePutRequest(authKey, "library", listOf(item))
+            ).isSuccessful
+            profileId?.let {
+                if (success) profileManager.clearExternalSyncFailure(it, "stremio")
+                else profileManager.recordExternalSyncFailure(it, "stremio")
             }
-            profileId?.let { profileManager.clearExternalSyncFailure(it, "stremio") }
+            success
         } catch (e: Exception) {
             failureReporter.report("stremio.library.clearPlaybackProgress", e)
             PlatformLog.w("StremioRepository", "Failed to clear playback progress for ${meta.id}", e)
             profileId?.let { profileManager.recordExternalSyncFailure(it, "stremio") }
+            false
         }
     }
 

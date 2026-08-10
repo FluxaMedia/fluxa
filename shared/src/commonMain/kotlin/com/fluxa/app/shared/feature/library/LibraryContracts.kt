@@ -1,9 +1,13 @@
 package com.fluxa.app.shared.feature.library
 
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
+import com.fluxa.app.shared.feature.localmedia.LocalMediaKind
+import com.fluxa.app.shared.feature.localmedia.LocalMediaSourceInput
+import com.fluxa.app.shared.feature.localmedia.LocalMediaSourceUiModel
 import kotlinx.coroutines.flow.Flow
 
-enum class LibrarySection { Planned, Completed, Favorites, Downloads, Collections }
+enum class LibrarySection { Planned, Completed, Favorites, LocalMedia, Downloads, Collections }
 
 enum class LibraryTypeFilter { All, Movie, Series, Anime }
 
@@ -69,6 +73,13 @@ data class LibraryUiState(
     val favorites: List<CatalogItemUiModel> = emptyList(),
     val collections: List<LibraryCollectionUiModel> = emptyList(),
     val downloadGroups: List<LibraryDownloadGroupUiModel> = emptyList(),
+    val localMediaSupported: Boolean = false,
+    val localMediaRows: List<CatalogRowUiModel> = emptyList(),
+    val localMediaSources: List<LocalMediaSourceUiModel> = emptyList(),
+    val localMediaIndexedFileCount: Int = 0,
+    val localMediaUnmatchedFileCount: Int = 0,
+    val localMediaIsScanning: Boolean = false,
+    val localMediaError: String? = null,
     val folderDetail: LibraryFolderDetailUiState = LibraryFolderDetailUiState(),
     val librarySource: String = "local",
     val availableLibrarySources: List<String> = listOf("local")
@@ -85,6 +96,10 @@ sealed interface LibraryAction {
     data class FolderSelected(val folder: LibraryFolderUiModel) : LibraryAction
     data object FolderClosed : LibraryAction
     data class SourceChanged(val source: String) : LibraryAction
+    data class LocalMediaFolderPickerRequested(val kind: LocalMediaKind) : LibraryAction
+    data class LocalMediaSourceAdded(val source: LocalMediaSourceInput) : LibraryAction
+    data class LocalMediaSourceRemoved(val sourceId: String) : LibraryAction
+    data class LocalMediaScanRequested(val forceMetadata: Boolean = false) : LibraryAction
 }
 
 interface LibraryDataSource {
@@ -96,4 +111,7 @@ interface LibraryDataSource {
     suspend fun cancelDownload(id: String)
     suspend fun loadFolder(folder: LibraryFolderUiModel): List<LibraryFolderSectionUiModel>
     suspend fun setLibrarySource(source: String)
+    suspend fun addLocalMediaSource(source: LocalMediaSourceInput) = Unit
+    suspend fun removeLocalMediaSource(sourceId: String) = Unit
+    suspend fun scanLocalMedia(forceMetadata: Boolean = false) = Unit
 }
