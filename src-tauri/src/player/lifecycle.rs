@@ -34,8 +34,9 @@ pub async fn player_init(app: AppHandle, state: State<'_, DesktopState>) -> Resu
                 }
                 Err(error) => {
                     log::error!("player_init: MpvClientHandle::new failed: {error}");
-                    sentry::capture_message(
-                        &format!("MpvClientHandle::new failed: {error}"),
+                    crate::diagnostics::report(
+                        &app_for_headless,
+                        format!("MpvClientHandle::new failed: {error}"),
                         sentry::Level::Error,
                     );
                     return Err(error);

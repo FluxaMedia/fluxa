@@ -100,9 +100,12 @@ impl MpvClientHandle {
                             message.push_str(&details.join("\n"));
                         }
                         let url = self.current_url.clone();
-                        sentry::with_scope(
-                            |scope| {
-                                scope.set_tag("mpv.error_code", end_file.error);
+                        let error_code = end_file.error;
+                        crate::diagnostics::report_global_with_scope(
+                            message.clone(),
+                            sentry::Level::Error,
+                            move |scope| {
+                                scope.set_tag("mpv.error_code", error_code);
                                 if let Some(url) = &url {
                                     scope.set_extra("mpv.url", url.clone().into());
                                 }
@@ -110,7 +113,6 @@ impl MpvClientHandle {
                                     scope.set_extra("mpv.log_tail", details.join("\n").into());
                                 }
                             },
-                            || sentry::capture_message(&message, sentry::Level::Error),
                         );
                         events.push(PlayerEvent::EndFile {
                             eof: false,

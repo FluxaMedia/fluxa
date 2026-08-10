@@ -5,6 +5,7 @@ mod cast_proxy;
 mod chromecast;
 mod core_commands;
 mod custom_fonts;
+mod diagnostics;
 mod discord_presence;
 mod downloads;
 mod external_player;
@@ -194,7 +195,7 @@ impl Default for DesktopState {
     }
 }
 
-static DIAGNOSTIC_MODE: AtomicBool = AtomicBool::new(false);
+pub(crate) static DIAGNOSTIC_MODE: AtomicBool = AtomicBool::new(false);
 static SENTRY_GUARD: Mutex<Option<sentry::ClientInitGuard>> = Mutex::new(None);
 
 #[cfg(test)]
@@ -211,7 +212,7 @@ mod tests {
     }
 }
 
-fn sentry_dsn() -> Option<sentry::types::Dsn> {
+pub(crate) fn sentry_dsn() -> Option<sentry::types::Dsn> {
     "https://7fe8e82cf7ea0eed65175d3d43afb1c0@o4511704565678080.ingest.de.sentry.io/4511706871693392"
         .parse()
         .ok()
@@ -438,6 +439,8 @@ pub fn run() {
         .manage(trailer_proxy::TrailerProxyState::default())
         .manage(stream_proxy::StreamProxyState::default())
         .setup(|app| {
+            diagnostics::set_app_handle(app.handle().clone());
+
             #[cfg(any(target_os = "linux", all(debug_assertions, target_os = "windows")))]
             app.deep_link().register_all()?;
 
