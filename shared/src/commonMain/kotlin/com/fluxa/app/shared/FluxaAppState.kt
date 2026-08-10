@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
-import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
@@ -45,13 +44,14 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
                     type = item.type,
                     title = item.card.title,
                     description = item.description.orEmpty(),
-                    posterUrl = item.card.artworkUrl,
+                    posterUrl = item.posterUrl ?: item.card.artworkUrl,
                     backgroundUrl = item.backdropUrl ?: item.card.artworkUrl,
                     logoUrl = item.card.logoUrl,
-                    releaseLabel = item.card.subtitle,
-                    ratingLabel = "",
+                    releaseLabel = item.releaseLabel ?: item.card.subtitle,
+                    ratingLabel = item.ratingLabel.orEmpty(),
                     runtimeLabel = item.runtimeLabel,
                     ageRating = item.ageRating,
+                    genres = item.genres,
                     isInWatchlist = false,
                     relatedItems = emptyList(),
                     availableSeasons = if (item.type == "series" && (item.seasonsCount ?: 0) > 0) {
@@ -112,9 +112,6 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
         uiState = uiState.copy(showProfilePickerSettings = false)
     }
 
-    fun updateCatalogHome(catalogHome: CatalogHomeUiState) {
-        uiState = uiState.copy(catalogHome = catalogHome)
-    }
 
     fun updateLanguage(language: String?) {
         uiState = uiState.copy(language = language)

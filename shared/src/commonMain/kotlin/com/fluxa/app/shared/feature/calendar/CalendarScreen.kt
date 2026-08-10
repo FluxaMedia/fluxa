@@ -48,8 +48,10 @@ import com.fluxa.app.common.localizedMonthTitle
 import com.fluxa.app.common.localizedShortWeekdayNames
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.image.FluxaRemoteImage
+import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.LocalDeviceType
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -291,6 +293,7 @@ private fun CalendarMonthGrid(
         }
     }
 
+    val isDesktop = LocalDeviceType.current == DeviceType.Desktop
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         cells.chunked(7).forEach { week ->
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -298,7 +301,7 @@ private fun CalendarMonthGrid(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .aspectRatio(0.85f)
+                            .then(if (isDesktop) Modifier.height(128.dp) else Modifier.aspectRatio(0.85f))
                             .then(
                                 if (cell.inCurrentMonth) {
                                     Modifier

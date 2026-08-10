@@ -1,15 +1,12 @@
 package com.fluxa.app.shared.platform
 
-import androidx.compose.ui.unit.dp
 import com.fluxa.app.data.local.WatchlistStore
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
-import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.library.LibraryDataSource
 import com.fluxa.app.shared.feature.library.LibraryFolderSectionUiModel
 import com.fluxa.app.shared.feature.library.LibraryFolderUiModel
 import com.fluxa.app.shared.feature.library.LibraryUiState
-import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -90,47 +87,17 @@ class AppleLibraryDataSource(
     }
 }
 
-private fun AppleLibraryItemSnapshot.toLibraryItem(): CatalogItemUiModel {
-    val artworkUrl = posterUrl
-    return CatalogItemUiModel(
-        id = id,
-        type = type,
-        source = CatalogSourceUiModel(
-            addonTransportUrl = addonTransportUrl,
-            catalogType = catalogType
-        ),
-        card = CatalogCardUiModel(
-            title = title,
-            subtitle = subtitle,
-            showTitleBar = true,
-            artworkUrl = artworkUrl,
-            artworkMemoryCacheKey = artworkUrl?.let { "apple-library:$it" },
-            artworkDiskCacheKey = artworkUrl?.let { "apple-library:$it" },
-            requestWidthPx = 264,
-            requestHeightPx = 396,
-            logoUrl = logoUrl,
-            logoMemoryCacheKey = null,
-            showLogo = false,
-            allowCoverFallback = true,
-            coverFallbackText = title,
-            coverFallbackIsEmoji = false,
-            width = 132.dp,
-            imageHeight = 198.dp,
-            outerWidth = 132.dp,
-            cardBackgroundIsSurfaceCard = true,
-            progress = 0f,
-            showProgressBar = false,
-            showUpNextBadge = false,
-            upNextLabel = "",
-            topTenRank = null,
-            rankNumberBoxWidth = 0.dp,
-            rankOffsetX = 0.dp,
-            rankOffsetY = 0.dp,
-            rankFontSizeRatio = 1f,
-            loadArtwork = true
-        )
-    )
-}
+private fun AppleLibraryItemSnapshot.toLibraryItem(): CatalogItemUiModel = appleCatalogItem(
+    id = id,
+    type = type,
+    title = title,
+    subtitle = subtitle,
+    artworkUrl = posterUrl,
+    logoUrl = logoUrl,
+    addonTransportUrl = addonTransportUrl,
+    catalogType = catalogType,
+    cacheNamespace = "apple-library",
+)
 
 private fun Meta.toLibraryItem(): CatalogItemUiModel = AppleLibraryItemSnapshot(
     id = id,

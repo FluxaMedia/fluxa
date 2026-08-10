@@ -22,9 +22,7 @@ internal fun assignHomeBadge(meta: Meta, lang: String): Meta {
     return meta.copy(
         homeBadge = meta.homeBadge?.takeUnless { badge ->
             badge.equals(AppStrings.t(lang, "auto.watched"), ignoreCase = true) ||
-                badge.equals("Watched", ignoreCase = true) ||
-                badge.equals("İzlendi", ignoreCase = true) ||
-                badge.equals("Izlendi", ignoreCase = true)
+                badge.equals("Watched", ignoreCase = true)
         }
     )
 }

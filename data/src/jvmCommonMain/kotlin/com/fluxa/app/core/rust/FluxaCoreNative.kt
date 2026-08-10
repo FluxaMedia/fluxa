@@ -17,6 +17,7 @@ import com.fluxa.app.core.rust.models.NativeDataFailurePolicy
 import com.fluxa.app.core.rust.models.NativeDetailSeasonLoadPlan
 import com.fluxa.app.core.rust.models.NativeDiscoverSelectionPlan
 import com.fluxa.app.core.rust.models.NativeDetailStreamResultPlan
+import com.fluxa.app.core.rust.models.NativeDeviceResourceBudget
 import com.fluxa.app.core.rust.models.NativeDirectPlaybackPlan
 import com.fluxa.app.core.rust.models.NativeDirectPlaybackPolicy
 import com.fluxa.app.core.rust.models.NativeDolbyVisionRpuConvertResult
@@ -1453,15 +1454,6 @@ object FluxaCoreNative {
 
     data class NativeSimklSyncPlan(val key: String, val action: String, val dateFrom: String? = null)
 
-    fun subtitleLanguageDedupKeepIndices(languages: List<String?>, maxPerLanguage: Int = 2): List<Int> {
-        val args = JsonObject().apply {
-            add("languages", gson.toJsonTree(languages))
-            addProperty("maxPerLanguage", maxPerLanguage)
-        }
-        val value = FluxaCoreUniFfi.coreInvokeValue("subtitleLanguageDedupKeepIndices", args.toString())
-        return gson.fromJson(value, intArrayOf()::class.java).toList()
-    }
-
     fun playerShouldSavePeriodicProgress(isPlaying: Boolean, nowMs: Long, lastSavedAtMs: Long): Boolean {
         val args = JsonObject().apply {
             addProperty("isPlaying", isPlaying)
@@ -1474,6 +1466,22 @@ object FluxaCoreNative {
     fun playerShouldSaveOnDispose(positionMs: Long): Boolean {
         val args = JsonObject().apply { addProperty("positionMs", positionMs) }
         return FluxaCoreUniFfi.coreInvokeValue("playerShouldSaveOnDispose", args.toString()).asBoolean
+    }
+
+    fun deviceResourceBudget(
+        totalRamMb: Long,
+        heapMaxMb: Long,
+        isLowRamDevice: Boolean,
+        isTelevision: Boolean
+    ): NativeDeviceResourceBudget {
+        val requestJson = gson.toJson(mapOf(
+            "totalRamMb" to totalRamMb,
+            "heapMaxMb" to heapMaxMb,
+            "isLowRamDevice" to isLowRamDevice,
+            "isTelevision" to isTelevision
+        ))
+        val value = FluxaCoreUniFfi.coreInvokeValue("deviceResourceBudget", requestJson)
+        return gson.fromJson(value, NativeDeviceResourceBudget::class.java) ?: NativeDeviceResourceBudget()
     }
 
     fun safePlayerBufferCacheMb(value: Int?): Int {
@@ -1715,6 +1723,16 @@ object FluxaCoreNative {
         }
         val value = FluxaCoreUniFfi.coreInvokeValue("filterHomeContinueWatching", args.toString())
         return value.takeUnless { it.isJsonNull }?.let { gson.fromJson<List<Meta>>(it, metaListType) } ?: emptyList()
+    }
+
+    fun continueWatchingSource(source: String?): String {
+        val args = JsonObject().apply { addProperty("source", source) }
+        return FluxaCoreUniFfi.coreInvokeValue("continueWatchingSourcePlan", args.toString())
+            .takeUnless { it.isJsonNull }
+            ?.asJsonObject
+            ?.get("source")
+            ?.asString
+            ?: "local"
     }
 
     fun watchedVideoIds(items: List<LibraryItem>, imdbId: String): List<String> {

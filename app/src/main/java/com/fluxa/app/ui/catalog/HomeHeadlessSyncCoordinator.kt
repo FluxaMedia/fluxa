@@ -19,7 +19,6 @@ internal class HomeHeadlessSyncCoordinator(
     private val setWatchlist: (List<Meta>) -> Unit,
     private val setContinueWatching: (List<Meta>) -> Unit,
     private val setExternalContinueWatching: (List<Meta>) -> Unit,
-    private val externalContinueWatching: () -> List<Meta>,
     private val setLiked: (List<Meta>) -> Unit,
     private val refreshDynamicRows: () -> Unit
 ) {
@@ -36,12 +35,22 @@ internal class HomeHeadlessSyncCoordinator(
         }
     }
 
-    fun syncTrakt(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) {
-        syncIntegration("trakt", profile, onProfileUpdated, onComplete)
+    fun syncTrakt(
+        profile: UserProfile,
+        onProfileUpdated: (UserProfile) -> Unit,
+        onComplete: (Boolean) -> Unit,
+        onSynced: (UserProfile) -> Unit
+    ) {
+        syncIntegration("trakt", profile, onProfileUpdated, onComplete, onSynced)
     }
 
-    fun syncStremio(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) {
-        syncIntegration("stremio", profile, onProfileUpdated, onComplete)
+    fun syncStremio(
+        profile: UserProfile,
+        onProfileUpdated: (UserProfile) -> Unit,
+        onComplete: (Boolean) -> Unit,
+        onSynced: (UserProfile) -> Unit
+    ) {
+        syncIntegration("stremio", profile, onProfileUpdated, onComplete, onSynced)
     }
 
     fun syncNuvio(
@@ -77,8 +86,9 @@ internal class HomeHeadlessSyncCoordinator(
                 setActiveProfile(updated)
                 if (provider == updated.safeContinueWatchingSource) {
                     val fresh = decodeList((result.state["home"] as? Map<*, *>)?.get("externalContinueWatching"))
-                    val freshKeys = fresh.map { it.id to it.reason }.toSet()
-                    setExternalContinueWatching(fresh + externalContinueWatching().filterNot { (it.id to it.reason) in freshKeys })
+                    // A selected provider replaces only its own in-memory projection.
+                    // Never append cached rows from another provider/account.
+                    setExternalContinueWatching(fresh)
                 }
                 onProfileUpdated(updated)
                 refreshDynamicRows()

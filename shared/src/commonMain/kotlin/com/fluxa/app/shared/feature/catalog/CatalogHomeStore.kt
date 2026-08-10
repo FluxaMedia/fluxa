@@ -21,10 +21,10 @@ class CatalogHomeStore(
             is CatalogAction.PlayRequested,
             is CatalogAction.ResumeRequested,
             is CatalogAction.ItemFocused,
-            is CatalogAction.HeroPageChanged,
             is CatalogAction.MarkWatchedRequested,
             is CatalogAction.DropRequested,
             is CatalogAction.AddToLibraryRequested -> Unit
+            is CatalogAction.HeroPageChanged -> dataSource.heroPageChanged(action.item)
         }
     }
 }

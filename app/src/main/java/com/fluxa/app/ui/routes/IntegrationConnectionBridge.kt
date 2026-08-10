@@ -10,6 +10,8 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.data.repository.SimklIntegration
+import com.fluxa.app.data.repository.SimklPkce
+import com.fluxa.app.ui.SimklPkceSessionStore
 import com.fluxa.app.ui.TraktDeviceAuthUiState
 import com.fluxa.app.ui.catalog.HomeViewModel
 import com.fluxa.app.ui.catalog.startTraktDeviceAuthorization
@@ -64,11 +66,17 @@ internal fun connectSimkl(context: Context, activeProfile: UserProfile?) {
     val clientId = BuildConfig.SIMKL_CLIENT_ID
     if (clientId.isBlank()) {
         Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.simkl_client_missing"), Toast.LENGTH_SHORT).show()
-    } else {
-        val redirect = URLEncoder.encode(SimklIntegration.REDIRECT_URI, "UTF-8")
-        val url = "https://simkl.com/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirect"
-        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url)))
+        return
     }
+
+    val pkce = SimklPkce.create()
+    SimklPkceSessionStore(context).save(pkce, activeProfile?.id)
+    val url = SimklPkce.authorizationUrl(
+        clientId = clientId,
+        request = pkce,
+        redirectUri = SimklIntegration.REDIRECT_URI,
+    )
+    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url)))
 }
 
 internal fun connectAnilist(context: Context, activeProfile: UserProfile?) {
@@ -76,8 +84,7 @@ internal fun connectAnilist(context: Context, activeProfile: UserProfile?) {
     if (clientId.isBlank()) {
         Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.anilist_client_missing"), Toast.LENGTH_SHORT).show()
     } else {
-        val redirect = URLEncoder.encode(com.fluxa.app.data.repository.AnilistIntegration.REDIRECT_URI, "UTF-8")
-        val url = "https://anilist.co/api/v2/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirect"
+        val url = "https://anilist.co/api/v2/oauth/authorize?response_type=token&client_id=$clientId"
         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url)))
     }
 }

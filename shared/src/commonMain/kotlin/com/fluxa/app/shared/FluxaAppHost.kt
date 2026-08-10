@@ -6,49 +6,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
-import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
 import com.fluxa.app.shared.feature.addonstore.AddonStoreStore
 import com.fluxa.app.shared.feature.plugins.PluginsAction
-import com.fluxa.app.shared.feature.plugins.PluginsDataSource
 import com.fluxa.app.shared.feature.plugins.PluginsStore
 import com.fluxa.app.shared.feature.auth.AuthAction
-import com.fluxa.app.shared.feature.auth.AuthDataSource
 import com.fluxa.app.shared.feature.auth.AuthStore
 import com.fluxa.app.shared.feature.catalog.CatalogAction
-import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeStore
 import com.fluxa.app.shared.feature.calendar.CalendarAction
-import com.fluxa.app.shared.feature.calendar.CalendarDataSource
 import com.fluxa.app.shared.feature.calendar.CalendarStore
 import com.fluxa.app.shared.feature.detail.DetailAction
-import com.fluxa.app.shared.feature.detail.DetailDataSource
-import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailStore
 import com.fluxa.app.shared.feature.discover.DiscoverAction
-import com.fluxa.app.shared.feature.discover.DiscoverDataSource
 import com.fluxa.app.shared.feature.discover.DiscoverFiltersUiModel
 import com.fluxa.app.shared.feature.discover.DiscoverStore
 import com.fluxa.app.shared.feature.library.LibraryAction
-import com.fluxa.app.shared.feature.library.LibraryDataSource
 import com.fluxa.app.shared.feature.library.LibraryStore
 import com.fluxa.app.shared.feature.search.SearchAction
-import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.search.SearchStore
 import com.fluxa.app.shared.feature.profile.ProfileAction
-import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.profile.ProfileEditTarget
-import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.ProfileStore
-import com.fluxa.app.shared.feature.profile.ProfileUiModel
+import com.fluxa.app.shared.feature.profile.ProfileUiState
 import com.fluxa.app.shared.feature.settings.SettingsAction
-import com.fluxa.app.shared.feature.settings.SettingsDataSource
 import com.fluxa.app.shared.feature.settings.SettingsStore
 import com.fluxa.app.shared.platform.FluxaAddonStoreServices
 import com.fluxa.app.shared.platform.FluxaPluginsServices
@@ -61,218 +48,270 @@ import com.fluxa.app.shared.platform.FluxaPlatformServices
 import com.fluxa.app.shared.platform.FluxaProfileServices
 import com.fluxa.app.shared.platform.FluxaSearchServices
 import com.fluxa.app.shared.platform.FluxaSettingsServices
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @Composable
 fun FluxaAppHost(
     platformServices: FluxaPlatformServices,
-    deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
-    language: String? = null,
-    onCatalogAction: (CatalogAction) -> Unit = {},
-    destination: FluxaDestination? = null,
-    detailRequest: DetailRequestUiModel? = null,
-    onDetailNavigationEvent: (com.fluxa.app.shared.feature.detail.DetailNavigationEvent) -> Unit = {},
-    onDetailBackRequested: () -> Unit = {},
-    showNavigationBar: Boolean = true,
-    onOpenUrlRequested: (String) -> Unit = {},
-    onAddonStoreBackRequested: () -> Unit = {},
-    onPluginsBackRequested: () -> Unit = {},
-    onAuthBackRequested: () -> Unit = {},
-    onAuthCompleted: () -> Unit = {},
-    authStartOnNuvio: Boolean = false,
-    nuvioIcon: @Composable () -> Unit = {},
-    stremioIcon: @Composable () -> Unit = {},
-    traktIcon: @Composable () -> Unit = {},
-    simklIcon: @Composable () -> Unit = {},
-    anilistIcon: @Composable () -> Unit = {},
-    biometricAvailable: Boolean = false,
-    onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
-    onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
-    onProfileSelectionCompleted: (String) -> Unit = {},
-    onManageAddonsRequested: () -> Unit = {},
-    onManagePluginsRequested: () -> Unit = {},
-    onConnectStremioRequested: () -> Unit = {},
-    onConnectNuvioRequested: () -> Unit = {},
-    onConnectStremioWithCredentials: (String, String) -> Unit = { _, _ -> },
-    onConnectNuvioWithCredentials: (String, String) -> Unit = { _, _ -> },
-    onConnectTraktRequested: () -> Unit = {},
-    onConnectSimklRequested: () -> Unit = {},
-    onSyncProviderRequested: (String) -> Unit = {},
-    onConnectAnilistRequested: () -> Unit = {},
-    onCheckForUpdateRequested: () -> Unit = {},
-    onDownloadOpened: (String) -> Unit = {},
-    onSettingsBackRequested: () -> Unit = {},
-    settingsPopRequestId: Int = 0,
-    onSettingsCanPopChanged: (Boolean) -> Unit = {},
-    overlayPopRequestId: Int = 0,
-    onOverlayOpenChanged: (Boolean) -> Unit = {},
-    onDestinationChanged: (FluxaDestination) -> Unit = {},
-    modifier: Modifier = Modifier
+    config: FluxaAppHostConfig = FluxaAppHostConfig(),
+    callbacks: FluxaAppHostCallbacks = FluxaAppHostCallbacks(),
+    visuals: FluxaAppHostVisuals = FluxaAppHostVisuals(),
+    modifier: Modifier = Modifier,
 ) {
     FluxaAppHost(
-        catalogHomeDataSource = platformServices.catalogHomeDataSource,
-        detailDataSource = (platformServices as? FluxaDetailServices)?.detailDataSource,
-        calendarDataSource = (platformServices as? FluxaCalendarServices)?.calendarDataSource,
-        discoverDataSource = (platformServices as? FluxaDiscoverServices)?.discoverDataSource,
-        libraryDataSource = (platformServices as? FluxaLibraryServices)?.libraryDataSource,
-        searchDataSource = (platformServices as? FluxaSearchServices)?.searchDataSource,
-        profileDataSource = (platformServices as? FluxaProfileServices)?.profileDataSource,
-        addonStoreDataSource = (platformServices as? FluxaAddonStoreServices)?.addonStoreDataSource,
-        pluginsDataSource = (platformServices as? FluxaPluginsServices)?.pluginsDataSource,
-        authDataSource = (platformServices as? FluxaAuthServices)?.authDataSource,
-        settingsDataSource = (platformServices as? FluxaSettingsServices)?.settingsDataSource,
-        deviceType = deviceType,
-        language = language,
-        onCatalogAction = onCatalogAction,
-        destination = destination,
-        detailRequest = detailRequest,
-        onDetailNavigationEvent = onDetailNavigationEvent,
-        onDetailBackRequested = onDetailBackRequested,
-        showNavigationBar = showNavigationBar,
-        onOpenUrlRequested = onOpenUrlRequested,
-        onAddonStoreBackRequested = onAddonStoreBackRequested,
-        onPluginsBackRequested = onPluginsBackRequested,
-        onAuthBackRequested = onAuthBackRequested,
-        onAuthCompleted = onAuthCompleted,
-        authStartOnNuvio = authStartOnNuvio,
-        nuvioIcon = nuvioIcon,
-        stremioIcon = stremioIcon,
-        traktIcon = traktIcon,
-        simklIcon = simklIcon,
-        anilistIcon = anilistIcon,
-        biometricAvailable = biometricAvailable,
-        onPickAvatarRequested = onPickAvatarRequested,
-        onBiometricAuthRequested = onBiometricAuthRequested,
-        onProfileSelectionCompleted = onProfileSelectionCompleted,
-        onManageAddonsRequested = onManageAddonsRequested,
-        onManagePluginsRequested = onManagePluginsRequested,
-        onConnectStremioRequested = onConnectStremioRequested,
-        onConnectNuvioRequested = onConnectNuvioRequested,
-        onConnectStremioWithCredentials = onConnectStremioWithCredentials,
-        onConnectNuvioWithCredentials = onConnectNuvioWithCredentials,
-        onConnectTraktRequested = onConnectTraktRequested,
-        onConnectSimklRequested = onConnectSimklRequested,
-        onSyncProviderRequested = onSyncProviderRequested,
-        onConnectAnilistRequested = onConnectAnilistRequested,
-        onCheckForUpdateRequested = onCheckForUpdateRequested,
-        onDownloadOpened = onDownloadOpened,
-        onSettingsBackRequested = onSettingsBackRequested,
-        settingsPopRequestId = settingsPopRequestId,
-        onSettingsCanPopChanged = onSettingsCanPopChanged,
-        overlayPopRequestId = overlayPopRequestId,
-        onOverlayOpenChanged = onOverlayOpenChanged,
-        onDestinationChanged = onDestinationChanged,
-        modifier = modifier
+        dataSources = FluxaAppDataSources(
+            catalogHome = platformServices.catalogHomeDataSource,
+            detail = (platformServices as? FluxaDetailServices)?.detailDataSource,
+            calendar = (platformServices as? FluxaCalendarServices)?.calendarDataSource,
+            discover = (platformServices as? FluxaDiscoverServices)?.discoverDataSource,
+            library = (platformServices as? FluxaLibraryServices)?.libraryDataSource,
+            search = (platformServices as? FluxaSearchServices)?.searchDataSource,
+            profile = (platformServices as? FluxaProfileServices)?.profileDataSource,
+            addonStore = (platformServices as? FluxaAddonStoreServices)?.addonStoreDataSource,
+            plugins = (platformServices as? FluxaPluginsServices)?.pluginsDataSource,
+            auth = (platformServices as? FluxaAuthServices)?.authDataSource,
+            settings = (platformServices as? FluxaSettingsServices)?.settingsDataSource,
+        ),
+        config = config,
+        callbacks = callbacks,
+        visuals = visuals,
+        modifier = modifier,
     )
 }
 
 @Composable
 fun FluxaAppHost(
-    catalogHomeDataSource: CatalogHomeDataSource,
-    detailDataSource: DetailDataSource? = null,
-    calendarDataSource: CalendarDataSource? = null,
-    discoverDataSource: DiscoverDataSource? = null,
-    libraryDataSource: LibraryDataSource? = null,
-    searchDataSource: SearchDataSource? = null,
-    profileDataSource: ProfileDataSource? = null,
-    addonStoreDataSource: AddonStoreDataSource? = null,
-    pluginsDataSource: PluginsDataSource? = null,
-    authDataSource: AuthDataSource? = null,
-    settingsDataSource: SettingsDataSource? = null,
-    deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
-    language: String? = null,
-    onCatalogAction: (CatalogAction) -> Unit = {},
-    destination: FluxaDestination? = null,
-    detailRequest: DetailRequestUiModel? = null,
-    onDetailNavigationEvent: (com.fluxa.app.shared.feature.detail.DetailNavigationEvent) -> Unit = {},
-    onDetailBackRequested: () -> Unit = {},
-    showNavigationBar: Boolean = true,
-    onOpenUrlRequested: (String) -> Unit = {},
-    onAddonStoreBackRequested: () -> Unit = {},
-    onPluginsBackRequested: () -> Unit = {},
-    onAuthBackRequested: () -> Unit = {},
-    onAuthCompleted: () -> Unit = {},
-    authStartOnNuvio: Boolean = false,
-    nuvioIcon: @Composable () -> Unit = {},
-    stremioIcon: @Composable () -> Unit = {},
-    traktIcon: @Composable () -> Unit = {},
-    simklIcon: @Composable () -> Unit = {},
-    anilistIcon: @Composable () -> Unit = {},
-    biometricAvailable: Boolean = false,
-    onPickAvatarRequested: (onPicked: (String?) -> Unit) -> Unit = {},
-    onBiometricAuthRequested: (ProfileUiModel, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
-    onProfileSelectionCompleted: (String) -> Unit = {},
-    onManageAddonsRequested: () -> Unit = {},
-    onManagePluginsRequested: () -> Unit = {},
-    onConnectStremioRequested: () -> Unit = {},
-    onConnectNuvioRequested: () -> Unit = {},
-    onConnectStremioWithCredentials: (String, String) -> Unit = { _, _ -> },
-    onConnectNuvioWithCredentials: (String, String) -> Unit = { _, _ -> },
-    onConnectTraktRequested: () -> Unit = {},
-    onConnectSimklRequested: () -> Unit = {},
-    onSyncProviderRequested: (String) -> Unit = {},
-    onConnectAnilistRequested: () -> Unit = {},
-    onCheckForUpdateRequested: () -> Unit = {},
-    onDownloadOpened: (String) -> Unit = {},
-    onSettingsBackRequested: () -> Unit = {},
-    settingsPopRequestId: Int = 0,
-    onSettingsCanPopChanged: (Boolean) -> Unit = {},
-    overlayPopRequestId: Int = 0,
-    onOverlayOpenChanged: (Boolean) -> Unit = {},
-    onDestinationChanged: (FluxaDestination) -> Unit = {},
-    modifier: Modifier = Modifier
+    dataSources: FluxaAppDataSources,
+    config: FluxaAppHostConfig = FluxaAppHostConfig(),
+    callbacks: FluxaAppHostCallbacks = FluxaAppHostCallbacks(),
+    visuals: FluxaAppHostVisuals = FluxaAppHostVisuals(),
+    modifier: Modifier = Modifier,
 ) {
+    FluxaAppHostContent(
+        dataSources = dataSources,
+        config = config,
+        callbacks = callbacks,
+        visuals = visuals,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun FluxaAppHostContent(
+    dataSources: FluxaAppDataSources,
+    config: FluxaAppHostConfig,
+    callbacks: FluxaAppHostCallbacks,
+    visuals: FluxaAppHostVisuals,
+    modifier: Modifier,
+) {
+    val catalogHomeDataSource = dataSources.catalogHome
+    val detailDataSource = dataSources.detail
+    val calendarDataSource = dataSources.calendar
+    val discoverDataSource = dataSources.discover
+    val libraryDataSource = dataSources.library
+    val searchDataSource = dataSources.search
+    val profileDataSource = dataSources.profile
+    val addonStoreDataSource = dataSources.addonStore
+    val pluginsDataSource = dataSources.plugins
+    val authDataSource = dataSources.auth
+    val settingsDataSource = dataSources.settings
+    val deviceType = config.deviceType
+    val language = config.language
+    val destination = config.destination
+    val detailRequest = config.detailRequest
+    val showNavigationBar = config.showNavigationBar
+    val authStartOnNuvio = config.authStartOnNuvio
+    val biometricAvailable = config.biometricAvailable
+    val settingsPopRequestId = config.settingsPopRequestId
+    val overlayPopRequestId = config.overlayPopRequestId
+
+    val navigationCallbacks = callbacks.navigation
+    val authCallbacks = callbacks.auth
+    val profileCallbacks = callbacks.profile
+    val settingsCallbacks = callbacks.settings
+    val libraryCallbacks = callbacks.library
+    val overlayCallbacks = callbacks.overlay
+
+    val onCatalogAction = navigationCallbacks.onCatalogAction
+    val onDetailNavigationEvent = navigationCallbacks.onDetailNavigationEvent
+    val onDetailBackRequested = navigationCallbacks.onDetailBackRequested
+    val onOpenUrlRequested = navigationCallbacks.onOpenUrlRequested
+    val onAddonStoreBackRequested = navigationCallbacks.onAddonStoreBackRequested
+    val onPluginsBackRequested = navigationCallbacks.onPluginsBackRequested
+    val onDownloadOpened = navigationCallbacks.onDownloadOpened
+    val onDestinationChanged = navigationCallbacks.onDestinationChanged
+
+    val onAuthBackRequested = authCallbacks.onAuthBackRequested
+    val onAuthCompleted = authCallbacks.onAuthCompleted
+    val onConnectStremioRequested = authCallbacks.onConnectStremioRequested
+    val onConnectNuvioRequested = authCallbacks.onConnectNuvioRequested
+    val onConnectStremioWithCredentials = authCallbacks.onConnectStremioWithCredentials
+    val onConnectNuvioWithCredentials = authCallbacks.onConnectNuvioWithCredentials
+    val onConnectTraktRequested = authCallbacks.onConnectTraktRequested
+    val onConnectSimklRequested = authCallbacks.onConnectSimklRequested
+    val onSyncProviderRequested = authCallbacks.onSyncProviderRequested
+    val onConnectAnilistRequested = authCallbacks.onConnectAnilistRequested
+
+    val onPickAvatarRequested = profileCallbacks.onPickAvatarRequested
+    val onBiometricAuthRequested = profileCallbacks.onBiometricAuthRequested
+    val onProfileSelectionCompleted = profileCallbacks.onProfileSelectionCompleted
+
+    val onManageAddonsRequested = settingsCallbacks.onManageAddonsRequested
+    val onManagePluginsRequested = settingsCallbacks.onManagePluginsRequested
+    val onCheckForUpdateRequested = settingsCallbacks.onCheckForUpdateRequested
+    val onSettingsBackRequested = settingsCallbacks.onSettingsBackRequested
+    val onSettingsCanPopChanged = settingsCallbacks.onSettingsCanPopChanged
+    val onOverlayOpenChanged = overlayCallbacks.onOverlayOpenChanged
+
+    val nuvioIcon = visuals.nuvioIcon
+    val stremioIcon = visuals.stremioIcon
+    val authBackdrop = visuals.authBackdrop
+    val traktIcon = visuals.traktIcon
+    val simklIcon = visuals.simklIcon
+    val anilistIcon = visuals.anilistIcon
+
     val scope = rememberCoroutineScope()
-    val catalogHomeStore = remember(catalogHomeDataSource) {
-        CatalogHomeStore(catalogHomeDataSource, scope)
-    }
-    val catalogHome by catalogHomeStore.state.collectAsState()
-    val searchStore = searchDataSource?.let { source ->
-        remember(source) { SearchStore(source, scope) }
-    }
-    val searchState = searchStore?.state?.collectAsState()?.value
-    val discoverStore = discoverDataSource?.let { source ->
-        remember(source) { DiscoverStore(source, scope) }
-    }
-    val discoverState = discoverStore?.state?.collectAsState()?.value
-    val calendarStore = calendarDataSource?.let { source ->
-        remember(source) { CalendarStore(source, scope) }
-    }
-    val calendarState = calendarStore?.state?.collectAsState()?.value
-    val libraryStore = libraryDataSource?.let { source ->
-        remember(source) { LibraryStore(source, scope) }
-    }
-    val libraryState = libraryStore?.state?.collectAsState()?.value
-    val profileStore = profileDataSource?.let { source ->
-        remember(source) { ProfileStore(source, scope) }
-    }
-    val profileState = profileStore?.state?.collectAsState()?.value
-    LaunchedEffect(profileDataSource) {
-        profileDataSource?.refreshAllAvatarPacks()
-    }
-    val settingsStore = settingsDataSource?.let { source ->
-        remember(source) { SettingsStore(source, scope) }
-    }
-    val settingsState = settingsStore?.state?.collectAsState()?.value
-    val addonStoreStore = addonStoreDataSource?.let { source ->
-        remember(source) { AddonStoreStore(source, scope) }
-    }
-    val addonStoreState = addonStoreStore?.state?.collectAsState()?.value
-    val pluginsStore = pluginsDataSource?.let { source ->
-        remember(source) { PluginsStore(source, scope) }
-    }
-    val pluginsState = pluginsStore?.state?.collectAsState()?.value
-    val authStore = authDataSource?.let { source ->
-        remember(source) { AuthStore(source, scope) }
-    }
-    val authState = authStore?.state?.collectAsState()?.value
     val appState = rememberFluxaAppState(
         FluxaAppUiState(
             language = language,
             destination = destination ?: FluxaDestination.Home,
-            catalogHome = catalogHome
         )
     )
+    val currentAppState = appState.uiState
+
+    val catalogHomeStore = remember(catalogHomeDataSource) {
+        CatalogHomeStore(catalogHomeDataSource, scope)
+    }
+    val obscuresCatalog = currentAppState.selectedDetail != null ||
+        currentAppState.showSourceSelection ||
+        currentAppState.showNotifications
+    val needsCatalogHome = !obscuresCatalog && (
+        currentAppState.destination == FluxaDestination.Home ||
+            currentAppState.selectedCategoryId != null
+        )
+    val catalogHome = if (needsCatalogHome) {
+        catalogHomeStore.state.collectAsState().value
+    } else {
+        // Keep the last snapshot available for actions without subscribing the app root to
+        // billboard rotations while another route is visible.
+        catalogHomeStore.state.value
+    }
+
+    val searchStore = searchDataSource?.let { source ->
+        remember(source) { SearchStore(source, scope) }
+    }
+    val routeContentObscured = currentAppState.selectedDetail != null ||
+        currentAppState.showSourceSelection ||
+        currentAppState.selectedCategoryId != null ||
+        currentAppState.showNotifications
+    val needsSearch = !routeContentObscured && (
+        currentAppState.destination == FluxaDestination.Search ||
+            currentAppState.destination == FluxaDestination.Discover
+        )
+    val searchState = if (needsSearch) searchStore?.state?.collectAsState()?.value else null
+
+    val discoverStore = discoverDataSource?.let { source ->
+        remember(source) { DiscoverStore(source, scope) }
+    }
+    val discoverState = if (!routeContentObscured && currentAppState.destination == FluxaDestination.Discover) {
+        discoverStore?.state?.collectAsState()?.value
+    } else null
+
+    val calendarStore = calendarDataSource?.let { source ->
+        remember(source) { CalendarStore(source, scope) }
+    }
+    val needsCalendar = currentAppState.selectedDetail == null &&
+        !currentAppState.showSourceSelection &&
+        (currentAppState.destination == FluxaDestination.Calendar || currentAppState.showNotifications)
+    val calendarState = if (needsCalendar) {
+        calendarStore?.state?.collectAsState()?.value
+    } else null
+
+    val libraryStore = libraryDataSource?.let { source ->
+        remember(source) { LibraryStore(source, scope) }
+    }
+    val homeNeedsLibraryFolders = remember(deviceType, catalogHome.rows) {
+        deviceType != com.fluxa.app.ui.catalog.DeviceType.TV &&
+            catalogHome.rows.any { row -> row.items.any { it.type == "catalog_folder" } }
+    }
+    val needsLibrary = currentAppState.selectedDetail == null &&
+        !currentAppState.showSourceSelection &&
+        (currentAppState.destination == FluxaDestination.Library || homeNeedsLibraryFolders)
+    val libraryState = if (needsLibrary) libraryStore?.state?.collectAsState()?.value else null
+
+    val profileStore = profileDataSource?.let { source ->
+        remember(source) { ProfileStore(source, scope) }
+    }
+    val needsProfile = currentAppState.destination == FluxaDestination.ProfileList ||
+        currentAppState.editingProfile != null || currentAppState.showProfilePickerSettings
+
+    // Navigation and Settings need the active avatar/profile list even while the full profile
+    // picker is closed. Subscribe to a deliberately small projection so avatar-pack discovery,
+    // PIN errors and picker-only state do not recompose Home/Search/Detail.
+    val navigationProfilesFlow = remember(profileStore) {
+        profileStore?.state?.map { state ->
+            ProfileUiState(
+                activeProfile = state.activeProfile,
+                profiles = state.profiles,
+                isLoading = state.isLoading
+            )
+        }?.distinctUntilChanged()
+    }
+    val navigationProfileState = navigationProfilesFlow?.collectAsState(initial = ProfileUiState(isLoading = true))?.value
+    val fullProfileState = if (needsProfile) profileStore?.state?.collectAsState()?.value else null
+    val profileState = fullProfileState ?: navigationProfileState
+    LaunchedEffect(profileDataSource) {
+        profileDataSource?.refreshAllAvatarPacks()
+    }
+
+    val settingsStore = settingsDataSource?.let { source ->
+        remember(source) { SettingsStore(source, scope) }
+    }
+    // Keep global chrome and Home appearance on small dedicated flows. Provider sync counters and
+    // content-feed changes can be very chatty, so the full Settings model is collected only while
+    // Settings itself is visible.
+    val settingsAppearance = settingsStore?.appearance?.collectAsState()?.value
+    val settingsAppearanceHome = if (currentAppState.destination == FluxaDestination.Home) {
+        settingsStore?.appearanceHome?.collectAsState()?.value
+    } else {
+        null
+    }
+    val fullSettingsState = if (currentAppState.destination == FluxaDestination.Settings) {
+        settingsStore?.state?.collectAsState()?.value
+    } else {
+        null
+    }
+    val settingsState = fullSettingsState ?: remember(settingsStore, settingsAppearance, settingsAppearanceHome) {
+        settingsStore?.state?.value?.let { snapshot ->
+            snapshot.copy(
+                appearance = settingsAppearance ?: snapshot.appearance,
+                appearanceHome = settingsAppearanceHome ?: snapshot.appearanceHome,
+            )
+        }
+    }
+
+    val addonStoreStore = addonStoreDataSource?.let { source ->
+        remember(source) { AddonStoreStore(source, scope) }
+    }
+    val addonStoreState = if (currentAppState.destination == FluxaDestination.AddonStore) {
+        addonStoreStore?.state?.collectAsState()?.value
+    } else null
+
+    val pluginsStore = pluginsDataSource?.let { source ->
+        remember(source) { PluginsStore(source, scope) }
+    }
+    val pluginsState = if (currentAppState.destination == FluxaDestination.Plugins || currentAppState.destination == FluxaDestination.AddonStore) {
+        pluginsStore?.state?.collectAsState()?.value
+    } else null
+
+    val authStore = authDataSource?.let { source ->
+        remember(source) { AuthStore(source, scope) }
+    }
+    val authState = if (currentAppState.destination == FluxaDestination.Auth) {
+        authStore?.state?.collectAsState()?.value
+    } else null
     LaunchedEffect(appState.uiState.destination) {
         onDestinationChanged(appState.uiState.destination)
     }
@@ -302,9 +341,6 @@ fun FluxaAppHost(
         }
     }
 
-    LaunchedEffect(catalogHome) {
-        appState.updateCatalogHome(catalogHome)
-    }
     LaunchedEffect(language) {
         appState.updateLanguage(language)
     }
@@ -316,11 +352,10 @@ fun FluxaAppHost(
     LaunchedEffect(detailRequest) {
         detailRequest?.let(appState::selectDetail)
     }
-    LaunchedEffect(catalogHomeStore) {
-        catalogHomeStore.dispatch(CatalogAction.Refresh)
-    }
-    LaunchedEffect(calendarStore) {
-        calendarStore?.dispatch(CalendarAction.Refresh)
+    LaunchedEffect(needsCatalogHome, catalogHomeStore) {
+        if (needsCatalogHome) {
+            catalogHomeStore.dispatch(CatalogAction.Refresh)
+        }
     }
     LaunchedEffect(detailStore) {
         detailStore?.load()
@@ -362,7 +397,7 @@ fun FluxaAppHost(
         }
     }
     LaunchedEffect(appState.uiState.destination, pluginsStore) {
-        if (appState.uiState.destination == FluxaDestination.Plugins) {
+        if (appState.uiState.destination == FluxaDestination.Plugins || appState.uiState.destination == FluxaDestination.AddonStore) {
             pluginsStore?.dispatch(PluginsAction.Refresh)
         }
     }
@@ -407,36 +442,29 @@ fun FluxaAppHost(
         }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val widthClass = if (deviceType == com.fluxa.app.ui.catalog.DeviceType.TV) {
-            com.fluxa.app.ui.catalog.WindowWidthClass.Expanded
-        } else {
-            com.fluxa.app.ui.catalog.widthClassFor(maxWidth)
-        }
-        CompositionLocalProvider(com.fluxa.app.ui.catalog.LocalWindowWidthClass provides widthClass) {
-    FluxaApp(
-        state = appState.uiState,
-        deviceType = deviceType,
-        onDestinationSelected = appState::selectDestination,
-        onCatalogAction = { action ->
+    val catalogActionHandler: (CatalogAction) -> Unit = remember(
+        appState,
+        libraryState,
+        libraryStore,
+        catalogHomeStore,
+        onCatalogAction,
+        scope,
+    ) {
+        { action ->
             if (action is CatalogAction.ItemSelected) {
                 if (action.item.type == "catalog_folder") {
                     libraryState?.collections?.flatMap { it.folders }
                         ?.firstOrNull { it.id == action.item.id }
                         ?.let { folder ->
-                            scope.launch { libraryStore.dispatch(LibraryAction.FolderSelected(folder)) }
+                            scope.launch { libraryStore?.dispatch(LibraryAction.FolderSelected(folder)) }
                         }
                 } else {
                     val resume = action.item.resume
                     when {
                         resume != null && !resume.streamUrl.isNullOrBlank() -> {
-                            // Known stream from a previous session — onCatalogAction below launches the
-                            // player directly, skipping Detail entirely.
                             pendingAutoPlayId = null
                         }
                         resume != null -> {
-                            // Continue-watching item with no saved stream yet — open Detail and
-                            // auto-dispatch Play so it lands straight on source selection.
                             pendingAutoPlayId = action.item.id
                             appState.selectDetail(action.item)
                         }
@@ -451,195 +479,235 @@ fun FluxaAppHost(
                 pendingAutoPlayId = action.item.id
                 appState.selectDetail(action.item)
             }
-            scope.launch {
-                catalogHomeStore.dispatch(action)
-            }
+            scope.launch { catalogHomeStore.dispatch(action) }
             onCatalogAction(action)
-        },
-        onCategorySelected = { id, title -> appState.selectCategory(id, title) },
-        detailState = detailState,
-        onDetailAction = { action ->
-            if (action is DetailAction.RelatedItemSelected) {
-                appState.selectDetail(action.item)
-                onCatalogAction(CatalogAction.ItemSelected(action.item))
-            }
-            scope.launch {
-                detailStore?.dispatch(action)
-            }
-        },
-        onDetailBackRequested = {
-            appState.clearDetail()
-            onDetailBackRequested()
-        },
-        onSourceSelectionBackRequested = appState::closeSourceSelection,
-        onCategoryBackRequested = appState::clearCategory,
-        onCategoryItemSelected = { item ->
-            appState.selectDetail(item)
-            onCatalogAction(CatalogAction.ItemSelected(item))
-        },
-        searchState = searchState,
-        onSearchAction = { action ->
-            if (action is SearchAction.ItemSelected) {
-                appState.selectDetail(action.item)
-                onCatalogAction(CatalogAction.ItemSelected(action.item))
-            }
-            scope.launch {
-                searchStore?.dispatch(action)
-            }
-        },
-        discoverState = discoverState,
-        onDiscoverAction = { action ->
-            if (action is DiscoverAction.ItemSelected) {
-                appState.selectDetail(action.item)
-                onCatalogAction(CatalogAction.ItemSelected(action.item))
-            }
-            scope.launch {
-                discoverStore?.dispatch(action)
-            }
-        },
-        calendarState = calendarState,
-        onNotificationsRequested = { appState.openNotifications() },
-        onNotificationsBackRequested = { appState.closeNotifications() },
-        onCalendarAction = { action ->
-            if (action is CalendarAction.ItemSelected) {
-                appState.selectDetail(action.item)
-                onCatalogAction(CatalogAction.ItemSelected(action.item))
-            }
-            scope.launch {
-                calendarStore?.dispatch(action)
-            }
-        },
-        libraryState = libraryState,
-        onLibraryItemSelected = { item ->
-            if (item.type == "catalog_folder") {
-                libraryState?.collections?.flatMap { it.folders }
-                    ?.firstOrNull { it.id == item.id }
-                    ?.let { folder ->
-                        scope.launch { libraryStore.dispatch(LibraryAction.FolderSelected(folder)) }
-                    }
-            } else {
-                appState.selectDetail(item)
-            }
-            onCatalogAction(CatalogAction.ItemSelected(item))
-        },
-        onLibraryAction = { action ->
-            if (action is LibraryAction.DownloadOpened) {
-                onDownloadOpened(action.id)
-            } else {
-                scope.launch { libraryStore?.dispatch(action) }
-            }
-        },
-        profileState = profileState,
-        settingsState = settingsState,
-        onSettingsAction = { action ->
-            when (action) {
-                SettingsAction.SwitchProfilesRequested -> appState.selectDestination(FluxaDestination.ProfileList)
-                SettingsAction.ManageAddonsRequested -> onManageAddonsRequested()
-                SettingsAction.ManagePluginsRequested -> onManagePluginsRequested()
-                SettingsAction.ConnectStremioRequested -> onConnectStremioRequested()
-                SettingsAction.ConnectNuvioRequested -> onConnectNuvioRequested()
-                is SettingsAction.ConnectStremioWithCredentials -> onConnectStremioWithCredentials(action.email, action.password)
-                is SettingsAction.ConnectNuvioWithCredentials -> onConnectNuvioWithCredentials(action.email, action.password)
-                SettingsAction.ConnectTraktRequested -> onConnectTraktRequested()
-                SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
-                is SettingsAction.SyncProviderRequested -> onSyncProviderRequested(action.provider)
-                SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
-                SettingsAction.CheckForUpdateRequested -> onCheckForUpdateRequested()
-                else -> scope.launch { settingsStore?.dispatch(action) }
-            }
-        },
-        onSwitchProfilesRequested = { appState.selectDestination(FluxaDestination.ProfileList) },
-        onSettingsBackRequested = onSettingsBackRequested,
-        onSettingsPushCategory = appState::pushSettingsCategory,
-        onSettingsPopCategory = appState::popSettingsCategory,
-        onSettingsSelectCategory = appState::selectSettingsCategory,
-        settingsBrandIcons = com.fluxa.app.shared.feature.settings.SettingsBrandIcons(
-            stremio = stremioIcon,
-            nuvio = nuvioIcon,
-            trakt = traktIcon,
-            simkl = simklIcon,
-            anilist = anilistIcon
+        }
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val widthClass = if (deviceType == com.fluxa.app.ui.catalog.DeviceType.TV) {
+            com.fluxa.app.ui.catalog.WindowWidthClass.Expanded
+        } else {
+            com.fluxa.app.ui.catalog.widthClassFor(maxWidth)
+        }
+        CompositionLocalProvider(com.fluxa.app.ui.catalog.LocalWindowWidthClass provides widthClass) {
+    FluxaApp(
+        state = appState.uiState,
+        catalogHome = catalogHome,
+        features = FluxaAppFeatureStates(
+            detail = detailState,
+            search = searchState,
+            discover = discoverState,
+            calendar = calendarState,
+            library = libraryState,
+            profile = profileState,
+            settings = settingsState,
+            addonStore = addonStoreState,
+            plugins = pluginsState,
+            auth = authState,
         ),
-        addonStoreState = addonStoreState,
-        onAddonStoreAction = { action ->
-            scope.launch {
-                addonStoreStore?.dispatch(action)
-            }
-        },
-        onOpenUrlRequested = onOpenUrlRequested,
-        onAddonStoreBackRequested = onAddonStoreBackRequested,
-        pluginsState = pluginsState,
-        onPluginsAction = { action ->
-            scope.launch {
-                pluginsStore?.dispatch(action)
-            }
-        },
-        onPluginsBackRequested = onPluginsBackRequested,
-        authState = authState,
-        onAuthAction = { action ->
-            when (action) {
-                AuthAction.BackRequested -> onAuthBackRequested()
-                AuthAction.Completed -> onAuthCompleted()
-                else -> scope.launch { authStore?.dispatch(action) }
-            }
-        },
-        nuvioIcon = nuvioIcon,
-        stremioIcon = stremioIcon,
-        onProfileListAction = { action ->
-            when (action) {
-                ProfileAction.AddRequested -> {
-                    profileAvatarUrl = null
-                    appState.beginProfileEdit(ProfileEditTarget.New)
+        actions = FluxaAppActions(
+            onDestinationSelected = appState::selectDestination,
+            onCatalogAction = catalogActionHandler,
+            onDetailAction = { action ->
+                if (action is DetailAction.RelatedItemSelected) {
+                    appState.selectDetail(action.item)
+                    onCatalogAction(CatalogAction.ItemSelected(action.item))
                 }
-                is ProfileAction.EditRequested -> {
-                    profileAvatarUrl = action.profile.avatarUrl
-                    appState.beginProfileEdit(ProfileEditTarget.Existing(action.profile.id))
+                scope.launch {
+                    detailStore?.dispatch(action)
                 }
-                ProfileAction.PickerSettingsRequested -> appState.openProfilePickerSettings()
-                ProfileAction.PickerSettingsClosed -> appState.closeProfilePickerSettings()
-                is ProfileAction.Selected -> scope.launch {
-                    profileStore?.dispatch(action)
-                    if (!action.profile.hasPin) onProfileSelectionCompleted(action.profile.id)
+            },
+            onDetailBackRequested = {
+                appState.clearDetail()
+                onDetailBackRequested()
+            },
+            onSourceSelectionBackRequested = appState::closeSourceSelection,
+            onCategoryBackRequested = appState::clearCategory,
+            onCategoryItemSelected = { item ->
+                appState.selectDetail(item)
+                onCatalogAction(CatalogAction.ItemSelected(item))
+            },
+            onCategorySelected = { id, title -> appState.selectCategory(id, title) },
+            onSearchAction = { action ->
+                if (action is SearchAction.ItemSelected) {
+                    appState.selectDetail(action.item)
+                    onCatalogAction(CatalogAction.ItemSelected(action.item))
                 }
-                else -> scope.launch { profileStore?.dispatch(action) }
-            }
-        },
-        onProfileBiometricRequested = { profile ->
-            onBiometricAuthRequested(profile) { success ->
-                if (success) {
-                    scope.launch {
-                        profileDataSource?.confirmBiometricUnlock(profile.id)
-                        onProfileSelectionCompleted(profile.id)
+                scope.launch {
+                    searchStore?.dispatch(action)
+                }
+            },
+            onDiscoverAction = { action ->
+                if (action is DiscoverAction.ItemSelected) {
+                    appState.selectDetail(action.item)
+                    onCatalogAction(CatalogAction.ItemSelected(action.item))
+                }
+                scope.launch {
+                    discoverStore?.dispatch(action)
+                }
+            },
+            onCalendarAction = { action ->
+                if (action is CalendarAction.ItemSelected) {
+                    appState.selectDetail(action.item)
+                    onCatalogAction(CatalogAction.ItemSelected(action.item))
+                }
+                scope.launch {
+                    calendarStore?.dispatch(action)
+                }
+            },
+            onNotificationsRequested = { appState.openNotifications() },
+            onNotificationsBackRequested = { appState.closeNotifications() },
+            onLibraryItemSelected = { item ->
+                if (item.type == "catalog_folder") {
+                    libraryState?.collections?.flatMap { it.folders }
+                        ?.firstOrNull { it.id == item.id }
+                        ?.let { folder ->
+                            scope.launch { libraryStore?.dispatch(LibraryAction.FolderSelected(folder)) }
+                        }
+                } else {
+                    appState.selectDetail(item)
+                }
+                onCatalogAction(CatalogAction.ItemSelected(item))
+            },
+            onLibraryAction = { action ->
+                when (action) {
+                    is LibraryAction.DownloadOpened -> onDownloadOpened(action.id)
+                    is LibraryAction.LocalMediaFolderPickerRequested -> {
+                        libraryCallbacks.onPickLocalMediaFolderRequested(action.kind) { picked ->
+                            if (picked != null) {
+                                scope.launch {
+                                    libraryStore?.dispatch(
+                                        LibraryAction.LocalMediaSourceAdded(
+                                            com.fluxa.app.shared.feature.localmedia.LocalMediaSourceInput(
+                                                kind = action.kind,
+                                                sourceType = com.fluxa.app.shared.feature.localmedia.LocalMediaSourceType.LocalFolder,
+                                                location = picked.location,
+                                                displayName = picked.displayName,
+                                            )
+                                        )
+                                    )
+                                    libraryStore?.dispatch(LibraryAction.LocalMediaScanRequested())
+                                }
+                            }
+                        }
+                    }
+                    else -> scope.launch { libraryStore?.dispatch(action) }
+                }
+            },
+            onSettingsAction = { action ->
+                when (action) {
+                    SettingsAction.SwitchProfilesRequested -> appState.selectDestination(FluxaDestination.ProfileList)
+                    SettingsAction.ManageAddonsRequested -> onManageAddonsRequested()
+                    SettingsAction.ManagePluginsRequested -> onManagePluginsRequested()
+                    SettingsAction.ConnectStremioRequested -> onConnectStremioRequested()
+                    SettingsAction.ConnectNuvioRequested -> onConnectNuvioRequested()
+                    is SettingsAction.ConnectStremioWithCredentials -> onConnectStremioWithCredentials(action.email, action.password)
+                    is SettingsAction.ConnectNuvioWithCredentials -> onConnectNuvioWithCredentials(action.email, action.password)
+                    SettingsAction.ConnectTraktRequested -> onConnectTraktRequested()
+                    SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
+                    is SettingsAction.SyncProviderRequested -> onSyncProviderRequested(action.provider)
+                    SettingsAction.ConnectAnilistRequested -> onConnectAnilistRequested()
+                    SettingsAction.CheckForUpdateRequested -> onCheckForUpdateRequested()
+                    else -> scope.launch { settingsStore?.dispatch(action) }
+                }
+            },
+            onSwitchProfilesRequested = { appState.selectDestination(FluxaDestination.ProfileList) },
+            onSettingsBackRequested = onSettingsBackRequested,
+            onSettingsPushCategory = appState::pushSettingsCategory,
+            onSettingsPopCategory = appState::popSettingsCategory,
+            onSettingsSelectCategory = appState::selectSettingsCategory,
+            onAddonStoreAction = { action ->
+                scope.launch {
+                    addonStoreStore?.dispatch(action)
+                }
+            },
+            onOpenUrlRequested = onOpenUrlRequested,
+            onAddonStoreBackRequested = onAddonStoreBackRequested,
+            onPluginsAction = { action ->
+                scope.launch {
+                    pluginsStore?.dispatch(action)
+                }
+            },
+            onPluginsBackRequested = onPluginsBackRequested,
+            onAuthAction = { action ->
+                when (action) {
+                    AuthAction.BackRequested -> onAuthBackRequested()
+                    AuthAction.Completed -> onAuthCompleted()
+                    else -> scope.launch { authStore?.dispatch(action) }
+                }
+            },
+            onProfileListAction = { action ->
+                when (action) {
+                    ProfileAction.AddRequested -> {
+                        profileAvatarUrl = null
+                        appState.beginProfileEdit(ProfileEditTarget.New)
+                    }
+                    is ProfileAction.EditRequested -> {
+                        profileAvatarUrl = action.profile.avatarUrl
+                        appState.beginProfileEdit(ProfileEditTarget.Existing(action.profile.id))
+                    }
+                    ProfileAction.PickerSettingsRequested -> appState.openProfilePickerSettings()
+                    ProfileAction.PickerSettingsClosed -> appState.closeProfilePickerSettings()
+                    is ProfileAction.Selected -> scope.launch {
+                        profileStore?.dispatch(action)
+                        if (!action.profile.hasPin) onProfileSelectionCompleted(action.profile.id)
+                    }
+                    else -> scope.launch { profileStore?.dispatch(action) }
+                }
+            },
+            onProfileBiometricRequested = { profile ->
+                onBiometricAuthRequested(profile) { success ->
+                    if (success) {
+                        scope.launch {
+                            profileDataSource?.confirmBiometricUnlock(profile.id)
+                            onProfileSelectionCompleted(profile.id)
+                        }
                     }
                 }
-            }
-        },
-        profileEditAvatarUrl = profileAvatarUrl,
-        onPickAvatarClick = { onPickAvatarRequested { url -> profileAvatarUrl = url } },
-        onRemoveAvatarClick = { profileAvatarUrl = null },
-        onPickPackAvatarClick = { url -> profileAvatarUrl = url },
-        onPickBackgroundClick = {
-            onPickAvatarRequested { url -> scope.launch { profileStore?.dispatch(ProfileAction.BackgroundUrlChanged(url)) } }
-        },
-        onProfileSave = { edit ->
-            scope.launch {
-                profileStore?.saveProfile(edit)
-                appState.beginProfileEdit(null)
-            }
-        },
-        onProfileDelete = (appState.uiState.editingProfile as? ProfileEditTarget.Existing)?.let { existing ->
-            { pin ->
-                val deleted = profileStore?.deleteProfile(existing.id, pin) == true
-                if (deleted) {
+            },
+        ),
+        profileEditor = FluxaProfileEditorBindings(
+            avatarUrl = profileAvatarUrl,
+            onPickAvatarClick = { onPickAvatarRequested { url -> profileAvatarUrl = url } },
+            onRemoveAvatarClick = { profileAvatarUrl = null },
+            onPickPackAvatarClick = { url -> profileAvatarUrl = url },
+            onProfileSave = { edit ->
+                scope.launch {
+                    profileStore?.saveProfile(edit)
                     appState.beginProfileEdit(null)
                 }
-                deleted
-            }
-        },
-        onProfileEditCancel = { appState.beginProfileEdit(null) },
-        biometricAvailable = biometricAvailable,
-        showNavigationBar = showNavigationBar,
-        modifier = modifier
+            },
+            onProfileDelete = (appState.uiState.editingProfile as? ProfileEditTarget.Existing)?.let { existing ->
+                { pin ->
+                    val deleted = profileStore?.deleteProfile(existing.id, pin) == true
+                    if (deleted) {
+                        appState.beginProfileEdit(null)
+                    }
+                    deleted
+                }
+            },
+            onProfileEditCancel = { appState.beginProfileEdit(null) },
+            onPickBackgroundClick = {
+                onPickAvatarRequested { url -> scope.launch { profileStore?.dispatch(ProfileAction.BackgroundUrlChanged(url)) } }
+            },
+        ),
+        presentation = FluxaAppPresentation(
+            deviceType = deviceType,
+            settingsBrandIcons = com.fluxa.app.shared.feature.settings.SettingsBrandIcons(
+                stremio = stremioIcon,
+                nuvio = nuvioIcon,
+                trakt = traktIcon,
+                simkl = simklIcon,
+                anilist = anilistIcon
+            ),
+            nuvioIcon = nuvioIcon,
+            stremioIcon = stremioIcon,
+            authBackdrop = authBackdrop,
+            biometricAvailable = biometricAvailable,
+            showNavigationBar = showNavigationBar,
+        ),
+        modifier = modifier,
     )
         }
     }

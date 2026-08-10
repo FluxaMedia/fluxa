@@ -1,14 +1,11 @@
 package com.fluxa.app.ui.catalog
 
-import android.content.Context
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
-import com.fluxa.app.data.repository.StremioRepository
-import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.core.StremioId
-import com.google.gson.Gson
+import com.fluxa.app.domain.playback.PlaybackSyncCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -18,11 +15,9 @@ internal data class ContinueWatchingSnapshot(
 )
 
 internal class HomePlaybackController(
-    private val context: Context,
-    private val repository: StremioRepository,
     private val watchlistManager: WatchlistManager,
     private val forgottenStore: ForgottenContinueWatchingStore,
-    private val gson: Gson,
+    private val playbackSyncCoordinator: PlaybackSyncCoordinator,
     private val scope: CoroutineScope,
     private val activeProfile: () -> UserProfile?,
     private val localContinueWatching: () -> List<Meta>,
@@ -60,9 +55,6 @@ internal class HomePlaybackController(
             syncWatchlistProfile(profile)
             forgottenKeys.remove(ContinueWatchingListMerger.identityKey(meta))
             forgottenStore.save(profile, forgottenKeys.toSet())
-            if (profile != null) {
-                StremioPlaybackProgressPushWorker.enqueue(context, gson, profile.id, meta, timeOffset, duration)
-            }
             watchlistManager.savePlaybackProgress(
                 meta,
                 timeOffset,
@@ -76,30 +68,14 @@ internal class HomePlaybackController(
                 lastAudioLanguage,
                 lastSubtitleLanguage
             )
-            val token = profile?.traktAccessToken
-            if (scrobbleTraktPause && !token.isNullOrBlank() && duration > 0L && timeOffset > 5_000L) {
-                val progress = (timeOffset.toFloat() / duration.toFloat() * 100f).coerceIn(0f, 100f)
-                if (progress in 0.5f..94.9f) {
-                    TraktScrobbleWorker.enqueue(
-                        context = context,
-                        profileId = profile.id,
-                        mediaType = meta.type,
-                        mediaId = TraktIntegration.scrobbleMediaId(meta.id, videoId, meta.type),
-                        progress = progress,
-                        action = "pause"
-                    )
-                }
-            }
-            val simklToken = profile?.simklAccessToken
-            if (!simklToken.isNullOrBlank() && duration > 0L && timeOffset > 5_000L) {
-                SimklScrobbleWorker.enqueue(
-                    context = context,
-                    profileId = profile.id,
-                    mediaType = meta.type,
-                    mediaId = TraktIntegration.scrobbleMediaId(meta.id, videoId, meta.type),
-                    action = "pause",
+            if (profile != null) {
+                playbackSyncCoordinator.scheduleProgress(
+                    profile = profile,
+                    meta = meta,
+                    videoId = videoId,
                     positionMs = timeOffset,
-                    durationMs = duration
+                    durationMs = duration,
+                    allowPauseScrobble = scrobbleTraktPause
                 )
             }
         }
@@ -107,10 +83,9 @@ internal class HomePlaybackController(
 
     fun scrobble(token: String, metaType: String, itemId: String, progress: Float, action: String) {
         val profile = activeProfile() ?: return
-        if (profile.traktAccessToken.isNullOrBlank() || token.isBlank()) return
-        TraktScrobbleWorker.enqueue(
-            context = context,
-            profileId = profile.id,
+        if (token.isBlank()) return
+        playbackSyncCoordinator.scheduleTraktScrobble(
+            profile = profile,
             mediaType = metaType,
             mediaId = itemId,
             progress = progress,
@@ -152,13 +127,9 @@ internal class HomePlaybackController(
                     lastEpisodeName = nextEpisode.continueWatchingTitle()
                 )
             }
-            repository.syncWatchedState(
-                authKey = profile?.authKey,
-                traktToken = profile?.traktAccessToken,
-                meta = meta,
-                episodes = episodes,
-                watched = true
-            )
+            if (profile != null) {
+                playbackSyncCoordinator.pushWatched(profile, meta, episodes, watched = true)
+            }
         }
     }
 
@@ -167,32 +138,37 @@ internal class HomePlaybackController(
             val profile = activeProfile()
             syncWatchlistProfile(profile)
             val forgottenKey = ContinueWatchingListMerger.identityKey(meta)
+            val localSource = playbackSyncCoordinator.isLocalContinueWatchingSource(profile)
             forgottenKeys.add(forgottenKey)
-            if (profile != null) {
-                repository.clearPlaybackProgress(profile.authKey, meta)
-            }
-            repository.clearTraktPlaybackProgress(profile?.traktAccessToken, meta)
             forgottenStore.save(profile, forgottenKeys.toSet())
             watchlistManager.clearPlaybackProgress(meta.id)
-            val localItems = localContinueWatching().map { item ->
-                if (ContinueWatchingListMerger.identityKey(item) == forgottenKey) {
-                    item.copy(
-                        timeOffset = 0L,
-                        duration = 0L,
-                        lastVideoId = null,
-                        lastStreamIndex = null,
-                        lastEpisodeName = null,
-                        lastStreamUrl = null,
-                        lastStreamTitle = null,
-                        lastAudioLanguage = null,
-                        lastSubtitleLanguage = null
-                    )
-                } else {
-                    item
-                }
+            val providerCleared = if (profile != null) {
+                playbackSyncCoordinator.clearProgress(profile, meta)
+            } else {
+                false
             }
-            val externalItems = externalContinueWatching().filterNot {
-                ContinueWatchingListMerger.identityKey(it) == forgottenKey
+            val localItems = if (localSource) {
+                localContinueWatching().map { item ->
+                    if (ContinueWatchingListMerger.identityKey(item) == forgottenKey) {
+                        item.copy(
+                            timeOffset = 0L,
+                            duration = 0L,
+                            lastVideoId = null,
+                            lastStreamIndex = null,
+                            lastEpisodeName = null,
+                            lastStreamUrl = null,
+                            lastStreamTitle = null,
+                            lastAudioLanguage = null,
+                            lastSubtitleLanguage = null
+                        )
+                    } else item
+                }
+            } else localContinueWatching()
+            val externalItems = when {
+                localSource -> externalContinueWatching()
+                providerCleared && profile != null ->
+                    playbackSyncCoordinator.cachedContinueWatching(profile)
+                else -> externalContinueWatching()
             }
             onContinueWatchingChanged(ContinueWatchingSnapshot(localItems, externalItems))
             refreshDynamicRows()

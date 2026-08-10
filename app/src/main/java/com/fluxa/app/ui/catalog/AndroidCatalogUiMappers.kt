@@ -29,21 +29,6 @@ private fun preferredHorizontalArtwork(meta: Meta): String? {
         ?: meta.continueWatchingBackground?.takeIf { it.isNotBlank() }
 }
 
-private fun Meta.remainingLabel(language: String?): String? {
-    val offset = timeOffset
-    val total = duration
-    if (offset != null && total != null && offset > 0L && total > 0L) {
-        val remainingMinutes = ((total - offset).coerceAtLeast(0L) / 60_000L).toInt()
-        return when {
-            remainingMinutes < 1 -> AppStrings.t(language, "format.remaining_almost_done")
-            remainingMinutes < 60 -> AppStrings.format(language, "format.remaining_minutes", remainingMinutes)
-            remainingMinutes % 60 == 0 -> AppStrings.format(language, "format.remaining_hours", remainingMinutes / 60)
-            else -> AppStrings.format(language, "format.remaining_hours_minutes", remainingMinutes / 60, remainingMinutes % 60)
-        }
-    }
-    return resumeProgressPercent?.let { AppStrings.format(language, "format.watched_percent", it.toInt()) }
-}
-
 fun Meta.homeHeroBackdrop(seasonPostersOnHero: Boolean = true): String? {
     val seasonPoster = seasonPosters
         ?.maxByOrNull { it.key.toIntOrNull() ?: 0 }
@@ -60,7 +45,8 @@ internal fun Meta.toCatalogCardUiModel(
     showHorizontalLogo: Boolean,
     topTenRank: Int?,
     isContinueWatchingCard: Boolean,
-    loadArtwork: Boolean
+    loadArtwork: Boolean,
+    deviceType: DeviceType = DeviceType.Mobile,
 ): CatalogCardUiModel {
     val language = profile?.safeLanguage ?: "en"
     val widthPreset = profile?.safePosterWidthPreset ?: "medium"
@@ -80,13 +66,13 @@ internal fun Meta.toCatalogCardUiModel(
     val showTitleBar = !(isContinueWatchingCard && profile?.safeContinueWatchingHideTitles == true) &&
         !(profile?.safePosterHideTitles == true || hideTitle == true)
     val width = (when {
-        episodeStyle -> FluxaDimensions.EpisodeCard.mobileWidth
-        horizontal -> horizontalCardWidth(widthPreset, DeviceType.Mobile)
+        episodeStyle -> if (deviceType == DeviceType.TV) FluxaDimensions.EpisodeCard.tvWidth else FluxaDimensions.EpisodeCard.mobileWidth
+        horizontal -> horizontalCardWidth(widthPreset, deviceType)
         else -> posterCardWidth(widthPreset)
     }) * cardScale
     val imageHeight = (when {
-        episodeStyle -> FluxaDimensions.EpisodeCard.mobileHeight
-        horizontal -> horizontalCardHeight(widthPreset, DeviceType.Mobile)
+        episodeStyle -> if (deviceType == DeviceType.TV) FluxaDimensions.EpisodeCard.tvHeight else FluxaDimensions.EpisodeCard.mobileHeight
+        horizontal -> horizontalCardHeight(widthPreset, deviceType)
         square -> posterCardWidth(widthPreset)
         else -> posterCardHeight(widthPreset)
     }) * cardScale

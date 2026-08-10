@@ -32,6 +32,19 @@ data class NativeCalendarNotificationContent(
     val keys: List<String> = emptyList()
 )
 
+data class NativeDeviceResourceBudget(
+    val tier: String = "mid",
+    val imageCacheMemoryPercent: Double = 0.18,
+    val imageCrossfadeEnabled: Boolean = true,
+    val imagePrecisionInexact: Boolean = false,
+    val imageDecodeConcurrency: Int = 3,
+    val playerBufferCacheMb: Int = 100,
+    val playerTargetBufferBytes: Long = 100_000_000L,
+    val torrentCacheMb: Int = 64,
+    val subtitleGlyphCacheBytes: Long = 12_000_000L,
+    val uiReserveMb: Int = 128
+)
+
 data class NativeWatchlistTogglePlan(
     val command: String = "add",
     val itemId: String = "",
@@ -123,7 +136,7 @@ data class NativeProfileSafePrefs(
     val ambientLight: Boolean = true,
     val forceSoftwareAudio: Boolean = false,
     val preferredPlayer: String = "exoplayer",
-    val continueWatchingSource: String = "fluxa",
+    val continueWatchingSource: String = "local",
     val cardLayout: String = "vertical",
     val detailEpisodeViewMode: String = "modern",
     val continueWatchingLayout: String = "horizontal",

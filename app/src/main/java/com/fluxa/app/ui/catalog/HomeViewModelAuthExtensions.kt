@@ -27,8 +27,5 @@ internal fun HomeViewModel.exchangeTraktCode(code: String, onProfileUpdated: (Us
 internal fun HomeViewModel.startTraktDeviceAuthorization(onCodeReady: (TraktDeviceCodeResponse) -> Unit, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean, String?) -> Unit) =
     authCoordinator.startTraktDeviceAuthorization(onCodeReady, onProfileUpdated, onComplete)
 
-internal fun HomeViewModel.exchangeSimklCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
-    authCoordinator.exchangeCode("simkl", code, null, onProfileUpdated, onComplete)
-
-internal fun HomeViewModel.exchangeAnilistCode(code: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
-    authCoordinator.exchangeCode("anilist", code, null, onProfileUpdated, onComplete)
+internal fun HomeViewModel.acceptAnilistToken(accessToken: String, onProfileUpdated: (UserProfile) -> Unit, onComplete: (Boolean) -> Unit) =
+    authCoordinator.exchangeCode("anilist", accessToken, null, onProfileUpdated, onComplete)

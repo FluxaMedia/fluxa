@@ -2,6 +2,7 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.shared.feature.catalog.CatalogBillboardUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
@@ -10,107 +11,164 @@ import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogResumeUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
-import com.fluxa.app.shared.feature.library.toCatalogCardUiModel
-import com.fluxa.app.shared.feature.library.LibraryFolderUiModel
+import com.fluxa.app.shared.feature.catalog.toHomeCollectionRows
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.withContext
+import com.fluxa.app.ui.catalog.formatRuntimeLabel
 
 class AndroidCatalogHomeDataSource(
     private val homeViewModel: HomeViewModel,
-    private val activeProfile: () -> UserProfile?
+    private val activeProfile: () -> UserProfile?,
+    private val profileManager: ProfileManager,
+    private val deviceType: DeviceType = DeviceType.Mobile,
 ) : CatalogHomeDataSource {
-    override fun observeHome(): Flow<CatalogHomeUiState> = combine(
-        homeViewModel.categories,
-        homeViewModel.isLoading,
-        homeViewModel.currentFilter,
-        billboardResolution(),
-    ) { categories, isLoading, filter, billboardResolution ->
-        homeState(categories, isLoading, filter, billboardResolution)
+
+    /**
+     * Row/card mapping is intentionally isolated from billboard state. Billboard rotation,
+     * trailer resolution and subtitle updates must not rebuild every row on the Home screen.
+     */
+    override fun observeHome(): Flow<CatalogHomeUiState> {
+        val rows = combine(
+            homeViewModel.categories,
+            homeViewModel.currentFilter,
+            profileFlow(),
+        ) { categories, filter, profile ->
+            RowsInput(categories = categories, filter = filter, profile = profile)
+        }.mapLatest { input ->
+            withContext(Dispatchers.Default) {
+                val profile = input.profile
+                val orderedCategories = orderHomeCategories(input.categories, input.filter)
+                RowsResolution(
+                    rows = profile.toHomeCollectionRows(deviceType = deviceType) +
+                        orderedCategories.map { category -> category.toRowUiModel(profile) },
+                    categoriesByItem = input.categories.buildCategoryLookup(),
+                    profile = profile,
+                    filter = input.filter,
+                )
+            }
+        }.distinctUntilChanged()
+
+        return combine(
+            rows,
+            homeViewModel.isLoading,
+            billboardResolution(),
+        ) { rowsResolution, isLoading, billboard ->
+            HomeInput(
+                rows = rowsResolution,
+                isLoading = isLoading,
+                billboard = billboard,
+            )
+        }.mapLatest { input ->
+            withContext(Dispatchers.Default) {
+                val effectiveMovie = input.billboard.movie
+                CatalogHomeUiState(
+                    // Preserve this exact list reference when only billboard state changes.
+                    rows = input.rows.rows,
+                    isLoading = input.isLoading,
+                    billboard = effectiveMovie?.let { movie ->
+                        CatalogBillboardUiModel(
+                            item = movie.toCatalogItemUiModel(
+                                category = input.rows.categoriesByItem[movie.catalogLookupKey()],
+                                profile = input.rows.profile,
+                            ),
+                            logoUrl = input.billboard.logoUrl,
+                            trailerUrl = input.billboard.trailerUrl,
+                            trailerSubtitleCues = input.billboard.trailerSubtitleCues,
+                        )
+                    },
+                    heroItems = input.billboard.items.map { movie ->
+                        movie.toCatalogItemUiModel(
+                            category = input.rows.categoriesByItem[movie.catalogLookupKey()],
+                            profile = input.rows.profile,
+                        )
+                    },
+                    showHeroSection = input.rows.profile?.safeShowHeroSection != false,
+                    activeFilter = input.rows.filter,
+                )
+            }
+        }.distinctUntilChanged()
     }
 
-    override fun initialHomeState(): CatalogHomeUiState = homeState(
-        categories = homeViewModel.categories.value,
-        isLoading = homeViewModel.isLoading.value,
-        filter = homeViewModel.currentFilter.value,
-        billboardResolution = resolveBillboardResolution(
-            billboardMovie = homeViewModel.billboardMovie.value,
-            billboardPool = homeViewModel.billboardPool.value,
-            billboardLogo = homeViewModel.billboardLogo.value,
-            billboardTrailerUrl = homeViewModel.billboardTrailerUrl.value,
-            billboardTrailerSubtitleCues = homeViewModel.billboardTrailerSubtitleCues.value,
-            filter = homeViewModel.currentFilter.value
-        )
+    /** Avoid doing a full Home mapping synchronously during composition. */
+    override fun initialHomeState(): CatalogHomeUiState = CatalogHomeUiState(
+        isLoading = true,
+        activeFilter = homeViewModel.currentFilter.value,
     )
 
-    private fun homeState(
-        categories: List<HomeCategory>,
-        isLoading: Boolean,
-        filter: String,
-        billboardResolution: BillboardResolution
-    ): CatalogHomeUiState {
-        val profile = activeProfile()
-        val orderedCategories = orderHomeCategories(categories, filter)
-        val effectiveBillboardMeta = billboardResolution.movie
-        return CatalogHomeUiState(
-            rows = profile.homeCollectionRows() + orderedCategories.map { category -> category.toRowUiModel(profile) },
-            isLoading = isLoading,
-            billboard = effectiveBillboardMeta?.let { movie ->
-                CatalogBillboardUiModel(
-                    item = movie.toCatalogItemUiModel(
-                        category = categories.categoryFor(movie),
-                        profile = profile
-                    ),
-                    logoUrl = billboardResolution.logoUrl,
-                    trailerUrl = billboardResolution.trailerUrl,
-                    trailerSubtitleCues = billboardResolution.trailerSubtitleCues
-                )
-            },
-            heroItems = billboardResolution.items.map { movie ->
-                movie.toCatalogItemUiModel(
-                    category = categories.categoryFor(movie),
-                    profile = profile
-                )
-            },
-            showHeroSection = profile?.safeShowHeroSection != false,
-            activeFilter = filter
-        )
-    }
+    private data class RowsInput(
+        val categories: List<HomeCategory>,
+        val filter: String,
+        val profile: UserProfile?,
+    )
+
+    private data class RowsResolution(
+        val rows: List<CatalogRowUiModel>,
+        val categoriesByItem: Map<String, HomeCategory>,
+        val profile: UserProfile?,
+        val filter: String,
+    )
+
+    private data class HomeInput(
+        val rows: RowsResolution,
+        val isLoading: Boolean,
+        val billboard: BillboardResolution,
+    )
+
+    private fun profileFlow(): Flow<UserProfile?> = callbackFlow {
+        val listener: () -> Unit = { trySend(activeProfile()) }
+        trySend(activeProfile())
+        profileManager.addChangeListener(listener)
+        awaitClose { profileManager.removeChangeListener(listener) }
+    }.distinctUntilChanged()
 
     private data class BillboardResolution(
-        val movie: com.fluxa.app.data.remote.Meta?,
-        val items: List<com.fluxa.app.data.remote.Meta>,
+        val movie: Meta?,
+        val items: List<Meta>,
         val logoUrl: String?,
         val trailerUrl: String?,
-        val trailerSubtitleCues: List<com.fluxa.app.shared.feature.player.TrailerCue>
+        val trailerSubtitleCues: List<com.fluxa.app.shared.feature.player.TrailerCue>,
     )
 
+    @OptIn(FlowPreview::class)
     private fun billboardResolution(): Flow<BillboardResolution> = combine(
         homeViewModel.billboardMovie,
         homeViewModel.billboardPool,
         homeViewModel.billboardLogo,
         homeViewModel.billboardTrailerUrl,
-        homeViewModel.currentFilter
+        homeViewModel.currentFilter,
     ) { billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, filter ->
         BillboardBase(billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, filter)
     }.combine(homeViewModel.billboardTrailerSubtitleCues) { base, cues ->
         resolveBillboardResolution(base.movie, base.pool, base.logo, base.trailerUrl, cues, base.filter)
     }
+        // Movie/logo/trailer/cues are published through separate StateFlows. Coalesce the
+        // back-to-back updates into a single UI emission instead of recomposing 3-4 times.
+        .debounce(16L)
+        .distinctUntilChanged()
 
     private data class BillboardBase(
-        val movie: com.fluxa.app.data.remote.Meta?,
-        val pool: List<com.fluxa.app.data.remote.Meta>,
+        val movie: Meta?,
+        val pool: List<Meta>,
         val logo: String?,
         val trailerUrl: String?,
-        val filter: String
+        val filter: String,
     )
 
     private fun resolveBillboardResolution(
-        billboardMovie: com.fluxa.app.data.remote.Meta?,
-        billboardPool: List<com.fluxa.app.data.remote.Meta>,
+        billboardMovie: Meta?,
+        billboardPool: List<Meta>,
         billboardLogo: String?,
         billboardTrailerUrl: String?,
         billboardTrailerSubtitleCues: List<com.fluxa.app.shared.feature.player.TrailerCue>,
-        filter: String
+        filter: String,
     ): BillboardResolution {
         val filteredPool = billboardPool.filter { it.matchesFilter(filter) }
         val effectiveMovie = billboardMovie?.takeIf { it.matchesFilter(filter) }
@@ -124,12 +182,24 @@ class AndroidCatalogHomeDataSource(
         } else {
             listOfNotNull(effectiveMovie) + filteredPool
         }
-        return BillboardResolution(effectiveMovie, heroItems, billboardLogo, billboardTrailerUrl, billboardTrailerSubtitleCues)
+        return BillboardResolution(
+            movie = effectiveMovie,
+            items = heroItems.take(10),
+            logoUrl = billboardLogo,
+            trailerUrl = billboardTrailerUrl,
+            trailerSubtitleCues = billboardTrailerSubtitleCues,
+        )
     }
 
-    private fun List<HomeCategory>.categoryFor(meta: Meta): HomeCategory? = firstOrNull { category ->
-        category.items.any { item -> item.id == meta.id && item.type == meta.type }
+    private fun List<HomeCategory>.buildCategoryLookup(): Map<String, HomeCategory> = buildMap {
+        for (category in this@buildCategoryLookup) {
+            for (item in category.items) {
+                putIfAbsent(item.catalogLookupKey(), category)
+            }
+        }
     }
+
+    private fun Meta.catalogLookupKey(): String = "$type:$id"
 
     override suspend fun refresh() {
         if (homeViewModel.categories.value.isNotEmpty() || homeViewModel.isLoading.value) return
@@ -158,7 +228,7 @@ class AndroidCatalogHomeDataSource(
         artworkPreference = null,
         isActionRow = isContinueWatchingOrUpcomingCategory() || id == "library",
         topTenEnabled = id in profile?.safeTopTenFeedToggles.orEmpty(),
-        items = items.map { meta -> meta.toCatalogItemUiModel(category = this, profile = profile) }
+        items = items.map { meta -> meta.toCatalogItemUiModel(category = this, profile = profile) },
     )
 
     private fun Meta.toCatalogItemUiModel(category: HomeCategory?, profile: UserProfile?): CatalogItemUiModel {
@@ -170,74 +240,64 @@ class AndroidCatalogHomeDataSource(
             showHorizontalLogo = true,
             topTenRank = null,
             isContinueWatchingCard = category?.isContinueWatchingOrUpcomingCategory() == true,
-            loadArtwork = true
+            loadArtwork = true,
+            deviceType = deviceType,
         )
+        val providerSource = category?.isContinueWatchingCategory() == true
+        val selectedProvider = profile?.safeContinueWatchingSource
+        val providerId = if (providerSource) ThirdPartyProviderId.from(selectedProvider) else null
         return CatalogItemUiModel(
             id = id,
             type = type,
-            card = card,
-            source = CatalogSourceUiModel(
-                addonTransportUrl = category?.addonTransportUrl
-                    ?: category?.catalogSources?.firstOrNull()?.transportUrl,
-                catalogType = category?.catalogSources?.firstOrNull()?.type ?: category?.type
-            ),
-            resume = toCatalogResumeUiModel(),
-            backdropUrl = homeHeroBackdrop(),
-            description = description,
-            ageRating = ageRating,
-            seasonsCount = seasonsCount,
-            runtimeLabel = runtime
-        )
-    }
-
-    private fun UserProfile?.homeCollectionRows(): List<CatalogRowUiModel> {
-        val profile = this ?: return emptyList()
-        return profile.safeLibraryCollections
-            .asSequence()
-            .filter { it.showOnHome == true && it.folders.orEmpty().isNotEmpty() }
-            .map { collection ->
-                CatalogRowUiModel(
-                    id = "collection:${collection.id}",
-                    title = collection.title,
-                    categoryType = "catalog_folder",
-                    cardLayout = profile.safeCardLayout,
-                    items = collection.folders.orEmpty().map { folder ->
-                        CatalogItemUiModel(
-                            id = folder.id,
-                            type = "catalog_folder",
-                            card = folder.toSharedUiModel().toCatalogCardUiModel(profile.safePosterWidthPreset),
-                            backdropUrl = folder.heroBackdropUrl ?: folder.effectiveImageUrl()
-                        )
-                    }
+            card = if (providerId != null) card.copy(allowCoverFallback = false) else card,
+            source = if (providerSource && profile != null) {
+                CatalogSourceUiModel(
+                    catalogType = type,
+                    providerId = providerId?.key,
+                    providerAccountId = providerId?.let(profile::providerAccountId),
+                    strictProviderData = providerId != null,
                 )
-            }
-            .toList()
+            } else {
+                CatalogSourceUiModel(
+                    addonTransportUrl = category?.addonTransportUrl
+                        ?: category?.catalogSources?.firstOrNull()?.transportUrl,
+                    catalogType = category?.catalogSources?.firstOrNull()?.type ?: category?.type,
+                )
+            },
+            resume = toCatalogResumeUiModel(),
+            posterUrl = poster,
+            backdropUrl = if (providerSource) background else homeHeroBackdrop(),
+            description = description,
+            releaseLabel = releaseInfo,
+            ratingLabel = imdbRating,
+            ageRating = ageRating,
+            genres = genres.orEmpty(),
+            seasonsCount = seasonsCount,
+            runtimeLabel = formatRuntimeLabel(runtime),
+        )
     }
 }
 
-private fun LibraryUserCollectionFolder.toSharedUiModel(): LibraryFolderUiModel = LibraryFolderUiModel(
-    id = id,
-    title = title,
-    imageUrl = imageUrl,
-    shape = shape,
-    catalogTitle = catalogTitle,
-    hideTitle = hideTitle == true,
-    focusGifEnabled = focusGifEnabled != false,
-    coverEmoji = coverEmoji,
-    coverImageUrl = coverImageUrl,
-    focusGifUrl = focusGifUrl,
-    heroBackdropUrl = heroBackdropUrl
-)
+private fun Meta.resolveResumeProgressPercent(): Float? {
+    resumeProgressPercent?.let { return it }
+    val offset = timeOffset
+    val total = duration
+    if (offset != null && total != null && total > 0L) {
+        return (offset.toFloat() / total.toFloat()) * 100f
+    }
+    return null
+}
 
-private fun com.fluxa.app.data.remote.Meta.toCatalogResumeUiModel(): CatalogResumeUiModel? {
-    val positionMs = timeOffset ?: 0L
-    if (lastVideoId == null && positionMs <= 0L && resumeProgressPercent == null) return null
+private fun Meta.toCatalogResumeUiModel(): CatalogResumeUiModel? {
+    val progressPercent = resolveResumeProgressPercent()
+    val positionMs = if (progressPercent == null) timeOffset ?: 0L else 0L
+    if (lastVideoId == null && positionMs <= 0L && progressPercent == null) return null
     return CatalogResumeUiModel(
         positionMs = positionMs,
         durationMs = duration,
         videoId = lastVideoId,
         streamUrl = lastStreamUrl,
         streamTitle = lastStreamTitle,
-        progressPercent = resumeProgressPercent
+        progressPercent = progressPercent,
     )
 }

@@ -103,6 +103,9 @@ struct FluxaIosApp: App {
         WindowGroup {
             FluxaRootView()
                 .ignoresSafeArea()
+                .onOpenURL { url in
+                    FluxaApplePlaybackPresenter.shared.handleOpenURL(url)
+                }
         }
     }
 }

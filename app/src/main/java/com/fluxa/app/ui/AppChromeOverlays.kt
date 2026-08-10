@@ -95,21 +95,23 @@ internal fun AppChromeOverlays(
                 }
             },
             onDisconnect = {
-                val updated = profileManager.updateProfile(activeProfile.id) {
-                    it.copy(
-                        traktAccessToken = null,
-                        traktRefreshToken = null,
-                        traktTokenExpiresAt = null,
-                        traktLastSyncAt = null,
-                        traktLastSyncedItems = null,
-                        traktLastContinueWatchingCount = null,
-                        traktLastWatchlistCount = null
-                    )
-                } ?: activeProfile
-                onActiveProfileChanged(updated)
-                profileManager.setLastActiveProfile(updated)
-                homeViewModel.loadInitialData(updated, force = true)
-                onShowTraktSheetChanged(false)
+                homeViewModel.clearProviderData(activeProfile, ThirdPartyProviderId.TRAKT) {
+                    val updated = profileManager.updateProfile(activeProfile.id) {
+                        it.copy(
+                            traktAccessToken = null,
+                            traktRefreshToken = null,
+                            traktTokenExpiresAt = null,
+                            traktLastSyncAt = null,
+                            traktLastSyncedItems = null,
+                            traktLastContinueWatchingCount = null,
+                            traktLastWatchlistCount = null
+                        )
+                    } ?: activeProfile
+                    onActiveProfileChanged(updated)
+                    profileManager.setLastActiveProfile(updated)
+                    homeViewModel.loadInitialData(updated, force = true)
+                    onShowTraktSheetChanged(false)
+                }
             }
         )
     }
@@ -120,13 +122,15 @@ internal fun AppChromeOverlays(
             lang = activeProfile.safeLanguage,
             onDismiss = { onShowSimklSheetChanged(false) },
             onDisconnect = {
-                val updated = profileManager.updateProfile(activeProfile.id) {
-                    it.copy(simklAccessToken = null)
-                } ?: activeProfile
-                onActiveProfileChanged(updated)
-                profileManager.setLastActiveProfile(updated)
-                homeViewModel.loadInitialData(updated, force = true)
-                onShowSimklSheetChanged(false)
+                homeViewModel.clearProviderData(activeProfile, ThirdPartyProviderId.SIMKL) {
+                    val updated = profileManager.updateProfile(activeProfile.id) {
+                        it.copy(simklAccessToken = null)
+                    } ?: activeProfile
+                    onActiveProfileChanged(updated)
+                    profileManager.setLastActiveProfile(updated)
+                    homeViewModel.loadInitialData(updated, force = true)
+                    onShowSimklSheetChanged(false)
+                }
             }
         )
     }

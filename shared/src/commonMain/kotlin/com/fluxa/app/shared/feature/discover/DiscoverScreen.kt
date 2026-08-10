@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as columnItems
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,13 +56,12 @@ import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
+import com.fluxa.app.shared.feature.catalog.stableLazyKey
 import com.fluxa.app.shared.skeletonShimmer
 import com.fluxa.app.shared.feature.search.SearchResultRows
 import com.fluxa.app.shared.feature.search.SearchResults
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
-import com.fluxa.app.ui.catalog.LocalWindowWidthClass
-import com.fluxa.app.ui.catalog.gridColumns
 
 @Composable
 fun DiscoverScreen(
@@ -146,13 +144,13 @@ fun DiscoverScreen(
                     }
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = GridCells.Fixed(LocalWindowWidthClass.current.gridColumns()),
+                        columns = com.fluxa.app.ui.catalog.rememberCatalogGridCells(),
                         modifier = Modifier.weight(1f).fillMaxWidth().focusRestorer(),
                         contentPadding = PaddingValues(bottom = 120.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(state.results, key = { "${it.type}:${it.id}" }) { item ->
+                        items(state.results, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
                             CatalogCard(model = item.card, onClick = { onItemSelected(item) })
                         }
                     }
@@ -206,7 +204,7 @@ private fun DiscoverSearchField(
 @Composable
 private fun DiscoverSkeletonGrid(modifier: Modifier = Modifier) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(LocalWindowWidthClass.current.gridColumns()),
+        columns = com.fluxa.app.ui.catalog.rememberCatalogGridCells(),
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 120.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

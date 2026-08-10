@@ -1,137 +1,67 @@
 package com.fluxa.app.shared
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlinx.coroutines.delay
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.alpha
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogAction
-import com.fluxa.app.shared.feature.catalog.CatalogBillboardUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
-import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CategoryResultsScreen
-import com.fluxa.app.shared.image.FluxaRemoteImage
-import com.fluxa.app.ui.catalog.FluxaIcons
-import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreScreen
-import com.fluxa.app.shared.feature.addonstore.AddonStoreUiState
-import com.fluxa.app.shared.feature.auth.AuthAction
 import com.fluxa.app.shared.feature.auth.AuthScreen
-import com.fluxa.app.shared.feature.auth.AuthUiState
 import com.fluxa.app.shared.feature.calendar.CalendarAction
 import com.fluxa.app.shared.feature.calendar.CalendarScreen
-import com.fluxa.app.shared.feature.calendar.CalendarUiState
 import com.fluxa.app.shared.feature.calendar.NotificationsScreen
 import com.fluxa.app.shared.feature.detail.DetailAction
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
+import com.fluxa.app.shared.feature.detail.DetailPresentationOptions
+import com.fluxa.app.shared.feature.detail.DetailScreenStyle
 import com.fluxa.app.shared.feature.detail.DetailScreen
-import com.fluxa.app.shared.feature.detail.DetailUiState
 import com.fluxa.app.shared.feature.detail.SourceSelectionScreen
 import com.fluxa.app.shared.feature.discover.DiscoverAction
 import com.fluxa.app.shared.feature.discover.DiscoverScreen
-import com.fluxa.app.shared.feature.discover.DiscoverUiState
 import com.fluxa.app.shared.feature.library.LibraryAction
 import com.fluxa.app.shared.feature.library.LibraryFolderDetailScreen
 import com.fluxa.app.shared.feature.library.LibraryScreen
-import com.fluxa.app.shared.feature.library.LibraryUiState
-import com.fluxa.app.shared.feature.plugins.PluginsAction
 import com.fluxa.app.shared.feature.plugins.PluginsScreen
-import com.fluxa.app.shared.feature.plugins.PluginsUiState
 import com.fluxa.app.shared.feature.profile.ProfileAction
 import com.fluxa.app.shared.feature.profile.ProfileEditScreen
 import com.fluxa.app.shared.feature.profile.ProfileEditTarget
-import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.ProfileListScreen
 import com.fluxa.app.shared.feature.profile.ProfilePickerSettingsScreen
-import com.fluxa.app.shared.feature.profile.ProfileUiState
-import com.fluxa.app.shared.feature.settings.SettingsAction
 import com.fluxa.app.shared.feature.settings.SettingsScreen
-import com.fluxa.app.shared.feature.settings.SettingsUiState
 import com.fluxa.app.shared.feature.search.SearchAction
 import com.fluxa.app.shared.feature.search.SearchScreen
-import com.fluxa.app.shared.feature.search.SearchUiState
 import com.fluxa.app.shared.feature.player.PlayerControlsSurface
-import com.fluxa.app.shared.feature.player.PlayerRenderAction
-import com.fluxa.app.shared.feature.player.PlayerRenderState
-import com.fluxa.app.shared.feature.player.TrailerCue
-import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.FluxaColors
-import com.fluxa.app.ui.catalog.PosterActionSheet
 
 private val FluxaColorScheme = darkColorScheme(
     background = FluxaColors.background,
@@ -164,7 +94,6 @@ enum class FluxaDestination(val titleKey: String) {
 data class FluxaAppUiState(
     val language: String? = null,
     val destination: FluxaDestination = FluxaDestination.Home,
-    val catalogHome: CatalogHomeUiState = CatalogHomeUiState(),
     val selectedDetail: DetailRequestUiModel? = null,
     val showSourceSelection: Boolean = false,
     val selectedCategoryId: String? = null,
@@ -177,67 +106,81 @@ data class FluxaAppUiState(
 )
 
 @Composable
-fun FluxaApp(
+internal fun FluxaApp(
     state: FluxaAppUiState,
-    deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
-    onDestinationSelected: (FluxaDestination) -> Unit,
-    onCatalogAction: (CatalogAction) -> Unit,
-    detailState: DetailUiState? = null,
-    onDetailAction: (DetailAction) -> Unit = {},
-    onDetailBackRequested: () -> Unit = {},
-    onSourceSelectionBackRequested: () -> Unit = {},
-    onCategoryBackRequested: () -> Unit = {},
-    onCategoryItemSelected: (CatalogItemUiModel) -> Unit = {},
-    onCategorySelected: (id: String, title: String) -> Unit = { _, _ -> },
-    searchState: SearchUiState? = null,
-    onSearchAction: (SearchAction) -> Unit = {},
-    discoverState: DiscoverUiState? = null,
-    onDiscoverAction: (DiscoverAction) -> Unit = {},
-    calendarState: CalendarUiState? = null,
-    onCalendarAction: (CalendarAction) -> Unit = {},
-    onNotificationsRequested: () -> Unit = {},
-    onNotificationsBackRequested: () -> Unit = {},
-    libraryState: LibraryUiState? = null,
-    onLibraryItemSelected: (CatalogItemUiModel) -> Unit = {},
-    onLibraryAction: (LibraryAction) -> Unit = {},
-    profileState: ProfileUiState? = null,
-    settingsState: SettingsUiState? = null,
-    onSettingsAction: (SettingsAction) -> Unit = {},
-    onSwitchProfilesRequested: () -> Unit = {},
-    onSettingsBackRequested: () -> Unit = {},
-    onSettingsPushCategory: (com.fluxa.app.shared.feature.settings.SettingsCategory) -> Unit = {},
-    onSettingsPopCategory: () -> Unit = {},
-    onSettingsSelectCategory: (com.fluxa.app.shared.feature.settings.SettingsCategory) -> Unit = {},
-    settingsBrandIcons: com.fluxa.app.shared.feature.settings.SettingsBrandIcons = com.fluxa.app.shared.feature.settings.SettingsBrandIcons(),
-    addonStoreState: AddonStoreUiState? = null,
-    onAddonStoreAction: (AddonStoreAction) -> Unit = {},
-    onOpenUrlRequested: (String) -> Unit = {},
-    onAddonStoreBackRequested: () -> Unit = {},
-    pluginsState: PluginsUiState? = null,
-    onPluginsAction: (PluginsAction) -> Unit = {},
-    onPluginsBackRequested: () -> Unit = {},
-    authState: AuthUiState? = null,
-    onAuthAction: (AuthAction) -> Unit = {},
-    nuvioIcon: @Composable () -> Unit = {},
-    stremioIcon: @Composable () -> Unit = {},
-    onProfileListAction: (ProfileAction) -> Unit = {},
-    onProfileBiometricRequested: (com.fluxa.app.shared.feature.profile.ProfileUiModel) -> Unit = {},
-    profileEditAvatarUrl: String? = null,
-    onPickAvatarClick: () -> Unit = {},
-    onRemoveAvatarClick: () -> Unit = {},
-    onPickPackAvatarClick: (String) -> Unit = {},
-    onProfileSave: (ProfileEditUiModel) -> Unit = {},
-    onProfileDelete: (suspend (String?) -> Boolean)? = null,
-    onProfileEditCancel: () -> Unit = {},
-    onPickBackgroundClick: () -> Unit = {},
-    playerState: PlayerRenderState? = null,
-    onPlayerAction: (PlayerRenderAction) -> Unit = {},
-    biometricAvailable: Boolean = false,
-    showNavigationBar: Boolean = true,
-    modifier: Modifier = Modifier
+    catalogHome: CatalogHomeUiState,
+    features: FluxaAppFeatureStates,
+    actions: FluxaAppActions,
+    profileEditor: FluxaProfileEditorBindings = FluxaProfileEditorBindings(),
+    presentation: FluxaAppPresentation = FluxaAppPresentation(),
+    modifier: Modifier = Modifier,
 ) {
+    val deviceType = presentation.deviceType
+    val settingsBrandIcons = presentation.settingsBrandIcons
+    val nuvioIcon = presentation.nuvioIcon
+    val stremioIcon = presentation.stremioIcon
+    val authBackdrop = presentation.authBackdrop
+    val biometricAvailable = presentation.biometricAvailable
+    val showNavigationBar = presentation.showNavigationBar
+
+    val detailState = features.detail
+    val searchState = features.search
+    val discoverState = features.discover
+    val calendarState = features.calendar
+    val libraryState = features.library
+    val profileState = features.profile
+    val settingsState = features.settings
+    val addonStoreState = features.addonStore
+    val pluginsState = features.plugins
+    val authState = features.auth
+    val playerState = features.player
+
+    val onDestinationSelected = actions.onDestinationSelected
+    val onCatalogAction = actions.onCatalogAction
+    val onDetailAction = actions.onDetailAction
+    val onDetailBackRequested = actions.onDetailBackRequested
+    val onSourceSelectionBackRequested = actions.onSourceSelectionBackRequested
+    val onCategoryBackRequested = actions.onCategoryBackRequested
+    val onCategoryItemSelected = actions.onCategoryItemSelected
+    val onCategorySelected = actions.onCategorySelected
+    val onSearchAction = actions.onSearchAction
+    val onDiscoverAction = actions.onDiscoverAction
+    val onCalendarAction = actions.onCalendarAction
+    val onNotificationsRequested = actions.onNotificationsRequested
+    val onNotificationsBackRequested = actions.onNotificationsBackRequested
+    val onLibraryItemSelected = actions.onLibraryItemSelected
+    val onLibraryAction = actions.onLibraryAction
+    val onSettingsAction = actions.onSettingsAction
+    val onSwitchProfilesRequested = actions.onSwitchProfilesRequested
+    val onSettingsBackRequested = actions.onSettingsBackRequested
+    val onSettingsPushCategory = actions.onSettingsPushCategory
+    val onSettingsPopCategory = actions.onSettingsPopCategory
+    val onSettingsSelectCategory = actions.onSettingsSelectCategory
+    val onAddonStoreAction = actions.onAddonStoreAction
+    val onOpenUrlRequested = actions.onOpenUrlRequested
+    val onAddonStoreBackRequested = actions.onAddonStoreBackRequested
+    val onPluginsAction = actions.onPluginsAction
+    val onPluginsBackRequested = actions.onPluginsBackRequested
+    val onAuthAction = actions.onAuthAction
+    val onProfileListAction = actions.onProfileListAction
+    val onProfileBiometricRequested = actions.onProfileBiometricRequested
+    val onPlayerAction = actions.onPlayerAction
+
+    val profileEditAvatarUrl = profileEditor.avatarUrl
+    val onPickAvatarClick = profileEditor.onPickAvatarClick
+    val onRemoveAvatarClick = profileEditor.onRemoveAvatarClick
+    val onPickPackAvatarClick = profileEditor.onPickPackAvatarClick
+    val onProfileSave = profileEditor.onProfileSave
+    val onProfileDelete = profileEditor.onProfileDelete
+    val onProfileEditCancel = profileEditor.onProfileEditCancel
+    val onPickBackgroundClick = profileEditor.onPickBackgroundClick
+
     MaterialTheme(colorScheme = FluxaColorScheme) {
-        val liquidGlassMode = settingsState?.appearance?.liquidGlassMode == true
+        val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
+        val isDesktop = deviceType == com.fluxa.app.ui.catalog.DeviceType.Desktop
+        // TV never captures a full-screen blur source. Mobile only does it while the
+        // bottom navigation is actually visible and consuming the haze source.
+        val liquidGlassRequested = !isTv && settingsState?.appearance?.liquidGlassMode == true
         val hazeState = rememberHazeState()
         Box(
             modifier = modifier
@@ -255,7 +198,6 @@ fun FluxaApp(
                 state.showNotifications -> "notifications"
                 else -> "dest:${state.destination}"
             }
-            val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
             val tvRouteModifier = if (isTv) {
                 Modifier
                     .padding(horizontal = 40.dp, vertical = 28.dp)
@@ -273,6 +215,8 @@ fun FluxaApp(
                 state.destination == FluxaDestination.ProfileList
             val navChromeVisible = showNavigationBar && !isPreAuthDestination
             val useTopNav = navChromeVisible && topNavEnabled
+            val useBottomNavigation = navChromeVisible && !isTv && !useTopNav && !useRail
+            val liquidGlassMode = liquidGlassRequested && useBottomNavigation
             var navBarHeightPx by remember { mutableIntStateOf(0) }
             var tvSidebarWidthPx by remember { mutableIntStateOf(0) }
             var navRailWidthPx by remember { mutableIntStateOf(0) }
@@ -286,8 +230,18 @@ fun FluxaApp(
             AnimatedContent(
                 targetState = screenKey,
                 transitionSpec = {
-                    (fadeIn(tween(220)) + scaleIn(initialScale = 0.98f, animationSpec = tween(220)))
-                        .togetherWith(fadeOut(tween(120)))
+                    when {
+                        isTv -> fadeIn(tween(100)).togetherWith(fadeOut(tween(80)))
+                        isDesktop -> {
+                            // Desktop windows can contain several bitmap-heavy rows at once. Keep
+                            // route overlap short so Skia does not render two full scenes for long.
+                            fadeIn(tween(90)).togetherWith(fadeOut(tween(70)))
+                        }
+                        else -> {
+                            // Avoid scaling two full bitmap-heavy routes at once on mobile.
+                            fadeIn(tween(140)).togetherWith(fadeOut(tween(100)))
+                        }
+                    }
                 },
                 label = "fluxa-screen-transition",
                 modifier = (
@@ -360,25 +314,21 @@ fun FluxaApp(
                     language = state.language,
                     onAction = onDetailAction,
                     onBack = onDetailBackRequested,
+                    presentation = settingsState?.appearanceDetail?.let { detailSettings ->
+                        DetailPresentationOptions(
+                            screenStyle = DetailScreenStyle.from(detailSettings.detailScreenStyle),
+                            preferClearlogo = detailSettings.detailPreferClearlogo,
+                            showEpisodeDescriptions = detailSettings.detailShowEpisodeDescriptions,
+                            showCast = detailSettings.detailShowCast,
+                            showRecommendations = detailSettings.detailShowRecommendations,
+                            collapsingHero = detailSettings.detailCollapsingHero,
+                            blurUnwatchedEpisodes = detailSettings.blurUnwatchedEpisodes,
+                            seasonSelectorMode = detailSettings.detailSeasonSelectorMode,
+                            episodeCardsLayout = detailSettings.episodeCardsLayout
+                        )
+                    } ?: DetailPresentationOptions(),
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
-                libraryState?.folderDetail?.folder != null && useRail -> Row(Modifier.fillMaxSize()) {
-                    LibraryScreen(
-                        state = libraryState,
-                        language = state.language,
-                        onAction = onLibraryAction,
-                        onItemSelected = onLibraryItemSelected,
-                        initialSection = state.initialLibrarySection ?: com.fluxa.app.shared.feature.library.LibrarySection.Planned,
-                        modifier = Modifier.width(360.dp).fillMaxHeight()
-                    )
-                    LibraryFolderDetailScreen(
-                        state = libraryState.folderDetail,
-                        language = state.language,
-                        onBack = { onLibraryAction(LibraryAction.FolderClosed) },
-                        onItemSelected = onLibraryItemSelected,
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    )
-                }
                 libraryState?.folderDetail?.folder != null -> LibraryFolderDetailScreen(
                     state = libraryState.folderDetail,
                     language = state.language,
@@ -388,7 +338,7 @@ fun FluxaApp(
                 )
                 state.selectedCategoryId != null -> CategoryResultsScreen(
                     title = state.selectedCategoryTitle.orEmpty(),
-                    items = state.catalogHome.rows.firstOrNull { it.id == state.selectedCategoryId }?.items.orEmpty(),
+                    items = catalogHome.rows.firstOrNull { it.id == state.selectedCategoryId }?.items.orEmpty(),
                     language = state.language,
                     onBack = onCategoryBackRequested,
                     onItemSelected = onCategoryItemSelected,
@@ -474,6 +424,13 @@ fun FluxaApp(
                     backStack = state.settingsBackStack,
                     onAction = onSettingsAction,
                     onSwitchProfilesRequested = onSwitchProfilesRequested,
+                    profileState = profileState,
+                    onProfileAction = { action ->
+                        if (action is ProfileAction.Selected && action.profile.hasPin) {
+                            onSwitchProfilesRequested()
+                        }
+                        onProfileListAction(action)
+                    },
                     onBackRequested = onSettingsBackRequested,
                     onPushCategory = onSettingsPushCategory,
                     onPopCategory = onSettingsPopCategory,
@@ -487,6 +444,8 @@ fun FluxaApp(
                     language = state.language,
                     onAction = onAddonStoreAction,
                     onConfigureRequested = onOpenUrlRequested,
+                    pluginsState = pluginsState,
+                    onPluginsAction = onPluginsAction,
                     onBackRequested = onAddonStoreBackRequested,
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
@@ -511,6 +470,7 @@ fun FluxaApp(
                     onAction = onAuthAction,
                     nuvioIcon = nuvioIcon,
                     stremioIcon = stremioIcon,
+                    backdrop = authBackdrop,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.ProfileList && profileState != null -> ProfileListScreen(
@@ -522,15 +482,18 @@ fun FluxaApp(
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Home && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.catalog.TvCatalogHomeScreen(
-                    state = state.catalogHome,
+                    state = catalogHome,
                     onAction = onCatalogAction,
                     language = state.language,
+                    hideContinueWatchingLabels = settingsState?.appearanceHome?.continueWatchingHideTitles == true,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
                     state = state,
+                    catalogHome = catalogHome,
                     onCatalogAction = onCatalogAction,
                     onCategorySelected = onCategorySelected,
+                    hideContinueWatchingLabels = settingsState?.appearanceHome?.continueWatchingHideTitles == true,
                     bottomContentInset = if (navChromeVisible) navBarHeightDp + 20.dp else 24.dp,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -575,7 +538,17 @@ fun FluxaApp(
                         onDestinationSelected = onDestinationSelected,
                         modifier = Modifier
                             .align(Alignment.CenterStart)
-                            .onGloballyPositioned { navRailWidthPx = it.size.width }
+                            .onGloballyPositioned { navRailWidthPx = it.size.width },
+                        profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
+                        activeProfileName = profileState?.activeProfile?.name,
+                        activeProfileId = profileState?.activeProfile?.id,
+                        profiles = profileState?.profiles.orEmpty(),
+                        onProfileSelected = { profile ->
+                            if (profile.hasPin) onSwitchProfilesRequested()
+                            onProfileListAction(ProfileAction.Selected(profile))
+                        },
+                        onAddProfileRequested = { onProfileListAction(ProfileAction.AddRequested) },
+                        onManageProfilesRequested = onSwitchProfilesRequested
                     )
                 } else {
                     FluxaNavigationBar(

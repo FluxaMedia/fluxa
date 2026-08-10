@@ -2,17 +2,13 @@ package com.fluxa.app.shared.platform
 
 import com.fluxa.app.core.apple.AppleCatalogHomeSnapshot
 import com.fluxa.app.core.apple.AppleCatalogItemSnapshot
-import com.fluxa.app.core.apple.AppleCatalogRowSnapshot
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
-import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
-import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import androidx.compose.ui.unit.dp
 
 class AppleCatalogHomeDataSource : CatalogHomeDataSource {
     private val state = MutableStateFlow(CatalogHomeUiState())
@@ -49,43 +45,16 @@ class AppleCatalogHomeDataSource : CatalogHomeDataSource {
     }
 }
 
-private fun AppleCatalogItemSnapshot.toCatalogItemUiModel(): CatalogItemUiModel {
-    return CatalogItemUiModel(
-        id = id,
-        type = type,
-        source = CatalogSourceUiModel(
-            addonTransportUrl = addonTransportUrl,
-            catalogType = catalogType
-        ),
-        card = CatalogCardUiModel(
-            title = title,
-            subtitle = subtitle,
-            showTitleBar = true,
-            artworkUrl = artworkUrl,
-            artworkMemoryCacheKey = artworkUrl?.let { "apple-catalog:$it" },
-            artworkDiskCacheKey = artworkUrl?.let { "apple-catalog:$it" },
-            requestWidthPx = 264,
-            requestHeightPx = 396,
-            logoUrl = logoUrl,
-            logoMemoryCacheKey = null,
-            showLogo = false,
-            allowCoverFallback = true,
-            coverFallbackText = title,
-            coverFallbackIsEmoji = false,
-            width = 132.dp,
-            imageHeight = 198.dp,
-            outerWidth = 132.dp,
-            cardBackgroundIsSurfaceCard = true,
-            progress = progress?.coerceIn(0f, 1f) ?: 0f,
-            showProgressBar = progress != null,
-            showUpNextBadge = false,
-            upNextLabel = "",
-            topTenRank = topTenRank,
-            rankNumberBoxWidth = 0.dp,
-            rankOffsetX = 0.dp,
-            rankOffsetY = 0.dp,
-            rankFontSizeRatio = 1f,
-            loadArtwork = true
-        )
-    )
-}
+private fun AppleCatalogItemSnapshot.toCatalogItemUiModel(): CatalogItemUiModel = appleCatalogItem(
+    id = id,
+    type = type,
+    title = title,
+    subtitle = subtitle,
+    artworkUrl = artworkUrl,
+    logoUrl = logoUrl,
+    addonTransportUrl = addonTransportUrl,
+    catalogType = catalogType,
+    cacheNamespace = "apple-catalog",
+    progress = progress,
+    topTenRank = topTenRank,
+)

@@ -11,10 +11,12 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
@@ -46,6 +48,8 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,6 +74,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -118,6 +123,7 @@ import com.fluxa.app.shared.feature.profile.ProfileEditTarget
 import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.ProfileListScreen
 import com.fluxa.app.shared.feature.profile.ProfileUiState
+import com.fluxa.app.shared.feature.profile.ProfileUiModel
 import com.fluxa.app.shared.feature.settings.SettingsAction
 import com.fluxa.app.shared.feature.settings.SettingsScreen
 import com.fluxa.app.shared.feature.settings.SettingsUiState
@@ -145,6 +151,7 @@ private val FluxaBottomNavItems = listOf(
     FluxaBottomNavItem(FluxaDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline)
 )
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun FluxaNavigationRail(
     destination: FluxaDestination,
@@ -153,58 +160,188 @@ internal fun FluxaNavigationRail(
     showLabels: Boolean,
     language: String?,
     onDestinationSelected: (FluxaDestination) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    profileAvatarUrl: String? = null,
+    activeProfileName: String? = null,
+    activeProfileId: String? = null,
+    profiles: List<ProfileUiModel> = emptyList(),
+    onProfileSelected: (ProfileUiModel) -> Unit = {},
+    onAddProfileRequested: () -> Unit = {},
+    onManageProfilesRequested: () -> Unit = {}
 ) {
     val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
     val inactiveColor = Color(0xFFA0A5AD)
-    val items = if (showProfile) {
-        FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
-    } else {
-        FluxaBottomNavItems
-    }
+    var profileMenuExpanded by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxHeight()
             .width(if (showLabels) 96.dp else 80.dp)
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))
             .background(Color(0xFF101012))
-            .padding(vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+            .padding(vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        items.forEach { item ->
-            val isSelected = item.destination == destination
-            val tint by animateColorAsState(
-                targetValue = if (isSelected) selectedColor else inactiveColor,
-                label = "rail-item-tint"
+        // Keep the whole navigation cluster centered. The profile/settings avatar belongs to
+        // the same cluster as the primary destinations instead of being pinned to the window edge.
+        Spacer(Modifier.weight(1f))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            FluxaBottomNavItems.forEach { item ->
+                val isSelected = item.destination == destination
+                val tint by animateColorAsState(
+                    targetValue = if (isSelected) selectedColor else inactiveColor,
+                    label = "rail-item-tint"
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable { onDestinationSelected(item.destination) }
+                        .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
+                        .padding(vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        if (isSelected) item.selectedIcon else item.icon,
+                        contentDescription = null,
+                        tint = tint,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    if (showLabels) {
+                        Text(
+                            text = AppStrings.t(language, item.destination.titleKey),
+                            color = tint,
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            if (showProfile) {
+            val settingsSelected = destination == FluxaDestination.Settings
+            val settingsTint by animateColorAsState(
+                targetValue = if (settingsSelected) selectedColor else inactiveColor,
+                label = "rail-profile-tint"
             )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
-                    .clickable { onDestinationSelected(item.destination) }
-                    .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
-                    .padding(vertical = 10.dp),
+                    .combinedClickable(
+                        onClick = { onDestinationSelected(FluxaDestination.Settings) },
+                        onLongClick = { profileMenuExpanded = true }
+                    )
+                    .background(if (settingsSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
+                    .padding(vertical = 9.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    if (isSelected) item.selectedIcon else item.icon,
-                    contentDescription = null,
-                    tint = tint,
-                    modifier = Modifier.size(28.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.08f))
+                        .then(if (settingsSelected) Modifier.border(2.dp, selectedColor, CircleShape) else Modifier),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!profileAvatarUrl.isNullOrBlank()) {
+                        FluxaRemoteImage(
+                            imageUrl = profileAvatarUrl,
+                            cacheKey = "nav-rail-avatar:$profileAvatarUrl",
+                            contentDescription = activeProfileName,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar(Modifier.size(20.dp))
+                    }
+                }
                 if (showLabels) {
                     Text(
-                        text = AppStrings.t(language, item.destination.titleKey),
-                        color = tint,
+                        text = AppStrings.t(language, FluxaDestination.Settings.titleKey),
+                        color = settingsTint,
                         fontSize = 10.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                DropdownMenu(
+                    expanded = profileMenuExpanded,
+                    onDismissRequest = { profileMenuExpanded = false },
+                    offset = DpOffset(x = 48.dp, y = (-8).dp)
+                ) {
+                    profiles.forEach { profile ->
+                        DropdownMenuItem(
+                            enabled = profile.id != activeProfileId,
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White.copy(alpha = 0.08f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (!profile.avatarUrl.isNullOrBlank()) {
+                                            FluxaRemoteImage(
+                                                imageUrl = profile.avatarUrl,
+                                                cacheKey = "nav-profile-menu:${profile.avatarUrl}",
+                                                contentDescription = profile.name,
+                                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar(Modifier.size(17.dp))
+                                        }
+                                    }
+                                    Text(
+                                        text = profile.name,
+                                        color = Color.White,
+                                        modifier = Modifier.weight(1f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (profile.id == activeProfileId) {
+                                        Text("✓", color = selectedColor, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            },
+                            onClick = {
+                                profileMenuExpanded = false
+                                onProfileSelected(profile)
+                            }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text(AppStrings.t(language, "profiles.add_profile"), color = Color.White) },
+                        onClick = {
+                            profileMenuExpanded = false
+                            onAddProfileRequested()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(AppStrings.t(language, "profiles.manage"), color = Color.White) },
+                        onClick = {
+                            profileMenuExpanded = false
+                            onManageProfilesRequested()
+                        }
+                    )
+                }
+            }
             }
         }
+        Spacer(Modifier.weight(1f))
     }
 }
 

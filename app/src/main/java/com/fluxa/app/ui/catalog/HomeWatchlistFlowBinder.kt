@@ -11,7 +11,6 @@ internal class HomeWatchlistFlowBinder(
     private val scope: CoroutineScope,
     private val setWatchlist: (List<Meta>) -> Unit,
     private val setLocalContinueWatching: (List<Meta>) -> Unit,
-    private val setExternalContinueWatching: (List<Meta>) -> Unit,
     private val setLikedItems: (List<Meta>) -> Unit,
     private val refreshDynamicRows: () -> Unit,
     private val prefetchContinueWatchingArtwork: (List<Meta>) -> Unit
@@ -26,13 +25,6 @@ internal class HomeWatchlistFlowBinder(
         scope.launch {
             watchlistStore.observeContinueWatching().collectLatest { list ->
                 setLocalContinueWatching(list)
-                refreshDynamicRows()
-                prefetchContinueWatchingArtwork(list)
-            }
-        }
-        scope.launch {
-            watchlistStore.observeExternalContinueWatching().collectLatest { list ->
-                setExternalContinueWatching(list)
                 refreshDynamicRows()
                 prefetchContinueWatchingArtwork(list)
             }

@@ -19,7 +19,21 @@ class CommonContentTransformationsTest {
             lastEpisodeName = "S2 E4 - The Return"
         )
 
-        assertEquals("S2, E4: The Return", continueWatchingEpisodeLabel(meta))
+        assertEquals("S2 E4 · The Return", continueWatchingEpisodeLabel(meta))
+    }
+
+
+    @Test
+    fun continueWatchingLabelCanRecoverEpisodeCodeFromProviderEpisodeName() {
+        val meta = Meta(
+            id = "tt456",
+            type = "series",
+            name = "Example",
+            lastVideoId = "opaque-video-id",
+            lastEpisodeName = "S1 E7 · The Hidden Inventory"
+        )
+
+        assertEquals("S1 E7 · The Hidden Inventory", continueWatchingEpisodeLabel(meta))
     }
 
     @Test

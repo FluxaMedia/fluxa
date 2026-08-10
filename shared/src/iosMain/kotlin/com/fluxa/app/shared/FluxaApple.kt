@@ -162,19 +162,22 @@ object FluxaApple {
 private fun FluxaAppleApp() {
     FluxaAppHost(
         platformServices = FluxaApple.platformServices,
-        onDetailNavigationEvent = { event ->
-            if (event is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.PlayStream) {
-                FluxaApple.requestPlayback(
-                    ApplePlaybackRequestSnapshot(
-                        playableUrl = event.stream.playableUrl,
-                        title = event.stream.title,
-                        resumePositionMs = event.resumeProgress,
-                        requestHeadersJson = event.stream.requestHeadersJson
-                    )
-                )
-            } else if (event is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources) {
-                FluxaApple.requestFirstAvailablePlayback(event.resumeProgress)
-            }
-        }
+        callbacks = com.fluxa.app.shared.FluxaAppHostCallbacks(
+            navigation = com.fluxa.app.shared.FluxaAppNavigationCallbacks(
+                onDetailNavigationEvent = { event ->
+                    if (event is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.PlayStream) {
+                        FluxaApple.requestPlayback(
+                            FluxaApple.detailDataSource.playbackRequest(
+                                stream = event.stream,
+                                resumePositionMs = event.resumeProgress,
+                                videoId = event.episodeId,
+                            )
+                        )
+                    } else if (event is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources) {
+                        FluxaApple.requestFirstAvailablePlayback(event.resumeProgress)
+                    }
+                },
+            ),
+        ),
     )
 }

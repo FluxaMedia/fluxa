@@ -7,6 +7,8 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.shared.FluxaDestination
+import com.fluxa.app.shared.feature.watchtogether.JvmWatchTogetherTransport
+import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.routes.AppRoutesHost
 import com.fluxa.app.plugins.PluginManager
@@ -56,6 +58,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -82,10 +85,13 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var pluginManager: PluginManager
     @Inject lateinit var pluginRepositoryManager: com.fluxa.app.plugins.PluginRepositoryManager
     @Inject lateinit var stremioRepository: StremioRepository
+    @Inject lateinit var addonRepository: AddonRepository
+    @Inject lateinit var platformSecureStore: com.fluxa.app.data.platform.PlatformSecureStore
     @Inject lateinit var authService: StremioService
     @Inject lateinit var nuvioImportCoordinator: com.fluxa.app.data.repository.NuvioAccountImportCoordinator
     @Inject lateinit var nuvioSyncCoordinator: com.fluxa.app.data.repository.NuvioSyncCoordinator
     @Inject lateinit var watchlistStore: com.fluxa.app.data.local.WatchlistStore
+    @Inject lateinit var thirdPartyProviderRepository: com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 
     private val searchIntentFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val oauthRedirectHandler = OAuthRedirectHandler()
@@ -119,6 +125,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CommonActivity.activity = this
+        WatchTogetherManager.installTransportFactory { JvmWatchTogetherTransport() }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -205,11 +212,11 @@ class MainActivity : FragmentActivity() {
                             homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
                         }
                     )
-                    val isDirectLoading by homeViewModel.isDirectLoading.collectAsState()
-                    val traktContinueWatchingLastUpdatedAt by homeViewModel.traktContinueWatchingLastUpdatedAt.collectAsState()
+                    val isDirectLoading by homeViewModel.isDirectLoading.collectAsStateWithLifecycle()
+                    val traktContinueWatchingLastUpdatedAt by homeViewModel.traktContinueWatchingLastUpdatedAt.collectAsStateWithLifecycle()
                     val isNetworkAvailable by remember(context) {
                         context.observeNetworkAvailable()
-                    }.collectAsState(initial = context.isNetworkAvailableNow())
+                    }.collectAsStateWithLifecycle(initialValue = context.isNetworkAvailableNow())
                     var previousNetworkAvailable by remember { mutableStateOf<Boolean?>(null) }
 
                     LaunchedEffect(initialProfile) {
@@ -277,14 +284,8 @@ class MainActivity : FragmentActivity() {
                             activeProfile?.safePlayerRebufferBufferMs ?: 2500
                         )
                     }
-                    val previewPlayer = remember(activeProfile?.id, activeProfile?.safeAudioDecoderMode, activeProfile?.preferredAudioLanguage) {
-                        val player = MediaPlayerController.createExoPlayer(
-                            context,
-                            activeProfile?.safeAudioDecoderMode ?: "hw_prefer",
-                            activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" } ?: ""
-                        ).apply { volume = 0f }
-                        MediaPlayerController(context, player)
-                        player
+                    DisposableEffect(mainPlayer) {
+                        onDispose { MediaPlayerController.releaseExoPlayer(mainPlayer) }
                     }
                     val mediaSession = remember(mainPlayer) {
                         MediaSession.Builder(context, mainPlayer).build()
@@ -295,6 +296,7 @@ class MainActivity : FragmentActivity() {
 
                     val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager, profilePickerSettingsStore) {
                         AndroidFluxaPlatformServices(
+                            context = context,
                             homeViewModel = homeViewModel,
                             detailViewModel = sharedDetailViewModel,
                             profileManager = profileManager,
@@ -304,19 +306,26 @@ class MainActivity : FragmentActivity() {
                             offlineDownloadManager = offlineDownloadManager,
                             watchlistStore = watchlistStore,
                             repository = stremioRepository,
+                            addonRepository = addonRepository,
+                            secureStore = platformSecureStore,
                             pluginRepositoryManager = pluginRepositoryManager,
                             pluginManager = pluginManager,
                             authService = authService,
                             nuvioImportCoordinator = nuvioImportCoordinator,
-                            appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}"
+                            thirdPartyProviderRepository = thirdPartyProviderRepository,
+                            appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}",
+                            deviceType = deviceType,
                         )
+                    }
+
+                    DisposableEffect(androidFluxaPlatformServices) {
+                        onDispose { androidFluxaPlatformServices.close() }
                     }
 
                     PlayerLifecycleEffect(
                         isPlayerActive = playerRequest != null,
                         activeProfile = activeProfile,
                         mainPlayer = mainPlayer,
-                        previewPlayer = previewPlayer,
                         homeViewModel = homeViewModel,
                         enterPictureInPicture = {
                             this@MainActivity.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build())

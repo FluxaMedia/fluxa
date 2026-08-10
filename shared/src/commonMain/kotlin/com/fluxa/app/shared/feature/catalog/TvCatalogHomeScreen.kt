@@ -50,6 +50,7 @@ fun TvCatalogHomeScreen(
     state: CatalogHomeUiState,
     onAction: (CatalogAction) -> Unit,
     language: String? = null,
+    hideContinueWatchingLabels: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val columnFocus = remember { FocusRequester() }
@@ -82,7 +83,7 @@ fun TvCatalogHomeScreen(
                         )
                     }
                 }
-                items(orderedRows, key = { it.id }) { row ->
+                items(orderedRows, key = { it.id }, contentType = { "catalog-row" }) { row ->
                     Column(
                         modifier = Modifier.focusGroup(),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -101,9 +102,9 @@ fun TvCatalogHomeScreen(
                             contentPadding = PaddingValues(horizontal = 58.dp),
                             horizontalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
-                            items(row.items, key = { it.id }) { item ->
+                            items(row.items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
                                 val cardItem = if (row.id == CONTINUE_WATCHING_CATEGORY_ID) {
-                                    item.withProminentContinueWatchingCard()
+                                    item.withProminentContinueWatchingCard(hideLabels = hideContinueWatchingLabels)
                                 } else {
                                     item
                                 }

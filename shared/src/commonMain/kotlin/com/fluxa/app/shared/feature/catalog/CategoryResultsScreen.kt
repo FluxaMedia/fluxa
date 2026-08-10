@@ -58,7 +58,7 @@ fun CategoryResultsScreen(
             horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
             verticalArrangement = Arrangement.spacedBy(if (isTv) 24.dp else 16.dp)
         ) {
-            items(items, key = { "${it.type}:${it.id}" }) { item ->
+            items(items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
                 CatalogCard(model = item.card, onClick = { onItemSelected(item) })
             }
         }

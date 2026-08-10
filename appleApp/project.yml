@@ -17,6 +17,14 @@ targets:
   FluxaIos:
     type: application
     platform: iOS
+    info:
+      properties:
+        LSApplicationQueriesSchemes:
+          - infuse
+        CFBundleURLTypes:
+          - CFBundleURLName: FluxaApple
+            CFBundleURLSchemes:
+              - fluxaapple
     sources:
       - path: Shared
       - path: AppleCore

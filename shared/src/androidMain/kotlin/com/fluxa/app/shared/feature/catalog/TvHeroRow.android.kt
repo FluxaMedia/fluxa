@@ -41,7 +41,7 @@ actual fun TvHeroRow(
     modifier: Modifier
 ) {
     if (items.isEmpty()) return
-    val hero = items.take(6)
+    val hero = items.take(10)
     Carousel(
         itemCount = hero.size,
         modifier = modifier

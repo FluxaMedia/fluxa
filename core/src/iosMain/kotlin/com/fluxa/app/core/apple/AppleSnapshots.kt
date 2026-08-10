@@ -37,7 +37,8 @@ data class AppleDetailStreamSnapshot(
     val addonName: String,
     val title: String,
     val playableUrl: String,
-    val requestHeadersJson: String = "{}"
+    val requestHeadersJson: String = "{}",
+    val subtitleUrls: List<String> = emptyList()
 )
 
 data class AppleDetailSnapshot(
@@ -61,7 +62,11 @@ data class ApplePlaybackRequestSnapshot(
     val playableUrl: String,
     val title: String,
     val resumePositionMs: Long = 0L,
-    val requestHeadersJson: String = "{}"
+    val requestHeadersJson: String = "{}",
+    val subtitleUrls: List<String> = emptyList(),
+    val contentId: String = "",
+    val contentType: String = "movie",
+    val videoId: String? = null,
 )
 
 data class AppleDiscoverRequestSnapshot(

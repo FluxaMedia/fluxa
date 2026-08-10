@@ -23,7 +23,6 @@ internal fun installLocalAddonForProfile(
         onProfileChanged(updated)
         profileManager.saveProfileReplacingLocalAddons(updated)
         profileManager.setLastActiveProfile(updated)
-        homeViewModel.pushNuvioAddons(updated)
         homeViewModel.loadInitialData(updated, force = true)
     }
 }
@@ -47,7 +46,6 @@ internal fun removeLocalAddonForProfile(
         onProfileChanged(updated)
         profileManager.saveProfileReplacingLocalAddons(updated)
         profileManager.setLastActiveProfile(updated)
-        homeViewModel.pushNuvioAddons(updated)
         homeViewModel.loadInitialData(updated, force = true)
     }
 }
@@ -71,8 +69,7 @@ internal fun moveLocalAddonForProfile(
             onProfileChanged(updated)
             profileManager.saveProfileReplacingLocalAddons(updated)
             profileManager.setLastActiveProfile(updated)
-            homeViewModel.pushNuvioAddons(updated)
-            homeViewModel.loadInitialData(updated, force = true)
+                homeViewModel.loadInitialData(updated, force = true)
         }
     }
 }
@@ -99,7 +96,6 @@ internal fun setLocalAddonEnabledForProfile(
         onProfileChanged(updated)
         profileManager.saveProfileReplacingLocalAddons(updated)
         profileManager.setLastActiveProfile(updated)
-        homeViewModel.pushNuvioAddons(updated)
         homeViewModel.loadInitialData(updated, force = true)
     }
 }

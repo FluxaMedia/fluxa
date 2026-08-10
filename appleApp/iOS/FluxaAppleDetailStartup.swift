@@ -67,21 +67,26 @@ final class FluxaAppleDetailStartup {
         }
         let id = text(meta["id"]) ?? request.id
         let type = text(meta["type"]) ?? request.type
-        let streams = await loadDirectStreams(request: request, contentType: type, id: id)
-        FluxaApple.shared.updateDetail(snapshot: FluxaShared.AppleDetailSnapshot(id: id, type: type, title: text(meta["name"]) ?? request.id, description: text(meta["description"]) ?? "", posterUrl: text(meta["poster"]), backgroundUrl: text(meta["background"]), logoUrl: text(meta["logo"]), releaseLabel: text(meta["releaseInfo"]) ?? "", ratingLabel: text(meta["imdbRating"]) ?? "", isInWatchlist: bool(detail["isInWatchlist"]), isLoading: false, errorKey: nil, streams: streams.map(toSharedStream), hasStreamProviders: !streams.isEmpty))
+        let addons = addonUrls(for: request)
+        let streams = await loadDirectStreams(addons: addons, contentType: type, id: id)
+        let subtitleUrls = await loadSubtitleUrls(addons: addons, contentType: type, id: id)
+        FluxaApple.shared.updateDetail(snapshot: FluxaShared.AppleDetailSnapshot(id: id, type: type, title: text(meta["name"]) ?? request.id, description: text(meta["description"]) ?? "", posterUrl: text(meta["poster"]), backgroundUrl: text(meta["background"]), logoUrl: text(meta["logo"]), releaseLabel: text(meta["releaseInfo"]) ?? "", ratingLabel: text(meta["imdbRating"]) ?? "", isInWatchlist: bool(detail["isInWatchlist"]), isLoading: false, errorKey: nil, streams: streams.map { toSharedStream($0, subtitleUrls: subtitleUrls) }, hasStreamProviders: !streams.isEmpty))
     }
 
-    private func loadDirectStreams(
-        request: FluxaShared.AppleDetailRequestSnapshot,
-        contentType: String,
-        id: String
-    ) async -> [FluxaCore.AppleDetailStreamSnapshot] {
-        let addons = ([request.addonTransportUrl].compactMap { $0 } + configurationStore.enabledAddonUrls())
+    private func addonUrls(for request: FluxaShared.AppleDetailRequestSnapshot) -> [String] {
+        ([request.addonTransportUrl].compactMap { $0 } + configurationStore.enabledAddonUrls())
             .reduce(into: [String]()) { result, addon in
                 if !result.contains(addon) {
                     result.append(addon)
                 }
             }
+    }
+
+    private func loadDirectStreams(
+        addons: [String],
+        contentType: String,
+        id: String
+    ) async -> [FluxaCore.AppleDetailStreamSnapshot] {
         var results = [FluxaCore.AppleDetailStreamSnapshot]()
         for addon in addons {
             if let streams = try? await addonResourceLoader.loadDirectStreams(
@@ -95,12 +100,35 @@ final class FluxaAppleDetailStartup {
         return results
     }
 
-    private func toSharedStream(_ stream: FluxaCore.AppleDetailStreamSnapshot) -> FluxaShared.AppleDetailStreamSnapshot {
+    private func loadSubtitleUrls(
+        addons: [String],
+        contentType: String,
+        id: String
+    ) async -> [String] {
+        var results = [String]()
+        for addon in addons {
+            if let subtitles = try? await addonResourceLoader.loadSubtitleUrls(
+                transportUrl: addon,
+                contentType: contentType,
+                id: id
+            ) {
+                results.append(contentsOf: subtitles)
+            }
+        }
+        var seen = Set<String>()
+        return results.filter { seen.insert($0).inserted }
+    }
+
+    private func toSharedStream(
+        _ stream: FluxaCore.AppleDetailStreamSnapshot,
+        subtitleUrls: [String]
+    ) -> FluxaShared.AppleDetailStreamSnapshot {
         FluxaShared.AppleDetailStreamSnapshot(
             addonName: stream.addonName,
             title: stream.title,
             playableUrl: stream.playableUrl,
-            requestHeadersJson: stream.requestHeadersJson
+            requestHeadersJson: stream.requestHeadersJson,
+            subtitleUrls: subtitleUrls
         )
     }
 

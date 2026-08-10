@@ -2,21 +2,23 @@ package com.fluxa.app.ui.catalog
 
 import android.util.LruCache
 import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
+import com.fluxa.app.data.local.safeContinueWatchingSource
+import com.fluxa.app.data.local.safeLanguage
+import com.fluxa.app.data.local.safeUpcomingRowEnabled
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.Video
-import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.TraktWatchedState
+import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal class HomeContinueWatchingCoordinator(
-    private val repository: StremioRepository,
+    private val providerContinueWatchingRepository: ProviderContinueWatchingRepository,
     private val watchlistManager: WatchlistManager,
     private val scope: CoroutineScope,
     private val activeProfile: () -> UserProfile?,
@@ -34,10 +36,14 @@ internal class HomeContinueWatchingCoordinator(
     private val artworkCache = LruCache<String, Pair<String?, String?>>(80)
     private val upcomingCache = mutableMapOf<String, Boolean>()
 
+    private fun usesLocalSource(): Boolean = activeProfile()?.safeContinueWatchingSource
+        ?.lowercase() in setOf(null, "", "fluxa", "local")
+
     fun isUpcoming(meta: Meta): Boolean = upcomingCache[upcomingCacheKey(meta)] == true
 
+    /** Upcoming classification is local Fluxa presentation logic and must never enrich a provider row. */
     fun classifyUpcoming(items: List<Meta>) {
-        if (activeProfile()?.safeUpcomingRowEnabled != true) return
+        if (!usesLocalSource() || activeProfile()?.safeUpcomingRowEnabled != true) return
         val lang = activeProfile()?.safeLanguage ?: "en"
         val candidates = items.filter { meta ->
             val isSeries = meta.type == "series" || meta.type == "tv" || meta.type == "anime"
@@ -65,45 +71,37 @@ internal class HomeContinueWatchingCoordinator(
     private fun upcomingCacheKey(meta: Meta): String = "${meta.id}:${meta.lastVideoId}"
 
     fun buildItems(lang: String, playbackController: HomePlaybackController): List<Meta> {
-        val source = activeProfile()?.safeContinueWatchingSource ?: "stremio"
-        val providerItems = when (source) {
-            "trakt" -> externalItems().filter { it.reason.equals("Trakt.tv", ignoreCase = true) }
-            "simkl" -> externalItems().filter { it.reason.equals("Simkl", ignoreCase = true) }
-            "nuvio" -> externalItems().filter { it.reason.equals("Nuvio", ignoreCase = true) }
-            "anilist" -> externalItems().filter { it.reason.equals("AniList", ignoreCase = true) }
-            else -> localItems()
+        if (!usesLocalSource()) {
+            // Provider rows are intentionally not merged, re-ranked with another provider's
+            // watched state, badge-normalized, or metadata-enriched.
+            return externalItems()
         }
-        val filteredProviderItems = providerItems.filterNot(playbackController::isForgotten)
-        val ranked = FluxaCoreNative.filterHomeContinueWatching(filteredProviderItems, watchedState())
+
+        val filteredLocalItems = localItems().filterNot(playbackController::isForgotten)
+        val ranked = FluxaCoreNative.filterHomeContinueWatching(filteredLocalItems, watchedState())
         classifyUpcoming(ranked)
         return ranked.map { assignHomeBadge(it, lang) }
     }
 
-
     suspend fun fetchExternal(profile: UserProfile?): List<Meta> {
-        if (profile == null) return emptyList()
-        val items = withTimeoutOrNull(8_000L) {
-            repository.getExternalContinueWatching(profile, profile.safeLanguage)
+        if (profile == null || usesLocalSource()) return emptyList()
+        val snapshot = withTimeoutOrNull(12_000L) {
+            providerContinueWatchingRepository.loadSelected(profile, refresh = true)
         }
-        if (!profile.traktAccessToken.isNullOrBlank() && items != null) {
+        if (snapshot?.providerId?.key == "trakt" && !snapshot.fromCache) {
             setTraktUpdatedAt(System.currentTimeMillis())
         }
-        if (items != null) {
-            watchlistManager.replaceExternalContinueWatching(setOf("trakt", "simkl", "anilist", "nuvio"), items)
-        }
-        return items ?: externalItems()
+        return snapshot?.items ?: providerContinueWatchingRepository
+            .loadSelected(profile, refresh = false)
+            ?.items
+            .orEmpty()
     }
 
+    /** Artwork fetching is a Fluxa-local feature. Provider payloads stay byte-for-byte isolated. */
     fun prefetchArtwork(items: List<Meta>) {
+        if (!usesLocalSource()) return
         val lang = activeProfile()?.safeLanguage ?: "en"
         val targets = items.filter {
-            val isThirdPartyProvider = it.reason?.let { reason ->
-                reason.equals("Trakt.tv", ignoreCase = true) ||
-                    reason.equals("Simkl", ignoreCase = true) ||
-                    reason.equals("AniList", ignoreCase = true) ||
-                    reason.equals("Nuvio", ignoreCase = true)
-            } == true
-            if (isThirdPartyProvider) return@filter false
             val isSeries = it.type == "series" || it.type == "tv" || it.type == "anime"
             val hasEpisode = isSeries && !it.lastVideoId.isNullOrBlank()
             val hasOnlyTitleArtwork = it.continueWatchingPoster.isNullOrBlank() ||
@@ -111,10 +109,8 @@ internal class HomeContinueWatchingCoordinator(
                 it.continueWatchingPoster == it.background ||
                 it.continueWatchingBackground == it.background
             (it.timeOffset ?: 0L) > 0L &&
-                (
-                    (hasEpisode && hasOnlyTitleArtwork) ||
-                        (it.type == "movie" && it.continueWatchingPoster.isNullOrBlank())
-                )
+                ((hasEpisode && hasOnlyTitleArtwork) ||
+                    (it.type == "movie" && it.continueWatchingPoster.isNullOrBlank()))
         }
         if (targets.isEmpty()) return
 
@@ -132,26 +128,26 @@ internal class HomeContinueWatchingCoordinator(
                         getConfiguredMetaDetail(meta.type, meta.id, lang)
                     }.getOrNull()
                     val episodeLocator = meta.lastVideoId?.let(::parseEpisodeLocator)
-                    val seasonEpisodeArtwork = if (episodeLocator != null && (meta.type == "series" || meta.type == "tv" || meta.type == "anime")) {
+                    val seasonEpisodeArtwork = if (
+                        episodeLocator != null &&
+                        (meta.type == "series" || meta.type == "tv" || meta.type == "anime")
+                    ) {
                         runCatching {
                             getSeasonEpisodes(meta.id, episodeLocator.first, lang)
                                 .firstOrNull { it.number == episodeLocator.second }
                                 ?.thumbnail
                         }.getOrNull()
-                    } else {
-                        null
-                    }
+                    } else null
                     val episode = meta.lastVideoId?.let { videoId ->
                         detail?.videos?.firstOrNull { it.id == videoId }
                             ?: episodeLocator?.let { locator ->
-                                detail?.videos?.firstOrNull { it.season == locator.first && it.number == locator.second }
+                                detail?.videos?.firstOrNull {
+                                    it.season == locator.first && it.number == locator.second
+                                }
                             }
                     }
-                    val artwork = if (meta.type == "movie") {
-                        detail?.poster
-                    } else {
-                        seasonEpisodeArtwork ?: episode?.thumbnail
-                    }
+                    val artwork = if (meta.type == "movie") detail?.poster
+                    else seasonEpisodeArtwork ?: episode?.thumbnail
                     val background = if (meta.type == "movie") detail?.background else artwork
                     artworkCache.put(cacheKey, artwork to background)
                     if (!artwork.isNullOrBlank() || !background.isNullOrBlank()) {
@@ -170,16 +166,11 @@ internal class HomeContinueWatchingCoordinator(
             val merged = localItems().map { existing ->
                 updated.firstOrNull { it.id == existing.id } ?: existing
             }
-            val externalMerged = externalItems().map { existing ->
-                updated.firstOrNull { it.id == existing.id } ?: existing
-            }
-            if (merged != localItems() || externalMerged != externalItems()) {
+            if (merged != localItems()) {
                 setLocalItems(merged)
-                setExternalItems(externalMerged)
                 setWatchlistState(merged)
                 refreshDynamicRows()
             }
         }
     }
-
 }

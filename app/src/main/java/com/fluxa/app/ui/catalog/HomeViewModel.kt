@@ -4,6 +4,7 @@ import com.fluxa.app.common.ReleaseDateUtils
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
+import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
@@ -11,9 +12,8 @@ import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
 import com.fluxa.app.domain.discovery.MetadataFeedOption
+import com.fluxa.app.domain.playback.PlaybackSyncCoordinator
 import com.fluxa.app.domain.discovery.buildCs3MetadataFeedOptions
-import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
-import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import androidx.lifecycle.ViewModel
@@ -22,23 +22,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
 
-import com.fluxa.app.plugins.PluginManager
-import com.fluxa.app.data.repository.CloudStreamCatalogClient
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -54,25 +45,23 @@ class HomeViewModel @Inject constructor(
     private val homeBillboardCache: HomeBillboardCache,
     private val forgottenContinueWatchingStore: ForgottenContinueWatchingStore,
     private val coordinatorFactory: HomeViewModelCoordinatorFactory,
-    private val externalSyncPushCoordinator: ExternalSyncPushCoordinator,
     private val providerAdapters: com.fluxa.app.data.repository.library.ProviderAdapters,
+    private val thirdPartyProviderRepository: ThirdPartyProviderRepository,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
     private val nuvioSyncCoordinator: NuvioSyncCoordinator,
     private val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,
     private val platformContentGateway: HomePlatformContentGateway,
     private val imdbApiService: ImdbApiService,
+    private val playbackSyncCoordinator: PlaybackSyncCoordinator,
     internal val gson: Gson,
     @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context
 ) : ViewModel() {
 
     private val appContext = context.applicationContext
+    private var externalPlaybackTrackingJob: Job? = null
+    private var externalPlaybackTrackingSession: ExternalPlaybackTrackingSession? = null
     private val metaListType = object : TypeToken<List<Meta>>() {}.type
-    private val streamListType = object : TypeToken<List<Stream>>() {}.type
-    private val trailerListType = object : TypeToken<List<DetailTrailer>>() {}.type
     private val categoryListType = object : TypeToken<List<HomeCategory>>() {}.type
-    private val videoListType = object : TypeToken<List<Video>>() {}.type
-    private val subtitleListType = object : TypeToken<List<SubtitleData>>() {}.type
-    private val introTimestampsListType = object : TypeToken<List<IntroTimestamps>>() {}.type
     private val addonListType = object : TypeToken<List<AddonDescriptor>>() {}.type
     private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
     private val initialSearchHistory = searchHistoryStore.load(null)
@@ -153,7 +142,6 @@ class HomeViewModel @Inject constructor(
             setWatchlist = ::setWatchlistState,
             setContinueWatching = ::setCurrentWatchlistState,
             setExternalContinueWatching = ::setExternalContinueWatchingState,
-            externalContinueWatching = { externalContinueWatching },
             setLiked = ::setLikedItemsState,
             refreshDynamicRows = ::refreshDynamicRows
         )
@@ -200,7 +188,7 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
     private val libraryCoordinator by lazy {
-        coordinatorFactory.library(repository, traktRepository, watchlistManager, externalSyncPushCoordinator, providerAdapters, viewModelScope, coreState, gson)
+        coordinatorFactory.library(viewModelScope, coreState, gson)
     }
     val libraryUiState: StateFlow<LibraryUiState> get() = libraryCoordinator.state
 
@@ -239,15 +227,55 @@ class HomeViewModel @Inject constructor(
     val connectErrors: StateFlow<Map<String, String>> = _connectErrors.asStateFlow()
 
     fun clearConnectError(provider: String) {
-        _connectErrors.value = _connectErrors.value - provider
+        setConnectError(provider, null)
+    }
+
+    internal fun exchangeSimklPkceCode(
+        code: String,
+        codeVerifier: String,
+        profile: UserProfile,
+        onProfileUpdated: (UserProfile) -> Unit,
+        onComplete: (Boolean) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val response = runCatching { repository.exchangeSimklCode(code, codeVerifier) }.getOrNull()
+            if (response == null || response.accessToken.isBlank()) {
+                onComplete(false)
+                return@launch
+            }
+            val updated = profile.copy(
+                simklAccessToken = response.accessToken,
+                simklUsername = repository.getSimklUsername(response.accessToken),
+                simklLastSyncAt = System.currentTimeMillis(),
+            )
+            if (currentActiveProfile?.id == profile.id) {
+                setActiveProfileState(updated)
+            }
+            onProfileUpdated(updated)
+            onComplete(true)
+        }
+    }
+
+    private fun setConnectError(provider: String, error: String?) {
+        _connectErrors.value = if (error.isNullOrBlank()) {
+            _connectErrors.value - provider
+        } else {
+            _connectErrors.value + (provider to error)
+        }
     }
     private var externalContinueWatching: List<Meta> = emptyList()
     private var traktWatchedState: TraktWatchedState = TraktWatchedState()
     private var currentActiveProfile: UserProfile? = null
-    private var hasFetchedFreshBillboard = false
-    private var searchJob: Job? = null
-    private val _isSearchLoading = MutableStateFlow(false)
-    val isSearchLoading: StateFlow<Boolean> = _isSearchLoading.asStateFlow()
+    private val searchCoordinator by lazy {
+        HomeSearchCoordinator(
+            scope = viewModelScope,
+            platformContentGateway = platformContentGateway,
+            searchHistoryStore = searchHistoryStore,
+            state = searchFocusState,
+            activeProfile = { currentActiveProfile },
+        )
+    }
+    val isSearchLoading: StateFlow<Boolean> get() = searchCoordinator.isLoading
     private val pagingCoordinator by lazy {
         HomeCatalogPagingCoordinator(
             scope = viewModelScope,
@@ -264,11 +292,9 @@ class HomeViewModel @Inject constructor(
     }
     private val playbackController by lazy {
         coordinatorFactory.playback(
-            context = appContext,
-            repository = repository,
             watchlistManager = watchlistManager,
             forgottenStore = forgottenContinueWatchingStore,
-            gson = gson,
+            playbackSyncCoordinator = playbackSyncCoordinator,
             scope = viewModelScope,
             activeProfile = { currentActiveProfile },
             localContinueWatching = { currentWatchlist },
@@ -282,9 +308,26 @@ class HomeViewModel @Inject constructor(
         )
     }
 
+    private val headlessPlaybackCoordinator by lazy {
+        HomeHeadlessPlaybackCoordinator(
+            scope = viewModelScope,
+            gson = gson,
+            dispatch = ::dispatchHeadless,
+            repository = repository,
+            watchlistManager = watchlistManager,
+            platformContentGateway = platformContentGateway,
+            activeProfile = { currentActiveProfile },
+            setDirectLoading = ::setDirectLoadingState,
+            setWatchlist = ::setWatchlistState,
+            loadLibraryData = ::loadLibraryData,
+            refreshDynamicRows = ::refreshDynamicRows,
+            billboardMovie = { billboardState.movieValue },
+            setBillboardWatchlist = { billboardState.watchlistValue = it },
+        )
+    }
+
     private val continueWatchingCoordinator by lazy {
         coordinatorFactory.continueWatching(
-            repository = repository,
             watchlistManager = watchlistManager,
             scope = viewModelScope,
             activeProfile = { currentActiveProfile },
@@ -350,6 +393,37 @@ class HomeViewModel @Inject constructor(
         )
     }
 
+    private val bootstrapCoordinator by lazy {
+        HomeBootstrapCoordinator(
+            scope = viewModelScope,
+            gson = gson,
+            categoryListType = categoryListType,
+            addonListType = addonListType,
+            metaListType = metaListType,
+            categoryState = categoryState,
+            homeCategoryCache = homeCategoryCache,
+            homeBillboardCache = homeBillboardCache,
+            billboardState = billboardState,
+            billboardRuntime = billboardRuntime,
+            billboardLoader = billboardLoader,
+            dispatchHeadless = ::dispatchHeadless,
+            fetchExternalContinueWatching = continueWatchingCoordinator::fetchExternal,
+            resetScrollState = ::resetHomeScrollState,
+            setActiveProfile = ::setActiveProfileState,
+            setCategories = ::setCategoriesState,
+            setCategoriesAndCache = ::setCategoriesAndCache,
+            setUserAddons = ::setUserAddonsState,
+            setCurrentWatchlist = ::setCurrentWatchlistState,
+            setWatchlist = ::setWatchlistState,
+            setExternalContinueWatching = ::setExternalContinueWatchingState,
+            refreshDynamicRows = ::refreshDynamicRows,
+            scheduleCs3Refresh = ::scheduleCs3Refresh,
+            setLoading = ::setLoadingState,
+            setLoaded = { _hasLoadedHome.value = it },
+            initialProfileId = currentActiveProfile?.id,
+        )
+    }
+
     private suspend fun dispatchHeadless(action: Any) = withContext(Dispatchers.Default) {
         headlessRuntime.dispatch(action)
     }
@@ -405,13 +479,25 @@ class HomeViewModel @Inject constructor(
         )
     }
 
+    private val accountConnectionCoordinator by lazy {
+        HomeAccountConnectionCoordinator(
+            scope = viewModelScope,
+            repository = repository,
+            nuvioAccountImportCoordinator = nuvioAccountImportCoordinator,
+            nuvioSyncCoordinator = nuvioSyncCoordinator,
+            setProviderSyncing = ::setProviderSyncing,
+            setConnectError = ::setConnectError,
+            syncStremio = ::syncStremioIntegration,
+            syncNuvio = ::syncNuvioIntegration,
+        )
+    }
+
     private val watchlistFlowBinder by lazy {
         HomeWatchlistFlowBinder(
             watchlistStore = watchlistStore,
             scope = viewModelScope,
             setWatchlist = ::setWatchlistState,
             setLocalContinueWatching = ::setCurrentWatchlistState,
-            setExternalContinueWatching = ::setExternalContinueWatchingState,
             setLikedItems = ::setLikedItemsState,
             refreshDynamicRows = ::refreshDynamicRows,
             prefetchContinueWatchingArtwork = ::prefetchContinueWatchingArtwork
@@ -476,187 +562,344 @@ class HomeViewModel @Inject constructor(
         billboardRuntime.pauseRotation()
     }
 
-    fun toggleWatchlist(meta: Meta) {
-        viewModelScope.launch {
-            val result = dispatchHeadless(mapOf("type" to "toggleWatchlistRequested", "item" to meta, "profile" to currentActiveProfile))
-            val library = result.state["library"] as? Map<*, *>
-            val write = library?.get("lastWrite") as? Map<*, *>
-            setWatchlistState(fromStateList(write?.get("watchlist"), metaListType))
-            refreshDynamicRows()
-        }
-    }
+    fun toggleWatchlist(meta: Meta) = headlessPlaybackCoordinator.toggleWatchlist(meta)
 
-    fun addToWatchlist(meta: Meta) {
-        viewModelScope.launch {
-            if (!watchlistManager.isInWatchlist(meta.id)) toggleWatchlist(meta)
-        }
-    }
+    fun addToWatchlist(meta: Meta) = headlessPlaybackCoordinator.addToWatchlist(meta)
 
-    fun toggleBillboardWatchlist() {
-        val movie = billboardState.movieValue ?: return
+    fun addProviderItemToLibrary(
+        meta: Meta,
+        providerId: ThirdPartyProviderId,
+        providerAccountId: String?
+    ) {
+        val profile = currentActiveProfile ?: return
         viewModelScope.launch {
-            val result = dispatchHeadless(mapOf("type" to "toggleWatchlistRequested", "item" to movie, "profile" to currentActiveProfile))
-            val library = result.state["library"] as? Map<*, *>
-            val write = library?.get("lastWrite") as? Map<*, *>
-            setWatchlistState(fromStateList(write?.get("watchlist"), metaListType))
-            billboardState.watchlistValue = (write?.get("isInWatchlist") as? Boolean) ?: billboardState.watchlistValue
-            refreshDynamicRows()
-        }
-    }
-
-    fun setFeedback(movie: Meta, isLike: Boolean) {
-        viewModelScope.launch {
-            dispatchHeadless(
-                mapOf(
-                    "type" to "setFeedbackRequested",
-                    "id" to movie.id,
-                    "value" to isLike,
-                    "meta" to movie
-                )
+            thirdPartyProviderRepository.pushWatchlist(
+                profile = profile,
+                providerId = providerId,
+                expectedAccountId = providerAccountId,
+                item = meta,
+                add = true
             )
+            refreshProviderState(profile, providerId)
         }
     }
 
-    fun savePlaybackProgress(meta: Meta, timeOffset: Long, duration: Long, videoId: String? = null, streamIndex: Int? = null, episodeName: String? = null, lastStreamUrl: String? = null, lastStreamTitle: String? = null, lastBingeGroup: String? = null, lastAudioLanguage: String? = null, lastSubtitleLanguage: String? = null, scrobbleTraktPause: Boolean = true) {
+    fun markProviderItemWatched(
+        meta: Meta,
+        providerId: ThirdPartyProviderId,
+        providerAccountId: String?
+    ) {
+        val profile = currentActiveProfile ?: return
         viewModelScope.launch {
-            dispatchHeadless(
-                mapOf(
-                    "type" to "savePlaybackProgressRequested",
-                    "profile" to currentActiveProfile,
-                    "meta" to meta,
-                    "timeOffset" to timeOffset,
-                    "duration" to duration,
-                    "lastVideoId" to videoId,
-                    "lastStreamIndex" to streamIndex,
-                    "lastEpisodeName" to episodeName,
-                    "lastStreamUrl" to lastStreamUrl,
-                    "lastStreamTitle" to lastStreamTitle,
-                    "lastBingeGroup" to lastBingeGroup,
-                    "lastAudioLanguage" to lastAudioLanguage,
-                    "lastSubtitleLanguage" to lastSubtitleLanguage,
-                    "scrobbleTraktPause" to scrobbleTraktPause
-                )
+            thirdPartyProviderRepository.pushWatched(
+                profile = profile,
+                providerId = providerId,
+                expectedAccountId = providerAccountId,
+                item = meta,
+                watched = true
             )
-            loadLibraryData(currentActiveProfile)
+            refreshProviderState(profile, providerId)
         }
     }
+
+    fun dropProviderContinueWatching(
+        meta: Meta,
+        providerId: ThirdPartyProviderId,
+        providerAccountId: String?
+    ) {
+        val profile = currentActiveProfile ?: return
+        viewModelScope.launch {
+            thirdPartyProviderRepository.removeContinueWatching(
+                profile = profile,
+                providerId = providerId,
+                expectedAccountId = providerAccountId,
+                item = meta
+            )
+            refreshProviderState(profile, providerId, refreshRemoteContinueWatching = false)
+        }
+    }
+
+    fun clearProviderData(
+        profile: UserProfile,
+        providerId: ThirdPartyProviderId,
+        onCleared: () -> Unit
+    ) {
+        viewModelScope.launch {
+            thirdPartyProviderRepository.clear(profile, providerId)
+            onCleared()
+        }
+    }
+
+    private fun refreshProviderState(
+        profile: UserProfile,
+        providerId: ThirdPartyProviderId,
+        refreshRemoteContinueWatching: Boolean = true
+    ) {
+        loadLibraryItems(profile, force = true)
+        if (ThirdPartyProviderId.from(profile.safeContinueWatchingSource) == providerId) {
+            if (refreshRemoteContinueWatching) {
+                refreshExternalContinueWatching(profile)
+            } else {
+                viewModelScope.launch {
+                    val cached = thirdPartyProviderRepository.cached(profile, providerId)
+                        ?.continueWatching
+                        .orEmpty()
+                    setExternalContinueWatchingState(cached)
+                    refreshDynamicRows()
+                }
+            }
+        }
+    }
+
+    fun toggleBillboardWatchlist() = headlessPlaybackCoordinator.toggleBillboardWatchlist()
+
+    fun setFeedback(movie: Meta, isLike: Boolean) =
+        headlessPlaybackCoordinator.setFeedback(movie, isLike)
+
+    fun startExternalPlaybackTracking(
+        meta: Meta,
+        videoId: String?,
+        initialPositionMs: Long,
+        initialDurationMs: Long = 0L,
+        streamIndex: Int,
+        episodeName: String?,
+        streamUrl: String?,
+        streamTitle: String?,
+        targetPackage: String?,
+    ) {
+        val profile = currentActiveProfile ?: return
+        externalPlaybackTrackingJob?.cancel()
+        val session = ExternalPlaybackTrackingSession(
+            profile = profile,
+            meta = meta,
+            videoId = videoId,
+            streamIndex = streamIndex,
+            episodeName = episodeName,
+            streamUrl = streamUrl,
+            streamTitle = streamTitle,
+            lastPositionMs = initialPositionMs.coerceAtLeast(0L),
+            lastDurationMs = initialDurationMs.coerceAtLeast(0L),
+        )
+        externalPlaybackTrackingSession = session
+        externalPlaybackTrackingJob = viewModelScope.launch {
+            AndroidExternalPlaybackTracker.monitor(
+                context = appContext,
+                targetPackage = targetPackage,
+                expectedTitle = episodeName ?: meta.name,
+            ) { sample ->
+                handleExternalPlaybackSample(session, sample)
+            }
+        }
+    }
+
+    fun finishExternalPlaybackTracking(
+        returnedPositionMs: Long? = null,
+        returnedDurationMs: Long? = null,
+    ) {
+        val session = externalPlaybackTrackingSession ?: return
+        externalPlaybackTrackingJob?.cancel()
+        externalPlaybackTrackingJob = null
+        returnedPositionMs?.takeIf { it >= 0L }?.let { session.lastPositionMs = it }
+        returnedDurationMs?.takeIf { it > 0L }?.let { session.lastDurationMs = it }
+        viewModelScope.launch { finishExternalPlaybackSession(session) }
+    }
+
+    fun externalPlaybackMediaSessionAccessAvailable(): Boolean =
+        AndroidExternalPlaybackTracker.hasMediaSessionAccess(appContext)
+
+    private suspend fun handleExternalPlaybackSample(
+        session: ExternalPlaybackTrackingSession,
+        sample: ExternalPlaybackSample,
+    ) {
+        if (session.finished || externalPlaybackTrackingSession !== session) return
+        session.lastPositionMs = sample.positionMs.coerceAtLeast(0L)
+        if (sample.durationMs > 0L) session.lastDurationMs = sample.durationMs
+        val duration = session.lastDurationMs
+        val position = session.lastPositionMs
+
+        when (sample.state) {
+            ExternalPlaybackState.PLAYING -> {
+                if (duration > 0L) {
+                    if (!session.traktStarted || session.wasPaused) {
+                        session.traktStarted = playbackSyncCoordinator.scheduleTraktScrobble(
+                            session.profile, session.meta, session.videoId, position, duration, "start"
+                        ) || session.traktStarted
+                    }
+                    if (!session.simklStarted || session.wasPaused) {
+                        session.simklStarted = playbackSyncCoordinator.scheduleSimklScrobble(
+                            session.profile, session.meta, session.videoId, position, duration, "start"
+                        ) || session.simklStarted
+                    }
+                }
+                session.wasPaused = false
+                val now = System.currentTimeMillis()
+                if (now - session.lastProgressSavedAt >= 10_000L) {
+                    saveExternalPlaybackProgress(session)
+                    session.lastProgressSavedAt = now
+                }
+            }
+            ExternalPlaybackState.PAUSED -> {
+                session.wasPaused = true
+                saveExternalPlaybackProgress(session)
+                if (duration > 0L) {
+                    if (session.traktStarted) {
+                        playbackSyncCoordinator.scheduleTraktScrobble(
+                            session.profile, session.meta, session.videoId, position, duration, "pause"
+                        )
+                    }
+                    if (session.simklStarted) {
+                        playbackSyncCoordinator.scheduleSimklScrobble(
+                            session.profile, session.meta, session.videoId, position, duration, "pause"
+                        )
+                    }
+                }
+            }
+            ExternalPlaybackState.STOPPED -> finishExternalPlaybackSession(session)
+        }
+    }
+
+    private fun saveExternalPlaybackProgress(session: ExternalPlaybackTrackingSession) {
+        savePlaybackProgress(
+            meta = session.meta,
+            timeOffset = session.lastPositionMs,
+            duration = session.lastDurationMs,
+            videoId = session.videoId,
+            streamIndex = session.streamIndex,
+            episodeName = session.episodeName,
+            lastStreamUrl = session.streamUrl,
+            lastStreamTitle = session.streamTitle,
+            scrobbleTraktPause = false,
+        )
+    }
+
+    private suspend fun finishExternalPlaybackSession(session: ExternalPlaybackTrackingSession) {
+        if (session.finished || externalPlaybackTrackingSession !== session) return
+        session.finished = true
+        externalPlaybackTrackingSession = null
+        saveExternalPlaybackProgress(session)
+
+        val duration = session.lastDurationMs
+        val position = session.lastPositionMs
+        if (duration > 0L) {
+            if (session.traktStarted) {
+                playbackSyncCoordinator.scheduleTraktScrobble(
+                    session.profile, session.meta, session.videoId, position, duration, "stop"
+                )
+            }
+            if (session.simklStarted) {
+                playbackSyncCoordinator.scheduleSimklScrobble(
+                    session.profile, session.meta, session.videoId, position, duration, "stop"
+                )
+            }
+            val progress = (position.toDouble() / duration.toDouble() * 100.0).coerceIn(0.0, 100.0)
+            if (progress >= session.profile.safeWatchedThresholdPercent.toDouble()) {
+                markWatchedFromPlayback(
+                    meta = session.meta,
+                    videoId = session.videoId,
+                    episodeName = session.episodeName,
+                    watchedDuration = duration,
+                )
+            }
+        }
+    }
+
+    fun savePlaybackProgress(
+        meta: Meta,
+        timeOffset: Long,
+        duration: Long,
+        videoId: String? = null,
+        streamIndex: Int? = null,
+        episodeName: String? = null,
+        lastStreamUrl: String? = null,
+        lastStreamTitle: String? = null,
+        lastBingeGroup: String? = null,
+        lastAudioLanguage: String? = null,
+        lastSubtitleLanguage: String? = null,
+        scrobbleTraktPause: Boolean = true,
+    ) = headlessPlaybackCoordinator.savePlaybackProgress(
+        meta = meta,
+        timeOffset = timeOffset,
+        duration = duration,
+        videoId = videoId,
+        streamIndex = streamIndex,
+        episodeName = episodeName,
+        lastStreamUrl = lastStreamUrl,
+        lastStreamTitle = lastStreamTitle,
+        lastBingeGroup = lastBingeGroup,
+        lastAudioLanguage = lastAudioLanguage,
+        lastSubtitleLanguage = lastSubtitleLanguage,
+        scrobbleTraktPause = scrobbleTraktPause,
+    )
 
     fun scrobblePlayback(
         token: String,
         metaType: String,
         itemId: String,
         progress: Float,
-        action: String
-    ) {
-        viewModelScope.launch {
-            dispatchHeadless(
-                mapOf(
-                    "type" to "scrobbleRequested",
-                    "token" to token,
-                    "metaType" to metaType,
-                    "itemId" to itemId,
-                    "progress" to progress,
-                    "actionName" to action,
-                    "profile" to currentActiveProfile
-                )
-            )
-        }
-    }
+        action: String,
+    ) = headlessPlaybackCoordinator.scrobblePlayback(
+        token = token,
+        metaType = metaType,
+        itemId = itemId,
+        progress = progress,
+        action = action,
+    )
 
-    fun onNextEpisodeCardShown(meta: Meta, nextVideoId: String, activeProfile: UserProfile?) {
-        viewModelScope.launch {
-            dispatchHeadless(
-                mapOf(
-                    "type" to "playerNextEpisodeCardShown",
-                    "contentType" to meta.type,
-                    "seriesId" to meta.id,
-                    "nextVideoId" to nextVideoId,
-                    "title" to meta.name,
-                    "originalName" to meta.originalName,
-                    "year" to meta.releaseInfo?.toIntOrNull(),
-                    "language" to ((activeProfile ?: currentActiveProfile)?.safeLanguage ?: "en"),
-                    "profile" to (activeProfile ?: currentActiveProfile)
-                )
-            )
-        }
-    }
+    internal fun enqueueDurableTraktScrobble(
+        profile: UserProfile,
+        mediaType: String,
+        mediaId: String,
+        progress: Float,
+        action: String,
+    ): Boolean = playbackSyncCoordinator.scheduleTraktScrobble(
+        profile = profile,
+        mediaType = mediaType,
+        mediaId = mediaId,
+        progress = progress,
+        action = action,
+    )
 
-    fun markWatchedFromPlayback(meta: Meta, videoId: String? = null, episodeName: String? = null, nextEpisode: Video? = null, watchedDuration: Long = 0L) {
-        viewModelScope.launch {
-            currentActiveProfile?.id?.let(watchlistManager::setActiveProfile)
-            watchlistManager.recordWatchedContentDuration(meta.id, videoId, watchedDuration)
-            val episodes = if (meta.type == "series" && !videoId.isNullOrBlank()) {
-                val parsed = com.fluxa.app.core.StremioId.parseEpisodeLocator(videoId)
-                listOf(
-                    Video(
-                        id = videoId,
-                        name = episodeName,
-                        season = parsed?.first,
-                        number = parsed?.second,
-                        released = null,
-                        thumbnail = meta.background
-                    )
-                )
-            } else {
-                emptyList()
-            }
-            dispatchHeadless(
-                mapOf(
-                    "type" to "markWatchedRequested",
-                    "seriesId" to meta.id,
-                    "videoIds" to listOfNotNull(videoId),
-                    "watched" to true,
-                    "meta" to meta,
-                    "episodes" to episodes,
-                    "profile" to currentActiveProfile
-                )
-            )
-            if (meta.type == "series" && nextEpisode != null) {
-                savePlaybackProgress(
-                    meta = meta.copy(
-                        lastVideoId = nextEpisode.id,
-                        continueWatchingPoster = nextEpisode.thumbnail ?: meta.continueWatchingPoster,
-                        continueWatchingBackground = nextEpisode.thumbnail ?: meta.continueWatchingBackground
-                    ),
-                    timeOffset = 0L,
-                    duration = 0L,
-                    videoId = nextEpisode.id,
-                    episodeName = nextEpisode.continueWatchingTitleForHome()
-                )
-            }
-            loadLibraryData(currentActiveProfile)
-        }
-    }
+    internal fun enqueueDurableSimklScrobble(
+        profile: UserProfile,
+        meta: Meta,
+        videoId: String?,
+        action: String,
+        positionMs: Long,
+        durationMs: Long,
+    ): Boolean = playbackSyncCoordinator.scheduleSimklScrobble(
+        profile = profile,
+        meta = meta,
+        videoId = videoId,
+        positionMs = positionMs,
+        durationMs = durationMs,
+        action = action,
+    )
 
-    fun forgetPlaybackProgress(meta: Meta) {
-        viewModelScope.launch {
-            dispatchHeadless(
-                mapOf(
-                    "type" to "clearPlaybackProgressRequested",
-                    "profile" to currentActiveProfile,
-                    "meta" to meta
-                )
-            )
-            loadLibraryData(currentActiveProfile)
-            refreshDynamicRows()
-        }
-    }
+    fun onNextEpisodeCardShown(
+        meta: Meta,
+        nextVideoId: String,
+        activeProfile: UserProfile?,
+    ) = headlessPlaybackCoordinator.onNextEpisodeCardShown(meta, nextVideoId, activeProfile)
 
-    suspend fun getStreams(type: String, id: String): List<Stream> {
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "playerLoadStreamsRequested",
-                "contentType" to type,
-                "id" to id,
-                "currentVideoId" to id,
-                "initialVideoId" to id,
-                "initialStreams" to emptyList<Stream>(),
-                "initialStreamIndex" to 0
-            )
-        )
-        val player = result.state["player"] as? Map<*, *>
-        return fromStateList(player?.get("currentStreams"), streamListType)
-    }
+    fun markWatchedFromPlayback(
+        meta: Meta,
+        videoId: String? = null,
+        episodeName: String? = null,
+        nextEpisode: Video? = null,
+        watchedDuration: Long = 0L,
+    ) = headlessPlaybackCoordinator.markWatchedFromPlayback(
+        meta = meta,
+        videoId = videoId,
+        episodeName = episodeName,
+        nextEpisode = nextEpisode,
+        watchedDuration = watchedDuration,
+    )
+
+    fun forgetPlaybackProgress(meta: Meta) =
+        headlessPlaybackCoordinator.forgetPlaybackProgress(meta)
+
+    suspend fun getStreams(type: String, id: String): List<Stream> =
+        headlessPlaybackCoordinator.getStreams(type, id)
 
     internal suspend fun loadPlayerStreams(
         meta: Meta,
@@ -667,99 +910,51 @@ class HomeViewModel @Inject constructor(
         savedUrl: String?,
         savedTitle: String?,
         activeProfile: UserProfile?,
-        preferredBingeGroup: String?
-    ): PlayerRuntimeCoreState {
-        val profile = activeProfile ?: currentActiveProfile
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "playerLoadStreamsRequested",
-                "contentType" to meta.type,
-                "id" to (currentVideoId ?: meta.id),
-                "currentVideoId" to currentVideoId,
-                "initialVideoId" to initialVideoId,
-                "initialStreams" to initialStreams,
-                "initialStreamIndex" to initialStreamIndex,
-                "savedUrl" to savedUrl,
-                "savedTitle" to savedTitle,
-                "sourceSelectionMode" to (profile?.safeStreamSourceSelectionMode ?: com.fluxa.app.player.STREAM_SOURCE_MODE_MANUAL),
-                "regexPattern" to profile?.safeStreamSourceRegexPattern,
-                "preferredBingeGroup" to preferredBingeGroup,
-                "title" to meta.name,
-                "originalName" to meta.originalName,
-                "year" to meta.releaseInfo?.toIntOrNull(),
-                "language" to (profile?.safeLanguage ?: "en"),
-                "profile" to profile
-            )
-        )
-        return fromStateObject(result.state["player"], PlayerRuntimeCoreState::class.java)
-            ?: PlayerRuntimeCoreState(playerError = "generic")
-    }
+        preferredBingeGroup: String?,
+    ): PlayerRuntimeCoreState = headlessPlaybackCoordinator.loadPlayerStreams(
+        meta = meta,
+        currentVideoId = currentVideoId,
+        initialVideoId = initialVideoId,
+        initialStreams = initialStreams,
+        initialStreamIndex = initialStreamIndex,
+        savedUrl = savedUrl,
+        savedTitle = savedTitle,
+        profileOverride = activeProfile,
+        preferredBingeGroup = preferredBingeGroup,
+    )
 
     internal suspend fun resolvePlayerPlayback(
         url: String,
         stream: Stream?,
         currentVideoId: String?,
-        title: String
-    ): PlayerRuntimeCoreState {
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "playerResolvePlaybackRequested",
-                "url" to url,
-                "stream" to stream,
-                "currentVideoId" to currentVideoId,
-                "title" to title
-            )
-        )
-        return fromStateObject(result.state["player"], PlayerRuntimeCoreState::class.java)
-            ?: PlayerRuntimeCoreState(playerError = "generic")
-    }
+        title: String,
+    ): PlayerRuntimeCoreState = headlessPlaybackCoordinator.resolvePlayerPlayback(
+        url = url,
+        stream = stream,
+        currentVideoId = currentVideoId,
+        title = title,
+    )
 
-    suspend fun prepareDirectPlayback(meta: Meta): DirectPlaybackTarget? {
-        setDirectLoadingState(true)
-        try {
-            val result = dispatchHeadless(
-                mapOf(
-                    "type" to "directPlaybackRequested",
-                    "meta" to meta,
-                    "profile" to currentActiveProfile,
-                    "language" to (currentActiveProfile?.safeLanguage ?: "en")
-                )
-            )
-            val player = result.state["player"] as? Map<*, *>
-            return fromStateObject(player?.get("directPlaybackTarget"), DirectPlaybackTarget::class.java)
-        } finally {
-            setDirectLoadingState(false)
-        }
-    }
+    suspend fun prepareDirectPlayback(meta: Meta): DirectPlaybackTarget? =
+        headlessPlaybackCoordinator.prepareDirectPlayback(meta)
 
-    suspend fun getSeasonEpisodes(id: String, seasonNumber: Int, language: String): List<Video> {
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "detailSeasonRequested",
-                "seriesId" to id,
-                "season" to seasonNumber,
-                "profile" to currentActiveProfile,
-                "language" to language
-            )
-        )
-        val detail = result.state["detail"] as? Map<*, *>
-        return fromStateList(detail?.get("seasonEpisodes"), videoListType)
-    }
+    suspend fun getSeasonEpisodes(
+        id: String,
+        seasonNumber: Int,
+        language: String,
+    ): List<Video> = headlessPlaybackCoordinator.getSeasonEpisodes(id, seasonNumber, language)
 
-    suspend fun getSubtitlesFromAddon(baseUrl: String, type: String, id: String, extra: String = ""): List<SubtitleData> {
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "addonResourceRequested",
-                "transportUrl" to baseUrl,
-                "resource" to "subtitles",
-                "contentType" to type,
-                "id" to id,
-                "extra" to mapOf("extraArgs" to extra)
-            )
-        )
-        val addons = result.state["addons"] as? Map<*, *>
-        return fromStateList(addons?.get("lastResourceResult"), subtitleListType)
-    }
+    suspend fun getSubtitlesFromAddon(
+        baseUrl: String,
+        type: String,
+        id: String,
+        extra: String = "",
+    ): List<SubtitleData> = headlessPlaybackCoordinator.getSubtitlesFromAddon(
+        baseUrl = baseUrl,
+        type = type,
+        id = id,
+        extra = extra,
+    )
 
     suspend fun getIntroSegments(
         imdbId: String,
@@ -767,22 +962,15 @@ class HomeViewModel @Inject constructor(
         episode: Int,
         title: String?,
         useIntroDb: Boolean,
-        useAniSkip: Boolean
-    ): List<IntroTimestamps> {
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "introSegmentsRequested",
-                "imdbId" to imdbId,
-                "season" to season,
-                "episode" to episode,
-                "title" to title,
-                "useIntroDb" to useIntroDb,
-                "useAniSkip" to useAniSkip
-            )
-        )
-        val player = result.state["player"] as? Map<*, *>
-        return fromStateList(player?.get("introSegments"), introTimestampsListType)
-    }
+        useAniSkip: Boolean,
+    ): List<IntroTimestamps> = headlessPlaybackCoordinator.getIntroSegments(
+        imdbId = imdbId,
+        season = season,
+        episode = episode,
+        title = title,
+        useIntroDb = useIntroDb,
+        useAniSkip = useAniSkip,
+    )
 
     suspend fun submitIntroSegment(
         apiKey: String,
@@ -791,112 +979,47 @@ class HomeViewModel @Inject constructor(
         season: Int,
         episode: Int,
         startSec: Double,
-        endSec: Double
-    ): IntroDbSubmitResult {
-        return repository.submitIntroSegment(apiKey, segmentType, imdbId, season, episode, startSec, endSec)
-    }
+        endSec: Double,
+    ): IntroDbSubmitResult = headlessPlaybackCoordinator.submitIntroSegment(
+        apiKey = apiKey,
+        segmentType = segmentType,
+        imdbId = imdbId,
+        season = season,
+        episode = episode,
+        startSec = startSec,
+        endSec = endSec,
+    )
 
-    suspend fun resolvePlaybackIntroImdbId(meta: Meta, videoId: String?, language: String): String? {
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "introImdbIdRequested",
-                "meta" to meta,
-                "videoId" to videoId,
-                "language" to language
-            )
-        )
-        val player = result.state["player"] as? Map<*, *>
-        return player?.get("introImdbId") as? String
-    }
+    suspend fun resolvePlaybackIntroImdbId(
+        meta: Meta,
+        videoId: String?,
+        language: String,
+    ): String? = headlessPlaybackCoordinator.resolvePlaybackIntroImdbId(meta, videoId, language)
 
-    private suspend fun getConfiguredMetaDetail(type: String, id: String, language: String): MetaDetail? {
-        return getConfiguredMetaDetailResult(type, id, language).detail
-    }
+    private suspend fun getConfiguredMetaDetail(
+        type: String,
+        id: String,
+        language: String,
+    ): MetaDetail? = headlessPlaybackCoordinator.getConfiguredMetaDetail(type, id, language)
 
-    private suspend fun getConfiguredMetaDetailResult(type: String, id: String, language: String): HomeMetaDetailResult {
-        val result = dispatchHeadless(
-            mapOf(
-                "type" to "metaDetailRequested",
-                "contentType" to type,
-                "id" to id,
-                "language" to language,
-                "profile" to currentActiveProfile
-            )
-        )
-        val lookup = result.state["lookup"] as? Map<*, *>
-        val detail = fromStateObject(lookup?.get("metaDetail"), MetaDetail::class.java)
-        val addonTrailers = fromStateList<DetailTrailer>(lookup?.get("trailers"), trailerListType)
-        if (addonTrailers.isNotEmpty()) {
-            return HomeMetaDetailResult(detail = detail, trailers = addonTrailers)
-        }
-        val profile = currentActiveProfile
-        val tmdbTrailers = if (profile?.safeTmdbApiKey?.isNotBlank() == true && profile.safeTmdbTrailersEnabled) {
-            runCatching {
-                platformContentGateway.trailers(type, id, language, profile.safeTmdbApiKey)
-            }.getOrElse { emptyList() }
-        } else {
-            emptyList()
-        }
-        return HomeMetaDetailResult(detail = detail, trailers = tmdbTrailers)
-    }
+    private suspend fun getConfiguredMetaDetailResult(
+        type: String,
+        id: String,
+        language: String,
+    ): HomeMetaDetailResult =
+        headlessPlaybackCoordinator.getConfiguredMetaDetailResult(type, id, language)
 
-    suspend fun resolveExpandedPosterTrailer(meta: Meta): String? {
-        val lang = currentActiveProfile?.safeLanguage ?: "en"
-        val trailers = runCatching { getConfiguredMetaDetailResult(meta.type, meta.id, lang).trailers }.getOrElse { emptyList() }
-        return resolvePlayableTrailerUrl(trailers, headlessRuntime::dispatch)
-    }
+    suspend fun resolveExpandedPosterTrailer(meta: Meta): String? =
+        headlessPlaybackCoordinator.resolveExpandedPosterTrailer(meta)
 
-    fun search(query: String) {
-        searchJob?.cancel()
-        if (query.isEmpty()) {
-            searchFocusState.searchResultsValue = emptyList()
-            searchFocusState.searchRowsValue = emptyList()
-            _isSearchLoading.value = false
-            return
-        }
-        searchJob = viewModelScope.launch {
-            try {
-                _isSearchLoading.value = true
-                delay(400)
-                if (!isActive) return@launch
-                val trimmedQuery = query.trim()
-                val allRows = platformContentGateway.searchRows(
-                    query = trimmedQuery,
-                    language = currentActiveProfile?.safeLanguage ?: "en",
-                    authKey = currentActiveProfile?.authKey.orEmpty(),
-                    localAddons = currentActiveProfile?.safeLocalAddons.orEmpty()
-                )
-                if (!isActive) return@launch
-                searchFocusState.searchRowsValue = allRows
-                searchFocusState.searchResultsValue = allRows.flatMap { it.items }.distinctBy { it.id }.take(80)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _isSearchLoading.value = false
-            }
-        }
-    }
+    fun search(query: String) = searchCoordinator.search(query)
 
-    fun addToSearchHistory(meta: Meta) {
-        val current = searchFocusState.searchHistoryValue.toMutableList()
-        val existingIndex = current.indexOfFirst { it.id == meta.id || it.name.equals(meta.name, ignoreCase = true) }
-        if (existingIndex != -1) current.removeAt(existingIndex)
-        val updated = (listOf(meta.copy(description = null, cast = null, ratings = null, awards = null)) + current).take(10)
-        searchHistoryStore.save(updated, currentActiveProfile)
-        searchFocusState.searchHistoryValue = updated
-    }
+    fun addToSearchHistory(meta: Meta) = searchCoordinator.addToHistory(meta)
 
-    fun recordSearchSelection(id: String, type: String) {
-        val selected = searchFocusState.searchResultsValue.firstOrNull { meta ->
-            meta.id == id && meta.type == type
-        } ?: searchFocusState.searchResultsValue.firstOrNull { it.id == id }
-        selected?.let(::addToSearchHistory)
-    }
+    fun recordSearchSelection(id: String, type: String) =
+        searchCoordinator.recordSelection(id, type)
 
-    fun clearSearchHistory() {
-        searchHistoryStore.save(emptyList(), currentActiveProfile)
-        searchFocusState.searchHistoryValue = emptyList()
-    }
+    fun clearSearchHistory() = searchCoordinator.clearHistory()
 
     fun loadMore(categoryId: String) {
         pagingCoordinator.loadMore(categoryId)
@@ -974,75 +1097,16 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun loadInitialData(activeProfile: UserProfile?, force: Boolean = false) {
-        val profileChanged = activeProfile?.id != currentActiveProfile?.id
-        if (profileChanged) {
-            savedHomeScrollIndex = 0
-            savedHomeScrollOffset = 0
-            savedTvHomeScrollIndex = 0
-            savedTvHomeScrollOffset = 0
-            savedTvFocusedRowIndex = -1
-            savedCategoryScrollPositions.clear()
-        }
-        if (categoryState.currentCategories().isEmpty()) {
-            val cached = homeCategoryCache.load(activeProfile)
-            if (cached.isNotEmpty()) {
-                setCategoriesState(cached)
-            }
-        }
-        viewModelScope.launch {
-            setLoadingState(true)
-            try {
-                val result = dispatchHeadless(
-                    mapOf(
-                        "type" to "homeLoadRequested",
-                        "profile" to activeProfile,
-                        "language" to (activeProfile?.safeLanguage ?: "en"),
-                        "force" to force
-                    )
-                )
-                val home = result.state["home"] as? Map<*, *> ?: return@launch
-                setActiveProfileState(activeProfile)
-                val rawCategories = fromStateList<HomeCategory>(home["categories"], categoryListType)
-                val filteredCategories = if (activeProfile?.homeFeedToggles != null) {
-                    val allIds = rawCategories.map { it.id }
-                    val selectedKeys = effectiveHomeMetadataFeedSelection(activeProfile.homeFeedToggles, allIds)
-                    rawCategories.filter { isMetadataFeedEnabled(selectedKeys, it.id) }
-                } else rawCategories
-                setUserAddonsState(fromStateList(home["userAddons"], addonListType))
-                setCategoriesAndCache(filteredCategories)
-                setCurrentWatchlistState(fromStateList(home["continueWatching"], metaListType))
-                setWatchlistState(fromStateList(home["watchlist"], metaListType))
-                val hasExternalProvider = !activeProfile?.traktAccessToken.isNullOrBlank() ||
-                    !activeProfile?.simklAccessToken.isNullOrBlank() ||
-                    !activeProfile?.anilistAccessToken.isNullOrBlank() ||
-                    !activeProfile?.nuvioAccessToken.isNullOrBlank()
-                if (hasExternalProvider) {
-                    setExternalContinueWatchingState(continueWatchingCoordinator.fetchExternal(activeProfile))
-                }
-                refreshDynamicRows()
-            } finally {
-                _hasLoadedHome.value = true
-                setLoadingState(false)
-            }
-            scheduleCs3Refresh()
-        }
-        if (billboardState.poolValue.isEmpty()) {
-            val cachedPool = homeBillboardCache.load(activeProfile)
-            if (cachedPool.isNotEmpty()) {
-                billboardState.poolValue = cachedPool
-                viewModelScope.launch {
-                    billboardRuntime.updateContent(cachedPool[0])
-                    billboardRuntime.startRotation()
-                }
-            }
-        }
-        if (force || !hasFetchedFreshBillboard) {
-            viewModelScope.launch {
-                billboardLoader.load(activeProfile)
-                hasFetchedFreshBillboard = true
-            }
-        }
+    fun loadInitialData(activeProfile: UserProfile?, force: Boolean = false) =
+        bootstrapCoordinator.load(activeProfile, force)
+
+    private fun resetHomeScrollState() {
+        savedHomeScrollIndex = 0
+        savedHomeScrollOffset = 0
+        savedTvHomeScrollIndex = 0
+        savedTvHomeScrollOffset = 0
+        savedTvFocusedRowIndex = -1
+        savedCategoryScrollPositions.clear()
     }
 
     fun refreshTraktTokenIfNeeded(profile: UserProfile, onProfileUpdated: (UserProfile) -> Unit) {
@@ -1062,12 +1126,64 @@ class HomeViewModel @Inject constructor(
         syncCoordinator.loadLibrary(activeProfile)
     }
 
+    fun syncThirdPartyProvider(
+        profile: UserProfile,
+        providerId: ThirdPartyProviderId,
+        onProfileUpdated: (UserProfile) -> Unit,
+        onComplete: (Boolean) -> Unit
+    ) {
+        val providerKey = providerId.key
+        val expectedAccountId = profile.providerAccountId(providerId)
+        if (expectedAccountId == null || !profile.isProviderConnected(providerId)) {
+            setConnectError(providerKey, "${providerId.displayName} is not connected")
+            onComplete(false)
+            return
+        }
+
+        setProviderSyncing(providerKey, true)
+        clearConnectError(providerKey)
+        viewModelScope.launch {
+            var success = false
+            try {
+                val snapshot = thirdPartyProviderRepository.load(profile, providerId, refresh = true)
+                val current = currentActiveProfile?.takeIf { it.id == profile.id } ?: profile
+                val ownerStillMatches = current.isProviderConnected(providerId) &&
+                    current.providerAccountId(providerId) == expectedAccountId
+                if (
+                    snapshot == null ||
+                    snapshot.fromCache ||
+                    snapshot.accountId != expectedAccountId ||
+                    !ownerStillMatches
+                ) {
+                    setConnectError(providerKey, "${providerId.displayName} sync did not return fresh account data")
+                    return@launch
+                }
+
+                val updated = current.withProviderLastSyncAt(providerId, snapshot.syncedAt)
+                setActiveProfileState(updated)
+                onProfileUpdated(updated)
+                loadLibraryItems(updated, force = true)
+                if (ThirdPartyProviderId.from(updated.safeContinueWatchingSource) == providerId) {
+                    refreshExternalContinueWatching(updated)
+                }
+                success = true
+            } catch (error: Exception) {
+                setConnectError(providerKey, error.message ?: "${providerId.displayName} sync failed")
+            } finally {
+                setProviderSyncing(providerKey, false)
+                onComplete(success)
+            }
+        }
+    }
+
     fun syncTraktIntegration(
         profile: UserProfile,
         onProfileUpdated: (UserProfile) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        syncCoordinator.syncTrakt(profile, onProfileUpdated, onComplete)
+        syncCoordinator.syncTrakt(profile, onProfileUpdated, onComplete) { updated ->
+            loadLibraryItems(updated, force = true)
+        }
     }
 
     fun syncNuvioIntegration(
@@ -1075,23 +1191,22 @@ class HomeViewModel @Inject constructor(
         onProfileUpdated: (UserProfile) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        syncCoordinator.syncNuvio(profile, onProfileUpdated, onComplete, ::loadLibraryData)
-    }
-
-    suspend fun isNuvioHealthy(): Boolean = nuvioSyncCoordinator.isHealthy()
-
-    fun pushNuvioAddons(profile: UserProfile) {
-        viewModelScope.launch {
-            runCatching { nuvioSyncCoordinator.pushAddons(profile) }
+        syncCoordinator.syncNuvio(profile, onProfileUpdated, onComplete) { updated ->
+            loadLibraryItems(updated, force = true)
         }
     }
+
+    suspend fun isNuvioHealthy(): Boolean = accountConnectionCoordinator.isNuvioHealthy()
+
 
     fun syncStremioIntegration(
         profile: UserProfile,
         onProfileUpdated: (UserProfile) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        syncCoordinator.syncStremio(profile, onProfileUpdated, onComplete)
+        syncCoordinator.syncStremio(profile, onProfileUpdated, onComplete) { updated ->
+            loadLibraryItems(updated, force = true)
+        }
     }
 
     fun connectStremioWithCredentials(
@@ -1099,61 +1214,28 @@ class HomeViewModel @Inject constructor(
         password: String,
         profile: UserProfile,
         onProfileUpdated: (UserProfile) -> Unit,
-        onComplete: (Boolean) -> Unit
-    ) {
-        setProviderSyncing("stremio", true)
-        _connectErrors.value = _connectErrors.value - "stremio"
-        viewModelScope.launch {
-            try {
-                val response = repository.login(LoginRequest(email.trim(), password))
-                val result = response.body()?.result
-                if (response.isSuccessful && result != null) {
-                    val updated = profile.copy(authKey = result.user.authKey)
-                    onProfileUpdated(updated)
-                    syncStremioIntegration(updated, onProfileUpdated, onComplete)
-                } else {
-                    setProviderSyncing("stremio", false)
-                    _connectErrors.value = _connectErrors.value + ("stremio" to "invalid_credentials")
-                    onComplete(false)
-                }
-            } catch (e: Exception) {
-                setProviderSyncing("stremio", false)
-                _connectErrors.value = _connectErrors.value + ("stremio" to (e.localizedMessage ?: "network_error"))
-                onComplete(false)
-            }
-        }
-    }
+        onComplete: (Boolean) -> Unit,
+    ) = accountConnectionCoordinator.connectStremio(
+        email,
+        password,
+        profile,
+        onProfileUpdated,
+        onComplete,
+    )
 
     fun connectNuvioWithCredentials(
         email: String,
         password: String,
         profile: UserProfile,
         onProfileUpdated: (UserProfile) -> Unit,
-        onComplete: (Boolean) -> Unit
-    ) {
-        setProviderSyncing("nuvio", true)
-        _connectErrors.value = _connectErrors.value - "nuvio"
-        viewModelScope.launch {
-            val result = nuvioAccountImportCoordinator.signIn(email.trim(), password)
-            result.fold(
-                onSuccess = { session ->
-                    val updated = profile.copy(
-                        nuvioAccessToken = session.accessToken,
-                        nuvioRefreshToken = session.refreshToken,
-                        nuvioTokenExpiresAt = session.expiresIn?.let { System.currentTimeMillis() + it * 1000L },
-                        nuvioEmail = session.user?.email ?: email
-                    )
-                    onProfileUpdated(updated)
-                    syncNuvioIntegration(updated, onProfileUpdated, onComplete)
-                },
-                onFailure = {
-                    setProviderSyncing("nuvio", false)
-                    _connectErrors.value = _connectErrors.value + ("nuvio" to "invalid_credentials")
-                    onComplete(false)
-                }
-            )
-        }
-    }
+        onComplete: (Boolean) -> Unit,
+    ) = accountConnectionCoordinator.connectNuvio(
+        email,
+        password,
+        profile,
+        onProfileUpdated,
+        onComplete,
+    )
 
     private fun buildUserCollectionHomeCategories(profile: UserProfile?, showAboveContinueWatching: Boolean? = null): List<HomeCategory> {
         return feedCoordinator.buildUserCollectionHomeCategories(profile, showAboveContinueWatching)
@@ -1268,3 +1350,20 @@ class HomeViewModel @Inject constructor(
     }
 
 }
+
+private data class ExternalPlaybackTrackingSession(
+    val profile: UserProfile,
+    val meta: Meta,
+    val videoId: String?,
+    val streamIndex: Int,
+    val episodeName: String?,
+    val streamUrl: String?,
+    val streamTitle: String?,
+    var lastPositionMs: Long,
+    var lastDurationMs: Long = 0L,
+    var lastProgressSavedAt: Long = 0L,
+    var traktStarted: Boolean = false,
+    var simklStarted: Boolean = false,
+    var wasPaused: Boolean = false,
+    var finished: Boolean = false,
+)

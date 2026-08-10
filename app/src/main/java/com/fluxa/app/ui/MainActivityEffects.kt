@@ -31,8 +31,7 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.HomeViewModel
 import com.fluxa.app.ui.catalog.PlayerPipSuppression
 import com.fluxa.app.ui.catalog.UpdateManager
-import com.fluxa.app.ui.catalog.exchangeAnilistCode
-import com.fluxa.app.ui.catalog.exchangeSimklCode
+import com.fluxa.app.ui.catalog.acceptAnilistToken
 import com.fluxa.app.ui.catalog.exchangeTraktCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -132,23 +131,41 @@ internal fun OAuthRedirectEffect(
     }
 
     LaunchedEffect(redirectHandler) {
-        redirectHandler.simkl.collect { code ->
-            var exchangedProfile: UserProfile? = null
-            homeViewModel.exchangeSimklCode(code, onProfileUpdated = { updated ->
-                profileManager.persistOAuthUpdate("simkl", updated).also {
-                    exchangedProfile = it
-                    latestOnProfileUpdated(it)
-                }
-            }) { success ->
-                val profile = exchangedProfile ?: latestActiveProfile
+        redirectHandler.simkl.collect { redirect ->
+            val session = SimklPkceSessionStore(context).consume(redirect.state)
+            val targetProfile = session?.profileId
+                ?.let { profileId -> profileManager.getProfiles().firstOrNull { it.id == profileId } }
+                ?: latestActiveProfile
+            if (session == null || targetProfile == null) {
                 Toast.makeText(
                     context,
-                    AppStrings.t(profile?.safeLanguage, if (success) "toast.simkl_connected" else "toast.simkl_connect_failed"),
+                    AppStrings.t(latestActiveProfile?.safeLanguage, "toast.simkl_connect_failed"),
                     Toast.LENGTH_SHORT
                 ).show()
-                profile?.let {
-                    homeViewModel.loadInitialData(it, force = true)
-                    homeViewModel.loadLibraryItems(it)
+                return@collect
+            }
+
+            var exchangedProfile: UserProfile? = null
+            homeViewModel.exchangeSimklPkceCode(
+                code = redirect.code,
+                codeVerifier = session.request.codeVerifier,
+                profile = targetProfile,
+                onProfileUpdated = { updated ->
+                    profileManager.persistOAuthUpdate("simkl", updated).also {
+                        exchangedProfile = it
+                        if (latestActiveProfile?.id == it.id) latestOnProfileUpdated(it)
+                    }
+                },
+            ) { success ->
+                val profile = exchangedProfile ?: targetProfile
+                Toast.makeText(
+                    context,
+                    AppStrings.t(profile.safeLanguage, if (success) "toast.simkl_connected" else "toast.simkl_connect_failed"),
+                    Toast.LENGTH_SHORT
+                ).show()
+                if (success && latestActiveProfile?.id == profile.id) {
+                    homeViewModel.loadInitialData(profile, force = true)
+                    homeViewModel.loadLibraryItems(profile)
                 }
             }
         }
@@ -157,7 +174,7 @@ internal fun OAuthRedirectEffect(
     LaunchedEffect(redirectHandler) {
         redirectHandler.anilist.collect { code ->
             var exchangedProfile: UserProfile? = null
-            homeViewModel.exchangeAnilistCode(code, onProfileUpdated = { updated ->
+            homeViewModel.acceptAnilistToken(code, onProfileUpdated = { updated ->
                 profileManager.persistOAuthUpdate("anilist", updated).also {
                     exchangedProfile = it
                     latestOnProfileUpdated(it)
@@ -256,7 +273,6 @@ internal fun PlayerLifecycleEffect(
     isPlayerActive: Boolean,
     activeProfile: UserProfile?,
     mainPlayer: ExoPlayer,
-    previewPlayer: ExoPlayer,
     homeViewModel: HomeViewModel,
     enterPictureInPicture: () -> Unit
 ) {
@@ -265,7 +281,7 @@ internal fun PlayerLifecycleEffect(
     val latestActiveProfile by rememberUpdatedState(activeProfile)
     val latestBackgroundPlayback by rememberUpdatedState(activeProfile?.safeBackgroundPlayback == true)
     val latestPictureInPicture by rememberUpdatedState(activeProfile?.safePictureInPicture == true)
-    DisposableEffect(lifecycleOwner, mainPlayer, previewPlayer) {
+    DisposableEffect(lifecycleOwner, mainPlayer) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 PlayerPipSuppression.suppressAutoEnter = false
@@ -273,7 +289,6 @@ internal fun PlayerLifecycleEffect(
                     homeViewModel.refreshInstalledAddons(forceRefresh = true)
                 }
             } else if (event == Lifecycle.Event.ON_PAUSE) {
-                previewPlayer.pause()
                 val isPlayerScreen = latestIsPlayerActive
                 val shouldEnterPip = isPlayerScreen &&
                     latestPictureInPicture &&
@@ -291,8 +306,9 @@ internal fun PlayerLifecycleEffect(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            mainPlayer.release()
-            previewPlayer.release()
+            // Player ownership lives in MainActivity's player-keyed DisposableEffects.
+            // Releasing here as well double-released ExoPlayer instances and bypassed
+            // MediaPlayerControllerFactory's libass relay cleanup.
         }
     }
 }

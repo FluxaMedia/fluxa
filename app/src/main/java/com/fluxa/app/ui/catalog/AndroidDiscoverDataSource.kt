@@ -15,11 +15,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 
 class AndroidDiscoverDataSource(
     private val homeViewModel: HomeViewModel,
-    private val activeProfile: () -> UserProfile?
+    private val activeProfile: () -> UserProfile?,
+    private val deviceType: DeviceType = DeviceType.Mobile,
 ) : DiscoverDataSource {
     private val filters = MutableStateFlow(DiscoverFiltersUiModel())
     private val catalogOptions = MutableStateFlow<List<DiscoverCatalogOption>>(emptyList())
@@ -32,39 +33,42 @@ class AndroidDiscoverDataSource(
         contentTypes
     ) { selectedFilters, state, localCatalogOptions, localContentTypes ->
         val profile = activeProfile()
-        val language = profile?.language
-        val visibleCatalogOptions = localCatalogOptions.ifEmpty { state.catalogs }
-        val selectedCatalog = visibleCatalogOptions.firstOrNull { it.key == selectedFilters.catalogKey }
-        DiscoverUiState(
-            filters = selectedFilters,
-            typeOptions = localContentTypes.ifEmpty { state.contentTypes }.map { type ->
-                DiscoverFilterOptionUiModel(type, discoverContentTypeLabel(type, language))
-            },
-            catalogOptions = visibleCatalogOptions.map { DiscoverFilterOptionUiModel(it.key, it.label) },
-            genreOptions = (selectedCatalog?.genres ?: state.genres.mapNotNull { it.id })
-                .map { DiscoverFilterOptionUiModel(it, it) },
-            results = state.results.map { meta ->
-                val source = state.resultSources["${meta.type}:${meta.id}"]
-                    ?: state.resultSources[meta.id]
-                CatalogItemUiModel(
-                    id = meta.id,
-                    type = meta.type,
-                    card = meta.toCatalogCardUiModel(
-                        cardLayout = profile?.safeCardLayout ?: "vertical",
-                        artworkPreference = null,
-                        profile = profile,
-                        cardScale = 1f,
-                        showHorizontalLogo = true,
-                        topTenRank = null,
-                        isContinueWatchingCard = false,
-                        loadArtwork = true
-                    ),
-                    source = CatalogSourceUiModel(source?.transportUrl, source?.type)
-                )
-            },
-            isLoading = state.isLoading
-        )
-    }.flowOn(Dispatchers.Default)
+        withContext(Dispatchers.Default) {
+            val language = profile?.language
+            val visibleCatalogOptions = localCatalogOptions.ifEmpty { state.catalogs }
+            val selectedCatalog = visibleCatalogOptions.firstOrNull { it.key == selectedFilters.catalogKey }
+            DiscoverUiState(
+                filters = selectedFilters,
+                typeOptions = localContentTypes.ifEmpty { state.contentTypes }.map { type ->
+                    DiscoverFilterOptionUiModel(type, discoverContentTypeLabel(type, language))
+                },
+                catalogOptions = visibleCatalogOptions.map { DiscoverFilterOptionUiModel(it.key, it.label) },
+                genreOptions = (selectedCatalog?.genres ?: state.genres.mapNotNull { it.id })
+                    .map { DiscoverFilterOptionUiModel(it, it) },
+                results = state.results.map { meta ->
+                    val source = state.resultSources["${meta.type}:${meta.id}"]
+                        ?: state.resultSources[meta.id]
+                    CatalogItemUiModel(
+                        id = meta.id,
+                        type = meta.type,
+                        card = meta.toCatalogCardUiModel(
+                            cardLayout = profile?.safeCardLayout ?: "vertical",
+                            artworkPreference = null,
+                            profile = profile,
+                            cardScale = 1f,
+                            showHorizontalLogo = true,
+                            topTenRank = null,
+                            isContinueWatchingCard = false,
+                            loadArtwork = true,
+                            deviceType = deviceType,
+                        ),
+                        source = CatalogSourceUiModel(source?.transportUrl, source?.type)
+                    )
+                },
+                isLoading = state.isLoading
+            )
+        }
+    }
 
     override suspend fun updateFilters(filters: DiscoverFiltersUiModel) {
         val previousFilters = this.filters.value

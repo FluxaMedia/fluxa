@@ -1,8 +1,8 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.shared.feature.player.JvmTrailerPlaybackResolver
 import com.fluxa.app.shared.feature.player.TrailerCue
 import com.fluxa.app.shared.feature.player.TrailerResolveResult
-import com.fluxa.app.shared.feature.player.TrailerResult
 import com.fluxa.app.shared.feature.player.TrailerSubtitle
 
 import android.util.LruCache
@@ -226,10 +226,12 @@ internal class HomeBillboardRuntime(
             if (delaySeconds > 0) delay(delaySeconds * 1000L)
             val isStillActive = HomeBillboardRanking.contentIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
             if (!isStillActive) return@launch
-            val videoId = getTrailers(item.type, item.id, language())
-                .firstOrNull { it.url.extractYoutubeVideoId() != null }
-                ?.url?.extractYoutubeVideoId() ?: return@launch
-            val resolution = resolveYoutubeTrailerViaCore(videoId, dispatchHeadless) as? TrailerResolveResult.Ok ?: return@launch
+            val resolution = JvmTrailerPlaybackResolver.resolvePlayable(
+                trailers = getTrailers(item.type, item.id, language()),
+                maxHeight = if (com.fluxa.app.BuildConfig.IS_TV) 1080 else 720,
+                preferDirect = true,
+                dispatchHeadless = dispatchHeadless,
+            ) as? TrailerResolveResult.Ok ?: return@launch
             val stillActive = HomeBillboardRanking.contentIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
             if (!stillActive) return@launch
             setTrailerUrl(resolution.data.streamUrl)
@@ -315,85 +317,17 @@ internal class HomeBillboardRuntime(
 internal suspend fun resolvePlayableTrailerUrl(
     trailers: List<DetailTrailer>,
     dispatchHeadless: suspend (Any) -> NativeHeadlessEngineResult
-): String? {
-    trailers.asSequence()
-        .mapNotNull { it.url.extractYoutubeVideoId() }
-        .distinct()
-        .forEach { videoId ->
-        val youtubeUrl = (resolveYoutubeTrailerViaCore(videoId, dispatchHeadless) as? TrailerResolveResult.Ok)
-            ?.data?.streamUrl
-        if (youtubeUrl != null) return youtubeUrl
-    }
-    return selectBestDirectTrailerUrl(trailers)
-}
+): String? = (
+    JvmTrailerPlaybackResolver.resolvePlayable(
+        trailers = trailers,
+        maxHeight = if (com.fluxa.app.BuildConfig.IS_TV) 1080 else 720,
+        preferDirect = true,
+        dispatchHeadless = dispatchHeadless,
+    ) as? TrailerResolveResult.Ok
+)?.data?.streamUrl
 
-private val trailerResolutionPattern = Regex("""(?i)(?<!\d)(2160|1440|1080|720|576|540|480|360)\s*p(?!\d)""")
-
-internal fun selectBestDirectTrailerUrl(trailers: List<DetailTrailer>): String? {
-    var bestUrl: String? = null
-    var bestQuality = -1
-    for (trailer in trailers) {
-        if (!trailer.url.isDirectVideoPreviewUrl()) continue
-        val quality = directTrailerQuality(trailer)
-        // A strict comparison deliberately preserves addon order when two
-        // sources declare the same quality or no quality at all.
-        if (quality > bestQuality) {
-            bestUrl = trailer.url
-            bestQuality = quality
-        }
-    }
-    return bestUrl
-}
-
-private fun directTrailerQuality(trailer: DetailTrailer): Int {
-    val description = "${trailer.title} ${trailer.source} ${trailer.url}"
-    if (Regex("""(?i)\b(?:4k|uhd)\b""").containsMatchIn(description)) return 2160
-    return trailerResolutionPattern.find(description)
-        ?.groupValues
-        ?.getOrNull(1)
-        ?.toIntOrNull()
-        ?: 0
-}
-
-private suspend fun resolveYoutubeTrailerViaCore(
-    videoId: String,
-    dispatchHeadless: suspend (Any) -> NativeHeadlessEngineResult
-): TrailerResolveResult {
-    val requestId = java.util.UUID.randomUUID().toString()
-    val maxHeight = if (com.fluxa.app.BuildConfig.IS_TV) 1080 else 720
-    val result = dispatchHeadless(
-        mapOf(
-            "type" to "trailerResolveRequested",
-            "requestId" to requestId,
-            "videoId" to videoId,
-            "maxHeight" to maxHeight
-        )
-    )
-    val resolution = (result.state["trailer"] as? Map<*, *>)
-        ?.get("resolutions") as? Map<*, *>
-        ?: return TrailerResolveResult.Failed
-    val entry = resolution[requestId] as? Map<*, *> ?: return TrailerResolveResult.Failed
-    if (entry["status"] != "ok") return TrailerResolveResult.Failed
-    val streamUrl = entry["streamUrl"] as? String ?: return TrailerResolveResult.Failed
-    val subtitles = (entry["subtitles"] as? List<*>).orEmpty().mapNotNull { raw ->
-        val track = raw as? Map<*, *> ?: return@mapNotNull null
-        TrailerSubtitle(
-            languageTag = track["languageTag"] as? String ?: "und",
-            label = track["label"] as? String ?: "",
-            url = track["url"] as? String ?: return@mapNotNull null,
-            mimeType = track["mimeType"] as? String ?: "text/vtt",
-            isAuto = track["isAuto"] as? Boolean ?: false
-        )
-    }
-    return TrailerResolveResult.Ok(
-        TrailerResult(
-            streamUrl = streamUrl,
-            audioUrl = entry["audioUrl"] as? String,
-            subtitles = subtitles,
-            streamMimeType = null
-        )
-    )
-}
+internal fun selectBestDirectTrailerUrl(trailers: List<DetailTrailer>): String? =
+    JvmTrailerPlaybackResolver.selectBestDirectTrailerUrl(trailers)
 
 private val subtitleHttpClient = OkHttpClient.Builder()
     .retryOnConnectionFailure(true)

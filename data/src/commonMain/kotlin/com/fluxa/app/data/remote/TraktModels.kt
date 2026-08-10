@@ -8,7 +8,8 @@ data class TraktEpisode(
     val number: Int,
     val title: String?,
     val translations: List<TraktTranslation>?,
-    val ids: TraktIds? = null
+    val ids: TraktIds? = null,
+    val runtime: Int? = null
 )
 
 @Serializable
@@ -210,15 +211,6 @@ data class ExternalOAuthTokenResponse(
     val tokenType: String? get() = token_type
     val expiresIn: Long? get() = expires_in
 }
-
-@Serializable
-data class AnilistTokenRequest(
-    val grant_type: String = "authorization_code",
-    val client_id: String,
-    val client_secret: String,
-    val redirect_uri: String,
-    val code: String
-)
 
 data class AnilistGraphQlRequest(
     val query: String,

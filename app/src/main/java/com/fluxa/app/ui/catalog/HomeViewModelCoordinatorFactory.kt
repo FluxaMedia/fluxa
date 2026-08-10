@@ -1,41 +1,43 @@
 package com.fluxa.app.ui.catalog
 
-import android.content.Context
 import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.repository.ExternalSyncPushCoordinator
 import com.fluxa.app.data.repository.StremioRepository
-import com.fluxa.app.data.repository.TraktRepository
 import com.fluxa.app.data.repository.TraktWatchedState
-import com.fluxa.app.data.repository.library.ProviderAdapters
+import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
+import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.domain.discovery.StreamDiscoveryUseCase
 import com.google.gson.Gson
+import com.fluxa.app.domain.playback.PlaybackProgressScheduler
+import com.fluxa.app.domain.playback.PlaybackSyncCoordinator
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 
-class HomeViewModelCoordinatorFactory @Inject constructor() {
+class HomeViewModelCoordinatorFactory @Inject constructor(
+    private val playbackProgressScheduler: PlaybackProgressScheduler,
+    private val providerContinueWatchingRepository: ProviderContinueWatchingRepository,
+    private val thirdPartyProviderRepository: ThirdPartyProviderRepository,
+) {
     internal fun library(
-        repository: StremioRepository,
-        traktRepository: TraktRepository,
-        watchlistManager: WatchlistManager,
-        pushCoordinator: ExternalSyncPushCoordinator,
-        adapters: ProviderAdapters,
         scope: CoroutineScope,
         coreState: FluxaUniFfiCoreStateHandle,
         gson: Gson
     ): HomeLibraryCoordinator {
-        return HomeLibraryCoordinator(repository, traktRepository, watchlistManager, pushCoordinator, adapters, scope, coreState, gson)
+        return HomeLibraryCoordinator(
+            providerRepository = thirdPartyProviderRepository,
+            scope = scope,
+            coreState = coreState,
+            gson = gson
+        )
     }
 
     internal fun playback(
-        context: Context,
-        repository: StremioRepository,
         watchlistManager: WatchlistManager,
         forgottenStore: ForgottenContinueWatchingStore,
-        gson: Gson,
+        playbackSyncCoordinator: PlaybackSyncCoordinator,
         scope: CoroutineScope,
         activeProfile: () -> UserProfile?,
         localContinueWatching: () -> List<Meta>,
@@ -44,11 +46,9 @@ class HomeViewModelCoordinatorFactory @Inject constructor() {
         refreshDynamicRows: () -> Unit
     ): HomePlaybackController {
         return HomePlaybackController(
-            context = context,
-            repository = repository,
             watchlistManager = watchlistManager,
             forgottenStore = forgottenStore,
-            gson = gson,
+            playbackSyncCoordinator = playbackSyncCoordinator,
             scope = scope,
             activeProfile = activeProfile,
             localContinueWatching = localContinueWatching,
@@ -59,7 +59,6 @@ class HomeViewModelCoordinatorFactory @Inject constructor() {
     }
 
     internal fun continueWatching(
-        repository: StremioRepository,
         watchlistManager: WatchlistManager,
         scope: CoroutineScope,
         activeProfile: () -> UserProfile?,
@@ -75,7 +74,7 @@ class HomeViewModelCoordinatorFactory @Inject constructor() {
         getSeasonEpisodes: suspend (String, Int, String) -> List<com.fluxa.app.data.remote.Video>
     ): HomeContinueWatchingCoordinator {
         return HomeContinueWatchingCoordinator(
-            repository = repository,
+            providerContinueWatchingRepository = providerContinueWatchingRepository,
             watchlistManager = watchlistManager,
             scope = scope,
             activeProfile = activeProfile,

@@ -9,13 +9,17 @@ import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.search.SearchUiState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.withContext
+import com.fluxa.app.ui.catalog.formatRuntimeLabel
 
 class AndroidSearchDataSource(
     private val homeViewModel: HomeViewModel,
-    private val activeProfile: () -> UserProfile?
+    private val activeProfile: () -> UserProfile?,
+    private val deviceType: DeviceType = DeviceType.Mobile,
 ) : SearchDataSource {
     private val query = MutableStateFlow("")
 
@@ -26,28 +30,33 @@ class AndroidSearchDataSource(
         homeViewModel.searchHistory,
         homeViewModel.isSearchLoading
     ) { value, results, rows, history, isLoading ->
-        val sources = rows.toCatalogSourceMap()
         val profile = activeProfile()
-        SearchUiState(
-            query = value,
-            results = results.toCatalogItems(profile, sources),
-            resultRows = rows.map { row ->
-                CatalogRowUiModel(
-                    id = row.id,
-                    title = row.title,
-                    items = row.items.toCatalogItems(
-                        profile,
-                        mapOf(
-                            *row.items.map { meta ->
-                                "${meta.type}:${meta.id}" to CatalogSourceUiModel(row.sourceAddonTransportUrl, row.sourceAddonCatalogType)
-                            }.toTypedArray()
+        withContext(Dispatchers.Default) {
+            val sources = rows.toCatalogSourceMap()
+            SearchUiState(
+                query = value,
+                results = results.toCatalogItems(profile, sources, deviceType),
+                resultRows = rows.map { row ->
+                    val source = CatalogSourceUiModel(
+                        addonTransportUrl = row.sourceAddonTransportUrl,
+                        catalogType = row.sourceAddonCatalogType,
+                    )
+                    CatalogRowUiModel(
+                        id = row.id,
+                        title = row.title,
+                        items = row.items.toCatalogItems(
+                            profile = profile,
+                            sources = row.items.associate { meta ->
+                                "${meta.type}:${meta.id}" to source
+                            },
+                            deviceType = deviceType,
                         )
                     )
-                )
-            },
-            recentItems = history.toCatalogItems(profile),
-            isLoading = isLoading
-        )
+                },
+                recentItems = history.toCatalogItems(profile, deviceType = deviceType),
+                isLoading = isLoading
+            )
+        }
     }
 
     override suspend fun search(query: String) {
@@ -66,24 +75,37 @@ class AndroidSearchDataSource(
 
 internal fun List<Meta>.toCatalogItems(
     profile: UserProfile?,
-    sources: Map<String, CatalogSourceUiModel> = emptyMap()
+    sources: Map<String, CatalogSourceUiModel> = emptyMap(),
+    deviceType: DeviceType = DeviceType.Mobile,
 ): List<CatalogItemUiModel> {
     val cardLayout = profile?.safeCardLayout ?: "vertical"
     return map { meta ->
+        val source = sources["${meta.type}:${meta.id}"] ?: sources[meta.id] ?: CatalogSourceUiModel()
+        val card = meta.toCatalogCardUiModel(
+            cardLayout = cardLayout,
+            artworkPreference = null,
+            profile = profile,
+            cardScale = 1f,
+            showHorizontalLogo = true,
+            topTenRank = null,
+            isContinueWatchingCard = false,
+            loadArtwork = true,
+            deviceType = deviceType,
+        )
         CatalogItemUiModel(
             id = meta.id,
             type = meta.type,
-            card = meta.toCatalogCardUiModel(
-                cardLayout = cardLayout,
-                artworkPreference = null,
-                profile = profile,
-                cardScale = 1f,
-                showHorizontalLogo = true,
-                topTenRank = null,
-                isContinueWatchingCard = false,
-                loadArtwork = true
-            ),
-            source = sources["${meta.type}:${meta.id}"] ?: sources[meta.id] ?: CatalogSourceUiModel()
+            card = if (source.strictProviderData) card.copy(allowCoverFallback = false) else card,
+            source = source,
+            posterUrl = meta.poster,
+            backdropUrl = meta.background,
+            description = meta.description,
+            releaseLabel = meta.releaseInfo,
+            ratingLabel = meta.imdbRating,
+            ageRating = meta.ageRating,
+            genres = meta.genres.orEmpty(),
+            seasonsCount = meta.seasonsCount,
+            runtimeLabel = formatRuntimeLabel(meta.runtime)
         )
     }
 }

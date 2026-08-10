@@ -109,7 +109,8 @@ data class MetaDetail(
     val collectionId: Int? = null,
     val collectionParts: List<Meta>? = null,
     val seasonPosters: Map<String, String>? = null,
-    val appExtras: AppExtras? = null
+    val appExtras: AppExtras? = null,
+    val tmdbId: String? = null
 )
 
 @Serializable
@@ -175,6 +176,13 @@ private fun JsonObject.first(vararg keys: String): JsonElement? =
 
 private fun JsonObject.text(vararg keys: String): String? =
     first(*keys)?.safeString()?.trim()?.takeIf { it.isNotBlank() }
+
+private fun JsonObject.tmdbIdValue(): String? {
+    text("_tmdbId", "tmdbId", "tmdb_id", "moviedb_id", "moviedbId", "themoviedb_id")?.let { return it }
+    val nested = first("ids", "external_ids", "externalIds", "behaviorHints")?.asObjectOrNull()
+    nested?.text("tmdb", "tmdbId", "tmdb_id", "moviedb_id")?.let { return it }
+    return null
+}
 
 private fun JsonObject.int(vararg keys: String): Int? {
     val value = first(*keys)?.safeString()?.trim()?.takeIf { it.isNotBlank() } ?: return null
@@ -377,6 +385,7 @@ private fun metaDetailFromJson(json: JsonElement): MetaDetail {
         id = obj.text("id").orEmpty(),
         type = obj.text("type").orEmpty(),
         name = obj.text("name").orEmpty(),
+        tmdbId = obj.tmdbIdValue(),
         genres = obj.stringList("genres"),
         poster = obj.text("poster"),
         background = obj.text("background"),
@@ -459,6 +468,7 @@ object MetaDetailSerializer : KSerializer<MetaDetail> {
             put("id", value.id)
             put("type", value.type)
             put("name", value.name)
+            value.tmdbId?.let { put("tmdbId", it) }
             value.genres?.let { put("genres", jsonInstance.encodeToJsonElement(it)) }
             value.poster?.let { put("poster", it) }
             value.background?.let { put("background", it) }

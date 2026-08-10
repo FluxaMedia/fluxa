@@ -38,6 +38,41 @@ final class FluxaAppleAddonResourceLoader {
         return try FluxaAppleJsonValue(any: meta)
     }
 
+
+    func loadSubtitleUrls(
+        transportUrl: String,
+        contentType: String,
+        id: String
+    ) async throws -> [String] {
+        guard let url = resolver.resourceUrl(
+            transportUrl: transportUrl,
+            resource: "subtitles",
+            contentType: contentType,
+            id: id
+        ) else {
+            throw URLError(.badURL)
+        }
+        let (data, response) = try await session.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let subtitles = root["subtitles"] as? [[String: Any]] else {
+            return []
+        }
+        return subtitles.compactMap { subtitle in
+            if let direct = subtitle["url"] as? String, !direct.isEmpty {
+                return direct
+            }
+            if let attributes = subtitle["attributes"] as? [String: Any],
+               let nested = attributes["url"] as? String, !nested.isEmpty {
+                return nested
+            }
+            return nil
+        }
+    }
+
     func loadDirectStreams(
         transportUrl: String,
         contentType: String,

@@ -41,6 +41,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
+import com.fluxa.app.shared.feature.catalog.stableLazyKey
 import com.fluxa.app.shared.skeletonShimmer
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.DeviceType
@@ -205,7 +206,7 @@ internal fun SearchResultRows(
         contentPadding = PaddingValues(bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        items(rows, key = { it.id }) { row ->
+        items(rows, key = { it.id }, contentType = { "search-row" }) { row ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = row.title,
@@ -215,7 +216,7 @@ internal fun SearchResultRows(
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(row.items, key = { it.id }) { item ->
+                    items(row.items, key = { it.stableLazyKey() }, contentType = { "search-card" }) { item ->
                         SearchResultCard(
                             item = item,
                             onClick = { onItemSelected(item) },
@@ -244,7 +245,7 @@ internal fun SearchResults(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        gridItems(items, key = { it.id }) { item ->
+        gridItems(items, key = { it.stableLazyKey() }, contentType = { "search-card" }) { item ->
             SearchResultCard(
                 item = item,
                 onClick = { onItemSelected(item) },

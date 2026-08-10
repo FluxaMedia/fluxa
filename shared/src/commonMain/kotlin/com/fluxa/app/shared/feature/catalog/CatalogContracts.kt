@@ -1,27 +1,51 @@
 package com.fluxa.app.shared.feature.catalog
 
+import androidx.compose.runtime.Immutable
 import com.fluxa.app.shared.feature.player.TrailerCue
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import kotlinx.coroutines.flow.Flow
 
+@Immutable
 data class CatalogItemUiModel(
     val id: String,
     val type: String,
     val card: CatalogCardUiModel,
     val source: CatalogSourceUiModel = CatalogSourceUiModel(),
     val resume: CatalogResumeUiModel? = null,
+    /** Raw source-owned artwork. Card artwork may be a landscape progress image. */
+    val posterUrl: String? = null,
     val backdropUrl: String? = null,
     val description: String? = null,
+    val releaseLabel: String? = null,
+    val ratingLabel: String? = null,
     val ageRating: String? = null,
+    val genres: List<String> = emptyList(),
     val seasonsCount: Int? = null,
     val runtimeLabel: String? = null
 )
 
+fun CatalogItemUiModel.stableLazyKey(): String = buildString {
+    append(source.providerId ?: source.addonTransportUrl ?: "catalog")
+    append(':')
+    append(source.providerAccountId.orEmpty())
+    append(':')
+    append(source.catalogType ?: type)
+    append(':')
+    append(type)
+    append(':')
+    append(id)
+}
+
+@Immutable
 data class CatalogSourceUiModel(
     val addonTransportUrl: String? = null,
-    val catalogType: String? = null
+    val catalogType: String? = null,
+    val providerId: String? = null,
+    val providerAccountId: String? = null,
+    val strictProviderData: Boolean = false
 )
 
+@Immutable
 data class CatalogResumeUiModel(
     val positionMs: Long,
     val durationMs: Long?,
@@ -31,6 +55,7 @@ data class CatalogResumeUiModel(
     val progressPercent: Float? = null
 )
 
+@Immutable
 data class CatalogRowUiModel(
     val id: String,
     val title: String,
@@ -43,6 +68,7 @@ data class CatalogRowUiModel(
     val topTenEnabled: Boolean = false
 )
 
+@Immutable
 data class CatalogBillboardUiModel(
     val item: CatalogItemUiModel,
     val logoUrl: String? = null,
@@ -50,6 +76,7 @@ data class CatalogBillboardUiModel(
     val trailerSubtitleCues: List<TrailerCue> = emptyList()
 )
 
+@Immutable
 data class CatalogHomeUiState(
     val rows: List<CatalogRowUiModel> = emptyList(),
     val isLoading: Boolean = false,
@@ -79,4 +106,5 @@ interface CatalogHomeDataSource {
     suspend fun refresh()
     suspend fun loadMore(rowId: String)
     suspend fun setFilter(filter: String)
+    suspend fun heroPageChanged(item: CatalogItemUiModel) = Unit
 }
