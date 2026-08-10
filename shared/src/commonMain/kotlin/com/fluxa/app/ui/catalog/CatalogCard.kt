@@ -1,8 +1,13 @@
 package com.fluxa.app.ui.catalog
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -17,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -34,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.shared.image.FluxaRemoteImage
+import kotlinx.coroutines.delay
 
 @Composable
 fun CatalogCard(
@@ -43,8 +51,63 @@ fun CatalogCard(
     onLongClick: (() -> Unit)? = null
 ) {
     val density = LocalDensity.current
-    var failed by remember(model.artworkUrl) { mutableStateOf(model.artworkUrl.isNullOrBlank()) }
+    val deviceType = LocalDeviceType.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val hovered by interactionSource.collectIsHoveredAsState()
     var focused by remember { mutableStateOf(false) }
+    var animatedArtworkFailed by remember(model.animatedArtworkUrl) { mutableStateOf(false) }
+    var artworkFailed by remember(model.artworkUrl) { mutableStateOf(model.artworkUrl.isNullOrBlank()) }
+    val wantsAnimatedArtwork = (focused || hovered) &&
+        !animatedArtworkFailed &&
+        !model.animatedArtworkUrl.isNullOrBlank()
+    var showAnimatedArtwork by remember(model.animatedArtworkUrl) { mutableStateOf(false) }
+    LaunchedEffect(wantsAnimatedArtwork, focused, deviceType) {
+        showAnimatedArtwork = false
+        if (wantsAnimatedArtwork) {
+            // TV must still play focus artwork. A short debounce avoids starting a decoder
+            // for cards that the user crosses during a fast D-pad burst.
+            val delayMs = when {
+                focused && deviceType == DeviceType.TV -> 180L
+                focused -> 120L
+                else -> 350L
+            }
+            delay(delayMs)
+            showAnimatedArtwork = true
+        }
+    }
+    val displayingAnimatedArtwork = showAnimatedArtwork && !animatedArtworkFailed
+    val displayedArtworkUrl = if (displayingAnimatedArtwork) {
+        model.animatedArtworkUrl
+    } else {
+        model.artworkUrl
+    }
+    val displayedArtworkCacheKey = if (displayingAnimatedArtwork) {
+        model.animatedArtworkMemoryCacheKey
+    } else {
+        model.artworkMemoryCacheKey
+    }
+    val displayedArtworkDiskCacheKey = if (displayingAnimatedArtwork) {
+        displayedArtworkUrl
+    } else {
+        model.artworkDiskCacheKey
+    }
+    val displayedArtworkFailed = if (displayingAnimatedArtwork) {
+        animatedArtworkFailed
+    } else {
+        artworkFailed
+    }
+
+    val targetScale = when {
+        focused && deviceType == DeviceType.TV -> 1.10f
+        focused -> 1.04f
+        hovered && deviceType == DeviceType.Desktop -> 1.025f
+        else -> 1f
+    }
+    val cardScale by animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = tween(durationMillis = 140),
+        label = "catalog-card-scale"
+    )
 
     val rankFontSize = remember(model.topTenRank, model.imageHeight, model.rankFontSizeRatio, density) {
         if (model.topTenRank != null) {
@@ -70,16 +133,23 @@ fun CatalogCard(
             )
             .onFocusChanged { focused = it.isFocused }
             .then(
-                if (focused) {
+                if (deviceType != DeviceType.Mobile) {
+                    Modifier.hoverable(interactionSource)
+                } else {
                     Modifier
-                        .scale(1.1f)
-                        .border(3.dp, Color.White, RoundedCornerShape(8.dp))
+                }
+            )
+            .zIndex(if (focused || (hovered && deviceType == DeviceType.Desktop)) 1f else 0f)
+            .scale(cardScale)
+            .then(
+                if (focused) {
+                    Modifier.border(3.dp, Color.White, RoundedCornerShape(8.dp))
                 } else {
                     Modifier
                 }
             )
             .combinedClickable(
-                interactionSource = null,
+                interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -118,16 +188,28 @@ fun CatalogCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (model.loadArtwork && !failed) {
+                if (model.loadArtwork && !displayedArtworkFailed) {
                     FluxaRemoteImage(
-                        imageUrl = model.artworkUrl,
-                        cacheKey = model.artworkMemoryCacheKey,
+                        imageUrl = displayedArtworkUrl,
+                        cacheKey = displayedArtworkCacheKey,
+                        diskCacheKey = displayedArtworkDiskCacheKey,
+                        requestWidthPx = model.requestWidthPx,
+                        requestHeightPx = model.requestHeightPx,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
-                        onError = { failed = true }
+                        onError = {
+                            if (displayingAnimatedArtwork) {
+                                // A broken GIF should fall back to the already-cached static cover,
+                                // not trigger three immediate request/recomposition loops.
+                                animatedArtworkFailed = true
+                                showAnimatedArtwork = false
+                            } else {
+                                artworkFailed = true
+                            }
+                        }
                     )
-                } else if (model.allowCoverFallback) {
+                } else if (model.allowCoverFallback || displayedArtworkFailed) {
                     Text(
                         text = model.coverFallbackText,
                         color = Color.White.copy(
@@ -158,6 +240,46 @@ fun CatalogCard(
                             .heightIn(max = model.imageHeight * 0.30f),
                         contentScale = ContentScale.Fit
                     )
+                }
+                if (model.overlayTitleBar && (model.title.isNotBlank() || model.subtitle.isNotBlank())) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(CONTINUE_WATCHING_LABEL_GRADIENT)
+                    )
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .padding(
+                                start = 9.dp,
+                                end = 9.dp,
+                                bottom = if (model.showProgressBar) 17.dp else 8.dp
+                            )
+                    ) {
+                        if (model.title.isNotBlank()) {
+                            Text(
+                                text = model.title,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                lineHeight = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        if (model.subtitle.isNotBlank()) {
+                            Text(
+                                text = model.subtitle,
+                                color = Color.White.copy(alpha = 0.78f),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
                 if (model.showProgressBar) {
                     Box(
@@ -217,6 +339,15 @@ fun CatalogCard(
         }
     }
 }
+
+private val CONTINUE_WATCHING_LABEL_GRADIENT = androidx.compose.ui.graphics.Brush.verticalGradient(
+    colors = listOf(
+        Color.Transparent,
+        Color.Black.copy(alpha = 0.18f),
+        Color.Black.copy(alpha = 0.82f)
+    ),
+    startY = 45f
+)
 
 private val MOBILE_CARD_BOTTOM_GRADIENT = androidx.compose.ui.graphics.Brush.verticalGradient(
     colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),

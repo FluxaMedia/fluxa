@@ -1,7 +1,9 @@
 package com.fluxa.app.ui.catalog
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.Dp
 
+@Immutable
 data class CatalogCardUiModel(
     val title: String,
     val subtitle: String,
@@ -32,5 +34,9 @@ data class CatalogCardUiModel(
     val rankOffsetX: Dp,
     val rankOffsetY: Dp,
     val rankFontSizeRatio: Float,
-    val loadArtwork: Boolean
+    val loadArtwork: Boolean,
+    val animatedArtworkUrl: String? = null,
+    val animatedArtworkMemoryCacheKey: String? = null,
+    /** Draw title/subtitle inside the artwork, immediately above the progress bar. */
+    val overlayTitleBar: Boolean = false
 )

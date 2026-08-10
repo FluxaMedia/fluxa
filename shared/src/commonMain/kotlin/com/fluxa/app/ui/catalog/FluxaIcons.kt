@@ -65,6 +65,7 @@ object FluxaIcons {
     val Fullscreen: ImageVector = Icons.Filled.Fullscreen
     val FullscreenExit: ImageVector = Icons.Filled.FullscreenExit
     val GraphicEq: ImageVector = Icons.Filled.GraphicEq
+    val Groups: ImageVector = Icons.Filled.Groups
     val GridView: ImageVector = Icons.Filled.GridView
     val Home: ImageVector = Icons.Filled.Home
     val Info: ImageVector = Icons.Filled.Info

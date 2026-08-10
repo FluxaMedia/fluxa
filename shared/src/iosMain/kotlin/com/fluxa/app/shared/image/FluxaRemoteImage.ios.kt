@@ -2,6 +2,7 @@ package com.fluxa.app.shared.image
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.viewinterop.UIKitView
@@ -24,10 +25,15 @@ private val imageCache = mutableMapOf<String, UIImage>()
 actual fun FluxaRemoteImage(
     imageUrl: String?,
     cacheKey: String?,
+    diskCacheKey: String?,
+    requestWidthPx: Int?,
+    requestHeightPx: Int?,
     contentDescription: String?,
     modifier: Modifier,
     contentScale: ContentScale,
-    onError: (() -> Unit)?
+    alignment: Alignment,
+    onError: (() -> Unit)?,
+    trimTransparentPadding: Boolean
 ) {
     val imageView = remember(imageUrl, cacheKey) {
         UIImageView().apply {
