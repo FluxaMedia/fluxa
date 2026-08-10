@@ -1247,7 +1247,7 @@
   "library.sort_recent": "Recently updated",
   "library.sort_title": "Title (A-Z)",
   "library.sort_rating": "Rating",
-  "library.source_local": "Local Library",
+  "library.source_local": "Fluxa Sync",
   "library.source_trakt": "Trakt Library",
   "library.source_simkl": "Simkl Library",
   "library.source_anilist": "AniList Library",

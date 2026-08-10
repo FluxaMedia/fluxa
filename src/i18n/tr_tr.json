@@ -1247,7 +1247,7 @@
   "library.sort_recent": "Son güncellenen",
   "library.sort_title": "Başlık (A-Z)",
   "library.sort_rating": "Puan",
-  "library.source_local": "Yerel Kütüphane",
+  "library.source_local": "Fluxa Sync",
   "library.source_trakt": "Trakt Kütüphanesi",
   "library.source_simkl": "Simkl Kütüphanesi",
   "library.source_anilist": "AniList Kütüphanesi",
