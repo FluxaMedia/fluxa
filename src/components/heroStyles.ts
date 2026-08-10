@@ -7,6 +7,10 @@ export const heroKeyframes = `
   from { transform: scale(1); }
   to { transform: scale(1.06); }
 }
+@keyframes heroFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 `;
 
 export const heroStyles: Record<string, React.CSSProperties> = {
@@ -49,7 +53,7 @@ export const heroStyles: Record<string, React.CSSProperties> = {
   trailerSubtitleOverlay: {
     position: 'absolute',
     left: '50%',
-    bottom: 'clamp(3.25rem, 8vh, 5.75rem)' as unknown as number,
+    bottom: 'clamp(9rem, 14vh, 11.5rem)' as unknown as number,
     transform: 'translateX(-50%)',
     zIndex: 18,
     maxWidth: 'min(64rem, calc(100% - 12rem))',
@@ -93,14 +97,17 @@ export const heroStyles: Record<string, React.CSSProperties> = {
   },
   gradientBottom: {
     position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(to bottom, rgba(4,5,8,0.00) 55%, #040508 85%)',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '7.5rem',
+    background: 'linear-gradient(to bottom, rgba(4,5,8,0.00) 55%, #040508 100%)',
     pointerEvents: 'none',
     zIndex: 1,
   },
   panel: {
     position: 'absolute',
-    bottom: 'clamp(3rem, 7vh, 5rem)' as unknown as number,
+    bottom: '12rem' as unknown as number,
     left: PANEL_LEFT,
     maxWidth: '36.25rem',
     display: 'flex',
@@ -141,14 +148,6 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     margin: '0 0 1.25rem 0',
     textShadow: '0 0.125rem 0.5rem rgba(0,0,0,0.7)',
     lineHeight: 1.3,
-  },
-  metaLine: {
-    color: 'rgb(170, 170, 170)',
-    fontSize: '0.875rem',
-    margin: '0 0 1rem 0',
-    fontWeight: 400,
-    textShadow: '0 0.125rem 0.25rem rgba(0,0,0,0.8)',
-    lineHeight: 1.4,
   },
   metaRow: {
     display: 'flex',
@@ -198,15 +197,11 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     textShadow: '0 1px 0.1875rem rgba(0,0,0,0.8)',
   },
   description: {
-    color: 'rgba(255,255,255,0.82)',
+    color: '#FFFFFF',
     fontSize: '0.95rem',
     lineHeight: 1.6,
-    margin: '0 0 0 0',
+    margin: '0 0 1rem 0',
     maxWidth: '30rem',
-    display: '-webkit-box',
-    WebkitLineClamp: 3,
-    WebkitBoxOrient: 'vertical' as const,
-    overflow: 'hidden',
     textShadow: '0 1px 0.1875rem rgba(0,0,0,0.8)',
   },
   awards: {
@@ -241,6 +236,22 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     transition: 'all 0.25s ease-in-out',
     boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.3), 0 0.25rem 1rem rgba(0,0,0,0.1)',
   },
+  moreInfoBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5625rem',
+    background: 'rgba(109,109,110,0.7)',
+    color: '#FFFFFF',
+    border: '1px solid transparent',
+    borderRadius: '0.4375rem',
+    padding: '0.5625rem 1.375rem',
+    fontSize: '0.925rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: "'Montserrat', sans-serif",
+    transition: 'all 0.25s ease-in-out',
+    boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.3), 0 0.25rem 1rem rgba(0,0,0,0.1)',
+  },
   indicators: {
     position: 'absolute',
     bottom: '1.5rem',
@@ -252,24 +263,20 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 1rem',
   },
   indicatorTrack: {
-    width: '1.75rem',
-    height: '0.1875rem',
+    width: '0.375rem',
+    height: '0.375rem',
     borderRadius: '62.4375rem',
-    background: 'rgba(255,255,255,0.25)',
+    background: 'rgba(255,255,255,0.85)',
     border: 'none',
     cursor: 'pointer',
     padding: 0,
     overflow: 'hidden',
+    transition: 'width 0.25s ease, background 0.25s ease',
+    flexShrink: 0,
   },
-  indicatorFill: {
-    display: 'block',
-    height: '100%',
-    width: '0%',
-    background: 'rgba(255,255,255,0.90)',
-    borderRadius: '62.4375rem',
-  },
-  indicatorFillDone: {
-    width: '100%',
+  indicatorTrackActive: {
+    width: '1.75rem',
+    background: '#FFFFFF',
   },
   trailerMuteButton: {
     position: 'absolute',

@@ -16,6 +16,7 @@ import { fetchBuiltinCatalog, isBuiltinTmdbAddon, withBuiltinTmdbAddon } from '.
 import { fetchVideosForSeries, runWithConcurrency } from './fetchPlanning';
 import { tryFetchJson } from './httpClient';
 import { loadProviderLibraries, type LibraryProvider } from './providerLibraries';
+import { fetchMetaDetail } from './detailEffects';
 import type { AddonDescriptor } from './types';
 
 const HOME_FEED_FETCH_CONCURRENCY = 6;
@@ -203,4 +204,46 @@ export async function readHomeBootstrap(
   const bootstrap = { categories: allCategories, continueWatching, metadataFeeds, billboard };
   void storageWrite(cacheKey, bootstrap);
   return bootstrap;
+}
+
+const HERO_DESCRIPTION_CACHE_KEY = 'hero_description_cache';
+const HERO_DESCRIPTION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const HERO_DESCRIPTION_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+type HeroDescriptionCache = Record<string, { fetchedAt: number; description: string | null }>;
+
+let heroDescriptionCachePromise: Promise<HeroDescriptionCache> | null = null;
+function loadHeroDescriptionCache(): Promise<HeroDescriptionCache> {
+  if (!heroDescriptionCachePromise) {
+    heroDescriptionCachePromise = storageRead<HeroDescriptionCache>(HERO_DESCRIPTION_CACHE_KEY).then((cache) => cache ?? {});
+  }
+  return heroDescriptionCachePromise;
+}
+void loadHeroDescriptionCache();
+
+export async function fetchHeroDescription(item: { id: string; type: string; sourceAddonTransportUrl?: string }): Promise<string | null> {
+  const cacheKey = `${item.type}:${item.id}`;
+  const now = Date.now();
+  const cache = await loadHeroDescriptionCache();
+  const cached = cache[cacheKey];
+  if (cached && now - cached.fetchedAt < HERO_DESCRIPTION_CACHE_TTL_MS) {
+    return cached.description;
+  }
+
+  const detail = await fetchMetaDetail({
+    id: item.id,
+    contentType: item.type,
+    sourceAddonTransportUrl: item.sourceAddonTransportUrl,
+  }).catch(() => null) as { description?: string } | null;
+  const shortened = detail?.description
+    ? (await coreInvoke<string>('shortenSynopsis', JSON.stringify({ text: detail.description }))) ?? null
+    : null;
+
+  cache[cacheKey] = { fetchedAt: now, description: shortened };
+  for (const [key, entry] of Object.entries(cache)) {
+    if (now - entry.fetchedAt > HERO_DESCRIPTION_CACHE_MAX_AGE_MS) delete cache[key];
+  }
+  void storageWrite(HERO_DESCRIPTION_CACHE_KEY, cache);
+
+  return shortened;
 }

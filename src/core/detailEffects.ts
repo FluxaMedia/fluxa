@@ -9,6 +9,8 @@ import {
   coreMdblistMediaRatingsFromResponse,
   coreInvoke,
   dispatchAction,
+  storageRead,
+  storageWrite,
 } from './engine';
 import { loadActiveProfile, loadEnabledAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
@@ -400,6 +402,21 @@ async function fetchFanartArtwork(
   return { hdLogo, hdBackdrop };
 }
 
+const CONTENT_LOGO_CACHE_KEY = 'content_logo_cache';
+const CONTENT_LOGO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CONTENT_LOGO_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+type ContentLogoCache = Record<string, { fetchedAt: number; logo: string | null }>;
+
+let contentLogoCachePromise: Promise<ContentLogoCache> | null = null;
+function loadContentLogoCache(): Promise<ContentLogoCache> {
+  if (!contentLogoCachePromise) {
+    contentLogoCachePromise = storageRead<ContentLogoCache>(CONTENT_LOGO_CACHE_KEY).then((cache) => cache ?? {});
+  }
+  return contentLogoCachePromise;
+}
+void loadContentLogoCache();
+
 export async function fetchContentLogo(
   id: string,
   contentType: string,
@@ -407,15 +424,34 @@ export async function fetchContentLogo(
   apiKey: string,
   fanartApiKey: string,
 ): Promise<string | undefined> {
+  const cacheKey = `${contentType}:${id}`;
+  const now = Date.now();
+  const cache = await loadContentLogoCache();
+  const cached = cache[cacheKey];
+  if (cached && now - cached.fetchedAt < CONTENT_LOGO_CACHE_TTL_MS) {
+    return cached.logo ?? undefined;
+  }
+
+  let logo: string | undefined;
   try {
     const meta = await fetchMetaDetail({ id, contentType }) as Record<string, unknown> | null;
     const addonLogo = meta
       ? stringValue(meta.logo) ?? stringValue(meta.logoUrl) ?? stringValue(meta.titleLogo) ?? stringValue(meta.titleLogoUrl)
       : undefined;
-    if (addonLogo) return addonLogo;
+    if (addonLogo) logo = addonLogo;
   } catch {}
-  const artwork = await fetchFanartArtwork({ contentType, id, language, apiKey }, fanartApiKey);
-  return artwork?.hdLogo;
+  if (!logo) {
+    const artwork = await fetchFanartArtwork({ contentType, id, language, apiKey }, fanartApiKey);
+    logo = artwork?.hdLogo;
+  }
+
+  cache[cacheKey] = { fetchedAt: now, logo: logo ?? null };
+  for (const [key, entry] of Object.entries(cache)) {
+    if (now - entry.fetchedAt > CONTENT_LOGO_CACHE_MAX_AGE_MS) delete cache[key];
+  }
+  void storageWrite(CONTENT_LOGO_CACHE_KEY, cache);
+
+  return logo;
 }
 
 async function fetchSimilarItems({

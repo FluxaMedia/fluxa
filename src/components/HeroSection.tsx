@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Info, Play, Plus, Volume2, VolumeX } from 'lucide-react';
+import { Info, Play, Volume2, VolumeX } from 'lucide-react';
 import { seasonPosterUrl } from '../core/seasonPosters';
 import type { Meta } from '../core/types';
 import { t } from '../i18n';
 import { heroKeyframes, heroStyles as styles } from './heroStyles';
-import { HeroIconBtn, parseReleaseYear, readOptionalString } from './HeroSectionParts';
+import { readOptionalString } from './HeroSectionParts';
 import { youtubeVideoId } from './detail/TrailerCarousel';
 import { useTrailerPlayback } from '../hooks/useTrailerPlayback';
 
@@ -22,6 +22,7 @@ interface Props {
   autoplayTrailerDelaySecs?: number;
   preferredSubtitleLanguage?: string;
   secondarySubtitleLanguage?: string;
+  pendingLogoIds?: Set<string>;
 }
 
 const DEFAULT_SLIDE_INTERVAL_MS = 6500;
@@ -40,6 +41,7 @@ export const HeroSection = React.memo(function HeroSection({
   autoplayTrailerDelaySecs = 2,
   preferredSubtitleLanguage,
   secondarySubtitleLanguage,
+  pendingLogoIds,
 }: Props) {
   const items = useMemo(() => {
     const seen = new Set<string>();
@@ -55,17 +57,10 @@ export const HeroSection = React.memo(function HeroSection({
   const [visible, setVisible] = useState(true);
   const [bgError, setBgError] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
   const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeIndexRef = useRef(activeIndex);
   activeIndexRef.current = activeIndex;
-  const indicatorFillRef = useRef<HTMLSpanElement | null>(null);
-  const indicatorAnimationRef = useRef<Animation | null>(null);
-  const heroElRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{ startX: number; startY: number; containerWidth: number } | null>(null);
-  const settleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [preview, setPreview] = useState<{ index: number; side: 'next' | 'prev'; width: number } | null>(null);
 
   const activeMeta = items[activeIndex] ?? meta;
   const canSlide = items.length > 1;
@@ -105,16 +100,9 @@ export const HeroSection = React.memo(function HeroSection({
   const logoUrl = !logoError ? activeMeta.logo : null;
 
   const imdbNum = activeMeta.imdbRating != null ? Number(activeMeta.imdbRating) : NaN;
-  const releaseYear = activeMeta.year ?? parseReleaseYear(activeMeta.releaseInfo);
   const tagline = readOptionalString(activeMeta, ['tagline', 'tagLine', 'slogan']);
   const awards = readOptionalString(activeMeta, ['awards']);
   const certification = readOptionalString(activeMeta, ['certification', 'contentRating', 'rating']);
-  const network = readOptionalString(activeMeta, ['network', 'studio', 'broadcaster']);
-
-  const metaParts: string[] = [];
-  if (releaseYear) metaParts.push(String(releaseYear));
-  if (activeMeta.runtime) metaParts.push(String(activeMeta.runtime));
-  if (network) metaParts.push(network);
 
   const genreLine = (Array.isArray(activeMeta.genres) ? activeMeta.genres : [])
     .filter((g): g is string => typeof g === 'string' && g.length > 0)
@@ -123,6 +111,7 @@ export const HeroSection = React.memo(function HeroSection({
   useEffect(() => {
     setBgError(false);
     setLogoError(false);
+    setLogoLoaded(false);
   }, [activeMeta.id, imageUrl, activeMeta.logo]);
 
   useEffect(() => {
@@ -143,32 +132,12 @@ export const HeroSection = React.memo(function HeroSection({
   }
 
   useEffect(() => {
-    if (!canSlide || !isActive || trailerPending || isDragging || preview) return;
+    if (!canSlide || !isActive || trailerPending) return;
     const id = window.setInterval(() => {
       slideToIndex(activeIndexRef.current + 1);
     }, slideIntervalMs);
     return () => window.clearInterval(id);
-  }, [canSlide, items.length, isActive, trailerPending, slideIntervalMs, isDragging, preview]);
-
-  useEffect(() => {
-    const el = indicatorFillRef.current;
-    indicatorAnimationRef.current?.cancel();
-    if (!el) return;
-    const animation = el.animate(
-      [{ width: '0%' }, { width: '100%' }],
-      { duration: slideIntervalMs, easing: 'linear', fill: 'forwards' },
-    );
-    if (trailerPending || !isActive) animation.pause();
-    indicatorAnimationRef.current = animation;
-    return () => animation.cancel();
-  }, [activeIndex, slideIntervalMs]);
-
-  useEffect(() => {
-    const animation = indicatorAnimationRef.current;
-    if (!animation) return;
-    if (trailerPending || !isActive) animation.pause();
-    else animation.play();
-  }, [trailerPending, isActive]);
+  }, [canSlide, items.length, isActive, trailerPending, slideIntervalMs]);
 
   useEffect(() => {
     if (!canSlide) return;
@@ -195,102 +164,51 @@ export const HeroSection = React.memo(function HeroSection({
     else if (e.key === 'ArrowRight') { e.preventDefault(); goTo(activeIndex + 1); }
   };
 
-  useEffect(() => {
-    return () => {
-      if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
-    };
-  }, []);
-
+  const dragRef = useRef<{ startX: number; startY: number } | null>(null);
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!canSlide) return;
-    if (settleTimeoutRef.current) { clearTimeout(settleTimeoutRef.current); settleTimeoutRef.current = null; }
-    const containerWidth = heroElRef.current?.getBoundingClientRect().width || window.innerWidth;
-    dragRef.current = { startX: e.clientX, startY: e.clientY, containerWidth };
+    if ((e.target as HTMLElement).closest('button, a, input')) return;
+    dragRef.current = { startX: e.clientX, startY: e.clientY };
     e.currentTarget.setPointerCapture(e.pointerId);
-    setIsDragging(true);
   };
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handlePointerUp = (e: React.PointerEvent) => {
     const drag = dragRef.current;
+    dragRef.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     if (!drag) return;
     const deltaX = e.clientX - drag.startX;
     const deltaY = e.clientY - drag.startY;
-    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
-    const clamped = Math.max(-drag.containerWidth, Math.min(drag.containerWidth, deltaX));
-    setDragOffset(clamped);
-    if (clamped < 0) {
-      setPreview({ index: (activeIndex + 1) % items.length, side: 'next', width: drag.containerWidth });
-    } else if (clamped > 0) {
-      setPreview({ index: (activeIndex - 1 + items.length) % items.length, side: 'prev', width: drag.containerWidth });
-    }
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) return;
+    if (deltaX < 0) goTo(activeIndex + 1);
+    else goTo(activeIndex - 1);
   };
-  const endDrag = (e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    dragRef.current = null;
-    setIsDragging(false);
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-    if (!drag) { setDragOffset(0); setPreview(null); return; }
-    const deltaX = e.clientX - drag.startX;
-    const deltaY = e.clientY - drag.startY;
-    const isSwipe = Math.abs(deltaX) >= SWIPE_THRESHOLD_PX && Math.abs(deltaX) >= Math.abs(deltaY);
-    if (isSwipe && preview) {
-      const nextIndex = preview.index;
-      setDragOffset(deltaX < 0 ? -drag.containerWidth : drag.containerWidth);
-      settleTimeoutRef.current = setTimeout(() => {
-        setActiveIndex(nextIndex);
-        setDragOffset(0);
-        setPreview(null);
-        settleTimeoutRef.current = null;
-      }, 380);
-    } else {
-      setDragOffset(0);
-      settleTimeoutRef.current = setTimeout(() => {
-        setPreview(null);
-        settleTimeoutRef.current = null;
-      }, 380);
-    }
-  };
-
-  const slideTransition = isDragging ? 'none' : 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
-  const previewOffset = preview ? dragOffset + (preview.side === 'next' ? preview.width : -preview.width) : 0;
-  const previewMeta = preview ? items[preview.index] : null;
-  const previewBgUrl = previewMeta ? (preferSeasonPosters ? seasonPosterUrl(previewMeta) : undefined) ?? previewMeta.background ?? previewMeta.poster ?? null : null;
 
   return (
     <div
-      ref={heroElRef}
-      style={{ ...styles.hero, cursor: canSlide ? (isDragging ? 'grabbing' : 'grab') : undefined, touchAction: canSlide ? 'pan-y' : undefined }}
+      style={{ ...styles.hero, cursor: canSlide ? 'grab' : undefined }}
       tabIndex={canSlide ? 0 : -1}
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => { dragRef.current = null; }}
     >
       <style>{heroKeyframes}</style>
-      <div style={{ position: 'absolute', inset: 0, transform: `translateX(${dragOffset}px)`, transition: slideTransition }}>
-        {bgUrl && (
-          <img
-            key={activeMeta.id || activeIndex}
-            src={bgUrl}
-            alt=""
-            decoding="async"
-            style={{
-              ...styles.backdrop,
-              ...contentStyle,
-              opacity: visible ? (trailerActive ? 0 : 1) : 0,
-              transition: 'opacity 0.6s ease',
-              animation: prefersReducedMotion ? 'none' : `heroKenBurns ${slideIntervalMs + 400}ms ease-out forwards`,
-              animationPlayState: trailerActive || !isActive ? 'paused' : 'running',
-            }}
-            onError={() => setBgError(true)}
-          />
-        )}
-      </div>
-
-      {previewBgUrl && (
-        <div style={{ position: 'absolute', inset: 0, transform: `translateX(${previewOffset}px)`, transition: slideTransition }}>
-          <img src={previewBgUrl} alt="" decoding="async" style={styles.backdrop} />
-        </div>
+      {bgUrl && (
+        <img
+          key={activeMeta.id || activeIndex}
+          src={bgUrl}
+          alt=""
+          decoding="async"
+          style={{
+            ...styles.backdrop,
+            ...contentStyle,
+            opacity: visible ? (trailerActive ? 0 : 1) : 0,
+            transition: 'opacity 0.6s ease',
+            animation: prefersReducedMotion ? 'none' : `heroKenBurns ${slideIntervalMs + 400}ms ease-out forwards`,
+            animationPlayState: trailerActive || !isActive ? 'paused' : 'running',
+          }}
+          onError={() => setBgError(true)}
+        />
       )}
 
       <div ref={trailerContainerRef} style={styles.trailerContainer}>
@@ -343,19 +261,24 @@ export const HeroSection = React.memo(function HeroSection({
       <div style={{ ...styles.gradientLeft, opacity: trailerActive ? 0.45 : 1, transition: 'opacity 0.6s ease' }} />
       <div style={styles.gradientBottom} />
 
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: `translateX(${dragOffset}px)`, transition: slideTransition }}>
-      <div style={{ ...styles.panel, ...contentStyle, pointerEvents: 'auto' }}>
+      <div style={{ ...styles.panel, ...contentStyle }}>
         {logoUrl ? (
           <img
             src={logoUrl}
             alt={activeMeta.name}
             decoding="async"
+            ref={(el) => { if (el?.complete) setLogoLoaded(true); }}
             style={{
               ...styles.logo,
               ...(trailerActive ? styles.logoTrailerActive : null),
+              opacity: logoLoaded ? 1 : 0,
+              transition: `${styles.logo.transition}, opacity 0.4s ease`,
             }}
+            onLoad={() => setLogoLoaded(true)}
             onError={() => setLogoError(true)}
           />
+        ) : pendingLogoIds?.has(activeMeta.id) ? (
+          <div style={{ height: styles.logo.height, marginBottom: styles.logo.marginBottom }} />
         ) : (
           <h1 style={styles.title}>{String(activeMeta.name ?? '')}</h1>
         )}
@@ -370,8 +293,8 @@ export const HeroSection = React.memo(function HeroSection({
         >
           {tagline && <p style={styles.tagline}>{tagline}</p>}
 
-          {metaParts.length > 0 && (
-            <p style={styles.metaLine}>{metaParts.join(' · ')}</p>
+          {activeMeta.description && (
+            <p style={{ ...styles.description, animation: 'heroFadeIn 0.4s ease' }}>{activeMeta.description}</p>
           )}
 
           {(!isNaN(imdbNum) || certification || genreLine.length > 0) && (
@@ -391,10 +314,6 @@ export const HeroSection = React.memo(function HeroSection({
             </div>
           )}
 
-          {activeMeta.description && (
-            <p style={styles.description}>{activeMeta.description}</p>
-          )}
-
           {awards && <p style={styles.awards}>{awards}</p>}
         </div>
 
@@ -403,14 +322,11 @@ export const HeroSection = React.memo(function HeroSection({
             <Play size={13} fill="currentColor" />
             {t('common.play')}
           </button>
-          <HeroIconBtn onClick={() => onAddToWatchlist?.(activeMeta)} title={t('auto.my_list')} ariaLabel={t('auto.my_list')}>
-            <Plus size={20} />
-          </HeroIconBtn>
-          <HeroIconBtn onClick={() => onDetails?.(activeMeta)} title={t('auto.info')} ariaLabel={t('auto.info')}>
-            <Info size={20} />
-          </HeroIconBtn>
+          <button style={styles.moreInfoBtn} onClick={() => onDetails?.(activeMeta)}>
+            <Info size={16} />
+            {t('hero.more_info')}
+          </button>
         </div>
-      </div>
       </div>
 
       {canSlide && !trailerActive && (
@@ -419,17 +335,9 @@ export const HeroSection = React.memo(function HeroSection({
             <button
               key={item.id || item.name}
               aria-label={`Show ${item.name}`}
-              style={styles.indicatorTrack}
+              style={{ ...styles.indicatorTrack, ...(i === activeIndex ? styles.indicatorTrackActive : null) }}
               onClick={() => goTo(i)}
-            >
-              <span
-                ref={i === activeIndex ? indicatorFillRef : undefined}
-                style={{
-                  ...styles.indicatorFill,
-                  ...(i < activeIndex ? styles.indicatorFillDone : null),
-                }}
-              />
-            </button>
+            />
           ))}
         </div>
       )}
