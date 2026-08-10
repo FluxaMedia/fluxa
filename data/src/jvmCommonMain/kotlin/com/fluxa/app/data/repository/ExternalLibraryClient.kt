@@ -68,9 +68,10 @@ class ExternalLibraryClient @Inject constructor(
     suspend fun getTraktContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> =
         withContext(Dispatchers.IO) {
             val inProgress = getTraktPlaybackItems(profile, language)
-            val inProgressIds = inProgress.mapTo(mutableSetOf()) { it.id }
-            val upNext = getTraktUpNextItems(profile, language).filter { it.id !in inProgressIds }
-            inProgress + upNext
+            val upNext = getTraktUpNextItems(profile, language)
+            (inProgress + upNext)
+                .groupBy { it.id }
+                .map { (_, metas) -> metas.maxBy { it.lastWatchedAt ?: Long.MIN_VALUE } }
         }
 
     suspend fun getSimklContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> =
