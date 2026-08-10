@@ -19,6 +19,12 @@ class EmbeddedTextEngine(
         scheduler.setCueIndex(CueIndex(cues.toList()))
     }
 
+    fun loadEmbeddedCues(fullFileCues: List<TextCue>) {
+        cues.clear()
+        cues += fullFileCues
+        scheduler.setCueIndex(CueIndex(cues.toList()))
+    }
+
     fun reset() {
         cues.clear()
         scheduler.setCueIndex(CueIndex(emptyList()))

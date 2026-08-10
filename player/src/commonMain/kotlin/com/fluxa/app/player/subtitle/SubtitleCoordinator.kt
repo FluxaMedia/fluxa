@@ -38,6 +38,12 @@ class SubtitleCoordinator(
 
     fun onEmbeddedSample(startUs: Long, endUs: Long, rawText: String) {
         embedded.onSample(startUs, endUs, rawText)
+        selectEmbedded()
+    }
+
+    fun loadEmbeddedCues(fullFileCues: List<TextCue>) {
+        embedded.loadEmbeddedCues(fullFileCues)
+        selectEmbedded()
     }
 
     fun resetEmbedded() = embedded.reset()

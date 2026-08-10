@@ -47,7 +47,11 @@ object PlayerDelayController {
     fun audioDelayUs(): Long = audioDelayMs.get() * 1_000L
 }
 
-class AppAudioRendererFactory(context: Context, private val audioDecoderMode: String = "hw_prefer") : DefaultRenderersFactory(context) {
+class AppAudioRendererFactory(
+    context: Context,
+    private val audioDecoderMode: String = "hw_prefer",
+    private val subtitleCoordinator: com.fluxa.app.player.subtitle.SubtitleCoordinator? = null
+) : DefaultRenderersFactory(context) {
     override fun buildVideoRenderers(
         context: Context,
         extensionRendererMode: Int,
@@ -117,6 +121,7 @@ class AppAudioRendererFactory(context: Context, private val audioDecoderMode: St
     ) {
         LibassDebugLog.d("building text renderers with NativeAssTextRenderer before Media3 TextRenderer")
         out.add(NativeAssTextRenderer())
+        subtitleCoordinator?.let { out.add(EmbeddedTextInterceptor(it)) }
         out.add(
             TextRenderer(output, outputLooper).apply {
                 experimentalSetLegacyDecodingEnabled(true)

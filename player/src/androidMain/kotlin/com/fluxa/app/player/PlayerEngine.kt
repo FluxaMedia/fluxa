@@ -151,7 +151,9 @@ class ExoPlayerEngine(
         PlayerDelayController.setAudioDelayMs(delayMs)
     }
 
-    override fun setSubtitleDelayMs(delayMs: Long) = Unit
+    override fun setSubtitleDelayMs(delayMs: Long) {
+        MediaPlayerControllerFactory.getSubtitleCoordinator(exoPlayer)?.setDelayUs(delayMs.coerceIn(-10_000L, 10_000L) * 1000L)
+    }
 
     override fun setZoomed(zoomed: Boolean) {
         exoPlayer.videoScalingMode = if (zoomed) {
