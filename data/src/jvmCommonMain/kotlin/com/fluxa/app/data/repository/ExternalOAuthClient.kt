@@ -54,24 +54,18 @@ class ExternalOAuthClient @Inject constructor(
         )
     }
 
-    suspend fun exchangeSimklCode(code: String): ExternalOAuthTokenResponse {
+    suspend fun exchangeSimklCode(
+        code: String,
+        codeVerifier: String,
+        redirectUri: String = SimklIntegration.REDIRECT_URI,
+    ): ExternalOAuthTokenResponse {
+        require(codeVerifier.length in 43..128) { "Invalid Simkl PKCE code verifier" }
         return externalSyncApi.exchangeSimklCode(
             clientId = config.simklClientId,
-            clientSecret = config.simklClientSecret.orEmpty(),
+            codeVerifier = codeVerifier,
             grantType = "authorization_code",
             code = code,
-            redirectUri = SimklIntegration.REDIRECT_URI
-        )
-    }
-
-    suspend fun exchangeAnilistCode(code: String): ExternalOAuthTokenResponse {
-        return externalSyncApi.exchangeAnilistCode(
-            com.fluxa.app.data.remote.AnilistTokenRequest(
-                client_id = config.anilistClientId,
-                client_secret = config.anilistClientSecret.orEmpty(),
-                redirect_uri = AnilistIntegration.REDIRECT_URI,
-                code = code
-            )
+            redirectUri = redirectUri,
         )
     }
 

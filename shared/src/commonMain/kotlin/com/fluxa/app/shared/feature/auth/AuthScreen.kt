@@ -1,6 +1,7 @@
 package com.fluxa.app.shared.feature.auth
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,15 +11,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,17 +55,229 @@ fun AuthScreen(
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
     stremioIcon: @Composable () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    backdrop: (@Composable () -> Unit)? = null
 ) {
     LaunchedEffect(state.isAuthenticated) {
         if (state.isAuthenticated) onAction(AuthAction.Completed)
     }
 
-    Box(modifier = modifier.fillMaxSize().background(FluxaColors.backgroundNearBlack)) {
-        when (state.stage) {
-            AuthStage.Credentials -> CredentialsStage(state, language, onAction, nuvioIcon, stremioIcon)
-            AuthStage.Nuvio -> NuvioCredentialsStage(state, language, onAction, nuvioIcon)
-            AuthStage.NuvioImporting -> NuvioImportingStage(state, language, onAction)
+    Box(
+        modifier = modifier.fillMaxSize().then(
+            if (backdrop == null) Modifier.background(FluxaColors.backgroundNearBlack) else Modifier
+        )
+    ) {
+        backdrop?.invoke()
+        if (com.fluxa.app.ui.catalog.LocalDeviceType.current == com.fluxa.app.ui.catalog.DeviceType.Desktop) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = 420.dp)
+                        .shadow(elevation = 40.dp, shape = RoundedCornerShape(28.dp), clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(FluxaColors.backgroundNearBlack.copy(alpha = 0.97f))
+                        .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(28.dp))
+                ) {
+                    when (state.stage) {
+                        AuthStage.Credentials -> DesktopCredentialsCard(state, language, onAction, nuvioIcon, stremioIcon)
+                        AuthStage.Nuvio -> DesktopNuvioCard(state, language, onAction, nuvioIcon)
+                        AuthStage.NuvioImporting -> DesktopNuvioImportingCard(state, language, onAction)
+                    }
+                }
+            }
+        } else {
+            when (state.stage) {
+                AuthStage.Credentials -> CredentialsStage(state, language, onAction, nuvioIcon, stremioIcon)
+                AuthStage.Nuvio -> NuvioCredentialsStage(state, language, onAction, nuvioIcon)
+                AuthStage.NuvioImporting -> NuvioImportingStage(state, language, onAction)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DesktopCredentialsCard(
+    state: AuthUiState,
+    language: String?,
+    onAction: (AuthAction) -> Unit,
+    nuvioIcon: @Composable () -> Unit,
+    stremioIcon: @Composable () -> Unit
+) {
+    val isRoot = state.showProviderActions
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = AppStrings.t(language, if (isRoot) "auth.welcome_back" else "auth.login_with_stremio"),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp
+        )
+
+        if (isRoot) {
+            Spacer(Modifier.height(28.dp))
+            DesktopProviderRow(
+                label = AppStrings.t(language, "auth.continue_with_stremio"),
+                icon = stremioIcon,
+                onClick = { onAction(AuthAction.ContinueWithStremio) }
+            )
+            Spacer(Modifier.height(12.dp))
+            DesktopProviderRow(
+                label = AppStrings.t(language, "auth.continue_with_nuvio"),
+                icon = nuvioIcon,
+                onClick = { onAction(AuthAction.ContinueWithNuvio) }
+            )
+            Spacer(Modifier.height(24.dp))
+            TextButton(onClick = { onAction(AuthAction.ContinueWithoutAccount) }, modifier = Modifier.fillMaxWidth()) {
+                Text(AppStrings.t(language, "auth.continue_without_account"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+            }
+            return@Column
+        }
+
+        Spacer(Modifier.height(24.dp))
+        OutlinedTextField(
+            value = state.email,
+            onValueChange = { onAction(AuthAction.EmailChanged(it)) },
+            placeholder = { Text(AppStrings.t(language, "auth.field.email"), color = Color.White.copy(alpha = 0.3f)) },
+            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            isError = state.emailError != null,
+            supportingText = state.emailError?.let { { Text(it) } },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+            colors = desktopAuthFieldColors()
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = state.password,
+            onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
+            placeholder = { Text(AppStrings.t(language, "auth.field.password"), color = Color.White.copy(alpha = 0.3f)) },
+            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            isError = state.passwordError != null,
+            supportingText = state.passwordError?.let { { Text(it) } },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+            colors = desktopAuthFieldColors()
+        )
+        state.globalError?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, color = FluxaColors.errorRed, fontSize = 12.sp)
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = { onAction(AuthAction.Submit) },
+            enabled = !state.isSubmitting,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+        ) {
+            if (state.isSubmitting) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.Black, strokeWidth = 2.dp)
+            } else {
+                Text(AppStrings.t(language, "auth.log_in"), fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        TextButton(onClick = { onAction(AuthAction.BackToRoot) }, modifier = Modifier.fillMaxWidth()) {
+            Text(AppStrings.t(language, "common.back"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun DesktopProviderRow(
+    label: String,
+    icon: @Composable () -> Unit,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        icon()
+        Spacer(Modifier.width(12.dp))
+        Text(label, color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun DesktopNuvioCard(
+    state: AuthUiState,
+    language: String?,
+    onAction: (AuthAction) -> Unit,
+    nuvioIcon: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        nuvioIcon()
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = AppStrings.t(language, "auth.nuvio.title"),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp
+        )
+        Spacer(Modifier.height(24.dp))
+        OutlinedTextField(
+            value = state.email,
+            onValueChange = { onAction(AuthAction.EmailChanged(it)) },
+            placeholder = { Text(AppStrings.t(language, "auth.field.email"), color = Color.White.copy(alpha = 0.3f)) },
+            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+            colors = desktopAuthFieldColors()
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = state.password,
+            onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
+            placeholder = { Text(AppStrings.t(language, "auth.field.password"), color = Color.White.copy(alpha = 0.3f)) },
+            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+            colors = desktopAuthFieldColors()
+        )
+        state.globalError?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, color = FluxaColors.errorRed, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = { onAction(AuthAction.Submit) },
+            enabled = !state.isSubmitting,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+        ) {
+            if (state.isSubmitting) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.Black, strokeWidth = 2.dp)
+            } else {
+                Text(AppStrings.t(language, "auth.nuvio.sign_in"), fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        TextButton(onClick = { onAction(AuthAction.BackToRoot) }, modifier = Modifier.fillMaxWidth()) {
+            Text(AppStrings.t(language, "common.back"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
         }
     }
 }
@@ -381,6 +600,83 @@ private fun NuvioImportingStage(
 }
 
 @Composable
+private fun DesktopNuvioImportingCard(
+    state: AuthUiState,
+    language: String?,
+    onAction: (AuthAction) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            if (state.importDone) AppStrings.t(language, "auth.nuvio.import.done") else AppStrings.t(language, "auth.nuvio.import.title"),
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp
+        )
+        Spacer(Modifier.height(24.dp))
+        Column(modifier = Modifier.fillMaxWidth()) {
+            IMPORT_STEP_ORDER.forEach { (step, key) ->
+                val complete = step in state.importSteps
+                val active = !complete && !state.importDone && (state.importSteps.size == IMPORT_STEP_ORDER.indexOfFirst { it.first == step })
+                Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(
+                                    if (complete) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.08f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (complete) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                        Text(AppStrings.t(language, key), color = Color.White.copy(alpha = if (complete) 0.85f else 0.3f), fontSize = 13.sp)
+                    }
+                    if (active && state.importItemTitle != null && state.importItemIndex != null && state.importItemTotal != null) {
+                        Text(
+                            AppStrings.format(
+                                language,
+                                "auth.nuvio.import.item_progress",
+                                state.importItemIndex,
+                                state.importItemTotal,
+                                state.importItemTitle
+                            ),
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 28.dp, top = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
+        if (state.importDone) {
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = { onAction(AuthAction.ContinueAfterImport) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+            ) {
+                Text(AppStrings.t(language, "common.continue"), fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
 private fun authFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = Color.White,
     unfocusedTextColor = Color.White,
@@ -389,4 +685,17 @@ private fun authFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedLabelColor = Color.White.copy(alpha = 0.7f),
     unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
     cursorColor = Color.White
+)
+
+@Composable
+private fun desktopAuthFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = Color.White,
+    unfocusedTextColor = Color.White,
+    focusedBorderColor = Color.White.copy(alpha = 0.3f),
+    unfocusedBorderColor = Color.Transparent,
+    cursorColor = Color.White,
+    focusedContainerColor = Color.White.copy(alpha = 0.07f),
+    unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+    focusedLeadingIconColor = Color.White.copy(alpha = 0.6f),
+    unfocusedLeadingIconColor = Color.White.copy(alpha = 0.35f)
 )
