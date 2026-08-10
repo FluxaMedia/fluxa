@@ -15,6 +15,8 @@ data class DetailUiState(
     val autoSelectedStream: Stream? = null,
     val isInWatchlist: Boolean = false,
     val feedback: Boolean? = null,
+    val supportsWatchlist: Boolean = true,
+    val supportsLike: Boolean = true,
     val availableAddons: List<String> = emptyList(),
     val loadingAddonNames: List<String> = emptyList(),
     val hasStreamProviders: Boolean = true,

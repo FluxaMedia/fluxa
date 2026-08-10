@@ -1,95 +1,76 @@
 package com.fluxa.app.shared.feature.detail
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
-import com.fluxa.app.shared.LocalHeroTrailerSurface
-import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.image.FluxaRemoteImage
-import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.LocalWindowWidthClass
 import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.FluxaColors
 
-private enum class DetailTab { Episodes, MoreLikeThis }
+internal enum class DetailTab { Episodes, MoreLikeThis }
 
 val LocalDetailRatingLogo = staticCompositionLocalOf<@Composable (String, String, Modifier) -> Unit> {
     { source, _, modifier -> Text(source, modifier = modifier, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
 }
 
-private val ratingDisplayOrder = listOf("imdb", "tmdb", "trakt", "tomatoes", "popcorn", "metacritic", "metacriticuser", "letterboxd", "myanimelist")
+internal val ratingDisplayOrder = listOf("imdb", "tmdb", "trakt", "tomatoes", "popcorn", "metacritic", "metacriticuser", "letterboxd", "myanimelist")
 
-private fun DetailRatingUiModel.normalizedSource(): String = source.lowercase().replace(" ", "")
+internal fun DetailRatingUiModel.normalizedSource(): String = source.lowercase().replace(" ", "")
 
-private fun DetailRatingUiModel.displayValue(): String {
+internal fun DetailRatingUiModel.displayValue(): String {
     val number = value.toFloatOrNull() ?: return value
     return when (normalizedSource()) {
         "tmdb", "trakt", "tomatoes", "popcorn" -> "${number.toInt()}%"
@@ -98,7 +79,7 @@ private fun DetailRatingUiModel.displayValue(): String {
     }
 }
 
-private fun DetailRatingUiModel.scoreColor(): Color = when (normalizedSource()) {
+internal fun DetailRatingUiModel.scoreColor(): Color = when (normalizedSource()) {
     "metacritic" -> when {
         (value.toFloatOrNull() ?: 0f) >= 61f -> Color(0xFF66CC33)
         (value.toFloatOrNull() ?: 0f) >= 40f -> Color(0xFFFFCC33)
@@ -112,6 +93,12 @@ private fun DetailRatingUiModel.scoreColor(): Color = when (normalizedSource()) 
     else -> Color.White
 }
 
+internal fun DetailUiModel.visibleRatings(): List<DetailRatingUiModel> = ratings.ifEmpty {
+    ratingLabel.takeIf { it.isNotBlank() }?.let { listOf(DetailRatingUiModel("IMDb", it)) }.orEmpty()
+}.map { rating -> rating.copy(source = rating.normalizedSource()) }
+    .filter { it.source in ratingDisplayOrder }
+    .sortedBy { ratingDisplayOrder.indexOf(it.source) }
+
 @Composable
 fun DetailScreen(
     state: DetailUiState,
@@ -119,6 +106,7 @@ fun DetailScreen(
     onAction: (DetailAction) -> Unit,
     onBack: () -> Unit = {},
     onShareRequested: () -> Unit = {},
+    presentation: DetailPresentationOptions = DetailPresentationOptions(),
     modifier: Modifier = Modifier
 ) {
     val content = state.content
@@ -130,6 +118,7 @@ fun DetailScreen(
                 content = content,
                 language = language,
                 onAction = onAction,
+                presentation = presentation,
                 onStickyContextVisibilityChanged = { showStickyContext = it }
             )
             state.isLoading -> DetailLoading()
@@ -139,6 +128,8 @@ fun DetailScreen(
             content = content,
             language = language,
             showStickyContext = isMobile && showStickyContext,
+            preferClearlogo = presentation.preferClearlogo,
+            screenStyle = presentation.screenStyle,
             onAction = onAction,
             onBack = onBack,
             onShareRequested = onShareRequested
@@ -147,14 +138,43 @@ fun DetailScreen(
 }
 
 @Composable
-private fun TopBar(
+internal fun TopBar(
     content: DetailUiModel?,
     language: String?,
     showStickyContext: Boolean,
+    preferClearlogo: Boolean,
+    screenStyle: DetailScreenStyle,
     onAction: (DetailAction) -> Unit,
     onBack: () -> Unit,
     onShareRequested: () -> Unit
 ) {
+    if (LocalDeviceType.current == DeviceType.Mobile && screenStyle == DetailScreenStyle.Cinematic && !showStickyContext) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.38f))
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = AppStrings.t(language, "common.back"),
+                    tint = Color.White,
+                    modifier = Modifier.size(23.dp)
+                )
+            }
+        }
+        return
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -181,10 +201,14 @@ private fun TopBar(
             modifier = Modifier.size(22.dp).clickable(onClick = onBack)
         )
         if (showStickyContext && content != null) {
-            StickyContentIdentity(content = content, modifier = Modifier.width(130.dp).padding(start = 10.dp, end = 6.dp))
+            StickyContentIdentity(
+                content = content,
+                preferClearlogo = preferClearlogo,
+                modifier = Modifier.width(130.dp).padding(start = 10.dp, end = 6.dp)
+            )
         }
         Box(modifier = Modifier.weight(1f))
-        if (content != null) {
+        if (content != null && content.supportsWatchlist) {
             Icon(
                 imageVector = if (content.isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
                 contentDescription = AppStrings.t(language, if (content.isInWatchlist) "auto.in_list" else "auto.my_list"),
@@ -202,14 +226,19 @@ private fun TopBar(
 }
 
 @Composable
-private fun StickyContentIdentity(content: DetailUiModel, modifier: Modifier = Modifier) {
-    if (content.logoUrl != null) {
+internal fun StickyContentIdentity(
+    content: DetailUiModel,
+    preferClearlogo: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    if (preferClearlogo && content.logoUrl != null) {
         FluxaRemoteImage(
             imageUrl = content.logoUrl,
             cacheKey = "detail-sticky-logo:${content.id}",
             contentDescription = content.title,
             modifier = modifier.height(28.dp),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Fit,
+            trimTransparentPadding = true
         )
     } else {
         Text(
@@ -225,23 +254,72 @@ private fun StickyContentIdentity(content: DetailUiModel, modifier: Modifier = M
 }
 
 @Composable
-private fun DetailContent(
+internal fun DetailContent(
     content: DetailUiModel,
     language: String?,
     onAction: (DetailAction) -> Unit,
+    presentation: DetailPresentationOptions,
+    onStickyContextVisibilityChanged: (Boolean) -> Unit
+) {
+    if (LocalDeviceType.current == DeviceType.Mobile) {
+        when (presentation.screenStyle) {
+            DetailScreenStyle.Cinematic -> CinematicMobileDetailContent(
+                content = content,
+                language = language,
+                onAction = onAction,
+                presentation = presentation,
+                onStickyContextVisibilityChanged = onStickyContextVisibilityChanged
+            )
+            DetailScreenStyle.Compact -> CompactMobileDetailContent(
+                content = content,
+                language = language,
+                onAction = onAction,
+                presentation = presentation,
+                onStickyContextVisibilityChanged = onStickyContextVisibilityChanged
+            )
+            DetailScreenStyle.Classic -> ClassicDetailContent(
+                content = content,
+                language = language,
+                onAction = onAction,
+                presentation = presentation,
+                onStickyContextVisibilityChanged = onStickyContextVisibilityChanged
+            )
+        }
+        return
+    }
+
+    ClassicDetailContent(
+        content = content,
+        language = language,
+        onAction = onAction,
+        presentation = presentation.copy(
+            screenStyle = DetailScreenStyle.Classic,
+            episodeCardsLayout = if (LocalDeviceType.current == DeviceType.Desktop) "desktop_grid" else "list"
+        ),
+        onStickyContextVisibilityChanged = onStickyContextVisibilityChanged
+    )
+}
+
+@Composable
+internal fun ClassicDetailContent(
+    content: DetailUiModel,
+    language: String?,
+    onAction: (DetailAction) -> Unit,
+    presentation: DetailPresentationOptions,
     onStickyContextVisibilityChanged: (Boolean) -> Unit
 ) {
     val isSeries = content.type == "series" && content.availableSeasons.isNotEmpty()
-    val hasSecondary = isSeries || content.relatedItems.isNotEmpty()
+    val hasSecondary = isSeries || (presentation.showRecommendations && content.relatedItems.isNotEmpty())
     val twoPane = LocalWindowWidthClass.current == WindowWidthClass.Expanded &&
-        LocalDeviceType.current != DeviceType.TV
+        LocalDeviceType.current != DeviceType.TV &&
+        LocalDeviceType.current != DeviceType.Desktop
     if (twoPane && hasSecondary) {
         val listState = rememberLazyListState()
         ObserveStickyContextVisibility(listState, onStickyContextVisibilityChanged)
         Row(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(state = listState, modifier = Modifier.width(440.dp).fillMaxHeight()) {
-                item(key = "hero") { Hero(content = content, language = language) }
-                item(key = "body") { DetailBody(content = content, language = language, onAction = onAction) }
+            LazyColumn(state = listState, modifier = Modifier.width(400.dp).fillMaxHeight()) {
+                item(key = "hero") { Hero(content = content, language = language, preferClearlogo = presentation.preferClearlogo) }
+                item(key = "body") { DetailBody(content = content, language = language, onAction = onAction, presentation = presentation) }
                 item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
             }
             DetailSecondaryPane(
@@ -249,28 +327,75 @@ private fun DetailContent(
                 language = language,
                 onAction = onAction,
                 isSeries = isSeries,
+                presentation = presentation,
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )
         }
     } else {
+        val isExpanded = LocalWindowWidthClass.current == WindowWidthClass.Expanded &&
+            LocalDeviceType.current != DeviceType.TV
         var activeTab by remember(content.id) { mutableStateOf(DetailTab.Episodes) }
         val listState = rememberLazyListState()
         ObserveStickyContextVisibility(listState, onStickyContextVisibilityChanged)
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            item(key = "hero") { Hero(content = content, language = language) }
-            item(key = "body") { DetailBody(content = content, language = language, onAction = onAction) }
-            detailSecondaryItems(content, language, onAction, isSeries, activeTab) { activeTab = it }
-            item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
+        if (isExpanded) {
+            androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val density = LocalDensity.current
+                val widthPx = with(density) { maxWidth.toPx() }
+                val heightPx = with(density) { maxHeight.toPx() }
+                FluxaRemoteImage(
+                    imageUrl = content.backgroundUrl ?: content.posterUrl,
+                    cacheKey = "detail-hero:${content.id}",
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter
+                )
+                Box(
+                    modifier = Modifier.fillMaxSize().background(
+                        Brush.linearGradient(
+                            colorStops = arrayOf(
+                                0f to FluxaColors.background,
+                                0.35f to FluxaColors.background.copy(alpha = 0.92f),
+                                0.65f to FluxaColors.background.copy(alpha = 0.45f),
+                                1f to Color.Transparent
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset(widthPx * 0.62f, heightPx * 0.78f)
+                        )
+                    )
+                )
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                    item(key = "spacer-top") { Box(modifier = Modifier.height(140.dp)) }
+                    item(key = "identity") {
+                        ExpandedDetailIdentityBlock(content = content, language = language, onAction = onAction, preferClearlogo = presentation.preferClearlogo)
+                    }
+                    if (presentation.showCast && content.cast.isNotEmpty()) {
+                        item(key = "cast") {
+                            CastSection(members = content.cast, language = language, modifier = Modifier.padding(top = 28.dp, start = 40.dp))
+                        }
+                    }
+                    detailSecondaryItems(content, language, onAction, isSeries, activeTab, presentation) { activeTab = it }
+                    item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
+                }
+            }
+        } else {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                item(key = "hero") { Hero(content = content, language = language, preferClearlogo = presentation.preferClearlogo) }
+                item(key = "body") { DetailBody(content = content, language = language, onAction = onAction, presentation = presentation) }
+                detailSecondaryItems(content, language, onAction, isSeries, activeTab, presentation) { activeTab = it }
+                item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
+            }
         }
     }
 }
 
 @Composable
-private fun ObserveStickyContextVisibility(
+internal fun ObserveStickyContextVisibility(
     listState: LazyListState,
-    onStickyContextVisibilityChanged: (Boolean) -> Unit
+    onStickyContextVisibilityChanged: (Boolean) -> Unit,
+    threshold: Dp = 390.dp
 ) {
-    val logoExitOffset = with(LocalDensity.current) { 390.dp.roundToPx() }
+    val logoExitOffset = with(LocalDensity.current) { threshold.roundToPx() }
     val showStickyContext by remember(listState, logoExitOffset) {
         derivedStateOf {
             listState.firstVisibleItemIndex > 0 ||
@@ -283,33 +408,41 @@ private fun ObserveStickyContextVisibility(
 }
 
 @Composable
-private fun DetailSecondaryPane(
+internal fun DetailSecondaryPane(
     content: DetailUiModel,
     language: String?,
     onAction: (DetailAction) -> Unit,
     isSeries: Boolean,
+    presentation: DetailPresentationOptions,
     modifier: Modifier = Modifier
 ) {
     var activeTab by remember(content.id) { mutableStateOf(DetailTab.Episodes) }
+    val effectivePresentation = if (LocalDeviceType.current == DeviceType.Desktop) {
+        presentation.copy(episodeCardsLayout = "desktop_grid")
+    } else {
+        presentation
+    }
     LazyColumn(modifier = modifier) {
-        detailSecondaryItems(content, language, onAction, isSeries, activeTab) { activeTab = it }
+        detailSecondaryItems(content, language, onAction, isSeries, activeTab, effectivePresentation) { activeTab = it }
         item(key = "bottom-spacer") { Box(modifier = Modifier.height(32.dp)) }
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.detailSecondaryItems(
+internal fun androidx.compose.foundation.lazy.LazyListScope.detailSecondaryItems(
     content: DetailUiModel,
     language: String?,
     onAction: (DetailAction) -> Unit,
     isSeries: Boolean,
     activeTab: DetailTab,
+    presentation: DetailPresentationOptions,
     onTabSelected: (DetailTab) -> Unit
 ) {
-    if (isSeries || content.relatedItems.isNotEmpty()) {
+    val hasRelated = presentation.showRecommendations && content.relatedItems.isNotEmpty()
+    if (isSeries || hasRelated) {
         item(key = "tabs") {
             TabRow(
                 isSeries = isSeries,
-                hasRelated = content.relatedItems.isNotEmpty(),
+                hasRelated = hasRelated,
                 activeTab = activeTab,
                 language = language,
                 onTabSelected = onTabSelected,
@@ -320,13 +453,16 @@ private fun androidx.compose.foundation.lazy.LazyListScope.detailSecondaryItems(
     when {
         isSeries && activeTab == DetailTab.Episodes -> {
             item(key = "season-selector") {
-                SeasonSelector(content = content, language = language, onAction = onAction)
+                SeasonSelector(content = content, language = language, onAction = onAction, mode = presentation.seasonSelectorMode)
             }
-            items(content.seasonEpisodes, key = { it.id }) { episode ->
-                EpisodeRow(episode = episode, content = content, onAction = onAction)
-            }
+            detailEpisodeItems(
+                content = content,
+                language = language,
+                presentation = presentation,
+                onAction = onAction
+            )
         }
-        content.relatedItems.isNotEmpty() -> {
+        hasRelated -> {
             item(key = "related") {
                 RelatedGrid(items = content.relatedItems, onAction = onAction)
             }
@@ -336,12 +472,18 @@ private fun androidx.compose.foundation.lazy.LazyListScope.detailSecondaryItems(
 }
 
 @Composable
-private fun DetailBody(
+internal fun DetailBody(
     content: DetailUiModel,
     language: String?,
-    onAction: (DetailAction) -> Unit
+    onAction: (DetailAction) -> Unit,
+    presentation: DetailPresentationOptions
 ) {
-    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+    val isExpanded = LocalWindowWidthClass.current == WindowWidthClass.Expanded
+    Column(
+        modifier = Modifier
+            .then(if (isExpanded) Modifier.widthIn(max = 640.dp) else Modifier)
+            .padding(horizontal = 20.dp)
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
             ResumeButton(content = content, language = language, onAction = onAction)
             if (content.resumeProgress > 0L && content.resumeVideoId != null) {
@@ -358,540 +500,10 @@ private fun DetailBody(
                 modifier = Modifier.padding(top = 16.dp)
             )
         }
-        if (content.cast.isNotEmpty()) {
+        if (presentation.showCast && content.cast.isNotEmpty()) {
             CastSection(members = content.cast, language = language, modifier = Modifier.padding(top = 20.dp))
         }
         DiscussionSection(AppStrings.t(language, "detail.trakt_comments"), content.traktComments, language)
         DiscussionSection(AppStrings.t(language, "detail.mdblist_discussion"), content.mdblistDiscussion, language)
-    }
-}
-
-@Composable
-private fun DiscussionSection(title: String, comments: List<DetailDiscussionCommentUiModel>, language: String?) {
-    if (comments.isEmpty()) return
-    Column(modifier = Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        comments.forEach { comment ->
-            Column(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.07f)).padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(comment.author, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text(
-                    if (comment.spoiler) AppStrings.t(language, "detail.comments_spoiler") else comment.body,
-                    color = Color.White.copy(alpha = 0.78f),
-                    fontSize = 13.sp
-                )
-                if (comment.likes > 0) Text("♥ ${comment.likes}", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun Hero(content: DetailUiModel, language: String?) {
-    Box(modifier = Modifier.fillMaxWidth().height(560.dp).clip(RoundedCornerShape(0.dp))) {
-        FluxaRemoteImage(
-            imageUrl = content.backgroundUrl ?: content.posterUrl,
-            cacheKey = "detail-hero:${content.id}",
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-        val trailerSurface = LocalHeroTrailerSurface.current
-        if (content.trailerUrl != null && trailerSurface != null) {
-            val trailerAlpha by animateFloatAsState(targetValue = 1f, label = "detail-hero-trailer-fade")
-            trailerSurface(content.trailerUrl, emptyList(), {}, Modifier.fillMaxSize().alpha(trailerAlpha))
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0f to Color.Transparent,
-                            0.55f to Color.Transparent,
-                            0.85f to FluxaColors.background.copy(alpha = 0.75f),
-                            1f to FluxaColors.background
-                        )
-                    )
-                )
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 8.dp)
-        ) {
-            Text(
-                text = if (content.type == "series") AppStrings.t(language, "auto.series") else AppStrings.t(language, "auto.movie"),
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp
-            )
-            if (content.logoUrl != null) {
-                FluxaRemoteImage(
-                    imageUrl = content.logoUrl,
-                    cacheKey = "detail-logo:${content.id}",
-                    contentDescription = content.title,
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .heightIn(max = 90.dp)
-                        .fillMaxWidth(0.7f),
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                Text(
-                    text = content.title,
-                    color = Color.White,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            val metaParts = buildList {
-                content.ageRating?.takeIf { it.isNotBlank() }?.let { add(it to true) }
-                if (content.releaseLabel.isNotBlank()) add(content.releaseLabel to false)
-                if (content.type == "series" && content.availableSeasons.isNotEmpty()) {
-                    add("${content.availableSeasons.size} ${AppStrings.t(language, "auto.seasons")}" to false)
-                } else {
-                    content.runtimeLabel?.takeIf { it.isNotBlank() }?.let { add(it to false) }
-                }
-            }
-            if (metaParts.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    metaParts.forEach { (part, isBadge) ->
-                        if (isBadge) {
-                            Text(
-                                text = part,
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier
-                                    .background(FluxaColors.accent, RoundedCornerShape(3.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        } else {
-                            Text(text = part, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
-                        }
-                    }
-                }
-            }
-            val ratings = content.ratings.ifEmpty {
-                content.ratingLabel.takeIf { it.isNotBlank() }?.let { listOf(DetailRatingUiModel("IMDb", it)) }.orEmpty()
-            }.map { rating -> rating.copy(source = rating.normalizedSource()) }
-                .filter { it.source in ratingDisplayOrder }
-                .sortedBy { ratingDisplayOrder.indexOf(it.source) }
-            if (ratings.isNotEmpty()) {
-                val ratingLogo = LocalDetailRatingLogo.current
-                LazyRow(
-                    modifier = Modifier.padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(ratings, key = { "${it.source}:${it.value}" }) { rating ->
-                        Row(
-                            modifier = Modifier
-                                .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            ratingLogo(
-                                rating.source,
-                                rating.value,
-                                Modifier.height(if (rating.source == "imdb") 20.dp else 16.dp)
-                            )
-                            Text(rating.displayValue(), color = rating.scoreColor(), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ResumeButton(content: DetailUiModel, language: String?, onAction: (DetailAction) -> Unit) {
-    val resumeEpisode = content.resumeVideoId?.let { id -> content.seasonEpisodes.firstOrNull { it.id == id } }
-    val label = if (content.resumeProgress > 0L && resumeEpisode?.season != null && resumeEpisode.number != null) {
-        AppStrings.t(language, "auto.resume") + " S${resumeEpisode.season} E${resumeEpisode.number}"
-    } else if (content.resumeProgress > 0L) {
-        AppStrings.t(language, "auto.resume")
-    } else {
-        AppStrings.t(language, "common.play")
-    }
-    val isTv = LocalDeviceType.current == DeviceType.TV
-    var focused by remember { mutableStateOf(false) }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
-            .onFocusChanged { focused = it.isFocused }
-            .then(if (isTv && focused) Modifier.scale(1.03f).border(3.dp, Color.White, RoundedCornerShape(14.dp)) else Modifier)
-            .clickable { onAction(DetailAction.Play()) }
-            .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Rounded.PlayArrow,
-                contentDescription = null,
-                tint = Color.Black,
-                modifier = Modifier.size(27.dp)
-            )
-            Text(
-                text = label,
-                color = Color.Black,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 16.sp,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun RestartButton(language: String?, onClick: () -> Unit) {
-    val isTv = LocalDeviceType.current == DeviceType.TV
-    var focused by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(46.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (isTv && focused) Color.White else FluxaColors.surfaceRaised)
-            .onFocusChanged { focused = it.isFocused }
-            .then(if (isTv && focused) Modifier.scale(1.03f).border(2.dp, Color.White, RoundedCornerShape(6.dp)) else Modifier)
-            .clickable(onClick = onClick),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Filled.Refresh, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(18.dp))
-        Text(
-            text = AppStrings.t(language, "auto.restart"),
-            color = if (isTv && focused) Color.Black else Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(start = 8.dp)
-        )
-    }
-}
-
-@Composable
-private fun DownloadButton(content: DetailUiModel, language: String?, onAction: (DetailAction) -> Unit) {
-    val selectedEpisodeId = content.selectedEpisodeId
-    val isTv = LocalDeviceType.current == DeviceType.TV
-    var focused by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(46.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (isTv && focused) Color.White else FluxaColors.surfaceRaised)
-            .onFocusChanged { focused = it.isFocused }
-            .then(if (isTv && focused) Modifier.scale(1.03f).border(2.dp, Color.White, RoundedCornerShape(6.dp)) else Modifier)
-            .clickable {
-                if (selectedEpisodeId != null) onAction(DetailAction.DownloadEpisode(selectedEpisodeId))
-                else onAction(DetailAction.DownloadSeason(content.selectedSeason))
-            },
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Filled.Download, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(18.dp))
-        Text(
-            text = AppStrings.t(language, "auto.download"),
-            color = if (isTv && focused) Color.Black else Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(start = 8.dp)
-        )
-    }
-}
-
-@Composable
-private fun CastSection(members: List<DetailCastMemberUiModel>, language: String?, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(
-            text = AppStrings.t(language, "auto.cast"),
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-        LazyRow(
-            contentPadding = PaddingValues(top = 12.dp, end = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(members.take(20), key = { "${it.name}:${it.character.orEmpty()}" }) { member ->
-                CastMemberCard(member)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CastMemberCard(member: DetailCastMemberUiModel) {
-    val initials = remember(member.name) {
-        member.name.split(' ').filter(String::isNotBlank).take(2).joinToString("") { it.take(1) }.uppercase()
-    }
-    Box(modifier = Modifier.width(104.dp), contentAlignment = Alignment.TopCenter) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            Box(
-                modifier = Modifier.size(64.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(initials, color = Color.White.copy(alpha = 0.78f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                FluxaRemoteImage(
-                    imageUrl = member.profileUrl,
-                    cacheKey = "detail-cast:${member.profileUrl}",
-                    contentDescription = member.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            Text(
-                text = member.name,
-                color = Color.White,
-                fontSize = 12.sp,
-                lineHeight = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-            )
-            member.character?.takeIf(String::isNotBlank)?.let { character ->
-                Text(
-                    text = character,
-                    color = Color.White.copy(alpha = 0.68f),
-                    fontSize = 11.sp,
-                    lineHeight = 12.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TabRow(
-    isSeries: Boolean,
-    hasRelated: Boolean,
-    activeTab: DetailTab,
-    language: String?,
-    onTabSelected: (DetailTab) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-        if (isSeries) {
-            DetailTabLabel(
-                text = AppStrings.t(language, "auto.episodes"),
-                selected = activeTab == DetailTab.Episodes,
-                onClick = { onTabSelected(DetailTab.Episodes) }
-            )
-        }
-        if (hasRelated) {
-            DetailTabLabel(
-                text = AppStrings.t(language, "auto.similar_titles"),
-                selected = activeTab == DetailTab.MoreLikeThis || !isSeries,
-                onClick = { onTabSelected(DetailTab.MoreLikeThis) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun DetailTabLabel(text: String, selected: Boolean, onClick: () -> Unit) {
-    Column(modifier = Modifier.clickable(onClick = onClick)) {
-        Text(
-            text = text,
-            color = if (selected) Color.White else Color.White.copy(alpha = 0.5f),
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            fontSize = 14.sp
-        )
-        Box(
-            modifier = Modifier
-                .padding(top = 8.dp)
-                .height(2.dp)
-                .width(if (selected) 24.dp else 0.dp)
-                .background(if (selected) FluxaColors.accent else Color.Transparent)
-        )
-    }
-}
-
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-private fun SeasonSelector(content: DetailUiModel, language: String?, onAction: (DetailAction) -> Unit) {
-    var sheetOpen by remember(content.id) { mutableStateOf(false) }
-    var triggerFocused by remember { mutableStateOf(false) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .onFocusChanged { triggerFocused = it.isFocused }
-            .background(if (triggerFocused) Color.White.copy(alpha = 0.9f) else FluxaColors.surfaceRaised)
-            .clickable { sheetOpen = true }
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-    ) {
-        Text(
-            text = "${AppStrings.t(language, "auto.season")} ${content.selectedSeason}",
-            color = if (triggerFocused) Color.Black else Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 15.sp
-        )
-        Icon(
-            imageVector = Icons.Filled.ArrowDropDown,
-            contentDescription = null,
-            tint = if (triggerFocused) Color.Black else Color.White,
-            modifier = Modifier.padding(start = 4.dp).size(20.dp)
-        )
-    }
-    if (sheetOpen) {
-        val selectedRowFocusRequester = remember(content.id) { FocusRequester() }
-        LaunchedEffect(sheetOpen) {
-            if (sheetOpen) runCatching { selectedRowFocusRequester.requestFocus() }
-        }
-        androidx.compose.material3.ModalBottomSheet(
-            onDismissRequest = { sheetOpen = false },
-            containerColor = FluxaColors.surfaceRaised
-        ) {
-            Column(modifier = Modifier.padding(bottom = 24.dp)) {
-                content.availableSeasons.forEach { season ->
-                    val selected = season == content.selectedSeason
-                    var rowFocused by remember { mutableStateOf(false) }
-                    Text(
-                        text = "${AppStrings.t(language, "auto.season")} $season",
-                        color = if (rowFocused) Color.Black else if (selected) FluxaColors.accent else Color.White,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 16.sp,
-                        modifier = Modifier
-                            .let { if (selected) it.focusRequester(selectedRowFocusRequester) else it }
-                            .onFocusChanged { rowFocused = it.isFocused }
-                            .background(if (rowFocused) Color.White else Color.Transparent)
-                            .clickable {
-                                sheetOpen = false
-                                onAction(DetailAction.SeasonSelected(season))
-                            }
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 14.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EpisodeRow(episode: DetailEpisodeUiModel, content: DetailUiModel, onAction: (DetailAction) -> Unit) {
-    val selected = episode.id == content.selectedEpisodeId
-    val isTv = LocalDeviceType.current == DeviceType.TV
-    var focused by remember { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (isTv && focused) Color.White.copy(alpha = 0.16f) else Color.Transparent)
-            .onFocusChanged { focused = it.isFocused }
-            .clickable(enabled = !episode.isUpcoming) { onAction(DetailAction.EpisodeSelected(episode.id)) }
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(FluxaColors.surfaceCard)
-            ) {
-                FluxaRemoteImage(
-                    imageUrl = episode.thumbnailUrl,
-                    cacheKey = "detail-episode:${episode.id}",
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                if (selected) {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
-                    }
-                }
-            }
-            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(
-                    text = listOfNotNull(episode.number?.let { "$it." }, episode.title).joinToString(" "),
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                episode.runtimeLabel?.let {
-                    Text(text = it, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
-            if (!episode.isUpcoming) {
-                Icon(
-                    imageVector = Icons.Filled.Download,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .padding(start = 8.dp, top = 4.dp)
-                        .size(20.dp)
-                        .clickable { onAction(DetailAction.DownloadEpisode(episode.id)) }
-                )
-            }
-        }
-        episode.description?.takeIf { it.isNotBlank() }?.let {
-            Text(
-                text = it,
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 13.sp,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun RelatedGrid(items: List<CatalogItemUiModel>, onAction: (DetailAction) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(items, key = { it.id }) { item ->
-            CatalogCard(model = item.card, onClick = { onAction(DetailAction.RelatedItemSelected(item)) })
-        }
-    }
-}
-
-@Composable
-private fun DetailLoading() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = Color.White)
-    }
-}
-
-@Composable
-private fun DetailEmpty(text: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = text, color = Color.White)
     }
 }

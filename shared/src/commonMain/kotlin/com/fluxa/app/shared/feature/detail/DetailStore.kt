@@ -34,6 +34,7 @@ class DetailStore(
     suspend fun dispatch(action: DetailAction) {
         when (action) {
             DetailAction.ToggleWatchlist -> dataSource.toggleWatchlist(request.id, request.type)
+            DetailAction.ToggleLike -> dataSource.toggleLike(request.id, request.type)
             is DetailAction.SeasonSelected -> dataSource.selectSeason(action.season)
             is DetailAction.EpisodeSelected -> {
                 val content = state.value.content

@@ -25,6 +25,7 @@ class AppleDetailDataSource(
     private val state = MutableStateFlow(DetailUiState())
     private var onLoadRequested: (AppleDetailRequestSnapshot) -> Unit = {}
     private var onWatchlistRequested: (AppleDetailRequestSnapshot) -> Unit = {}
+    private var subtitleUrlsByStreamUrl: Map<String, List<String>> = emptyMap()
 
     override fun observeDetail(id: String, type: String): Flow<DetailUiState> = state.asStateFlow()
 
@@ -51,6 +52,25 @@ class AppleDetailDataSource(
             )
         }
         onWatchlistRequested(AppleDetailRequestSnapshot(id, type, title = state.value.content?.title))
+    }
+
+    override suspend fun toggleLike(id: String, type: String) {
+        val content = state.value.content ?: return
+        val wasLiked = watchlistStore.feedback(id) == true
+        watchlistStore.setFeedback(
+            id,
+            if (wasLiked) null else true,
+            Meta(
+                id = content.id,
+                name = content.title,
+                type = content.type,
+                poster = content.posterUrl,
+                background = content.backgroundUrl,
+                logo = content.logoUrl,
+                description = content.description
+            )
+        )
+        state.value = state.value.copy(content = content.copy(isLiked = watchlistStore.feedback(id) == true))
     }
 
     override suspend fun selectSeason(season: Int) {
@@ -86,6 +106,7 @@ class AppleDetailDataSource(
     }
 
     fun update(snapshot: AppleDetailSnapshot) {
+        subtitleUrlsByStreamUrl = snapshot.streams.associate { it.playableUrl to it.subtitleUrls }
         state.value = DetailUiState(
             content = DetailUiModel(
                 id = snapshot.id,
@@ -111,10 +132,28 @@ class AppleDetailDataSource(
         )
     }
 
+    fun playbackRequest(
+        stream: DetailStreamUiModel,
+        resumePositionMs: Long,
+        videoId: String? = null,
+    ): ApplePlaybackRequestSnapshot {
+        val content = state.value.content
+        return ApplePlaybackRequestSnapshot(
+            playableUrl = stream.playableUrl,
+            title = stream.title,
+            resumePositionMs = resumePositionMs,
+            requestHeadersJson = stream.requestHeadersJson,
+            subtitleUrls = subtitleUrlsByStreamUrl[stream.playableUrl].orEmpty(),
+            contentId = content?.id.orEmpty(),
+            contentType = content?.type ?: "movie",
+            videoId = videoId ?: content?.selectedEpisodeId,
+        )
+    }
+
     fun firstPlaybackRequest(resumePositionMs: Long): ApplePlaybackRequestSnapshot? {
         val content = state.value.content ?: return null
         val stream = content.streams.firstOrNull() ?: return null
-        return ApplePlaybackRequestSnapshot(stream.playableUrl, content.title, resumePositionMs, stream.requestHeadersJson)
+        return playbackRequest(stream, resumePositionMs, content.selectedEpisodeId)
     }
 }
 

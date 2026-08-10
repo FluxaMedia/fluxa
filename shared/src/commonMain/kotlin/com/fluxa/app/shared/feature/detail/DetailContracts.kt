@@ -38,12 +38,20 @@ data class DetailStreamUiModel(
     val title: String,
     val playableUrl: String,
     val requestHeadersJson: String = "{}",
-    val name: String = ""
+    val name: String = "",
+    val sourceKind: String = "addon"
 )
 
 data class DetailRatingUiModel(
     val source: String,
     val value: String
+)
+
+data class DetailTrailerUiModel(
+    val id: String,
+    val title: String,
+    val thumbnailUrl: String?,
+    val sourceLabel: String
 )
 
 data class DetailDiscussionCommentUiModel(
@@ -68,6 +76,7 @@ data class DetailUiModel(
     val backgroundUrl: String?,
     val logoUrl: String?,
     val trailerUrl: String? = null,
+    val trailers: List<DetailTrailerUiModel> = emptyList(),
     val releaseLabel: String,
     val ratingLabel: String,
     val ratings: List<DetailRatingUiModel> = emptyList(),
@@ -75,8 +84,12 @@ data class DetailUiModel(
     val mdblistDiscussion: List<DetailDiscussionCommentUiModel> = emptyList(),
     val runtimeLabel: String?,
     val ageRating: String? = null,
+    val genres: List<String> = emptyList(),
     val cast: List<DetailCastMemberUiModel> = emptyList(),
     val isInWatchlist: Boolean,
+    val isLiked: Boolean = false,
+    val supportsWatchlist: Boolean = true,
+    val supportsLike: Boolean = true,
     val relatedItems: List<CatalogItemUiModel>,
     val availableSeasons: List<Int> = emptyList(),
     val selectedSeason: Int = 1,
@@ -91,7 +104,35 @@ data class DetailUiModel(
     val loadingAddonNames: List<String> = emptyList(),
     val selectedAddon: String? = null,
     val hasStreamProviders: Boolean = true,
-    val addonPriorityOrder: List<String> = emptyList()
+    val addonPriorityOrder: List<String> = emptyList(),
+    val tmdbId: String? = null
+)
+
+
+enum class DetailScreenStyle {
+    Cinematic,
+    Classic,
+    Compact;
+
+    companion object {
+        fun from(value: String?): DetailScreenStyle = when (value?.trim()?.lowercase()) {
+            "classic" -> Classic
+            "compact" -> Compact
+            else -> Cinematic
+        }
+    }
+}
+
+data class DetailPresentationOptions(
+    val screenStyle: DetailScreenStyle = DetailScreenStyle.Cinematic,
+    val preferClearlogo: Boolean = true,
+    val showEpisodeDescriptions: Boolean = true,
+    val showCast: Boolean = true,
+    val showRecommendations: Boolean = true,
+    val collapsingHero: Boolean = true,
+    val blurUnwatchedEpisodes: Boolean = false,
+    val seasonSelectorMode: String = "dropdown",
+    val episodeCardsLayout: String = "carousel"
 )
 
 data class DetailUiState(
@@ -103,6 +144,7 @@ data class DetailUiState(
 sealed interface DetailAction {
     data class Play(val fromStart: Boolean = false) : DetailAction
     data object ToggleWatchlist : DetailAction
+    data object ToggleLike : DetailAction
     data class RelatedItemSelected(val item: CatalogItemUiModel) : DetailAction
     data class SeasonSelected(val season: Int) : DetailAction
     data class EpisodeSelected(val episodeId: String) : DetailAction
@@ -166,6 +208,7 @@ interface DetailDataSource {
     fun observeDetail(id: String, type: String): Flow<DetailUiState>
     suspend fun loadDetail(request: DetailRequestUiModel)
     suspend fun toggleWatchlist(id: String, type: String)
+    suspend fun toggleLike(id: String, type: String)
     suspend fun selectSeason(season: Int)
     suspend fun selectEpisode(episodeId: String)
     suspend fun loadSources(contentId: String, contentType: String, episodeId: String?)

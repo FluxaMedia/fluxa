@@ -15,6 +15,10 @@ import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
 import com.fluxa.app.core.rust.StreamProgressUpdate
 import com.fluxa.app.core.StremioId
 import com.fluxa.app.data.repository.CommunityDiscussionRepository
+import com.fluxa.app.data.repository.TraktIntegration
+import com.fluxa.app.data.repository.library.ProviderAdapters
+import com.fluxa.app.data.repository.library.ProviderCapability
+import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.supportsStremioResource
 import com.google.gson.Gson
@@ -37,7 +41,9 @@ class DetailViewModel @Inject constructor(
     @ApplicationContext private val applicationContext: android.content.Context,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
     private val gson: Gson,
-    private val communityDiscussionRepository: CommunityDiscussionRepository
+    private val communityDiscussionRepository: CommunityDiscussionRepository,
+    private val providerAdapters: ProviderAdapters,
+    private val thirdPartyProviderRepository: ThirdPartyProviderRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetailUiState())
@@ -45,6 +51,9 @@ class DetailViewModel @Inject constructor(
 
     private var currentProfile: UserProfile? = null
     private var currentSeriesLookupId: String? = null
+    private var currentStrictProviderData: Boolean = false
+    private var currentProviderId: ThirdPartyProviderId? = null
+    private var currentProviderAccountId: String? = null
     private var detailLoadGeneration = 0L
     private var detailLoadJob: Job? = null
     private var trailerJob: Job? = null
@@ -73,12 +82,25 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    fun loadDetail(type: String, id: String, profile: UserProfile? = null, sourceAddonTransportUrl: String? = null, sourceAddonCatalogType: String? = null, initialMeta: Meta? = null) {
+    fun loadDetail(
+        type: String,
+        id: String,
+        profile: UserProfile? = null,
+        sourceAddonTransportUrl: String? = null,
+        sourceAddonCatalogType: String? = null,
+        initialMeta: Meta? = null,
+        strictProviderData: Boolean = false,
+        providerId: String? = null,
+        providerAccountId: String? = null
+    ) {
         val generation = ++detailLoadGeneration
         detailLoadJob?.cancel()
         trailerJob?.cancel()
         DetailTrailerPreloader.discard()
         currentProfile = profile
+        currentStrictProviderData = strictProviderData
+        currentProviderId = ThirdPartyProviderId.from(providerId)
+        currentProviderAccountId = providerAccountId?.takeIf(String::isNotBlank)
         currentSeriesLookupId = normalizeSeriesLookupId(id)
         val lang = profile?.language ?: "en"
         val initialDetail = initialMeta?.toInitialDetailFallback()
@@ -101,6 +123,62 @@ class DetailViewModel @Inject constructor(
 
             try {
                 launch { refreshStreamProviderState(profile) }
+                if (strictProviderData && initialDetail != null) {
+                    val localState = headlessRuntime.dispatch(
+                        mapOf(
+                            "type" to "detailLocalStateRequested",
+                            "primaryId" to id,
+                            "fallbackId" to null,
+                            "contentType" to type,
+                            "profile" to profile,
+                            "skipLibraryState" to true
+                        )
+                    ).state["detail"] as? Map<*, *>
+                    val provider = strictProviderAdapter(profile)
+                    val providerId = currentProviderId
+                    val providerSnapshot = if (provider != null && providerId != null && profile != null) {
+                        thirdPartyProviderRepository.load(profile, providerId, refresh = true)
+                            ?.takeIf { currentProviderAccountId == null || it.accountId == currentProviderAccountId }
+                    } else null
+                    val identity = TraktIntegration.contentIdentityKey(initialDetail.toMeta())
+                    val providerState = Triple(
+                        providerSnapshot?.libraryItems.orEmpty().any {
+                            TraktIntegration.contentIdentityKey(it) == identity
+                        },
+                        providerSnapshot?.favorites.orEmpty().any {
+                            TraktIntegration.contentIdentityKey(it) == identity
+                        },
+                        providerSnapshot?.watchedEpisodeIdsBySeries?.get(id).orEmpty()
+                    )
+                    if (generation != detailLoadGeneration) return@launch
+                    val episodes = if (type == "series") {
+                        seasonVideosForSelection(initialDetail.videos.orEmpty(), 1)
+                    } else emptyList()
+                    _uiState.update {
+                        it.copy(
+                            detail = initialDetail,
+                            seasonEpisodes = episodes,
+                            watchedVideoIds = providerState.third.toList(),
+                            localWatchedVideoIds = emptySet(),
+                            savedPlayback = null,
+                            similarItems = emptyList(),
+                            trailers = emptyList(),
+                            trailerUrl = null,
+                            traktComments = emptyList(),
+                            mdblistDiscussion = emptyList(),
+                            hasStreamProviders = localState?.get("hasStreamProviders") as? Boolean ?: false,
+                            userAddons = gson.fromStateList(localState?.get("userAddons")),
+                            isInWatchlist = providerState.first,
+                            feedback = providerState.second.takeIf {
+                                provider != null && ProviderCapability.FAVORITES in provider.capabilities
+                            },
+                            supportsWatchlist = provider != null && ProviderCapability.LIBRARY in provider.capabilities,
+                            supportsLike = provider != null && ProviderCapability.FAVORITES in provider.capabilities,
+                            isLoading = false
+                        )
+                    }
+                    return@launch
+                }
                 val headlessResult = headlessRuntime.dispatch(
                     mapOf(
                         "type" to "detailLoadRequested",
@@ -303,6 +381,7 @@ class DetailViewModel @Inject constructor(
                 _uiState.update { it.copy(seasonEpisodes = seasonVideosForSelection(allVideos, seasonNumber)) }
                 return@launch
             }
+            if (currentStrictProviderData) return@launch
 
             val seasonId = currentSeriesLookupId ?: normalizeSeriesLookupId(_uiState.value.detail?.id ?: id)
             val profile = currentProfile
@@ -333,6 +412,27 @@ class DetailViewModel @Inject constructor(
         val videoId = episode.id
         if (videoId.isBlank()) return
         viewModelScope.launch {
+            if (currentStrictProviderData) {
+                val profile = currentProfile ?: return@launch
+                val provider = strictProviderAdapter(profile)
+                    ?.takeIf { ProviderCapability.WATCH_HISTORY in it.capabilities }
+                    ?: return@launch
+                val previous = _uiState.value.watchedVideoIds
+                _uiState.update { state ->
+                    state.copy(watchedVideoIds = if (watched) (state.watchedVideoIds + videoId).distinct()
+                    else state.watchedVideoIds - videoId)
+                }
+                val success = thirdPartyProviderRepository.pushWatched(
+                    profile = profile,
+                    providerId = currentProviderId ?: return@launch,
+                    expectedAccountId = currentProviderAccountId,
+                    item = _uiState.value.detail?.toMeta() ?: return@launch,
+                    episodes = listOf(episode),
+                    watched = watched
+                )
+                if (!success) _uiState.update { it.copy(watchedVideoIds = previous) }
+                return@launch
+            }
             _uiState.update {
                 it.copy(localWatchedVideoIds = if (watched) it.localWatchedVideoIds + videoId
                                                else it.localWatchedVideoIds - videoId)
@@ -354,9 +454,31 @@ class DetailViewModel @Inject constructor(
     fun markSeasonWatched(seriesId: String, episodes: List<Video>, watched: Boolean? = null) {
         if (episodes.isEmpty()) return
         viewModelScope.launch {
-            val currentlyWatched = _uiState.value.localWatchedVideoIds
             val targetIds = episodes.map { it.id }.filter { it.isNotBlank() }.toSet()
             if (targetIds.isEmpty()) return@launch
+            if (currentStrictProviderData) {
+                val profile = currentProfile ?: return@launch
+                val provider = strictProviderAdapter(profile)
+                    ?.takeIf { ProviderCapability.WATCH_HISTORY in it.capabilities }
+                    ?: return@launch
+                val previous = _uiState.value.watchedVideoIds
+                val shouldMarkWatched = watched ?: !targetIds.all { it in previous }
+                _uiState.update { state ->
+                    state.copy(watchedVideoIds = if (shouldMarkWatched) (state.watchedVideoIds + targetIds).distinct()
+                    else state.watchedVideoIds - targetIds)
+                }
+                val success = thirdPartyProviderRepository.pushWatched(
+                    profile = profile,
+                    providerId = currentProviderId ?: return@launch,
+                    expectedAccountId = currentProviderAccountId,
+                    item = _uiState.value.detail?.toMeta() ?: return@launch,
+                    episodes = episodes,
+                    watched = shouldMarkWatched
+                )
+                if (!success) _uiState.update { it.copy(watchedVideoIds = previous) }
+                return@launch
+            }
+            val currentlyWatched = _uiState.value.localWatchedVideoIds
             val shouldMarkWatched = watched ?: !targetIds.all { it in currentlyWatched }
             _uiState.update {
                 it.copy(localWatchedVideoIds = if (shouldMarkWatched) it.localWatchedVideoIds + targetIds
@@ -376,11 +498,23 @@ class DetailViewModel @Inject constructor(
         }
     }
 
+    private fun strictProviderAdapter(profile: UserProfile?) =
+        currentProviderId
+            ?.takeIf { currentStrictProviderData && profile != null }
+            ?.let { providerId ->
+                val actualAccountId = profile?.providerAccountId(providerId)
+                val expectedAccountId = currentProviderAccountId
+                if (expectedAccountId != null && actualAccountId != expectedAccountId) null
+                else providerAdapters.byId(providerId.key)
+                    ?.takeIf { adapter -> profile != null && adapter.isConnected(profile) }
+            }
+
     private fun normalizeSeriesLookupId(rawId: String): String {
         return StremioId.normalizeSeriesLookupId(rawId)
     }
 
     fun abandonShow(profile: UserProfile) {
+        if (currentStrictProviderData) return
         viewModelScope.launch {
             val currentDetail = _uiState.value.detail ?: return@launch
             headlessRuntime.dispatch(
@@ -398,20 +532,36 @@ class DetailViewModel @Inject constructor(
         val currentDetail = _uiState.value.detail ?: return
         val meta = currentDetail.toMeta()
         val previous = _uiState.value.isInWatchlist
+        val profile = currentProfile
+        val strictProvider = strictProviderAdapter(profile)
+        if (currentStrictProviderData && (strictProvider == null || ProviderCapability.LIBRARY !in strictProvider.capabilities)) {
+            return
+        }
         _uiState.update { it.copy(isInWatchlist = !previous) }
         viewModelScope.launch {
             try {
-                val result = libraryCommandRuntime.dispatch(
-                    mapOf(
-                        "type" to "toggleWatchlistRequested",
-                        "item" to meta,
-                        "profile" to currentProfile
+                if (strictProvider != null && profile != null) {
+                    val success = thirdPartyProviderRepository.pushWatchlist(
+                        profile = profile,
+                        providerId = currentProviderId ?: return@launch,
+                        expectedAccountId = currentProviderAccountId,
+                        item = meta,
+                        add = !previous
                     )
-                )
-                val library = result.state["library"] as? Map<*, *>
-                val write = library?.get("lastWrite") as? Map<*, *>
-                (write?.get("isInWatchlist") as? Boolean)?.let { confirmed ->
-                    _uiState.update { it.copy(isInWatchlist = confirmed) }
+                    if (!success) _uiState.update { it.copy(isInWatchlist = previous) }
+                } else {
+                    val result = libraryCommandRuntime.dispatch(
+                        mapOf(
+                            "type" to "toggleWatchlistRequested",
+                            "item" to meta,
+                            "profile" to currentProfile
+                        )
+                    )
+                    val library = result.state["library"] as? Map<*, *>
+                    val write = library?.get("lastWrite") as? Map<*, *>
+                    (write?.get("isInWatchlist") as? Boolean)?.let { confirmed ->
+                        _uiState.update { it.copy(isInWatchlist = confirmed) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isInWatchlist = previous) }
@@ -423,19 +573,35 @@ class DetailViewModel @Inject constructor(
         val currentDetail = _uiState.value.detail ?: return
         val previous = _uiState.value.feedback
         val newValue = if (previous == isLike) null else isLike
+        val profile = currentProfile
+        val strictProvider = strictProviderAdapter(profile)
+        if (currentStrictProviderData && (strictProvider == null || ProviderCapability.FAVORITES !in strictProvider.capabilities)) {
+            return
+        }
         _uiState.update { it.copy(feedback = newValue) }
         viewModelScope.launch {
             try {
-                val result = headlessRuntime.dispatch(
-                    mapOf(
-                        "type" to "setFeedbackRequested",
-                        "id" to currentDetail.id,
-                        "value" to newValue,
-                        "meta" to currentDetail.toMeta()
+                if (strictProvider != null && profile != null) {
+                    val success = thirdPartyProviderRepository.pushFavorite(
+                        profile = profile,
+                        providerId = currentProviderId ?: return@launch,
+                        expectedAccountId = currentProviderAccountId,
+                        item = currentDetail.toMeta(),
+                        favorite = newValue == true
                     )
-                )
-                val detail = result.state["detail"] as? Map<*, *>
-                _uiState.update { it.copy(feedback = detail?.get("feedback") as? Boolean) }
+                    if (!success) _uiState.update { it.copy(feedback = previous) }
+                } else {
+                    val result = headlessRuntime.dispatch(
+                        mapOf(
+                            "type" to "setFeedbackRequested",
+                            "id" to currentDetail.id,
+                            "value" to newValue,
+                            "meta" to currentDetail.toMeta()
+                        )
+                    )
+                    val detail = result.state["detail"] as? Map<*, *>
+                    _uiState.update { it.copy(feedback = detail?.get("feedback") as? Boolean) }
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(feedback = previous) }
             }
