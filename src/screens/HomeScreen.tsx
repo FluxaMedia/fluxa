@@ -461,7 +461,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
         />
       )}
 
-      <div style={styles.shelves}>
+      <div style={{ ...styles.shelves, marginTop: billboardWithTrailer && showHero ? styles.shelves.marginTop : 0 }}>
         {showContinueWatching && cwItems.length > 0 && (
           <ContinueWatchingRow
             items={cwItems}
@@ -596,9 +596,10 @@ const styles: Record<string, React.CSSProperties> = {
     ['--hero-height' as string]: HOME_HERO_HEIGHT,
   },
   shelves: {
+    position: 'relative',
+    marginTop: '-4.5rem',
     paddingTop: '0.5rem',
     paddingBottom: '5rem',
-    background: '#040508',
   },
   empty: {
     height: '100%',

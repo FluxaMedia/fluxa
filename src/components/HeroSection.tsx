@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Info, Maximize2, Play, Plus, Volume2, VolumeX } from 'lucide-react';
+import { Info, Play, Plus, Volume2, VolumeX } from 'lucide-react';
 import { seasonPosterUrl } from '../core/seasonPosters';
 import type { Meta } from '../core/types';
 import { t } from '../i18n';
 import { heroKeyframes, heroStyles as styles } from './heroStyles';
-import { HeroIconBtn, NavArrow, parseReleaseYear, readOptionalString } from './HeroSectionParts';
+import { HeroIconBtn, parseReleaseYear, readOptionalString } from './HeroSectionParts';
 import { youtubeVideoId } from './detail/TrailerCarousel';
 import { useTrailerPlayback } from '../hooks/useTrailerPlayback';
+
+const SWIPE_THRESHOLD_PX = 60;
 
 interface Props {
   meta: Meta;
@@ -79,8 +81,8 @@ export const HeroSection = React.memo(function HeroSection({
 
   const {
     trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerProgressElRef, trailerMuted, activeTrailerSubtitle,
-    handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
+    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerMuted, activeTrailerSubtitle,
+    handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute,
   } = useTrailerPlayback({
     metaId: activeMeta.id,
     trailerVideoIds,
@@ -187,11 +189,30 @@ export const HeroSection = React.memo(function HeroSection({
     else if (e.key === 'ArrowRight') { e.preventDefault(); goTo(activeIndex + 1); }
   };
 
+  const dragRef = useRef<{ startX: number; startY: number } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!canSlide) return;
+    dragRef.current = { startX: e.clientX, startY: e.clientY };
+  };
+  const handlePointerUp = (e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!drag) return;
+    const deltaX = e.clientX - drag.startX;
+    const deltaY = e.clientY - drag.startY;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) return;
+    goTo(activeIndex + (deltaX < 0 ? 1 : -1));
+  };
+
   return (
     <div
-      style={styles.hero}
+      style={{ ...styles.hero, cursor: canSlide ? 'grab' : undefined }}
       tabIndex={canSlide ? 0 : -1}
       onKeyDown={handleKeyDown}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={() => { dragRef.current = null; }}
     >
       <style>{heroKeyframes}</style>
       {bgUrl && (
@@ -240,25 +261,6 @@ export const HeroSection = React.memo(function HeroSection({
 
       {trailerActive && (
         <button
-          onClick={fullscreenTrailer}
-          style={styles.trailerFullscreenButton}
-          aria-label="Fullscreen trailer"
-          title="Fullscreen trailer"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(0,0,0,0.6)';
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(0,0,0,0.4)';
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-          }}
-        >
-          <Maximize2 size={20} />
-        </button>
-      )}
-
-      {trailerActive && (
-        <button
           onClick={toggleTrailerMute}
           style={styles.trailerMuteButton}
           aria-label={trailerMuted ? 'Unmute' : 'Mute'}
@@ -275,11 +277,6 @@ export const HeroSection = React.memo(function HeroSection({
         </button>
       )}
 
-      {trailerActive && (
-        <div style={styles.trailerProgressTrack}>
-          <span ref={trailerProgressElRef} style={{ ...styles.trailerProgressFill, width: '0%' }} />
-        </div>
-      )}
       </div>
 
       <div style={styles.gradientTop} />
@@ -354,31 +351,25 @@ export const HeroSection = React.memo(function HeroSection({
         </div>
       </div>
 
-      {canSlide && (
-        <>
-          <NavArrow direction="left" onClick={() => goTo(activeIndex - 1)} />
-          <NavArrow direction="right" onClick={() => goTo(activeIndex + 1)} />
-          {!trailerActive && (
-            <div style={styles.indicators}>
-              {items.map((item, i) => (
-                <button
-                  key={item.id || item.name}
-                  aria-label={`Show ${item.name}`}
-                  style={styles.indicatorTrack}
-                  onClick={() => goTo(i)}
-                >
-                  <span
-                    ref={i === activeIndex ? indicatorFillRef : undefined}
-                    style={{
-                      ...styles.indicatorFill,
-                      ...(i < activeIndex ? styles.indicatorFillDone : null),
-                    }}
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </>
+      {canSlide && !trailerActive && (
+        <div style={styles.indicators}>
+          {items.map((item, i) => (
+            <button
+              key={item.id || item.name}
+              aria-label={`Show ${item.name}`}
+              style={styles.indicatorTrack}
+              onClick={() => goTo(i)}
+            >
+              <span
+                ref={i === activeIndex ? indicatorFillRef : undefined}
+                style={{
+                  ...styles.indicatorFill,
+                  ...(i < activeIndex ? styles.indicatorFillDone : null),
+                }}
+              />
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
