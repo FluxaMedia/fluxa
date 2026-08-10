@@ -75,8 +75,8 @@ android {
         }
         create("tv") {
             dimension = "device"
-            // Android TV 7.0 (API 24) and newer.
-            minSdk = 24
+            // libmpv requires API 26; Android TV 7.0/7.1 (API 24-25) devices are unsupported.
+            minSdk = 26
             applicationId = "com.fluxa.app.tv"
             buildConfigField("String", "DEVICE_FLAVOR", "\"tv\"")
             buildConfigField("Boolean", "IS_TV", "true")
