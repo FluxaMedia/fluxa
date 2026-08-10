@@ -121,6 +121,14 @@ export function usePlayerPlaybackStart(options: any) {
 
     const url = playbackPlan?.url ?? stream.playableUrl ?? stream.url;
     if (!url) {
+      if (stream.extra?.pluginUnavailable === true) {
+        const unavailableReason = typeof stream.extra.pluginUnavailableReason === 'string'
+          && stream.extra.pluginUnavailableReason !== 'no_playable_stream'
+          ? stream.extra.pluginUnavailableReason
+          : t('sources.plugin_no_playable_stream');
+        await failPlayerLoading(unavailableReason);
+        return;
+      }
       await retryNextOrFail(t('player.no_playable_url'));
       return;
     }

@@ -560,6 +560,8 @@
   "toast.simkl_connected": "Simkl bağlandı",
   "toast.simkl_connect_failed": "Simkl bağlanamadı",
   "sources.no_stream_addons": "Stream addonu bulunamadı.",
+  "sources.plugin_unavailable": "Kullanılamıyor",
+  "sources.plugin_no_playable_stream": "Bu sağlayıcı bu içerik için oynatılabilir bir kaynak döndürmedi.",
   "player.error_no_source": "Kaynak bulunamadı.",
   "player.error_generic": "Hata oluştu: %s",
   "player.error_server": "Sunucu hatası (HTTP 4xx/5xx). Lütfen başka bir kaynak deneyin.",

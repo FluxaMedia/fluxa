@@ -22,9 +22,16 @@ export function SourceRow({ stream, onClick, meta, episode }: { stream: Stream; 
     void streamShellPlan(stream).then((plan) => { if (active) setLinkPlan(plan); });
     return () => { active = false; };
   }, [stream]);
-  const heading = streamDisplayText(stream.name) || streamDisplayText(stream.title) || streamDisplayText(stream.description) || t('player.source');
+  const pluginUnavailable = stream.extra?.pluginUnavailable === true;
+  const unavailableReason = typeof stream.extra?.pluginUnavailableReason === 'string'
+    && stream.extra.pluginUnavailableReason !== 'no_playable_stream'
+    ? stream.extra.pluginUnavailableReason
+    : t('sources.plugin_no_playable_stream');
+  const heading = pluginUnavailable
+    ? t('sources.plugin_unavailable')
+    : streamDisplayText(stream.name) || streamDisplayText(stream.title) || streamDisplayText(stream.description) || t('player.source');
   const seenLines = new Set<string>();
-  const lines = [stream.title, stream.description]
+  const lines = (pluginUnavailable ? [unavailableReason] : [stream.title, stream.description])
     .map(streamDisplayText)
     .filter((value): value is string => {
       if (!value || value === heading || seenLines.has(value)) return false;

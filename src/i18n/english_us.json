@@ -560,6 +560,8 @@
   "toast.simkl_connected": "Simkl connected",
   "toast.simkl_connect_failed": "Could not connect Simkl",
   "sources.no_stream_addons": "No stream addons found.",
+  "sources.plugin_unavailable": "Unavailable",
+  "sources.plugin_no_playable_stream": "This provider did not return a playable stream for this title.",
   "player.error_no_source": "No source found.",
   "player.error_generic": "Something went wrong: %s",
   "player.error_server": "Server error (HTTP 4xx/5xx). Try another source.",
