@@ -1,6 +1,5 @@
 package com.fluxa.app.ui.catalog
 
-import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -11,20 +10,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import com.fluxa.app.common.Constants
-import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.local.safeWatchedThresholdPercent
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.Video
-import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.data.remote.withCurrentEpisodeArtwork
+import com.fluxa.app.data.repository.TraktIntegration
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 internal fun PlayerPlaybackSideEffects(
-    context: Context,
     viewModel: HomeViewModel,
     activeProfile: UserProfile?,
     meta: Meta,
@@ -42,7 +40,7 @@ internal fun PlayerPlaybackSideEffects(
     onLastSavedTimestampChanged: (Long) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    var hasScrobbledStart by remember(meta.id, currentVideoId) { mutableStateOf(false) }
+    var hasScrobbledStartTrakt by remember(meta.id, currentVideoId) { mutableStateOf(false) }
     var hasScrobbledStartSimkl by remember(meta.id, currentVideoId) { mutableStateOf(false) }
     var hasScrobbledStop by remember(meta.id, currentVideoId) { mutableStateOf(false) }
     var wasPlayWhenReadyForScrobble by remember(meta.id, currentVideoId) { mutableStateOf(false) }
@@ -64,28 +62,25 @@ internal fun PlayerPlaybackSideEffects(
     fun enqueueDurableTraktScrobble(action: String, progress: Float) {
         val profile = latestActiveProfile ?: return
         if (!PlayerScrobbleCoordinator.shouldEnqueueDurable(action, profile.traktAccessToken, progress)) return
-        TraktScrobbleWorker.enqueue(
-            context = context,
-            profileId = profile.id,
+        viewModel.enqueueDurableTraktScrobble(
+            profile = profile,
             mediaType = meta.type,
             mediaId = TraktIntegration.scrobbleMediaId(meta.id, latestCurrentVideoId, meta.type),
             progress = progress,
-            action = action
+            action = action,
         )
     }
 
     fun enqueueDurableSimklScrobble(action: String, positionMs: Long, durationMs: Long) {
         val profile = latestActiveProfile ?: return
-        val token = profile.simklAccessToken
-        if (token.isNullOrBlank() || durationMs <= 0L) return
-        SimklScrobbleWorker.enqueue(
-            context = context,
-            profileId = profile.id,
-            mediaType = meta.type,
-            mediaId = TraktIntegration.scrobbleMediaId(meta.id, latestCurrentVideoId, meta.type),
+        if (profile.simklAccessToken.isNullOrBlank() || durationMs <= 0L) return
+        viewModel.enqueueDurableSimklScrobble(
+            profile = profile,
+            meta = meta,
+            videoId = latestCurrentVideoId,
             action = action,
             positionMs = positionMs,
-            durationMs = durationMs
+            durationMs = durationMs,
         )
     }
 
@@ -94,14 +89,15 @@ internal fun PlayerPlaybackSideEffects(
 
         suspend fun checkProgress() {
             val pos = currentPositionMs()
-            val token = activeProfile?.traktAccessToken
             val progress = PlayerScrobbleCoordinator.progressPercent(pos, duration)
+            val traktToken = activeProfile?.traktAccessToken
+            val simklToken = activeProfile?.simklAccessToken
 
-            if (PlayerScrobbleCoordinator.shouldSendStart(token, isPlaying, hasScrobbledStart, progress)) {
-                hasScrobbledStart = true
+            if (PlayerScrobbleCoordinator.shouldSendStart(traktToken, isPlaying, hasScrobbledStartTrakt, progress)) {
+                hasScrobbledStartTrakt = true
                 isPausedForScrobble = false
                 viewModel.scrobblePlayback(
-                    token.orEmpty(),
+                    traktToken.orEmpty(),
                     meta.type,
                     TraktIntegration.scrobbleMediaId(meta.id, currentVideoId, meta.type),
                     progress,
@@ -109,19 +105,16 @@ internal fun PlayerPlaybackSideEffects(
                 )
             }
 
-            val simklToken = activeProfile?.simklAccessToken
             if (PlayerScrobbleCoordinator.shouldSendStart(simklToken, isPlaying, hasScrobbledStartSimkl, progress)) {
                 hasScrobbledStartSimkl = true
                 enqueueDurableSimklScrobble("start", pos, duration)
             }
 
-            if (isPlaying && isPausedForScrobble) {
-                isPausedForScrobble = false
-            }
+            if (isPlaying && isPausedForScrobble) isPausedForScrobble = false
 
             if (!hasScrobbledStop && PlayerScrobbleCoordinator.closeAction(pos, duration) == "stop") {
-                if (token != null) enqueueDurableTraktScrobble("stop", progress)
-                enqueueDurableSimklScrobble("stop", pos, duration)
+                if (hasScrobbledStartTrakt) enqueueDurableTraktScrobble("stop", progress)
+                if (hasScrobbledStartSimkl) enqueueDurableSimklScrobble("stop", pos, duration)
                 viewModel.markWatchedFromPlayback(meta, currentVideoId, currentEpisodeMetaLine, nextEpisode, duration)
                 hasScrobbledStop = true
             }
@@ -155,19 +148,33 @@ internal fun PlayerPlaybackSideEffects(
     }
 
     LaunchedEffect(playWhenReadyForScrobble) {
-        val token = activeProfile?.traktAccessToken
         if (playWhenReadyForScrobble) {
             scrobblePauseJob?.cancel()
             scrobblePauseJob = null
-        } else if (PlayerScrobbleCoordinator.shouldQueuePause(token, wasPlayWhenReadyForScrobble, hasScrobbledStart, hasScrobbledStop)) {
-            scrobblePauseJob?.cancel()
-            scrobblePauseJob = scope.launch {
-                delay(Constants.Player.PAUSE_SCROBBLE_DELAY_MS)
-                if (!latestPlayWhenReadyForScrobble && hasScrobbledStart && !hasScrobbledStop) {
-                    val progress = PlayerScrobbleCoordinator.progressPercent(latestCurrentPositionMs(), latestDuration)
-                    enqueueDurableTraktScrobble("pause", progress)
-                    enqueueDurableSimklScrobble("pause", latestCurrentPositionMs(), latestDuration)
-                    isPausedForScrobble = true
+        } else {
+            val queueTrakt = PlayerScrobbleCoordinator.shouldQueuePause(
+                activeProfile?.traktAccessToken,
+                wasPlayWhenReadyForScrobble,
+                hasScrobbledStartTrakt,
+                hasScrobbledStop
+            )
+            val queueSimkl = PlayerScrobbleCoordinator.shouldQueuePause(
+                activeProfile?.simklAccessToken,
+                wasPlayWhenReadyForScrobble,
+                hasScrobbledStartSimkl,
+                hasScrobbledStop
+            )
+            if (queueTrakt || queueSimkl) {
+                scrobblePauseJob?.cancel()
+                scrobblePauseJob = scope.launch {
+                    delay(Constants.Player.PAUSE_SCROBBLE_DELAY_MS)
+                    if (!latestPlayWhenReadyForScrobble && !hasScrobbledStop) {
+                        val position = latestCurrentPositionMs()
+                        val progress = PlayerScrobbleCoordinator.progressPercent(position, latestDuration)
+                        if (queueTrakt && hasScrobbledStartTrakt) enqueueDurableTraktScrobble("pause", progress)
+                        if (queueSimkl && hasScrobbledStartSimkl) enqueueDurableSimklScrobble("pause", position, latestDuration)
+                        isPausedForScrobble = true
+                    }
                 }
             }
         }
@@ -199,12 +206,13 @@ internal fun PlayerPlaybackSideEffects(
         onDispose {
             scrobblePauseJob?.cancel()
             if (!hasScrobbledStop) {
-                val progress = PlayerScrobbleCoordinator.progressPercent(latestCurrentPositionMs(), latestDuration)
-                val traktStop = latestActiveProfile?.traktAccessToken != null && hasScrobbledStart
+                val position = latestCurrentPositionMs()
+                val progress = PlayerScrobbleCoordinator.progressPercent(position, latestDuration)
+                val traktStop = latestActiveProfile?.traktAccessToken != null && hasScrobbledStartTrakt
                 val simklStop = latestActiveProfile?.simklAccessToken != null && hasScrobbledStartSimkl
                 if (traktStop) enqueueDurableTraktScrobble("stop", progress)
-                if (simklStop) enqueueDurableSimklScrobble("stop", latestCurrentPositionMs(), latestDuration)
-                if ((traktStop || simklStop) && progress >= (latestActiveProfile?.safeWatchedThresholdPercent ?: 80f)) {
+                if (simklStop) enqueueDurableSimklScrobble("stop", position, latestDuration)
+                if (progress >= (latestActiveProfile?.safeWatchedThresholdPercent ?: 80f)) {
                     viewModel.markWatchedFromPlayback(meta, latestCurrentVideoId, latestCurrentEpisodeMetaLine, latestNextEpisode, latestDuration)
                 }
             }

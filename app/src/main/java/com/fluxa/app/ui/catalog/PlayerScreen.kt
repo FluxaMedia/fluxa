@@ -2,25 +2,22 @@
 @file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui.catalog
 
-import com.fluxa.app.common.AppStrings
 import android.content.Context
-import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.exoplayer.ExoPlayer
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
@@ -28,43 +25,16 @@ import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.player.*
 import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.shared.feature.player.MediaTrack
+import com.fluxa.app.shared.feature.watchtogether.WatchTogetherContent
+import com.fluxa.app.shared.feature.watchtogether.LambdaWatchTogetherPlaybackEndpoint
+import com.fluxa.app.shared.feature.watchtogether.WatchTogetherDialog
+import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
+import com.fluxa.app.shared.feature.watchtogether.WatchTogetherPlaybackSnapshot
+import com.fluxa.app.shared.feature.watchtogether.loadIntoManager
+import com.fluxa.app.shared.feature.watchtogether.saveAndConfigure
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
-import java.net.Inet4Address
-import java.net.NetworkInterface
-
-private fun castReachableUrl(rawUrl: String): String {
-    val uri = runCatching { Uri.parse(rawUrl) }.getOrNull() ?: return rawUrl
-    val host = uri.host ?: return rawUrl
-    if (uri.scheme != "http" || host !in setOf("127.0.0.1", "localhost", "::1")) {
-        return rawUrl
-    }
-    val lanIp = deviceLanIpv4() ?: return rawUrl
-    val token = TorrentServerEngine.castAccessToken
-    val builder = uri.buildUpon()
-        .authority(if (uri.port > 0) "$lanIp:${uri.port}" else lanIp)
-    if (token.isNotBlank() && uri.getQueryParameter("access_token").isNullOrBlank()) {
-        builder.appendQueryParameter("access_token", token)
-    }
-    return builder.build().toString()
-}
-
-private fun deviceLanIpv4(): String? {
-    return runCatching {
-        NetworkInterface.getNetworkInterfaces().asSequence()
-            .filter { network -> network.isUp && !network.isLoopback }
-            .flatMap { network -> network.inetAddresses.asSequence() }
-            .filterIsInstance<Inet4Address>()
-            .map { address -> address.hostAddress }
-            .filterNotNull()
-            .firstOrNull { address ->
-                !address.startsWith("127.") &&
-                    !address.startsWith("169.254.") &&
-                    address != "0.0.0.0"
-            }
-    }.getOrNull()
-}
 
 @Composable
 fun PlayerScreen(
@@ -102,57 +72,25 @@ fun PlayerScreen(
 
     val torrentManager = TorrentStreamManager.getInstance(context)
     val torrentStatus by torrentManager.status.collectAsStateWithLifecycle()
-    
-    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager }
+
+    val initialAudioManager = remember(context) {
+        context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+    }
     val state = rememberPlayerScreenState(
         initialVideoId = videoId,
         initialStreamIndex = initialStreamIndex,
-        initialVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+        initialVolume = initialAudioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC),
     )
-    val maxVolume = remember { audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) }
+    val systemControls = rememberPlayerSystemControls(context, activity, state, initialAudioManager)
+    val audioManager = systemControls.audioManager
+    val maxVolume = systemControls.maxVolume
     val seekBackwardMs = (activeProfile?.safeSeekBackwardSeconds ?: 10) * 1000L
     val seekForwardMs = (activeProfile?.safeSeekForwardSeconds ?: 10) * 1000L
-
-    LaunchedEffect(Unit) {
-        val windowBrightness = activity?.window?.attributes?.screenBrightness ?: -1f
-        state.currentBrightness = if (windowBrightness in 0f..1f) {
-            windowBrightness
-        } else {
-            runCatching {
-                android.provider.Settings.System.getInt(
-                    context.contentResolver,
-                    android.provider.Settings.System.SCREEN_BRIGHTNESS
-                ) / 255f
-            }.getOrDefault(0.5f)
-        }
-    }
-
-    fun adjustVolumeByDelta(delta: Float) {
-        val next = (state.currentVolumeExact + delta * maxVolume).coerceIn(0f, maxVolume.toFloat())
-        state.currentVolumeExact = next
-        val rounded = next.toInt()
-        if (rounded != state.currentVolume) {
-            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, rounded, 0)
-            state.currentVolume = rounded
-        }
-        state.volumeBarVersion += 1
-    }
-
-    fun adjustBrightnessByDelta(delta: Float) {
-        val next = (state.currentBrightness + delta).coerceIn(0.02f, 1f)
-        state.currentBrightness = next
-        activity?.window?.let { window ->
-            val params = window.attributes
-            params.screenBrightness = next
-            window.attributes = params
-        }
-        state.brightnessBarVersion += 1
-    }
 
     LaunchedEffect(activeProfile?.safeTorrentSpeedPreset) {
         torrentManager.configurePreferences(speedPreset = activeProfile?.safeTorrentSpeedPreset)
     }
-    
+
     PlayerTransientFeedbackEffects(
         showVolumeBar = state.showVolumeBar,
         volumeBarVersion = state.volumeBarVersion,
@@ -175,6 +113,50 @@ fun PlayerScreen(
     val exoEngine = remember(fluxaPlayer, exoPlayer) { ExoPlayerEngine(fluxaPlayer, exoPlayer) }
     val activeEngine: PlayerEngine? = remember(useMpvBackend, mpvPlayer, exoEngine) {
         if (useMpvBackend) mpvPlayer?.let(::MpvPlayerEngine) else exoEngine
+    }
+
+    var showWatchParty by remember { mutableStateOf(false) }
+    val watchTogetherState by WatchTogetherManager.state.collectAsStateWithLifecycle()
+    val watchTogetherConfig by WatchTogetherManager.config.collectAsStateWithLifecycle()
+    val watchConfigStore = remember(context) { AndroidWatchTogetherConfigStore(context) }
+    LaunchedEffect(activeProfile?.id) {
+        if (WatchTogetherManager.config.value.serverUrl.isBlank()) {
+            watchConfigStore.loadIntoManager(activeProfile?.displayName ?: "Guest")
+        }
+    }
+    val watchEndpoint = remember(activeEngine, state, useMpvBackend) {
+        LambdaWatchTogetherPlaybackEndpoint(
+            snapshotProvider = {
+                WatchTogetherPlaybackSnapshot(
+                    positionMs = (if (useMpvBackend) state.engine.timeline.position else state.timelinePosition).coerceAtLeast(0L),
+                    durationMs = state.engine.timeline.duration.coerceAtLeast(0L),
+                    isPlaying = state.engine.playback.isPlaying,
+                    isBuffering = state.engine.playback.isBuffering,
+                )
+            },
+            playingSetter = { playing -> activeEngine?.setPaused(!playing) },
+            seekHandler = { positionMs ->
+                val safePosition = positionMs.coerceAtLeast(0L)
+                activeEngine?.seekTo(safePosition, exact = true)
+                state.engine = state.engine.copy(
+                    timeline = state.engine.timeline.copy(position = safePosition)
+                )
+                state.timelinePosition = safePosition
+            },
+            speedSetter = { speed -> activeEngine?.setSpeed(speed) },
+        )
+    }
+    val watchContent = remember(meta.id, meta.type, state.currentVideoId, meta.name) {
+        WatchTogetherContent(
+            id = meta.id,
+            type = meta.type.ifBlank { "movie" },
+            videoId = state.currentVideoId,
+            title = meta.name.orEmpty(),
+        )
+    }
+    DisposableEffect(watchEndpoint, watchContent) {
+        WatchTogetherManager.attachPlayback(watchEndpoint, watchContent)
+        onDispose { WatchTogetherManager.detachPlayback(watchEndpoint) }
     }
     val emptyAudioTracks = remember { MutableStateFlow(emptyList<MediaTrack>()) }
     val emptySubtitleTracks = remember { MutableStateFlow(emptyList<MediaTrack>()) }
@@ -201,38 +183,6 @@ fun PlayerScreen(
         state.engine = state.engine.f()
     }
 
-    fun seekSafely(targetPosition: Long) {
-        if (!state.engine.playback.hasStartedPlaying) return
-        val maxDuration = when {
-            useMpvBackend && state.engine.timeline.duration > 0 -> state.engine.timeline.duration
-            exoPlayer.duration > 0 -> exoPlayer.duration
-            state.engine.timeline.duration > 0 -> state.engine.timeline.duration
-            else -> Long.MAX_VALUE
-        }
-        val target = targetPosition.coerceIn(0L, maxDuration)
-        if (useMpvBackend) {
-            state.pendingSeekTarget = target
-            state.engine = state.engine.copy(timeline = state.engine.timeline.copy(position = target))
-            activeEngine?.seekTo(target)
-            return
-        }
-        val before = exoPlayer.currentPosition
-        state.pendingSeekTarget = target
-        state.timelinePosition = target
-        state.engine = state.engine.copy(timeline = state.engine.timeline.copy(position = target))
-        exoPlayer.seekTo(target)
-        if (!state.resolvedUrl.isTorrentPlaybackUrl()) {
-            scope.launch {
-                delay(900)
-                val after = exoPlayer.currentPosition
-                if (target > before + 2_000L && after < before + 1_000L && exoPlayer.isCurrentMediaItemSeekable) {
-                    exoPlayer.seekTo(target)
-                    state.timelinePosition = target
-                    state.engine = state.engine.copy(timeline = state.engine.timeline.copy(position = target))
-                }
-            }
-        }
-    }
 
     PlayerEpisodeMetadataEffect(
         meta = meta,
@@ -263,148 +213,35 @@ fun PlayerScreen(
     val mainFocusRequester = remember { FocusRequester() }
     val playPauseFocusRequester = remember { FocusRequester() }
     val seekbarFocusRequester = remember { FocusRequester() }
+    val playbackActions = PlayerPlaybackActions(
+        state = state,
+        scope = scope,
+        useMpvBackend = useMpvBackend,
+        exoPlayer = exoPlayer,
+        activeEngine = activeEngine,
+        meta = meta,
+        videoId = videoId,
+        viewModel = viewModel,
+        activeProfile = activeProfile,
+        availableSubtitles = availableSubtitles,
+        currentSubtitle = currentSubtitle,
+        seekForwardMs = seekForwardMs,
+        seekBackwardMs = seekBackwardMs,
+        requestPlayPauseFocus = { playPauseFocusRequester.requestFocus() },
+        onSelectSource = onSelectSource,
+        onBack = onBack,
+    )
 
-    val externalPlayerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val returnedPosition = result.data?.getLongExtra("position", -1L) ?: -1L
-        val positionToSave = if (returnedPosition >= 0L) returnedPosition else state.externalPlayerStartedPosition
-        if (positionToSave > 0L) {
-            val chosenStream = state.currentStreams.getOrNull(state.currentStreamIndex)
-            viewModel.savePlaybackProgress(
-                meta = meta,
-                timeOffset = positionToSave,
-                duration = state.engine.timeline.duration,
-                videoId = state.currentVideoId ?: videoId,
-                streamIndex = state.currentStreamIndex,
-                episodeName = state.currentEpisodeMetaLine,
-                lastStreamUrl = chosenStream?.playableUrl ?: state.currentUrl,
-                lastStreamTitle = chosenStream?.title,
-                lastBingeGroup = null,
-                lastAudioLanguage = null,
-                lastSubtitleLanguage = null,
-                scrobbleTraktPause = false
-            )
-        }
-        state.externalPlayerStartedPosition = -1L
-        PlayerPipSuppression.suppressAutoEnter = false
-    }
-
-    fun openInExternalPlayer() {
-        val rawUrl = state.currentStreams.getOrNull(state.currentStreamIndex)?.playableUrl
-            ?: state.currentUrl
-        if (rawUrl.isNullOrEmpty()) return
-        val currentPos = if (useMpvBackend) state.engine.timeline.position else exoPlayer.currentPosition
-        state.externalPlayerStartedPosition = currentPos
-        val subs = state.currentExternalSubtitleTracks
-        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-            setDataAndType(Uri.parse(rawUrl), "video/*")
-            putExtra("title", meta.name)
-            putExtra("position", currentPos)
-            if (subs.isNotEmpty()) {
-                putExtra("subtitles_location", subs.first().url)
-                putExtra("subs", subs.map { Uri.parse(it.url) }.toTypedArray())
-                putExtra("subs.name", subs.map { it.label ?: it.language ?: "" }.toTypedArray())
-            }
-        }
-        PlayerPipSuppression.suppressAutoEnter = true
-        try {
-            externalPlayerLauncher.launch(intent)
-        } catch (e: Exception) {
-            PlayerPipSuppression.suppressAutoEnter = false
-            android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.external_player_not_found"), android.widget.Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    fun smartCast(url: String? = state.resolvedUrl) {
-        if (url.isNullOrEmpty()) return
-        val videoUrl = castReachableUrl(url)
-        
-        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-            setDataAndType(android.net.Uri.parse(videoUrl), "video/*")
-            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            
-            putExtra("title", meta.name)
-            putExtra("poster", meta.poster)
-        }
-
-        try {
-            val chooser = android.content.Intent.createChooser(intent, AppStrings.t(activeProfile?.safeLanguage, "auto.choose_player"))
-            context.startActivity(chooser)
-        } catch (e: Exception) {
-            android.widget.Toast.makeText(context, AppStrings.t(activeProfile?.safeLanguage, "toast.cast_app_not_found"), android.widget.Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    fun showControlsTemp() {
-        state.showControls = true
-        state.controlsTimerJob?.cancel()
-        state.controlsTimerJob = scope.launch {
-            delay(5000)
-            if (!state.isScrubbing) state.showControls = false
-        }
-        scope.launch { delay(100); try { playPauseFocusRequester.requestFocus() } catch(e: Exception) {} }
-    }
-
-    fun switchToStream(streamIndex: Int) {
-        val nextStream = state.currentStreams.getOrNull(streamIndex) ?: return
-        if (streamIndex == state.currentStreamIndex || nextStream.playableUrl.isNullOrEmpty()) return
-        android.util.Log.w(
-            "PlayerScreen",
-            "Switching stream ${state.currentStreamIndex} -> $streamIndex: fileIdx=${nextStream.fileIdx} " +
-                "url=${nextStream.playableUrl} name=${nextStream.name} title=${nextStream.title}"
-        )
-        state.lastSavedPosition = if (useMpvBackend) state.engine.timeline.position else exoPlayer.currentPosition
-        state.shouldApplyInitialProgress = false
-        state.isSwitchingAudioSource = true
-        state.engine = state.engine.copy(playerError = null, playback = state.engine.playback.copy(isBuffering = true, hasStartedPlaying = false), render = RenderSnapshot())
-        state.currentStreamIndex = streamIndex
-        state.currentUrl = nextStream.playableUrl
-        scope.launch {
-            delay(1400)
-            state.isSwitchingAudioSource = false
-        }
-    }
-
-    fun isCloudstreamPlayback(): Boolean {
-        return meta.id.startsWith("cs3:") ||
-            state.currentVideoId?.startsWith("cs3:") == true ||
-            state.currentStreams.getOrNull(state.currentStreamIndex)?.addonName?.trim() in viewModel.loadedCs3ApiNames.value
-    }
-
-    fun fallbackToNextCloudstreamStream(): Boolean {
-        if (!isCloudstreamPlayback()) return false
-        val failedUrl = state.currentStreams.getOrNull(state.currentStreamIndex)?.playableUrl
-            ?: state.currentUrl
-        if (!failedUrl.isNullOrBlank()) {
-            state.failedAutoFallbackUrls = state.failedAutoFallbackUrls + failedUrl
-        }
-        val indices = state.currentStreams.indices.drop(state.currentStreamIndex + 1) +
-            state.currentStreams.indices.take(state.currentStreamIndex)
-        val nextIndex = indices.firstOrNull { index ->
-            val candidateUrl = state.currentStreams[index].playableUrl
-            !candidateUrl.isNullOrBlank() && candidateUrl !in state.failedAutoFallbackUrls
-        }
-            ?: return false
-        switchToStream(nextIndex)
-        return true
-    }
-
-    fun openSourceSelectionScreen() {
-        val selectedStream = state.currentStreams.getOrNull(state.currentStreamIndex)
-        val progress = if (useMpvBackend) state.engine.timeline.position else exoPlayer.currentPosition.takeIf { it > 0 } ?: state.engine.timeline.position
-        onSelectSource(
-            PlayerSourceSelectionRequest(
-                meta = meta,
-                videoId = state.currentVideoId ?: videoId,
-                progress = progress,
-                streams = state.currentStreams,
-                streamIndex = state.currentStreamIndex.takeIf { it >= 0 },
-                streamUrl = selectedStream?.playableUrl ?: state.currentUrl,
-                streamTitle = selectedStream?.title
-            )
-        )
-    }
+    val externalActions = rememberPlayerExternalPlaybackActions(
+        context = context,
+        state = state,
+        useMpvBackend = useMpvBackend,
+        exoPlayer = exoPlayer,
+        meta = meta,
+        videoId = videoId,
+        activeProfile = activeProfile,
+        viewModel = viewModel,
+    )
 
     LaunchedEffect(Unit) { delay(1000); try { mainFocusRequester.requestFocus() } catch(e: Exception) {} }
 
@@ -427,12 +264,11 @@ fun PlayerScreen(
         mpvPlayer = mpvPlayer,
         updateEngine = updateEngine,
     )
-    
+
     val playerUserAddons by viewModel.userAddons.collectAsStateWithLifecycle()
     val latestTorrentStatus by rememberUpdatedState(torrentStatus)
     val torrentParseRetryCount = remember(state.currentUrl) { androidx.compose.runtime.mutableIntStateOf(0) }
     PlayerPlaybackSideEffects(
-        context = context,
         viewModel = viewModel,
         activeProfile = activeProfile,
         meta = meta,
@@ -510,15 +346,15 @@ fun PlayerScreen(
         telemetryAttemptGeneration = state.telemetryAttemptGeneration,
         currentStreamIndex = state.currentStreamIndex,
         currentStreamsSize = state.currentStreams.size,
-        autoFallbackOnStreamError = isCloudstreamPlayback() || activeProfile?.safeAutoRetryNextSource == true,
+        autoFallbackOnStreamError = playbackActions.isCloudstreamPlayback() || activeProfile?.safeAutoRetryNextSource == true,
         returnToSourcesOnError = returnToSourcesOnError,
         lang = lang,
         mergeSkipSegments = { newSegments ->
             state.skipSegments = (state.skipSegments + newSegments).distinctBy { "${it.startTime}-${it.type}" }
         },
         updateEngine = updateEngine,
-        openSourceSelectionScreen = ::openSourceSelectionScreen,
-        fallbackToNextStream = ::fallbackToNextCloudstreamStream,
+        openSourceSelectionScreen = playbackActions::openSourceSelection,
+        fallbackToNextStream = playbackActions::fallbackToNextCloudstreamStream,
         torrentManager = torrentManager,
         retryPlayback = {
             val savedUrl = state.resolvedUrl
@@ -537,7 +373,7 @@ fun PlayerScreen(
                     playerError = AppStrings.format(lang, "player.error_load", AppStrings.t(lang, "player.error_server")),
                     playback = state.engine.playback.copy(isBuffering = false),
                 )
-                if (returnToSourcesOnError && state.currentStreams.size > 1) openSourceSelectionScreen()
+                if (returnToSourcesOnError && state.currentStreams.size > 1) playbackActions.openSourceSelection()
             }
         }
     )
@@ -546,7 +382,7 @@ fun PlayerScreen(
         currentUrl = state.currentUrl,
         currentStreamIndex = state.currentStreamIndex,
         currentStreamsSize = state.currentStreams.size,
-        autoFallbackOnStreamError = isCloudstreamPlayback() || activeProfile?.safeAutoRetryNextSource == true,
+        autoFallbackOnStreamError = playbackActions.isCloudstreamPlayback() || activeProfile?.safeAutoRetryNextSource == true,
         useMpvBackend = useMpvBackend,
         isBuffering = state.engine.playback.isBuffering,
         hasStartedPlaying = state.engine.playback.hasStartedPlaying,
@@ -555,8 +391,8 @@ fun PlayerScreen(
         returnToSourcesOnError = returnToSourcesOnError,
         lang = lang,
         updateEngine = updateEngine,
-        openSourceSelectionScreen = ::openSourceSelectionScreen,
-        fallbackToNextStream = ::fallbackToNextCloudstreamStream
+        openSourceSelectionScreen = playbackActions::openSourceSelection,
+        fallbackToNextStream = playbackActions::fallbackToNextCloudstreamStream
     )
 
     PlayerResolveUrlEffect(
@@ -574,8 +410,8 @@ fun PlayerScreen(
         skipSegments = state.skipSegments,
         updateEngine = updateEngine,
         setResolvedUrl = { state.resolvedUrl = it },
-        openSourceSelectionScreen = ::openSourceSelectionScreen,
-        fallbackToNextStream = ::fallbackToNextCloudstreamStream
+        openSourceSelectionScreen = playbackActions::openSourceSelection,
+        fallbackToNextStream = playbackActions::fallbackToNextCloudstreamStream
     )
 
     PlayerPreparePlaybackEffect(
@@ -611,25 +447,12 @@ fun PlayerScreen(
         val percent = pendingResumePercent ?: return@LaunchedEffect
         val duration = state.engine.timeline.duration
         if (state.engine.playback.hasStartedPlaying && duration > 0L) {
-            seekSafely((duration * (percent / 100f)).toLong())
+            playbackActions.seekSafely((duration * (percent / 100f)).toLong())
             pendingResumePercent = null
         }
     }
 
-    fun playNext() {
-        state.nextEpisodePending?.let { next ->
-            if (activeProfile?.safeTryBingeGroup == true) {
-                state.preferredBingeGroupForNextEpisode = state.currentStreams.getOrNull(state.currentStreamIndex)?.bingeGroup
-            }
-            state.resetForEpisode(next.id)
-        } ?: onBack()
-    }
 
-    fun playPrevious() {
-        state.previousEpisodePending?.let { previous ->
-            state.resetForEpisode(previous.id)
-        }
-    }
 
     LaunchedEffect(state.engine.playback.isPlaying, state.skipSegments, activeProfile?.safeAutoSkipIntro) {
         while (state.engine.playback.isPlaying) {
@@ -642,15 +465,19 @@ fun PlayerScreen(
                 if (segment != null) {
                     state.dismissedSkipSegments = state.dismissedSkipSegments + segment.dismissKey()
                     if (segment.type == "outro" && state.nextEpisodePending != null) {
-                        playNext()
+                        playbackActions.playNext()
                     } else {
-                        seekSafely(segment.endTime)
+                        playbackActions.seekSafely(segment.endTime)
                     }
                     state.introAutoSkipped = true
                     state.segmentSkipFeedbackVersion += 1
                 }
             }
-            delay(500)
+            // Keep controls/scrubbing responsive without waking the whole player UI twice a
+            // second during ordinary hands-off playback. Auto-skip still has 1s precision
+            // with controls hidden, which is well inside typical intro/outro segment margins.
+            val timelinePollMs = if (state.showControls || state.showSettings || state.isScrubbing) 500L else 1_000L
+            delay(timelinePollMs)
         }
     }
 
@@ -673,20 +500,14 @@ fun PlayerScreen(
         currentStreams = state.currentStreams
     )
 
-    fun toggleSubtitleSelection() {
-        if (currentSubtitle != null) {
-            activeEngine?.disableSubtitles()
-        } else {
-            TrackSelectionState.findPreferredSubtitle(availableSubtitles, activeProfile, meta)?.let { track ->
-                activeEngine?.enableSubtitle(track)
-            }
-        }
-        showControlsTemp()
-    }
 
     BackHandler {
         if (state.showSettings) state.showSettings = false
-        else onBack()
+        else if (showWatchParty) showWatchParty = false
+        else {
+            WatchTogetherManager.leaveRoom()
+            onBack()
+        }
     }
 
     PlayerBufferProgressEffect(
@@ -721,44 +542,13 @@ fun PlayerScreen(
         isPlaying = state.engine.playback.isPlaying,
         hasNextEpisode = state.nextEpisodePending != null,
         activeEngine = activeEngine,
-        playNext = ::playNext
+        playNext = playbackActions::playNext
     )
 
-    fun closePlayer() {
-        state.showSettings = false
-        state.showControls = false
-        onBack()
-    }
 
-    fun performRelativeSeek(direction: Int) {
-        if (!state.engine.playback.hasStartedPlaying) return
-        val step = if (direction > 0) seekForwardMs else seekBackwardMs
-        val base = state.pendingSeekTarget ?: if (useMpvBackend) state.engine.timeline.position else exoPlayer.currentPosition
-        val rawTarget = if (direction > 0) base + step else base - step
-        val maxDuration = when {
-            useMpvBackend && state.engine.timeline.duration > 0 -> state.engine.timeline.duration
-            exoPlayer.duration > 0 -> exoPlayer.duration
-            state.engine.timeline.duration > 0 -> state.engine.timeline.duration
-            else -> Long.MAX_VALUE
-        }
-        val target = rawTarget.coerceIn(0L, maxDuration)
-        seekSafely(target)
-        if (state.seekDirection == direction) {
-            state.seekFeedbackMs += step
-        } else {
-            state.seekDirection = direction
-            state.seekFeedbackMs = step
-        }
-        state.seekFeedbackVersion += 1
-        state.showSeekFeedback = true
-    }
 
     LaunchedEffect(state.engine.playback.playbackEnded) {
-        if (state.engine.playback.playbackEnded && state.engine.playback.hasStartedPlaying) {
-            if (activeProfile?.safeAutoPlayNextEpisode == true) {
-                playNext()
-            }
-        }
+        playbackActions.autoPlayNextWhenEnded()
     }
 
     PlayerScreenContent(
@@ -788,18 +578,38 @@ fun PlayerScreen(
         currentSubtitle = currentSubtitle,
         effectiveTechnicalInfo = effectiveTechnicalInfo,
         parentsGuide = parentsGuide,
-        showControlsTemp = ::showControlsTemp,
-        seekSafely = ::seekSafely,
-        toggleSubtitleSelection = ::toggleSubtitleSelection,
-        performRelativeSeek = ::performRelativeSeek,
-        onVolumeSwipe = ::adjustVolumeByDelta,
-        onBrightnessSwipe = ::adjustBrightnessByDelta,
-        playPrevious = ::playPrevious,
-        playNext = ::playNext,
-        smartCast = ::smartCast,
-        openInExternalPlayer = ::openInExternalPlayer,
-        openSourceSelectionScreen = ::openSourceSelectionScreen,
-        closePlayer = ::closePlayer,
-        switchToStream = ::switchToStream
+        showControlsTemp = playbackActions::showControlsTemporarily,
+        seekSafely = playbackActions::seekSafely,
+        toggleSubtitleSelection = playbackActions::toggleSubtitleSelection,
+        performRelativeSeek = playbackActions::performRelativeSeek,
+        onVolumeSwipe = systemControls::adjustVolume,
+        onBrightnessSwipe = systemControls::adjustBrightness,
+        playPrevious = playbackActions::playPrevious,
+        playNext = playbackActions::playNext,
+        smartCast = externalActions::cast,
+        openInExternalPlayer = externalActions::openExternalPlayer,
+        openWatchParty = { showWatchParty = true },
+        openSourceSelectionScreen = playbackActions::openSourceSelection,
+        closePlayer = {
+            WatchTogetherManager.leaveRoom()
+            playbackActions.closePlayer()
+        },
+        switchToStream = playbackActions::switchToStream
     )
+
+    if (showWatchParty) {
+        WatchTogetherDialog(
+            state = watchTogetherState,
+            config = watchTogetherConfig,
+            localContent = watchContent,
+            defaultDisplayName = activeProfile?.displayName.orEmpty(),
+            onConfigure = { serverUrl, secret, displayName ->
+                watchConfigStore.saveAndConfigure(serverUrl, secret, displayName)
+            },
+            onCreateRoom = WatchTogetherManager::createRoom,
+            onJoinRoom = WatchTogetherManager::joinRoom,
+            onLeaveRoom = { WatchTogetherManager.leaveRoom() },
+            onDismiss = { showWatchParty = false },
+        )
+    }
 }

@@ -46,6 +46,7 @@ internal fun PlayerUIContent(
     onPlayNext: () -> Unit = {},
     onCast: () -> Unit = {},
     onOpenInExternalPlayer: () -> Unit = {},
+    onWatchParty: () -> Unit = {},
     onPictureInPicture: () -> Unit = {},
     onShowSettings: (Int) -> Unit,
     onClose: () -> Unit,
@@ -94,6 +95,7 @@ internal fun PlayerUIContent(
             onPlayNext = onPlayNext,
             onCast = onCast,
             onOpenInExternalPlayer = onOpenInExternalPlayer,
+            onWatchParty = onWatchParty,
             onPictureInPicture = onPictureInPicture,
             onToggleAspect = onToggleAspect,
             onShowSettings = onShowSettings,
@@ -157,6 +159,7 @@ internal fun PlayerUIContent(
         onPlayNext = onPlayNext,
         onCast = onCast,
         onOpenInExternalPlayer = onOpenInExternalPlayer,
+        onWatchParty = onWatchParty,
         onPictureInPicture = onPictureInPicture,
         onShowSettings = onShowSettings,
         onClose = onClose

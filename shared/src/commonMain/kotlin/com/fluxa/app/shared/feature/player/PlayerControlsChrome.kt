@@ -77,6 +77,7 @@ fun TvPlayerUIContent(
     onPlayNext: () -> Unit = {},
     onCast: () -> Unit = {},
     onOpenInExternalPlayer: () -> Unit = {},
+    onWatchParty: () -> Unit = {},
     onPictureInPicture: () -> Unit = {},
     onShowSettings: (Int) -> Unit,
     onClose: () -> Unit
@@ -135,6 +136,7 @@ fun TvPlayerUIContent(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PlayerControlBtn(FluxaIcons.Groups, deviceType) { onWatchParty() }
                     PlayerControlBtn(FluxaIcons.OpenInNew, deviceType) { onOpenInExternalPlayer() }
                     PlayerControlBtn(FluxaIcons.AspectRatio, deviceType) { onToggleAspect() }
                     if (introDbMarkingEnabled) {
@@ -522,7 +524,8 @@ fun MobilePlayerUIContent(
                         onDismiss = { showOverflowMenu = false },
                         onPictureInPicture = callbacks.onPictureInPicture,
                         onCast = callbacks.onCast,
-                        onOpenInExternalPlayer = callbacks.onOpenInExternalPlayer
+                        onOpenInExternalPlayer = callbacks.onOpenInExternalPlayer,
+                        onWatchParty = callbacks.onWatchParty
                     )
                 }
             }

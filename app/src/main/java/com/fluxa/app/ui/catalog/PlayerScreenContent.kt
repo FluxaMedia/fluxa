@@ -108,6 +108,7 @@ internal fun PlayerScreenContent(
     playNext: () -> Unit,
     smartCast: () -> Unit,
     openInExternalPlayer: () -> Unit,
+    openWatchParty: () -> Unit,
     openSourceSelectionScreen: () -> Unit,
     closePlayer: () -> Unit,
     switchToStream: (Int) -> Unit
@@ -304,6 +305,7 @@ internal fun PlayerScreenContent(
             onPlayNext = playNext,
             onCast = smartCast,
             onOpenInExternalPlayer = openInExternalPlayer,
+            onWatchParty = openWatchParty,
             onPictureInPicture = { enterPlayerPipMode(context, lang, state.engine.playback.isPlaying, state.nextEpisodePending != null) },
             onShowSettingsTab = { tab ->
                 if (tab == 4) {

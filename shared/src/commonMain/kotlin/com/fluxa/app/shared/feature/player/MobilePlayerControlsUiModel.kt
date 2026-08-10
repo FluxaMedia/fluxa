@@ -29,6 +29,7 @@ data class MobilePlayerControlsCallbacks(
     val onPlayNext: () -> Unit,
     val onCast: () -> Unit,
     val onOpenInExternalPlayer: () -> Unit,
+    val onWatchParty: () -> Unit,
     val onPictureInPicture: () -> Unit,
     val onToggleAspect: () -> Unit,
     val onShowSettings: (Int) -> Unit,

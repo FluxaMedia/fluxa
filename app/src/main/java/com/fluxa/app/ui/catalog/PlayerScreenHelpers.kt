@@ -182,8 +182,7 @@ internal suspend fun fetchExternalSubtitleTracks(
             )
         }
         .distinctBy { "${it.language}:${it.url}" }
-    val result = FluxaCoreNative.subtitleLanguageDedupKeepIndices(candidates.map { it.language })
-        .mapNotNull(candidates::getOrNull)
+    val result = candidates
         .sortedBy {
             val language = it.language?.substringBefore('-')?.substringBefore('_')?.lowercase(Locale.ROOT)
             when (language) {

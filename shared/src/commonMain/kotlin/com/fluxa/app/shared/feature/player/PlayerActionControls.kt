@@ -126,7 +126,8 @@ internal fun PlayerOverflowMenuButton(
     onDismiss: () -> Unit,
     onPictureInPicture: () -> Unit,
     onCast: () -> Unit,
-    onOpenInExternalPlayer: () -> Unit
+    onOpenInExternalPlayer: () -> Unit,
+    onWatchParty: () -> Unit
 ) {
     Box {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -160,6 +161,10 @@ internal fun PlayerOverflowMenuButton(
                 PlayerOverflowMenuItem(FluxaIcons.OpenInNew, AppStrings.t(lang, "common.external_player")) {
                     onDismiss()
                     onOpenInExternalPlayer()
+                }
+                PlayerOverflowMenuItem(FluxaIcons.Groups, AppStrings.t(lang, "player.watch_party")) {
+                    onDismiss()
+                    onWatchParty()
                 }
             }
         }

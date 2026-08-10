@@ -23,15 +23,12 @@ import com.fluxa.app.player.ExternalSubtitleTrack
 import com.fluxa.app.player.ExoPlayerEngine
 import com.fluxa.app.player.LibassDebugLog
 import com.fluxa.app.player.MpvPlaybackState
-import com.fluxa.app.player.MkvNativeAssExtractor
 import com.fluxa.app.player.NativeAssTrack
 import com.fluxa.app.player.PlayerEngine
 import com.fluxa.app.player.PlayerEngineRequest
 import com.fluxa.app.player.TorrentStreamManager
 import com.fluxa.app.shared.feature.player.TorrentStreamStatus
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.UUID
 
 private data class PlaybackTelemetrySession(
@@ -91,9 +88,9 @@ internal fun ExoPlayerListenerEffect(
                     if (entry is androidx.media3.extractor.metadata.id3.ChapterFrame) {
                         val title = entry.chapterId.lowercase()
                         val type = when {
-                            title.contains("intro") || title.contains("opening") || title.contains("op") || title.contains("balangç") || title.contains("giri") -> "intro"
-                            title.contains("outro") || title.contains("ending") || title.contains("credits") || title.contains("ed") || title.contains("biti") || title.contains("jenerik") || title.contains("son") -> "outro"
-                            title.contains("recap") || title.contains("previously") || title.contains("özet") -> "recap"
+                            title.contains("intro") || title.contains("opening") || title.contains("op") -> "intro"
+                            title.contains("outro") || title.contains("ending") || title.contains("credits") || title.contains("ed") -> "outro"
+                            title.contains("recap") || title.contains("previously") -> "recap"
                             else -> null
                         }
                         if (type != null) {
@@ -416,25 +413,11 @@ internal fun PlayerPreparePlaybackEffect(
                     audioDecoderMode = activeProfile?.safeAudioDecoderMode ?: "hw_prefer"
                 )
             )
-            val isLocalUrl = playbackUrl.startsWith("file:", ignoreCase = true) ||
-                playbackUrl.startsWith("content:", ignoreCase = true)
-            if (isLocalUrl) {
-                launch(Dispatchers.IO) {
-                    LibassDebugLog.d("starting local embedded ASS extraction url=${LibassDebugLog.urlSummary(playbackUrl)}")
-                    val embeddedNativeAss = MkvNativeAssExtractor.extract(
-                        url = playbackUrl,
-                        headers = chosenStream?.resolveHeaders().orEmpty()
-                    )
-                    LibassDebugLog.d("local embedded ASS extraction result tracks=${embeddedNativeAss.size}")
-                    if (embeddedNativeAss.isNotEmpty()) {
-                        launch(Dispatchers.Main) {
-                            onNativeAssTracksExtracted(embeddedNativeAss)
-                        }
-                    }
-                }
-            } else {
-                LibassDebugLog.d("skipping pre-extraction for non-local stream; embedded ASS depends on ExoPlayer relay")
-            }
+            // Embedded ASS is handled by the ExoPlayer raw-SSA relay for both local and
+            // remote Matroska sources. The previous local fallback scanned up to 512 MB of
+            // the file in parallel with playback just to rebuild the same subtitle track,
+            // which caused avoidable storage I/O, allocations and startup contention.
+            LibassDebugLog.d("embedded ASS uses ExoPlayer relay; eager MKV pre-extraction disabled")
             clearLastSavedPosition()
             clearInitialProgress()
         }
