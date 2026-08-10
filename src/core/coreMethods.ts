@@ -395,6 +395,7 @@ export const CORE_METHODS = [
   'selectNextEpisodeStream',
   'selectStreamIndex',
   'setMetadataFeedGroupEnabled',
+  'shortenSynopsis',
   'shouldAttemptAnimeTracking',
   'simklHistoryRequest',
   'simklLookupIdForType',

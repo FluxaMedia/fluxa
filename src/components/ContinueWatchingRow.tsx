@@ -79,8 +79,6 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
   const isHorizontal = cwLayout !== 'vertical';
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const dragScroll = useDragScroll(scrollRef);
-  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
-  const [canScrollRight, setCanScrollRight] = React.useState(false);
   const [dismissingIds, setDismissingIds] = React.useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set());
@@ -112,24 +110,6 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
     }
   }, [items]);
 
-  const updateArrows = React.useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  }, []);
-
-  React.useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    updateArrows();
-    el.addEventListener('scroll', updateArrows, { passive: true });
-    return () => el.removeEventListener('scroll', updateArrows);
-  }, [updateArrows, items.length]);
-
-  const scroll = (dir: 'left' | 'right') => {
-    scrollRef.current?.scrollBy({ left: dir === 'right' ? 660 : -660, behavior: 'smooth' });
-  };
 
   const visibleItems = React.useMemo(
     () => items.filter((meta) => !dismissedIds.has(meta.id)),
@@ -196,18 +176,6 @@ export const ContinueWatchingRow = React.memo(function ContinueWatchingRow({
     <div style={cwStyles.section}>
       <div style={cwStyles.header}>
         <p style={cwStyles.title}>{t('auto.continue_watching')}</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-          {canScrollLeft && (
-            <button style={cwStyles.arrowBtn} onClick={() => scroll('left')} aria-label={t('common.scroll_left')}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15 18l-6-6 6-6v12z" /></svg>
-            </button>
-          )}
-          {canScrollRight && (
-            <button style={cwStyles.arrowBtn} onClick={() => scroll('right')} aria-label={t('common.scroll_right')}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18l6-6-6-6v12z" /></svg>
-            </button>
-          )}
-        </div>
       </div>
       <div ref={scrollRef} style={cwStyles.scroll} {...dragScroll}>
         {visibleItems.map((meta) => (
@@ -327,8 +295,7 @@ function ContinueWatchingAboutDialog({ meta, artwork, onClose }: { meta: Meta; a
 const cwStyles: Record<string, React.CSSProperties> = {
   section: { position: 'relative', zIndex: 1, paddingTop: '0.5rem', marginBottom: 0 },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: ROW_PADDING_LEFT, paddingRight: '2rem', marginBottom: '0.75rem' },
-  title: { color: '#FFFFFF', fontSize: '1.125rem', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' },
-  arrowBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '1.75rem', height: '1.75rem', borderRadius: '62.4375rem', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.76)', transition: 'opacity 0.15s', padding: 0 },
+  title: { color: '#FFFFFF', fontSize: '1.125rem', fontWeight: 700, margin: 0, letterSpacing: '-0.01em', textShadow: '0 0.0625rem 0.375rem rgba(0,0,0,0.9)' },
   scroll: { display: 'flex', gap: '1.125rem', overflowX: 'auto', paddingLeft: ROW_PADDING_LEFT, paddingRight: '2.5rem', paddingBottom: '1rem', paddingTop: '0.25rem', scrollbarWidth: 'none' },
   aboutBackdrop: { position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(0.25rem)' },
   aboutDialog: { width: 'min(42rem, 100%)', maxHeight: 'min(38rem, calc(100vh - 3rem))', overflowY: 'auto', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.14)', background: '#16181e', boxShadow: '0 1.5rem 5rem rgba(0,0,0,0.5)', padding: '1.25rem' },
