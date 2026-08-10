@@ -33,18 +33,18 @@ const SIMKL_EPISODE_LIST_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 type SimklEpisodeListCacheEntry = { fetchedAt: number; episodes: Record<string, unknown>[] };
 type SimklEpisodeListCache = Record<string, SimklEpisodeListCacheEntry>;
 
-async function resolveSimklEpisodeThumbnails(
+async function resolveSimklEpisodeDetails(
   items: Record<string, unknown>[],
   headers: HeadersInit,
   query: string,
 ): Promise<Record<string, unknown>[]> {
-  const needsThumbnail = items.filter((item) =>
+  const needsDetails = items.filter((item) =>
     item.type === 'series' &&
     typeof item.simklId === 'number' &&
     typeof item.lastEpisodeNumber === 'number' &&
-    !item.lastEpisodeThumbnail,
+    (!item.lastEpisodeThumbnail || !item.lastEpisodeName),
   );
-  if (needsThumbnail.length === 0) return items;
+  if (needsDetails.length === 0) return items;
 
   const diskCache = (await storageRead<SimklEpisodeListCache>(SIMKL_EPISODE_LIST_CACHE_KEY)) ?? {};
   let diskCacheDirty = false;
@@ -76,8 +76,8 @@ async function resolveSimklEpisodeThumbnails(
   const CONCURRENCY = 4;
   let cursor = 0;
   async function worker() {
-    while (cursor < needsThumbnail.length) {
-      const item = needsThumbnail[cursor++];
+    while (cursor < needsDetails.length) {
+      const item = needsDetails[cursor++];
       const simklId = item.simklId as number;
       const isAnime = item.isAnime === true;
       const season = typeof item.lastEpisodeSeason === 'number' ? item.lastEpisodeSeason : undefined;
@@ -92,9 +92,11 @@ async function resolveSimklEpisodeThumbnails(
         : episodes.find((ep) => ep.season === season && ep.episode === number);
       const img = match && typeof match.img === 'string' ? match.img : undefined;
       if (img) item.lastEpisodeThumbnail = img.startsWith('http') ? img : `https://simkl.in/episodes/${img}_w.webp`;
+      const title = match && typeof match.title === 'string' ? match.title : undefined;
+      if (title && !item.lastEpisodeName) item.lastEpisodeName = title;
     }
   }
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, needsThumbnail.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, needsDetails.length) }, worker));
 
   if (diskCacheDirty) {
     for (const [key, entry] of Object.entries(diskCache)) {
@@ -197,7 +199,7 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   ]);
   const mergedItems = ((await coreSimklMergePlaybackProgress(JSON.stringify(rawItems), playbackData)) ?? rawItems) as Record<string, unknown>[];
   const items = wants('continueWatching')
-    ? await resolveSimklEpisodeThumbnails(mergedItems, headers, query).catch(() => mergedItems)
+    ? await resolveSimklEpisodeDetails(mergedItems, headers, query).catch(() => mergedItems)
     : mergedItems;
   debugLog(`syncSimklNow: progressItems=${JSON.stringify(items.map((item) => ({ id: item.id, resumeProgressPercent: item.resumeProgressPercent, badge: item.continueWatchingBadge, poster: item.poster, background: item.background, lastEpisodeThumbnail: item.lastEpisodeThumbnail })))}`);
   if (wants('continueWatching') && !dryRun) {
