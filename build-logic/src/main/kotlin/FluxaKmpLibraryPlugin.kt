@@ -13,7 +13,7 @@ class FluxaKmpLibraryPlugin : Plugin<Project> {
 
         extensions.configure<LibraryExtension> {
             compileSdk = 36
-            defaultConfig { minSdk = 30 }
+            defaultConfig { minSdk = 24 }
             compileOptions {
                 sourceCompatibility = JavaVersion.VERSION_17
                 targetCompatibility = JavaVersion.VERSION_17
@@ -26,10 +26,6 @@ class FluxaKmpLibraryPlugin : Plugin<Project> {
             }
             iosArm64()
             iosSimulatorArm64()
-            jvm("desktop") {
-                compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
-            }
-
             targets.configureEach {
                 compilations.configureEach {
                     compileTaskProvider.configure {

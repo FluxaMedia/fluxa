@@ -24,6 +24,12 @@ kotlin {
         }
 
     sourceSets {
+        val jvmCommonMain by creating {
+            dependsOn(commonMain.get())
+        }
+        androidMain {
+            dependsOn(jvmCommonMain)
+        }
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)

@@ -12,6 +12,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
+        maven { url = uri("https://jogamp.org/deployment/maven") }
     }
 }
 
@@ -21,4 +22,5 @@ include(":shared")
 include(":data")
 include(":player")
 include(":app")
-include(":desktopApp")
+include(":tvBenchmark")
+include(":mobileBenchmark")

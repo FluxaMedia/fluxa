@@ -33,11 +33,9 @@ android {
         buildConfigField("String", "TRAKT_CLIENT_ID", "\"${secret("TRAKT_CLIENT_ID")}\"")
         buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${secret("TRAKT_CLIENT_SECRET")}\"")
         buildConfigField("String", "SIMKL_CLIENT_ID", "\"${secret("SIMKL_CLIENT_ID")}\"")
-        buildConfigField("String", "SIMKL_CLIENT_SECRET", "\"${secret("SIMKL_CLIENT_SECRET")}\"")
         buildConfigField("String", "ANILIST_CLIENT_ID", "\"${secret("ANILIST_CLIENT_ID")}\"")
-        buildConfigField("String", "ANILIST_CLIENT_SECRET", "\"${secret("ANILIST_CLIENT_SECRET")}\"")
-        buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL", "https://api.nuvio.tv/")}\"")
-        buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY", "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN")}\"")
+        buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL")}\"")
+        buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY")}\"")
     }
 }
 
@@ -77,7 +75,7 @@ val generateFluxaCoreUniFfiBindings by tasks.registering(Exec::class) {
     outputs.dir(uniffiKotlinOutDir)
 }
 
-tasks.matching { it.name == "preBuild" || it.name == "compileKotlinDesktop" || it.name == "kspKotlinDesktop" }.configureEach {
+tasks.matching { it.name == "preBuild" }.configureEach {
     dependsOn(generateFluxaCoreUniFfiBindings)
 }
 
@@ -113,12 +111,12 @@ kotlin {
             dependsOn(commonMain.get())
             kotlin.srcDir(uniffiKotlinOutDir)
             dependencies {
-                implementation(libs.jna)
                 implementation(libs.gson)
                 implementation(libs.javax.inject)
                 implementation(libs.okhttp)
                 implementation(libs.okhttp.logging)
-                implementation(libs.bundles.retrofit)
+                api(libs.retrofit)
+                implementation(libs.retrofit.gson)
             }
         }
         androidMain {
@@ -130,12 +128,6 @@ kotlin {
                 implementation(libs.androidx.work.runtime)
                 implementation(libs.androidx.hilt.work)
                 implementation(libs.okhttp.doh)
-            }
-        }
-        val desktopMain by getting {
-            dependsOn(jvmCommonMain)
-            dependencies {
-                implementation(libs.androidx.sqlite.bundled)
             }
         }
         val nativeMain by creating { dependsOn(commonMain.get()) }
@@ -152,7 +144,6 @@ kotlin {
 dependencies {
     add("kspAndroid", libs.androidx.hilt.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
-    add("kspDesktop", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspTvosArm64", libs.androidx.room.compiler)

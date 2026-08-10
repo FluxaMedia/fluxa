@@ -34,14 +34,20 @@ kotlin {
             implementation(libs.coil3.compose)
             implementation(libs.haze)
         }
-        androidMain.dependencies {
-            implementation(libs.coil3.network.okhttp)
-            implementation(libs.androidx.tv.foundation)
-            implementation(libs.androidx.tv.material)
+        val jvmCommonMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.okhttp)
+                implementation(libs.jcifs.ng)
+                implementation(libs.bouncycastle.bcprov)
+            }
         }
-        val desktopMain by getting {
+        androidMain {
+            dependsOn(jvmCommonMain)
             dependencies {
                 implementation(libs.coil3.network.okhttp)
+                implementation(libs.androidx.tv.foundation)
+                implementation(libs.androidx.tv.material)
             }
         }
         commonTest.dependencies {

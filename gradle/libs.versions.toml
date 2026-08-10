@@ -3,7 +3,7 @@ androidGradlePlugin   = "8.13.2"
 kotlin                = "2.3.20"
 ksp                   = "2.3.9"
 compileSdk            = "36"
-minSdk                = "30"
+minSdk                = "24"
 targetSdk             = "35"
 
 coreKtx               = "1.18.0"
@@ -32,6 +32,8 @@ cloudstream           = "v4.7.0"
 zxing                 = "3.5.4"
 palette               = "1.0.0"
 profileinstaller      = "1.4.1"
+benchmark             = "1.4.1"
+uiautomator           = "2.4.0"
 biometric             = "1.1.0"
 browser               = "1.9.0"
 junit                 = "4.13.2"
@@ -43,6 +45,10 @@ kotlinxSerialization  = "1.11.0"
 kotlinxDatetime       = "0.8.0"
 composeMultiplatform  = "1.11.1"
 koin                  = "4.2.2"
+jcifs                 = "2.1.10"
+documentFile          = "1.1.0"
+bouncycastle           = "1.85"
+jogl                   = "2.5.0"
 
 [libraries]
 # Build-logic plugin artifacts (compileOnly in build-logic)
@@ -67,6 +73,8 @@ androidx-tv-foundation              = { group = "androidx.tv",                 n
 androidx-tv-material                = { group = "androidx.tv",                 name = "tv-material",                 version.ref = "tvMaterial" }
 androidx-palette                    = { group = "androidx.palette",            name = "palette-ktx",                 version.ref = "palette" }
 androidx-profileinstaller           = { group = "androidx.profileinstaller",   name = "profileinstaller",            version.ref = "profileinstaller" }
+androidx-benchmark-macro-junit4   = { group = "androidx.benchmark",          name = "benchmark-macro-junit4",     version.ref = "benchmark" }
+androidx-uiautomator                = { group = "androidx.test.uiautomator",   name = "uiautomator",                version.ref = "uiautomator" }
 androidx-biometric                  = { group = "androidx.biometric",          name = "biometric",                   version.ref = "biometric" }
 androidx-browser                    = { group = "androidx.browser",           name = "browser",                     version.ref = "browser" }
 androidx-room-runtime               = { group = "androidx.room",               name = "room-runtime",                version.ref = "room" }
@@ -106,6 +114,9 @@ jellyfin-media3         = { group = "org.jellyfin.media3",  name = "media3-ffmpe
 mpv                     = { group = "dev.jdtech.mpv",       name = "libmpv",                version.ref = "mpv" }
 
 # Network
+jcifs-ng            = { group = "eu.agno3.jcifs", name = "jcifs-ng", version.ref = "jcifs" }
+bouncycastle-bcprov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
+androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentFile" }
 retrofit            = { group = "com.squareup.retrofit2", name = "retrofit",           version.ref = "retrofit" }
 retrofit-gson       = { group = "com.squareup.retrofit2", name = "converter-gson",     version.ref = "retrofit" }
 gson                = { group = "com.google.code.gson",   name = "gson",               version = "2.13.1" }
@@ -131,6 +142,8 @@ cloudstream         = { group = "com.github.recloudstream.cloudstream",name = "l
 
 # JNA (UniFFI)
 jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
+jogl-all-main = { group = "org.jogamp.jogl", name = "jogl-all-main", version.ref = "jogl" }
+gluegen-rt-main = { group = "org.jogamp.gluegen", name = "gluegen-rt-main", version.ref = "jogl" }
 
 # Misc
 zxing       = { group = "com.google.zxing",  name = "core",       version.ref = "zxing" }
@@ -165,6 +178,7 @@ retrofit    = ["retrofit", "retrofit-gson"]
 [plugins]
 android-application = { id = "com.android.application",             version.ref = "androidGradlePlugin" }
 android-library     = { id = "com.android.library",                 version.ref = "androidGradlePlugin" }
+android-test        = { id = "com.android.test",                    version.ref = "androidGradlePlugin" }
 kotlin-android      = { id = "org.jetbrains.kotlin.android",        version.ref = "kotlin" }
 kotlin-multiplatform= { id = "org.jetbrains.kotlin.multiplatform",  version.ref = "kotlin" }
 kotlin-compose      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
