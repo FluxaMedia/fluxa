@@ -9,6 +9,8 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.StremioRepository
+import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
+import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
@@ -30,7 +32,9 @@ internal data class EpisodeCalendarLoadResult(
 
 internal class EpisodeCalendarLoader(
     private val repository: StremioRepository,
-    private val watchlistManager: WatchlistManager
+    private val watchlistManager: WatchlistManager,
+    private val providerContinueWatchingRepository: ProviderContinueWatchingRepository,
+    private val thirdPartyProviderRepository: ThirdPartyProviderRepository
 ) {
     private val gson = Gson()
 
@@ -45,10 +49,11 @@ internal class EpisodeCalendarLoader(
         val usesRemoteLibrarySource = !profile?.integrationLibrarySource.isNullOrBlank() && profile?.integrationLibrarySource != "local"
         val localLibraryItems = if (usesRemoteLibrarySource || profileId == null) emptyList() else runCatching { watchlistManager.getWatchlistSnapshotForProfile(profileId) }.getOrDefault(emptyList())
         val localContinueWatching = if (usesRemoteLibrarySource || profileId == null) emptyList() else runCatching { watchlistManager.getContinueWatchingSnapshotForProfile(profileId) }.getOrDefault(emptyList())
-        val persistedExternalItems = if (usesRemoteLibrarySource || profileId == null) emptyList() else runCatching { watchlistManager.getExternalContinueWatchingSnapshotForProfile(profileId) }.getOrDefault(emptyList())
         val refreshedExternalItems = if (usesRemoteLibrarySource) emptyList() else fetchExternalContinueWatching(profile)
         val localItems = calendarCandidatePlan(listOf(localLibraryItems, localContinueWatching))
-        val externalItems = calendarCandidatePlan(listOf(persistedExternalItems, refreshedExternalItems))
+        // The calendar sees only the explicitly selected Continue Watching provider.
+        // Cached rows from other providers/accounts are never merged into this projection.
+        val externalItems = calendarCandidatePlan(listOf(refreshedExternalItems))
         val candidates = calendarCandidatePlan(listOf(localItems, externalItems, plannedItems))
         val candidateSemaphore = Semaphore(MAX_CONCURRENT_CANDIDATES)
         val rawItems = coroutineScope {
@@ -61,8 +66,17 @@ internal class EpisodeCalendarLoader(
             }.awaitAll()
         }
             .flatten()
-        val watchedVideoIds = if (profile?.integrationLibrarySource == "simkl") {
-            runCatching { repository.getSimklWatchedEpisodesWithTimestamps(profile).keys }.getOrDefault(emptySet())
+        val selectedLibraryProvider = ThirdPartyProviderId.from(profile?.integrationLibrarySource)
+        val watchedVideoIds = if (profile != null && selectedLibraryProvider != null) {
+            runCatching {
+                thirdPartyProviderRepository
+                    .load(profile, selectedLibraryProvider, refresh = true)
+                    ?.watchedEpisodeIdsBySeries
+                    ?.values
+                    ?.flatten()
+                    ?.toSet()
+                    .orEmpty()
+            }.getOrDefault(emptySet())
         } else {
             emptySet()
         }
@@ -74,7 +88,7 @@ internal class EpisodeCalendarLoader(
     private suspend fun fetchExternalContinueWatching(profile: UserProfile?): List<Meta> {
         if (profile == null) return emptyList()
         return withTimeoutOrNull(8_000L) {
-            repository.getExternalContinueWatching(profile, profile.safeLanguage)
+            providerContinueWatchingRepository.loadSelected(profile, refresh = true)?.items.orEmpty()
         }.orEmpty()
     }
 
@@ -85,6 +99,9 @@ internal class EpisodeCalendarLoader(
     ): List<CalendarUpcomingItem> = withContext(Dispatchers.IO) {
         val immediateRows = calendarReleaseRows(meta, null, emptyList(), monthPrefix, profile)
         if (immediateRows.isNotEmpty()) return@withContext immediateRows
+        // A third-party provider row may only use release data supplied by that
+        // provider. Do not query metadata add-ons to fill missing calendar fields.
+        if (meta.isThirdPartyProviderItem()) return@withContext emptyList()
 
         val language = profile?.safeLanguage ?: "en"
         val hasConfiguredAddons = !profile?.authKey.isNullOrBlank() || profile?.safeLocalAddons.orEmpty().isNotEmpty()
@@ -173,6 +190,9 @@ internal class EpisodeCalendarLoader(
         val value = FluxaCoreUniFfi.coreInvokeValue("calendarSeasonCandidates", request.toString())
         return gson.fromJson(value, object : TypeToken<List<Int>>() {}.type)
     }
+
+    private fun Meta.isThirdPartyProviderItem(): Boolean =
+        reason?.isThirdPartyProviderReason() == true
 
     private companion object {
         const val MAX_CONCURRENT_CANDIDATES = 6

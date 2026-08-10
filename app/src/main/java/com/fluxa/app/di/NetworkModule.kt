@@ -335,14 +335,16 @@ object NetworkModule {
         nuvioService: NuvioService,
         profileManager: com.fluxa.app.data.local.ProfileManager,
         watchlistManager: com.fluxa.app.data.local.WatchlistManager,
-        addonRepository: com.fluxa.app.data.repository.AddonRepository,
+        providerDataStore: com.fluxa.app.data.repository.library.ProviderDataStore,
+        deltaSyncEngine: com.fluxa.app.data.repository.NuvioDeltaSyncEngine,
         gson: com.google.gson.Gson
     ): com.fluxa.app.data.repository.NuvioAccountImportCoordinator {
         return com.fluxa.app.data.repository.NuvioAccountImportCoordinator(
             nuvioService = nuvioService,
             profileManager = profileManager,
             watchlistManager = watchlistManager,
-            addonRepository = addonRepository,
+            providerDataStore = providerDataStore,
+            deltaSyncEngine = deltaSyncEngine,
             supabaseUrl = BuildConfig.NUVIO_SUPABASE_URL,
             gson = gson
         )

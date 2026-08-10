@@ -1,6 +1,8 @@
 package com.fluxa.app.domain.discovery
 
 import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.plugins.nuvioPluginContentId
+import com.fluxa.app.data.plugins.normalizeNuvioPluginType
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
@@ -72,12 +74,31 @@ class StreamDiscoveryUseCase @Inject constructor(
     )
 
     private fun pluginExecutionPlan(request: StreamDiscoveryRequest): PluginExecutionPlan? = runCatching {
-        val scrapers = request.pluginScrapers.ifEmpty { pluginRepositoryManager.state.value.scrapers }
+        val mediaType = normalizePluginMediaType(request.type)
+        val scrapers = request.pluginScrapers
+            .ifEmpty { pluginRepositoryManager.state.value.scrapers }
+            .map { scraper ->
+                scraper.copy(
+                    supportedTypes = scraper.supportedTypes
+                        .map(::normalizePluginMediaType)
+                        .distinct()
+                )
+            }
+            .filter { scraper ->
+                scraper.enabled && (
+                    scraper.supportedTypes.isEmpty() || mediaType in scraper.supportedTypes
+                )
+            }
+        val pluginContentId = nuvioPluginContentId(
+            videoId = request.pluginTmdbId?.takeIf(String::isNotBlank) ?: request.id,
+            season = request.pluginSeason,
+            episode = request.pluginEpisode,
+        )
         val payload = gson.toJson(
             mapOf(
                 "scrapers" to scrapers,
-                "contentId" to request.id,
-                "mediaType" to request.type,
+                "contentId" to pluginContentId,
+                "mediaType" to mediaType,
                 "season" to request.pluginSeason,
                 "episode" to request.pluginEpisode
             )
@@ -85,6 +106,8 @@ class StreamDiscoveryUseCase @Inject constructor(
         val value = FluxaCoreUniFfi.coreInvokeValue("pluginExecutionPlan", payload)
         gson.fromJson(value, PluginExecutionPlan::class.java)
     }.getOrNull()
+
+    private fun normalizePluginMediaType(value: String): String = normalizeNuvioPluginType(value)
 
     private suspend fun runPluginScrapers(
         plan: PluginExecutionPlan?,

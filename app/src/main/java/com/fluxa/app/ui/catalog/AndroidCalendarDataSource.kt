@@ -4,17 +4,20 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.shared.feature.calendar.CalendarDataSource
 import com.fluxa.app.shared.feature.calendar.CalendarReleaseUiModel
 import com.fluxa.app.shared.feature.calendar.CalendarUiState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Calendar
 
 class AndroidCalendarDataSource(
     private val homeViewModel: HomeViewModel,
-    private val activeProfile: () -> UserProfile?
+    private val activeProfile: () -> UserProfile?,
+    private val deviceType: DeviceType = DeviceType.Mobile,
 ) : CalendarDataSource {
     private val selectedMonth = MutableStateFlow(0 to 0)
 
@@ -23,24 +26,29 @@ class AndroidCalendarDataSource(
         selectedMonth,
         homeViewModel.watchlist
     ) { state, selected, watchlist ->
-        val watchlistIds = watchlist.mapTo(HashSet()) { it.id }
-        CalendarUiState(
-            year = selected.first,
-            month = selected.second,
-            items = state.items.map { item ->
-                val catalogItem = listOf(item.meta).toCatalogItems(activeProfile()).first()
-                CalendarReleaseUiModel(
-                    id = item.meta.id,
-                    dateIso = item.dateIso,
-                    title = item.title,
-                    subtitle = item.subtitle.orEmpty(),
-                    artworkUrl = item.episodePoster ?: item.poster,
-                    item = catalogItem,
-                    isInWatchlist = item.meta.id in watchlistIds
-                )
-            },
-            isLoading = state.isLoading
-        )
+        val profile = activeProfile()
+        withContext(Dispatchers.Default) {
+            val watchlistIds = watchlist.mapTo(HashSet()) { it.id }
+            val catalogItems = state.items
+                .map { it.meta }
+                .toCatalogItems(profile, deviceType = deviceType)
+            CalendarUiState(
+                year = selected.first,
+                month = selected.second,
+                items = state.items.zip(catalogItems) { item, catalogItem ->
+                    CalendarReleaseUiModel(
+                        id = item.meta.id,
+                        dateIso = item.dateIso,
+                        title = item.title,
+                        subtitle = item.subtitle.orEmpty(),
+                        artworkUrl = item.episodePoster ?: item.poster,
+                        item = catalogItem,
+                        isInWatchlist = item.meta.id in watchlistIds
+                    )
+                },
+                isLoading = state.isLoading
+            )
+        }
     }
 
     override suspend fun refresh() {

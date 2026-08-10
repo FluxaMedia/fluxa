@@ -5,6 +5,8 @@ import com.fluxa.app.common.ReleaseDateUtils
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.repository.StremioRepository
+import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
+import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.ui.catalog.CalendarUpcomingItem
 import com.fluxa.app.ui.catalog.CalendarWidgetProvider
 import com.fluxa.app.ui.catalog.EpisodeCalendarLoader
@@ -16,6 +18,8 @@ internal class AndroidCalendarEffectHandler(
     private val repository: StremioRepository,
     private val watchlistManager: WatchlistManager,
     private val profileManager: ProfileManager,
+    private val providerContinueWatchingRepository: ProviderContinueWatchingRepository,
+    private val thirdPartyProviderRepository: ThirdPartyProviderRepository,
     private val gson: Gson
 ) {
     suspend fun execute(effect: NativeHeadlessEffect): HeadlessEffectCompletion = when (effect.type) {
@@ -33,7 +37,12 @@ internal class AndroidCalendarEffectHandler(
         val plannedItems = effect.payload.list("plannedItems").mapNotNull { raw ->
             runCatching { gson.fromJson(gson.toJsonTree(raw), Meta::class.java) }.getOrNull()
         }
-        val result = EpisodeCalendarLoader(repository, watchlistManager).loadMonth(profile, year, month, plannedItems)
+        val result = EpisodeCalendarLoader(
+            repository,
+            watchlistManager,
+            providerContinueWatchingRepository,
+            thirdPartyProviderRepository
+        ).loadMonth(profile, year, month, plannedItems)
         return success(
             effect,
             mapOf(
@@ -48,20 +57,16 @@ internal class AndroidCalendarEffectHandler(
         val items = effect.payload.list("items").mapNotNull { raw ->
             runCatching { gson.fromJson(gson.toJsonTree(raw), Meta::class.java) }.getOrNull()
         }
-        val activeSource = profileManager.getLastActiveProfileId()
+        val profile = profileManager.getLastActiveProfileId()
             ?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
-            ?.safeContinueWatchingSource
-        val relevant = items.filter { it.externalProviderKeyForSource() == activeSource }
-        watchlistManager.replaceExternalContinueWatching(relevant)
-        return success(effect, mapOf("count" to relevant.size))
-    }
-
-    private fun Meta.externalProviderKeyForSource(): String = when {
-        reason.equals("Trakt.tv", ignoreCase = true) -> "trakt"
-        reason.equals("Simkl", ignoreCase = true) -> "simkl"
-        reason.equals("AniList", ignoreCase = true) -> "anilist"
-        reason.equals("Nuvio", ignoreCase = true) -> "nuvio"
-        else -> "stremio"
+            ?: return success(effect, mapOf("count" to 0))
+        val providerId = ThirdPartyProviderId.from(profile.safeContinueWatchingSource)
+            ?: return success(effect, mapOf("count" to 0))
+        val mixedPayload = items.any { ThirdPartyProviderId.from(it.reason) != providerId }
+        if (mixedPayload) return failure(effect, "mixed_provider_payload")
+        val replaced = providerContinueWatchingRepository.replace(profile, providerId, items)
+            ?: return failure(effect, "provider_cache_write_rejected")
+        return success(effect, mapOf("count" to replaced.items.size, "provider" to providerId.key))
     }
 
     private fun updateWidget(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
