@@ -566,6 +566,10 @@ fn spawn_install_thread(
         };
         if child_hwnd == 0 {
             log::error!("player surface: CreateWindowExW failed for mpv surface");
+            sentry::capture_message(
+                "player surface: CreateWindowExW failed for mpv surface",
+                sentry::Level::Error,
+            );
             let _ = setup_tx.send(Err("CreateWindowExW failed for mpv surface".to_string()));
             return;
         }
@@ -599,6 +603,10 @@ fn spawn_install_thread(
                 Ok(ctx) => RenderContext::Egl(ctx),
                 Err(e) => {
                     log::error!("player surface: ANGLE/EGL context creation failed: {e}");
+                    sentry::capture_message(
+                        &format!("player surface: ANGLE/EGL context creation failed: {e}"),
+                        sentry::Level::Error,
+                    );
                     let _ = setup_tx.send(Err(format!("ANGLE/EGL context creation failed: {e}")));
                     return;
                 }
@@ -608,6 +616,10 @@ fn spawn_install_thread(
                     Ok(ctx) => RenderContext::D3d11(ctx),
                     Err(e) => {
                         log::error!("player surface: D3D11 context creation failed: {e}");
+                        sentry::capture_message(
+                            &format!("player surface: D3D11 context creation failed: {e}"),
+                            sentry::Level::Error,
+                        );
                         let _ = setup_tx.send(Err(format!("D3D11 context creation failed: {e}")));
                         return;
                     }
@@ -618,6 +630,10 @@ fn spawn_install_thread(
                     Ok(ctx) => RenderContext::Vulkan(ctx),
                     Err(e) => {
                         log::error!("player surface: Vulkan context creation failed: {e}");
+                        sentry::capture_message(
+                            &format!("player surface: Vulkan context creation failed: {e}"),
+                            sentry::Level::Error,
+                        );
                         let _ = setup_tx.send(Err(format!("Vulkan context creation failed: {e}")));
                         return;
                     }
@@ -645,6 +661,10 @@ fn spawn_install_thread(
 
         if let Err(e) = ensure_renderer_for_surface(&app, hdc, backend) {
             log::error!("player surface: renderer setup failed: {e}");
+            sentry::capture_message(
+                &format!("player surface: renderer setup failed: {e}"),
+                sentry::Level::Error,
+            );
             let _ = setup_tx.send(Err(e));
             return;
         }
@@ -911,10 +931,18 @@ fn spawn_install_thread(
                             consecutive_render_errors = consecutive_render_errors.saturating_add(1);
                             if last_render_error.as_deref() != Some(e.as_str()) {
                                 log::error!("player surface: render failed: {e}");
+                                sentry::capture_message(
+                                    &format!("player surface: render failed: {e}"),
+                                    sentry::Level::Error,
+                                );
                                 last_render_error = Some(e.clone());
                             }
                             if consecutive_render_errors >= 30 {
                                 log::error!("player surface: too many render failures; switching to software video rendering");
+                                sentry::capture_message(
+                                    &format!("player surface: too many render failures ({e}); switching to software video rendering"),
+                                    sentry::Level::Error,
+                                );
                                 unsafe { ShowWindow(child_hwnd, SW_HIDE) };
                                 let state = app.state::<DesktopState>();
 
