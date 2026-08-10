@@ -1691,5 +1691,15 @@
   "settings.render_backend": "Render Backend",
   "settings.render_backend_desc": "GPU API mpv renders through. OpenGL is the stable default; Vulkan/D3D11 are experimental and need an app restart to take effect. D3D11 only applies on Windows.",
   "settings.player_engine": "Player Engine",
-  "settings.player_engine_desc": "Choose the engine that plays video. libVLC renders inside Fluxa when its runtime is installed."
+  "settings.player_engine_desc": "Choose the engine that plays video. libVLC renders inside Fluxa when its runtime is installed.",
+  "settings.preferred_player": "Playback destination",
+  "settings.preferred_player_desc": "Play inside Fluxa or send every stream to an external player.",
+  "settings.player_internal": "Fluxa player",
+  "settings.player_external": "External player",
+  "settings.external_player": "External player app",
+  "settings.external_player_desc": "Installed compatible players are listed here. You can also choose any executable.",
+  "settings.external_player_choose": "Choose executable",
+  "settings.external_player_choose_desc": "Select a player executable installed on this computer.",
+  "player.external_player_failed": "The external player could not start playback.",
+  "settings.system_default": "System default"
 }

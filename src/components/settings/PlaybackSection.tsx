@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { Type, X } from 'lucide-react';
 import { t } from '../../i18n';
 import { ActionTile, ChoiceTile, InputTile, SettingsSection, SliderTile, ToggleTile, langOptions, streamSourceOptions, subtitleFontOptions } from './SettingsUI';
@@ -12,6 +13,12 @@ const isWindows = navigator.userAgent.includes('Windows');
 export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void }) {
   const [mpvScriptsDir, setMpvScriptsDir] = useState<string | null>(null);
   const [scriptsDirCopied, setScriptsDirCopied] = useState(false);
+  const [externalPlayers, setExternalPlayers] = useState<Array<{ id: string; label: string }>>([]);
+  useEffect(() => { void invoke<Array<{ id: string; label: string }>>('external_player_options').then(setExternalPlayers).catch(() => setExternalPlayers([])); }, []);
+  const chooseExternalPlayer = async () => {
+    const selected = await openDialog({ directory: false, multiple: false, title: t('settings.external_player_choose') });
+    if (typeof selected === 'string') setPref('externalPlayerTarget', selected);
+  };
   useEffect(() => {
     invoke<string | null>('get_data_dir').then((dir) => {
       if (dir) setMpvScriptsDir(`${dir}/mpv/scripts`);
@@ -63,6 +70,11 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
         checked={prefs.p2pEnabled}
         onToggle={(v) => setPref('p2pEnabled', v)}
       />
+      <ChoiceTile title={t('settings.preferred_player')} subtitle={t('settings.preferred_player_desc')} options={[{ value: 'mpv', label: t('settings.player_internal') }, { value: 'external', label: t('settings.player_external') }]} selected={prefs.preferredPlayer} onSelect={(v) => setPref('preferredPlayer', v)} />
+      {prefs.preferredPlayer === 'external' && <>
+        <ChoiceTile title={t('settings.external_player')} subtitle={t('settings.external_player_desc')} options={[...externalPlayers.map((player) => ({ value: player.id, label: player.id === 'system' ? t('settings.system_default') : player.label })), ...(externalPlayers.some((player) => player.id === prefs.externalPlayerTarget) ? [] : [{ value: prefs.externalPlayerTarget, label: prefs.externalPlayerTarget }])]} selected={prefs.externalPlayerTarget} onSelect={(v) => setPref('externalPlayerTarget', v)} />
+        <ActionTile title={t('settings.external_player_choose')} subtitle={t('settings.external_player_choose_desc')} icon={<Type size={18} />} onClick={() => void chooseExternalPlayer()} />
+      </>}
       <ChoiceTile
         title={t('settings.anime_upscaling')}
         subtitle={t('settings.anime_upscaling_desc')}

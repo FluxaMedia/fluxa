@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { open as shellOpen } from '@tauri-apps/plugin-shell';
+import { invoke } from '@tauri-apps/api/core';
 import { coreCanPrefetchNextEpisode, coreDetectAnimePlayback, coreInvoke, corePlaybackIntroLookupContentId, corePlaybackPreparePlan, coreResolveNextEpisode, coreSelectNextEpisodeStream, coreStreamShellPlan, coreTorrentReadyBudget, coreTorrentStatusInfo } from '../core/engine';
 import { fetchMetaVideos, fetchPlaybackSkipSegments, fetchStreamsForEpisode } from '../core/effectRunner';
 import { fetchContentLogo } from '../core/detailEffects';
@@ -13,7 +13,7 @@ import { embeddedMpvSetLoadingArtwork, embeddedMpvStatus, playerClearChapters, p
 import type { AddonDescriptor, Meta, Stream, Video } from '../core/types';
 
 export function usePlayerPlaybackStart(options: any) {
-  const { stateRef, onEpisodePlaybackFailed, playbackScope, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, pendingResumePercentRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage } = options;
+  const { stateRef, onEpisodePlaybackFailed, playbackScope, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, pendingResumePercentRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage, onExternalPlayerLaunched } = options;
   const handlePlay = useCallback(async (
     stream: Stream,
     meta?: Meta,
@@ -42,15 +42,46 @@ export function usePlayerPlaybackStart(options: any) {
       preferredPlayer: prefString(appPrefs(stateRef.current), 'preferredPlayer', 'mpv'),
     }) as PlaybackPreparePlan | null;
     if (isCancelled()) return;
+    const streamPlan = await coreStreamShellPlan(stream);
     if (playbackPlan?.mode === 'external') {
-      if (playbackPlan.url) await shellOpen(playbackPlan.url).catch(() => undefined);
+      if (playbackPlan.url) {
+        if (meta) playingMetaRef.current = meta;
+        playingEpisodeRef.current = episode ?? null;
+        playingStreamRef.current = stream;
+        lastResumeAtSecondsRef.current = resumeAtSeconds;
+        lastTotalDurationSecondsRef.current = totalDurationSeconds;
+        try {
+          let externalUrl = playbackPlan.url;
+          if (streamPlan?.isTorrent) {
+            const started = await startTorrentStream(
+              JSON.stringify(stream),
+              playbackPlan.title?.contentTitle,
+              appPrefs(stateRef.current),
+              totalDurationSeconds && totalDurationSeconds > 0 ? Math.round(totalDurationSeconds * 1000) : undefined,
+            );
+            externalUrl = started.url;
+            setPlayerUsesTorrent(true);
+          }
+          const session = await invoke<{ sessionId: string; tracking: 'live' | 'callback' | 'passive' }>('external_player_launch', {
+            target: prefString(appPrefs(stateRef.current), 'externalPlayerTarget', 'mpv'),
+            url: externalUrl,
+            title: playbackPlan.title?.contentTitle,
+            resumeSeconds: resumeAtSeconds ?? 0,
+            requestHeaders: streamPlan?.requestHeaders,
+          });
+          debugLog(`handlePlay:external player launched session=${session.sessionId} tracking=${session.tracking}`);
+          if (!isCancelled()) onExternalPlayerLaunched({ ...session, startedAt: Date.now() });
+        } catch (error) {
+          debugLog(`handlePlay:external player launch failed ${error instanceof Error ? error.message : String(error)}`);
+          if (!isCancelled()) setPlayerPlaybackError(playbackErrorMessage(error, t('player.external_player_failed')));
+        }
+      }
       return;
     }
 
     openSourcePickerOnFailureRef.current = openSourcePickerOnFailure;
     setPlayerUrl(null);
     setPlayerTorrentTelemetryContext(null);
-    const streamPlan = await coreStreamShellPlan(stream);
     const currentStreamKey = streamPlan?.identityKey ?? '';
     const candidatePlans = await Promise.all(playingSourceCandidatesRef.current.map(coreStreamShellPlan));
     setPlayerUsesTorrent(streamPlan?.isTorrent === true);

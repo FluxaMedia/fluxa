@@ -61,6 +61,7 @@ export interface Prefs {
   homeFeedToggles: string[];
   topTenFeedToggles: string[];
   preferredPlayer: string;
+  externalPlayerTarget: string;
   mpvCustomOptions: string;
   animeUpscalingMode: string;
   animeUpscalingQuality: string;
@@ -219,6 +220,7 @@ export const DEFAULT_PREFS: Prefs = {
   homeFeedToggles: [],
   topTenFeedToggles: [],
   preferredPlayer: 'mpv',
+  externalPlayerTarget: 'mpv',
   mpvCustomOptions: '',
   animeUpscalingMode: 'off',
   animeUpscalingQuality: 'anime4k_m',

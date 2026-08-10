@@ -49,6 +49,7 @@ import { usePlayerProgressPersistence } from './usePlayerProgressPersistence';
 import { applyPlayerCloseActions } from './playerCloseActions';
 import { usePlayerRetry } from './usePlayerRetry';
 import { usePlayerPlaybackStart } from './usePlayerPlaybackStart';
+import { useExternalPlayerTracking, type ExternalPlayerSession, type ExternalPlayerStatus } from './useExternalPlayerTracking';
 import { AsyncScope } from '../core/asyncScope';
 
 function playbackErrorMessage(error: unknown, fallback: string): string {
@@ -126,6 +127,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   const [playerLoadingOverlay, setPlayerLoadingOverlay] = useState<PlayerLoadingOverlayState | null>(null);
   const [playerPlaybackError, setPlayerPlaybackError] = useState<string | null>(null);
   const [playerSubtitleWarning, setPlayerSubtitleWarning] = useState<string[] | null>(null);
+  const [externalPlayerSession, setExternalPlayerSession] = useState<ExternalPlayerSession | null>(null);
 
   const activeProfileRef = useRef<UserProfile | null>(null);
   const mpvInitializedRef = useRef(false);
@@ -151,6 +153,8 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   const scrobbleStartedRef = useRef(false);
   const scrobbleStoppedRef = useRef(false);
   const scrobbleWasPausedRef = useRef(false);
+  const externalPlaybackFinalizedRef = useRef(false);
+  const lastExternalProgressWriteRef = useRef(0);
 
   const playerLoadingOverlayRef = useRef<PlayerLoadingOverlayState | null>(null);
 
@@ -291,6 +295,118 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     scrobbleWasPausedRef,
     onProfileUpdated,
   });
+  const finalizeExternalPlayback = useCallback(async (status: EmbeddedMpvStatus | null) => {
+    if (externalPlaybackFinalizedRef.current) {
+      debugLog('finalizeExternalPlayback: already finalized, skipping');
+      return;
+    }
+    externalPlaybackFinalizedRef.current = true;
+    debugLog(`finalizeExternalPlayback: status=${status ? JSON.stringify(status) : 'null'} scrobbleStarted=${scrobbleStartedRef.current}`);
+    const meta = playingMetaRef.current;
+    const stream = playingStreamRef.current;
+    if (meta && stream && status) {
+      const timePos = Number.parseFloat(status.timePos ?? '0');
+      const duration = Number.parseFloat(status.duration ?? '0');
+      if (Number.isFinite(timePos) && Number.isFinite(duration) && duration > 0) {
+        const closePlan = await coreInvoke<{
+          progressAction: Record<string, unknown>;
+          markWatchedAction: Record<string, unknown> | null;
+          upNextAction: Record<string, unknown> | null;
+          reloadHome: boolean;
+        }>('playbackClosePlan', JSON.stringify({
+          meta,
+          episode: playingEpisodeRef.current,
+          stream,
+          nextEpisode: playingNextEpisodeRef.current,
+          timePos,
+          duration,
+          streamIndex: stateRef.current.player.currentStreamIndex ?? null,
+          prefs: appPrefs(stateRef.current),
+        }));
+        debugLog(`finalizeExternalPlayback: closePlan=${JSON.stringify({ progressAction: closePlan?.progressAction, markWatchedAction: closePlan?.markWatchedAction, upNextAction: closePlan?.upNextAction, reloadHome: closePlan?.reloadHome })}`);
+        if (scrobbleStartedRef.current) {
+          debugLog(`finalizeExternalPlayback: dispatching scrobble stop timePos=${timePos} duration=${duration}`);
+          await dispatchScrobbleLifecycle('stop', status);
+        } else {
+          debugLog('finalizeExternalPlayback: scrobble was never started, skipping stop scrobble');
+        }
+        await applyPlayerCloseActions([closePlan?.progressAction, closePlan?.markWatchedAction, closePlan?.upNextAction], updateState);
+        debugLog('finalizeExternalPlayback: close actions applied');
+        if (closePlan?.reloadHome) {
+          debugLog('finalizeExternalPlayback: refreshing continue watching');
+          void dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() })).then((result) => {
+            if (!result) return;
+            updateState(result.state);
+            if (result.effects.length > 0) void pumpEffects(result.effects, updateState);
+          }).catch(() => undefined);
+        }
+      } else {
+        debugLog(`finalizeExternalPlayback: skipping close plan, invalid timePos/duration timePos=${timePos} duration=${duration}`);
+      }
+    } else {
+      debugLog(`finalizeExternalPlayback: skipping close plan, missing meta/stream/status meta=${!!meta} stream=${!!stream} status=${!!status}`);
+    }
+    if (playerUsesTorrentRef.current) {
+      await stopTorrentStream().catch(() => false);
+      setPlayerUsesTorrent(false);
+    }
+    setExternalPlayerSession(null);
+  }, [dispatchScrobbleLifecycle, stateRef, updateState]);
+  const handleExternalPlayerStatus = useCallback((status: ExternalPlayerStatus) => {
+    const previousStatus = lastPlaybackStatusRef.current;
+    const previousDuration = Number.parseFloat(previousStatus?.duration ?? '0');
+    const previousTimePos = Number.parseFloat(previousStatus?.timePos ?? '0');
+    const duration = status.duration ?? (previousDuration > 0 ? previousDuration : lastTotalDurationSecondsRef.current ?? 0);
+    const timePos = status.timePos ?? (previousTimePos > 0 ? previousTimePos : 0);
+    const playbackStatus = {
+      pause: status.paused ? 'yes' : 'no',
+      timePos: String(timePos),
+      duration: String(duration),
+    } as EmbeddedMpvStatus;
+    lastPlaybackStatusRef.current = playbackStatus;
+    if (!status.active) {
+      debugLog(`handleExternalPlayerStatus: player reported inactive, finalizing timePos=${timePos} duration=${duration}`);
+      void finalizeExternalPlayback(duration > 0 ? playbackStatus : null);
+      return;
+    }
+    if (duration <= 0 || timePos < 0) {
+      debugLog(`handleExternalPlayerStatus: skipping tick, invalid timePos/duration timePos=${timePos} duration=${duration}`);
+      return;
+    }
+    if (status.paused) void dispatchScrobbleLifecycle('pause', playbackStatus);
+    else void dispatchScrobbleLifecycle('start', playbackStatus);
+    if (Date.now() - lastExternalProgressWriteRef.current < 30_000) return;
+    debugLog(`handleExternalPlayerStatus: writing periodic progress timePos=${timePos} duration=${duration}`);
+    lastExternalProgressWriteRef.current = Date.now();
+    void coreInvoke<{ shouldScrobble: boolean; progressAction: Record<string, unknown> }>('playbackClosePlan', JSON.stringify({
+      meta: playingMetaRef.current,
+      episode: playingEpisodeRef.current,
+      stream: playingStreamRef.current,
+      nextEpisode: null,
+      timePos,
+      duration: Math.floor(duration),
+      streamIndex: stateRef.current.player.currentStreamIndex ?? null,
+      prefs: appPrefs(stateRef.current),
+      scrobbleTraktPause: false,
+    })).then(async (plan) => {
+      if (!plan?.shouldScrobble || !plan.progressAction) return;
+      await applyPlayerCloseActions([plan.progressAction], updateState);
+    }).catch(() => undefined);
+  }, [dispatchScrobbleLifecycle, finalizeExternalPlayback, stateRef, updateState]);
+  const handleExternalPlayerCallback = useCallback((position: number | null, failed: boolean) => {
+    debugLog(`handleExternalPlayerCallback: position=${position} failed=${failed}`);
+    if (failed) {
+      setPlayerPlaybackError(t('player.external_player_failed'));
+      void finalizeExternalPlayback(null);
+      return;
+    }
+    const duration = lastTotalDurationSecondsRef.current ?? 0;
+    const timePos = position ?? 0;
+    const status = { pause: 'no', timePos: String(timePos), duration: String(duration) } as EmbeddedMpvStatus;
+    lastPlaybackStatusRef.current = status;
+    void finalizeExternalPlayback(duration > 0 ? status : null);
+  }, [finalizeExternalPlayback]);
+  useExternalPlayerTracking({ session: externalPlayerSession, onStatus: handleExternalPlayerStatus, onCallback: handleExternalPlayerCallback });
   const closePlayer = useCallback(async () => {
     if (closingPlayerRef.current) return;
     closingPlayerRef.current = true;
@@ -390,9 +506,24 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     lastPlaybackStatusRef,
     updateState,
   });
+  const flushOnQuit = useCallback(async () => {
+    await saveProgressTick();
+    if (externalPlayerSession) {
+      debugLog('flushOnQuit: external session still active, finalizing before quit');
+      await finalizeExternalPlayback(lastPlaybackStatusRef.current);
+    }
+  }, [saveProgressTick, externalPlayerSession, finalizeExternalPlayback]);
 
   const handlePlay = usePlayerPlaybackStart({
-    stateRef, onEpisodePlaybackFailed, playbackScope: playbackScopeRef.current, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, pendingResumePercentRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage,
+    stateRef, onEpisodePlaybackFailed, playbackScope: playbackScopeRef.current, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, pendingResumePercentRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage, onExternalPlayerLaunched: (session: ExternalPlayerSession) => {
+      if (externalPlayerSession && externalPlayerSession.sessionId !== session.sessionId) {
+        debugLog(`onExternalPlayerLaunched: stopping orphaned previous session=${externalPlayerSession.sessionId}`);
+        void invoke('external_player_stop', { sessionId: externalPlayerSession.sessionId }).catch(() => undefined);
+      }
+      externalPlaybackFinalizedRef.current = false;
+      lastExternalProgressWriteRef.current = 0;
+      setExternalPlayerSession(session);
+    },
   });
   const handleNativePlayerError = useCallback(async (message: string) => {
     const nextSource = await nextRetrySource(playingStreamRef.current);
@@ -474,5 +605,5 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerSubtitleWarning(null);
   }, []);
 
-  return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: saveProgressTick, skipSegmentCoverage };
+  return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
 }

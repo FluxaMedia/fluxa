@@ -7,6 +7,7 @@ mod core_commands;
 mod custom_fonts;
 mod discord_presence;
 mod downloads;
+mod external_player;
 mod libvlc_render;
 #[cfg(target_os = "linux")]
 mod linux_player_surface;
@@ -50,6 +51,7 @@ use core_commands::*;
 use custom_fonts::*;
 use discord_presence::*;
 use downloads::*;
+use external_player::*;
 use oauth::*;
 use oauth_callbacks::{queue_oauth_callback, take_oauth_callback, PendingOAuthCallbacks};
 use player::*;
@@ -614,6 +616,10 @@ pub fn run() {
             player_track_options,
             player_set_seek_thumbnail_enabled,
             player_hdr_supported,
+            external_player_options,
+            external_player_launch,
+            external_player_status,
+            external_player_stop,
             player_get_seek_thumbnail,
             player_screenshot,
             custom_fonts_list,
