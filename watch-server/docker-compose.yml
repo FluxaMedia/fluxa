@@ -1,0 +1,12 @@
+services:
+  fluxa-watch:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      PORT: "8787"
+      # Optional shared secret. Enter the same value in Fluxa's Watch Party dialog.
+      FLUXA_WATCH_SECRET: ""
+      MAX_ROOM_MEMBERS: "12"
+      ROOM_TTL_MINUTES: "360"
