@@ -70,6 +70,11 @@ export interface NuvioWatchProgress {
   last_watched: number;
 }
 
+export interface NuvioLibraryDeltaEvent extends NuvioLibraryItem {
+  event_id: number;
+  operation: 'upsert' | 'delete';
+}
+
 export interface NuvioWatchedItem {
   id?: string;
   user_id?: string;
@@ -337,6 +342,23 @@ export async function nuvioPullLibrary(
     p_limit: limit,
     p_offset: offset,
   }, token);
+}
+
+export async function nuvioPullLibraryDelta(
+  token: string,
+  profileId: number,
+  sinceEventId: number,
+  limit = 1_000,
+): Promise<NuvioLibraryDeltaEvent[]> {
+  return post<NuvioLibraryDeltaEvent[]>('/rest/v1/rpc/sync_pull_library_delta', {
+    p_profile_id: profileId,
+    p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
+    p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
+  }, token);
+}
+
+export async function nuvioGetLibraryDeltaCursor(token: string, profileId: number): Promise<number> {
+  return post<number>('/rest/v1/rpc/sync_get_library_delta_cursor', { p_profile_id: profileId }, token);
 }
 
 export async function nuvioPushLibrary(
