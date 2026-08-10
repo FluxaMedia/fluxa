@@ -239,6 +239,7 @@ export async function fetchDetailStreams(
 
   const partialDispatches: Promise<void>[] = [];
   const failedAddonNames = new Set<string>();
+  const pluginStreamsPromise = fetchPluginStreamsForDetail(contentType, idField, payload.detail, signal);
 
   const values = await fetchPlannedResources(
     { kind: 'streams', addons, contentType, requestIds },
@@ -272,7 +273,7 @@ export async function fetchDetailStreams(
 
   const streams = values.flatMap((value) => ((value as { streams?: unknown[] })?.streams ?? []));
 
-  const pluginStreams = await fetchPluginStreamsForDetail(contentType, idField, payload.detail, signal);
+  const pluginStreams = await pluginStreamsPromise;
   if (pluginStreams.length > 0) streams.push(...pluginStreams);
 
   const availableAddons = [...new Set(
