@@ -30,7 +30,7 @@ android {
 
     defaultConfig {
         applicationId = "com.fluxa.app"
-        minSdk = 30
+        minSdk = 24
         targetSdk = 35
         versionCode = 700
         versionName = "2.1.7"
@@ -39,11 +39,9 @@ android {
         buildConfigField("String", "TRAKT_CLIENT_ID", "\"${secret("TRAKT_CLIENT_ID")}\"")
         buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${secret("TRAKT_CLIENT_SECRET")}\"")
         buildConfigField("String", "SIMKL_CLIENT_ID", "\"${secret("SIMKL_CLIENT_ID")}\"")
-        buildConfigField("String", "SIMKL_CLIENT_SECRET", "\"${secret("SIMKL_CLIENT_SECRET")}\"")
         buildConfigField("String", "ANILIST_CLIENT_ID", "\"${secret("ANILIST_CLIENT_ID")}\"")
-        buildConfigField("String", "ANILIST_CLIENT_SECRET", "\"${secret("ANILIST_CLIENT_SECRET")}\"")
-        buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL", "https://api.nuvio.tv/")}\"")
-        buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY", "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN")}\"")
+        buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL")}\"")
+        buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY")}\"")
 
     }
 
@@ -70,12 +68,15 @@ android {
     productFlavors {
         create("mobile") {
             dimension = "device"
+            minSdk = 30
             applicationId = "com.fluxa.app.mobile"
             buildConfigField("String", "DEVICE_FLAVOR", "\"mobile\"")
             buildConfigField("Boolean", "IS_TV", "false")
         }
         create("tv") {
             dimension = "device"
+            // Android TV 7.0 (API 24) and newer.
+            minSdk = 24
             applicationId = "com.fluxa.app.tv"
             buildConfigField("String", "DEVICE_FLAVOR", "\"tv\"")
             buildConfigField("Boolean", "IS_TV", "true")
@@ -114,6 +115,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
         }
     }
     buildFeatures {
@@ -159,7 +165,9 @@ val rustAndroidTargets = listOf(
     Triple("x86", "i686-linux-android", "I686_LINUX_ANDROID"),
 )
 
-val rustProfile = if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }) "release" else "debug"
+val rustProfile = if (gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true) || it.contains("benchmark", ignoreCase = true)
+}) "release" else "debug"
 val rustCargoProfileArgs = if (rustProfile == "release") listOf("--release") else emptyList()
 val rustHostTag = when {
     org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "darwin-x86_64"
@@ -329,7 +337,7 @@ dependencies {
     implementation(project(":player"))
 
     implementation(libs.androidx.core.ktx)
-    implementation("net.java.dev.jna:jna:${libs.versions.jna.get()}@aar")
+    implementation(libs.androidx.documentfile)
     testImplementation(libs.jna)
     testImplementation(libs.okhttp.mockwebserver)
     implementation(libs.androidx.activity.compose)

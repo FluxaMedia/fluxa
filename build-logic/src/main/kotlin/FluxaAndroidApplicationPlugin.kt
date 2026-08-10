@@ -14,14 +14,20 @@ class FluxaAndroidApplicationPlugin : Plugin<Project> {
         extensions.configure<BaseAppModuleExtension> {
             compileSdk = 36
             defaultConfig {
-                minSdk = 30
+                minSdk = 24
                 targetSdk = 35
             }
             compileOptions {
+                isCoreLibraryDesugaringEnabled = true
                 sourceCompatibility = JavaVersion.VERSION_17
                 targetCompatibility = JavaVersion.VERSION_17
             }
         }
+
+        dependencies.add(
+            "coreLibraryDesugaring",
+            "com.android.tools:desugar_jdk_libs:2.0.3",
+        )
 
         extensions.configure<KotlinAndroidProjectExtension> {
             compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
