@@ -71,6 +71,15 @@ interface ExternalSyncApi {
     ): List<TraktPlaybackItem>
 
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/progress/watched")
+    suspend fun getWatchedProgress(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): List<TraktWatchedProgressItem>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
     @DELETE("sync/playback/{id}")
     suspend fun deletePlayback(
         @Path("id") id: Long,

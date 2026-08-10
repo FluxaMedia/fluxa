@@ -66,7 +66,12 @@ class ExternalLibraryClient @Inject constructor(
     private fun unknownName(language: String?): String = AppStrings.t(language, "auto.unknown")
 
     suspend fun getTraktContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> =
-        withContext(Dispatchers.IO) { getTraktPlaybackItems(profile, language) }
+        withContext(Dispatchers.IO) {
+            val inProgress = getTraktPlaybackItems(profile, language)
+            val inProgressIds = inProgress.mapTo(mutableSetOf()) { it.id }
+            val upNext = getTraktUpNextItems(profile, language).filter { it.id !in inProgressIds }
+            inProgress + upNext
+        }
 
     suspend fun getSimklContinueWatching(profile: UserProfile, language: String = "en"): List<Meta> =
         withContext(Dispatchers.IO) { getSimklContinueWatchingItems(profile, language) }
@@ -219,6 +224,35 @@ class ExternalLibraryClient @Inject constructor(
                 }
         } catch (e: Exception) {
             PlatformLog.w("ExternalLibraryClient", "Failed to load Trakt playback items", e)
+            emptyList()
+        }
+    }
+
+    private suspend fun getTraktUpNextItems(profile: UserProfile, language: String): List<Meta> {
+        val token = profile.traktAccessToken
+        if (token.isNullOrBlank() || !TraktIntegration.hasClient(traktKey)) return emptyList()
+        return try {
+            externalSyncApi.getWatchedProgress(TraktIntegration.bearer(token), traktKey)
+                .mapNotNull { item ->
+                    val summary = item.show ?: return@mapNotNull null
+                    val nextEpisode = item.progress?.nextEpisode ?: return@mapNotNull null
+                    val id = TraktIntegration.contentIdFrom(summary.ids) ?: return@mapNotNull null
+                    Meta(
+                        id = id,
+                        name = summary.title ?: unknownName(language),
+                        type = "series",
+                        releaseInfo = summary.year?.toString(),
+                        released = summary.year?.let { "$it-01-01" },
+                        lastVideoId = "$id:${nextEpisode.season}:${nextEpisode.number}",
+                        lastEpisodeName = nextEpisode.title,
+                        lastWatchedAt = item.progress.lastWatchedAt?.let {
+                            runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull()
+                        },
+                        reason = "Trakt.tv"
+                    )
+                }
+        } catch (e: Exception) {
+            PlatformLog.w("ExternalLibraryClient", "Failed to load Trakt watched-progress items", e)
             emptyList()
         }
     }
