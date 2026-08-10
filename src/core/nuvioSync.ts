@@ -56,13 +56,22 @@ export interface NuvioSyncMeta {
   lastSyncAt: number;
   continueWatchingCount: number;
   watchlistCount: number;
+  watchedCount?: number;
   error?: string;
 }
 
 export async function recordNuvioSyncMeta(report: NuvioImportReport | { errors: Partial<Record<NuvioImportStep, string>> }): Promise<void> {
   const failures = Object.entries(report.errors);
   const error = failures.length > 0 ? failures.map(([step, msg]) => `${step}: ${msg}`).join('; ') : undefined;
-  const meta: NuvioSyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: 0, watchlistCount: 0, error };
+  const counts = 'counts' in report ? report.counts : undefined;
+  const previous = counts ? undefined : await storageRead<NuvioSyncMeta>('nuvio_sync_meta');
+  const meta: NuvioSyncMeta = {
+    lastSyncAt: Date.now(),
+    continueWatchingCount: counts?.continueWatching ?? previous?.continueWatchingCount ?? 0,
+    watchlistCount: counts?.watchlist ?? previous?.watchlistCount ?? 0,
+    watchedCount: counts?.watched ?? previous?.watchedCount ?? 0,
+    error,
+  };
   await storageWrite('nuvio_sync_meta', meta);
 }
 
