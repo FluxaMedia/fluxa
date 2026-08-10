@@ -597,7 +597,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   shelves: {
     position: 'relative',
-    marginTop: '-4.5rem',
+    marginTop: '-8rem',
     paddingTop: '0.5rem',
     paddingBottom: '5rem',
   },

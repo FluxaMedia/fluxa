@@ -57,7 +57,7 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     borderRadius: '0.25rem',
     background: 'rgba(0,0,0,0.58)',
     color: '#FFFFFF',
-    fontSize: 'clamp(1.1rem, 2.05vw, 1.8rem)' as unknown as number,
+    fontSize: 'clamp(0.8rem, 1.3vw, 1.15rem)' as unknown as number,
     fontWeight: 700,
     lineHeight: 1.28,
     textAlign: 'center',
@@ -94,7 +94,7 @@ export const heroStyles: Record<string, React.CSSProperties> = {
   gradientBottom: {
     position: 'absolute',
     inset: 0,
-    background: 'linear-gradient(to bottom, rgba(4,5,8,0.00) 38%, #040508 100%)',
+    background: 'linear-gradient(to bottom, rgba(4,5,8,0.00) 55%, #040508 85%)',
     pointerEvents: 'none',
     zIndex: 1,
   },

@@ -60,6 +60,12 @@ export const HeroSection = React.memo(function HeroSection({
   activeIndexRef.current = activeIndex;
   const indicatorFillRef = useRef<HTMLSpanElement | null>(null);
   const indicatorAnimationRef = useRef<Animation | null>(null);
+  const heroElRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; containerWidth: number } | null>(null);
+  const settleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [preview, setPreview] = useState<{ index: number; side: 'next' | 'prev'; width: number } | null>(null);
 
   const activeMeta = items[activeIndex] ?? meta;
   const canSlide = items.length > 1;
@@ -137,12 +143,12 @@ export const HeroSection = React.memo(function HeroSection({
   }
 
   useEffect(() => {
-    if (!canSlide || !isActive || trailerPending) return;
+    if (!canSlide || !isActive || trailerPending || isDragging || preview) return;
     const id = window.setInterval(() => {
       slideToIndex(activeIndexRef.current + 1);
     }, slideIntervalMs);
     return () => window.clearInterval(id);
-  }, [canSlide, items.length, isActive, trailerPending, slideIntervalMs]);
+  }, [canSlide, items.length, isActive, trailerPending, slideIntervalMs, isDragging, preview]);
 
   useEffect(() => {
     const el = indicatorFillRef.current;
@@ -189,48 +195,102 @@ export const HeroSection = React.memo(function HeroSection({
     else if (e.key === 'ArrowRight') { e.preventDefault(); goTo(activeIndex + 1); }
   };
 
-  const dragRef = useRef<{ startX: number; startY: number } | null>(null);
+  useEffect(() => {
+    return () => {
+      if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
+    };
+  }, []);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!canSlide) return;
-    dragRef.current = { startX: e.clientX, startY: e.clientY };
+    if (settleTimeoutRef.current) { clearTimeout(settleTimeoutRef.current); settleTimeoutRef.current = null; }
+    const containerWidth = heroElRef.current?.getBoundingClientRect().width || window.innerWidth;
+    dragRef.current = { startX: e.clientX, startY: e.clientY, containerWidth };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
   };
-  const handlePointerUp = (e: React.PointerEvent) => {
+  const handlePointerMove = (e: React.PointerEvent) => {
     const drag = dragRef.current;
-    dragRef.current = null;
     if (!drag) return;
     const deltaX = e.clientX - drag.startX;
     const deltaY = e.clientY - drag.startY;
-    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) return;
-    goTo(activeIndex + (deltaX < 0 ? 1 : -1));
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+    const clamped = Math.max(-drag.containerWidth, Math.min(drag.containerWidth, deltaX));
+    setDragOffset(clamped);
+    if (clamped < 0) {
+      setPreview({ index: (activeIndex + 1) % items.length, side: 'next', width: drag.containerWidth });
+    } else if (clamped > 0) {
+      setPreview({ index: (activeIndex - 1 + items.length) % items.length, side: 'prev', width: drag.containerWidth });
+    }
   };
+  const endDrag = (e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    setIsDragging(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (!drag) { setDragOffset(0); setPreview(null); return; }
+    const deltaX = e.clientX - drag.startX;
+    const deltaY = e.clientY - drag.startY;
+    const isSwipe = Math.abs(deltaX) >= SWIPE_THRESHOLD_PX && Math.abs(deltaX) >= Math.abs(deltaY);
+    if (isSwipe && preview) {
+      const nextIndex = preview.index;
+      setDragOffset(deltaX < 0 ? -drag.containerWidth : drag.containerWidth);
+      settleTimeoutRef.current = setTimeout(() => {
+        setActiveIndex(nextIndex);
+        setDragOffset(0);
+        setPreview(null);
+        settleTimeoutRef.current = null;
+      }, 380);
+    } else {
+      setDragOffset(0);
+      settleTimeoutRef.current = setTimeout(() => {
+        setPreview(null);
+        settleTimeoutRef.current = null;
+      }, 380);
+    }
+  };
+
+  const slideTransition = isDragging ? 'none' : 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
+  const previewOffset = preview ? dragOffset + (preview.side === 'next' ? preview.width : -preview.width) : 0;
+  const previewMeta = preview ? items[preview.index] : null;
+  const previewBgUrl = previewMeta ? (preferSeasonPosters ? seasonPosterUrl(previewMeta) : undefined) ?? previewMeta.background ?? previewMeta.poster ?? null : null;
 
   return (
     <div
-      style={{ ...styles.hero, cursor: canSlide ? 'grab' : undefined }}
+      ref={heroElRef}
+      style={{ ...styles.hero, cursor: canSlide ? (isDragging ? 'grabbing' : 'grab') : undefined, touchAction: canSlide ? 'pan-y' : undefined }}
       tabIndex={canSlide ? 0 : -1}
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={() => { dragRef.current = null; }}
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
     >
       <style>{heroKeyframes}</style>
-      {bgUrl && (
-        <img
-          key={activeMeta.id || activeIndex}
-          src={bgUrl}
-          alt=""
-          decoding="async"
-          style={{
-            ...styles.backdrop,
-            ...contentStyle,
-            opacity: visible ? (trailerActive ? 0 : 1) : 0,
-            transition: 'opacity 0.6s ease',
-            animation: prefersReducedMotion ? 'none' : `heroKenBurns ${slideIntervalMs + 400}ms ease-out forwards`,
-            animationPlayState: trailerActive || !isActive ? 'paused' : 'running',
-          }}
-          onError={() => setBgError(true)}
-        />
+      <div style={{ position: 'absolute', inset: 0, transform: `translateX(${dragOffset}px)`, transition: slideTransition }}>
+        {bgUrl && (
+          <img
+            key={activeMeta.id || activeIndex}
+            src={bgUrl}
+            alt=""
+            decoding="async"
+            style={{
+              ...styles.backdrop,
+              ...contentStyle,
+              opacity: visible ? (trailerActive ? 0 : 1) : 0,
+              transition: 'opacity 0.6s ease',
+              animation: prefersReducedMotion ? 'none' : `heroKenBurns ${slideIntervalMs + 400}ms ease-out forwards`,
+              animationPlayState: trailerActive || !isActive ? 'paused' : 'running',
+            }}
+            onError={() => setBgError(true)}
+          />
+        )}
+      </div>
+
+      {previewBgUrl && (
+        <div style={{ position: 'absolute', inset: 0, transform: `translateX(${previewOffset}px)`, transition: slideTransition }}>
+          <img src={previewBgUrl} alt="" decoding="async" style={styles.backdrop} />
+        </div>
       )}
 
       <div ref={trailerContainerRef} style={styles.trailerContainer}>
@@ -283,7 +343,8 @@ export const HeroSection = React.memo(function HeroSection({
       <div style={{ ...styles.gradientLeft, opacity: trailerActive ? 0.45 : 1, transition: 'opacity 0.6s ease' }} />
       <div style={styles.gradientBottom} />
 
-      <div style={{ ...styles.panel, ...contentStyle }}>
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: `translateX(${dragOffset}px)`, transition: slideTransition }}>
+      <div style={{ ...styles.panel, ...contentStyle, pointerEvents: 'auto' }}>
         {logoUrl ? (
           <img
             src={logoUrl}
@@ -349,6 +410,7 @@ export const HeroSection = React.memo(function HeroSection({
             <Info size={20} />
           </HeroIconBtn>
         </div>
+      </div>
       </div>
 
       {canSlide && !trailerActive && (
