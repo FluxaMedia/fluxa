@@ -12,6 +12,12 @@ class SettingsStore(
     val state: StateFlow<SettingsUiState> = dataSource.observeSettings()
         .stateIn(scope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(isLoading = true))
 
+    val appearance: StateFlow<SettingsAppearanceUiModel> = dataSource.observeAppearance()
+        .stateIn(scope, SharingStarted.WhileSubscribed(5_000), SettingsAppearanceUiModel())
+
+    val appearanceHome: StateFlow<SettingsAppearanceHomeUiModel> = dataSource.observeAppearanceHome()
+        .stateIn(scope, SharingStarted.WhileSubscribed(5_000), SettingsAppearanceHomeUiModel())
+
     suspend fun refreshContentFeeds() = dataSource.refreshContentFeeds()
 
     suspend fun dispatch(action: SettingsAction) {

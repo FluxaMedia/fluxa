@@ -1,6 +1,8 @@
 package com.fluxa.app.shared.feature.settings
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 enum class SettingsCategory {
     Hub, Account, TmdbFeatures, MdblistApi, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
@@ -11,6 +13,7 @@ enum class SettingsCategory {
 data class SettingsAccountUiModel(
     val displayName: String = "",
     val email: String = "",
+    val stremioEmail: String? = null,
     val nuvioEmail: String? = null,
     val avatarUrl: String? = null,
     val hasStremio: Boolean = false,
@@ -30,9 +33,19 @@ data class SettingsAccountUiModel(
     val syncFailedProviders: Set<String> = emptySet(),
     val syncingProviders: Set<String> = emptySet(),
     val connectErrors: Map<String, String> = emptyMap(),
+    val stremioLastSyncAt: Long = 0L,
     val nuvioLastSyncAt: Long = 0L,
     val traktLastSyncAt: Long = 0L,
     val simklLastSyncAt: Long = 0L,
+    val anilistLastSyncAt: Long = 0L,
+    val stremioItemCount: Int = 0,
+    val stremioContinueWatchingCount: Int = 0,
+    val stremioLibraryCount: Int = 0,
+    val stremioAddonCount: Int = 0,
+    val nuvioItemCount: Int = 0,
+    val nuvioContinueWatchingCount: Int = 0,
+    val nuvioLibraryCount: Int = 0,
+    val nuvioAddonCount: Int = 0,
     val traktItemCount: Int = 0,
     val traktContinueWatchingCount: Int = 0,
     val continueWatchingCount: Int = 0,
@@ -93,22 +106,34 @@ data class SettingsAppearanceHomeUiModel(
     val continueWatchingHorizontal: Boolean = true,
     val continueWatchingEnabled: Boolean = true,
     val continueWatchingHideTitles: Boolean = false,
-    val continueWatchingSource: String = "fluxa",
+    val continueWatchingSource: String = "local",
     val upcomingRowEnabled: Boolean = false
 )
 
 data class SettingsAppearanceDetailUiModel(
+    val detailScreenStyle: String = "cinematic",
+    val detailPreferClearlogo: Boolean = true,
+    val detailShowEpisodeDescriptions: Boolean = true,
+    val detailShowCast: Boolean = true,
+    val detailShowRecommendations: Boolean = true,
+    val detailCollapsingHero: Boolean = true,
     val trailerOnDetailHeroEnabled: Boolean = false,
     val trailerOnDetailHeroDelaySeconds: Int = 4,
     val blurUnwatchedEpisodes: Boolean = false,
     val detailSeasonSelectorMode: String = "dropdown",
     val detailSeasonPostersOnHero: Boolean = false,
-    val episodeCardsLayout: String = "modern"
+    val episodeCardsLayout: String = "carousel"
 )
 
 data class SettingsPlaybackUiModel(
     val preferredPlayer: String = "internal",
+    val externalPlayerTarget: String = "",
+    val inAppPlayerOptions: List<SettingsChoiceOption> = emptyList(),
+    val externalPlayerOptions: List<SettingsChoiceOption> = emptyList(),
     val mpvCustomOptions: String = "",
+    val animeUpscalingMode: String = "off",
+    val animeUpscalingQuality: String = "anime4k_m",
+    val animeUpscalingModePreset: String = "a",
     val animeUseMpv: Boolean = false,
     val animePreferJapaneseAudio: Boolean = false,
     val playbackSpeed: Float = 1f,
@@ -251,6 +276,18 @@ sealed interface SettingsAction {
 
 interface SettingsDataSource {
     fun observeSettings(): Flow<SettingsUiState>
+
+    /** Lightweight global chrome subscription. Platforms can override this to avoid building the
+     * complete Settings model when only appearance/navigation values are needed. */
+    fun observeAppearance(): Flow<SettingsAppearanceUiModel> = observeSettings()
+        .map { it.appearance }
+        .distinctUntilChanged()
+
+    /** Lightweight Home-only appearance subscription (Continue Watching labels/layout, hero flags, etc.). */
+    fun observeAppearanceHome(): Flow<SettingsAppearanceHomeUiModel> = observeSettings()
+        .map { it.appearanceHome }
+        .distinctUntilChanged()
+
     suspend fun refreshContentFeeds()
     suspend fun updateGeneral(value: SettingsGeneralUiModel)
     suspend fun updateAppearance(value: SettingsAppearanceUiModel)

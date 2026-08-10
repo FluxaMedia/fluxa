@@ -1,55 +1,45 @@
 package com.fluxa.app.ui.catalog
 
+import android.content.Context
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.domain.discovery.MetadataFeedOption
 import com.fluxa.app.domain.discovery.buildMetadataFeedOptions
 import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
-import com.fluxa.app.domain.discovery.effectiveMetadataFeedSelection
-import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
-import com.fluxa.app.domain.discovery.metadataFeedHomeTitle
 import com.fluxa.app.domain.discovery.moveMetadataFeedOrder
 import com.fluxa.app.domain.discovery.orderedMetadataFeeds
 import com.fluxa.app.domain.discovery.toggleMetadataFeed
 import com.fluxa.app.player.LastMediaDebugInfoStore
-import com.fluxa.app.shared.feature.settings.SettingsAccountUiModel
-import com.fluxa.app.shared.feature.settings.SettingsAddonsUiModel
-import com.fluxa.app.shared.feature.settings.SettingsAdvancedUiModel
-import com.fluxa.app.shared.feature.settings.SettingsAppearanceDetailUiModel
-import com.fluxa.app.shared.feature.settings.SettingsAppearanceHomeUiModel
-import com.fluxa.app.shared.feature.settings.SettingsAppearanceUiModel
-import com.fluxa.app.shared.feature.settings.SettingsContentUiModel
-import com.fluxa.app.shared.feature.settings.SettingsDataSource
-import com.fluxa.app.shared.feature.settings.SettingsDeveloperUiModel
-import com.fluxa.app.shared.feature.settings.SettingsDownloadsUiModel
-import com.fluxa.app.shared.feature.settings.SettingsFeedItemUiModel
-import com.fluxa.app.shared.feature.settings.SettingsGeneralUiModel
-import com.fluxa.app.shared.feature.settings.SettingsNotificationsUiModel
-import com.fluxa.app.shared.feature.settings.SettingsPlaybackUiModel
-import com.fluxa.app.shared.feature.settings.SettingsSubtitlesUiModel
-import com.fluxa.app.shared.feature.settings.SettingsSystemUiModel
-import com.fluxa.app.shared.feature.settings.SettingsUiState
+import com.fluxa.app.shared.feature.settings.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-private const val HERO_FEED_LIMIT = 2
 
 class AndroidSettingsDataSource(
+    private val context: Context,
     private val homeViewModel: HomeViewModel,
     private val profileManager: ProfileManager,
     private val activeProfile: () -> UserProfile?,
     private val onProfileChanged: (UserProfile) -> Unit,
+    private val thirdPartyProviderRepository: ThirdPartyProviderRepository,
     private val appVersionLabel: String,
     private val language: () -> String
 ) : SettingsDataSource {
 
     private val profileState = MutableStateFlow(activeProfile())
+
+    override fun observeAppearanceHome(): Flow<SettingsAppearanceHomeUiModel> = profileFlow()
+        .map { profile -> profile?.toSettingsAppearanceHomeUiModel() ?: SettingsAppearanceHomeUiModel() }
+        .distinctUntilChanged()
 
     override fun observeSettings(): Flow<SettingsUiState> = combine(
         profileFlow(),
@@ -94,214 +84,72 @@ class AndroidSettingsDataSource(
         debugInfo: com.fluxa.app.player.LastMediaDebugInfo,
         syncingProviders: Set<String> = emptySet(),
         connectErrors: Map<String, String> = emptyMap(),
-        libraryUiState: LibraryUiState = LibraryUiState()
-    ): SettingsUiState {
-        val heroOptions = orderedMetadataFeeds(metadataOptions, profile.heroFeedOrder)
-        val heroSelection = effectiveHomeMetadataFeedSelection(profile.heroFeedToggles, heroOptions.map { it.key })
-        val heroFeeds = heroOptions.mapIndexed { index, option ->
-            SettingsFeedItemUiModel(
-                key = option.key,
-                label = metadataFeedHomeTitle(option.label),
-                providerLabel = option.label,
-                selected = isMetadataFeedEnabled(heroSelection, option.key),
-                canMoveUp = index > 0,
-                canMoveDown = index < heroOptions.lastIndex
+        libraryUiState: LibraryUiState = LibraryUiState(),
+    ): SettingsUiState = profile.toSettingsUiState(
+        metadataOptions = metadataOptions,
+        appVersionLabel = appVersionLabel,
+        accountMetrics = providerMetrics(
+            profile = profile,
+            syncingProviders = syncingProviders,
+            connectErrors = connectErrors,
+        ),
+        developerSnapshot = SettingsDeveloperSnapshot(
+            lastProbeUpdatedAt = LastMediaDebugInfoStore.formattedUpdatedAt(debugInfo.updatedAtMs)
+                .takeIf { debugInfo.hasInfo },
+            lastProbeTitle = debugInfo.title.takeIf { debugInfo.hasInfo },
+            lastProbeUrl = debugInfo.url.takeIf { debugInfo.hasInfo },
+            technicalInfo = debugInfo.technicalInfo,
+        ),
+    ).let { state ->
+        state.copy(
+            playback = state.playback.copy(
+                inAppPlayerOptions = listOf(
+                    SettingsChoiceOption("internal", "ExoPlayer"),
+                    SettingsChoiceOption("mpv", "libmpv"),
+                ),
+                externalPlayerOptions = AndroidExternalPlayerRegistry.installedVideoPlayers(context),
             )
-        }
+        )
+    }
 
-        val homeOptions = orderedMetadataFeeds(metadataOptions, profile.homeFeedOrder)
-        val homeSelection = effectiveHomeMetadataFeedSelection(profile.homeFeedToggles, homeOptions.map { it.key })
-        val homeFeeds = homeOptions.mapIndexed { index, option ->
-            SettingsFeedItemUiModel(
-                key = option.key,
-                label = metadataFeedHomeTitle(option.label),
-                providerLabel = option.label,
-                selected = isMetadataFeedEnabled(homeSelection, option.key),
-                canMoveUp = index > 0,
-                canMoveDown = index < homeOptions.lastIndex
-            )
-        }
-
-        val visibleHomeKeys = homeFeeds.filter { it.selected }.map { it.key }
-        val topTenSelection = effectiveMetadataFeedSelection(profile.topTenFeedToggles, visibleHomeKeys)
-        val topTenFeeds = homeOptions.filter { it.key in visibleHomeKeys }.map { option ->
-            SettingsFeedItemUiModel(
-                key = option.key,
-                label = metadataFeedHomeTitle(option.label),
-                providerLabel = option.label,
-                selected = isMetadataFeedEnabled(topTenSelection, option.key)
-            )
-        }
-
-        return SettingsUiState(
-            account = SettingsAccountUiModel(
-                displayName = profile.profileName?.takeIf { it.isNotBlank() } ?: profile.email,
-                email = profile.email,
-                nuvioEmail = profile.nuvioEmail,
-                avatarUrl = profile.avatarUrl,
-                hasStremio = profile.authKey.isNotBlank(),
-                hasNuvio = !profile.nuvioAccessToken.isNullOrBlank(),
-                hasTrakt = !profile.traktAccessToken.isNullOrBlank(),
-                hasSimkl = !profile.simklAccessToken.isNullOrBlank(),
-                hasAnilist = !profile.anilistAccessToken.isNullOrBlank(),
-                traktUsername = profile.traktUsername,
-                simklUsername = profile.simklUsername,
-                anilistUsername = profile.anilistUsername,
-                syncCwSourceOfTruth = profile.syncCwSourceOfTruth.takeIf { it in setOf("", "local", "nuvio", "trakt", "simkl", "anilist", "stremio") } ?: "",
-                syncCwRanking = profile.syncCwRanking.takeIf { it in setOf("last_watched", "most_recent_episode") } ?: "last_watched",
-                integrationLibrarySource = profile.integrationLibrarySource.takeIf { it in setOf("local", "nuvio", "trakt", "simkl", "anilist", "stremio") } ?: "local",
-                continueWatchingDays = (profile.continueWatchingDays ?: 0).takeIf { it == 0 || it in 1..365 } ?: 0,
-                traktCommentsEnabled = profile.traktCommentsEnabled ?: false,
-                hasAnySync = !profile.traktAccessToken.isNullOrBlank() ||
-                    !profile.simklAccessToken.isNullOrBlank() ||
-                    !profile.anilistAccessToken.isNullOrBlank(),
-                syncFailedProviders = profile.externalSyncFailedProviders.orEmpty(),
-                syncingProviders = syncingProviders,
-                connectErrors = connectErrors,
-                nuvioLastSyncAt = profile.nuvioLastSyncAt ?: 0L,
-                traktLastSyncAt = profile.safeTraktLastSyncAt,
-                simklLastSyncAt = profile.safeSimklLastSyncAt,
-                traktItemCount = profile.safeTraktLastSyncedItems,
-                traktContinueWatchingCount = profile.safeTraktLastContinueWatchingCount,
-                continueWatchingCount = homeViewModel.currentContinueWatchingCount.value,
-                traktLibraryCount = profile.safeTraktLastWatchlistCount,
-                simklItemCount = libraryUiState.simklPlanned.size,
-                simklContinueWatchingCount = libraryUiState.simklWatching.size,
-                simklLibraryCount = libraryUiState.simklCompleted.size,
-                anilistItemCount = libraryUiState.anilistPlanned.size,
-                anilistContinueWatchingCount = libraryUiState.anilistWatching.size,
-                anilistLibraryCount = libraryUiState.anilistCompleted.size,
-                addonCount = profile.safeLocalAddons.size,
-                tmdbApiKey = profile.tmdbApiKey,
-                mdblistApiKey = profile.mdblistApiKey,
-                tmdbCastImagesEnabled = profile.safeTmdbCastImagesEnabled,
-                tmdbSimilarResultsEnabled = profile.safeTmdbSimilarResultsEnabled,
-                tmdbTrailersEnabled = profile.safeTmdbTrailersEnabled,
-                tmdbRecommendationsEnabled = profile.safeTmdbRecommendationsEnabled,
-                tmdbCollectionInfoEnabled = profile.safeTmdbCollectionInfoEnabled,
-                tmdbEpisodeImagesEnabled = profile.safeTmdbEpisodeImagesEnabled,
-                tmdbLogosBackdropsEnabled = profile.safeTmdbLogosBackdropsEnabled,
-                tmdbRatingsEnabled = profile.safeTmdbRatingsEnabled,
-                tmdbBasicInfoEnabled = profile.safeTmdbBasicInfoEnabled,
-                tmdbDetailsEnabled = profile.safeTmdbDetailsEnabled,
-                tmdbProductionsEnabled = profile.safeTmdbProductionsEnabled,
-                tmdbNetworksEnabled = profile.safeTmdbNetworksEnabled
-            ),
-            notifications = SettingsNotificationsUiModel(
-                notificationsEnabled = profile.safeNotificationsEnabled,
-                alertNewEpisodes = profile.safeAlertNewEpisodes
-            ),
-            general = SettingsGeneralUiModel(
-                language = profile.safeLanguage,
-                startPage = profile.safeStartPage,
-                backgroundPlayback = profile.safeBackgroundPlayback
-            ),
-            appearance = SettingsAppearanceUiModel(
-                accentColorArgb = profile.safeAccentColorArgb.toLong() and 0xffffffffL,
-                amoledMode = profile.safeAmoledMode,
-                liquidGlassMode = profile.safeLiquidGlassMode,
-                animationsEnabled = profile.safeAnimationsEnabled,
-                floatingBottomBar = profile.floatingBottomBar ?: false,
-                bottomBarLabels = profile.bottomBarLabels ?: false,
-                topNavigationBar = profile.topNavigationBar ?: false
-            ),
-            appearanceHome = SettingsAppearanceHomeUiModel(
-                cardCornerPreset = profile.safeCardCornerPreset,
-                interfaceDensity = profile.safeInterfaceDensity,
-                posterWidthPreset = profile.safePosterWidthPreset,
-                posterLandscapeMode = profile.safePosterLandscapeMode,
-                posterHideTitles = profile.safePosterHideTitles,
-                homeSeasonPostersOnHero = profile.safeHomeSeasonPostersOnHero,
-                trailerOnHomeHeroEnabled = profile.safeTrailerOnHomeHeroEnabled,
-                trailerOnHomeHeroDelaySeconds = profile.safeTrailerOnHomeHeroDelaySeconds,
-                continueWatchingHorizontal = profile.safeContinueWatchingLayout != "vertical",
-                continueWatchingEnabled = profile.safeContinueWatchingEnabled,
-                continueWatchingHideTitles = profile.safeContinueWatchingHideTitles,
-                continueWatchingSource = profile.safeContinueWatchingSource,
-                upcomingRowEnabled = profile.safeUpcomingRowEnabled
-            ),
-            appearanceDetail = SettingsAppearanceDetailUiModel(
-                trailerOnDetailHeroEnabled = profile.safeTrailerOnDetailHeroEnabled,
-                trailerOnDetailHeroDelaySeconds = profile.safeTrailerOnDetailHeroDelaySeconds,
-                blurUnwatchedEpisodes = profile.safeBlurUnwatchedEpisodes,
-                detailSeasonSelectorMode = profile.safeDetailSeasonSelectorMode,
-                detailSeasonPostersOnHero = profile.safeDetailSeasonPostersOnHero,
-                episodeCardsLayout = profile.safeEpisodeCardsLayout
-            ),
-            playback = SettingsPlaybackUiModel(
-                preferredPlayer = if (profile.safePreferredPlayer == "mpv") "mpv" else "internal",
-                mpvCustomOptions = profile.safeMpvCustomOptions,
-                animeUseMpv = profile.safeAnimeUseMpv,
-                animePreferJapaneseAudio = profile.safeAnimePreferJapaneseAudio,
-                playbackSpeed = profile.safePlaybackSpeed,
-                seekForwardSeconds = profile.safeSeekForwardSeconds,
-                seekBackwardSeconds = profile.safeSeekBackwardSeconds,
-                holdToSpeedEnabled = profile.safeHoldToSpeedEnabled,
-                holdSpeed = profile.safeHoldSpeed,
-                streamSourceSelectionMode = profile.safeStreamSourceSelectionMode,
-                streamSourceRegexPattern = profile.streamSourceRegexPattern.orEmpty(),
-                autoplayMode = profile.safeAutoplayMode,
-                autoPlayNextEpisode = profile.safeAutoPlayNextEpisode,
-                autoPlayCountdownSecs = profile.safeAutoPlayCountdownSecs,
-                autoRetryNextSource = profile.safeAutoRetryNextSource,
-                tryBingeGroup = profile.safeTryBingeGroup,
-                nextEpisodeThresholdPercent = profile.safeNextEpisodeThresholdPercent,
-                watchedThresholdPercent = profile.safeWatchedThresholdPercent,
-                useSkipSegments = profile.safeUseIntroDb || profile.safeUseAniSkip,
-                introDbApiKey = profile.introDbApiKey.orEmpty(),
-                useChapterSkip = profile.safeUseChapterSkip,
-                autoSkipIntro = profile.safeAutoSkipIntro,
-                contentWarningsEnabled = profile.safeContentWarningsEnabled
-            ),
-            subtitles = SettingsSubtitlesUiModel(
-                preferredAudioLanguage = profile.safePreferredAudioLanguage,
-                secondaryAudioLanguage = profile.safeSecondaryAudioLanguage,
-                preferredSubtitleLanguage = profile.safePreferredSubtitleLanguage,
-                secondarySubtitleLanguage = profile.safeSecondarySubtitleLanguage,
-                autoEnableSubtitles = profile.safeAutoEnableSubtitles,
-                subtitleShadow = profile.safeSubtitleShadow,
-                subtitleSize = profile.safeSubtitleSize,
-                subtitleColorArgb = profile.safeSubtitleColor.toLong() and 0xffffffffL,
-                subtitleTextOpacity = profile.safeSubtitleTextOpacity,
-                subtitleBackgroundColorArgb = profile.safeSubtitleBackgroundColor.toLong() and 0xffffffffL,
-                subtitleBackgroundOpacity = profile.safeSubtitleBackgroundOpacity,
-                subtitleOutlineColorArgb = profile.safeSubtitleOutlineColor.toLong() and 0xffffffffL,
-                subtitleOutlineOpacity = profile.safeSubtitleOutlineOpacity
-            ),
-            advanced = SettingsAdvancedUiModel(
-                playerBufferCacheMb = profile.safePlayerBufferCacheMb,
-                playerForwardBufferSeconds = profile.safePlayerForwardBufferSeconds,
-                playerBackBufferSeconds = profile.safePlayerBackBufferSeconds,
-                audioDecoderMode = profile.safeAudioDecoderMode,
-                tunneledPlayback = profile.safeTunneledPlayback
-            ),
-            content = SettingsContentUiModel(
-                showHeroSection = profile.safeShowHeroSection,
-                heroFeeds = heroFeeds,
-                homeFeeds = homeFeeds,
-                topTenFeeds = topTenFeeds,
-                heroSelectionLimit = HERO_FEED_LIMIT
-            ),
-            addons = SettingsAddonsUiModel(
-                torrentSpeedPreset = profile.safeTorrentSpeedPreset,
-                torrentWifiOnly = profile.safeTorrentWifiOnly
-            ),
-            downloads = SettingsDownloadsUiModel(
-                downloadSourceSelectionMode = profile.safeDownloadSourceSelectionMode,
-                downloadSourceRegexPattern = profile.downloadSourceRegexPattern.orEmpty(),
-                downloadSubtitleLanguage = profile.safeDownloadSubtitleLanguage
-            ),
-            system = SettingsSystemUiModel(
-                automaticUpdates = profile.safeAutomaticUpdates,
-                appVersionLabel = appVersionLabel
-            ),
-            developer = SettingsDeveloperUiModel(
-                lastProbeUpdatedAt = LastMediaDebugInfoStore.formattedUpdatedAt(debugInfo.updatedAtMs).takeIf { debugInfo.hasInfo },
-                lastProbeTitle = debugInfo.title.takeIf { debugInfo.hasInfo },
-                lastProbeUrl = debugInfo.url.takeIf { debugInfo.hasInfo },
-                technicalInfo = debugInfo.technicalInfo
-            ),
-            isLoading = false
+    private fun providerMetrics(
+        profile: UserProfile,
+        syncingProviders: Set<String>,
+        connectErrors: Map<String, String>,
+    ): SettingsAccountMetrics {
+        val stremio = thirdPartyProviderRepository.cached(profile, ThirdPartyProviderId.STREMIO)
+        val nuvio = thirdPartyProviderRepository.cached(profile, ThirdPartyProviderId.NUVIO)
+        val trakt = thirdPartyProviderRepository.cached(profile, ThirdPartyProviderId.TRAKT)
+        val simkl = thirdPartyProviderRepository.cached(profile, ThirdPartyProviderId.SIMKL)
+        val anilist = thirdPartyProviderRepository.cached(profile, ThirdPartyProviderId.ANILIST)
+        return SettingsAccountMetrics(
+            syncingProviders = syncingProviders,
+            connectErrors = connectErrors,
+            providerLastSyncAt = listOfNotNull(
+                stremio?.syncedAt?.takeIf { it > 0L }?.let { ThirdPartyProviderId.STREMIO.key to it },
+                nuvio?.syncedAt?.takeIf { it > 0L }?.let { ThirdPartyProviderId.NUVIO.key to it },
+                trakt?.syncedAt?.takeIf { it > 0L }?.let { ThirdPartyProviderId.TRAKT.key to it },
+                simkl?.syncedAt?.takeIf { it > 0L }?.let { ThirdPartyProviderId.SIMKL.key to it },
+                anilist?.syncedAt?.takeIf { it > 0L }?.let { ThirdPartyProviderId.ANILIST.key to it },
+            ).toMap(),
+            continueWatchingCount = homeViewModel.currentContinueWatchingCount.value,
+            stremioItemCount = stremio?.itemCount ?: 0,
+            stremioContinueWatchingCount = stremio?.continueWatching?.size ?: 0,
+            stremioLibraryCount = stremio?.libraryCount ?: 0,
+            stremioAddonCount = stremio?.addonCount ?: 0,
+            nuvioItemCount = nuvio?.itemCount ?: 0,
+            nuvioContinueWatchingCount = nuvio?.continueWatching?.size ?: 0,
+            nuvioLibraryCount = nuvio?.libraryCount ?: 0,
+            nuvioAddonCount = nuvio?.addonCount ?: 0,
+            traktItemCount = trakt?.itemCount,
+            traktContinueWatchingCount = trakt?.continueWatching?.size,
+            traktLibraryCount = trakt?.libraryCount,
+            simklItemCount = simkl?.itemCount ?: 0,
+            simklContinueWatchingCount = simkl?.continueWatching?.size ?: 0,
+            simklLibraryCount = simkl?.libraryCount ?: 0,
+            anilistItemCount = anilist?.itemCount ?: 0,
+            anilistContinueWatchingCount = anilist?.continueWatching?.size ?: 0,
+            anilistLibraryCount = anilist?.libraryCount ?: 0,
         )
     }
 
@@ -312,152 +160,29 @@ class AndroidSettingsDataSource(
         onProfileChanged(updated)
     }
 
-    override suspend fun updateGeneral(value: SettingsGeneralUiModel) = update {
-        it.copy(language = value.language, startPage = value.startPage, backgroundPlayback = value.backgroundPlayback)
-    }
+    override suspend fun updateGeneral(value: SettingsGeneralUiModel) = update { it.withGeneralSettings(value) }
 
-    override suspend fun updateAppearance(value: SettingsAppearanceUiModel) = update {
-        it.copy(
-            accentColorArgb = value.accentColorArgb.toInt(),
-            amoledMode = value.amoledMode,
-            appTheme = if (value.amoledMode) "dark" else it.appTheme,
-            liquidGlassMode = value.liquidGlassMode,
-            animationsEnabled = value.animationsEnabled,
-            floatingBottomBar = value.floatingBottomBar,
-            bottomBarLabels = value.bottomBarLabels,
-            topNavigationBar = value.topNavigationBar
-        )
-    }
+    override suspend fun updateAppearance(value: SettingsAppearanceUiModel) = update { it.withAppearanceSettings(value) }
 
-    override suspend fun updateAppearanceHome(value: SettingsAppearanceHomeUiModel) = update {
-        it.copy(
-            cardCornerPreset = value.cardCornerPreset,
-            interfaceDensity = value.interfaceDensity,
-            posterWidthPreset = value.posterWidthPreset,
-            posterLandscapeMode = value.posterLandscapeMode,
-            posterHideTitles = value.posterHideTitles,
-            homeSeasonPostersOnHero = value.homeSeasonPostersOnHero,
-            trailerOnHomeHeroEnabled = value.trailerOnHomeHeroEnabled,
-            trailerOnHomeHeroDelaySeconds = value.trailerOnHomeHeroDelaySeconds,
-            continueWatchingLayout = if (value.continueWatchingHorizontal) "horizontal" else "vertical",
-            continueWatchingEnabled = value.continueWatchingEnabled,
-            continueWatchingHideTitles = value.continueWatchingHideTitles,
-            continueWatchingSource = value.continueWatchingSource,
-            upcomingRowEnabled = value.upcomingRowEnabled
-        )
-    }
+    override suspend fun updateAppearanceHome(value: SettingsAppearanceHomeUiModel) = update { it.withAppearanceHomeSettings(value) }
 
-    override suspend fun updateAppearanceDetail(value: SettingsAppearanceDetailUiModel) = update {
-        it.copy(
-            trailerOnDetailHeroEnabled = value.trailerOnDetailHeroEnabled,
-            trailerOnDetailHeroDelaySeconds = value.trailerOnDetailHeroDelaySeconds,
-            blurUnwatchedEpisodes = value.blurUnwatchedEpisodes,
-            detailSeasonSelectorMode = value.detailSeasonSelectorMode,
-            detailSeasonPostersOnHero = value.detailSeasonPostersOnHero,
-            episodeCardsLayout = value.episodeCardsLayout
-        )
-    }
+    override suspend fun updateAppearanceDetail(value: SettingsAppearanceDetailUiModel) = update { it.withAppearanceDetailSettings(value) }
 
-    override suspend fun updatePlayback(value: SettingsPlaybackUiModel) = update {
-        it.copy(
-            preferredPlayer = value.preferredPlayer,
-            mpvCustomOptions = value.mpvCustomOptions.takeIf { opts -> opts.isNotBlank() },
-            animeUseMpv = value.animeUseMpv,
-            animePreferJapaneseAudio = value.animePreferJapaneseAudio,
-            playbackSpeed = value.playbackSpeed,
-            seekForwardSeconds = value.seekForwardSeconds,
-            seekBackwardSeconds = value.seekBackwardSeconds,
-            holdToSpeedEnabled = value.holdToSpeedEnabled,
-            holdSpeed = value.holdSpeed,
-            streamSourceSelectionMode = value.streamSourceSelectionMode,
-            streamSourceRegexPattern = value.streamSourceRegexPattern.takeIf { pattern -> pattern.isNotBlank() },
-            autoplayMode = value.autoplayMode,
-            autoPlayNextEpisode = value.autoPlayNextEpisode,
-            autoPlayCountdownSecs = value.autoPlayCountdownSecs,
-            autoRetryNextSource = value.autoRetryNextSource,
-            tryBingeGroup = value.tryBingeGroup,
-            nextEpisodeThresholdPercent = value.nextEpisodeThresholdPercent,
-            watchedThresholdPercent = value.watchedThresholdPercent,
-            useIntroDb = value.useSkipSegments,
-            introDbApiKey = value.introDbApiKey.takeIf { key -> key.isNotBlank() },
-            useAniSkip = value.useSkipSegments,
-            useChapterSkip = value.useChapterSkip,
-            autoSkipIntro = value.autoSkipIntro,
-            contentWarningsEnabled = value.contentWarningsEnabled
-        )
-    }
+    override suspend fun updatePlayback(value: SettingsPlaybackUiModel) = update { it.withPlaybackSettings(value) }
 
-    override suspend fun updateSubtitles(value: SettingsSubtitlesUiModel) = update {
-        it.copy(
-            preferredAudioLanguage = value.preferredAudioLanguage,
-            secondaryAudioLanguage = value.secondaryAudioLanguage,
-            preferredSubtitleLanguage = value.preferredSubtitleLanguage,
-            secondarySubtitleLanguage = value.secondarySubtitleLanguage,
-            autoEnableSubtitles = value.autoEnableSubtitles,
-            subtitleShadow = value.subtitleShadow,
-            subtitleSize = value.subtitleSize,
-            subtitleColor = value.subtitleColorArgb.toInt(),
-            subtitleTextOpacity = value.subtitleTextOpacity,
-            subtitleBackgroundColor = value.subtitleBackgroundColorArgb.toInt(),
-            subtitleBackgroundOpacity = value.subtitleBackgroundOpacity,
-            subtitleOutlineColor = value.subtitleOutlineColorArgb.toInt(),
-            subtitleOutlineOpacity = value.subtitleOutlineOpacity
-        )
-    }
+    override suspend fun updateSubtitles(value: SettingsSubtitlesUiModel) = update { it.withSubtitleSettings(value) }
 
-    override suspend fun updateAdvanced(value: SettingsAdvancedUiModel) = update {
-        it.copy(
-            playerBufferCacheMb = value.playerBufferCacheMb,
-            playerForwardBufferSeconds = value.playerForwardBufferSeconds,
-            playerBackBufferSeconds = value.playerBackBufferSeconds,
-            audioDecoderMode = value.audioDecoderMode,
-            tunneledPlayback = value.tunneledPlayback
-        )
-    }
+    override suspend fun updateAdvanced(value: SettingsAdvancedUiModel) = update { it.withAdvancedSettings(value) }
 
-    override suspend fun updateAddons(value: SettingsAddonsUiModel) = update {
-        it.copy(torrentSpeedPreset = value.torrentSpeedPreset, torrentWifiOnly = value.torrentWifiOnly)
-    }
+    override suspend fun updateAddons(value: SettingsAddonsUiModel) = update { it.withAddonSettings(value) }
 
-    override suspend fun updateDownloads(value: SettingsDownloadsUiModel) = update {
-        it.copy(
-            downloadSourceSelectionMode = value.downloadSourceSelectionMode,
-            downloadSourceRegexPattern = value.downloadSourceRegexPattern.takeIf { pattern -> pattern.isNotBlank() },
-            downloadSubtitleLanguage = value.downloadSubtitleLanguage
-        )
-    }
+    override suspend fun updateDownloads(value: SettingsDownloadsUiModel) = update { it.withDownloadSettings(value) }
 
-    override suspend fun updateSystem(value: SettingsSystemUiModel) = update {
-        it.copy(automaticUpdates = value.automaticUpdates)
-    }
+    override suspend fun updateSystem(value: SettingsSystemUiModel) = update { it.withSystemSettings(value) }
 
-    override suspend fun updateTmdbAccount(value: SettingsAccountUiModel) = update {
-        it.copy(
-            syncCwSourceOfTruth = value.syncCwSourceOfTruth,
-            syncCwRanking = value.syncCwRanking,
-            integrationLibrarySource = value.integrationLibrarySource,
-            continueWatchingDays = value.continueWatchingDays,
-            traktCommentsEnabled = value.traktCommentsEnabled,
-            tmdbApiKey = value.tmdbApiKey,
-            mdblistApiKey = value.mdblistApiKey,
-            tmdbCastImagesEnabled = value.tmdbCastImagesEnabled,
-            tmdbSimilarResultsEnabled = value.tmdbSimilarResultsEnabled,
-            tmdbTrailersEnabled = value.tmdbTrailersEnabled,
-            tmdbRecommendationsEnabled = value.tmdbRecommendationsEnabled,
-            tmdbCollectionInfoEnabled = value.tmdbCollectionInfoEnabled,
-            tmdbEpisodeImagesEnabled = value.tmdbEpisodeImagesEnabled,
-            tmdbLogosBackdropsEnabled = value.tmdbLogosBackdropsEnabled,
-            tmdbRatingsEnabled = value.tmdbRatingsEnabled,
-            tmdbBasicInfoEnabled = value.tmdbBasicInfoEnabled,
-            tmdbDetailsEnabled = value.tmdbDetailsEnabled,
-            tmdbProductionsEnabled = value.tmdbProductionsEnabled,
-            tmdbNetworksEnabled = value.tmdbNetworksEnabled
-        )
-    }
+    override suspend fun updateTmdbAccount(value: SettingsAccountUiModel) = update { it.withAccountSettings(value) }
 
-    override suspend fun updateNotifications(value: SettingsNotificationsUiModel) = update {
-        it.copy(notificationsEnabled = value.notificationsEnabled, alertNewEpisodes = value.alertNewEpisodes)
-    }
+    override suspend fun updateNotifications(value: SettingsNotificationsUiModel) = update { it.withNotificationSettings(value) }
 
     override suspend fun updateShowHeroSection(value: Boolean) = update {
         it.copy(showHeroSection = value)
@@ -469,7 +194,7 @@ class AndroidSettingsDataSource(
     override suspend fun toggleHeroFeed(key: String) = update { profile ->
         val options = currentMetadataOptions()
         val ordered = orderedMetadataFeeds(options, profile.heroFeedOrder).map { it.key }
-        profile.copy(heroFeedToggles = toggleMetadataFeed(profile.heroFeedToggles, ordered, key, HERO_FEED_LIMIT))
+        profile.copy(heroFeedToggles = toggleMetadataFeed(profile.heroFeedToggles, ordered, key, SETTINGS_HERO_FEED_LIMIT))
     }
 
     override suspend fun moveHeroFeed(key: String, direction: Int) = update { profile ->
@@ -495,28 +220,16 @@ class AndroidSettingsDataSource(
         profile.copy(topTenFeedToggles = toggleMetadataFeed(profile.topTenFeedToggles, homeSelection, key))
     }
 
-    override suspend fun disconnectSync() = update {
-        it.copy(
-            traktAccessToken = null,
-            traktRefreshToken = null,
-            traktUsername = null,
-            simklAccessToken = null,
-            simklUsername = null,
-            anilistAccessToken = null,
-            anilistRefreshToken = null,
-            anilistTokenExpiresAt = null,
-            anilistUsername = null
-        )
+    override suspend fun disconnectSync() {
+        val profile = activeProfile() ?: return
+        thirdPartyProviderRepository.clearAll(profile)
+        update { it.withAllSyncProvidersDisconnected() }
     }
 
-    override suspend fun disconnectProvider(provider: String) = update {
-        when (provider) {
-            "stremio" -> it.copy(authKey = "")
-            "nuvio" -> it.copy(nuvioAccessToken = null, nuvioRefreshToken = null, nuvioTokenExpiresAt = null, nuvioUserId = null, nuvioEmail = null, nuvioProfileIndex = null, nuvioLastSyncAt = null, nuvioLibrarySnapshot = null)
-            "trakt" -> it.copy(traktAccessToken = null, traktRefreshToken = null, traktTokenExpiresAt = null, traktUsername = null, traktLastSyncAt = null, traktLastSyncedItems = null, traktLastContinueWatchingCount = null, traktLastWatchlistCount = null)
-            "simkl" -> it.copy(simklAccessToken = null, simklUsername = null, simklLastSyncAt = null)
-            "anilist" -> it.copy(anilistAccessToken = null, anilistRefreshToken = null, anilistTokenExpiresAt = null, anilistUsername = null)
-            else -> it
-        }
+    override suspend fun disconnectProvider(provider: String) {
+        val profile = activeProfile() ?: return
+        val providerId = ThirdPartyProviderId.from(provider) ?: return
+        thirdPartyProviderRepository.clear(profile, providerId)
+        update { it.withProviderDisconnected(providerId.key) }
     }
 }

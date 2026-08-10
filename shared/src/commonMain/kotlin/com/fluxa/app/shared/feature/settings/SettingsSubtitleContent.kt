@@ -47,8 +47,8 @@ internal fun languageOptionLabel(value: String, lang: String?): String = when (v
     "none" -> AppStrings.t(lang, "settings.none")
     "original" -> AppStrings.t(lang, "settings.original")
     "device_language" -> AppStrings.t(lang, "settings.device_language")
-    "en" -> "English"
-    "tr" -> "Türkçe"
+    "en" -> AppStrings.t(lang, "language.english")
+    "tr" -> AppStrings.t(lang, "language.turkish")
     else -> value.uppercase()
 }
 
