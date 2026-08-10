@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CheckSquare2, Search, Square, X } from 'lucide-react';
 import { VirtualizedPosterGrid } from '../components/VirtualizedPosterGrid';
 import { FilterDropdown } from '../components/FilterDropdown';
@@ -17,6 +17,11 @@ import { useLibraryBulkSelection } from '../hooks/useLibraryBulkSelection';
 import { useLibraryCollections } from '../hooks/useLibraryCollections';
 import { NAV_RAIL_WIDTH, PX, styles } from './libraryScreenStyles';
 import { CircleBtn, HistoryTimeline, TabChip } from './LibraryScreenParts';
+import { invoke } from '@tauri-apps/api/core';
+
+function debugLog(msg: string) {
+  void invoke('debug_log', { msg }).catch(() => {});
+}
 
 type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 'airing' | 'rated' | 'history' | 'favorites';
 type LibrarySource = 'local' | LibraryProvider;
@@ -43,6 +48,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'rating'>(() => (getViewPrefs().librarySort as 'recent' | 'title' | 'rating') ?? 'recent');
   const [librarySource, setLibrarySource] = useState<LibrarySource>(() => (getViewPrefs().librarySource as LibrarySource) ?? 'local');
   const [providerLibraries, setProviderLibraries] = useState<Partial<Record<LibraryProvider, ProviderLibrarySnapshot>>>({});
+  const [providerLibrariesLoaded, setProviderLibrariesLoaded] = useState(false);
 
   useEffect(() => {
     void whenViewPrefsReady().then(() => {
@@ -57,16 +63,24 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const changeSort = (v: 'recent' | 'title' | 'rating') => { setSortBy(v); setViewPref('librarySort', v); };
   const changeLibrarySource = (v: LibrarySource) => { setLibrarySource(v); setViewPref('librarySource', v); };
 
+  const lastSettingsLibrarySourceRef = useRef<string | null>(null);
   useEffect(() => {
-    if (getViewPrefs().librarySource) return;
     const source = prefString(appPrefs(state), 'integrationLibrarySource', 'local') as LibrarySource;
-    if (source !== 'local') changeLibrarySource(source);
+    debugLog(`LibraryScreen: settings-sync effect source=${source} lastApplied=${lastSettingsLibrarySourceRef.current} currentLibrarySource=${librarySource}`);
+    if (lastSettingsLibrarySourceRef.current === source) return;
+    lastSettingsLibrarySourceRef.current = source;
+    changeLibrarySource(source);
   }, [state.settings?.values]);
 
   useEffect(() => {
     let active = true;
     const refreshProviderLibraries = () => {
-      void loadProviderLibraries().then((libraries) => { if (active) setProviderLibraries(libraries); });
+      void loadProviderLibraries().then((libraries) => {
+        debugLog(`LibraryScreen: loadProviderLibraries resolved keys=${Object.keys(libraries).join(',')}`);
+        if (!active) return;
+        setProviderLibraries(libraries);
+        setProviderLibrariesLoaded(true);
+      });
     };
     refreshProviderLibraries();
     window.addEventListener(PROVIDER_LIBRARIES_CHANGED, refreshProviderLibraries);
@@ -77,8 +91,12 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   }, [activeProfile?.id]);
 
   useEffect(() => {
-    if (librarySource !== 'local' && !providerLibraries[librarySource]) changeLibrarySource('local');
-  }, [librarySource, providerLibraries]);
+    if (!providerLibrariesLoaded) return;
+    if (librarySource !== 'local' && !providerLibraries[librarySource]) {
+      debugLog(`LibraryScreen: reverting to local, librarySource=${librarySource} has no providerLibraries entry (keys=${Object.keys(providerLibraries).join(',')})`);
+      changeLibrarySource('local');
+    }
+  }, [librarySource, providerLibraries, providerLibrariesLoaded]);
 
   const TAB_ORDER: Tab[] = ['watchlist', 'watching', 'completed', 'dropped', 'favorites', 'collections', 'airing', 'rated', 'history'];
   useEffect(() => {
