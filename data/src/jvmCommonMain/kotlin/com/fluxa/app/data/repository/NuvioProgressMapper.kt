@@ -20,17 +20,13 @@ internal fun NuvioWatchProgressDto.canonicalProgressKey(): String {
     }
 }
 
-/**
- * Maps Nuvio-owned playback progress. Library metadata remains authoritative;
- * optional metadata detail is only a fallback resolved from this Nuvio
- * account's own enabled add-ons.
- */
-internal fun NuvioWatchProgressDto.toContinueWatchingMeta(
+private fun NuvioWatchProgressDto.buildContinueWatchingMeta(
     libraryItem: NuvioLibraryItemDto?,
-    metadataDetail: MetaDetail? = null,
-): Meta? {
-    if (contentId.isBlank() || duration <= 0L || position < 0L) return null
-
+    metadataDetail: MetaDetail?,
+    timeOffset: Long?,
+    duration: Long?,
+    resumeProgressPercent: Float?,
+): Meta {
     val item = libraryItem?.toDomain()
     val detail = metadataDetail
     val resolvedName = item?.name
@@ -69,11 +65,9 @@ internal fun NuvioWatchProgressDto.toContinueWatchingMeta(
         ageRating = detail?.ageRating,
         genres = item?.genres?.takeIf { it.isNotEmpty() } ?: detail?.genres,
         seasonsCount = detail?.seasonsCount,
-        timeOffset = position,
+        timeOffset = timeOffset,
         duration = duration,
-        resumeProgressPercent = ((position.toDouble() / duration.toDouble()) * 100.0)
-            .toFloat()
-            .coerceIn(0f, 100f),
+        resumeProgressPercent = resumeProgressPercent,
         lastVideoId = videoId,
         // Preserve the season/episode code in provider data as well as the real title. Some
         // Nuvio video ids do not encode S/E, so the UI cannot always recover the code from id alone.
@@ -86,5 +80,46 @@ internal fun NuvioWatchProgressDto.toContinueWatchingMeta(
         reason = "Nuvio",
         continueWatchingPoster = resolvedPoster,
         continueWatchingBackground = episodeStill ?: resolvedBackground ?: resolvedPoster,
+    )
+}
+
+/**
+ * Maps Nuvio-owned playback progress. Library metadata remains authoritative;
+ * optional metadata detail is only a fallback resolved from this Nuvio
+ * account's own enabled add-ons.
+ */
+internal fun NuvioWatchProgressDto.toContinueWatchingMeta(
+    libraryItem: NuvioLibraryItemDto?,
+    metadataDetail: MetaDetail? = null,
+): Meta? {
+    if (contentId.isBlank() || duration <= 0L || position < 0L) return null
+    return buildContinueWatchingMeta(
+        libraryItem = libraryItem,
+        metadataDetail = metadataDetail,
+        timeOffset = position,
+        duration = duration,
+        resumeProgressPercent = ((position.toDouble() / duration.toDouble()) * 100.0)
+            .toFloat()
+            .coerceIn(0f, 100f),
+    )
+}
+
+/**
+ * Maps a row that `NuvioCoreBridge.resolveContinueWatching` already rolled
+ * past a finished episode: video/season/episode point at the next episode and
+ * position/duration were reset to 0. Renders as a progress-less Up Next card
+ * (`Meta.isUpNextContinueItem()`) instead of the finished episode's resume badge.
+ */
+internal fun NuvioWatchProgressDto.toUpNextContinueWatchingMeta(
+    libraryItem: NuvioLibraryItemDto?,
+    metadataDetail: MetaDetail? = null,
+): Meta? {
+    if (contentId.isBlank()) return null
+    return buildContinueWatchingMeta(
+        libraryItem = libraryItem,
+        metadataDetail = metadataDetail,
+        timeOffset = null,
+        duration = null,
+        resumeProgressPercent = null,
     )
 }

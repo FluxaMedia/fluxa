@@ -14,6 +14,8 @@ import com.fluxa.app.data.remote.NuvioWatchedItemDto
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.remote.toDto
 import com.fluxa.app.domain.discovery.supportsStremioResource
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -96,14 +98,54 @@ class NuvioSyncCoordinator @Inject constructor(
                 library = library,
             )
         }
+        val metadataByContentId = needsMetadata.mapNotNull { dto ->
+            metadataByProgressKey[dto.canonicalProgressKey()]?.let { dto.contentId to it }
+        }.toMap()
 
-        progress.mapNotNull { dto ->
-            dto.toContinueWatchingMeta(
-                libraryItem = library[dto.nuvioLibraryIdentity()],
-                metadataDetail = metadataByProgressKey[dto.canonicalProgressKey()],
-            )
+        val resolvedProgress = NuvioCoreBridge.resolveContinueWatching(
+            gson.toJsonTree(progress),
+            addonMetasJson(metadataByContentId),
+        ).let { resolved -> gson.fromJson(resolved, Array<NuvioWatchProgressDto>::class.java).toList() }
+
+        resolvedProgress.mapNotNull { dto ->
+            val metadataDetail = metadataByContentId[dto.contentId] ?: metadataByProgressKey[dto.canonicalProgressKey()]
+            val libraryItem = library[dto.nuvioLibraryIdentity()]
+            if (dto.duration <= 0L) {
+                dto.toUpNextContinueWatchingMeta(libraryItem, metadataDetail)
+            } else {
+                dto.toContinueWatchingMeta(libraryItem, metadataDetail)
+            }
         }
     }
+
+    private fun addonMetasJson(metadataByContentId: Map<String, MetaDetail>): JsonObject =
+        JsonObject().apply {
+            metadataByContentId.forEach { (contentId, detail) ->
+                val videos = detail.videos.orEmpty()
+                if (videos.isEmpty()) return@forEach
+                add(
+                    contentId,
+                    JsonObject().apply {
+                        add(
+                            "videos",
+                            JsonArray().apply {
+                                videos.forEach { video ->
+                                    add(
+                                        JsonObject().apply {
+                                            addProperty("id", video.id)
+                                            video.name?.let { addProperty("name", it) }
+                                            video.season?.let { addProperty("season", it) }
+                                            video.number?.let { addProperty("number", it) }
+                                            video.thumbnail?.let { addProperty("thumbnail", it) }
+                                        },
+                                    )
+                                }
+                            },
+                        )
+                    },
+                )
+            }
+        }
 
     /** Recent Nuvio watch-history projection for provider library UI. */
     suspend fun fetchWatched(profile: UserProfile): List<Meta> {

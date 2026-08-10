@@ -54,6 +54,14 @@ object NuvioCoreBridge {
         }
     ).asJsonObject
 
+    fun resolveContinueWatching(progress: JsonElement, addonMetas: JsonObject): JsonArray = invoke(
+        "nuvioResolveContinueWatching",
+        JsonObject().apply {
+            add("progress", progress)
+            add("addonMetas", addonMetas)
+        }
+    ).asJsonArray
+
     fun deltaSyncRequestPlan(state: JsonObject): JsonObject = invoke(
         "nuvioDeltaSyncRequestPlan",
         JsonObject().apply { add("state", state) },
