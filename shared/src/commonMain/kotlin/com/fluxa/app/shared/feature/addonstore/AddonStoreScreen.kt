@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -51,6 +52,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
+import com.fluxa.app.shared.feature.plugins.PluginsAction
+import com.fluxa.app.shared.feature.plugins.PluginsScreen
+import com.fluxa.app.shared.feature.plugins.PluginsUiState
 import com.fluxa.app.ui.catalog.FluxaColors
 
 @Composable
@@ -59,10 +63,24 @@ fun AddonStoreScreen(
     language: String?,
     onAction: (AddonStoreAction) -> Unit,
     onConfigureRequested: (String) -> Unit,
+    pluginsState: PluginsUiState? = null,
+    onPluginsAction: (PluginsAction) -> Unit = {},
     onBackRequested: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val accentColor = Color(state.accentColorArgb.toInt())
+    var showPlugins by remember { mutableStateOf(false) }
+
+    if (showPlugins && pluginsState != null) {
+        PluginsScreen(
+            state = pluginsState,
+            language = language,
+            onAction = onPluginsAction,
+            onBackRequested = { showPlugins = false },
+            modifier = modifier
+        )
+        return
+    }
 
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
         LazyColumn(
@@ -94,6 +112,17 @@ fun AddonStoreScreen(
                         color = Color.White,
                         fontWeight = FontWeight.Black,
                         fontSize = 26.sp
+                    )
+                }
+            }
+
+            if (pluginsState != null) {
+                item {
+                    PluginsManagementEntry(
+                        language = language,
+                        repositoryCount = pluginsState.repositories.size + pluginsState.cloudstreamRepos.size,
+                        pluginCount = pluginsState.scrapers.size + pluginsState.installedCloudstreamPluginCount,
+                        onClick = { showPlugins = true }
                     )
                 }
             }
@@ -150,6 +179,69 @@ fun AddonStoreScreen(
                 containerColor = FluxaColors.surfaceRaised
             )
         }
+    }
+}
+
+@Composable
+private fun PluginsManagementEntry(
+    language: String?,
+    repositoryCount: Int,
+    pluginCount: Int,
+    onClick: () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .background(if (focused) Color.White else Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = if (focused) 0f else 0.06f), RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                .background(if (focused) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.06f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Extension,
+                contentDescription = null,
+                tint = if (focused) Color.Black else Color.White,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = AppStrings.t(language, "settings.plugins.title"),
+                color = if (focused) Color.Black else Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+            Text(
+                text = AppStrings.t(language, "addons.plugins_manage_desc"),
+                color = if (focused) Color.Black.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.55f),
+                fontSize = 12.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (repositoryCount > 0 || pluginCount > 0) {
+                Text(
+                    text = AppStrings.format(language, "addons.plugins_counts", repositoryCount, pluginCount),
+                    color = if (focused) Color.Black.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.4f),
+                    fontSize = 11.sp
+                )
+            }
+        }
+        Icon(
+            imageVector = Icons.Filled.Settings,
+            contentDescription = null,
+            tint = if (focused) Color.Black.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.55f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

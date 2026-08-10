@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -68,193 +70,183 @@ fun PluginsScreen(
     val scrapersByRepository = state.scrapers.groupBy { it.repositoryUrl }
 
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                    var backFocused by remember { mutableStateOf(false) }
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .onFocusChanged { backFocused = it.isFocused }
-                            .background(if (backFocused) Color.White else Color.White.copy(alpha = 0.05f))
-                            .clickable(onClick = onBackRequested),
-                        contentAlignment = Alignment.Center
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth(0.96f)
+                    .widthIn(max = 1120.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        var backFocused by remember { mutableStateOf(false) }
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .onFocusChanged { backFocused = it.isFocused }
+                                .background(if (backFocused) Color.White else Color.White.copy(alpha = 0.05f))
+                                .clickable(onClick = onBackRequested),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = if (backFocused) Color.Black else Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = AppStrings.t(language, "settings.plugins.title"),
+                                color = Color.White,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 28.sp
+                            )
+                            Text(
+                                text = "Manage repository scrapers and CloudStream plugins in one place.",
+                                color = Color.White.copy(alpha = 0.55f),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    PluginsSectionCard(
+                        title = AppStrings.t(language, "settings.plugins.installed_repositories"),
+                        subtitle = "Add a repository manifest URL, then enable the scrapers you want to use."
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null,
-                            tint = if (backFocused) Color.Black else Color.White,
-                            modifier = Modifier.size(20.dp)
+                        PluginRepositoryInput(
+                            language = language,
+                            placeholderKey = "settings.plugins.repository_url_placeholder",
+                            onSubmit = { url -> onAction(PluginsAction.RepositoryAdded(url)) }
                         )
-                    }
-                    Text(
-                        text = AppStrings.t(language, "settings.plugins.title"),
-                        color = Color.White,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 26.sp
-                    )
-                }
-            }
 
-            item {
-                Text(
-                    text = AppStrings.t(language, "settings.plugins.installed_repositories"),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            }
+                        if (state.repositoryError != null) {
+                            Text(
+                                text = AppStrings.format(language, "settings.plugins.error", state.repositoryError),
+                                color = FluxaColors.errorRed,
+                                fontSize = 13.sp
+                            )
+                        }
 
-            item {
-                PluginRepositoryInput(
-                    language = language,
-                    placeholderKey = "settings.plugins.repository_url_placeholder",
-                    onSubmit = { url -> onAction(PluginsAction.RepositoryAdded(url)) }
-                )
-            }
+                        val addingNewRepositoryUrl = state.addingRepositoryUrl
+                            ?.takeIf { url -> state.repositories.none { it.manifestUrl == url } }
+                        if (addingNewRepositoryUrl != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                CircularProgressIndicator(color = Color.White.copy(alpha = 0.68f), strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                                Text(
+                                    text = AppStrings.t(language, "settings.plugins.adding"),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
 
-            if (state.repositoryError != null) {
-                item {
-                    Text(
-                        text = AppStrings.format(language, "settings.plugins.error", state.repositoryError),
-                        color = FluxaColors.errorRed,
-                        fontSize = 13.sp
-                    )
-                }
-            }
-
-            val addingNewRepositoryUrl = state.addingRepositoryUrl
-                ?.takeIf { url -> state.repositories.none { it.manifestUrl == url } }
-            if (addingNewRepositoryUrl != null) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        CircularProgressIndicator(color = Color.White.copy(alpha = 0.68f), strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
-                        Text(
-                            text = AppStrings.t(language, "settings.plugins.adding"),
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 13.sp
-                        )
+                        if (state.repositories.isEmpty()) {
+                            PluginsEmptyState(AppStrings.t(language, "settings.plugins.no_repositories"))
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                state.repositories.forEach { repository ->
+                                    PluginRepositoryGroup(
+                                        repository = repository,
+                                        scrapers = scrapersByRepository[repository.manifestUrl].orEmpty(),
+                                        language = language,
+                                        isRefreshing = state.addingRepositoryUrl == repository.manifestUrl,
+                                        onRemove = { onAction(PluginsAction.RepositoryRemoved(repository.manifestUrl)) },
+                                        onRefresh = { onAction(PluginsAction.RepositoryRefreshed(repository.manifestUrl)) },
+                                        onToggleScraper = { scraperId, enabled -> onAction(PluginsAction.ScraperToggled(scraperId, enabled)) },
+                                        onOpenScraperSettings = { scraperId -> onAction(PluginsAction.ScraperSettingsRequested(scraperId)) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            if (state.repositories.isEmpty()) {
                 item {
-                    Text(
-                        text = AppStrings.t(language, "settings.plugins.no_repositories"),
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-            } else {
-                items(state.repositories, key = { "plugin-repo:${it.manifestUrl}" }) { repository ->
-                    PluginRepositoryGroup(
-                        repository = repository,
-                        scrapers = scrapersByRepository[repository.manifestUrl].orEmpty(),
-                        language = language,
-                        isRefreshing = state.addingRepositoryUrl == repository.manifestUrl,
-                        onRemove = { onAction(PluginsAction.RepositoryRemoved(repository.manifestUrl)) },
-                        onRefresh = { onAction(PluginsAction.RepositoryRefreshed(repository.manifestUrl)) },
-                        onToggleScraper = { scraperId, enabled -> onAction(PluginsAction.ScraperToggled(scraperId, enabled)) },
-                        onOpenScraperSettings = { scraperId -> onAction(PluginsAction.ScraperSettingsRequested(scraperId)) }
-                    )
-                }
-            }
-
-            item {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = AppStrings.t(language, "auto.cloudstream3_repositories"),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            }
-
-            item {
-                CloudstreamRepositoryInput(
-                    language = language,
-                    onSubmit = { url, publisherPublicKey -> onAction(PluginsAction.CloudstreamRepoAdded(url, publisherPublicKey)) }
-                )
-            }
-
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(Color.White.copy(alpha = 0.04f))
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = AppStrings.t(language, "addons.cloudstream_automatic_updates"),
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
+                    PluginsSectionCard(
+                        title = AppStrings.t(language, "auto.cloudstream3_repositories"),
+                        subtitle = AppStrings.t(language, "addons.cloudstream_trust_warning")
+                    ) {
+                        CloudstreamRepositoryInput(
+                            language = language,
+                            onSubmit = { url, publisherPublicKey -> onAction(PluginsAction.CloudstreamRepoAdded(url, publisherPublicKey)) }
                         )
-                        Text(
-                            text = AppStrings.t(language, "addons.cloudstream_automatic_updates_desc"),
-                            color = Color.White.copy(alpha = 0.58f),
-                            fontSize = 12.sp
-                        )
-                    }
-                    Switch(
-                        checked = state.cloudstreamAutomaticUpdatesEnabled,
-                        onCheckedChange = { enabled ->
-                            onAction(PluginsAction.CloudstreamAutomaticUpdatesChanged(enabled))
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.Black,
-                            checkedTrackColor = Color.White
-                        )
-                    )
-                }
-            }
 
-            if (state.cloudstreamRepoError != null) {
-                item {
-                    Text(
-                        text = AppStrings.format(language, "settings.plugins.error", state.cloudstreamRepoError),
-                        color = FluxaColors.errorRed,
-                        fontSize = 13.sp
-                    )
-                }
-            }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White.copy(alpha = 0.03f))
+                                .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(16.dp))
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = AppStrings.t(language, "addons.cloudstream_automatic_updates"),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = AppStrings.t(language, "addons.cloudstream_automatic_updates_desc"),
+                                    color = Color.White.copy(alpha = 0.58f),
+                                    fontSize = 12.sp
+                                )
+                            }
+                            Switch(
+                                checked = state.cloudstreamAutomaticUpdatesEnabled,
+                                onCheckedChange = { enabled -> onAction(PluginsAction.CloudstreamAutomaticUpdatesChanged(enabled)) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.Black,
+                                    checkedTrackColor = Color.White
+                                )
+                            )
+                        }
 
-            if (state.isAddingCloudstreamRepo) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        CircularProgressIndicator(color = Color.White.copy(alpha = 0.68f), strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
-                        Text(
-                            text = AppStrings.t(language, "settings.plugins.adding"),
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 13.sp
-                        )
+                        if (state.cloudstreamRepoError != null) {
+                            Text(
+                                text = AppStrings.format(language, "settings.plugins.error", state.cloudstreamRepoError),
+                                color = FluxaColors.errorRed,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        if (state.isAddingCloudstreamRepo) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                CircularProgressIndicator(color = Color.White.copy(alpha = 0.68f), strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                                Text(
+                                    text = AppStrings.t(language, "settings.plugins.adding"),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+
+                        if (state.cloudstreamRepos.isEmpty()) {
+                            PluginsEmptyState("No CloudStream repositories added yet.")
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                state.cloudstreamRepos.forEach { repo ->
+                                    CloudstreamRepoItem(
+                                        repo = repo,
+                                        language = language,
+                                        onRemove = { onAction(PluginsAction.RepoRemoved(repo.url)) },
+                                        onClick = { onAction(PluginsAction.RepoOpened(repo.url)) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            if (state.cloudstreamRepos.isNotEmpty()) {
-                items(state.cloudstreamRepos, key = { "cs-repo:${it.url}" }) { repo ->
-                    CloudstreamRepoItem(
-                        repo = repo,
-                        language = language,
-                        onRemove = { onAction(PluginsAction.RepoRemoved(repo.url)) },
-                        onClick = { onAction(PluginsAction.RepoOpened(repo.url)) }
-                    )
-                }
+                item { Spacer(Modifier.height(80.dp)) }
             }
-
-            item { Spacer(Modifier.height(80.dp)) }
         }
 
         if (state.openRepoUrl != null) {
@@ -284,6 +276,54 @@ fun PluginsScreen(
 }
 
 @Composable
+private fun PluginsSectionCard(
+    title: String,
+    subtitle: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color.White.copy(alpha = 0.035f))
+            .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(22.dp))
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+            subtitle?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 12.sp
+                )
+            }
+        }
+        content()
+    }
+}
+
+@Composable
+private fun PluginsEmptyState(text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.025f))
+            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Text(text = text, color = Color.White.copy(alpha = 0.48f), fontSize = 13.sp)
+    }
+}
+
+@Composable
 private fun PluginRepositoryInput(
     language: String?,
     placeholderKey: String,
@@ -291,11 +331,7 @@ private fun PluginRepositoryInput(
 ) {
     var url by remember { mutableStateOf("") }
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
@@ -348,18 +384,9 @@ private fun CloudstreamRepositoryInput(
     var url by remember { mutableStateOf("") }
     var publisherPublicKey by remember { mutableStateOf("") }
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = AppStrings.t(language, "addons.cloudstream_trust_warning"),
-            color = Color.White.copy(alpha = 0.58f),
-            fontSize = 12.sp
-        )
         OutlinedTextField(
             value = url,
             onValueChange = { url = it },
@@ -434,7 +461,7 @@ private fun PluginRepositoryGroup(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = repository.name.ifBlank { repository.manifestUrl },
                     color = Color.White,
@@ -443,9 +470,18 @@ private fun PluginRepositoryGroup(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (repository.name.isNotBlank()) {
+                    Text(
+                        text = repository.manifestUrl,
+                        color = Color.White.copy(alpha = 0.42f),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Text(
                     text = AppStrings.format(language, "settings.plugins.scraper_count", repository.scraperCount),
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = Color.White.copy(alpha = 0.58f),
                     fontSize = 12.sp
                 )
             }
@@ -484,7 +520,7 @@ private fun PluginScraperRow(
     onOpenSettings: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -497,9 +533,11 @@ private fun PluginScraperRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = scraper.supportedTypes.joinToString(", "),
+                text = scraper.supportedTypes.joinToString(", ").ifBlank { "Scraper" },
                 color = Color.White.copy(alpha = 0.45f),
-                fontSize = 11.sp
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         if (scraper.hasSettings) {

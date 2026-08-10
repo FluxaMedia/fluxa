@@ -64,6 +64,7 @@ data class PluginsUiState(
     val repositoryError: String? = null,
     val scraperSettingsSheet: PluginScraperSettingsUiState? = null,
     val cloudstreamRepos: List<CloudstreamRepoUiModel> = emptyList(),
+    val installedCloudstreamPluginCount: Int = 0,
     val cloudstreamAutomaticUpdatesEnabled: Boolean = false,
     val isAddingCloudstreamRepo: Boolean = false,
     val cloudstreamRepoError: String? = null,

@@ -1,19 +1,17 @@
 package com.fluxa.app.ui.settings
 
+import com.fluxa.app.shared.feature.plugins.syncNuvioPluginsForProfile
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
+import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.plugins.PluginRepositoryManager
-import com.fluxa.app.plugins.PluginScraperUiModel as NuvioScraperUiModel
 import com.fluxa.app.plugins.cloudstream.InstalledPlugin
 import com.fluxa.app.plugins.cloudstream.PluginInfo
 import com.fluxa.app.shared.feature.plugins.CloudstreamPluginUiModel
 import com.fluxa.app.shared.feature.plugins.CloudstreamRepoUiModel
-import com.fluxa.app.shared.feature.plugins.PluginRepositoryUiModel
-import com.fluxa.app.shared.feature.plugins.PluginScraperSettingsUiState
-import com.fluxa.app.shared.feature.plugins.PluginScraperUiModel
-import com.fluxa.app.shared.feature.plugins.PluginSettingsFieldUiModel
-import com.fluxa.app.shared.feature.plugins.PluginSettingsOptionUiModel
+import com.fluxa.app.shared.feature.plugins.JvmNuvioPluginsUiController
 import com.fluxa.app.shared.feature.plugins.PluginsDataSource
 import com.fluxa.app.shared.feature.plugins.PluginsUiState
 import kotlinx.coroutines.flow.Flow
@@ -24,11 +22,12 @@ import kotlinx.coroutines.flow.update
 class AndroidPluginsDataSource(
     private val pluginRepositoryManager: PluginRepositoryManager,
     private val pluginManager: PluginManager,
+    private val nuvioCoordinator: NuvioAccountImportCoordinator,
+    private val profileManager: ProfileManager,
     private val language: () -> String
 ) : PluginsDataSource {
 
     private data class Extras(
-        val scraperSettingsSheet: PluginScraperSettingsUiState? = null,
         val isAddingCloudstreamRepo: Boolean = false,
         val cloudstreamRepoError: String? = null,
         val openRepoUrl: String? = null,
@@ -40,40 +39,27 @@ class AndroidPluginsDataSource(
     )
 
     private val extras = MutableStateFlow(Extras())
-    private var latestNuvioScrapers: List<NuvioScraperUiModel> = emptyList()
+    private val nuvio = JvmNuvioPluginsUiController(
+        repositoryState = pluginRepositoryManager.state,
+        refreshAllRepositories = pluginRepositoryManager::refreshAllRepositories,
+        addRepositoryCommand = pluginRepositoryManager::addRepository,
+        removeRepositoryCommand = pluginRepositoryManager::removeRepository,
+        refreshRepositoryCommand = pluginRepositoryManager::refreshRepository,
+        toggleScraperCommand = pluginRepositoryManager::toggleScraper,
+        updateScraperSettingsCommand = pluginRepositoryManager::updateScraperSettings,
+        settingsLayout = pluginRepositoryManager::getSettingsLayout,
+    )
 
     override fun observePlugins(): Flow<PluginsUiState> = combine(
-        pluginRepositoryManager.state,
+        nuvio.observePlugins(),
         pluginManager.installedPlugins,
         pluginManager.repositories,
         pluginManager.automaticUpdatesEnabled,
         extras
-    ) { nuvio, installedPlugins, repos, automaticUpdatesEnabled, ex ->
-        latestNuvioScrapers = nuvio.scrapers
-        PluginsUiState(
-            repositories = nuvio.repositories.map {
-                PluginRepositoryUiModel(
-                    manifestUrl = it.manifestUrl,
-                    name = it.name,
-                    description = it.description,
-                    scraperCount = it.scraperCount
-                )
-            },
-            scrapers = nuvio.scrapers.map {
-                PluginScraperUiModel(
-                    id = it.id,
-                    name = it.name,
-                    repositoryUrl = it.repositoryUrl,
-                    enabled = it.enabled,
-                    supportedTypes = it.supportedTypes,
-                    hasSettings = it.hasSettings,
-                    settings = it.settings
-                )
-            },
-            addingRepositoryUrl = nuvio.addingRepositoryUrl,
-            repositoryError = nuvio.error,
-            scraperSettingsSheet = ex.scraperSettingsSheet,
+    ) { nuvioState, installedPlugins, repos, automaticUpdatesEnabled, ex ->
+        nuvioState.copy(
             cloudstreamRepos = repos.map { CloudstreamRepoUiModel(name = it.name, url = it.url, iconUrl = it.iconUrl) },
+            installedCloudstreamPluginCount = installedPlugins.size,
             cloudstreamAutomaticUpdatesEnabled = automaticUpdatesEnabled,
             isAddingCloudstreamRepo = ex.isAddingCloudstreamRepo,
             cloudstreamRepoError = ex.cloudstreamRepoError,
@@ -82,7 +68,7 @@ class AndroidPluginsDataSource(
             openRepoPlugins = mapCloudstreamPlugins(ex, installedPlugins),
             isLoadingRepoPlugins = ex.isLoadingRepoPlugins,
             installingPluginKeys = ex.installingPluginKeys,
-            repoDialogError = ex.repoDialogError
+            repoDialogError = ex.repoDialogError,
         )
     }
 
@@ -99,69 +85,20 @@ class AndroidPluginsDataSource(
             )
         }
 
-    override suspend fun refresh() = Unit
-
-    override suspend fun addRepository(manifestUrl: String) {
-        pluginRepositoryManager.addRepository(manifestUrl)
+    override suspend fun refresh() {
+        val activeId = profileManager.getLastActiveProfileId()
+        val profile = profileManager.getProfiles().firstOrNull { it.id == activeId }
+        syncNuvioPluginsForProfile(profile, nuvioCoordinator, pluginRepositoryManager::syncNuvioPlugins)
+        nuvio.refresh()
     }
-
-    override suspend fun removeRepository(manifestUrl: String) {
-        pluginRepositoryManager.removeRepository(manifestUrl)
-    }
-
-    override suspend fun refreshRepository(manifestUrl: String) {
-        pluginRepositoryManager.refreshRepository(manifestUrl)
-    }
-
-    override suspend fun toggleScraper(scraperId: String, enabled: Boolean) {
-        pluginRepositoryManager.toggleScraper(scraperId, enabled)
-    }
-
-    override suspend fun requestScraperSettings(scraperId: String) {
-        val scraper = latestNuvioScrapers.find { it.id == scraperId } ?: return
-        val sharedScraper = PluginScraperUiModel(
-            id = scraper.id,
-            name = scraper.name,
-            repositoryUrl = scraper.repositoryUrl,
-            enabled = scraper.enabled,
-            supportedTypes = scraper.supportedTypes,
-            hasSettings = scraper.hasSettings,
-            settings = scraper.settings
-        )
-        extras.update {
-            it.copy(scraperSettingsSheet = PluginScraperSettingsUiState(scraper = sharedScraper, loading = true, fields = emptyList()))
-        }
-        val fields = pluginRepositoryManager.getSettingsLayout(scraper).map { field ->
-            PluginSettingsFieldUiModel(
-                key = field.key,
-                type = field.type,
-                label = field.label,
-                description = field.description,
-                placeholder = field.placeholder,
-                isPassword = field.isPassword,
-                defaultValue = field.defaultValue,
-                defaultBoolean = field.defaultBoolean,
-                options = field.options.map { PluginSettingsOptionUiModel(label = it.label, value = it.value) }
-            )
-        }
-        extras.update { current ->
-            val sheet = current.scraperSettingsSheet
-            if (sheet?.scraper?.id == scraperId) {
-                current.copy(scraperSettingsSheet = sheet.copy(loading = false, fields = fields))
-            } else {
-                current
-            }
-        }
-    }
-
-    override suspend fun dismissScraperSettings() {
-        extras.update { it.copy(scraperSettingsSheet = null) }
-    }
-
-    override suspend fun saveScraperSettings(scraperId: String, values: Map<String, Any?>) {
-        pluginRepositoryManager.updateScraperSettings(scraperId, values)
-        extras.update { it.copy(scraperSettingsSheet = null) }
-    }
+    override suspend fun addRepository(manifestUrl: String) = nuvio.addRepository(manifestUrl)
+    override suspend fun removeRepository(manifestUrl: String) = nuvio.removeRepository(manifestUrl)
+    override suspend fun refreshRepository(manifestUrl: String) = nuvio.refreshRepository(manifestUrl)
+    override suspend fun toggleScraper(scraperId: String, enabled: Boolean) = nuvio.toggleScraper(scraperId, enabled)
+    override suspend fun requestScraperSettings(scraperId: String) = nuvio.requestScraperSettings(scraperId)
+    override suspend fun dismissScraperSettings() = nuvio.dismissScraperSettings()
+    override suspend fun saveScraperSettings(scraperId: String, values: Map<String, Any?>) =
+        nuvio.saveScraperSettings(scraperId, values)
 
     override suspend fun addCloudstreamRepository(url: String, publisherPublicKey: String) {
         extras.update { it.copy(isAddingCloudstreamRepo = true, cloudstreamRepoError = null) }
