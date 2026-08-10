@@ -3,10 +3,10 @@ package com.fluxa.app.ui.catalog
 import android.content.Context
 import android.util.Log
 import androidx.hilt.work.HiltWorker
-import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.ThirdPartyProviderId
+import com.fluxa.app.data.local.providerAccountId
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.repository.NuvioSyncCoordinator
 import dagger.assisted.Assisted
@@ -24,6 +24,8 @@ class NuvioPlaybackProgressPushWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         val profileId = inputData.getString(KEY_PROFILE_ID)?.takeIf { it.isNotBlank() } ?: return Result.failure()
+        val expectedAccountId = inputData.getString(KEY_PROVIDER_ACCOUNT_ID)?.takeIf { it.isNotBlank() }
+            ?: return Result.failure()
         val contentId = inputData.getString(KEY_CONTENT_ID)?.takeIf { it.isNotBlank() } ?: return Result.failure()
         val contentType = inputData.getString(KEY_CONTENT_TYPE).orEmpty()
         val videoId = inputData.getString(KEY_VIDEO_ID)
@@ -31,6 +33,10 @@ class NuvioPlaybackProgressPushWorker @AssistedInject constructor(
         val duration = inputData.getLong(KEY_DURATION, -1L).takeIf { it > 0L } ?: return Result.failure()
 
         val profile = requireProfile(profileId) ?: return Result.failure()
+        if (profile.providerAccountId(ThirdPartyProviderId.NUVIO) != expectedAccountId) {
+            // The queued write belongs to a disconnected or replaced remote account.
+            return Result.success()
+        }
         if (profile.nuvioAccessToken.isNullOrBlank()) return Result.success()
 
         val meta = Meta(id = contentId, name = contentId, type = contentType)
@@ -51,36 +57,13 @@ class NuvioPlaybackProgressPushWorker @AssistedInject constructor(
     }
 
     companion object {
-        private const val KEY_PROFILE_ID = "profile_id"
-        private const val KEY_CONTENT_ID = "content_id"
-        private const val KEY_CONTENT_TYPE = "content_type"
-        private const val KEY_VIDEO_ID = "video_id"
-        private const val KEY_POSITION = "position"
-        private const val KEY_DURATION = "duration"
-
-        fun enqueue(
-            context: Context,
-            profileId: String,
-            contentId: String,
-            contentType: String,
-            videoId: String?,
-            position: Long,
-            duration: Long
-        ) {
-            if (profileId.isBlank() || contentId.isBlank() || duration <= 0L) return
-            val inputData = workDataOf(
-                KEY_PROFILE_ID to profileId,
-                KEY_CONTENT_ID to contentId,
-                KEY_CONTENT_TYPE to contentType,
-                KEY_VIDEO_ID to videoId,
-                KEY_POSITION to position,
-                KEY_DURATION to duration
-            )
-            ProviderSyncPushWorker.enqueueUnique<NuvioPlaybackProgressPushWorker>(
-                context,
-                "nuvio_playback_progress_${profileId}_$contentId",
-                inputData
-            )
-        }
+        internal const val KEY_PROFILE_ID = "profile_id"
+        internal const val KEY_PROVIDER_ACCOUNT_ID = "provider_account_id"
+        internal const val KEY_CONTENT_ID = "content_id"
+        internal const val KEY_CONTENT_TYPE = "content_type"
+        internal const val KEY_VIDEO_ID = "video_id"
+        internal const val KEY_POSITION = "position"
+        internal const val KEY_DURATION = "duration"
     }
+
 }

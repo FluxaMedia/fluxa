@@ -2,18 +2,9 @@ package com.fluxa.app.ui.catalog
 
 import android.content.Context
 import android.util.Log
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.time.LocalDate
-import java.util.concurrent.TimeUnit
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -21,6 +12,8 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.repository.StremioRepository
+import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
+import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 
 @HiltWorker
 class EpisodeReleaseWorker @AssistedInject constructor(
@@ -28,7 +21,9 @@ class EpisodeReleaseWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val profileManager: ProfileManager,
     private val repository: StremioRepository,
-    private val watchlistManager: WatchlistManager
+    private val watchlistManager: WatchlistManager,
+    private val providerContinueWatchingRepository: ProviderContinueWatchingRepository,
+    private val thirdPartyProviderRepository: ThirdPartyProviderRepository
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         return try {
@@ -37,7 +32,12 @@ class EpisodeReleaseWorker @AssistedInject constructor(
             if (profiles.isEmpty()) return Result.success()
 
             val today = LocalDate.now()
-            val loader = EpisodeCalendarLoader(repository, watchlistManager)
+            val loader = EpisodeCalendarLoader(
+                repository,
+                watchlistManager,
+                providerContinueWatchingRepository,
+                thirdPartyProviderRepository
+            )
             profiles.forEach { profile ->
                 val result = loader.loadMonth(profile, today.year, today.monthValue)
                 CalendarWidgetProvider.updateCalendar(
@@ -62,34 +62,8 @@ class EpisodeReleaseWorker @AssistedInject constructor(
 
     companion object {
         private const val TAG = "EpisodeReleaseWorker"
-        private const val UNIQUE_PERIODIC_WORK_NAME = "episode_release_notifications"
-        private const val UNIQUE_IMMEDIATE_WORK_NAME = "episode_release_notifications_now"
-
-        fun enqueue(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-            val periodic = PeriodicWorkRequestBuilder<EpisodeReleaseWorker>(6, TimeUnit.HOURS)
-                .setConstraints(constraints)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .build()
-            val immediate = OneTimeWorkRequestBuilder<EpisodeReleaseWorker>()
-                .setInitialDelay(20, TimeUnit.SECONDS)
-                .setConstraints(constraints)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .build()
-
-            val workManager = WorkManager.getInstance(context.applicationContext)
-            workManager.enqueueUniquePeriodicWork(
-                UNIQUE_PERIODIC_WORK_NAME,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                periodic
-            )
-            workManager.enqueueUniqueWork(
-                UNIQUE_IMMEDIATE_WORK_NAME,
-                ExistingWorkPolicy.KEEP,
-                immediate
-            )
-        }
+        internal const val UNIQUE_PERIODIC_WORK_NAME = "episode_release_notifications"
+        internal const val UNIQUE_IMMEDIATE_WORK_NAME = "episode_release_notifications_now"
     }
+
 }

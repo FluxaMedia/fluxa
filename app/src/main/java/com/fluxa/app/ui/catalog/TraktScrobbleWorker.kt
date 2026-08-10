@@ -7,9 +7,7 @@ import com.fluxa.app.domain.discovery.*
 
 import android.content.Context
 import android.util.Log
-import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -29,12 +27,18 @@ class TraktScrobbleWorker @AssistedInject constructor(
         if (!TraktIntegration.hasClient(oauthClientConfig.traktClientId)) return Result.success()
 
         val profileId = inputData.getString(KEY_PROFILE_ID)?.takeIf { it.isNotBlank() } ?: return Result.failure()
+        val expectedAccountId = inputData.getString(KEY_PROVIDER_ACCOUNT_ID)?.takeIf { it.isNotBlank() }
+            ?: return Result.failure()
         val mediaType = inputData.getString(KEY_MEDIA_TYPE)?.takeIf { it.isNotBlank() } ?: return Result.failure()
         val mediaId = inputData.getString(KEY_MEDIA_ID)?.takeIf { it.isNotBlank() } ?: return Result.failure()
         val action = inputData.getString(KEY_ACTION)?.takeIf { it in setOf("start", "pause", "stop") } ?: return Result.failure()
         val progress = inputData.getFloat(KEY_PROGRESS, -1f).takeIf { it >= 0f }?.coerceIn(0f, 100f) ?: return Result.failure()
 
         val profile = requireProfile(profileId) ?: return Result.failure()
+        if (profile.providerAccountId(ThirdPartyProviderId.TRAKT) != expectedAccountId) {
+            // The queued write belongs to a disconnected or replaced remote account.
+            return Result.success()
+        }
         val token = resolveAccessToken(profileManager, profile, api) ?: return Result.failure()
         val request = buildRequest(mediaType, mediaId, progress) ?: return Result.failure()
 
@@ -151,34 +155,12 @@ class TraktScrobbleWorker @AssistedInject constructor(
     }
 
     companion object {
-        private const val KEY_PROFILE_ID = "profile_id"
-        private const val KEY_MEDIA_TYPE = "media_type"
-        private const val KEY_MEDIA_ID = "media_id"
-        private const val KEY_PROGRESS = "progress"
-        private const val KEY_ACTION = "action"
-
-        fun enqueue(
-            context: Context,
-            profileId: String,
-            mediaType: String,
-            mediaId: String,
-            progress: Float,
-            action: String
-        ) {
-            if (profileId.isBlank() || mediaId.isBlank() || action !in setOf("start", "pause", "stop")) return
-            val inputData = workDataOf(
-                KEY_PROFILE_ID to profileId,
-                KEY_MEDIA_TYPE to mediaType,
-                KEY_MEDIA_ID to mediaId,
-                KEY_PROGRESS to progress.coerceIn(0f, 100f),
-                KEY_ACTION to action
-            )
-            ProviderSyncPushWorker.enqueueUnique<TraktScrobbleWorker>(
-                context,
-                "trakt_scrobble_${profileId}_${mediaType}_${mediaId}",
-                inputData,
-                expedited = true
-            )
-        }
+        internal const val KEY_PROFILE_ID = "profile_id"
+        internal const val KEY_PROVIDER_ACCOUNT_ID = "provider_account_id"
+        internal const val KEY_MEDIA_TYPE = "media_type"
+        internal const val KEY_MEDIA_ID = "media_id"
+        internal const val KEY_PROGRESS = "progress"
+        internal const val KEY_ACTION = "action"
     }
+
 }

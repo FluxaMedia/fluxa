@@ -7,9 +7,7 @@ import com.fluxa.app.domain.discovery.*
 
 import android.content.Context
 import android.util.Log
-import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import com.fluxa.app.BuildConfig
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
@@ -32,6 +30,8 @@ class SimklScrobbleWorker @AssistedInject constructor(
         if (clientId.isBlank()) return Result.success()
 
         val profileId = inputData.getString(KEY_PROFILE_ID)?.takeIf { it.isNotBlank() } ?: return Result.failure()
+        val expectedAccountId = inputData.getString(KEY_PROVIDER_ACCOUNT_ID)?.takeIf { it.isNotBlank() }
+            ?: return Result.failure()
         val mediaType = inputData.getString(KEY_MEDIA_TYPE)?.takeIf { it.isNotBlank() } ?: return Result.failure()
         val mediaId = inputData.getString(KEY_MEDIA_ID)?.takeIf { it.isNotBlank() } ?: return Result.failure()
         val action = inputData.getString(KEY_ACTION)?.takeIf { it in setOf("start", "pause", "stop") } ?: return Result.failure()
@@ -39,6 +39,10 @@ class SimklScrobbleWorker @AssistedInject constructor(
         val durationMs = inputData.getLong(KEY_DURATION_MS, -1L).takeIf { it > 0L } ?: return Result.failure()
 
         val profile = requireProfile(profileId) ?: return Result.failure()
+        if (profile.providerAccountId(ThirdPartyProviderId.SIMKL) != expectedAccountId) {
+            // The queued write belongs to a disconnected or replaced remote account.
+            return Result.success()
+        }
         val token = profile.simklAccessToken?.takeIf { it.isNotBlank() } ?: return Result.success()
 
         val imdbId = SimklIntegration.imdbIdFrom(mediaId)
@@ -107,37 +111,13 @@ class SimklScrobbleWorker @AssistedInject constructor(
     }
 
     companion object {
-        private const val KEY_PROFILE_ID = "profile_id"
-        private const val KEY_MEDIA_TYPE = "media_type"
-        private const val KEY_MEDIA_ID = "media_id"
-        private const val KEY_ACTION = "action"
-        private const val KEY_POSITION_MS = "position_ms"
-        private const val KEY_DURATION_MS = "duration_ms"
-
-        fun enqueue(
-            context: Context,
-            profileId: String,
-            mediaType: String,
-            mediaId: String,
-            action: String,
-            positionMs: Long,
-            durationMs: Long
-        ) {
-            if (profileId.isBlank() || mediaId.isBlank() || durationMs <= 0L || action !in setOf("start", "pause", "stop")) return
-            val inputData = workDataOf(
-                KEY_PROFILE_ID to profileId,
-                KEY_MEDIA_TYPE to mediaType,
-                KEY_MEDIA_ID to mediaId,
-                KEY_ACTION to action,
-                KEY_POSITION_MS to positionMs,
-                KEY_DURATION_MS to durationMs
-            )
-            ProviderSyncPushWorker.enqueueUnique<SimklScrobbleWorker>(
-                context,
-                "simkl_scrobble_${profileId}_${mediaType}_${mediaId}",
-                inputData,
-                expedited = true
-            )
-        }
+        internal const val KEY_PROFILE_ID = "profile_id"
+        internal const val KEY_PROVIDER_ACCOUNT_ID = "provider_account_id"
+        internal const val KEY_MEDIA_TYPE = "media_type"
+        internal const val KEY_MEDIA_ID = "media_id"
+        internal const val KEY_ACTION = "action"
+        internal const val KEY_POSITION_MS = "position_ms"
+        internal const val KEY_DURATION_MS = "duration_ms"
     }
+
 }
