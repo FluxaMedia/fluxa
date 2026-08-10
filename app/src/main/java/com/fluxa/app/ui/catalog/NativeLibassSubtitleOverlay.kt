@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.video.VideoFrameMetadataListener
 import com.fluxa.app.player.ExternalSubtitleTrack
@@ -61,12 +60,15 @@ internal fun NativeLibassSubtitleOverlay(
     externalSubtitle: ExternalSubtitleTrack?,
     embeddedSubtitle: NativeAssTrack?,
     subtitleDelayMs: Long,
-    surfaceView: NativeLibassSubtitleSurfaceView?
+    surfaceView: NativeLibassSubtitleSurfaceView?,
+    enabled: Boolean
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val renderThread = remember(exoPlayer) { MediaPlayerController.getLibassRelay(exoPlayer)?.renderThread }
+    val renderThread = remember(exoPlayer, enabled) {
+        if (enabled) MediaPlayerController.getLibassRelay(exoPlayer)?.renderThread else null
+    }
 
-    LaunchedEffect(externalSubtitle?.url, embeddedSubtitle?.id) {
+    LaunchedEffect(renderThread, externalSubtitle?.url, embeddedSubtitle?.id) {
         LibassDebugLog.d(
             "overlay selection external=${externalSubtitle?.let { "${LibassDebugLog.urlSummary(it.url)} label=${it.label} lang=${it.language}" } ?: "<none>"} " +
                 "embedded=${embeddedSubtitle?.let { "id=${it.id} label=${it.label} lang=${it.language} bytes=${it.assData.size} fonts=${it.fonts.size}" } ?: "<none>"}"
@@ -107,30 +109,28 @@ internal fun NativeLibassSubtitleOverlay(
         renderThread?.setLocalRenderer(renderer)
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(renderThread) {
         onDispose { renderThread?.setLocalRenderer(null) }
     }
 
-    surfaceView?.configure(exoPlayer, renderThread, subtitleDelayMs)
+    surfaceView?.configure(exoPlayer, renderThread, subtitleDelayMs, enabled)
 }
 
 internal class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
+    private var overlayEnabled = false
+    private var playerListenersAttached = false
+
     var exoPlayer: ExoPlayer? = null
         set(value) {
-            field?.let {
-                it.clearVideoFrameMetadataListener(ptsListener)
-                it.removeListener(playerListener)
-            }
+            if (field === value) return
+            detachPlayerListeners()
             field = value
-            if (isAttachedToWindow) {
-                value?.setVideoFrameMetadataListener(ptsListener)
-                value?.addListener(playerListener)
-            }
-            value?.videoSize?.let(playerListener::onVideoSizeChanged)
+            if (overlayEnabled && isAttachedToWindow) attachPlayerListeners()
         }
 
     var renderThread: LibassRenderThread? = null
         set(value) {
+            if (field === value) return
             field = value
             value?.setDelay(subtitleDelayMs)
             attachedSurface?.let { surface ->
@@ -141,6 +141,7 @@ internal class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(c
 
     var subtitleDelayMs: Long = 0L
         set(value) {
+            if (field == value) return
             field = value
             renderThread?.setDelay(value)
         }
@@ -155,6 +156,7 @@ internal class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(c
     }
 
     init {
+        visibility = android.view.View.GONE
         setZOrderMediaOverlay(true)
         holder.setFormat(PixelFormat.TRANSLUCENT)
         holder.addCallback(this)
@@ -162,16 +164,14 @@ internal class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(c
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        LibassDebugLog.d("overlay view attached size=${width}x$height")
-        exoPlayer?.setVideoFrameMetadataListener(ptsListener)
-        exoPlayer?.addListener(playerListener)
+        LibassDebugLog.d("overlay view attached size=${width}x$height enabled=$overlayEnabled")
+        if (overlayEnabled) attachPlayerListeners()
     }
 
     override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
         LibassDebugLog.d("overlay view detached")
-        exoPlayer?.clearVideoFrameMetadataListener(ptsListener)
-        exoPlayer?.removeListener(playerListener)
+        detachPlayerListeners()
+        super.onDetachedFromWindow()
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {}
@@ -197,12 +197,39 @@ internal class NativeLibassSubtitleSurfaceView(context: Context) : SurfaceView(c
         renderThread?.setSurface(null, 0, 0)
     }
 
-    private val playerListener = object : androidx.media3.common.Player.Listener {}
-
-    fun configure(player: ExoPlayer, renderThread: LibassRenderThread?, subtitleDelayMs: Long) {
+    fun configure(player: ExoPlayer, renderThread: LibassRenderThread?, subtitleDelayMs: Long, enabled: Boolean) {
         exoPlayer = player
         this.renderThread = renderThread
         this.subtitleDelayMs = subtitleDelayMs
+        setOverlayEnabled(enabled)
+    }
+
+    private fun setOverlayEnabled(enabled: Boolean) {
+        if (overlayEnabled == enabled) return
+        overlayEnabled = enabled
+        visibility = if (enabled) android.view.View.VISIBLE else android.view.View.GONE
+        if (enabled) {
+            if (isAttachedToWindow) attachPlayerListeners()
+        } else {
+            detachPlayerListeners()
+            attachedSurface = null
+            surfaceWidth = 0
+            surfaceHeight = 0
+            renderThread?.setSurface(null, 0, 0)
+        }
+    }
+
+    private fun attachPlayerListeners() {
+        if (playerListenersAttached) return
+        val player = exoPlayer ?: return
+        player.setVideoFrameMetadataListener(ptsListener)
+        playerListenersAttached = true
+    }
+
+    private fun detachPlayerListeners() {
+        if (!playerListenersAttached) return
+        exoPlayer?.clearVideoFrameMetadataListener(ptsListener)
+        playerListenersAttached = false
     }
 }
 
@@ -213,19 +240,36 @@ private val subtitleHttpClient: OkHttpClient by lazy {
         .build()
 }
 
+private const val MAX_NATIVE_ASS_BYTES = 16 * 1024 * 1024
+
 private suspend fun fetchSubtitleBytes(context: Context, rawUrl: String): ByteArray = withContext(Dispatchers.IO) {
     val uri = runCatching { Uri.parse(rawUrl) }.getOrNull()
     when (uri?.scheme?.lowercase()) {
-        "content" -> context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
-        "file" -> File(requireNotNull(uri.path)).readBytes()
+        "content" -> context.contentResolver.openInputStream(uri)?.use { it.readBytesCapped(MAX_NATIVE_ASS_BYTES) } ?: ByteArray(0)
+        "file" -> File(requireNotNull(uri.path)).inputStream().use { it.readBytesCapped(MAX_NATIVE_ASS_BYTES) }
         "http", "https" -> {
             val headers = StreamRequestPolicy.headersFor(rawUrl, emptyMap())
             val requestBuilder = Request.Builder().url(rawUrl)
             headers.forEach { (k, v) -> requestBuilder.header(k, v) }
             subtitleHttpClient.newCall(requestBuilder.build()).execute().use { response ->
-                response.body.bytes()
+                if (!response.isSuccessful) error("Subtitle request failed HTTP ${response.code}")
+                response.body.byteStream().use { it.readBytesCapped(MAX_NATIVE_ASS_BYTES) }
             }
         }
-        else -> java.net.URL(rawUrl).openStream().use { it.readBytes() }
+        else -> java.net.URL(rawUrl).openStream().use { it.readBytesCapped(MAX_NATIVE_ASS_BYTES) }
     }
+}
+
+private fun java.io.InputStream.readBytesCapped(maxBytes: Int): ByteArray {
+    val output = java.io.ByteArrayOutputStream(minOf(maxBytes, 64 * 1024))
+    val buffer = ByteArray(32 * 1024)
+    var total = 0
+    while (true) {
+        val read = read(buffer)
+        if (read <= 0) break
+        total += read
+        if (total > maxBytes) error("ASS subtitle exceeds ${maxBytes / (1024 * 1024)} MB limit")
+        output.write(buffer, 0, read)
+    }
+    return output.toByteArray()
 }

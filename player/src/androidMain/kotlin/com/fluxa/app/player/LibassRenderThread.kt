@@ -6,7 +6,6 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.os.Handler
 import android.os.HandlerThread
-import android.util.LongSparseArray
 import android.view.Surface
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +18,7 @@ data class LibassVideoFrame(
     val offsetY: Int
 )
 
-class LibassRenderThread {
+class LibassRenderThread(private val maxGlyphCacheBytes: Long = DEFAULT_MAX_GLYPH_CACHE_BYTES) {
     private val thread = HandlerThread("fluxa-libass").also { it.start() }
     private val handler = Handler(thread.looper)
 
@@ -33,9 +32,12 @@ class LibassRenderThread {
     private var videoFrame: LibassVideoFrame? = null
     private var delayMs = 0L
 
-    private val glyphCache = LongSparseArray<Bitmap>()
-    private val outMeta = IntArray(1 + 200 * 9)
-    private val outCoverage = ByteArray(4 * 1024 * 1024)
+    private val glyphCache = java.util.LinkedHashMap<Long, Bitmap>(128, 0.75f, true)
+    private var glyphCacheBytes = 0L
+    private val outMeta = IntArray(1 + MAX_ASS_IMAGES * 9)
+    // The 4 MB alpha coverage scratch buffer is only needed when libass actually
+    // renders. Most playback never selects ASS, so don't reserve native memory up front.
+    private val outCoverage by lazy(LazyThreadSafetyMode.NONE) { ByteBuffer.allocateDirect(ASS_COVERAGE_BYTES) }
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private val _activeRendererFlow = MutableStateFlow<NativeLibassRenderer?>(null)
@@ -59,7 +61,7 @@ class LibassRenderThread {
 
     fun setRelayRendererAsync(factory: () -> NativeLibassRenderer?) {
         handler.post {
-            val new = factory() ?: return@post
+            val new = factory()
             val old = relayRenderer
             relayRenderer = new
             if (old !== new) old?.close()
@@ -164,10 +166,20 @@ class LibassRenderThread {
     }
 
     private fun clearGlyphCache() {
-        for (i in 0 until glyphCache.size()) {
-            glyphCache.valueAt(i).recycle()
-        }
+        glyphCache.values.forEach { bitmap -> if (!bitmap.isRecycled) bitmap.recycle() }
         glyphCache.clear()
+        glyphCacheBytes = 0L
+    }
+
+    private fun trimGlyphCache() {
+        while (glyphCache.size > MAX_GLYPH_CACHE_ENTRIES || glyphCacheBytes > maxGlyphCacheBytes) {
+            val iterator = glyphCache.entries.iterator()
+            if (!iterator.hasNext()) return
+            val eldest = iterator.next()
+            glyphCacheBytes = (glyphCacheBytes - eldest.value.allocationByteCount.toLong()).coerceAtLeast(0L)
+            if (!eldest.value.isRecycled) eldest.value.recycle()
+            iterator.remove()
+        }
     }
 
     private fun requestRenderLocked() {
@@ -195,8 +207,6 @@ class LibassRenderThread {
         val count = r.renderImages(ptsMs + delayMs, frame.width, frame.height, outMeta, outCoverage, forceRender)
         if (count < 0) return
 
-        if (glyphCache.size() > 256) clearGlyphCache()
-
         val canvas = try { s.lockHardwareCanvas() } catch (_: Exception) { null } ?: return
         forceNextRender = false
         try {
@@ -210,13 +220,25 @@ class LibassRenderThread {
                 val w = outMeta[metaIdx + 2]
                 val h = outMeta[metaIdx + 3]
                 val assColor = outMeta[metaIdx + 4]
+                val coverageHashHigh = outMeta[metaIdx + 5]
+                val coverageHashLow = outMeta[metaIdx + 6]
                 val coverageOffset = outMeta[metaIdx + 7]
                 val coverageLen = outMeta[metaIdx + 8]
                 metaIdx += 9
 
-                val key = glyphKey(coverageOffset, coverageLen, w, h)
-                val glyph = glyphCache[key]?.takeIf { !it.isRecycled && it.width == w && it.height == h }
-                    ?: createGlyph(w, h, coverageOffset, coverageLen).also { glyphCache.put(key, it) }
+                val key = (coverageHashHigh.toLong() shl 32) or (coverageHashLow.toLong() and 0xFFFF_FFFFL)
+                val cachedGlyph = glyphCache[key]
+                val glyph = cachedGlyph?.takeIf { !it.isRecycled && it.width == w && it.height == h }
+                    ?: createGlyph(w, h, coverageOffset, coverageLen).also { created ->
+                        if (cachedGlyph != null) {
+                            glyphCache.remove(key)
+                            glyphCacheBytes = (glyphCacheBytes - cachedGlyph.allocationByteCount.toLong()).coerceAtLeast(0L)
+                            if (!cachedGlyph.isRecycled) cachedGlyph.recycle()
+                        }
+                        glyphCache[key] = created
+                        glyphCacheBytes += created.allocationByteCount.toLong()
+                        trimGlyphCache()
+                    }
 
                 val r_ch = (assColor ushr 24) and 0xFF
                 val g_ch = (assColor ushr 16) and 0xFF
@@ -230,29 +252,32 @@ class LibassRenderThread {
         }
     }
 
-    private fun glyphKey(offset: Int, len: Int, w: Int, h: Int): Long {
-        var hash = -0x340d631b7bdddcdbL
-        hash = (hash xor w.toLong()) * 0x100000001b3L
-        hash = (hash xor h.toLong()) * 0x100000001b3L
-        for (i in offset until offset + len) {
-            hash = (hash xor (outCoverage[i].toLong() and 0xff)) * 0x100000001b3L
-        }
-        return hash
-    }
-
     private fun createGlyph(w: Int, h: Int, offset: Int, len: Int): Bitmap {
         val srcStride = (w + 3) and 3.inv()
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ALPHA_8)
         val rowBytes = bmp.rowBytes
         if (rowBytes == srcStride) {
-            bmp.copyPixelsFromBuffer(ByteBuffer.wrap(outCoverage, offset, len))
+            val source = outCoverage.duplicate().apply {
+                position(offset)
+                limit(offset + len)
+            }.slice()
+            bmp.copyPixelsFromBuffer(source)
         } else {
             val packed = ByteArray(rowBytes * h)
+            val source = outCoverage.duplicate()
             for (y in 0 until h) {
-                System.arraycopy(outCoverage, offset + y * srcStride, packed, y * rowBytes, w)
+                source.position(offset + y * srcStride)
+                source.get(packed, y * rowBytes, w)
             }
             bmp.copyPixelsFromBuffer(ByteBuffer.wrap(packed))
         }
         return bmp
+    }
+
+    companion object {
+        const val DEFAULT_MAX_GLYPH_CACHE_BYTES = 12L * 1024L * 1024L
+        const val MAX_ASS_IMAGES = 200
+        const val ASS_COVERAGE_BYTES = 4 * 1024 * 1024
+        const val MAX_GLYPH_CACHE_ENTRIES = 192
     }
 }

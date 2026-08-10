@@ -340,7 +340,7 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeClearEvents(JNIEnv*, jobjec
 extern "C" JNIEXPORT jint JNICALL
 Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
     JNIEnv* env, jobject, jlong handle, jlong time_ms, jint width, jint height,
-    jintArray out_meta, jbyteArray out_coverage, jboolean force_render
+    jintArray out_meta, jobject out_coverage, jboolean force_render
 ) {
     auto* session = reinterpret_cast<Session*>(handle);
     if (!session || !session->renderer || !session->track || !ensure_api()) return -1;
@@ -362,13 +362,14 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
     if (detect_change == 0 && !size_changed && !force_render) return -1;
 
     const jsize meta_capacity = env->GetArrayLength(out_meta);
-    const jsize coverage_capacity = env->GetArrayLength(out_coverage);
+    const jlong direct_capacity = env->GetDirectBufferCapacity(out_coverage);
+    if (direct_capacity <= 0) return -1;
+    const size_t coverage_capacity = static_cast<size_t>(direct_capacity);
 
     jint* meta = env->GetIntArrayElements(out_meta, nullptr);
-    jbyte* coverage = env->GetByteArrayElements(out_coverage, nullptr);
+    auto* coverage = static_cast<uint8_t*>(env->GetDirectBufferAddress(out_coverage));
     if (!meta || !coverage) {
         if (meta) env->ReleaseIntArrayElements(out_meta, meta, JNI_ABORT);
-        if (coverage) env->ReleaseByteArrayElements(out_coverage, coverage, JNI_ABORT);
         return -1;
     }
 
@@ -380,24 +381,41 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
         if (img->w <= 0 || img->h <= 0 || !img->bitmap) continue;
         const int row_stride = (img->w + 3) & ~3;
         const int coverage_len = row_stride * img->h;
-        if (coverage_offset + coverage_len > coverage_capacity) break;
+        if (static_cast<size_t>(coverage_offset + coverage_len) > coverage_capacity) break;
+
+        // Hash coverage while it is hot in native memory. The Kotlin renderer used to
+        // walk the full direct buffer again via ByteBuffer.get() just to build a glyph
+        // cache key; doing the hash here removes that second managed-side pass.
+        uint64_t coverage_hash = 14695981039346656037ULL;
+        constexpr uint64_t fnv_prime = 1099511628211ULL;
+        auto hash_int = [&](uint32_t value) {
+            for (int shift = 0; shift < 32; shift += 8) {
+                coverage_hash ^= static_cast<uint8_t>((value >> shift) & 0xFFu);
+                coverage_hash *= fnv_prime;
+            }
+        };
+        hash_int(static_cast<uint32_t>(img->w));
+        hash_int(static_cast<uint32_t>(img->h));
 
         for (int y = 0; y < img->h; ++y) {
             const uint8_t* src = img->bitmap + y * img->stride;
-            jbyte* dst = coverage + coverage_offset + y * row_stride;
+            uint8_t* dst = coverage + coverage_offset + y * row_stride;
             std::memcpy(dst, src, static_cast<size_t>(img->w));
+            for (int x = 0; x < img->w; ++x) {
+                coverage_hash ^= src[x];
+                coverage_hash *= fnv_prime;
+            }
             if (row_stride > img->w) std::memset(dst + img->w, 0, static_cast<size_t>(row_stride - img->w));
         }
 
-        const uintptr_t ptr = reinterpret_cast<uintptr_t>(img->bitmap);
         const int base = 1 + image_count * 9;
         meta[base + 0] = img->dst_x;
         meta[base + 1] = img->dst_y;
         meta[base + 2] = img->w;
         meta[base + 3] = img->h;
         meta[base + 4] = static_cast<jint>(img->color);
-        meta[base + 5] = static_cast<jint>(static_cast<uint64_t>(ptr) >> 32);
-        meta[base + 6] = static_cast<jint>(ptr & 0xFFFFFFFFu);
+        meta[base + 5] = static_cast<jint>(coverage_hash >> 32);
+        meta[base + 6] = static_cast<jint>(coverage_hash & 0xFFFFFFFFu);
         meta[base + 7] = coverage_offset;
         meta[base + 8] = coverage_len;
 
@@ -407,6 +425,5 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
 
     meta[0] = image_count;
     env->ReleaseIntArrayElements(out_meta, meta, 0);
-    env->ReleaseByteArrayElements(out_coverage, coverage, 0);
     return image_count;
 }

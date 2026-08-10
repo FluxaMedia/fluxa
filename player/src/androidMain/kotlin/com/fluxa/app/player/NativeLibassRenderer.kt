@@ -2,6 +2,7 @@ package com.fluxa.app.player
 
 import android.graphics.Bitmap
 import java.io.Closeable
+import java.nio.ByteBuffer
 
 class NativeLibassRenderer private constructor(
     private var handle: Long
@@ -17,7 +18,7 @@ class NativeLibassRenderer private constructor(
         width: Int,
         height: Int,
         outMeta: IntArray,
-        outCoverage: ByteArray,
+        outCoverage: ByteBuffer,
         forceRender: Boolean
     ): Int {
         if (handle == 0L) return -1
@@ -47,7 +48,7 @@ class NativeLibassRenderer private constructor(
         width: Int,
         height: Int,
         outMeta: IntArray,
-        outCoverage: ByteArray,
+        outCoverage: ByteBuffer,
         forceRender: Boolean
     ): Int
     private external fun nativeRelease(handle: Long)

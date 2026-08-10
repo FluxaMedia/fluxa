@@ -11,9 +11,11 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.After
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -30,7 +32,7 @@ class LibassExoPlayerInstrumentationTest {
     fun tearDown() {
         renderers.forEach { it.close() }
         players.forEach { player ->
-            runOnMainSync { player.release() }
+            runOnMainSync { MediaPlayerController.releaseExoPlayer(player) }
         }
         surfaces.forEach { it.release() }
         textures.forEach { it.release() }
@@ -64,6 +66,20 @@ class LibassExoPlayerInstrumentationTest {
         val afterResult = renderer.render(3_000L, afterBitmap)
         assertTrue("Expected no ASS image after the dialogue end.", afterResult == 0)
         assertTrue("Expected transparent bitmap after the dialogue end.", afterBitmap.nonTransparentPixelCount() == 0)
+    }
+
+    @Test
+    fun nativeRendererDirectCoveragePathProducesImages() {
+        val renderer = requireNotNull(NativeLibassRenderer.create(assProbeDocument().toByteArray()))
+        renderers += renderer
+        val meta = IntArray(1 + 200 * 9)
+        val coverage = ByteBuffer.allocateDirect(4 * 1024 * 1024)
+
+        val count = renderer.renderImages(1_500L, PROBE_WIDTH, PROBE_HEIGHT, meta, coverage, forceRender = true)
+
+        assertTrue("Expected direct-buffer libass image output.", count > 0)
+        assertTrue("Expected native metadata image count to match return value.", meta[0] == count)
+        assertTrue("Expected a non-empty glyph size.", meta[3] > 0 && meta[4] > 0)
     }
 
     @Test
@@ -135,6 +151,25 @@ class LibassExoPlayerInstrumentationTest {
             "Expected Fluxa ExoPlayer factory to register a LibassEventRelay.",
             MediaPlayerController.getLibassRelay(player)
         )
+    }
+
+    @Test
+    fun lightweightPreviewPlayerCanSkipLibassRelay() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val player = runOnMainSync {
+            MediaPlayerController.createExoPlayer(
+                context = context,
+                bufferCacheMb = 16,
+                forwardBufferSeconds = 15,
+                backBufferSeconds = 0,
+                minBufferSeconds = 3,
+                playbackBufferMs = 500,
+                rebufferBufferMs = 1_200,
+                enableLibassRelay = false,
+            )
+        }
+        players += player
+        assertNull("Preview/trailer ExoPlayer should not allocate a libass relay.", MediaPlayerController.getLibassRelay(player))
     }
 
     @Test

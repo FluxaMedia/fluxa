@@ -160,7 +160,7 @@ private class LibassInterceptingExtractorOutput(
 }
 
 private class PrefixCaptureBuffer {
-    private val capture = ByteArray(MAX_CAPTURE_BYTES)
+    private var capture = ByteArray(INITIAL_CAPTURE_BYTES)
     private var capturedLength = 0
 
     @Synchronized
@@ -171,15 +171,23 @@ private class PrefixCaptureBuffer {
         if (!shouldCapture(position) || length <= 0) return
         val targetOffset = position.toInt()
         val writable = minOf(length, MAX_CAPTURE_BYTES - targetOffset)
-        if (writable > 0) {
-            System.arraycopy(buffer, offset, capture, targetOffset, writable)
-            capturedLength = maxOf(capturedLength, targetOffset + writable)
-        }
+        if (writable <= 0) return
+        ensureCapacity(targetOffset + writable)
+        System.arraycopy(buffer, offset, capture, targetOffset, writable)
+        capturedLength = maxOf(capturedLength, targetOffset + writable)
     }
 
     fun shouldCapture(position: Long): Boolean = position in 0 until MAX_CAPTURE_BYTES.toLong()
 
+    private fun ensureCapacity(required: Int) {
+        if (required <= capture.size) return
+        var next = capture.size.coerceAtLeast(INITIAL_CAPTURE_BYTES)
+        while (next < required && next < MAX_CAPTURE_BYTES) next = (next * 2).coerceAtMost(MAX_CAPTURE_BYTES)
+        if (next > capture.size) capture = capture.copyOf(next)
+    }
+
     private companion object {
+        const val INITIAL_CAPTURE_BYTES = 64 * 1024
         const val MAX_CAPTURE_BYTES = 16 * 1024 * 1024
     }
 }
@@ -294,6 +302,7 @@ private class LibassFontCollectingTrackOutput(
     }
 
     override fun sampleData(input: DataReader, length: Int, allowEndOfInput: Boolean, sampleDataPart: Int): Int {
+        if (!isFontTrack) return delegate.sampleData(input, length, allowEndOfInput, sampleDataPart)
         val buf = ByteArray(length)
         val read = input.read(buf, 0, length)
         if (isFontTrack && read > 0 && sampleDataPart == TrackOutput.SAMPLE_DATA_PART_MAIN) {
@@ -304,9 +313,13 @@ private class LibassFontCollectingTrackOutput(
     }
 
     override fun sampleData(data: ParsableByteArray, length: Int, sampleDataPart: Int) {
+        if (!isFontTrack) {
+            delegate.sampleData(data, length, sampleDataPart)
+            return
+        }
         val buf = ByteArray(length)
         data.readBytes(buf, 0, length)
-        if (isFontTrack && sampleDataPart == TrackOutput.SAMPLE_DATA_PART_MAIN) {
+        if (sampleDataPart == TrackOutput.SAMPLE_DATA_PART_MAIN) {
             pendingData.write(buf)
         }
         delegate.sampleData(ParsableByteArray(buf, length), length, sampleDataPart)
@@ -355,6 +368,9 @@ private class LibassInterceptingTrackOutput(
         allowEndOfInput: Boolean,
         sampleDataPart: Int
     ): Int {
+        if (format?.sampleMimeType != MimeTypes.TEXT_SSA) {
+            return delegate.sampleData(input, length, allowEndOfInput, sampleDataPart)
+        }
         val buf = ByteArray(length)
         val read = input.read(buf, 0, length)
         if (read == C.RESULT_END_OF_INPUT) {
@@ -369,6 +385,10 @@ private class LibassInterceptingTrackOutput(
     }
 
     override fun sampleData(data: ParsableByteArray, length: Int, sampleDataPart: Int) {
+        if (format?.sampleMimeType != MimeTypes.TEXT_SSA) {
+            delegate.sampleData(data, length, sampleDataPart)
+            return
+        }
         val buf = ByteArray(length)
         data.readBytes(buf, 0, length)
         if (sampleDataPart == TrackOutput.SAMPLE_DATA_PART_MAIN) {

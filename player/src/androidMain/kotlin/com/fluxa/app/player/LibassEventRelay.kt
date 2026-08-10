@@ -4,10 +4,17 @@ import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 
-class LibassEventRelay {
-    val renderThread = LibassRenderThread()
+class LibassEventRelay(private val maxGlyphCacheBytes: Long = LibassRenderThread.DEFAULT_MAX_GLYPH_CACHE_BYTES) {
+    // Most playback never uses ASS. Keep the dedicated HandlerThread dormant until an
+    // ASS track is actually selected/primed instead of allocating a thread for every
+    // idle ExoPlayer at application startup.
+    private val renderThreadLazy = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { LibassRenderThread(maxGlyphCacheBytes) }
+    val renderThread: LibassRenderThread get() = renderThreadLazy.value
 
-    val activeRenderer: StateFlow<NativeLibassRenderer?> = renderThread.activeRendererFlow
+    val activeRenderer: StateFlow<NativeLibassRenderer?> get() = renderThread.activeRendererFlow
+
+    private fun initializedRenderThread(): LibassRenderThread? =
+        if (renderThreadLazy.isInitialized()) renderThreadLazy.value else null
 
     @Volatile var selectedTrackId: Int? = null
         private set
@@ -107,7 +114,12 @@ class LibassEventRelay {
             }
             "Dialogue: ${fields[1]},${formatAssTime(startMs)},${formatAssTime(endMs)},${fields[2]},${fields[3]},${fields[4]},${fields[5]},${fields[6]},${fields[7]},${fields[8]}"
         }
-        synchronized(lock) { eventLines += line }
+        synchronized(lock) {
+            eventLines += line
+            if (eventLines.size > MAX_REPLAY_EVENTS) {
+                eventLines.subList(0, eventLines.size - MAX_REPLAY_EVENTS).clear()
+            }
+        }
         renderThread.addRelayEvent(line)
         val count = eventCount.incrementAndGet()
         if (count <= 8 || count % 50 == 0) {
@@ -117,12 +129,12 @@ class LibassEventRelay {
 
     fun clearEvents() {
         synchronized(lock) { eventLines.clear() }
-        renderThread.clearRelayEvents()
+        initializedRenderThread()?.clearRelayEvents()
         LibassDebugLog.d("relay cleared events")
     }
 
     fun close() {
-        renderThread.close()
+        initializedRenderThread()?.close()
         LibassDebugLog.d("relay closed renderer")
     }
 
@@ -136,4 +148,9 @@ class LibassEventRelay {
         val hours = totalMinutes / 60
         return "%d:%02d:%02d.%02d".format(Locale.US, hours, minutes, seconds, centis)
     }
+
+    private companion object {
+        const val MAX_REPLAY_EVENTS = 2048
+    }
+
 }

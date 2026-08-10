@@ -22,7 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fluxa.app.player.LibassDebugLog
 import com.fluxa.app.player.MediaPlayerController
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.fluxa.app.player.SubtitleFrameRenderer
+import com.fluxa.app.player.collectFrom
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +57,7 @@ import com.fluxa.app.shared.feature.player.PlayerTransientOverlays
 import com.fluxa.app.shared.feature.player.SourceSidebar
 import com.fluxa.app.shared.feature.player.UniversalSettingsSidebar
 import com.fluxa.app.shared.feature.player.ZoomOverlayMode
+import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
 
 private data class ExoSurfaceConfig(
     val resizeMode: Int,
@@ -122,6 +125,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
     onPlayNext: () -> Unit,
     onCast: () -> Unit,
     onOpenInExternalPlayer: () -> Unit,
+    onWatchParty: () -> Unit,
     onPictureInPicture: () -> Unit,
     onShowSettingsTab: (Int) -> Unit,
     onClose: () -> Unit,
@@ -151,6 +155,15 @@ internal fun BoxScope.PlayerPlaybackSurface(
 ) {
     val seekSurfaceViewRef = remember { mutableStateOf<SurfaceView?>(null) }
     val nativeLibassSurfaceView = remember { mutableStateOf<NativeLibassSubtitleSurfaceView?>(null) }
+    val exoSubtitleViewRef = remember { mutableStateOf<androidx.media3.ui.SubtitleView?>(null) }
+
+    if (!useMpvBackend) {
+        LaunchedEffect(exoPlayer, exoSubtitleViewRef.value) {
+            val subtitleView = exoSubtitleViewRef.value ?: return@LaunchedEffect
+            val coordinator = MediaPlayerController.getSubtitleCoordinator(exoPlayer) ?: return@LaunchedEffect
+            SubtitleFrameRenderer(subtitleView).collectFrom(this, coordinator.frames)
+        }
+    }
 
     if (!resolvedUrl.isNullOrEmpty()) {
         if (useMpvBackend) {
@@ -169,11 +182,19 @@ internal fun BoxScope.PlayerPlaybackSurface(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
+            val currentSubtitleIsAss = currentSubtitle?.sampleMimeType?.let { mime ->
+                mime.contains("ssa", ignoreCase = true) || mime.contains("ass", ignoreCase = true)
+            } == true
             val libassRelay = remember(exoPlayer) { MediaPlayerController.getLibassRelay(exoPlayer) }
-            val relayRendererActive by (libassRelay?.activeRenderer?.let { it.map { r -> r != null } }
-                ?: MutableStateFlow(false)).collectAsStateWithLifecycle(false)
+            val relayRendererActiveFlow = remember(libassRelay, currentSubtitleIsAss) {
+                if (currentSubtitleIsAss) {
+                    libassRelay?.activeRenderer?.map { renderer -> renderer != null } ?: flowOf(false)
+                } else {
+                    flowOf(false)
+                }
+            }
+            val relayRendererActive by relayRendererActiveFlow.collectAsStateWithLifecycle(false)
 
-            val currentSubtitleIsAss = currentSubtitle?.sampleMimeType?.contains("ssa", ignoreCase = true) == true
             val nativeAssActive = relayRendererActive && currentSubtitleIsAss ||
                 selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles) != null ||
                 selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks) != null
@@ -225,6 +246,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
                             android.view.Gravity.CENTER
                         )
                         applyExoSurfaceConfig(exoSurfaceConfig, activeProfile)
+                        exoSubtitleViewRef.value = subtitleView
                         val contentFrame = findViewById<android.widget.FrameLayout>(androidx.media3.ui.R.id.exo_content_frame)
                         nativeLibassSurfaceView.value = NativeLibassSubtitleSurfaceView(ctx).also { overlay ->
                             contentFrame.addView(
@@ -250,7 +272,8 @@ internal fun BoxScope.PlayerPlaybackSurface(
                 externalSubtitle = selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles),
                 embeddedSubtitle = selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks),
                 subtitleDelayMs = subtitleDelayMs,
-                surfaceView = nativeLibassSurfaceView.value
+                surfaceView = nativeLibassSurfaceView.value,
+                enabled = nativeAssActive
             )
         }
     }
@@ -275,6 +298,9 @@ internal fun BoxScope.PlayerPlaybackSurface(
         LocalSeekSurfaceView provides seekSurfaceViewRef.value,
         LocalSeekExoPlayer provides exoPlayer
     ) {
+    val watchTogetherState by WatchTogetherManager.state.collectAsStateWithLifecycle()
+    val watchTogetherCanControl = watchTogetherState.canControlLocally
+
     Box(modifier = Modifier.fillMaxSize().alpha(controlsAlpha)) {
         if (showControls && render.isVideoRendered) {
             PlayerUIContent(
@@ -289,20 +315,31 @@ internal fun BoxScope.PlayerPlaybackSurface(
                 hasStartedPlaying = playback.hasStartedPlaying,
                 deviceType = deviceType,
                 onPlayPause = {
-                    activeEngine?.setPaused(playback.isPlaying)
-                    showControlsTemp()
+                    if (watchTogetherCanControl) {
+                        activeEngine?.setPaused(playback.isPlaying)
+                        showControlsTemp()
+                        WatchTogetherManager.notifyPlaybackChanged()
+                    }
                 },
-                onSeek = { seekSafely(it); showControlsTemp() },
+                onSeek = {
+                    if (watchTogetherCanControl) {
+                        seekSafely(it)
+                        showControlsTemp()
+                        WatchTogetherManager.notifyPlaybackChanged()
+                    }
+                },
                 onToggleSubtitles = { toggleSubtitleSelection() },
                 onToggleAspect = onToggleAspect,
-                onSpeedChange = onPlaybackSpeedChange,
+                onSpeedChange = { if (watchTogetherCanControl) onPlaybackSpeedChange(it) },
                 playbackSpeed = playbackSpeed,
                 playPauseFocusRequester = playPauseFocusRequester,
                 seekbarFocusRequester = seekbarFocusRequester,
                 isScrubbing = isScrubbing,
                 scrubPosition = scrubPosition,
-                onScrubbingChange = onScrubbingChange,
-                onScrubSeek = { activeEngine?.seekTo(it, exact = false) },
+                onScrubbingChange = { scrubbing, position ->
+                    if (watchTogetherCanControl) onScrubbingChange(scrubbing, position)
+                },
+                onScrubSeek = { if (watchTogetherCanControl) activeEngine?.seekTo(it, exact = false) },
                 isSwitchingAudioSource = isSwitchingAudioSource,
                 detailedStatus = torrentStatus.detailedStatus,
                 episodeMetaLine = currentEpisodeMetaLine,
@@ -321,6 +358,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
                 onPlayNext = onPlayNext,
                 onCast = onCast,
                 onOpenInExternalPlayer = onOpenInExternalPlayer,
+                onWatchParty = onWatchParty,
                 onPictureInPicture = onPictureInPicture,
                 onShowSettings = onShowSettingsTab,
                 onClose = onClose,

@@ -56,7 +56,8 @@ class AndroidExoPlaybackController(
 
     private fun publish() {
         val duration = exoPlayer.duration.takeUnless { it == C.TIME_UNSET }?.coerceAtLeast(0L) ?: 0L
-        mutableState.value = mutableState.value.copy(
+        val current = mutableState.value
+        val next = current.copy(
             isPlaying = exoPlayer.isPlaying,
             isBuffering = exoPlayer.playbackState == Player.STATE_BUFFERING,
             positionMs = exoPlayer.currentPosition.coerceAtLeast(0L),
@@ -64,5 +65,6 @@ class AndroidExoPlaybackController(
             bufferedPositionMs = exoPlayer.bufferedPosition.coerceAtLeast(0L),
             volume = exoPlayer.volume
         )
+        if (next != current) mutableState.value = next
     }
 }
