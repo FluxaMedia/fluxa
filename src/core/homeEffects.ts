@@ -124,12 +124,7 @@ export async function continueWatchingForSelectedSource(
     const items = libraries[provider as LibraryProvider]?.watching ?? [];
     void invoke('debug_log', { msg: `cw-source: loaded provider library provider=${provider} count=${items.length} ids=${items.map((item) => item.id ?? item._id).join(',')}` });
     void invoke('debug_log', { msg: `cw-source: provider library detail=${JSON.stringify(items.map((item) => ({ id: item.id ?? item._id, timeOffset: item.timeOffset, duration: item.duration, badge: item.continueWatchingBadge, poster: item.poster, background: item.background })))}` });
-    const merged = (await coreInvoke<Record<string, unknown>[]>(
-      'mergeContinueWatchingDuplicates',
-      JSON.stringify({ itemsJson: JSON.stringify(items) }),
-    )) ?? [];
-    void invoke('debug_log', { msg: `cw-source: deduplicated provider library provider=${provider} count=${merged.length}` });
-    return merged;
+    return items;
   }
 
   const local = (library.continueWatching as Record<string, unknown>[] | undefined) ?? [];
