@@ -123,6 +123,16 @@ impl MpvClientHandle {
                         });
                     }
                 }
+                MPV_EVENT_PROPERTY_CHANGE if !event.data.is_null() => {
+                    let property = unsafe { &*(event.data as *const MpvEventProperty) };
+                    if event.reply_userdata == PAUSE_OBSERVE_ID
+                        && property.format == MPV_FORMAT_FLAG
+                        && !property.data.is_null()
+                    {
+                        let paused = unsafe { *(property.data as *const c_int) } != 0;
+                        events.push(PlayerEvent::PauseChanged(paused));
+                    }
+                }
                 MPV_EVENT_COMMAND_REPLY if event.error < 0 => {
                     log::debug!(
                         "mpv async command failed: {}",

@@ -18,6 +18,7 @@ impl MpvClientHandle {
             pending_unpause: false,
             pending_seek_seconds: None,
             current_url: None,
+            next_async_command_id: AtomicU64::new(2000),
         };
         let render = MpvRenderState {
             api: api.clone(),
@@ -106,6 +107,22 @@ impl MpvClientHandle {
             );
         } else {
             log::info!("mpv: info logging enabled");
+        }
+
+        let pause_name = CString::new("pause").unwrap();
+        let observe_result = unsafe {
+            (client.api.mpv_observe_property)(
+                client.handle,
+                PAUSE_OBSERVE_ID,
+                pause_name.as_ptr(),
+                MPV_FORMAT_FLAG,
+            )
+        };
+        if observe_result < 0 {
+            log::warn!(
+                "mpv: failed to observe pause property: {}",
+                client.api.error_string(observe_result)
+            );
         }
 
         Ok((client, render))

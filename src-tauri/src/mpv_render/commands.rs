@@ -41,7 +41,8 @@ impl MpvClientHandle {
         let mut raw_args = c_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
         raw_args.push(ptr::null());
 
-        let result = unsafe { (self.api.mpv_command_async)(self.handle, 0, raw_args.as_ptr()) };
+        let id = self.next_async_command_id.fetch_add(1, Ordering::Relaxed);
+        let result = unsafe { (self.api.mpv_command_async)(self.handle, id, raw_args.as_ptr()) };
         if result < 0 {
             Err(format!(
                 "mpv async command failed: {}",

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, type MutableRefObject } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { coreInvoke } from '../core/engine';
 import type { EmbeddedMpvStatus } from '../core/mpvPlayer';
 import { embeddedMpvStatus } from '../core/mpvPlayer';
@@ -40,19 +41,27 @@ export function usePlayerScrobbling(options: Options) {
   useEffect(() => {
     if (!playerUrl) return;
     let cancelled = false;
-    const poll = async () => {
+    const handlePauseChanged = async (paused: boolean) => {
       if (cancelled || closingPlayerRef.current || !inNativePlayerRef.current) return;
       const status = await embeddedMpvStatus().catch(() => null);
       if (!status || cancelled) return;
       lastPlaybackStatusRef.current = status;
-      const paused = status.pause === 'yes';
-      if (!paused) await dispatchScrobbleLifecycle('start', status);
-      if (paused && !scrobbleWasPausedRef.current) { scrobbleWasPausedRef.current = true; await dispatchScrobbleLifecycle('pause', status); return; }
-      scrobbleWasPausedRef.current = paused;
+      if (!paused) {
+        scrobbleWasPausedRef.current = false;
+        await dispatchScrobbleLifecycle('start', status);
+        return;
+      }
+      if (!scrobbleWasPausedRef.current) {
+        scrobbleWasPausedRef.current = true;
+        await dispatchScrobbleLifecycle('pause', status);
+      }
     };
-    void poll();
-    const interval = setInterval(() => { void poll(); }, 1000);
-    return () => { cancelled = true; clearInterval(interval); };
+    let unlisten: (() => void) | null = null;
+    listen<boolean>('native-player-pause-changed', (event) => { void handlePauseChanged(event.payload); })
+      .then((fn) => { if (cancelled) fn(); else unlisten = fn; })
+      .catch(() => undefined);
+    void embeddedMpvStatus().then((status) => { if (!cancelled && status) void handlePauseChanged(status.pause === 'yes'); }).catch(() => undefined);
+    return () => { cancelled = true; unlisten?.(); };
   }, [closingPlayerRef, dispatchScrobbleLifecycle, inNativePlayerRef, lastPlaybackStatusRef, playerUrl, scrobbleWasPausedRef]);
 
   return dispatchScrobbleLifecycle;

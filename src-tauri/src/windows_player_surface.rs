@@ -962,7 +962,13 @@ fn check_player_events(app: &AppHandle) {
         }
     };
     for event in events {
-        let crate::mpv_render::PlayerEvent::EndFile { eof, error } = event;
+        let (eof, error) = match event {
+            crate::mpv_render::PlayerEvent::EndFile { eof, error } => (eof, error),
+            crate::mpv_render::PlayerEvent::PauseChanged(paused) => {
+                let _ = app.emit("native-player-pause-changed", paused);
+                continue;
+            }
+        };
         log::info!("player surface: mpv END_FILE event eof={eof} error={error:?}");
         if let Some(message) = error {
             log::error!("player surface: stream failed to play: {message}");

@@ -50,14 +50,24 @@ const MPV_EVENT_LOG_MESSAGE: c_int = 2;
 const MPV_EVENT_COMMAND_REPLY: c_int = 5;
 const MPV_EVENT_END_FILE: c_int = 7;
 const MPV_EVENT_PLAYBACK_RESTART: c_int = 21;
+const MPV_EVENT_PROPERTY_CHANGE: c_int = 22;
 const MPV_END_FILE_REASON_EOF: c_int = 0;
 const MPV_END_FILE_REASON_ERROR: c_int = 4;
+const MPV_FORMAT_FLAG: c_int = 3;
+const PAUSE_OBSERVE_ID: u64 = 1001;
 
 #[repr(C)]
 struct MpvEvent {
     event_id: c_int,
     error: c_int,
     reply_userdata: u64,
+    data: *mut c_void,
+}
+
+#[repr(C)]
+struct MpvEventProperty {
+    name: *const c_char,
+    format: c_int,
     data: *mut c_void,
 }
 
@@ -80,6 +90,7 @@ struct MpvEventLogMessage {
 
 pub enum PlayerEvent {
     EndFile { eof: bool, error: Option<String> },
+    PauseChanged(bool),
 }
 
 #[repr(C)]
@@ -185,6 +196,8 @@ type MpvRenderContextSetParameter =
 type MpvRenderContextFree = unsafe extern "C" fn(*mut MpvRenderContext);
 type MpvWaitEvent = unsafe extern "C" fn(*mut MpvHandle, f64) -> *mut MpvEvent;
 type MpvRequestLogMessages = unsafe extern "C" fn(*mut MpvHandle, *const c_char) -> c_int;
+type MpvObserveProperty =
+    unsafe extern "C" fn(*mut MpvHandle, u64, *const c_char, c_int) -> c_int;
 
 pub struct MpvFrameState {
     loaded: AtomicBool,
@@ -224,6 +237,7 @@ pub struct MpvClientHandle {
     pending_unpause: bool,
     pending_seek_seconds: Option<f64>,
     current_url: Option<String>,
+    next_async_command_id: AtomicU64,
 }
 
 unsafe impl Send for MpvClientHandle {}

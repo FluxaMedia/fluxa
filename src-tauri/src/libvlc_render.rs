@@ -14,6 +14,8 @@ const LIBVLC_PLAYING: c_int = 3;
 const LIBVLC_PAUSED: c_int = 4;
 const LIBVLC_ENDED: c_int = 6;
 
+const LIBVLC_MEDIA_PLAYER_PLAYING: c_int = 260;
+const LIBVLC_MEDIA_PLAYER_PAUSED: c_int = 261;
 const LIBVLC_MEDIA_PLAYER_END_REACHED: c_int = 265;
 const LIBVLC_MEDIA_PLAYER_ENCOUNTERED_ERROR: c_int = 266;
 
@@ -360,6 +362,10 @@ unsafe extern "C" fn vlc_event_callback(event: *const LibvlcEvent, user_data: *m
             eof: false,
             error: Some("libvlc encountered an error during playback".to_string()),
         });
+    } else if event_type == LIBVLC_MEDIA_PLAYER_PLAYING {
+        queue.events.push_back(PlayerEvent::PauseChanged(false));
+    } else if event_type == LIBVLC_MEDIA_PLAYER_PAUSED {
+        queue.events.push_back(PlayerEvent::PauseChanged(true));
     }
 }
 
@@ -455,6 +461,18 @@ impl LibvlcPlayer {
                 (self.api.event_attach)(
                     mgr,
                     LIBVLC_MEDIA_PLAYER_ENCOUNTERED_ERROR,
+                    vlc_event_callback,
+                    user_data,
+                );
+                (self.api.event_attach)(
+                    mgr,
+                    LIBVLC_MEDIA_PLAYER_PLAYING,
+                    vlc_event_callback,
+                    user_data,
+                );
+                (self.api.event_attach)(
+                    mgr,
+                    LIBVLC_MEDIA_PLAYER_PAUSED,
                     vlc_event_callback,
                     user_data,
                 );

@@ -20,6 +20,7 @@ pub(super) struct MpvApi {
     pub(super) mpv_render_context_free: MpvRenderContextFree,
     pub(super) mpv_wait_event: MpvWaitEvent,
     pub(super) mpv_request_log_messages: MpvRequestLogMessages,
+    pub(super) mpv_observe_property: MpvObserveProperty,
 }
 
 unsafe impl Send for MpvApi {}
@@ -83,6 +84,9 @@ impl MpvApi {
             let mpv_request_log_messages = *library
                 .get::<MpvRequestLogMessages>(b"mpv_request_log_messages\0")
                 .map_err(load_error)?;
+            let mpv_observe_property = *library
+                .get::<MpvObserveProperty>(b"mpv_observe_property\0")
+                .map_err(load_error)?;
             Ok(Self {
                 _library: library,
                 mpv_create,
@@ -103,6 +107,7 @@ impl MpvApi {
                 mpv_render_context_free,
                 mpv_wait_event,
                 mpv_request_log_messages,
+                mpv_observe_property,
             })
         }
     }

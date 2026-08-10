@@ -105,7 +105,13 @@ pub fn player_status(
     if let Ok(mut guard) = state.player_renderer_vlc.try_lock() {
         if let Some(renderer) = guard.as_mut() {
             for event in renderer.poll_events() {
-                let mpv_render::PlayerEvent::EndFile { eof, error } = event;
+                let (eof, error) = match event {
+                    mpv_render::PlayerEvent::EndFile { eof, error } => (eof, error),
+                    mpv_render::PlayerEvent::PauseChanged(paused) => {
+                        let _ = app.emit("native-player-pause-changed", paused);
+                        continue;
+                    }
+                };
                 if let Some(message) = error {
                     let _ = app.emit("native-player-error", message);
                 } else if eof {
