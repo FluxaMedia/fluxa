@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { UserProfile } from '../../core/types';
 import { t } from '../../i18n';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { AvatarPreview } from '../../screens/ProfileForm';
-import { ChoiceTile, SettingsSection, SyncServicePopover, SyncServiceRow, cwRankingOptions, cwSourceOfTruthOptions, librarySourceOfTruthOptions, similarTitlesSourceOptions } from './SettingsUI';
+import { ChoiceTile, SettingsSection, SyncServicePopover, SyncServiceRow, cwSourceOfTruthOptions, librarySourceOfTruthOptions, similarTitlesSourceOptions } from './SettingsUI';
 import type { Prefs } from './settingsTypes';
 
 import { AuthKeyLoginForm, CredentialLoginForm, type IntegrationService } from './accountPresentation';
@@ -29,10 +29,6 @@ export function AccountSection({
 }) {
   const [selectedIntegration, setSelectedIntegration] = useState<IntegrationService | null>(null);
   const [importDialog, setImportDialog] = useState<IntegrationService | null>(null);
-
-  useEffect(() => {
-    if (prefs.syncCwSourceOfTruth === 'most_recent' || prefs.syncCwSourceOfTruth === 'local') setPref('syncCwSourceOfTruth', '');
-  }, [prefs.syncCwSourceOfTruth, setPref]);
 
   const accounts = useIntegrationAccounts({ prefs, activeProfile, onProfileUpdated, onDispatch, onNuvioSyncComplete });
   const {
@@ -317,9 +313,8 @@ export function AccountSection({
       </SettingsSection>
 
       <SettingsSection title={t('settings.cw_conflict_resolution')} subtitle={t('settings.cw_conflict_resolution_desc')}>
-        <ChoiceTile title={t('settings.cw_source_of_truth')} subtitle={t('settings.cw_source_of_truth_desc')} options={cwSourceOfTruthOptions()} selected={prefs.syncCwSourceOfTruth} onSelect={(value) => setPref('syncCwSourceOfTruth', value)} />
+        <ChoiceTile title={t('settings.cw_source_of_truth')} subtitle={t('settings.cw_source_of_truth_desc')} options={cwSourceOfTruthOptions()} selected={prefs.continueWatchingSource} onSelect={(value) => setPref('continueWatchingSource', value)} />
         <ChoiceTile title={t('settings.library_source_of_truth')} subtitle={t('settings.library_source_of_truth_desc')} options={librarySourceOfTruthOptions()} selected={prefs.integrationLibrarySource} onSelect={(value) => setPref('integrationLibrarySource', value)} />
-        <ChoiceTile title={t('settings.cw_ranking')} subtitle={t('settings.cw_ranking_desc')} options={cwRankingOptions()} selected={prefs.syncCwRanking} onSelect={(value) => setPref('syncCwRanking', value)} disabled={prefs.syncCwSourceOfTruth !== ''} />
         <ChoiceTile title={t('settings.similar_titles_source')} subtitle={t('settings.similar_titles_source_desc')} options={similarTitlesSourceOptions()} selected={prefs.similarTitlesSource} onSelect={(value) => setPref('similarTitlesSource', value)} />
       </SettingsSection>
 

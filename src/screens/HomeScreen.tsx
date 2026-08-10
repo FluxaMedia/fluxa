@@ -9,7 +9,12 @@ import { CollectionShelfRow } from '../components/CollectionShelfRow';
 import { posterPrefsFromState } from '../core/posterPrefs';
 import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { buildResourceUrl } from '../core/addonManifest';
+import { invoke } from '@tauri-apps/api/core';
 import { coreInvoke, httpFetchText } from '../core/engine';
+
+function debugLog(msg: string) {
+  void invoke('debug_log', { msg }).catch(() => {});
+}
 import { prewarmYoutubeTrailerConfig } from '../core/effectRunner';
 import { fetchTmdbTrailers } from '../core/detailEffects';
 import type { AppState, HomeCategory, Meta, NuvioRemoteCollectionSource, Trailer } from '../core/types';
@@ -272,6 +277,10 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   }, [deferStaleRefresh, home.isStale, onDispatch]);
 
   const continueWatching = useMemo(() => (home.continueWatching ?? []) as Meta[], [home.continueWatching]);
+  useEffect(() => {
+    const item = continueWatching.find((m) => m.id === 'tt6741278') as unknown as Record<string, unknown> | undefined;
+    debugLog(`HomeScreen: continueWatching recomputed count=${continueWatching.length} tt6741278=${item ? JSON.stringify({ badge: item.continueWatchingBadge, resumeProgressPercent: item.resumeProgressPercent }) : 'not found'}`);
+  }, [continueWatching]);
   const posterPrefs = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);
   const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
   const [heroTrailers, setHeroTrailers] = useState<Record<string, Trailer[]>>({});
@@ -397,7 +406,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
     return () => { cancelled = true; };
   }, [continueWatching, keepScheduled, showThisWeek]);
 
-  if (home.isLoading && !billboard && categories.length === 0) {
+  if (home.isLoading && !billboard && categories.length === 0 && (home.continueWatching?.length ?? 0) === 0) {
     return <LoadingSkeleton />;
   }
 

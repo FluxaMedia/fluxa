@@ -56,7 +56,7 @@ export function streamSourceOptions() {
 
 export function cwSourceOfTruthOptions() {
   return [
-    { value: '', label: t('settings.cw_source_of_truth_fluxa') },
+    { value: 'local', label: t('settings.cw_source_of_truth_fluxa') },
     { value: 'nuvio', label: t('settings.cw_source_of_truth_nuvio') },
     { value: 'trakt', label: t('settings.cw_source_of_truth_trakt') },
     { value: 'simkl', label: t('settings.cw_source_of_truth_simkl') },

@@ -1,8 +1,9 @@
 import * as Sentry from '@sentry/react';
-import { completeEffect, coreInvoke, coreMergeContinueWatchingLists, dispatchAction, enqueueOfflineDownload, httpExecuteText, libraryContinueWatchingDelete, libraryProgressDelete, registerTrailerProxyUrl } from './engine';
+import { invoke } from '@tauri-apps/api/core';
+import { completeEffect, coreInvoke, dispatchAction, enqueueOfflineDownload, httpExecuteText, libraryContinueWatchingDelete, libraryProgressDelete, registerTrailerProxyUrl } from './engine';
 import { startTorrentStream, stopTorrentStream } from './mpvPlayer';
 import { effectRunnerLibraryKey, loadActiveProfile, loadEnabledAddons, loadLibrary, loadPrefs, saveLibrary, persistLastWatchedEpisode } from './libraryOps';
-import { readHomeBootstrap, refreshReleasedContinueWatching } from './homeEffects';
+import { continueWatchingForSelectedSource, readHomeBootstrap } from './homeEffects';
 import { invalidateCalendarCache } from './libraryEffects';
 import {
   applyLibraryCommand,
@@ -123,22 +124,14 @@ async function runEffect(
       const lib = await loadLibrary();
       const addons = await loadEnabledAddons();
       const prefs = await loadPrefs();
-      const localCW = (lib.continueWatching as Record<string, unknown>[] | undefined) ?? [];
-      const externalCW = (lib.externalContinueWatching as Record<string, unknown>[] | undefined) ?? [];
-      const progressMap = (lib.progress as Record<string, unknown> | undefined) ?? {};
-      const mergedCWRaw = await coreMergeContinueWatchingLists(
-        JSON.stringify(localCW),
-        JSON.stringify(externalCW),
-        JSON.stringify(progressMap),
-        prefs.syncCwSourceOfTruth as string | undefined,
-        prefs.syncCwRanking as string | undefined,
-      );
-      const mergedCW = (mergedCWRaw ?? []) as Record<string, unknown>[];
-      const continueWatching = await refreshReleasedContinueWatching(
-        mergedCW,
+      if (typeof p.source === 'string') prefs.continueWatchingSource = p.source;
+      void invoke('debug_log', { msg: `cw-source: refresh requested source=${String(prefs.continueWatchingSource ?? 'local')}` });
+      const continueWatching = await continueWatchingForSelectedSource(
         lib as Record<string, unknown>,
+        prefs,
         addons,
       );
+      void invoke('debug_log', { msg: `cw-source: refresh resolved source=${String(prefs.continueWatchingSource ?? 'local')} count=${continueWatching.length} first=${String(continueWatching[0]?.name ?? '')}` });
       value = { continueWatching };
       break;
     }

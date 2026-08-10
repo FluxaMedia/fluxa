@@ -132,6 +132,7 @@ export interface Prefs {
   p2pEnabled: boolean;
   discordRichPresenceEnabled: boolean;
   diagnosticMode: boolean;
+  continueWatchingSource: string;
   syncCwSourceOfTruth: string;
   syncCwRanking: string;
   similarTitlesSource: string;
@@ -293,6 +294,7 @@ export const DEFAULT_PREFS: Prefs = {
   omdbApiKey: '',
   mdblistApiKey: '',
   fanartApiKey: '',
+  continueWatchingSource: 'local',
   syncCwSourceOfTruth: '',
   syncCwRanking: 'last_watched',
   similarTitlesSource: 'auto',

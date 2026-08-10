@@ -336,7 +336,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
         if (scrobbleStartedRef.current) await dispatchScrobbleLifecycle('stop', status);
         await applyPlayerCloseActions([closePlan?.progressAction, closePlan?.markWatchedAction, closePlan?.upNextAction], updateState);
         if (closePlan?.reloadHome) {
-          void dispatchAction(JSON.stringify({ type: 'homeLoadRequested', language: getLanguage(), force: true })).then((result) => {
+          void dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() })).then((result) => {
             if (!result) return;
             updateState(result.state);
             if (result.effects.length > 0) void pumpEffects(result.effects, updateState);

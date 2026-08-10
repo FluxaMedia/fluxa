@@ -235,6 +235,13 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
           profile: activeProfile ?? null,
         }));
       }
+      if (key === 'continueWatchingSource') {
+        await onDispatch(JSON.stringify({
+          type: 'refreshContinueWatchingRequested',
+          language: String(updated.language ?? prefs.language),
+          source: String(value),
+        }));
+      }
     } catch (e) {
       if (key === 'language') setLanguage(String(previous.language));
       setPrefs(previous);

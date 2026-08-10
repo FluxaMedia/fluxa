@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { dispatchAction, getSnapshot, initEngine, storageRead } from '../core/engine';
+import { coreInvoke, dispatchAction, getSnapshot, initEngine, storageRead } from '../core/engine';
 import { getActiveProfileId, loadProfiles } from '../core/profiles';
 import { pumpEffects, syncExternalIntegrationNow } from '../core/effectRunner';
 import { importNuvioProfileData, recordNuvioSyncMeta } from '../core/nuvioSync';
@@ -44,14 +44,94 @@ export function useAppInit(
 
   const syncExternalOnStartup = useCallback(async (profile: UserProfile) => {
     try {
+      const prefs = await loadPrefs();
+      const sourcePlan = await coreInvoke<{ provider?: 'trakt' | 'simkl' | 'nuvio' | 'anilist' | 'stremio' }>(
+        'continueWatchingSourcePlan',
+        JSON.stringify({ source: prefs.continueWatchingSource }),
+      );
+      const selectedProvider = sourcePlan?.provider;
+      const reloadLibraryAndHome = async () => {
+        const libResult = await dispatchAction(JSON.stringify({ type: 'libraryHydrateRequested' }));
+        if (libResult) updateState(libResult.state);
+        const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
+        if (homeResult) {
+          updateState(homeResult.state);
+          if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
+        }
+      };
+      const syncSelectedProvider = async () => {
+        if (selectedProvider === 'trakt' && profile.traktAccessToken) {
+          const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
+          await syncExternalIntegrationNow({ provider: 'trakt', profile, token: profile.traktAccessToken, clientId });
+          return true;
+        }
+        if (selectedProvider === 'simkl' && profile.simklAccessToken) {
+          const clientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' }).catch(() => '');
+          await syncExternalIntegrationNow({ provider: 'simkl', profile, token: profile.simklAccessToken, clientId });
+          return true;
+        }
+        return false;
+      };
+      if (await syncSelectedProvider().catch(() => false)) {
+        await reloadLibraryAndHome();
+        setExternalSyncPending(false);
+        void (async () => {
+          const tasks: Promise<unknown>[] = [];
+          if (profile.nuvioAccessToken) tasks.push(importNuvioProfileData(profile).then(recordNuvioSyncMeta).catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } })));
+          if (profile.anilistAccessToken) tasks.push(syncExternalIntegrationNow({ provider: 'anilist', profile, token: profile.anilistAccessToken }).catch(() => undefined));
+          if (profile.stremioAuthKey) tasks.push(syncExternalIntegrationNow({ provider: 'stremio', profile, token: profile.stremioAuthKey }).catch(() => undefined));
+          await Promise.allSettled(tasks);
+        })();
+        return;
+      }
+      if (profile.nuvioAccessToken && prefs.continueWatchingSource === 'nuvio') {
+        const report = await importNuvioProfileData(profile, undefined, undefined, ['continueWatching'])
+          .catch((err) => ({ errors: { library: err instanceof Error ? err.message : String(err) }, changed: false }));
+        await recordNuvioSyncMeta(report);
+        if (report.changed) {
+          await reloadLibraryAndHome();
+        }
+        setExternalSyncPending(false);
+        void (async () => {
+          const nuvioBackground = importNuvioProfileData(profile, undefined, undefined, ['addons', 'watchlist', 'watched', 'collections'])
+            .then(recordNuvioSyncMeta)
+            .then(async () => {
+              const refreshed = await importNuvioProfileData(profile, undefined, undefined, ['continueWatching']);
+              await recordNuvioSyncMeta(refreshed);
+              await reloadLibraryAndHome();
+            })
+            .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }));
+          const tasks: Promise<unknown>[] = [nuvioBackground];
+          if (profile.anilistAccessToken) tasks.push(syncExternalIntegrationNow({ provider: 'anilist', profile, token: profile.anilistAccessToken }).catch(() => undefined));
+          if (profile.stremioAuthKey) tasks.push(syncExternalIntegrationNow({ provider: 'stremio', profile, token: profile.stremioAuthKey }).catch(() => undefined));
+          if (profile.traktAccessToken) {
+            const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
+            tasks.push(syncExternalIntegrationNow({ provider: 'trakt', profile, token: profile.traktAccessToken, clientId }).catch(() => undefined));
+          }
+          if (profile.simklAccessToken) {
+            const clientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' }).catch(() => '');
+            tasks.push(syncExternalIntegrationNow({ provider: 'simkl', profile, token: profile.simklAccessToken, clientId }).catch(() => undefined));
+          }
+          await Promise.allSettled(tasks);
+        })();
+        return;
+      }
       const syncTasks: Promise<unknown>[] = [];
       let changed = false;
       if (profile.nuvioAccessToken) {
         syncTasks.push(
           importNuvioProfileData(profile)
-            .then((report) => { changed = changed || report.changed; recordNuvioSyncMeta(report); })
+            .then((report) => { changed = changed || report.changed; return recordNuvioSyncMeta(report); })
             .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }))
         );
+      }
+      if (profile.anilistAccessToken) {
+        changed = true;
+        syncTasks.push(syncExternalIntegrationNow({
+          provider: 'anilist',
+          profile,
+          token: profile.anilistAccessToken,
+        }).catch(() => undefined));
       }
       if (profile.stremioAuthKey) {
         changed = true;

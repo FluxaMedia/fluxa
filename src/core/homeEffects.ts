@@ -4,16 +4,18 @@ import {
   coreComputeContinueWatchingBadges,
   coreDiscoverCatalogOptions,
   coreEffectiveMetadataFeedSelection,
-  coreMergeContinueWatchingLists,
+  coreInvoke,
   coreResolveFeedOptionGenre,
   storageRead,
   storageWrite,
 } from './engine';
+import { invoke } from '@tauri-apps/api/core';
 import { buildResourceUrl } from './addonManifest';
 import { effectRunnerLibraryKey, loadActiveProfile, loadEnabledAddons, loadLibrary, loadPrefs } from './libraryOps';
 import { fetchBuiltinCatalog, isBuiltinTmdbAddon, withBuiltinTmdbAddon } from './tmdbAddon';
 import { fetchVideosForSeries, runWithConcurrency } from './fetchPlanning';
 import { tryFetchJson } from './httpClient';
+import { loadProviderLibraries, type LibraryProvider } from './providerLibraries';
 import type { AddonDescriptor } from './types';
 
 const HOME_FEED_FETCH_CONCURRENCY = 6;
@@ -34,6 +36,18 @@ interface HomeBootstrapCache {
   continueWatching: Record<string, unknown>[];
   metadataFeeds: MetadataFeedOption[];
   billboard: unknown;
+}
+
+interface ContinueWatchingSourcePlan {
+  source: string;
+  provider: string | null;
+}
+
+async function selectedContinueWatchingSource(prefs: Record<string, unknown>): Promise<ContinueWatchingSourcePlan> {
+  return (await coreInvoke<ContinueWatchingSourcePlan>(
+    'continueWatchingSourcePlan',
+    JSON.stringify({ source: prefs.continueWatchingSource }),
+  )) ?? { source: 'local', provider: null };
 }
 
 export interface DiscoverCatalogOption {
@@ -93,6 +107,35 @@ export async function refreshReleasedContinueWatching(
   return (result ?? []) as Record<string, unknown>[];
 }
 
+export async function continueWatchingForSelectedSource(
+  library: Record<string, unknown>,
+  prefs: Record<string, unknown>,
+  addons: AddonDescriptor[],
+): Promise<Record<string, unknown>[]> {
+  const requestedSource = String(prefs.continueWatchingSource ?? 'local');
+  void invoke('debug_log', { msg: `cw-source: resolving plan source=${requestedSource}` });
+  const plan = await selectedContinueWatchingSource(prefs);
+  const provider = plan.provider;
+  void invoke('debug_log', { msg: `cw-source: resolved plan source=${plan.source} provider=${provider ?? 'local'}` });
+
+  if (provider) {
+    void invoke('debug_log', { msg: `cw-source: loading provider library provider=${provider}` });
+    const libraries = await loadProviderLibraries();
+    const items = libraries[provider as LibraryProvider]?.watching ?? [];
+    void invoke('debug_log', { msg: `cw-source: loaded provider library provider=${provider} count=${items.length} ids=${items.map((item) => item.id ?? item._id).join(',')}` });
+    void invoke('debug_log', { msg: `cw-source: provider library detail=${JSON.stringify(items.map((item) => ({ id: item.id ?? item._id, timeOffset: item.timeOffset, duration: item.duration, badge: item.continueWatchingBadge, poster: item.poster, background: item.background })))}` });
+    const merged = (await coreInvoke<Record<string, unknown>[]>(
+      'mergeContinueWatchingDuplicates',
+      JSON.stringify({ itemsJson: JSON.stringify(items) }),
+    )) ?? [];
+    void invoke('debug_log', { msg: `cw-source: deduplicated provider library provider=${provider} count=${merged.length}` });
+    return merged;
+  }
+
+  const local = (library.continueWatching as Record<string, unknown>[] | undefined) ?? [];
+  return refreshReleasedContinueWatching(local, library, addons);
+}
+
 export async function readHomeBootstrap(
   payload: Record<string, unknown>,
 ): Promise<unknown> {
@@ -110,22 +153,7 @@ export async function readHomeBootstrap(
   const prefs = await loadPrefs();
   const addons = await withBuiltinTmdbAddon(enabledAddons, prefs);
 
-  const localContinueWatching = (library.continueWatching as Record<string, unknown>[] | undefined) ?? [];
-  const externalContinueWatching = (library.externalContinueWatching as Record<string, unknown>[] | undefined) ?? [];
-
-  const progressMap = (library.progress as Record<string, unknown> | undefined) ?? {};
-  const mergedCWRaw = await coreMergeContinueWatchingLists(
-    JSON.stringify(localContinueWatching),
-    JSON.stringify(externalContinueWatching),
-    JSON.stringify(progressMap),
-    prefs.syncCwSourceOfTruth as string | undefined,
-    prefs.syncCwRanking as string | undefined,
-  );
-  const continueWatching = await refreshReleasedContinueWatching(
-    (mergedCWRaw ?? []) as Record<string, unknown>[],
-    library,
-    addons,
-  );
+  const continueWatching = await continueWatchingForSelectedSource(library, prefs, addons);
 
   const metadataFeeds = await metadataFeedOptions(addons);
   const selectedKeys = prefs.homeFeedToggles as string[] | undefined;
