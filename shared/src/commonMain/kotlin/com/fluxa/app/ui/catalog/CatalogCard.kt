@@ -361,6 +361,7 @@ private fun CardCornerBadge(text: String, modifier: Modifier = Modifier, accent:
         text = text,
         color = Color.White,
         fontSize = 9.sp,
+        lineHeight = 9.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.2.sp,
         maxLines = 1,
@@ -371,6 +372,6 @@ private fun CardCornerBadge(text: String, modifier: Modifier = Modifier, accent:
             .background(
                 if (accent) LocalAccentColor.current else Color.Black.copy(alpha = FluxaDimensions.Alpha.upNextBadge)
             )
-            .padding(horizontal = 6.dp, vertical = 3.dp)
+            .padding(horizontal = 6.dp, vertical = 1.dp)
     )
 }
