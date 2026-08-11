@@ -54,6 +54,11 @@ internal object MediaPlayerControllerFactory {
         @Volatile var dvHdr10PlusMode: String = "auto"
         @Volatile var disableDiskCache: Boolean = false
         @Volatile var videoEffectsActive: Boolean = false
+        // Off by default: the sample-level Dolby Vision transformer is wired but not
+        // yet the default path — the HTTP-layer proxy (rewriteDolbyVisionManifestResponse
+        // / FluxaLocalStreamServer) stays authoritative until this is verified on
+        // real devices across P7 MEL/FEL, P5, P8.1, and MP4/fMP4/MKV/TS.
+        @Volatile var sampleLevelDvTransformEnabled: Boolean = false
     }
 
     private val requestContexts = Collections.synchronizedMap(WeakHashMap<ExoPlayer, ExoRequestContext>())
@@ -331,7 +336,7 @@ internal object MediaPlayerControllerFactory {
                 factory
             }
         }
-        val extractorsFactory = relay?.let { activeRelay ->
+        val libassExtractorsFactory = relay?.let { activeRelay ->
             LibassInjectingExtractorsFactory(
                 activeRelay,
                 baseExtractorsFactory,
@@ -339,6 +344,17 @@ internal object MediaPlayerControllerFactory {
                 fontAttachmentsProvider = null
             )
         } ?: baseExtractorsFactory
+        val extractorsFactory = DvSampleTransformExtractorsFactory(libassExtractorsFactory) {
+            DvSampleTransformConfig(
+                enabled = requestContext.sampleLevelDvTransformEnabled,
+                mode = requestContext.dvRpuMode,
+                stripHdr10Plus = when (requestContext.dvHdr10PlusMode) {
+                    "always" -> true
+                    "never" -> false
+                    else -> true
+                }
+            )
+        }
         val mediaSourceFactory = DefaultMediaSourceFactory(context, extractorsFactory)
             .setDataSourceFactory(dataSourceFactory)
 
