@@ -909,6 +909,11 @@ object FluxaCoreNative {
         return FluxaCoreUniFfi.coreInvokeValue("stableFeedPart", args.toString()).asString
     }
 
+    fun shortenSynopsis(text: String): String {
+        val args = JsonObject().apply { addProperty("text", text) }
+        return FluxaCoreUniFfi.coreInvokeValue("shortenSynopsis", args.toString()).asString
+    }
+
     fun buildMetadataFeedOptions(addons: List<AddonDescriptor>): List<MetadataFeedOption> {
         val value = FluxaCoreUniFfi.coreInvokeValue("buildMetadataFeedOptions", gson.toJson(addons))
         return gson.fromJson(value, object : TypeToken<List<MetadataFeedOption>>() {}.type) ?: emptyList()

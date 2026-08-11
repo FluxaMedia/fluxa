@@ -84,6 +84,9 @@ val rustCoreDelegateFiles = mapOf(
     "app/src/main/java/com/fluxa/app/domain/discovery/StreamDiscovery.kt" to listOf(
         "FluxaCoreNative.streamDiscoveryExecutionPolicy"
     ),
+    "shared/src/jvmCommonMain/kotlin/com/fluxa/app/shared/SynopsisFormatting.jvm.kt" to listOf(
+        "FluxaCoreNative.shortenSynopsis"
+    ),
     "data/src/androidMain/kotlin/com/fluxa/app/domain/discovery/MetadataFeeds.kt" to listOf(
         "FluxaCoreNative.normalizeContentType",
         "FluxaCoreNative.stableFeedPart",
