@@ -73,6 +73,8 @@ class AppleDetailDataSource(
         state.value = state.value.copy(content = content.copy(isLiked = watchlistStore.feedback(id) == true))
     }
 
+    override suspend fun shuffleEpisode(): String? = null
+
     override suspend fun selectSeason(season: Int) {
         Unit
     }

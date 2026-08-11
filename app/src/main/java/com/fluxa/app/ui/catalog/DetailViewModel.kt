@@ -369,6 +369,35 @@ class DetailViewModel @Inject constructor(
         _uiState.update { it.copy(hasStreamProviders = detail?.get("hasStreamProviders") as? Boolean ?: false) }
     }
 
+    suspend fun shuffleEpisode(): String? {
+        val detail = _uiState.value.detail ?: return null
+        if (detail.type != "series") return null
+
+        val allVideos = detail.videos.orEmpty().filter { (it.season ?: 0) > 0 && !detailIsUpcoming(it.released) }
+        if (allVideos.isNotEmpty()) return allVideos.random().id
+
+        if (currentStrictProviderData) return null
+
+        val seasonsCount = detail.seasonsCount ?: return null
+        if (seasonsCount <= 0) return null
+        val season = (1..seasonsCount).random()
+        val seasonId = currentSeriesLookupId ?: normalizeSeriesLookupId(detail.id)
+        val profile = currentProfile
+        val lang = currentProfile?.language ?: "en"
+        val result = headlessRuntime.dispatch(
+            mapOf(
+                "type" to "detailSeasonRequested",
+                "seriesId" to seasonId,
+                "season" to season,
+                "profile" to profile,
+                "language" to lang
+            )
+        )
+        val detailMap = result.state["detail"] as? Map<*, *>
+        val episodes: List<Video> = gson.fromStateList(detailMap?.get("seasonEpisodes"))
+        return episodes.filter { !detailIsUpcoming(it.released) }.randomOrNull()?.id
+    }
+
     fun loadSeason(id: String, seasonNumber: Int) {
         android.util.Log.d("CS3Detail", "loadSeason called: id=${id.take(40)}, season=$seasonNumber, detailVideos=${_uiState.value.detail?.videos?.size ?: "null"}")
         val lang = currentProfile?.language ?: "en"

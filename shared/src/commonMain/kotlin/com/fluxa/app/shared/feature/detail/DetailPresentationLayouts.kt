@@ -430,10 +430,10 @@ private fun CinematicActions(
                 )
             }
         }
-        if (content.supportsLike) {
+        if (content.type == "series" && content.availableSeasons.isNotEmpty()) {
             DetailRoundedAction(
-                selected = content.isLiked,
-                onClick = { onAction(DetailAction.ToggleLike) },
+                selected = false,
+                onClick = { onAction(DetailAction.ShufflePlay) },
                 compact = embeddedInHero
             ) {
                 Icon(

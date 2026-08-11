@@ -145,6 +145,7 @@ sealed interface DetailAction {
     data class Play(val fromStart: Boolean = false) : DetailAction
     data object ToggleWatchlist : DetailAction
     data object ToggleLike : DetailAction
+    data object ShufflePlay : DetailAction
     data class RelatedItemSelected(val item: CatalogItemUiModel) : DetailAction
     data class SeasonSelected(val season: Int) : DetailAction
     data class EpisodeSelected(val episodeId: String) : DetailAction
@@ -209,6 +210,7 @@ interface DetailDataSource {
     suspend fun loadDetail(request: DetailRequestUiModel)
     suspend fun toggleWatchlist(id: String, type: String)
     suspend fun toggleLike(id: String, type: String)
+    suspend fun shuffleEpisode(): String?
     suspend fun selectSeason(season: Int)
     suspend fun selectEpisode(episodeId: String)
     suspend fun loadSources(contentId: String, contentType: String, episodeId: String?)

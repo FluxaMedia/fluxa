@@ -182,6 +182,8 @@ class AndroidDetailDataSource(
         detailViewModel.setFeedback(!wasLiked)
     }
 
+    override suspend fun shuffleEpisode(): String? = detailViewModel.shuffleEpisode()
+
     override suspend fun selectSeason(season: Int) {
         selectedSeason = season
         selectedEpisodeIdFlow.value = null

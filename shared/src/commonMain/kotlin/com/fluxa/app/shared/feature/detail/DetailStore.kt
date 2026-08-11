@@ -35,6 +35,25 @@ class DetailStore(
         when (action) {
             DetailAction.ToggleWatchlist -> dataSource.toggleWatchlist(request.id, request.type)
             DetailAction.ToggleLike -> dataSource.toggleLike(request.id, request.type)
+            DetailAction.ShufflePlay -> {
+                val episodeId = dataSource.shuffleEpisode() ?: return
+                val content = state.value.content
+                _navigation.emit(
+                    DetailNavigationEvent.SelectSources(
+                        episodeId = episodeId,
+                        resumeProgress = DetailNavigationLogic.resumeProgressFor(
+                            resumeVideoId = content?.resumeVideoId,
+                            resumeProgress = content?.resumeProgress ?: 0L,
+                            targetVideoId = episodeId
+                        ),
+                        resumeProgressPercent = DetailNavigationLogic.resumeProgressPercentFor(
+                            resumeVideoId = content?.resumeVideoId,
+                            resumeProgressPercent = content?.resumeProgressPercent,
+                            targetVideoId = episodeId
+                        )
+                    )
+                )
+            }
             is DetailAction.SeasonSelected -> dataSource.selectSeason(action.season)
             is DetailAction.EpisodeSelected -> {
                 val content = state.value.content
