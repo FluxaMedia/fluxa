@@ -54,10 +54,6 @@ internal object MediaPlayerControllerFactory {
         @Volatile var dvHdr10PlusMode: String = "auto"
         @Volatile var disableDiskCache: Boolean = false
         @Volatile var videoEffectsActive: Boolean = false
-        // Off by default: the sample-level Dolby Vision transformer is wired but not
-        // yet the default path — the HTTP-layer proxy (rewriteDolbyVisionManifestResponse
-        // / FluxaLocalStreamServer) stays authoritative until this is verified on
-        // real devices across P7 MEL/FEL, P5, P8.1, and MP4/fMP4/MKV/TS.
         @Volatile var sampleLevelDvTransformEnabled: Boolean = false
     }
 

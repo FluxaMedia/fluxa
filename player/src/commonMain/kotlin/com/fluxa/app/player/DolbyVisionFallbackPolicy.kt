@@ -46,9 +46,6 @@ object DolbyVisionFallbackPolicy {
         if (mode == DolbyVisionFallbackMode.ForceHdr10) {
             val rewritten = dolbyVisionCodec.replace(manifest) { match ->
                 val profile = match.groupValues.getOrNull(1)?.toIntOrNull()
-                // The regex's second group is the codec-string *level*
-                // (dvhe.PP.LL), not dv_bl_signal_compatibility_id — that value
-                // only exists in the dvcC/dvvC box, never in the codec string.
                 val noFallback = profile == 4 || profile == 5 || profile == 10
                 if (noFallback) match.value else HEVC_HDR_BASE
             }
@@ -119,9 +116,7 @@ object DolbyVisionFallbackPolicy {
             else -> DvCodecAction.StripToHevc()
         }
 
-        // Unknown compat (always true here — the codec string never carries
-        // dv_bl_signal_compatibility_id) must not be assumed to mean an
-        // HDR10-compatible base layer exists; treat it like compat 0/2/3.
+        // unknown compat must not be assumed HDR10-compatible
         profile == 10 && (compatId == null || compatId in setOf(0, 2, 3)) ->
             if (caps.decoderAnyDv) DvCodecAction.Keep else DvCodecAction.Safety
 

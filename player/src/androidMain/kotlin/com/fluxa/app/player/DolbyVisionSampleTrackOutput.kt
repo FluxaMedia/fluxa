@@ -27,14 +27,6 @@ data class DvSampleTransformConfig(
     val stripHdr10Plus: Boolean
 )
 
-/**
- * Wraps a base [ExtractorsFactory], decorating [Mp4Extractor]/[FragmentedMp4Extractor]
- * instances so their Dolby Vision video track samples are rewritten in-process (RPU
- * conversion, enhancement-layer drop, HDR10+ SEI strip) via the Rust sample transformer
- * instead of the HTTP-layer container-byte proxy. Off by default per [config] — a
- * production migration path meant to sit alongside the existing proxy, not replace it
- * until verified on real devices.
- */
 class DvSampleTransformExtractorsFactory(
     private val baseFactory: ExtractorsFactory,
     private val config: () -> DvSampleTransformConfig
