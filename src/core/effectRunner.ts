@@ -411,7 +411,6 @@ export async function pumpEffects(
   }
 
   const complete = async (effect: Effect, result: EffectResult) => {
-      if (signal?.aborted) return;
       let dispatchResult: Awaited<ReturnType<typeof completeEffect>> = null;
       try {
         dispatchResult = await completeEffect({ ...result, effectId: effect.id });
