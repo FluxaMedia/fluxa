@@ -1,6 +1,9 @@
 package com.fluxa.app.ui.catalog
 
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+
+val LocalAccentColor = compositionLocalOf { FluxaColors.accent }
 
 object FluxaColors {
     val background = Color(0xFF0A0A0A)

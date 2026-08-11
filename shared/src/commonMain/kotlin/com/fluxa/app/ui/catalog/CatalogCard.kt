@@ -295,7 +295,7 @@ fun CatalogCard(
                             modifier = Modifier
                                 .fillMaxWidth(model.progress)
                                 .fillMaxHeight()
-                                .background(FluxaColors.progressFill)
+                                .background(LocalAccentColor.current)
                         )
                     }
                 }
@@ -368,7 +368,7 @@ private fun CardCornerBadge(text: String, modifier: Modifier = Modifier, accent:
             .padding(6.dp)
             .clip(RoundedCornerShape(5.dp))
             .background(
-                if (accent) FluxaColors.progressFill else Color.Black.copy(alpha = FluxaDimensions.Alpha.upNextBadge)
+                if (accent) LocalAccentColor.current else Color.Black.copy(alpha = FluxaDimensions.Alpha.upNextBadge)
             )
             .padding(horizontal = 6.dp, vertical = 3.dp)
     )

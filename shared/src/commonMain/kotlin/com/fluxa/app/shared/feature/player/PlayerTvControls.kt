@@ -5,6 +5,7 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
+import com.fluxa.app.ui.catalog.LocalAccentColor
 import com.fluxa.app.ui.catalog.FluxaIcons
 
 import androidx.compose.animation.AnimatedVisibility
@@ -79,7 +80,7 @@ fun TVSeekbar(
     var internalPos by remember { mutableFloatStateOf(position.toFloat()) }
     var consecutivePresses by remember { mutableIntStateOf(0) }
     var lastPressDirection by remember { mutableIntStateOf(0) }
-    val seekbarAccent = FluxaColors.accent
+    val seekbarAccent = LocalAccentColor.current
 
     LaunchedEffect(position) { if (!isFocused) internalPos = position.toFloat() }
 

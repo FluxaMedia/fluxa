@@ -6,6 +6,7 @@ import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.LocalAccentColor
 import com.fluxa.app.ui.catalog.NextEpisodePreviewUiModel
 import com.fluxa.app.ui.catalog.PlaybackSnapshot
 
@@ -99,7 +100,7 @@ fun SkipSegmentCard(
             .background(Color.White)
             .then(
                 if (deviceType == DeviceType.TV) {
-                    Modifier.border(2.dp, if (isFocused) FluxaColors.accent else Color.Transparent, RoundedCornerShape(10.dp))
+                    Modifier.border(2.dp, if (isFocused) LocalAccentColor.current else Color.Transparent, RoundedCornerShape(10.dp))
                 } else {
                     Modifier
                 }
@@ -155,7 +156,7 @@ private fun NextEpisodeSkipCard(
             .background(if (deviceType == DeviceType.Mobile) FluxaDimensions.PlayerChrome.deckBackground else Color.Black.copy(alpha = 0.82f))
             .border(
                 1.dp,
-                if (deviceType == DeviceType.TV && isFocused) FluxaColors.accent else Color.White.copy(alpha = 0.16f),
+                if (deviceType == DeviceType.TV && isFocused) LocalAccentColor.current else Color.White.copy(alpha = 0.16f),
                 RoundedCornerShape(if (deviceType == DeviceType.Mobile) mobileCardRadius else 14.dp)
             )
             .focusRequester(focusRequester)

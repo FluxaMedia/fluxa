@@ -55,6 +55,7 @@ import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.LocalAccentColor
 
 @Composable
 internal fun CastSection(members: List<DetailCastMemberUiModel>, language: String?, modifier: Modifier = Modifier) {
@@ -167,7 +168,7 @@ internal fun DetailTabLabel(text: String, selected: Boolean, onClick: () -> Unit
                 .padding(top = 8.dp)
                 .height(2.dp)
                 .width(if (selected) 24.dp else 0.dp)
-                .background(if (selected) FluxaColors.accent else Color.Transparent)
+                .background(if (selected) LocalAccentColor.current else Color.Transparent)
         )
     }
 }
@@ -290,7 +291,7 @@ private fun DropdownSeasonSelector(
                     var rowFocused by remember { mutableStateOf(false) }
                     Text(
                         text = "${AppStrings.t(language, "auto.season")} $season",
-                        color = if (rowFocused) Color.Black else if (selected) FluxaColors.accent else Color.White,
+                        color = if (rowFocused) Color.Black else if (selected) LocalAccentColor.current else Color.White,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         fontSize = 16.sp,
                         modifier = Modifier

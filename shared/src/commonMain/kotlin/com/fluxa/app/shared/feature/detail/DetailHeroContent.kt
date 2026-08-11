@@ -55,6 +55,7 @@ import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.LocalWindowWidthClass
 import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.LocalAccentColor
 
 @Composable
 internal fun DiscussionSection(title: String, comments: List<DetailDiscussionCommentUiModel>, language: String?) {
@@ -183,7 +184,7 @@ internal fun Hero(content: DetailUiModel, language: String?, preferClearlogo: Bo
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier
-                                    .background(FluxaColors.accent, RoundedCornerShape(3.dp))
+                                    .background(LocalAccentColor.current, RoundedCornerShape(3.dp))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         } else {
@@ -284,7 +285,7 @@ internal fun ExpandedDetailIdentityBlock(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier
-                                .background(FluxaColors.accent, RoundedCornerShape(3.dp))
+                                .background(LocalAccentColor.current, RoundedCornerShape(3.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     } else {
