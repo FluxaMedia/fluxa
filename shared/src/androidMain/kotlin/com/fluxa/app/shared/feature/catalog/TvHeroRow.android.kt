@@ -30,8 +30,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.tv.material3.Carousel
+import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
+import com.fluxa.app.shared.shortenHeroSynopsis
 
 @Composable
 actual fun TvHeroRow(
@@ -88,10 +92,36 @@ actual fun TvHeroRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                val metadataParts = remember(item.genres, item.releaseLabel, item.type, item.seasonsCount, item.runtimeLabel, item.ageRating, language) {
+                    buildList {
+                        item.genres.firstOrNull { it.isNotBlank() }?.let { add(it) }
+                        item.releaseLabel?.takeIf { it.isNotBlank() }?.let { add(it) }
+                        if (item.type == "series" && (item.seasonsCount ?: 0) > 0) {
+                            add("${item.seasonsCount} ${AppStrings.t(language, "auto.seasons")}")
+                        } else {
+                            item.runtimeLabel?.takeIf { it.isNotBlank() }?.let { add(it) }
+                        }
+                        item.ageRating?.takeIf { it.isNotBlank() }?.let { add(it) }
+                    }
+                }
+                if (metadataParts.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        metadataParts.forEachIndexed { index, part ->
+                            if (index > 0) {
+                                Text(text = "•", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Text(text = part, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
                 val description = item.description
                 if (!description.isNullOrBlank()) {
+                    val shortenedDescription = remember(description) { shortenHeroSynopsis(description) }
                     Text(
-                        text = description,
+                        text = shortenedDescription,
                         color = Color.White.copy(alpha = 0.8f),
                         fontSize = 15.sp,
                         maxLines = 2,
