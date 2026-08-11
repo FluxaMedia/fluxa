@@ -1,12 +1,16 @@
 package com.fluxa.app.shared.platform
 
+import com.fluxa.app.core.apple.AppleDetailEpisodeSnapshot
 import com.fluxa.app.core.apple.AppleDetailRequestSnapshot
+import com.fluxa.app.core.apple.AppleDetailSeasonRequestSnapshot
 import com.fluxa.app.core.apple.AppleDetailSnapshot
 import com.fluxa.app.core.apple.AppleDetailStreamSnapshot
+import com.fluxa.app.core.apple.AppleDetailStreamsRequestSnapshot
 import com.fluxa.app.core.apple.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.detail.DetailDataSource
+import com.fluxa.app.shared.feature.detail.DetailEpisodeUiModel
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
@@ -25,6 +29,11 @@ class AppleDetailDataSource(
     private val state = MutableStateFlow(DetailUiState())
     private var onLoadRequested: (AppleDetailRequestSnapshot) -> Unit = {}
     private var onWatchlistRequested: (AppleDetailRequestSnapshot) -> Unit = {}
+    private var onSeasonRequested: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
+    private var onStreamsRequested: (AppleDetailStreamsRequestSnapshot) -> Unit = {}
+    private var onAddonFilterRequested: (String?) -> Unit = {}
+    private var onDownloadEpisodeRequested: (String) -> Unit = {}
+    private var onDownloadSeasonRequested: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
     private var subtitleUrlsByStreamUrl: Map<String, List<String>> = emptyMap()
 
     override fun observeDetail(id: String, type: String): Flow<DetailUiState> = state.asStateFlow()
@@ -73,38 +82,62 @@ class AppleDetailDataSource(
         state.value = state.value.copy(content = content.copy(isLiked = watchlistStore.feedback(id) == true))
     }
 
-    override suspend fun shuffleEpisode(): String? = null
+    override suspend fun shuffleEpisode(): String? {
+        val content = state.value.content ?: return null
+        if (content.type != "series") return null
+        return content.seasonEpisodes.filterNot { it.isUpcoming }.randomOrNull()?.id
+    }
 
     override suspend fun selectSeason(season: Int) {
-        Unit
+        val content = state.value.content ?: return
+        state.value = state.value.copy(content = content.copy(selectedSeason = season, seasonEpisodes = emptyList()))
+        onSeasonRequested(AppleDetailSeasonRequestSnapshot(content.id, content.type, season))
     }
 
     override suspend fun selectEpisode(episodeId: String) {
-        Unit
+        val content = state.value.content ?: return
+        state.value = state.value.copy(content = content.copy(selectedEpisodeId = episodeId))
     }
 
     override suspend fun loadSources(contentId: String, contentType: String, episodeId: String?) {
-        Unit
+        val content = state.value.content
+        if (content != null) {
+            state.value = state.value.copy(content = content.copy(selectedEpisodeId = episodeId, isLoadingStreams = true))
+        }
+        onStreamsRequested(AppleDetailStreamsRequestSnapshot(contentId, contentType, episodeId))
     }
 
     override suspend fun selectAddonFilter(addonName: String?) {
-        Unit
+        val content = state.value.content ?: return
+        state.value = state.value.copy(content = content.copy(selectedAddon = addonName))
+        onAddonFilterRequested(addonName)
     }
 
     override suspend fun downloadEpisode(episodeId: String) {
-        Unit
+        onDownloadEpisodeRequested(episodeId)
     }
 
     override suspend fun downloadSeason(season: Int) {
-        Unit
+        val content = state.value.content ?: return
+        onDownloadSeasonRequested(AppleDetailSeasonRequestSnapshot(content.id, content.type, season))
     }
 
     fun setHandlers(
         load: (AppleDetailRequestSnapshot) -> Unit,
-        watchlist: (AppleDetailRequestSnapshot) -> Unit
+        watchlist: (AppleDetailRequestSnapshot) -> Unit,
+        season: (AppleDetailSeasonRequestSnapshot) -> Unit = {},
+        streams: (AppleDetailStreamsRequestSnapshot) -> Unit = {},
+        addonFilter: (String?) -> Unit = {},
+        downloadEpisode: (String) -> Unit = {},
+        downloadSeason: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
     ) {
         onLoadRequested = load
         onWatchlistRequested = watchlist
+        onSeasonRequested = season
+        onStreamsRequested = streams
+        onAddonFilterRequested = addonFilter
+        onDownloadEpisodeRequested = downloadEpisode
+        onDownloadSeasonRequested = downloadSeason
     }
 
     fun update(snapshot: AppleDetailSnapshot) {
@@ -123,10 +156,17 @@ class AppleDetailDataSource(
                 runtimeLabel = null,
                 isInWatchlist = snapshot.isInWatchlist,
                 relatedItems = emptyList(),
+                availableSeasons = snapshot.availableSeasons.mapNotNull { it.toIntOrNull() },
+                selectedSeason = snapshot.selectedSeason,
+                seasonEpisodes = snapshot.seasonEpisodes.map { it.toUiModel() },
+                selectedEpisodeId = snapshot.selectedEpisodeId,
                 streams = snapshot.streams.map { stream ->
                     DetailStreamUiModel(stream.addonName, stream.title, stream.playableUrl, stream.requestHeadersJson)
                 },
-                availableAddons = snapshot.streams.map { it.addonName }.distinct(),
+                isLoadingStreams = snapshot.isLoadingStreams,
+                availableAddons = snapshot.availableAddons.ifEmpty { snapshot.streams.map { it.addonName }.distinct() },
+                loadingAddonNames = snapshot.loadingAddonNames,
+                selectedAddon = snapshot.selectedAddon,
                 hasStreamProviders = snapshot.hasStreamProviders
             ),
             isLoading = snapshot.isLoading,
@@ -160,3 +200,16 @@ class AppleDetailDataSource(
 }
 
 private fun DetailRequestUiModel.toAppleSnapshot() = AppleDetailRequestSnapshot(id, type, source.addonTransportUrl, source.catalogType)
+
+private fun AppleDetailEpisodeSnapshot.toUiModel() = DetailEpisodeUiModel(
+    id = id,
+    season = season.takeIf { it > 0 },
+    number = number.takeIf { it > 0 },
+    title = title,
+    description = description,
+    thumbnailUrl = thumbnailUrl,
+    releaseLabel = releaseLabel,
+    runtimeLabel = runtimeLabel,
+    isUpcoming = isUpcoming,
+    isWatched = isWatched
+)

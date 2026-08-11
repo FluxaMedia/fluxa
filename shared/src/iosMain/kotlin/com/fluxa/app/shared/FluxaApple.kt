@@ -11,7 +11,9 @@ import com.fluxa.app.shared.platform.AppleAuthSubmitSnapshot
 import com.fluxa.app.shared.platform.AppleAuthSnapshot
 import com.fluxa.app.shared.platform.AppleLibrarySnapshot
 import com.fluxa.app.core.apple.AppleDetailRequestSnapshot
+import com.fluxa.app.core.apple.AppleDetailSeasonRequestSnapshot
 import com.fluxa.app.core.apple.AppleDetailSnapshot
+import com.fluxa.app.core.apple.AppleDetailStreamsRequestSnapshot
 import com.fluxa.app.core.apple.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreActionSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
@@ -130,9 +132,14 @@ object FluxaApple {
 
     fun setDetailHandlers(
         load: (AppleDetailRequestSnapshot) -> Unit,
-        watchlist: (AppleDetailRequestSnapshot) -> Unit
+        watchlist: (AppleDetailRequestSnapshot) -> Unit,
+        season: (AppleDetailSeasonRequestSnapshot) -> Unit = {},
+        streams: (AppleDetailStreamsRequestSnapshot) -> Unit = {},
+        addonFilter: (String?) -> Unit = {},
+        downloadEpisode: (String) -> Unit = {},
+        downloadSeason: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
     ) {
-        detailDataSource.setHandlers(load, watchlist)
+        detailDataSource.setHandlers(load, watchlist, season, streams, addonFilter, downloadEpisode, downloadSeason)
     }
 
     fun updateDetail(snapshot: AppleDetailSnapshot) {

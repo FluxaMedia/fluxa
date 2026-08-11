@@ -33,12 +33,37 @@ data class AppleDetailRequestSnapshot(
     val title: String? = null
 )
 
+data class AppleDetailSeasonRequestSnapshot(
+    val id: String,
+    val type: String,
+    val season: Int
+)
+
+data class AppleDetailStreamsRequestSnapshot(
+    val id: String,
+    val type: String,
+    val episodeId: String? = null
+)
+
 data class AppleDetailStreamSnapshot(
     val addonName: String,
     val title: String,
     val playableUrl: String,
     val requestHeadersJson: String = "{}",
     val subtitleUrls: List<String> = emptyList()
+)
+
+data class AppleDetailEpisodeSnapshot(
+    val id: String,
+    val season: Int = 0,
+    val number: Int = 0,
+    val title: String = "",
+    val description: String? = null,
+    val thumbnailUrl: String? = null,
+    val releaseLabel: String? = null,
+    val runtimeLabel: String? = null,
+    val isUpcoming: Boolean = false,
+    val isWatched: Boolean = false
 )
 
 data class AppleDetailSnapshot(
@@ -55,7 +80,15 @@ data class AppleDetailSnapshot(
     val isLoading: Boolean = false,
     val errorKey: String? = null,
     val streams: List<AppleDetailStreamSnapshot> = emptyList(),
-    val hasStreamProviders: Boolean = true
+    val hasStreamProviders: Boolean = true,
+    val availableSeasons: List<String> = emptyList(),
+    val selectedSeason: Int = 1,
+    val seasonEpisodes: List<AppleDetailEpisodeSnapshot> = emptyList(),
+    val selectedEpisodeId: String? = null,
+    val isLoadingStreams: Boolean = false,
+    val availableAddons: List<String> = emptyList(),
+    val loadingAddonNames: List<String> = emptyList(),
+    val selectedAddon: String? = null
 )
 
 data class ApplePlaybackRequestSnapshot(
