@@ -1,3 +1,4 @@
+import FluxaCore
 import FluxaShared
 import SwiftUI
 
@@ -74,7 +75,20 @@ struct FluxaIosApp: App {
                 Task { @MainActor in
                     await detailStartup.toggleWatchlist(request: request)
                 }
-            }
+            },
+            season: { request in
+                Task { @MainActor in
+                    detailStartup.selectSeason(request: request)
+                }
+            },
+            streams: { request in
+                Task { @MainActor in
+                    await detailStartup.loadSources(request: request)
+                }
+            },
+            addonFilter: { _ in },
+            downloadEpisode: { _ in },
+            downloadSeason: { _ in }
         )
         FluxaApple.shared.setPlaybackHandler { request in
             Task { @MainActor in
