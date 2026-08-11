@@ -446,8 +446,6 @@ internal fun FluxaApp(
                     language = state.language,
                     onAction = onAddonStoreAction,
                     onConfigureRequested = onOpenUrlRequested,
-                    pluginsState = pluginsState,
-                    onPluginsAction = onPluginsAction,
                     onBackRequested = onAddonStoreBackRequested,
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
