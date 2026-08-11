@@ -265,12 +265,29 @@ class ExoPlayerEngine(
         dvMode: DolbyVisionFallbackMode,
         caps: DolbyVisionCapabilities
     ): NativeDvProxyPlan? = runCatching {
+        val runtimeCaps = AndroidDolbyVisionCapabilities.detectRuntimeCapabilities(controller.context)
         FluxaCoreNative.dvProxyPlan(
             streamJson = Gson().toJson(stream),
             url = url,
             fallbackMode = dvMode.toRustString(),
             deviceHasDvDecoder = caps.mediaCodecSupportsDolbyVision,
-            deviceHasDvDisplay = caps.displaySupportsDolbyVision
+            deviceHasDvDisplay = caps.displaySupportsDolbyVision,
+            deviceCapabilitiesJson = Gson().toJson(
+                mapOf(
+                    "profile5" to mapOf(
+                        "advertised" to runtimeCaps.profile5.advertised,
+                        "runtimeVerified" to runtimeCaps.profile5.runtimeVerified
+                    ),
+                    "profile7" to mapOf(
+                        "advertised" to runtimeCaps.profile7.advertised,
+                        "runtimeVerified" to runtimeCaps.profile7.runtimeVerified
+                    ),
+                    "profile8" to mapOf(
+                        "advertised" to runtimeCaps.profile8.advertised,
+                        "runtimeVerified" to runtimeCaps.profile8.runtimeVerified
+                    )
+                )
+            )
         )
     }.getOrNull()
 

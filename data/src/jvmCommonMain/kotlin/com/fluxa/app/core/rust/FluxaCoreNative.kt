@@ -582,14 +582,16 @@ object FluxaCoreNative {
         url: String,
         fallbackMode: String,
         deviceHasDvDecoder: Boolean,
-        deviceHasDvDisplay: Boolean
+        deviceHasDvDisplay: Boolean,
+        deviceCapabilitiesJson: String? = null
     ): NativeDvProxyPlan {
         val requestJson = gson.toJson(mapOf(
             "stream" to gson.fromJson(streamJson, Any::class.java),
             "url" to url,
             "fallbackMode" to fallbackMode,
             "deviceHasDvDecoder" to deviceHasDvDecoder,
-            "deviceHasDvDisplay" to deviceHasDvDisplay
+            "deviceHasDvDisplay" to deviceHasDvDisplay,
+            "deviceCapabilities" to deviceCapabilitiesJson?.let { gson.fromJson(it, Any::class.java) }
         ))
         val value = FluxaCoreUniFfi.coreInvokeValue("dvProxyPlan", requestJson)
         return gson.fromJson(value, NativeDvProxyPlan::class.java) ?: NativeDvProxyPlan()
