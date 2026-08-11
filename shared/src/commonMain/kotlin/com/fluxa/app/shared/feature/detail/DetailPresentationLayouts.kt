@@ -59,7 +59,7 @@ import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.LocalDeviceType
 
-private val CinematicPageColor = Color(0xFF222222)
+private val CinematicPageColor = Color.Black
 private val CinematicSecondaryActionColor = Color(0xFFDCE2E5)
 
 @Composable
@@ -296,8 +296,8 @@ private fun CinematicTopStage(
                     cacheKey = "detail-cinematic-logo:${content.id}",
                     contentDescription = content.title,
                     modifier = Modifier
-                        .fillMaxWidth(0.82f)
-                        .heightIn(max = 58.dp),
+                        .fillMaxWidth(0.88f)
+                        .heightIn(max = 72.dp),
                     contentScale = ContentScale.Fit,
                     trimTransparentPadding = true
                 )
@@ -324,8 +324,8 @@ private fun CinematicTopStage(
                 Text(
                     text = metadata.take(4).joinToString("  ·  "),
                     color = Color.White.copy(alpha = 0.84f),
-                    fontSize = 11.5.sp,
-                    lineHeight = 15.sp,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -528,8 +528,8 @@ private fun CinematicSummary(content: DetailUiModel, embeddedInHero: Boolean = f
             Text(
                 text = content.description,
                 color = Color.White.copy(alpha = 0.88f),
-                fontSize = if (embeddedInHero) 11.5.sp else 12.sp,
-                lineHeight = if (embeddedInHero) 15.sp else 16.sp,
+                fontSize = if (embeddedInHero) 13.5.sp else 14.sp,
+                lineHeight = if (embeddedInHero) 18.sp else 19.sp,
                 fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,
                 maxLines = 3,
@@ -678,64 +678,40 @@ private fun CinematicTrailerRail(trailers: List<DetailTrailerUiModel>, language:
 
 @Composable
 private fun CinematicTrailerCard(trailer: DetailTrailerUiModel) {
-    Box(
-        modifier = Modifier
-            .width(280.dp)
-            .aspectRatio(16f / 9f)
-            .clip(RoundedCornerShape(7.dp))
-            .background(FluxaColors.surfaceCard)
-    ) {
-        FluxaRemoteImage(
-            imageUrl = trailer.thumbnailUrl,
-            cacheKey = "detail-trailer:${trailer.id}",
-            contentDescription = trailer.title,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+    Column(modifier = Modifier.width(200.dp)) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.58f to Color.Transparent,
-                        1f to Color.Black.copy(alpha = 0.76f)
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(45.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.54f)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(7.dp))
+                .background(FluxaColors.surfaceCard)
         ) {
-            Icon(
-                imageVector = Icons.Rounded.PlayArrow,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(30.dp)
+            FluxaRemoteImage(
+                imageUrl = trailer.thumbnailUrl,
+                cacheKey = "detail-trailer:${trailer.id}",
+                contentDescription = trailer.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
         }
-        Column(modifier = Modifier.align(Alignment.BottomStart).padding(11.dp)) {
+        Text(
+            text = trailer.title,
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        if (trailer.sourceLabel.isNotBlank()) {
             Text(
-                text = trailer.title,
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                text = trailer.sourceLabel,
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 11.sp,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
             )
-            if (trailer.sourceLabel.isNotBlank()) {
-                Text(
-                    text = trailer.sourceLabel,
-                    color = Color.White.copy(alpha = 0.82f),
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
         }
     }
 }
