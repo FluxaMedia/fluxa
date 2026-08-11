@@ -46,10 +46,10 @@ object DolbyVisionFallbackPolicy {
         if (mode == DolbyVisionFallbackMode.ForceHdr10) {
             val rewritten = dolbyVisionCodec.replace(manifest) { match ->
                 val profile = match.groupValues.getOrNull(1)?.toIntOrNull()
-                val compatId = match.groupValues.getOrNull(2)?.takeIf { it.isNotBlank() }?.toIntOrNull()
-                val noFallback = profile == 4 ||
-                    (profile == 5 && compatId != 1) ||
-                    (profile == 10 && compatId in setOf(0, 2, 3))
+                // The regex's second group is the codec-string *level*
+                // (dvhe.PP.LL), not dv_bl_signal_compatibility_id — that value
+                // only exists in the dvcC/dvvC box, never in the codec string.
+                val noFallback = profile == 4 || profile == 5 || profile == 10
                 if (noFallback) match.value else HEVC_HDR_BASE
             }
             return DolbyVisionManifestRewrite(rewritten, "dv_fallback=force_hdr10")
@@ -60,9 +60,8 @@ object DolbyVisionFallbackPolicy {
         val rewritten = dolbyVisionCodec.replace(manifest) { match ->
             val token = match.value
             val profile = match.groupValues.getOrNull(1)?.toIntOrNull()
-            val compatId = match.groupValues.getOrNull(2)?.takeIf { it.isNotBlank() }?.toIntOrNull()
 
-            val action = decide(profile, compatId, capabilities)
+            val action = decide(profile, compatId = null, capabilities)
 
             val replacement = when (action) {
                 DvCodecAction.Keep, DvCodecAction.Safety -> null
@@ -83,7 +82,7 @@ object DolbyVisionFallbackPolicy {
                 is DvCodecAction.StripToHevc -> if (action.iptPqc2) "strip_iptpqc2" else "strip_to_hdr10"
             }
             val profileLabel = profile?.let { "profile=$it" } ?: "profile=unknown"
-            decisions += "dv_fallback=$label / $profileLabel / cid=${compatId ?: "?"} / decoder_p7=${capabilities.decoderNativeP7} / decoder_p8=${capabilities.decoderP8}"
+            decisions += "dv_fallback=$label / $profileLabel / cid=unknown / decoder_p7=${capabilities.decoderNativeP7} / decoder_p8=${capabilities.decoderP8}"
 
             replacement ?: token
         }
@@ -120,7 +119,10 @@ object DolbyVisionFallbackPolicy {
             else -> DvCodecAction.StripToHevc()
         }
 
-        profile == 10 && compatId in setOf(0, 2, 3) ->
+        // Unknown compat (always true here — the codec string never carries
+        // dv_bl_signal_compatibility_id) must not be assumed to mean an
+        // HDR10-compatible base layer exists; treat it like compat 0/2/3.
+        profile == 10 && (compatId == null || compatId in setOf(0, 2, 3)) ->
             if (caps.decoderAnyDv) DvCodecAction.Keep else DvCodecAction.Safety
 
         else ->
