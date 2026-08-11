@@ -94,7 +94,10 @@ export function usePlayerPlaybackStart(options: any) {
     }
     if (currentStreamKey) attemptedSourceKeysRef.current.add(currentStreamKey);
     prefetchedNextEpRef.current = null;
-    if (meta) playingMetaRef.current = meta;
+    if (meta) {
+      const carriedLogo = playingMetaRef.current?.id === meta.id ? playingMetaRef.current?.logo : undefined;
+      playingMetaRef.current = meta.logo || !carriedLogo ? meta : { ...meta, logo: carriedLogo };
+    }
     playingEpisodeRef.current = episode ?? null;
     playingStreamRef.current = stream;
     lastResumeAtSecondsRef.current = resumeAtSeconds;
@@ -103,13 +106,14 @@ export function usePlayerPlaybackStart(options: any) {
 
 
     const earlyTitle = playerDisplayTitle(meta, episode, stream);
-    const earlyArtwork = playerArtwork(meta, episode);
+    const earlyArtwork = playerArtwork(meta ? playingMetaRef.current ?? meta : undefined, episode);
     setPlayerPosterUrl(earlyArtwork.background ?? meta?.poster);
     setPlayerLogoUrl(earlyArtwork.logo ?? undefined);
     setPlayerMetaId(meta?.id);
     setPlayerStreamHeaders(streamPlan?.requestHeaders);
     artworkPrefetchRef.current = prefetchPlayerArtwork(earlyArtwork.background, earlyArtwork.logo).catch(() => undefined);
     let loadingArtworkPromise = showPlayerLoading(generation, earlyTitle, earlyArtwork, stream);
+    let resolvedLogo: string | undefined = earlyArtwork.logo;
 
     if (!earlyArtwork.logo && meta?.id && meta?.type) {
       const logoPrefs = appPrefs(stateRef.current);
@@ -119,8 +123,18 @@ export function usePlayerPlaybackStart(options: any) {
         .then((logo) => {
           if (!logo || isCancelled()) return;
           if (playingMetaRef.current) playingMetaRef.current = { ...playingMetaRef.current, logo };
+          resolvedLogo = logo;
           setPlayerLogoUrl(logo);
-      setPlayerLoadingOverlay((prev: any) => (prev ? { ...prev, logo } : prev));
+          setPlayerLoadingOverlay((prev: any) => (prev ? { ...prev, logo } : prev));
+          if (pendingArtworkRef.current) pendingArtworkRef.current = { ...pendingArtworkRef.current, logo };
+          if (inNativePlayerRef.current) {
+            void embeddedMpvSetLoadingArtwork(
+              earlyTitle.contentTitle ?? 'Fluxa',
+              earlyTitle.episodeLine,
+              pendingArtworkRef.current?.background ?? earlyArtwork.background,
+              logo,
+            ).catch(() => undefined);
+          }
         })
         .catch(() => undefined);
     }
@@ -174,17 +188,18 @@ export function usePlayerPlaybackStart(options: any) {
 
     const title = playbackPlan?.title ?? earlyTitle;
     if (playbackPlan?.artwork) {
-      pendingArtworkRef.current = playbackPlan.artwork;
-      setPlayerLogoUrl(playbackPlan.artwork.logo ?? undefined);
+      const planLogo = playbackPlan.artwork.logo ?? resolvedLogo ?? pendingArtworkRef.current?.logo ?? earlyArtwork.logo;
+      pendingArtworkRef.current = { ...playbackPlan.artwork, logo: planLogo };
+      if (planLogo) setPlayerLogoUrl(planLogo);
       setPlayerLoadingOverlay((prev: any) =>
-        prev ? { ...prev, background: playbackPlan.artwork!.background, logo: playbackPlan.artwork!.logo } : prev,
+        prev ? { ...prev, background: playbackPlan.artwork!.background, logo: planLogo ?? prev.logo } : prev,
       );
       if (inNativePlayerRef.current) {
         loadingArtworkPromise = embeddedMpvSetLoadingArtwork(
           title.contentTitle ?? 'Fluxa',
           title.episodeLine,
           playbackPlan.artwork.background,
-          playbackPlan.artwork.logo,
+          planLogo,
         ).catch(() => undefined);
       }
     }

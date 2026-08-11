@@ -31,6 +31,7 @@ export function PlayerLoadingOverlay({ background, logo, title, episodeLine, sta
   const [progress, setProgress] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const failed = !!error;
 
   const errorLines = (error ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
@@ -44,6 +45,10 @@ export function PlayerLoadingOverlay({ background, logo, title, episodeLine, sta
       setTimeout(() => setCopied(false), 2000);
     }).catch(() => undefined);
   };
+
+  useEffect(() => {
+    setLogoLoadFailed(false);
+  }, [logo]);
 
   useEffect(() => {
     if (failed) return;
@@ -141,11 +146,12 @@ export function PlayerLoadingOverlay({ background, logo, title, episodeLine, sta
         }}
       />
       <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0 2.5rem' }}>
-        {logo ? (
+        {logo && !logoLoadFailed ? (
           <div style={{ position: 'relative', width: '30rem', maxWidth: '100%', height: '10rem', margin: '0 auto' }}>
             <img
               src={logo}
               alt={title ?? ''}
+              onError={() => setLogoLoadFailed(true)}
               className={failed || hasMeasuredProgress ? 'fluxa-loading-logo-dim fluxa-loading-motion' : 'fluxa-loading-logo-breathe fluxa-loading-motion'}
               style={{
                 position: 'absolute',

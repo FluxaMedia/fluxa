@@ -247,9 +247,9 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerTitle(title.contentTitle);
     setPlayerEpisodeTitle(title.episodeLine ?? undefined);
     pendingArtworkRef.current = artwork;
-    setPlayerLoadingOverlay({
+    setPlayerLoadingOverlay((prev) => ({
       background: artwork.background,
-      logo: artwork.logo,
+      logo: artwork.logo ?? (prev?.title === title.contentTitle ? prev.logo : undefined),
       title: title.contentTitle,
       episodeLine: title.episodeLine,
       status: t('player.status_preparing'),
@@ -261,7 +261,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
         infoHash: stream.infoHash,
         sources: stream.sources,
       },
-    });
+    }));
 
     if (!inNativePlayerRef.current) {
       return Promise.resolve();
@@ -462,6 +462,7 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
           nextEpisode: playingNextEpisodeRef.current,
           timePos,
           duration,
+          playbackStarted: status.firstFramePresented,
           streamIndex: stateRef.current.player.currentStreamIndex ?? null,
           prefs: closePrefs,
         }));
@@ -549,16 +550,17 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   const showEpisodeTransitionLoading = useCallback((meta: Meta, episode: Video, stream: Stream) => {
     const title = playerDisplayTitle(meta, episode, stream);
     const artwork = playerArtwork(meta, episode);
+    const logo = artwork.logo ?? (playingMetaRef.current?.id === meta.id ? pendingArtworkRef.current?.logo : undefined);
     setPlayerTitle(title.contentTitle);
     setPlayerEpisodeTitle(title.episodeLine ?? undefined);
     setPlayerPosterUrl(artwork.background ?? meta.poster);
-    setPlayerLogoUrl(artwork.logo ?? undefined);
+    if (logo) setPlayerLogoUrl(logo);
     setPlayerMetaId(meta.id);
     setPlayerPlaybackError(null);
     setPlayerSubtitleWarning(null);
     setPlayerLoadingOverlay({
       background: artwork.background,
-      logo: artwork.logo,
+      logo,
       title: title.contentTitle,
       episodeLine: title.episodeLine,
       status: t('player.status_preparing'),

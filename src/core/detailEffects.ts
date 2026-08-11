@@ -14,7 +14,7 @@ import {
 } from './engine';
 import { loadActiveProfile, loadEnabledAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
-import { fetchBuiltinMeta } from './tmdbAddon';
+import { fetchBuiltinMeta, fetchTmdbLogo } from './tmdbAddon';
 import { tryFetchJson } from './httpClient';
 import { fetchPluginStreams } from './pluginRuntime';
 import { fetchTraktSimilarItems, fetchSimklSimilarItems } from './similarTitles';
@@ -404,6 +404,7 @@ async function fetchFanartArtwork(
 
 const CONTENT_LOGO_CACHE_KEY = 'content_logo_cache';
 const CONTENT_LOGO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CONTENT_LOGO_CACHE_NEGATIVE_TTL_MS = 10 * 60 * 1000;
 const CONTENT_LOGO_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 type ContentLogoCache = Record<string, { fetchedAt: number; logo: string | null }>;
@@ -417,7 +418,9 @@ function loadContentLogoCache(): Promise<ContentLogoCache> {
 }
 void loadContentLogoCache();
 
-export async function fetchContentLogo(
+const contentLogoInFlight = new Map<string, Promise<string | undefined>>();
+
+export function fetchContentLogo(
   id: string,
   contentType: string,
   language: string,
@@ -425,11 +428,29 @@ export async function fetchContentLogo(
   fanartApiKey: string,
 ): Promise<string | undefined> {
   const cacheKey = `${contentType}:${id}`;
+  const inFlight = contentLogoInFlight.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const promise = fetchContentLogoUncached(cacheKey, id, contentType, language, apiKey, fanartApiKey)
+    .finally(() => contentLogoInFlight.delete(cacheKey));
+  contentLogoInFlight.set(cacheKey, promise);
+  return promise;
+}
+
+async function fetchContentLogoUncached(
+  cacheKey: string,
+  id: string,
+  contentType: string,
+  language: string,
+  apiKey: string,
+  fanartApiKey: string,
+): Promise<string | undefined> {
   const now = Date.now();
   const cache = await loadContentLogoCache();
   const cached = cache[cacheKey];
-  if (cached && now - cached.fetchedAt < CONTENT_LOGO_CACHE_TTL_MS) {
-    return cached.logo ?? undefined;
+  if (cached) {
+    const ttl = cached.logo ? CONTENT_LOGO_CACHE_TTL_MS : CONTENT_LOGO_CACHE_NEGATIVE_TTL_MS;
+    if (now - cached.fetchedAt < ttl) return cached.logo ?? undefined;
   }
 
   let logo: string | undefined;
@@ -440,6 +461,11 @@ export async function fetchContentLogo(
       : undefined;
     if (addonLogo) logo = addonLogo;
   } catch {}
+  if (!logo && apiKey) {
+    try {
+      logo = (await fetchTmdbLogo(contentType, id, apiKey, language)) ?? undefined;
+    } catch {}
+  }
   if (!logo) {
     const artwork = await fetchFanartArtwork({ contentType, id, language, apiKey }, fanartApiKey);
     logo = artwork?.hdLogo;
