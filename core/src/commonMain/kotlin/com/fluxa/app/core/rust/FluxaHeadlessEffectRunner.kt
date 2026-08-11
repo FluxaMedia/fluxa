@@ -1,5 +1,8 @@
 package com.fluxa.app.core.rust
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -39,8 +42,22 @@ class FluxaHeadlessEffectRunner(
         }
         var remaining = maxEffectsPerDispatch
         while (pending.isNotEmpty() && remaining > 0) {
-            val executed = environment.execute(pending.removeFirst())
-            current = engineMutex.withLock { engine.completeEffect(executed) }
+            val effect = pending.removeFirst()
+            val executed = try {
+                environment.execute(effect)
+            } catch (cancellation: CancellationException) {
+                withContext(NonCancellable) {
+                    engineMutex.withLock {
+                        engine.completeEffect(
+                            HeadlessEffectCompletion(effect.id, "error", error = mapOf("code" to "cancelled"))
+                        )
+                    }
+                }
+                throw cancellation
+            }
+            current = withContext(NonCancellable) {
+                engineMutex.withLock { engine.completeEffect(executed) }
+            }
             patches += current
             current.effects.forEach { effect ->
                 if (queuedIds.add(effect.id)) pending.addLast(effect)

@@ -674,6 +674,8 @@ class DetailViewModel @Inject constructor(
                     android.util.Log.w("Detail", " NO STREAMS found for ${requestIds.joinToString()}")
                     showToast(context, AppStrings.t(currentProfile?.language, "auto.no_sources_found"))
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 android.util.Log.e("Detail", " FATAL FETCH ERROR for $id", e)
             } finally {
