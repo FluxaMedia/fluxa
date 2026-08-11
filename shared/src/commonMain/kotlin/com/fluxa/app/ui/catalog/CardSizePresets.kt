@@ -30,3 +30,19 @@ fun horizontalCardWidth(value: String, deviceType: DeviceType): Dp {
 }
 
 fun horizontalCardHeight(value: String, deviceType: DeviceType): Dp = horizontalCardWidth(value, deviceType) * FluxaDimensions.HorizontalCard.heightRatio
+
+fun cardCornerRadius(preset: String): Dp = when (preset) {
+    "sharp" -> 0.dp
+    "classic" -> 4.dp
+    "soft" -> 8.dp
+    "rounded" -> 14.dp
+    "pill" -> 22.dp
+    else -> 8.dp
+}
+
+fun cardRowSpacing(preset: String): Dp = when (preset) {
+    "small" -> 6.dp
+    "medium" -> 12.dp
+    "large" -> 20.dp
+    else -> 12.dp
+}

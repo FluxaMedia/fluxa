@@ -143,7 +143,7 @@ fun CatalogCard(
             .scale(cardScale)
             .then(
                 if (focused) {
-                    Modifier.border(3.dp, Color.White, RoundedCornerShape(8.dp))
+                    Modifier.border(3.dp, Color.White, RoundedCornerShape(model.cornerRadius))
                 } else {
                     Modifier
                 }
@@ -179,6 +179,7 @@ fun CatalogCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(model.imageHeight)
+                    .clip(RoundedCornerShape(model.cornerRadius))
                     .background(
                         if (model.cardBackgroundIsSurfaceCard) {
                             FluxaColors.surfaceCard

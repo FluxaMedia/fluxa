@@ -182,6 +182,8 @@ internal fun FluxaApp(
         // bottom navigation is actually visible and consuming the haze source.
         val liquidGlassRequested = !isTv && settingsState?.appearance?.liquidGlassMode == true
         val hazeState = rememberHazeState()
+        val accentColor = profileState?.activeProfile?.accentColorArgb?.let { Color(it) } ?: FluxaColors.accent
+        androidx.compose.runtime.CompositionLocalProvider(com.fluxa.app.ui.catalog.LocalAccentColor provides accentColor) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -486,6 +488,9 @@ internal fun FluxaApp(
                     onAction = onCatalogAction,
                     language = state.language,
                     hideContinueWatchingLabels = settingsState?.appearanceHome?.continueWatchingHideTitles == true,
+                    continueWatchingWidthPreset = settingsState?.appearanceHome?.continueWatchingWidthPreset ?: "medium",
+                    continueWatchingCornerPreset = settingsState?.appearanceHome?.continueWatchingCardCornerPreset ?: "medium",
+                    continueWatchingDensity = settingsState?.appearanceHome?.continueWatchingInterfaceDensity ?: "medium",
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
@@ -494,6 +499,9 @@ internal fun FluxaApp(
                     onCatalogAction = onCatalogAction,
                     onCategorySelected = onCategorySelected,
                     hideContinueWatchingLabels = settingsState?.appearanceHome?.continueWatchingHideTitles == true,
+                    continueWatchingWidthPreset = settingsState?.appearanceHome?.continueWatchingWidthPreset ?: "medium",
+                    continueWatchingCornerPreset = settingsState?.appearanceHome?.continueWatchingCardCornerPreset ?: "medium",
+                    continueWatchingDensity = settingsState?.appearanceHome?.continueWatchingInterfaceDensity ?: "medium",
                     bottomContentInset = if (navChromeVisible) navBarHeightDp + 20.dp else 24.dp,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -568,6 +576,7 @@ internal fun FluxaApp(
                     )
                 }
             }
+        }
         }
     }
 }

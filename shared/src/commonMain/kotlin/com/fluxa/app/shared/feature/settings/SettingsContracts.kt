@@ -107,6 +107,9 @@ data class SettingsAppearanceHomeUiModel(
     val continueWatchingEnabled: Boolean = true,
     val continueWatchingHideTitles: Boolean = false,
     val continueWatchingSource: String = "local",
+    val continueWatchingCardCornerPreset: String = "medium",
+    val continueWatchingInterfaceDensity: String = "medium",
+    val continueWatchingWidthPreset: String = "medium",
     val upcomingRowEnabled: Boolean = false
 )
 

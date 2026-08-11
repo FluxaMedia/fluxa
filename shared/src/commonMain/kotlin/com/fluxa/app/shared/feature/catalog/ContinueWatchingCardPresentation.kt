@@ -1,13 +1,19 @@
 package com.fluxa.app.shared.feature.catalog
 
-import androidx.compose.ui.unit.dp
+import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.cardCornerRadius
+import com.fluxa.app.ui.catalog.horizontalCardHeight
+import com.fluxa.app.ui.catalog.horizontalCardWidth
 
 internal fun CatalogItemUiModel.withProminentContinueWatchingCard(
+    deviceType: DeviceType,
     isDesktop: Boolean = false,
-    hideLabels: Boolean = false
+    hideLabels: Boolean = false,
+    widthPreset: String = "medium",
+    cornerPreset: String = "medium"
 ): CatalogItemUiModel {
-    val width = if (isDesktop) 260.dp else 192.dp
-    val height = if (isDesktop) 130.dp else 96.dp
+    val width = horizontalCardWidth(widthPreset, deviceType)
+    val height = horizontalCardHeight(widthPreset, deviceType)
     return copy(
         card = card.copy(
             requestWidthPx = if (isDesktop) 860 else 640,
@@ -18,7 +24,8 @@ internal fun CatalogItemUiModel.withProminentContinueWatchingCard(
             // "Hide labels" keeps the metadata, but moves it into the artwork so the
             // Continue Watching row stays compact instead of throwing information away.
             showTitleBar = !hideLabels,
-            overlayTitleBar = hideLabels
+            overlayTitleBar = hideLabels,
+            cornerRadius = cardCornerRadius(cornerPreset)
         )
     )
 }

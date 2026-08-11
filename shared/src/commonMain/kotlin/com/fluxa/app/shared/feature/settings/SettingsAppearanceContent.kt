@@ -194,17 +194,19 @@ internal fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel,
         SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_hide_titles"), value = model.continueWatchingHideTitles) {
             onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHideTitles = it)))
         }
+        SettingsChoiceRow(AppStrings.t(lang, "auto.card_corners"), model.continueWatchingCardCornerPreset, cornerOptions) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingCardCornerPreset = it)))
+        }
+        SettingsChoiceRow(AppStrings.t(lang, "auto.interface_density"), model.continueWatchingInterfaceDensity, densityOptions) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingInterfaceDensity = it)))
+        }
+        SettingsChoiceRow(AppStrings.t(lang, "auto.poster_width"), model.continueWatchingWidthPreset, posterWidthOptions) {
+            onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingWidthPreset = it)))
+        }
     }
 }
 
-internal fun posterCornerRadius(preset: String): androidx.compose.ui.unit.Dp = when (preset) {
-    "sharp" -> 0.dp
-    "classic" -> 4.dp
-    "soft" -> 8.dp
-    "rounded" -> 14.dp
-    "pill" -> 22.dp
-    else -> 8.dp
-}
+internal fun posterCornerRadius(preset: String): androidx.compose.ui.unit.Dp = com.fluxa.app.ui.catalog.cardCornerRadius(preset)
 
 internal fun posterWidth(preset: String): androidx.compose.ui.unit.Dp = when (preset) {
     "xsmall" -> 64.dp
@@ -215,12 +217,7 @@ internal fun posterWidth(preset: String): androidx.compose.ui.unit.Dp = when (pr
     else -> 94.dp
 }
 
-internal fun posterSpacing(preset: String): androidx.compose.ui.unit.Dp = when (preset) {
-    "small" -> 6.dp
-    "medium" -> 12.dp
-    "large" -> 20.dp
-    else -> 12.dp
-}
+internal fun posterSpacing(preset: String): androidx.compose.ui.unit.Dp = com.fluxa.app.ui.catalog.cardRowSpacing(preset)
 
 @Composable
 internal fun SettingsPosterPreview(model: SettingsAppearanceHomeUiModel) {

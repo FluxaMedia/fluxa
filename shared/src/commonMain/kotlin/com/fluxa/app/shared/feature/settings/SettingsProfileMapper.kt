@@ -185,6 +185,9 @@ fun UserProfile.toSettingsAppearanceHomeUiModel(): SettingsAppearanceHomeUiModel
     continueWatchingEnabled = safeContinueWatchingEnabled,
     continueWatchingHideTitles = safeContinueWatchingHideTitles,
     continueWatchingSource = safeContinueWatchingSource,
+    continueWatchingCardCornerPreset = continueWatchingCardCornerPreset ?: "medium",
+    continueWatchingInterfaceDensity = continueWatchingInterfaceDensity ?: "medium",
+    continueWatchingWidthPreset = continueWatchingWidthPreset ?: "medium",
     upcomingRowEnabled = safeUpcomingRowEnabled,
 )
 

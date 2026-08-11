@@ -8,6 +8,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaDimensions
+import com.fluxa.app.ui.catalog.cardCornerRadius
 import com.fluxa.app.ui.catalog.horizontalCardHeight
 import com.fluxa.app.ui.catalog.horizontalCardWidth
 import com.fluxa.app.ui.catalog.posterCardHeight
@@ -133,6 +134,7 @@ internal fun Meta.toCatalogCardUiModel(
         rankOffsetX = when { topTenRank == 1 -> 8.dp; (topTenRank ?: 0) >= 10 -> 0.dp; else -> 3.dp },
         rankOffsetY = if (horizontal) 1.dp else 2.dp,
         rankFontSizeRatio = if (topTenRank != null) { if (horizontal) 0.86f else 0.90f } else 0f,
-        loadArtwork = loadArtwork
+        loadArtwork = loadArtwork,
+        cornerRadius = cardCornerRadius(profile?.safeCardCornerPreset ?: "medium")
     )
 }

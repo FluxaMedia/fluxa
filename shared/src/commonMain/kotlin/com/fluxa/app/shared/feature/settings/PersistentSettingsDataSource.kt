@@ -61,6 +61,9 @@ abstract class PersistentSettingsDataSource(
         preferences.putString(SettingsPreferenceKeys.CARD_CORNER_PRESET, value.cardCornerPreset)
         preferences.putString(SettingsPreferenceKeys.INTERFACE_DENSITY, value.interfaceDensity)
         preferences.putString(SettingsPreferenceKeys.POSTER_WIDTH_PRESET, value.posterWidthPreset)
+        preferences.putString(SettingsPreferenceKeys.CONTINUE_WATCHING_CARD_CORNER_PRESET, value.continueWatchingCardCornerPreset)
+        preferences.putString(SettingsPreferenceKeys.CONTINUE_WATCHING_INTERFACE_DENSITY, value.continueWatchingInterfaceDensity)
+        preferences.putString(SettingsPreferenceKeys.CONTINUE_WATCHING_WIDTH_PRESET, value.continueWatchingWidthPreset)
         preferences.putBoolean(SettingsPreferenceKeys.POSTER_LANDSCAPE_MODE, value.posterLandscapeMode)
         preferences.putBoolean(SettingsPreferenceKeys.POSTER_HIDE_TITLES, value.posterHideTitles)
         preferences.putBoolean(SettingsPreferenceKeys.HOME_SEASON_POSTERS_ON_HERO, value.homeSeasonPostersOnHero)
@@ -269,6 +272,9 @@ abstract class PersistentSettingsDataSource(
                 continueWatchingEnabled = preferences.getBoolean(SettingsPreferenceKeys.CONTINUE_WATCHING_ENABLED, defaults.appearanceHome.continueWatchingEnabled),
                 continueWatchingHideTitles = preferences.getBoolean(SettingsPreferenceKeys.CONTINUE_WATCHING_HIDE_TITLES, defaults.appearanceHome.continueWatchingHideTitles),
                 continueWatchingSource = preferences.getString(SettingsPreferenceKeys.CONTINUE_WATCHING_SOURCE, defaults.appearanceHome.continueWatchingSource) ?: defaults.appearanceHome.continueWatchingSource,
+                continueWatchingCardCornerPreset = preferences.getString(SettingsPreferenceKeys.CONTINUE_WATCHING_CARD_CORNER_PRESET, defaults.appearanceHome.continueWatchingCardCornerPreset) ?: defaults.appearanceHome.continueWatchingCardCornerPreset,
+                continueWatchingInterfaceDensity = preferences.getString(SettingsPreferenceKeys.CONTINUE_WATCHING_INTERFACE_DENSITY, defaults.appearanceHome.continueWatchingInterfaceDensity) ?: defaults.appearanceHome.continueWatchingInterfaceDensity,
+                continueWatchingWidthPreset = preferences.getString(SettingsPreferenceKeys.CONTINUE_WATCHING_WIDTH_PRESET, defaults.appearanceHome.continueWatchingWidthPreset) ?: defaults.appearanceHome.continueWatchingWidthPreset,
                 upcomingRowEnabled = preferences.getBoolean(SettingsPreferenceKeys.UPCOMING_ROW_ENABLED, defaults.appearanceHome.upcomingRowEnabled),
             ),
             appearanceDetail = defaults.appearanceDetail.copy(
@@ -375,6 +381,9 @@ object SettingsPreferenceKeys {
     const val CARD_CORNER_PRESET = "cardCornerPreset"
     const val INTERFACE_DENSITY = "interfaceDensity"
     const val POSTER_WIDTH_PRESET = "posterWidthPreset"
+    const val CONTINUE_WATCHING_CARD_CORNER_PRESET = "continueWatchingCardCornerPreset"
+    const val CONTINUE_WATCHING_INTERFACE_DENSITY = "continueWatchingInterfaceDensity"
+    const val CONTINUE_WATCHING_WIDTH_PRESET = "continueWatchingWidthPreset"
     const val POSTER_LANDSCAPE_MODE = "posterLandscapeMode"
     const val POSTER_HIDE_TITLES = "posterHideTitles"
     const val HOME_SEASON_POSTERS_ON_HERO = "homeSeasonPostersOnHero"

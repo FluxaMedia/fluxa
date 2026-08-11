@@ -144,6 +144,7 @@ import com.fluxa.app.shared.feature.player.TrailerCue
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.cardRowSpacing
 import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.LocalWindowWidthClass
 import com.fluxa.app.ui.catalog.PosterActionSheet
@@ -156,6 +157,9 @@ internal fun FluxaHomeContent(
     onCatalogAction: (CatalogAction) -> Unit,
     onCategorySelected: (id: String, title: String) -> Unit,
     hideContinueWatchingLabels: Boolean = false,
+    continueWatchingWidthPreset: String = "medium",
+    continueWatchingCornerPreset: String = "medium",
+    continueWatchingDensity: String = "medium",
     bottomContentInset: androidx.compose.ui.unit.Dp = 24.dp,
     modifier: Modifier
 ) {
@@ -286,16 +290,26 @@ internal fun FluxaHomeContent(
                     } else {
                         Modifier
                     }
+                    val isContinueWatchingRow = row.id == CONTINUE_WATCHING_CATEGORY_ID
+                    val deviceType = LocalDeviceType.current
                     LazyRow(
                         state = rowState,
                         modifier = rowModifier,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = if (isDesktop) 24.dp else 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(if (isDesktop) 10.dp else 12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(
+                            if (isContinueWatchingRow) cardRowSpacing(continueWatchingDensity) else if (isDesktop) 10.dp else 12.dp
+                        )
                     ) {
                         items(row.items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
-                            val cardItem = remember(item, row.id, isDesktop, hideContinueWatchingLabels) {
-                                if (row.id == CONTINUE_WATCHING_CATEGORY_ID) {
-                                    item.withProminentContinueWatchingCard(isDesktop, hideContinueWatchingLabels)
+                            val cardItem = remember(item, row.id, isDesktop, hideContinueWatchingLabels, continueWatchingWidthPreset, continueWatchingCornerPreset) {
+                                if (isContinueWatchingRow) {
+                                    item.withProminentContinueWatchingCard(
+                                        deviceType = deviceType,
+                                        isDesktop = isDesktop,
+                                        hideLabels = hideContinueWatchingLabels,
+                                        widthPreset = continueWatchingWidthPreset,
+                                        cornerPreset = continueWatchingCornerPreset
+                                    )
                                 } else {
                                     item
                                 }
@@ -748,8 +762,9 @@ private fun FluxaHomeHeroSlide(
                     }
 
                     item.description?.takeIf { it.isNotBlank() }?.let { description ->
+                        val shortenedDescription = remember(description) { shortenHeroSynopsis(description) }
                         Text(
-                            text = description,
+                            text = shortenedDescription,
                             color = Color.White.copy(alpha = 0.94f),
                             fontSize = 18.sp,
                             lineHeight = 23.sp,
@@ -812,6 +827,7 @@ private fun FluxaHomeHeroSlide(
                 } else {
                     // Keep the existing Mobile/TV visual hierarchy untouched.
                     val badgeParts = remember(
+                        item.genres,
                         item.ageRating,
                         item.type,
                         item.seasonsCount,
@@ -819,6 +835,7 @@ private fun FluxaHomeHeroSlide(
                         language
                     ) {
                         buildList {
+                            item.genres.firstOrNull { it.isNotBlank() }?.let { add(it) }
                             item.ageRating?.takeIf { it.isNotBlank() }?.let { add(it) }
                             if (item.type == "series" && (item.seasonsCount ?: 0) > 0) {
                                 add("${item.seasonsCount} ${AppStrings.t(language, "auto.seasons")}")
@@ -832,14 +849,23 @@ private fun FluxaHomeHeroSlide(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            badgeParts.forEach { part ->
+                            badgeParts.forEachIndexed { index, part ->
+                                if (index > 0) {
+                                    Text(
+                                        text = "•",
+                                        color = Color.White.copy(alpha = 0.5f),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                                 Text(text = part, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
                             }
                         }
                     }
                     item.description?.takeIf { it.isNotBlank() }?.let { description ->
+                        val shortenedDescription = remember(description) { shortenHeroSynopsis(description) }
                         Text(
-                            text = description,
+                            text = shortenedDescription,
                             color = Color.White.copy(alpha = 0.85f),
                             fontSize = 13.sp,
                             lineHeight = 15.sp,

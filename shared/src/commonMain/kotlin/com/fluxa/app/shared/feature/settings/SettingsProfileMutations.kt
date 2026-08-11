@@ -32,6 +32,9 @@ fun UserProfile.withAppearanceHomeSettings(value: SettingsAppearanceHomeUiModel)
     continueWatchingEnabled = value.continueWatchingEnabled,
     continueWatchingHideTitles = value.continueWatchingHideTitles,
     continueWatchingSource = value.continueWatchingSource,
+    continueWatchingCardCornerPreset = value.continueWatchingCardCornerPreset,
+    continueWatchingInterfaceDensity = value.continueWatchingInterfaceDensity,
+    continueWatchingWidthPreset = value.continueWatchingWidthPreset,
     upcomingRowEnabled = value.upcomingRowEnabled,
 )
 

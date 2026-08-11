@@ -41,7 +41,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.ui.catalog.CatalogCard
+import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.cardRowSpacing
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.CONTINUE_WATCHING_CATEGORY_ID
 
@@ -51,6 +53,9 @@ fun TvCatalogHomeScreen(
     onAction: (CatalogAction) -> Unit,
     language: String? = null,
     hideContinueWatchingLabels: Boolean = false,
+    continueWatchingWidthPreset: String = "medium",
+    continueWatchingCornerPreset: String = "medium",
+    continueWatchingDensity: String = "medium",
     modifier: Modifier = Modifier
 ) {
     val columnFocus = remember { FocusRequester() }
@@ -97,14 +102,22 @@ fun TvCatalogHomeScreen(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(horizontal = 58.dp)
                         )
+                        val isContinueWatchingRow = row.id == CONTINUE_WATCHING_CATEGORY_ID
                         LazyRow(
                             modifier = Modifier.focusRestorer(),
                             contentPadding = PaddingValues(horizontal = 58.dp),
-                            horizontalArrangement = Arrangement.spacedBy(20.dp)
+                            horizontalArrangement = Arrangement.spacedBy(
+                                if (isContinueWatchingRow) cardRowSpacing(continueWatchingDensity) else 20.dp
+                            )
                         ) {
                             items(row.items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
-                                val cardItem = if (row.id == CONTINUE_WATCHING_CATEGORY_ID) {
-                                    item.withProminentContinueWatchingCard(hideLabels = hideContinueWatchingLabels)
+                                val cardItem = if (isContinueWatchingRow) {
+                                    item.withProminentContinueWatchingCard(
+                                        deviceType = DeviceType.TV,
+                                        hideLabels = hideContinueWatchingLabels,
+                                        widthPreset = continueWatchingWidthPreset,
+                                        cornerPreset = continueWatchingCornerPreset
+                                    )
                                 } else {
                                     item
                                 }
