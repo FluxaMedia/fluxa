@@ -87,9 +87,22 @@ struct FluxaIosApp: App {
                 }
             },
             addonFilter: { _ in },
-            downloadEpisode: { _ in },
-            downloadSeason: { _ in }
+            downloadEpisode: { request in
+                Task { @MainActor in
+                    await detailStartup.downloadEpisode(request: request)
+                }
+            },
+            downloadSeason: { request in
+                Task { @MainActor in
+                    await detailStartup.downloadSeason(request: request)
+                }
+            }
         )
+        FluxaApple.shared.setCancelDownloadHandler { id in
+            Task { @MainActor in
+                FluxaAppleDownloadManager.shared.cancel(id: id)
+            }
+        }
         FluxaApple.shared.setPlaybackHandler { request in
             Task { @MainActor in
                 FluxaApplePlaybackPresenter.shared.present(request: request)

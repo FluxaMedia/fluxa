@@ -87,6 +87,39 @@ final class FluxaAppleDetailStartup {
         )
     }
 
+    func downloadEpisode(request: FluxaShared.AppleDetailStreamsRequestSnapshot) async {
+        guard let entry = cache[request.id] else { return }
+        let episode = request.episodeId.flatMap { episodeId in entry.videos.first { $0.id == episodeId } }
+        await enqueueDownload(entry: entry, episode: episode)
+    }
+
+    func downloadSeason(request: FluxaShared.AppleDetailSeasonRequestSnapshot) async {
+        guard let entry = cache[request.id] else { return }
+        let episodes = entry.videos.filter { $0.season == request.season }
+        for episode in episodes {
+            await enqueueDownload(entry: entry, episode: episode)
+        }
+    }
+
+    private func enqueueDownload(entry: FluxaAppleDetailCacheEntry, episode: FluxaAppleVideo?) async {
+        let targetId = episode?.id ?? entry.id
+        guard let stream = await loadDirectStreams(addons: entry.addons, contentType: entry.type, id: targetId).first else {
+            return
+        }
+        let headers = decodeHeaders(stream.requestHeadersJson)
+        FluxaAppleDownloadManager.shared.enqueue(
+            metaId: entry.id,
+            metaType: entry.type,
+            title: entry.title,
+            episodeTitle: episode?.name,
+            videoId: episode?.id,
+            posterUrl: entry.posterUrl,
+            backgroundUrl: entry.backgroundUrl,
+            streamUrl: stream.playableUrl,
+            requestHeaders: headers
+        )
+    }
+
     private func updateSharedDetail(
         result: FluxaAppleHeadlessResult,
         request: FluxaShared.AppleDetailRequestSnapshot
@@ -285,6 +318,14 @@ final class FluxaAppleDetailStartup {
 
     private func addonDisplayName(_ transportUrl: String) -> String {
         URL(string: transportUrl)?.host ?? transportUrl
+    }
+
+    private func decodeHeaders(_ json: String) -> [String: String] {
+        guard let data = json.data(using: .utf8),
+              let decoded = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return [:]
+        }
+        return decoded.compactMapValues { $0 as? String }
     }
 
     private func isUpcoming(_ released: String?) -> Bool {

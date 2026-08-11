@@ -10,6 +10,7 @@ import com.fluxa.app.shared.platform.AppleCalendarSnapshot
 import com.fluxa.app.shared.platform.AppleAuthSubmitSnapshot
 import com.fluxa.app.shared.platform.AppleAuthSnapshot
 import com.fluxa.app.shared.platform.AppleLibrarySnapshot
+import com.fluxa.app.shared.platform.AppleOfflineDownloadItemSnapshot
 import com.fluxa.app.core.apple.AppleDetailRequestSnapshot
 import com.fluxa.app.core.apple.AppleDetailSeasonRequestSnapshot
 import com.fluxa.app.core.apple.AppleDetailSnapshot
@@ -110,8 +111,16 @@ object FluxaApple {
         libraryDataSource.setOnRefreshRequested(handler)
     }
 
+    fun setCancelDownloadHandler(handler: (String) -> Unit) {
+        libraryDataSource.setOnCancelDownloadRequested(handler)
+    }
+
     fun updateLibrary(snapshot: AppleLibrarySnapshot) {
         libraryDataSource.update(snapshot)
+    }
+
+    fun updateDownloads(items: List<AppleOfflineDownloadItemSnapshot>, language: String) {
+        libraryDataSource.updateDownloads(items, language)
     }
 
     fun setAddonStoreActionHandler(handler: (AppleAddonStoreActionSnapshot) -> Unit) {
@@ -136,7 +145,7 @@ object FluxaApple {
         season: (AppleDetailSeasonRequestSnapshot) -> Unit = {},
         streams: (AppleDetailStreamsRequestSnapshot) -> Unit = {},
         addonFilter: (String?) -> Unit = {},
-        downloadEpisode: (String) -> Unit = {},
+        downloadEpisode: (AppleDetailStreamsRequestSnapshot) -> Unit = {},
         downloadSeason: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
     ) {
         detailDataSource.setHandlers(load, watchlist, season, streams, addonFilter, downloadEpisode, downloadSeason)

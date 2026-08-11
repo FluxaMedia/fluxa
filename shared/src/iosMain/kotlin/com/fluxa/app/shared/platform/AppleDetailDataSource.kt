@@ -32,7 +32,7 @@ class AppleDetailDataSource(
     private var onSeasonRequested: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
     private var onStreamsRequested: (AppleDetailStreamsRequestSnapshot) -> Unit = {}
     private var onAddonFilterRequested: (String?) -> Unit = {}
-    private var onDownloadEpisodeRequested: (String) -> Unit = {}
+    private var onDownloadEpisodeRequested: (AppleDetailStreamsRequestSnapshot) -> Unit = {}
     private var onDownloadSeasonRequested: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
     private var subtitleUrlsByStreamUrl: Map<String, List<String>> = emptyMap()
 
@@ -114,7 +114,8 @@ class AppleDetailDataSource(
     }
 
     override suspend fun downloadEpisode(episodeId: String) {
-        onDownloadEpisodeRequested(episodeId)
+        val content = state.value.content ?: return
+        onDownloadEpisodeRequested(AppleDetailStreamsRequestSnapshot(content.id, content.type, episodeId))
     }
 
     override suspend fun downloadSeason(season: Int) {
@@ -128,7 +129,7 @@ class AppleDetailDataSource(
         season: (AppleDetailSeasonRequestSnapshot) -> Unit = {},
         streams: (AppleDetailStreamsRequestSnapshot) -> Unit = {},
         addonFilter: (String?) -> Unit = {},
-        downloadEpisode: (String) -> Unit = {},
+        downloadEpisode: (AppleDetailStreamsRequestSnapshot) -> Unit = {},
         downloadSeason: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
     ) {
         onLoadRequested = load
