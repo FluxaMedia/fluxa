@@ -214,6 +214,7 @@ data class SettingsDownloadsUiModel(
 
 data class SettingsSystemUiModel(
     val automaticUpdates: Boolean = true,
+    val rememberLastProfile: Boolean = true,
     val appVersionLabel: String = ""
 )
 

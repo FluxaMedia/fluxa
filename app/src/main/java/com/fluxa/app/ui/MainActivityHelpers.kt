@@ -38,6 +38,7 @@ internal fun UserProfile?.requiresHomeReload(next: UserProfile): Boolean {
 internal fun initialProfileForDevice(profileManager: ProfileManager, deviceType: DeviceType): UserProfile? {
     if (deviceType != DeviceType.Mobile) return null
     val profiles = profileManager.getProfiles()
+    if (profiles.size > 1 && !profileManager.isRememberLastProfileEnabled()) return null
     return profileManager.getLastActiveProfileId()
         ?.let { id -> profiles.firstOrNull { it.id == id } }
         ?: profiles.firstOrNull()

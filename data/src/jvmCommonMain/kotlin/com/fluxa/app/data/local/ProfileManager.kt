@@ -164,6 +164,15 @@ class ProfileManager @Inject constructor(
         return prefsGet("last_active_profile_id")
     }
 
+    fun isRememberLastProfileEnabled(): Boolean {
+        return prefsGet("remember_last_profile")?.toBooleanStrictOrNull() ?: true
+    }
+
+    fun setRememberLastProfile(enabled: Boolean) {
+        prefsPut("remember_last_profile", enabled.toString())
+        notifyChanged()
+    }
+
     fun setLastActiveProfile(profile: UserProfile?) {
         if (profile == null) {
             prefsRemove("last_active_profile_id")

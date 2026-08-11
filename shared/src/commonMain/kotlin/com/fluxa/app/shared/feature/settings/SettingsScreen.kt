@@ -421,6 +421,12 @@ internal fun SettingsHubContent(
             value = state.system.automaticUpdates,
             onValueChanged = { onAction(SettingsAction.SystemChanged(state.system.copy(automaticUpdates = it))) }
         )
+        SettingsToggleRow(
+            label = AppStrings.t(lang, "settings.remember_last_profile"),
+            description = AppStrings.t(lang, "settings.remember_last_profile_desc"),
+            value = state.system.rememberLastProfile,
+            onValueChanged = { onAction(SettingsAction.SystemChanged(state.system.copy(rememberLastProfile = it))) }
+        )
         SettingsActionRow(AppStrings.t(lang, "settings.check_for_updates")) { onAction(SettingsAction.CheckForUpdateRequested) }
         SettingsNavRow(AppStrings.t(lang, "settings.developer")) { onNavigate(SettingsCategory.Developer) }
     }

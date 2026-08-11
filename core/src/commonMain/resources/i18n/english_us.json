@@ -661,6 +661,8 @@
   "settings.enable_notifications_desc": "Master switch for all app notifications.",
   "settings.automatic_updates": "Automatic Updates",
   "settings.automatic_updates_desc": "Check for new app versions in the background.",
+  "settings.remember_last_profile": "Remember Last Profile",
+  "settings.remember_last_profile_desc": "Skip the profile picker and open your last-used profile automatically.",
   "settings.subtitle_shadow": "Subtitle Shadow",
   "settings.subtitle_shadow_desc": "Adds a drop shadow behind subtitle text for readability.",
   "settings.alert_new_episodes": "Alert me on new episodes",

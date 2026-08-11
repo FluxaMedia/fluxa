@@ -661,6 +661,8 @@
   "settings.enable_notifications_desc": "Tüm uygulama bildirimleri için ana anahtar.",
   "settings.automatic_updates": "Otomatik Güncellemeler",
   "settings.automatic_updates_desc": "Arka planda yeni uygulama sürümlerini kontrol eder.",
+  "settings.remember_last_profile": "Son Profili Hatırla",
+  "settings.remember_last_profile_desc": "Profil seçme ekranını atlayıp son kullanılan profili otomatik açar.",
   "settings.subtitle_shadow": "Altyazı Gölgesi",
   "settings.subtitle_shadow_desc": "Okunabilirlik için altyazı metninin arkasına gölge ekler.",
   "settings.alert_new_episodes": "Yeni bölümlerde uyar",

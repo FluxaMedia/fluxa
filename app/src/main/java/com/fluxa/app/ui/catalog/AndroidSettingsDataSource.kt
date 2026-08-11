@@ -36,6 +36,7 @@ class AndroidSettingsDataSource(
 ) : SettingsDataSource {
 
     private val profileState = MutableStateFlow(activeProfile())
+    private val rememberLastProfileState = MutableStateFlow(profileManager.isRememberLastProfileEnabled())
 
     override fun observeAppearanceHome(): Flow<SettingsAppearanceHomeUiModel> = profileFlow()
         .map { profile -> profile?.toSettingsAppearanceHomeUiModel() ?: SettingsAppearanceHomeUiModel() }
@@ -48,7 +49,8 @@ class AndroidSettingsDataSource(
         LastMediaDebugInfoStore.state,
         homeViewModel.syncingProviders,
         homeViewModel.connectErrors,
-        homeViewModel.libraryUiState
+        homeViewModel.libraryUiState,
+        rememberLastProfileState
     ) { values ->
         val profile = values[0] as UserProfile?
         @Suppress("UNCHECKED_CAST") val addons = values[1] as List<AddonDescriptor>
@@ -57,10 +59,11 @@ class AndroidSettingsDataSource(
         @Suppress("UNCHECKED_CAST") val syncingProviders = values[4] as Set<String>
         @Suppress("UNCHECKED_CAST") val connectErrors = values[5] as Map<String, String>
         val libraryUiState = values[6] as LibraryUiState
+        val rememberLastProfile = values[7] as Boolean
         if (profile == null) {
             SettingsUiState(isLoading = true)
         } else {
-            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo, syncingProviders, connectErrors, libraryUiState)
+            buildState(profile, addons.let { buildMetadataFeedOptions(it, language()) } + cs3Options, debugInfo, syncingProviders, connectErrors, libraryUiState, rememberLastProfile)
         }
     }
 
@@ -85,6 +88,7 @@ class AndroidSettingsDataSource(
         syncingProviders: Set<String> = emptySet(),
         connectErrors: Map<String, String> = emptyMap(),
         libraryUiState: LibraryUiState = LibraryUiState(),
+        rememberLastProfile: Boolean = true,
     ): SettingsUiState = profile.toSettingsUiState(
         metadataOptions = metadataOptions,
         appVersionLabel = appVersionLabel,
@@ -108,7 +112,8 @@ class AndroidSettingsDataSource(
                     SettingsChoiceOption("mpv", "libmpv"),
                 ),
                 externalPlayerOptions = AndroidExternalPlayerRegistry.installedVideoPlayers(context),
-            )
+            ),
+            system = state.system.copy(rememberLastProfile = rememberLastProfile)
         )
     }
 
@@ -178,7 +183,11 @@ class AndroidSettingsDataSource(
 
     override suspend fun updateDownloads(value: SettingsDownloadsUiModel) = update { it.withDownloadSettings(value) }
 
-    override suspend fun updateSystem(value: SettingsSystemUiModel) = update { it.withSystemSettings(value) }
+    override suspend fun updateSystem(value: SettingsSystemUiModel) {
+        profileManager.setRememberLastProfile(value.rememberLastProfile)
+        rememberLastProfileState.value = value.rememberLastProfile
+        update { it.withSystemSettings(value) }
+    }
 
     override suspend fun updateTmdbAccount(value: SettingsAccountUiModel) = update { it.withAccountSettings(value) }
 

@@ -165,6 +165,7 @@ abstract class PersistentSettingsDataSource(
 
     override suspend fun updateSystem(value: SettingsSystemUiModel) {
         preferences.putBoolean(SettingsPreferenceKeys.AUTOMATIC_UPDATES, value.automaticUpdates)
+        preferences.putBoolean(SettingsPreferenceKeys.REMEMBER_LAST_PROFILE, value.rememberLastProfile)
         storedState.value = storedState.value.copy(system = value.copy(appVersionLabel = appVersionLabel))
     }
 
@@ -361,6 +362,7 @@ abstract class PersistentSettingsDataSource(
             ),
             system = defaults.system.copy(
                 automaticUpdates = preferences.getBoolean(SettingsPreferenceKeys.AUTOMATIC_UPDATES, defaults.system.automaticUpdates),
+                rememberLastProfile = preferences.getBoolean(SettingsPreferenceKeys.REMEMBER_LAST_PROFILE, defaults.system.rememberLastProfile),
                 appVersionLabel = appVersionLabel,
             ),
         )
@@ -458,6 +460,7 @@ object SettingsPreferenceKeys {
     const val DOWNLOAD_SOURCE_REGEX_PATTERN = "downloadSourceRegexPattern"
     const val DOWNLOAD_SUBTITLE_LANGUAGE = "downloadSubtitleLanguage"
     const val AUTOMATIC_UPDATES = "automaticUpdates"
+    const val REMEMBER_LAST_PROFILE = "rememberLastProfile"
     const val TMDB_API_KEY = "tmdbApiKey"
     const val TMDB_CAST_IMAGES_ENABLED = "tmdbCastImagesEnabled"
     const val TMDB_SIMILAR_RESULTS_ENABLED = "tmdbSimilarResultsEnabled"
