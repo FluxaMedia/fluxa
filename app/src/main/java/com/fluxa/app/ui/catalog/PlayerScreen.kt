@@ -283,7 +283,8 @@ fun PlayerScreen(
         currentPositionMs = { if (useMpvBackend) state.engine.timeline.position else exoPlayer.currentPosition },
         duration = state.engine.timeline.duration,
         lastSavedTimestamp = state.lastSavedTimestamp,
-        onLastSavedTimestampChanged = { state.lastSavedTimestamp = it }
+        onLastSavedTimestampChanged = { state.lastSavedTimestamp = it },
+        isVideoRendered = state.engine.render.isVideoRendered
     )
 
     PlayerStreamLoadingEffect(

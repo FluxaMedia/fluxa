@@ -37,7 +37,8 @@ internal fun PlayerPlaybackSideEffects(
     currentPositionMs: () -> Long,
     duration: Long,
     lastSavedTimestamp: Long,
-    onLastSavedTimestampChanged: (Long) -> Unit
+    onLastSavedTimestampChanged: (Long) -> Unit,
+    isVideoRendered: Boolean
 ) {
     val scope = rememberCoroutineScope()
     var hasScrobbledStartTrakt by remember(meta.id, currentVideoId) { mutableStateOf(false) }
@@ -58,6 +59,7 @@ internal fun PlayerPlaybackSideEffects(
     val latestActiveProfile by rememberUpdatedState(activeProfile)
     val latestPlayWhenReadyForScrobble by rememberUpdatedState(playWhenReadyForScrobble)
     val latestHasScrobbledStop by rememberUpdatedState(hasScrobbledStop)
+    val latestIsVideoRendered by rememberUpdatedState(isVideoRendered)
 
     fun enqueueDurableTraktScrobble(action: String, progress: Float) {
         val profile = latestActiveProfile ?: return
@@ -184,7 +186,7 @@ internal fun PlayerPlaybackSideEffects(
     DisposableEffect(Unit) {
         onDispose {
             scrobblePauseJob?.cancel()
-            if (!latestHasScrobbledStop && PlayerScrobbleCoordinator.shouldSaveOnDispose(latestCurrentPositionMs())) {
+            if (!latestHasScrobbledStop && latestIsVideoRendered && PlayerScrobbleCoordinator.shouldSaveOnDispose(latestCurrentPositionMs())) {
                 val chosenStream = latestCurrentStreams.getOrNull(latestCurrentStreamIndex)
                 viewModel.savePlaybackProgress(
                     meta.withCurrentEpisodeArtwork(latestCurrentEpisodeArtwork),
