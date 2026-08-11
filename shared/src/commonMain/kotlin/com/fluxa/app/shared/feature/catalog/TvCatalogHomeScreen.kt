@@ -56,6 +56,7 @@ fun TvCatalogHomeScreen(
     continueWatchingWidthPreset: String = "medium",
     continueWatchingCornerPreset: String = "medium",
     continueWatchingDensity: String = "medium",
+    continueWatchingLandscapeMode: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val columnFocus = remember { FocusRequester() }
@@ -116,7 +117,8 @@ fun TvCatalogHomeScreen(
                                         deviceType = DeviceType.TV,
                                         hideLabels = hideContinueWatchingLabels,
                                         widthPreset = continueWatchingWidthPreset,
-                                        cornerPreset = continueWatchingCornerPreset
+                                        cornerPreset = continueWatchingCornerPreset,
+                                        landscapeMode = continueWatchingLandscapeMode
                                     )
                                 } else {
                                     item

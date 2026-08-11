@@ -160,6 +160,7 @@ internal fun FluxaHomeContent(
     continueWatchingWidthPreset: String = "medium",
     continueWatchingCornerPreset: String = "medium",
     continueWatchingDensity: String = "medium",
+    continueWatchingLandscapeMode: Boolean = true,
     bottomContentInset: androidx.compose.ui.unit.Dp = 24.dp,
     modifier: Modifier
 ) {
@@ -301,14 +302,15 @@ internal fun FluxaHomeContent(
                         )
                     ) {
                         items(row.items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
-                            val cardItem = remember(item, row.id, isDesktop, hideContinueWatchingLabels, continueWatchingWidthPreset, continueWatchingCornerPreset) {
+                            val cardItem = remember(item, row.id, isDesktop, hideContinueWatchingLabels, continueWatchingWidthPreset, continueWatchingCornerPreset, continueWatchingLandscapeMode) {
                                 if (isContinueWatchingRow) {
                                     item.withProminentContinueWatchingCard(
                                         deviceType = deviceType,
                                         isDesktop = isDesktop,
                                         hideLabels = hideContinueWatchingLabels,
                                         widthPreset = continueWatchingWidthPreset,
-                                        cornerPreset = continueWatchingCornerPreset
+                                        cornerPreset = continueWatchingCornerPreset,
+                                        landscapeMode = continueWatchingLandscapeMode
                                     )
                                 } else {
                                     item

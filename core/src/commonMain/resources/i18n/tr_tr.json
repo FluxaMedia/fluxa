@@ -250,6 +250,7 @@
   "settings.landscape_mode": "Yatay Mod",
   "auto.continue_watching_layout": "İzlemeye Devam Et Düzeni",
   "settings.continue_watching_horizontal": "İzlemeye Devam Et Yatay",
+  "settings.continue_watching_horizontal_desc": "Geniş yatay küçük resimler gösterir. Normal dikey posterler için kapatın.",
   "settings.upcoming_row": "Yakında",
   "settings.upcoming_row_desc": "Sonraki bölümü yayınlanmamış dizileri kendi satırına taşır.",
   "settings.continue_watching_hide_titles": "Etiketleri Gizle",

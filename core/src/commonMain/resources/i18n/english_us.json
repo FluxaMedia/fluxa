@@ -250,6 +250,7 @@
   "settings.landscape_mode": "Landscape Mode",
   "auto.continue_watching_layout": "Continue Watching Layout",
   "settings.continue_watching_horizontal": "Continue Watching Horizontal",
+  "settings.continue_watching_horizontal_desc": "Show wide landscape thumbnails. Turn off for regular vertical posters.",
   "settings.upcoming_row": "Upcoming",
   "settings.upcoming_row_desc": "Moves shows with an unreleased next episode into their own row.",
   "settings.continue_watching_hide_titles": "Hide Labels",

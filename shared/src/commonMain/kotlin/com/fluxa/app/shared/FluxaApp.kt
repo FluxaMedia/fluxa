@@ -491,6 +491,7 @@ internal fun FluxaApp(
                     continueWatchingWidthPreset = settingsState?.appearanceHome?.continueWatchingWidthPreset ?: "medium",
                     continueWatchingCornerPreset = settingsState?.appearanceHome?.continueWatchingCardCornerPreset ?: "medium",
                     continueWatchingDensity = settingsState?.appearanceHome?.continueWatchingInterfaceDensity ?: "medium",
+                    continueWatchingLandscapeMode = settingsState?.appearanceHome?.continueWatchingHorizontal ?: true,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
@@ -502,6 +503,7 @@ internal fun FluxaApp(
                     continueWatchingWidthPreset = settingsState?.appearanceHome?.continueWatchingWidthPreset ?: "medium",
                     continueWatchingCornerPreset = settingsState?.appearanceHome?.continueWatchingCardCornerPreset ?: "medium",
                     continueWatchingDensity = settingsState?.appearanceHome?.continueWatchingInterfaceDensity ?: "medium",
+                    continueWatchingLandscapeMode = settingsState?.appearanceHome?.continueWatchingHorizontal ?: true,
                     bottomContentInset = if (navChromeVisible) navBarHeightDp + 20.dp else 24.dp,
                     modifier = Modifier.fillMaxSize()
                 )

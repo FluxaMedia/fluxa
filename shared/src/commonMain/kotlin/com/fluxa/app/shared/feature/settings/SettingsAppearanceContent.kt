@@ -188,7 +188,11 @@ internal fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel,
         ) {
             onAction(SettingsAction.AppearanceHomeChanged(model.copy(upcomingRowEnabled = it)))
         }
-        SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_horizontal"), value = model.continueWatchingHorizontal) {
+        SettingsToggleRow(
+            AppStrings.t(lang, "settings.continue_watching_horizontal"),
+            description = AppStrings.t(lang, "settings.continue_watching_horizontal_desc"),
+            value = model.continueWatchingHorizontal
+        ) {
             onAction(SettingsAction.AppearanceHomeChanged(model.copy(continueWatchingHorizontal = it)))
         }
         SettingsToggleRow(AppStrings.t(lang, "settings.continue_watching_hide_titles"), value = model.continueWatchingHideTitles) {
