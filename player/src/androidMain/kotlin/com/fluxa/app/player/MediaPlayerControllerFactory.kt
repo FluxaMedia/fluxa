@@ -40,6 +40,8 @@ import java.util.concurrent.TimeUnit
 
 @UnstableApi
 internal object MediaPlayerControllerFactory {
+    private const val DV_REWRITE_CHUNK_BYTES = 256 * 1024
+
     internal class ExoRequestContext {
         @Volatile var streamHeaders: Map<String, String> = emptyMap()
         @Volatile var dolbyVisionFallbackMode: DolbyVisionFallbackMode = DolbyVisionFallbackMode.Off
@@ -463,8 +465,8 @@ internal object MediaPlayerControllerFactory {
             val isProxy = host == "127.0.0.1" || host == "localhost"
             if (!isProxy) {
                 if (requestContext.shouldConvertRpuP7) {
-                    val isHlsSegment = path.endsWith(".m4s") || path.endsWith(".ts") ||
-                        mediaType.contains("video/mp4") || mediaType.contains("video/mp2t")
+                    val isHlsSegment = path.endsWith(".m4s") ||
+                        mediaType.contains("video/mp4")
                     if (isHlsSegment) {
                         return rewriteHlsSegmentBytes(context, response, requestContext)
                     }
@@ -566,7 +568,7 @@ internal object MediaPlayerControllerFactory {
                 if (byteCount == 0L) return 0L
                 while (pendingOffset >= pending.size && !finished) {
                     val input = Buffer()
-                    val read = upstream.read(input, 64 * 1024L)
+                    val read = upstream.read(input, DV_REWRITE_CHUNK_BYTES.toLong())
                     if (read == -1L) {
                         pending = native.finishDvRewriteSegment(handle)
                         pendingOffset = 0
