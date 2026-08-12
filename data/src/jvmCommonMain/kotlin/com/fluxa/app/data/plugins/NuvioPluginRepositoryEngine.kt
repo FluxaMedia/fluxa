@@ -343,6 +343,7 @@ class NuvioPluginRepositoryEngine(
             val rawJson = FluxaCoreUniFfi.executePluginScraper(
                 pluginHttpClient,
                 code,
+                scraper.repositoryUrl,
                 scraper.id,
                 gson.toJson(scraper.settings),
                 resolvedContentId,

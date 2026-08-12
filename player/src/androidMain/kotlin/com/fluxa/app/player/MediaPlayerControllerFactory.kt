@@ -466,7 +466,7 @@ internal object MediaPlayerControllerFactory {
                     val isHlsSegment = path.endsWith(".m4s") || path.endsWith(".ts") ||
                         mediaType.contains("video/mp4") || mediaType.contains("video/mp2t")
                     if (isHlsSegment) {
-                        return rewriteHlsSegmentBytes(response, requestContext)
+                        return rewriteHlsSegmentBytes(context, response, requestContext)
                     }
                 }
                 // For direct MKV/MP4/M4V streams, strip the DVCC fourcc in the first 64 KiB.
@@ -535,28 +535,71 @@ internal object MediaPlayerControllerFactory {
     }
 
     private fun rewriteHlsSegmentBytes(
+        context: Context,
         response: okhttp3.Response,
         requestContext: ExoRequestContext
     ): okhttp3.Response {
         val body = response.body
         val contentType = body.contentType()
-        val bytes = runCatching { body.bytes() }.getOrElse { return response }
         val removeHdr10Plus = when (requestContext.dvHdr10PlusMode) {
             "always" -> true
             "never" -> false
             else -> true // auto: strip HDR10+ SEIs when converting DV RPU
         }
-        val rewritten = runCatching {
-            com.fluxa.app.core.rust.FluxaStreamingNative.dvRewriteSegmentBytes(
-                data = bytes,
+        val native = com.fluxa.app.core.rust.FluxaStreamingNative
+        val handle = runCatching {
+            native.createDvRewriteSegment(
                 rpuMode = requestContext.dvRpuMode,
                 zeroLevel5 = requestContext.dvZeroLevel5,
-                removeHdr10Plus = removeHdr10Plus
+                removeHdr10Plus = removeHdr10Plus,
+                spoolDirectory = context.cacheDir.resolve("fluxa-dv-spool").absolutePath
             )
         }.getOrElse { return response }
+        if (handle == 0L) return response
+        val upstream = body.source()
+        val transformed = object : okio.Source {
+            private var pending = ByteArray(0)
+            private var pendingOffset = 0
+            private var finished = false
+
+            override fun read(sink: Buffer, byteCount: Long): Long {
+                if (byteCount == 0L) return 0L
+                while (pendingOffset >= pending.size && !finished) {
+                    val input = Buffer()
+                    val read = upstream.read(input, 64 * 1024L)
+                    if (read == -1L) {
+                        pending = native.finishDvRewriteSegment(handle)
+                        pendingOffset = 0
+                        finished = true
+                    } else if (read > 0L) {
+                        pending = native.processDvRewriteSegment(handle, input.readByteArray())
+                        pendingOffset = 0
+                    }
+                }
+                if (pendingOffset >= pending.size) return -1L
+                val count = minOf(byteCount, (pending.size - pendingOffset).toLong()).toInt()
+                sink.write(pending, pendingOffset, count)
+                pendingOffset += count
+                return count.toLong()
+            }
+
+            override fun timeout(): okio.Timeout = upstream.timeout()
+
+            override fun close() {
+                if (!finished) {
+                    runCatching { native.finishDvRewriteSegment(handle) }
+                    finished = true
+                }
+                upstream.close()
+            }
+        }
         return response.newBuilder()
             .removeHeader("Content-Length")
-            .body(rewritten.toResponseBody(contentType))
+            .body(object : ResponseBody() {
+                override fun contentType() = contentType
+                override fun contentLength() = -1L
+                override fun source() = transformed.buffer()
+            })
             .build()
     }
 

@@ -113,6 +113,7 @@ object FluxaCoreUniFfi {
     fun executePluginScraper(
         client: PluginHttpClient,
         code: String,
+        repositoryUrl: String,
         scraperId: String,
         scraperSettingsJson: String,
         tmdbId: String,
@@ -122,6 +123,7 @@ object FluxaCoreUniFfi {
     ): String = executePluginScraperUniFfi(
         client,
         code,
+        repositoryUrl,
         scraperId,
         scraperSettingsJson,
         tmdbId,

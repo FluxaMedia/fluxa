@@ -48,8 +48,39 @@ object FluxaStreamingNative {
         data: ByteArray,
         rpuMode: Int,
         zeroLevel5: Boolean,
-        removeHdr10Plus: Boolean
-    ): ByteArray = call { dvRewriteSegmentBytesNative(data, rpuMode, zeroLevel5, removeHdr10Plus) }
+        removeHdr10Plus: Boolean,
+        spoolDirectory: String? = null
+    ): ByteArray = call {
+        dvRewriteSegmentBytesNative(
+            data,
+            rpuMode,
+            zeroLevel5,
+            removeHdr10Plus,
+            spoolDirectory.orEmpty()
+        )
+    }
+
+    fun createDvRewriteSegment(
+        rpuMode: Int,
+        zeroLevel5: Boolean,
+        removeHdr10Plus: Boolean,
+        spoolDirectory: String? = null
+    ): Long = call {
+        createDvRewriteSegmentNative(
+            rpuMode,
+            zeroLevel5,
+            removeHdr10Plus,
+            spoolDirectory.orEmpty()
+        )
+    }
+
+    fun processDvRewriteSegment(handle: Long, data: ByteArray): ByteArray = call {
+        processDvRewriteSegmentNative(handle, data)
+    }
+
+    fun finishDvRewriteSegment(handle: Long): ByteArray = call {
+        finishDvRewriteSegmentNative(handle)
+    }
 
     fun dvGetStreamStats(): String = call { dvGetStreamStatsJsonNative() }
 
@@ -71,7 +102,10 @@ object FluxaStreamingNative {
     private external fun stopTorrentServerNative(expectedGeneration: Long): Boolean
     private external fun dvRpuSelfTestNative(): Boolean
     private external fun dvAutoDetectWasIptPqc2Native(): Boolean
-    private external fun dvRewriteSegmentBytesNative(data: ByteArray, rpuMode: Int, zeroLevel5: Boolean, removeHdr10Plus: Boolean): ByteArray
+    private external fun dvRewriteSegmentBytesNative(data: ByteArray, rpuMode: Int, zeroLevel5: Boolean, removeHdr10Plus: Boolean, spoolDirectory: String): ByteArray
+    private external fun createDvRewriteSegmentNative(rpuMode: Int, zeroLevel5: Boolean, removeHdr10Plus: Boolean, spoolDirectory: String): Long
+    private external fun processDvRewriteSegmentNative(handle: Long, data: ByteArray): ByteArray
+    private external fun finishDvRewriteSegmentNative(handle: Long): ByteArray
     private external fun dvGetStreamStatsJsonNative(): String
     private external fun dvGetCurrentL1JsonNative(): String
     private external fun parseMkvChaptersNative(data: ByteArray): String
