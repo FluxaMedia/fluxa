@@ -60,8 +60,16 @@ pub fn library_snapshot(
         })
         .ok()?;
     for row in rows {
-        let (id, value) = row.ok()?;
-        progress.insert(id, decrypt_json(&dir, value).ok()?);
+        let Ok((id, value)) = row else {
+            log::warn!("library snapshot: failed to read progress row");
+            continue;
+        };
+        match decrypt_json(&dir, value) {
+            Ok(value) => {
+                progress.insert(id, value);
+            }
+            Err(error) => log::warn!("library snapshot: skipping progress row {id}: {error}"),
+        }
     }
     drop(statement);
 
@@ -75,7 +83,14 @@ pub fn library_snapshot(
             .query_map(params![profile_key, status], |row| row.get::<_, Vec<u8>>(0))
             .ok()?;
         for row in rows {
-            items.push(decrypt_json(&dir, row.ok()?).ok()?);
+            let Ok(value) = row else {
+                log::warn!("library snapshot: failed to read {status} row");
+                continue;
+            };
+            match decrypt_json(&dir, value) {
+                Ok(value) => items.push(value),
+                Err(error) => log::warn!("library snapshot: skipping {status} row: {error}"),
+            }
         }
         statuses.insert(status.to_string(), Value::Array(items));
     }
@@ -102,8 +117,16 @@ pub fn library_snapshot(
         })
         .ok()?;
     for row in rows {
-        let (id, value) = row.ok()?;
-        last_watched.insert(id, decrypt_json(&dir, value).ok()?);
+        let Ok((id, value)) = row else {
+            log::warn!("library snapshot: failed to read last-watched row");
+            continue;
+        };
+        match decrypt_json(&dir, value) {
+            Ok(value) => {
+                last_watched.insert(id, value);
+            }
+            Err(error) => log::warn!("library snapshot: skipping last-watched row {id}: {error}"),
+        }
     }
     drop(statement);
 
@@ -115,7 +138,14 @@ pub fn library_snapshot(
         .query_map([&profile_key], |row| row.get::<_, Vec<u8>>(0))
         .ok()?;
     for row in rows {
-        continue_watching.push(decrypt_json(&dir, row.ok()?).ok()?);
+        let Ok(value) = row else {
+            log::warn!("library snapshot: failed to read continue-watching row");
+            continue;
+        };
+        match decrypt_json(&dir, value) {
+            Ok(value) => continue_watching.push(value),
+            Err(error) => log::warn!("library snapshot: skipping continue-watching row: {error}"),
+        }
     }
 
     serde_json::to_string(&serde_json::json!({
@@ -344,8 +374,34 @@ fn open_database(dir: &Path) -> Result<StorageDatabaseGuard, String> {
 }
 
 pub fn initialize_storage(dir: &Path) -> Result<(), String> {
-    let _database = open_database(dir)?;
-    Ok(())
+    match open_database(dir) {
+        Ok(_) => Ok(()),
+        Err(error) => {
+            let database = database_path(dir);
+            if database.exists() {
+                let stamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|value| value.as_secs())
+                    .unwrap_or(0);
+                let quarantine = dir.join(format!("{DATABASE_FILE}.corrupt.{stamp}"));
+                fs::rename(&database, &quarantine).map_err(|rename_error| {
+                    format!("storage initialization failed: {error}; quarantine failed: {rename_error}")
+                })?;
+                for suffix in ["-wal", "-shm"] {
+                    let sidecar = PathBuf::from(format!("{}{suffix}", database.display()));
+                    if sidecar.exists() {
+                        let sidecar_quarantine = PathBuf::from(format!("{}{suffix}", quarantine.display()));
+                        let _ = fs::rename(sidecar, sidecar_quarantine);
+                    }
+                }
+                log::error!("storage database quarantined at {} after initialization failure: {error}", quarantine.display());
+            }
+            let _database = open_database(dir).map_err(|retry_error| {
+                format!("storage recovery failed after initialization error: {error}; retry failed: {retry_error}")
+            })?;
+            Ok(())
+        }
+    }
 }
 
 #[cfg(test)]

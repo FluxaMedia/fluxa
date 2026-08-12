@@ -54,6 +54,10 @@ export function setPlayerStatusPositionInterval(controlsVisible: boolean): void 
   void invoke('player_set_status_interval', { intervalMs: controlsVisible ? 250 : 750 });
 }
 
+export function setPlayerStatsEnabled(enabled: boolean): void {
+  void invoke('player_set_stats_enabled', { enabled });
+}
+
 export function subscribePlayerStatus(listener: Listener): () => void {
   listeners.add(listener);
   ensureListening();

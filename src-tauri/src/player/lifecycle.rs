@@ -73,6 +73,7 @@ fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
                     state.player_position_interval_ms.load(Ordering::Acquire),
                 );
             let active_engine = *state.active_player_engine.lock().unwrap();
+            let stats_enabled = state.player_stats_enabled.load(Ordering::Acquire);
             let (static_status, position_status) = match active_engine {
                 PlayerEngine::Mpv => {
                     let renderer = state.player_mpv_client.lock().unwrap();
@@ -81,7 +82,11 @@ fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
                         .map(|renderer| {
                             let static_status = Some(renderer.cached_static_status());
                             let position_status = position_due.then(|| {
-                                renderer.fast_position_status()
+                                if stats_enabled {
+                                    renderer.stats_position_status()
+                                } else {
+                                    renderer.fast_position_status()
+                                }
                             });
                             (static_status, position_status)
                         })

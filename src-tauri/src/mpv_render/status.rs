@@ -134,6 +134,9 @@ impl MpvClientHandle {
                         let paused = unsafe { *(property.data as *const c_int) } != 0;
                         events.push(PlayerEvent::PauseChanged(paused));
                     }
+                    if event.reply_userdata == TRACK_LIST_OBSERVE_ID {
+                        *self.track_list_cache.lock().unwrap() = None;
+                    }
                     if (STATIC_OBSERVE_BASE..STATIC_OBSERVE_BASE + STATIC_OBSERVE_PROPERTIES.len() as u64)
                         .contains(&event.reply_userdata)
                     {
@@ -220,23 +223,32 @@ impl MpvClientHandle {
     }
 
     pub(super) fn track_list_status(&self) -> (bool, bool) {
+        if let Some(status) = *self.track_list_cache.lock().unwrap() {
+            return status;
+        }
         let count = self
             .get_i64_property("track-list/count")
             .unwrap_or(0)
             .max(0) as usize;
         if count == 0 {
-            return (false, false);
+            let status = (false, false);
+            *self.track_list_cache.lock().unwrap() = Some(status);
+            return status;
         }
+        let mut has_video_track = false;
         for index in 0..count {
             if self
                 .get_string_property(&format!("track-list/{index}/type"))
                 .as_deref()
                 == Some("video")
             {
-                return (true, true);
+                has_video_track = true;
+                break;
             }
         }
-        (false, true)
+        let status = (has_video_track, true);
+        *self.track_list_cache.lock().unwrap() = Some(status);
+        status
     }
 
     pub fn status(&self) -> PlayerStatus {
@@ -313,6 +325,18 @@ impl MpvClientHandle {
             seeking: self.get_string_property("seeking"),
             frames_rendered: self.frame_state.frames_rendered.load(Ordering::Relaxed),
         }
+    }
+
+    pub fn stats_position_status(&self) -> PlayerPositionStatus {
+        let mut status = self.fast_position_status();
+        status.frame_drop_count = self.get_string_property("frame-drop-count");
+        status.decoder_frame_drop_count = self.get_string_property("decoder-frame-drop-count");
+        status.avsync = self.get_string_property("avsync");
+        status.video_bitrate = self.get_string_property("video-bitrate");
+        status.audio_bitrate = self.get_string_property("audio-bitrate");
+        status.mistimed_frame_count = self.get_string_property("mistimed-frame-count");
+        status.vo_delayed_frame_count = self.get_string_property("vo-delayed-frame-count");
+        status
     }
 
     pub fn cached_static_status(&self) -> PlayerStaticStatus {

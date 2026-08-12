@@ -2,7 +2,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, useLayoutEffect, useRef, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
 import { imdbButtonFor, updateDiscordPresence } from '../../core/discordPresence';
 import { embeddedMpvSetCursorVisible, playerTorrentStats, playerTorrentTelemetry, type EmbeddedMpvStatus, type TorrentStats, type TorrentTelemetryContext } from '../../core/mpvPlayer';
-import { setPlayerStatusPositionInterval, subscribePlayerStatus } from '../../core/playerStatusStore';
+import { setPlayerStatsEnabled, setPlayerStatusPositionInterval, subscribePlayerStatus } from '../../core/playerStatusStore';
 import { t } from '../../i18n';
 import { addSparklineSample, fmtTime, sendCmd, skipLabelForType, type ActiveSkip, type FeedbackFlash, type SkipSegment } from './PlayerOverlayPrimitives';
 import type { PlayerTelemetryControls } from './usePlayerTelemetryState';
@@ -227,6 +227,10 @@ export function usePlayerLiveTelemetry(options: Bindings) {
   useEffect(() => {
     setPlayerStatusPositionInterval(options.controlsVisible);
   }, [options.controlsVisible]);
+
+  useEffect(() => {
+    setPlayerStatsEnabled(options.showStats);
+  }, [options.showStats]);
 
   useEffect(() => {
     const tick = async () => {

@@ -152,6 +152,7 @@ pub struct DesktopState {
     pub thumbnail: Mutex<ThumbnailRuntimeState>,
     pub pending_hide: AtomicBool,
     pub player_telemetry_running: AtomicBool,
+    pub player_stats_enabled: AtomicBool,
     pub player_position_interval_ms: AtomicU64,
     #[cfg(target_os = "windows")]
     pub main_window_size: std::sync::atomic::AtomicU64,
@@ -183,6 +184,7 @@ impl Default for DesktopState {
             thumbnail: Mutex::new(ThumbnailRuntimeState::default()),
             pending_hide: AtomicBool::new(false),
             player_telemetry_running: AtomicBool::new(false),
+            player_stats_enabled: AtomicBool::new(false),
             player_position_interval_ms: AtomicU64::new(750),
             #[cfg(target_os = "windows")]
             main_window_size: std::sync::atomic::AtomicU64::new(0),
@@ -616,6 +618,7 @@ pub fn run() {
             player_title,
             player_status,
             player_set_status_interval,
+            player_set_stats_enabled,
             player_set_sleep_inhibition,
             player_destroy,
             player_get_playback_info,

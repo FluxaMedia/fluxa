@@ -268,4 +268,5 @@ pub use player_state::{
     player_get_playback_info, player_get_seek_thumbnail, player_hide, player_set_chapters,
     player_set_episodes, player_set_seek_thumbnail_enabled, player_set_skip_info,
     player_set_status_interval, player_show_loading, player_screenshot, player_status, player_title, player_track_options,
+    player_set_stats_enabled,
 };

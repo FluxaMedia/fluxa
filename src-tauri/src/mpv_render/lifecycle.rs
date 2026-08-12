@@ -19,6 +19,7 @@ impl MpvClientHandle {
             pending_seek_seconds: None,
             current_url: None,
             static_properties: HashMap::new(),
+            track_list_cache: Mutex::new(None),
             next_async_command_id: AtomicU64::new(2000),
         };
         let render = MpvRenderState {
@@ -140,6 +141,18 @@ impl MpvClientHandle {
                 log::debug!("mpv: failed to observe static property {name:?}: {}", client.api.error_string(result));
             }
         }
+        let track_count_name = CString::new("track-list/count").unwrap();
+        let result = unsafe {
+            (client.api.mpv_observe_property)(
+                client.handle,
+                TRACK_LIST_OBSERVE_ID,
+                track_count_name.as_ptr(),
+                MPV_FORMAT_INT64,
+            )
+        };
+        if result < 0 {
+            log::debug!("mpv: failed to observe track-list/count: {}", client.api.error_string(result));
+        }
 
         Ok((client, render))
     }
@@ -158,6 +171,7 @@ impl MpvClientHandle {
         self.frame_state.loaded.store(false, Ordering::Release);
         self.current_url = Some(url.to_string());
         self.static_properties.clear();
+        *self.track_list_cache.lock().unwrap() = None;
         self.log_ring.clear();
         self.frame_state.frames_rendered.store(0, Ordering::Relaxed);
         self.frame_state

@@ -8,6 +8,11 @@ pub fn player_set_status_interval(state: State<DesktopState>, interval_ms: u64) 
 }
 
 #[tauri::command]
+pub fn player_set_stats_enabled(state: State<DesktopState>, enabled: bool) {
+    state.player_stats_enabled.store(enabled, Ordering::Release);
+}
+
+#[tauri::command]
 pub fn player_screenshot(
     state: State<DesktopState>,
     suggested_name: String,

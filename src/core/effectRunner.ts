@@ -405,6 +405,14 @@ export async function executeEffect(
   signal?: AbortSignal,
 ): Promise<EffectResult> {
   const release = await acquireEffectSlot();
+  if (signal?.aborted) {
+    release();
+    return {
+      effectId: effect.id,
+      status: 'err',
+      error: 'aborted before execution',
+    };
+  }
   try {
     return await executeEffectUnbounded(effect, onStateUpdate, signal);
   } finally {
@@ -467,7 +475,6 @@ export async function pumpEffects(
   await Promise.all(Array.from(scheduledByGroup.entries()).map(async ([groupId, entries]) => {
     const limit = groupId === 'addon' ? 6 : groupId === 'plugin' ? 2 : 4;
     await runWithConcurrency(entries, limit, async (duplicates) => {
-      if (signal?.aborted) return;
       const primary = duplicates[0];
       const result = await executeEffect(primary, onStateUpdate, signal);
       await Promise.all(duplicates.map((effect) => complete(effect, result)));

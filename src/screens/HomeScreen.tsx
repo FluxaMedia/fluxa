@@ -412,8 +412,12 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   )), [heroSlides, heroDescriptions]);
 
   const heroPendingLogoIds = useMemo(
-    () => new Set(resolvedHomePlan.logoTargets.map((item) => item.id)),
-    [resolvedHomePlan.logoTargets],
+    () => new Set(
+      resolvedHomePlan.logoTargets
+        .map((item) => item.id)
+        .filter((id) => !fetchedHeroLogoIds.includes(id)),
+    ),
+    [resolvedHomePlan.logoTargets, fetchedHeroLogoIds],
   );
 
   const addonIconByName = useMemo(() => {

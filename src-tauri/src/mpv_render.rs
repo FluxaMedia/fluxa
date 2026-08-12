@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::sync::OnceLock;
 
@@ -56,7 +56,9 @@ const MPV_END_FILE_REASON_EOF: c_int = 0;
 const MPV_END_FILE_REASON_ERROR: c_int = 4;
 const MPV_FORMAT_FLAG: c_int = 3;
 const MPV_FORMAT_STRING: c_int = 1;
+const MPV_FORMAT_INT64: c_int = 4;
 const PAUSE_OBSERVE_ID: u64 = 1001;
+const TRACK_LIST_OBSERVE_ID: u64 = 1099;
 const STATIC_OBSERVE_BASE: u64 = 1100;
 
 const STATIC_OBSERVE_PROPERTIES: &[&str] = &[
@@ -272,6 +274,7 @@ pub struct MpvClientHandle {
     pending_seek_seconds: Option<f64>,
     current_url: Option<String>,
     static_properties: HashMap<String, Option<String>>,
+    track_list_cache: Mutex<Option<(bool, bool)>>,
     next_async_command_id: AtomicU64,
 }
 
