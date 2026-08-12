@@ -2,6 +2,8 @@ package com.fluxa.app.core.rust
 
 import com.fluxa.core.uniffi.PluginHttpClient
 import com.fluxa.core.uniffi.appCoreDispatchJson
+import com.fluxa.core.uniffi.appCoreDispatchDeltaJson
+import com.fluxa.core.uniffi.appCoreUpdatePlayer
 import com.fluxa.core.uniffi.appCoreStateJson
 import com.fluxa.core.uniffi.coreInvoke as coreInvokeUniFfi
 import com.fluxa.core.uniffi.createAppCoreStateJson
@@ -57,6 +59,25 @@ class FluxaUniFfiCoreStateHandle internal constructor(
     fun snapshotJson(): String = appCoreStateJson(handle)
 
     fun dispatchJson(actionJson: String): String = appCoreDispatchJson(handle, actionJson)
+
+    fun dispatchDeltaJson(actionJson: String): String = appCoreDispatchDeltaJson(handle, actionJson)
+
+    fun updatePlayer(
+        positionMs: Long,
+        streamIndex: Long,
+        buffering: Boolean,
+        playbackEnded: Boolean,
+        started: Boolean,
+        rendered: Boolean,
+    ): Boolean = appCoreUpdatePlayer(
+        handle,
+        positionMs,
+        streamIndex,
+        buffering,
+        playbackEnded,
+        started,
+        rendered,
+    )
 
     fun dispatch(action: Any): String = dispatchJson(gson.toJson(action))
 

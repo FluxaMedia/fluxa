@@ -180,7 +180,7 @@ fun PlayerScreen(
     )
 
     val updateEngine: (PlayerEngineSnapshot.() -> PlayerEngineSnapshot) -> Unit = { f ->
-        state.engine = state.engine.f()
+        state.updateEngineSnapshot(state.engine.f())
     }
 
 

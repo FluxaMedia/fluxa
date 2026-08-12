@@ -205,6 +205,30 @@ object FluxaCoreNative {
         appCoreDispatchJsonNative(handle, actionJson).orEmpty()
     }
 
+    internal fun appCoreDispatchDeltaJson(handle: Long, actionJson: String): String = call {
+        appCoreDispatchDeltaJsonNative(handle, actionJson).orEmpty()
+    }
+
+    internal fun appCoreUpdatePlayer(
+        handle: Long,
+        positionMs: Long,
+        streamIndex: Long,
+        buffering: Boolean,
+        playbackEnded: Boolean,
+        started: Boolean,
+        rendered: Boolean,
+    ): Boolean = call {
+        appCoreUpdatePlayerNative(
+            handle,
+            positionMs,
+            streamIndex,
+            buffering,
+            playbackEnded,
+            started,
+            rendered,
+        )
+    }
+
     internal fun destroyAppCoreState(handle: Long): Boolean = call {
         destroyAppCoreStateNative(handle)
     }
@@ -1988,6 +2012,16 @@ object FluxaCoreNative {
     private external fun destroyAppCoreStateNative(handle: Long): Boolean
     private external fun appCoreStateJsonNative(handle: Long): String?
     private external fun appCoreDispatchJsonNative(handle: Long, actionJson: String): String?
+    private external fun appCoreDispatchDeltaJsonNative(handle: Long, actionJson: String): String?
+    private external fun appCoreUpdatePlayerNative(
+        handle: Long,
+        positionMs: Long,
+        streamIndex: Long,
+        buffering: Boolean,
+        playbackEnded: Boolean,
+        started: Boolean,
+        rendered: Boolean,
+    ): Boolean
     private external fun createHeadlessEngineNative(initialJson: String): Long
     private external fun destroyHeadlessEngineNative(handle: Long): Boolean
     private external fun headlessEngineSnapshotJsonNative(handle: Long): String?

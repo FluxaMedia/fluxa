@@ -42,10 +42,29 @@ class FluxaCoreStateHandle internal constructor(
 
     fun dispatchJson(actionJson: String): String = FluxaCoreNative.appCoreDispatchJson(handle, actionJson)
 
+    fun dispatchDeltaJson(actionJson: String): String =
+        FluxaCoreNative.appCoreDispatchDeltaJson(handle, actionJson)
+
+    fun updatePlayer(
+        positionMs: Long,
+        streamIndex: Long,
+        buffering: Boolean,
+        playbackEnded: Boolean,
+        started: Boolean,
+        rendered: Boolean,
+    ): Boolean = FluxaCoreNative.appCoreUpdatePlayer(
+        handle,
+        positionMs,
+        streamIndex,
+        buffering,
+        playbackEnded,
+        started,
+        rendered,
+    )
+
     fun dispatch(action: Any): String = dispatchJson(gson.toJson(action))
 
     override fun close() {
         FluxaCoreNative.destroyAppCoreState(handle)
     }
 }
-

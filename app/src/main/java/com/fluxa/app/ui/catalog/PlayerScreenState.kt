@@ -59,7 +59,13 @@ internal class PlayerScreenState(
     var resolvedUrl by mutableStateOf<String?>(null)
     var currentVideoId by mutableStateOf(initialVideoId)
     var currentStreams by mutableStateOf<List<Stream>>(emptyList())
-    var currentStreamIndex by mutableIntStateOf(initialStreamIndex)
+    private var currentStreamIndexState by mutableIntStateOf(initialStreamIndex)
+    var currentStreamIndex: Int
+        get() = currentStreamIndexState
+        set(value) {
+            currentStreamIndexState = value
+            syncPlayerCoreState()
+        }
     var failedAutoFallbackUrls by mutableStateOf<Set<String>>(emptySet())
     var zeroSpeedTicks by mutableIntStateOf(0)
     var lastSavedPosition by mutableLongStateOf(0L)
@@ -147,6 +153,22 @@ internal class PlayerScreenState(
                 playbackEnded = player.playbackEnded,
             ),
             render = RenderSnapshot(isVideoRendered = player.isVideoRendered),
+        )
+    }
+
+    fun updateEngineSnapshot(next: PlayerEngineSnapshot) {
+        engine = next
+        syncPlayerCoreState()
+    }
+
+    private fun syncPlayerCoreState() {
+        coreState.updatePlayer(
+            positionMs = engine.timeline.position,
+            streamIndex = currentStreamIndex.toLong(),
+            buffering = engine.playback.isBuffering,
+            playbackEnded = engine.playback.playbackEnded,
+            started = engine.playback.hasStartedPlaying,
+            rendered = engine.render.isVideoRendered,
         )
     }
 
