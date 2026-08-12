@@ -69,11 +69,31 @@ export async function libraryProgressUpsert(
   });
 }
 
+export async function libraryProgressUpsertMany(
+  profileKey: string,
+  updates: Array<{ mediaId: string; value: unknown }>,
+): Promise<boolean> {
+  return invoke<boolean>("library_progress_upsert_many", {
+    profileKey,
+    updatesJson: JSON.stringify(updates),
+  });
+}
+
 export async function libraryProgressDelete(
   profileKey: string,
   mediaId: string,
 ): Promise<boolean> {
   return invoke<boolean>("library_progress_delete", { profileKey, mediaId });
+}
+
+export async function librarySnapshot<T>(profileKey: string): Promise<T | null> {
+  const raw = await invoke<string | null>("library_snapshot", { profileKey });
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
 }
 
 export async function libraryStatusSet(
@@ -220,4 +240,3 @@ export async function streamMagnetLink(
     streamJson: JSON.stringify(stream),
   });
 }
-

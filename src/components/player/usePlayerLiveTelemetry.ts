@@ -232,6 +232,11 @@ export function usePlayerLiveTelemetry(options: Bindings) {
     const tick = async () => {
       const { showStats, showTorrentPopover, isTorrentStream, liveStatusRef, telemetry, torrentStatsRef } = optionsRef.current;
       if (showStats && liveStatusRef.current) telemetry.setStatsSnap({ ...liveStatusRef.current });
+      if (!isTorrentStream && !showTorrentPopover) {
+        torrentStatsRef.current = null;
+        telemetry.setTorrentStatsSnap(null);
+        return;
+      }
       const raw = await playerTorrentStats().catch(() => null);
       const stats = raw && typeof raw.stat === 'number' ? raw : null;
       torrentStatsRef.current = stats;

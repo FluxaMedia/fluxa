@@ -134,6 +134,18 @@ impl MpvClientHandle {
                         let paused = unsafe { *(property.data as *const c_int) } != 0;
                         events.push(PlayerEvent::PauseChanged(paused));
                     }
+                    if (STATIC_OBSERVE_BASE..STATIC_OBSERVE_BASE + STATIC_OBSERVE_PROPERTIES.len() as u64)
+                        .contains(&event.reply_userdata)
+                    {
+                        let index = (event.reply_userdata - STATIC_OBSERVE_BASE) as usize;
+                        let value = if property.format == MPV_FORMAT_STRING && !property.data.is_null() {
+                            let value = unsafe { *(property.data as *const *const c_char) };
+                            (!value.is_null()).then(|| unsafe { CStr::from_ptr(value).to_string_lossy().into_owned() })
+                        } else {
+                            None
+                        };
+                        self.static_properties.insert(STATIC_OBSERVE_PROPERTIES[index].to_string(), value);
+                    }
                 }
                 MPV_EVENT_COMMAND_REPLY if event.error < 0 => {
                     log::debug!(
@@ -275,6 +287,68 @@ impl MpvClientHandle {
             seeking: self.get_string_property("seeking"),
             file_format: self.get_string_property("file-format"),
             frames_rendered: self.frame_state.frames_rendered.load(Ordering::Relaxed),
+            first_frame_presented: self.frame_state.first_frame_presented.load(Ordering::Acquire),
+            has_video_track,
+            track_list_ready,
+            resuming: self.pending_seek_seconds.is_some()
+                || self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire),
+        }
+    }
+
+    pub fn fast_position_status(&self) -> PlayerPositionStatus {
+        PlayerPositionStatus {
+            time_pos: self.get_string_property("time-pos"),
+            percent_pos: self.get_string_property("percent-pos"),
+            cache_speed: self.get_string_property("cache-speed"),
+            demuxer_cache_duration: self.get_string_property("demuxer-cache-duration"),
+            frame_drop_count: None,
+            decoder_frame_drop_count: None,
+            avsync: None,
+            video_bitrate: None,
+            audio_bitrate: None,
+            mistimed_frame_count: None,
+            vo_delayed_frame_count: None,
+            paused_for_cache: self.get_string_property("paused-for-cache"),
+            cache_buffering_state: self.get_string_property("cache-buffering-state"),
+            seeking: self.get_string_property("seeking"),
+            frames_rendered: self.frame_state.frames_rendered.load(Ordering::Relaxed),
+        }
+    }
+
+    pub fn cached_static_status(&self) -> PlayerStaticStatus {
+        let property = |name: &str| self.static_properties.get(name).cloned().flatten();
+        let (has_video_track, track_list_ready) = self.track_list_status();
+        PlayerStaticStatus {
+            loaded: self.frame_state.loaded.load(Ordering::Acquire),
+            path: property("path"),
+            media_title: property("media-title"),
+            duration: property("duration"),
+            pause: property("pause"),
+            mute: property("mute"),
+            volume: property("volume"),
+            core_idle: property("core-idle"),
+            eof_reached: property("eof-reached"),
+            vo_configured: property("vo-configured"),
+            video_codec: property("video-codec"),
+            video_format: property("video-format"),
+            width: property("width"),
+            height: property("height"),
+            hwdec_current: property("hwdec-current"),
+            fps: property("estimated-vf-fps"),
+            audio_codec: property("audio-codec-name"),
+            audio_samplerate: property("audio-params/samplerate"),
+            audio_channels: property("audio-params/channels"),
+            color_primaries: property("video-params/primaries"),
+            color_matrix: property("video-params/colormatrix"),
+            color_gamma: property("video-params/gamma"),
+            video_out_primaries: property("video-out-params/primaries"),
+            video_out_matrix: property("video-out-params/colormatrix"),
+            video_out_gamma: property("video-out-params/gamma"),
+            sig_peak: property("video-params/sig-peak"),
+            hdr_active: false,
+            container_fps: property("container-fps"),
+            display_fps: property("display-fps"),
+            file_format: property("file-format"),
             first_frame_presented: self.frame_state.first_frame_presented.load(Ordering::Acquire),
             has_video_track,
             track_list_ready,

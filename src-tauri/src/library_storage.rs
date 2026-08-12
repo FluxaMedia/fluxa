@@ -18,6 +18,7 @@ pub use history_storage::{
 pub use kv_storage::{read_pref_field, storage_delete, storage_read, storage_write};
 pub use progress_storage::{
     library_progress_delete, library_progress_list, library_progress_read, library_progress_upsert,
+    library_progress_upsert_many,
 };
 #[cfg(target_os = "windows")]
 pub(crate) use kv_storage::read_pref_bool;

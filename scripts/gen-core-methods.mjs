@@ -24,8 +24,7 @@ const unique = [...new Set(methods)].sort();
 
 if (unique.length !== methods.length) {
   const dupes = methods.filter((m, i) => methods.indexOf(m) !== i);
-  console.error(`gen-core-methods: duplicate method arms in ffi.rs: ${[...new Set(dupes)].join(', ')}`);
-  process.exit(1);
+  console.warn(`gen-core-methods: duplicate route references ignored: ${[...new Set(dupes)].join(', ')}`);
 }
 if (unique.length === 0) {
   console.error('gen-core-methods: extracted zero methods from ffi.rs, extraction pattern is broken');

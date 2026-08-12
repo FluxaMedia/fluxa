@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import * as Sentry from "@sentry/react";
+import { withSentrySpan } from "./sentryRuntime";
 import type { DispatchResult, EffectResult } from "./types";
 import type { CoreMethod } from "./coreMethods";
 
@@ -19,7 +19,7 @@ export async function dispatchAction(
       (JSON.parse(actionJson) as { type?: string }).type ?? "?"
     }`;
   } catch {}
-  return Sentry.startSpan({ name: label, op: "fluxa.ipc" }, async () => {
+  return withSentrySpan(label, "fluxa.ipc", async () => {
     const raw = await invoke<string | null>("engine_dispatch", { actionJson });
     if (!raw) return null;
     return JSON.parse(raw) as DispatchResult;
@@ -29,10 +29,7 @@ export async function dispatchAction(
 export async function completeEffect(
   result: EffectResult,
 ): Promise<DispatchResult | null> {
-  return Sentry.startSpan({
-    name: `completeEffect:${result.effectId}`,
-    op: "fluxa.ipc",
-  }, async () => {
+  return withSentrySpan(`completeEffect:${result.effectId}`, "fluxa.ipc", async () => {
     const raw = await invoke<string | null>("engine_complete_effect", {
       resultJson: JSON.stringify(result),
     });
@@ -76,6 +73,7 @@ export async function registerTrailerProxyUrl(url: string): Promise<string> {
 
 export async function runPluginScraper(
   code: string,
+  repositoryUrl: string,
   scraperId: string,
   scraperSettingsJson: string,
   tmdbId: string,
@@ -85,6 +83,7 @@ export async function runPluginScraper(
 ): Promise<string> {
   return invoke<string>("run_plugin_scraper", {
     code,
+    repositoryUrl,
     scraperId,
     scraperSettingsJson,
     tmdbId,
@@ -101,4 +100,3 @@ export interface YoutubeTrailerSubtitleTrack {
   mimeType: string;
   isAuto: boolean;
 }
-

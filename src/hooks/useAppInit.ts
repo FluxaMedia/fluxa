@@ -189,11 +189,6 @@ export function useAppInit(
         void restoreWindowGeometry();
         await initEngine('{}');
         void refreshAllAvatarPacks();
-        try {
-          await hydratePluginsFromStorage(updateState);
-        } catch (err) {
-          console.error('hydratePluginsFromStorage failed, continuing boot without it', err);
-        }
         const snap = await getSnapshot();
         const prefs = await loadPrefs();
         storedPrefsRef.current = prefs;
@@ -207,18 +202,21 @@ export function useAppInit(
           setActiveRoute(startPage);
         }
         if (snap) { const s = snap as AppState; updateState({ ...s, settings: { ...s.settings, values: prefs } }); }
-        const libResult = await dispatchAction(JSON.stringify({ type: 'libraryHydrateRequested' }));
-        if (libResult) {
-          updateState({ ...libResult.state, settings: { ...libResult.state.settings, values: prefs } });
-          if (libResult.effects.length > 0) await pumpEffects(libResult.effects, updateState);
-        }
         const welcomeDone = await storageRead<boolean>('welcome_done');
         if (!welcomeDone) setWelcomeCompleted(false);
+        void (async () => {
+          const libResult = await dispatchAction(JSON.stringify({ type: 'libraryHydrateRequested' }));
+          if (!libResult) return;
+          updateState({ ...libResult.state, settings: { ...libResult.state.settings, values: prefs } });
+          if (libResult.effects.length > 0) await pumpEffects(libResult.effects, updateState);
+        })().catch(() => undefined);
       } catch (err) {
         console.error('app boot sequence failed', err);
       } finally {
         setReady(true);
       }
+
+      void hydratePluginsFromStorage(updateState).catch(() => undefined);
 
       let startupProfile: UserProfile | null = null;
       try {

@@ -18,6 +18,7 @@ impl MpvClientHandle {
             pending_unpause: false,
             pending_seek_seconds: None,
             current_url: None,
+            static_properties: HashMap::new(),
             next_async_command_id: AtomicU64::new(2000),
         };
         let render = MpvRenderState {
@@ -125,6 +126,21 @@ impl MpvClientHandle {
             );
         }
 
+        for (index, name) in STATIC_OBSERVE_PROPERTIES.iter().enumerate() {
+            let name = CString::new(*name).unwrap();
+            let result = unsafe {
+                (client.api.mpv_observe_property)(
+                    client.handle,
+                    STATIC_OBSERVE_BASE + index as u64,
+                    name.as_ptr(),
+                    MPV_FORMAT_STRING,
+                )
+            };
+            if result < 0 {
+                log::debug!("mpv: failed to observe static property {name:?}: {}", client.api.error_string(result));
+            }
+        }
+
         Ok((client, render))
     }
 
@@ -141,6 +157,7 @@ impl MpvClientHandle {
     pub fn load(&mut self, url: &str, start_at: Option<u64>) -> Result<(), String> {
         self.frame_state.loaded.store(false, Ordering::Release);
         self.current_url = Some(url.to_string());
+        self.static_properties.clear();
         self.log_ring.clear();
         self.frame_state.frames_rendered.store(0, Ordering::Relaxed);
         self.frame_state

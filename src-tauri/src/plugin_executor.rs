@@ -1,12 +1,13 @@
 use fluxa_core::plugin_runtime::{PluginHttpClient, PluginHttpRequest, PluginHttpResponse};
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 const FETCH_TIMEOUT_SECS: u64 = 15;
 
 pub fn execute_scraper(
     code: String,
+    repository_url: String,
     scraper_id: String,
     scraper_settings_json: String,
     tmdb_id: String,
@@ -17,6 +18,7 @@ pub fn execute_scraper(
     fluxa_core::plugin_runtime::execute_scraper(
         Arc::new(DesktopPluginHttpClient),
         code,
+        repository_url,
         scraper_id,
         scraper_settings_json,
         tmdb_id,
@@ -28,23 +30,22 @@ pub fn execute_scraper(
 
 struct DesktopPluginHttpClient;
 
+static PLUGIN_HTTP_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+
 impl PluginHttpClient for DesktopPluginHttpClient {
     fn fetch(&self, request: PluginHttpRequest) -> PluginHttpResponse {
-        std::thread::spawn(move || fetch(request))
-            .join()
-            .unwrap_or_else(|_| failed_response("plugin request worker panicked".to_string()))
+        let runtime = PLUGIN_HTTP_RUNTIME.get_or_init(|| {
+            tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .expect("plugin HTTP runtime must be available")
+        });
+        runtime.block_on(fetch(request))
     }
 }
 
-fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
-    let runtime = match tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-    {
-        Ok(runtime) => runtime,
-        Err(error) => return failed_response(error.to_string()),
-    };
-    runtime.block_on(async move {
+async fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
         let method = match reqwest::Method::from_bytes(request.method.as_bytes()) {
             Ok(method) => method,
             Err(error) => return failed_response(error.to_string()),
@@ -116,7 +117,6 @@ fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
                 error: None,
             };
         }
-    })
 }
 
 fn failed_response(error: String) -> PluginHttpResponse {

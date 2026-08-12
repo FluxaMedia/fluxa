@@ -453,6 +453,7 @@ pub fn run() {
             let state = app.state::<DesktopState>();
             *state.data_dir.lock().unwrap() = Some(data_dir.clone());
             let _ = fs::create_dir_all(&data_dir);
+            storage::initialize_storage(&data_dir).map_err(std::io::Error::other)?;
 
             if let Ok(cache_dir) = app.path().app_cache_dir() {
                 std::thread::spawn(move || {
@@ -573,6 +574,8 @@ pub fn run() {
             library_progress_read,
             library_progress_list,
             library_progress_upsert,
+            library_progress_upsert_many,
+            library_snapshot,
             library_progress_delete,
             library_status_set,
             library_status_list,

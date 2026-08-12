@@ -1,5 +1,4 @@
 import React from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { Check, Info, Play, RotateCcw, Trash2 } from "lucide-react";
 import type { LibraryItem, Meta } from "../core/types";
 import {
@@ -11,10 +10,6 @@ import {
 import { ContextMenu } from "./ui/ContextMenu";
 import { usePosterSrc } from "../hooks/usePosterSrc";
 import { t } from "../i18n";
-
-function debugLog(msg: string) {
-  void invoke("debug_log", { msg }).catch(() => {});
-}
 
 function resolveBadge(
   badge: string | undefined,
@@ -153,9 +148,6 @@ export function ContinueCard({
   const scheduledText = lib.continueWatchingBadge === "scheduledEpisode"
     ? formatReleaseCountdown(lib.newEpisodeReleasedAt)
     : null;
-  if (meta.id === "tt6741278") {
-    debugLog(`ContinueCard render id=${meta.id} continueWatchingBadge=${JSON.stringify(lib.continueWatchingBadge)} resumeProgressPercent=${JSON.stringify(lib.resumeProgressPercent)} timeOffset=${JSON.stringify(lib.timeOffset)} duration=${JSON.stringify(lib.duration)} hasProgress=${hasProgress} resumePercent=${resumePercent} progress=${progress} isUpNext=${isUpNext} remainingText=${remainingText}`);
-  }
   const badge = resolveBadge(
     lib.continueWatchingBadge,
     meta.type,

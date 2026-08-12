@@ -86,6 +86,7 @@ export async function fetchPluginStreams(
       try {
         const raw = await runPluginScraper(
           code,
+          scraper.repositoryUrl,
           scraper.id,
           JSON.stringify(scraper.settings ?? {}),
           plan.contentId,

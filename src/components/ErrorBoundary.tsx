@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import type { ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import * as Sentry from '@sentry/react';
+import { getSentryModule } from '../core/sentryRuntime';
 
 interface Props {
   children: ReactNode;
@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     void invoke('debug_log', { msg: `ErrorBoundary caught: ${error.message}\n${error.stack}` }).catch(() => {});
-    Sentry.captureException(error);
+    getSentryModule()?.captureException(error);
   }
 
   componentDidUpdate(prevProps: Props) {

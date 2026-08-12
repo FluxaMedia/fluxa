@@ -9,12 +9,7 @@ import { CollectionShelfRow } from '../components/CollectionShelfRow';
 import { posterPrefsFromState } from '../core/posterPrefs';
 import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { buildResourceUrl } from '../core/addonManifest';
-import { invoke } from '@tauri-apps/api/core';
 import { coreInvoke, httpFetchText } from '../core/engine';
-
-function debugLog(msg: string) {
-  void invoke('debug_log', { msg }).catch(() => {});
-}
 
 import { prewarmYoutubeTrailerConfig } from '../core/effectRunner';
 import { fetchContentLogo, fetchTmdbTrailers } from '../core/detailEffects';
@@ -279,10 +274,6 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   }, [deferStaleRefresh, home.isStale, onDispatch]);
 
   const continueWatching = useMemo(() => (home.continueWatching ?? []) as Meta[], [home.continueWatching]);
-  useEffect(() => {
-    const item = continueWatching.find((m) => m.id === 'tt6741278') as unknown as Record<string, unknown> | undefined;
-    debugLog(`HomeScreen: continueWatching recomputed count=${continueWatching.length} tt6741278=${item ? JSON.stringify({ badge: item.continueWatchingBadge, resumeProgressPercent: item.resumeProgressPercent }) : 'not found'}`);
-  }, [continueWatching]);
   const posterPrefs = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);
   const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
   const [heroTrailers, setHeroTrailers] = useState<Record<string, Trailer[]>>({});
@@ -310,16 +301,33 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
       setHomePlan(plan);
     });
     return () => { active = false; };
-  }, [home.categories, home.billboard, prefs, heroTrailers, fetchedHeroTrailerIds, heroLogos, fetchedHeroLogoIds]);
-  const categories = homePlan.categories;
+  }, [home.categories, home.billboard, prefs]);
+  const resolvedHomePlan = useMemo(() => {
+    const resolve = (item: Meta | null): Meta | null => {
+      if (!item) return null;
+      const trailers = heroTrailers[item.id];
+      const logo = heroLogos[item.id];
+      return trailers || logo ? { ...item, ...(trailers ? { trailers } : {}), ...(logo ? { logo } : {}) } : item;
+    };
+    return {
+      ...homePlan,
+      billboard: resolve(homePlan.billboard),
+      slides: homePlan.slides.map((item) => resolve(item) ?? item),
+    };
+  }, [heroLogos, heroTrailers, homePlan]);
+  const categories = resolvedHomePlan.categories;
+  const categoryItems = useMemo(
+    () => new Map(categories.map((cat) => [cat.id, catalogExtra[cat.id]?.length ? [...cat.items, ...catalogExtra[cat.id]] : cat.items])),
+    [categories, catalogExtra],
+  );
   const nearEndCallbacks = useMemo(() => {
     const map = new Map<string, () => void>();
     for (const cat of categories) map.set(cat.id, () => handleLoadMoreCategory(cat));
     return map;
   }, [categories, handleLoadMoreCategory]);
-  const billboard = homePlan.billboard;
-  const heroSlides = homePlan.slides;
-  const autoplayTrailerEnabled = homePlan.autoplayTrailer;
+  const billboard = resolvedHomePlan.billboard;
+  const heroSlides = resolvedHomePlan.slides;
+  const autoplayTrailerEnabled = resolvedHomePlan.autoplayTrailer;
 
   useEffect(() => {
     if (!autoplayTrailerEnabled) return;
@@ -328,7 +336,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
 
   useEffect(() => {
     const apiKey = prefString(prefs, 'tmdbApiKey');
-    const targets = homePlan.trailerTargets;
+    const targets = resolvedHomePlan.trailerTargets;
     if (!targets.length) return;
     let cancelled = false;
     const language = getLanguage();
@@ -343,12 +351,12 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
       setHeroTrailers((prev) => ({ ...prev, ...Object.fromEntries(found) }));
     }).catch((err) => console.error('hero trailer fetch failed', err));
     return () => { cancelled = true; };
-  }, [homePlan.trailerTargets, prefs]);
+  }, [resolvedHomePlan.trailerTargets, prefs]);
 
   useEffect(() => {
     const apiKey = prefString(prefs, 'tmdbApiKey');
     const fanartApiKey = prefString(prefs, 'fanartApiKey');
-    const targets = homePlan.logoTargets;
+    const targets = resolvedHomePlan.logoTargets;
     if (!targets.length) return;
     let cancelled = false;
     const language = getLanguage();
@@ -363,7 +371,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
       setHeroLogos((prev) => ({ ...prev, ...Object.fromEntries(found) }));
     }).catch((err) => console.error('hero logo fetch failed', err));
     return () => { cancelled = true; };
-  }, [homePlan.logoTargets, prefs]);
+  }, [resolvedHomePlan.logoTargets, prefs]);
 
   const heroDescriptionRequestedRef = useRef<Set<string>>(new Set());
   const heroItemsSignature = `${billboard?.id ?? ''}|${heroSlides.map((s) => s.id).join(',')}`;
@@ -404,8 +412,8 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   )), [heroSlides, heroDescriptions]);
 
   const heroPendingLogoIds = useMemo(
-    () => new Set(homePlan.logoTargets.map((item) => item.id)),
-    [homePlan.logoTargets],
+    () => new Set(resolvedHomePlan.logoTargets.map((item) => item.id)),
+    [resolvedHomePlan.logoTargets],
   );
 
   const addonIconByName = useMemo(() => {
@@ -415,7 +423,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
     }
     return map;
   }, [state.addons.installed]);
-  const showHero = homePlan.showHero;
+  const showHero = resolvedHomePlan.showHero;
   const showContinueWatching = prefBool(prefs, 'continueWatchingEnabled', true);
   const gifAutoplayEnabled = prefBool(prefs, 'gifAutoplayEnabled', false);
   const topTenFeedKeys = useMemo(() => {
@@ -545,7 +553,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
             ) : (
               <ShelfRow
                 title={formatCatalogTitle(cat.name, cat.type)}
-                items={catalogExtra[cat.id]?.length ? [...cat.items, ...catalogExtra[cat.id]] : cat.items}
+                items={categoryItems.get(cat.id) ?? cat.items}
                 onItemClick={onNavigateDetail}
                 onViewAll={handleViewAll}
                 isLoading={cat.items.length === 0 && !!home.isLoading}

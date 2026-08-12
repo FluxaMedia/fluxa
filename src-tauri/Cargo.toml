@@ -109,4 +109,5 @@ tauri-runtime-wry = { path = "patches/tauri-runtime-wry-2.11.4" }
 panic = "unwind"
 lto = "thin"
 strip = true
-opt-level = "s"
+opt-level = 3
+codegen-units = 1

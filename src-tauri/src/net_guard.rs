@@ -1,4 +1,16 @@
 use std::net::IpAddr;
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
+
+const CLIENT_CACHE_TTL: Duration = Duration::from_secs(60);
+
+struct CachedClient {
+    client: reqwest::Client,
+    expires_at: Instant,
+}
+
+static CLIENT_CACHE: OnceLock<Mutex<HashMap<String, CachedClient>>> = OnceLock::new();
 
 fn is_blocked_ip(ip: &IpAddr) -> bool {
     match ip {
@@ -77,15 +89,47 @@ fn block_private_redirects() -> reqwest::redirect::Policy {
 /// check and the request.
 pub async fn vetted_client(
     url_str: &str,
-    timeout: std::time::Duration,
+    timeout: Duration,
 ) -> Result<reqwest::Client, String> {
-    let (host, addrs) = resolve_public_host(url_str).await?;
-    reqwest::Client::builder()
+    let url = reqwest::Url::parse(url_str).map_err(|_| "invalid url".to_string())?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| "url has no host".to_string())?
+        .to_string();
+    let cache_key = format!(
+        "{}://{}:{}:{}",
+        url.scheme(),
+        host,
+        url.port_or_known_default().unwrap_or(80),
+        timeout.as_millis()
+    );
+    let cache = CLIENT_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(entry) = cache
+        .lock()
+        .map_err(|_| "http client cache poisoned".to_string())?
+        .get(&cache_key)
+        .filter(|entry| entry.expires_at > Instant::now())
+    {
+        return Ok(entry.client.clone());
+    }
+    let (_, addrs) = resolve_public_host(url_str).await?;
+    let client = reqwest::Client::builder()
         .timeout(timeout)
         .redirect(block_private_redirects())
         .resolve_to_addrs(&host, &addrs)
         .build()
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    cache
+        .lock()
+        .map_err(|_| "http client cache poisoned".to_string())?
+        .insert(
+            cache_key,
+            CachedClient {
+                client: client.clone(),
+                expires_at: Instant::now() + CLIENT_CACHE_TTL,
+            },
+        );
+    Ok(client)
 }
 
 /// Like [`vetted_client`], but leaves redirect handling to the caller. This is
@@ -93,15 +137,47 @@ pub async fn vetted_client(
 /// of letting reqwest follow a domain target without another DNS check.
 pub async fn vetted_client_without_redirects(
     url_str: &str,
-    timeout: std::time::Duration,
+    timeout: Duration,
 ) -> Result<reqwest::Client, String> {
-    let (host, addrs) = resolve_public_host(url_str).await?;
-    reqwest::Client::builder()
+    let url = reqwest::Url::parse(url_str).map_err(|_| "invalid url".to_string())?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| "url has no host".to_string())?
+        .to_string();
+    let cache_key = format!(
+        "no-redirect:{}://{}:{}:{}",
+        url.scheme(),
+        host,
+        url.port_or_known_default().unwrap_or(80),
+        timeout.as_millis()
+    );
+    let cache = CLIENT_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(entry) = cache
+        .lock()
+        .map_err(|_| "http client cache poisoned".to_string())?
+        .get(&cache_key)
+        .filter(|entry| entry.expires_at > Instant::now())
+    {
+        return Ok(entry.client.clone());
+    }
+    let (_, addrs) = resolve_public_host(url_str).await?;
+    let client = reqwest::Client::builder()
         .timeout(timeout)
         .redirect(reqwest::redirect::Policy::none())
         .resolve_to_addrs(&host, &addrs)
         .build()
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    cache
+        .lock()
+        .map_err(|_| "http client cache poisoned".to_string())?
+        .insert(
+            cache_key,
+            CachedClient {
+                client: client.clone(),
+                expires_at: Instant::now() + CLIENT_CACHE_TTL,
+            },
+        );
+    Ok(client)
 }
 
 #[cfg(test)]

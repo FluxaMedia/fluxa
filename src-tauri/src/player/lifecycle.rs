@@ -68,31 +68,47 @@ fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
                     .store(false, Ordering::Release);
                 break;
             }
-            let status = match *state.active_player_engine.lock().unwrap() {
+            let position_due = last_position_sent.elapsed()
+                >= Duration::from_millis(
+                    state.player_position_interval_ms.load(Ordering::Acquire),
+                );
+            let active_engine = *state.active_player_engine.lock().unwrap();
+            let (static_status, position_status) = match active_engine {
                 PlayerEngine::Mpv => {
                     let renderer = state.player_mpv_client.lock().unwrap();
-                    renderer.as_ref().map(|renderer| renderer.status())
+                    renderer
+                        .as_ref()
+                        .map(|renderer| {
+                            let static_status = Some(renderer.cached_static_status());
+                            let position_status = position_due.then(|| {
+                                renderer.fast_position_status()
+                            });
+                            (static_status, position_status)
+                        })
+                        .unwrap_or((None, None))
                 }
                 PlayerEngine::Vlc => state
                     .player_renderer_vlc
                     .try_lock()
                     .ok()
-                    .and_then(|renderer| renderer.as_ref().map(|renderer| renderer.status())),
+                    .and_then(|renderer| renderer.as_ref().map(|renderer| {
+                        let status = renderer.status();
+                        (Some(status.static_status()), position_due.then(|| status.position_status()))
+                    }))
+                    .unwrap_or((None, None)),
             };
-            if let Some(status) = status {
-                let static_status = status.static_status();
-                let position_due = last_position_sent.elapsed()
-                    >= Duration::from_millis(
-                        state.player_position_interval_ms.load(Ordering::Acquire),
-                    );
+            if let Some(static_status) = static_status {
                 if last_static.as_ref() != Some(&static_status) {
                     let _ = app.emit("player-static-status", static_status.clone());
                     last_static = Some(static_status);
                 }
-                if position_due {
-                    let _ = app.emit("player-position-status", status.position_status());
+                if let Some(position_status) = position_status {
+                    let _ = app.emit("player-position-status", position_status);
                     last_position_sent = std::time::Instant::now();
                 }
+            } else if let Some(position_status) = position_status {
+                let _ = app.emit("player-position-status", position_status);
+                last_position_sent = std::time::Instant::now();
             }
             tokio::time::sleep(Duration::from_millis(250)).await;
         }

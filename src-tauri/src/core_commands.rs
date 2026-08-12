@@ -64,8 +64,8 @@ pub async fn http_execute_text(url: String, method: String, headers: HashMap<Str
 }
 
 #[tauri::command]
-pub async fn run_plugin_scraper(code: String, scraper_id: String, scraper_settings_json: String, tmdb_id: String, media_type: String, season: Option<i32>, episode: Option<i32>) -> Result<String, String> {
-    tokio::task::spawn_blocking(move || crate::plugin_executor::execute_scraper(code, scraper_id, scraper_settings_json, tmdb_id, media_type, season, episode))
+pub async fn run_plugin_scraper(code: String, repository_url: String, scraper_id: String, scraper_settings_json: String, tmdb_id: String, media_type: String, season: Option<i32>, episode: Option<i32>) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || crate::plugin_executor::execute_scraper(code, repository_url, scraper_id, scraper_settings_json, tmdb_id, media_type, season, episode))
         .await
         .map_err(|error| error.to_string())?
 }

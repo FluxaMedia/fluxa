@@ -2,6 +2,7 @@ use base64::{engine::general_purpose, Engine as _};
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -54,7 +55,40 @@ const MPV_EVENT_PROPERTY_CHANGE: c_int = 22;
 const MPV_END_FILE_REASON_EOF: c_int = 0;
 const MPV_END_FILE_REASON_ERROR: c_int = 4;
 const MPV_FORMAT_FLAG: c_int = 3;
+const MPV_FORMAT_STRING: c_int = 1;
 const PAUSE_OBSERVE_ID: u64 = 1001;
+const STATIC_OBSERVE_BASE: u64 = 1100;
+
+const STATIC_OBSERVE_PROPERTIES: &[&str] = &[
+    "path",
+    "media-title",
+    "duration",
+    "pause",
+    "mute",
+    "volume",
+    "core-idle",
+    "eof-reached",
+    "vo-configured",
+    "video-codec",
+    "video-format",
+    "width",
+    "height",
+    "hwdec-current",
+    "estimated-vf-fps",
+    "audio-codec-name",
+    "audio-params/samplerate",
+    "audio-params/channels",
+    "video-params/primaries",
+    "video-params/colormatrix",
+    "video-params/gamma",
+    "video-out-params/primaries",
+    "video-out-params/colormatrix",
+    "video-out-params/gamma",
+    "video-params/sig-peak",
+    "container-fps",
+    "display-fps",
+    "file-format",
+];
 
 #[repr(C)]
 struct MpvEvent {
@@ -237,6 +271,7 @@ pub struct MpvClientHandle {
     pending_unpause: bool,
     pending_seek_seconds: Option<f64>,
     current_url: Option<String>,
+    static_properties: HashMap<String, Option<String>>,
     next_async_command_id: AtomicU64,
 }
 

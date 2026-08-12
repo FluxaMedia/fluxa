@@ -3,17 +3,13 @@ import {
   coreInvoke,
   coreNormalizeLibraryDocument,
   libraryContinueWatchingDelete,
-  libraryContinueWatchingList,
   libraryContinueWatchingUpsert,
   libraryLastWatchedDelete,
-  libraryLastWatchedList,
   libraryLastWatchedUpsert,
   libraryProgressDelete,
-  libraryProgressList,
-  libraryProgressUpsert,
-  libraryStatusList,
+  libraryProgressUpsertMany,
+  librarySnapshot,
   libraryStatusSet,
-  libraryWatchedList,
   libraryWatchedSet,
   storageRead,
   storageWrite,
@@ -73,14 +69,14 @@ async function readStructuredLibraryDomains(key: string): Promise<{
   lastWatchedEpisodes: Record<string, unknown>;
   externalContinueWatching: unknown[];
 }> {
-  const [progress, statuses, watched, lastWatchedEpisodes, externalContinueWatching] = await Promise.all([
-    libraryProgressList<unknown>(key),
-    libraryStatusList(key),
-    libraryWatchedList(key),
-    libraryLastWatchedList<unknown>(key),
-    libraryContinueWatchingList(key),
-  ]);
-  return { progress, statuses, watched, lastWatchedEpisodes, externalContinueWatching };
+  const snapshot = await librarySnapshot<{
+    progress: Record<string, unknown>;
+    statuses: Record<string, unknown[]>;
+    watched: Record<string, boolean>;
+    lastWatchedEpisodes: Record<string, unknown>;
+    externalContinueWatching: unknown[];
+  }>(key);
+  return snapshot ?? { progress: {}, statuses: {}, watched: {}, lastWatchedEpisodes: {}, externalContinueWatching: [] };
 }
 
 export async function loadLibrary(profileKey?: string): Promise<Record<string, unknown>> {
@@ -208,8 +204,8 @@ export async function persistProgressMerge(
 ): Promise<void> {
   const key = profileKey ?? await effectRunnerLibraryKey();
   const plan = await diffPlan<{ upserts: Array<{ id: string; value: unknown }>; deletes: string[] }>('valueMapDiff', before, after);
-  for (const { id, value } of plan?.upserts ?? []) {
-    await libraryProgressUpsert(key, id, value);
+  if (plan?.upserts?.length) {
+    await libraryProgressUpsertMany(key, plan.upserts.map(({ id, value }) => ({ mediaId: id, value })));
   }
   for (const id of plan?.deletes ?? []) {
     await libraryProgressDelete(key, id);

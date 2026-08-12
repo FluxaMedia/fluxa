@@ -1,8 +1,13 @@
 use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use rusqlite::Connection;
+use rusqlite::params;
+use serde_json::{Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
 #[cfg(target_os = "windows")]
@@ -17,11 +22,112 @@ pub use library_storage::{
     library_continue_watching_delete, library_continue_watching_list,
     library_continue_watching_upsert, library_last_watched_delete, library_last_watched_list,
     library_last_watched_upsert, library_progress_delete, library_progress_list,
-    library_progress_read, library_progress_upsert, library_status_list, library_status_set,
+    library_progress_read, library_progress_upsert, library_progress_upsert_many,
+    library_status_list, library_status_set,
     library_watched_list, library_watched_set, read_pref_field, storage_delete, storage_read,
     storage_write,
 };
 use library_storage_migrations::migrate_legacy_json_files;
+fn decrypt_json(dir: &Path, bytes: Vec<u8>) -> Result<Value, String> {
+    let text = decrypt_or_legacy(dir, &bytes)
+        .ok_or_else(|| "failed to decrypt library value".to_string())?;
+    serde_json::from_str(&text).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn library_snapshot(
+    state: tauri::State<crate::DesktopState>,
+    profile_key: String,
+) -> Option<String> {
+    let _storage_lock = state.storage_lock.lock().ok()?;
+    let dir = state.data_dir.lock().ok()?.clone()?;
+    let profile_key = sanitize_key(&profile_key);
+    let mut database = open_database(&dir).ok()?;
+    library_storage_migrations::ensure_progress_migrated(&database, &dir, &profile_key).ok()?;
+    library_storage_migrations::ensure_items_migrated(&database, &dir, &profile_key).ok()?;
+    library_storage_migrations::ensure_watched_migrated(&database, &dir, &profile_key).ok()?;
+    library_storage_migrations::ensure_last_watched_migrated(&database, &dir, &profile_key).ok()?;
+    library_storage_migrations::ensure_continue_watching_migrated(&database, &dir, &profile_key).ok()?;
+    let transaction = database.transaction().ok()?;
+
+    let mut progress = Map::new();
+    let mut statement = transaction
+        .prepare("SELECT media_id, value FROM library_progress WHERE profile_key = ?1")
+        .ok()?;
+    let rows = statement
+        .query_map([&profile_key], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?))
+        })
+        .ok()?;
+    for row in rows {
+        let (id, value) = row.ok()?;
+        progress.insert(id, decrypt_json(&dir, value).ok()?);
+    }
+    drop(statement);
+
+    let mut statuses = Map::new();
+    for status in ["watchlist", "completed", "dropped"] {
+        let mut items = Vec::new();
+        let mut statement = transaction
+            .prepare("SELECT value FROM library_items WHERE profile_key = ?1 AND status = ?2 ORDER BY updated_at DESC")
+            .ok()?;
+        let rows = statement
+            .query_map(params![profile_key, status], |row| row.get::<_, Vec<u8>>(0))
+            .ok()?;
+        for row in rows {
+            items.push(decrypt_json(&dir, row.ok()?).ok()?);
+        }
+        statuses.insert(status.to_string(), Value::Array(items));
+    }
+
+    let mut watched = Map::new();
+    let mut statement = transaction
+        .prepare("SELECT video_id FROM watched_videos WHERE profile_key = ?1")
+        .ok()?;
+    let rows = statement
+        .query_map([&profile_key], |row| row.get::<_, String>(0))
+        .ok()?;
+    for row in rows {
+        watched.insert(row.ok()?, Value::Bool(true));
+    }
+    drop(statement);
+
+    let mut last_watched = Map::new();
+    let mut statement = transaction
+        .prepare("SELECT series_id, value FROM library_last_watched WHERE profile_key = ?1")
+        .ok()?;
+    let rows = statement
+        .query_map([&profile_key], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?))
+        })
+        .ok()?;
+    for row in rows {
+        let (id, value) = row.ok()?;
+        last_watched.insert(id, decrypt_json(&dir, value).ok()?);
+    }
+    drop(statement);
+
+    let mut continue_watching = Vec::new();
+    let mut statement = transaction
+        .prepare("SELECT value FROM library_continue_watching WHERE profile_key = ?1 ORDER BY updated_at DESC")
+        .ok()?;
+    let rows = statement
+        .query_map([&profile_key], |row| row.get::<_, Vec<u8>>(0))
+        .ok()?;
+    for row in rows {
+        continue_watching.push(decrypt_json(&dir, row.ok()?).ok()?);
+    }
+
+    serde_json::to_string(&serde_json::json!({
+        "progress": Value::Object(progress),
+        "statuses": Value::Object(statuses),
+        "watched": Value::Object(watched),
+        "lastWatchedEpisodes": Value::Object(last_watched),
+        "externalContinueWatching": Value::Array(continue_watching),
+    }))
+    .ok()
+}
+
 #[cfg(test)]
 use library_storage_migrations::{
     ensure_continue_watching_migrated, ensure_items_migrated, ensure_last_watched_migrated,
@@ -44,6 +150,25 @@ const MAGIC: &[u8] = b"FXE1";
 const DATABASE_FILE: &str = "fluxa-storage.sqlite3";
 const LEGACY_MIGRATION_KEY: &str = "legacy_json_migration_v1";
 
+static STORAGE_KEYS: OnceLock<Mutex<HashMap<PathBuf, Key<Aes256Gcm>>>> = OnceLock::new();
+static STORAGE_DATABASE: OnceLock<Mutex<Option<(PathBuf, Connection)>>> = OnceLock::new();
+
+pub struct StorageDatabaseGuard(std::sync::MutexGuard<'static, Option<(PathBuf, Connection)>>);
+
+impl Deref for StorageDatabaseGuard {
+    type Target = Connection;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0.as_ref().expect("storage database is initialized").1
+    }
+}
+
+impl DerefMut for StorageDatabaseGuard {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0.as_mut().expect("storage database is initialized").1
+    }
+}
+
 #[cfg(target_os = "windows")]
 pub(crate) fn read_pref_bool(
     state: tauri::State<DesktopState>,
@@ -57,10 +182,24 @@ fn key_file_path(dir: &Path) -> PathBuf {
 }
 
 fn load_or_create_key(dir: &Path) -> Result<Key<Aes256Gcm>, String> {
+    let keys = STORAGE_KEYS.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(key) = keys
+        .lock()
+        .map_err(|_| "storage key cache poisoned".to_string())?
+        .get(dir)
+        .copied()
+    {
+        return Ok(key);
+    }
     let path = key_file_path(dir);
     if let Ok(bytes) = fs::read(&path) {
         if bytes.len() == 32 {
-            return Ok(*Key::<Aes256Gcm>::from_slice(&bytes));
+            let key = *Key::<Aes256Gcm>::from_slice(&bytes);
+            keys
+                .lock()
+                .map_err(|_| "storage key cache poisoned".to_string())?
+                .insert(dir.to_path_buf(), key);
+            return Ok(key);
         }
     }
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
@@ -75,6 +214,10 @@ fn load_or_create_key(dir: &Path) -> Result<Key<Aes256Gcm>, String> {
     use std::io::Write;
     let mut file = options.open(&path).map_err(|e| e.to_string())?;
     file.write_all(key.as_slice()).map_err(|e| e.to_string())?;
+    keys
+        .lock()
+        .map_err(|_| "storage key cache poisoned".to_string())?
+        .insert(dir.to_path_buf(), key);
     Ok(key)
 }
 
@@ -112,7 +255,7 @@ fn database_path(dir: &Path) -> PathBuf {
     dir.join(DATABASE_FILE)
 }
 
-fn open_database(dir: &Path) -> Result<Connection, String> {
+fn initialize_database(dir: &Path) -> Result<Connection, String> {
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let connection = Connection::open(database_path(dir)).map_err(|e| e.to_string())?;
     connection
@@ -187,6 +330,22 @@ fn open_database(dir: &Path) -> Result<Connection, String> {
         .map_err(|e| e.to_string())?;
     migrate_legacy_json_files(&connection, dir)?;
     Ok(connection)
+}
+
+fn open_database(dir: &Path) -> Result<StorageDatabaseGuard, String> {
+    let cache = STORAGE_DATABASE.get_or_init(|| Mutex::new(None));
+    let mut guard = cache
+        .lock()
+        .map_err(|_| "storage database cache poisoned".to_string())?;
+    if guard.as_ref().is_none_or(|(path, _)| path != dir) {
+        *guard = Some((dir.to_path_buf(), initialize_database(dir)?));
+    }
+    Ok(StorageDatabaseGuard(guard))
+}
+
+pub fn initialize_storage(dir: &Path) -> Result<(), String> {
+    let _database = open_database(dir)?;
+    Ok(())
 }
 
 #[cfg(test)]

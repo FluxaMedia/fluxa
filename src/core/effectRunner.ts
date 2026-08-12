@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/react';
+import { withSentrySpan } from './sentryRuntime';
 import { invoke } from '@tauri-apps/api/core';
 import { completeEffect, coreInvoke, dispatchAction, enqueueOfflineDownload, httpExecuteText, libraryContinueWatchingDelete, libraryProgressDelete, registerTrailerProxyUrl } from './engine';
 import { startTorrentStream, stopTorrentStream } from './mpvPlayer';
@@ -340,7 +340,7 @@ async function runEffect(
   return value;
 }
 
-export async function executeEffect(
+async function executeEffectUnbounded(
   effect: Effect,
   onStateUpdate?: (state: Partial<AppState>) => void,
   signal?: AbortSignal,
@@ -348,8 +348,9 @@ export async function executeEffect(
   try {
     const abortController = new AbortController();
     const effectSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
-    const run = Sentry.startSpan(
-      { name: effect.type, op: 'fluxa.effect' },
+    const run = withSentrySpan(
+      effect.type,
+      'fluxa.effect',
       () => runEffect(effect, onStateUpdate, effectSignal),
     );
     const value = effect.timeoutMs && effect.timeoutMs > 0
@@ -381,6 +382,33 @@ export async function executeEffect(
       status: 'err',
       error: message,
     };
+  }
+}
+
+const effectSlots: Array<() => void> = [];
+let activeEffects = 0;
+const MAX_ACTIVE_EFFECTS = 12;
+
+async function acquireEffectSlot(): Promise<() => void> {
+  if (activeEffects < MAX_ACTIVE_EFFECTS) {
+    activeEffects++;
+    return () => { activeEffects--; effectSlots.shift()?.(); };
+  }
+  await new Promise<void>((resolve) => effectSlots.push(resolve));
+  activeEffects++;
+  return () => { activeEffects--; effectSlots.shift()?.(); };
+}
+
+export async function executeEffect(
+  effect: Effect,
+  onStateUpdate?: (state: Partial<AppState>) => void,
+  signal?: AbortSignal,
+): Promise<EffectResult> {
+  const release = await acquireEffectSlot();
+  try {
+    return await executeEffectUnbounded(effect, onStateUpdate, signal);
+  } finally {
+    release();
   }
 }
 

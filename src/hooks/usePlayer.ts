@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
-import * as Sentry from '@sentry/react';
 import { dispatchAction, coreDetectAnimePlayback, coreInvoke, corePlaybackIntroLookupContentId, corePlaybackPreparePlan, coreResolveNextEpisode, coreCanPrefetchNextEpisode, coreSelectNextEpisodeStream, coreStreamShellPlan, coreTorrentStatusInfo, coreTorrentReadyBudget } from '../core/engine';
 import { subscribePlayerStatus } from '../core/playerStatusStore';
 
