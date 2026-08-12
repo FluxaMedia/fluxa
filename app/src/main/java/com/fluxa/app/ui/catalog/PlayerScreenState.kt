@@ -75,6 +75,7 @@ internal class PlayerScreenState(
     var isSwitchingAudioSource by mutableStateOf(false)
 
     var engine by mutableStateOf(PlayerEngineSnapshot())
+        private set
     var timelinePosition by mutableLongStateOf(0L)
 
     var showControls by mutableStateOf(true)
@@ -143,7 +144,7 @@ internal class PlayerScreenState(
         )
         val player = gson.fromJson(snapshot, CoreStateSnapshot::class.java)?.player ?: return
         currentVideoId = player.currentVideoId
-        currentStreamIndex = player.currentStreamIndex
+        currentStreamIndexState = player.currentStreamIndex
         lastSavedPosition = player.lastSavedPosition
         shouldApplyInitialProgress = player.shouldApplyInitialProgress
         engine = PlayerEngineSnapshot(
@@ -154,6 +155,7 @@ internal class PlayerScreenState(
             ),
             render = RenderSnapshot(isVideoRendered = player.isVideoRendered),
         )
+        syncPlayerCoreState()
     }
 
     fun updateEngineSnapshot(next: PlayerEngineSnapshot) {

@@ -16,9 +16,16 @@ object FluxaStreamingNative {
         targetUrl: String,
         headers: Map<String, String>,
         dvConfigJson: String,
-        preferredPort: Int = 0
+        preferredPort: Int = 0,
+        spoolDirectory: String? = null
     ): String = call {
-        startDvRewriteLocalStreamServerNative(targetUrl, gson.toJson(headers), dvConfigJson, preferredPort)
+        startDvRewriteLocalStreamServerNative(
+            targetUrl,
+            gson.toJson(headers),
+            dvConfigJson,
+            preferredPort,
+            spoolDirectory.orEmpty()
+        )
     }
 
     fun stopLocalStreamServer(serverId: String): Boolean = call {
@@ -58,7 +65,7 @@ object FluxaStreamingNative {
     }
 
     private external fun startLocalStreamServerNative(targetUrl: String, headersJson: String, preferredPort: Int): String
-    private external fun startDvRewriteLocalStreamServerNative(targetUrl: String, headersJson: String, dvConfigJson: String, preferredPort: Int): String
+    private external fun startDvRewriteLocalStreamServerNative(targetUrl: String, headersJson: String, dvConfigJson: String, preferredPort: Int, spoolDirectory: String): String
     private external fun stopLocalStreamServerNative(serverId: String): Boolean
     private external fun startTorrentServerNative(cacheDir: String, preferredPort: Int, accessToken: String): String
     private external fun stopTorrentServerNative(expectedGeneration: Long): Boolean

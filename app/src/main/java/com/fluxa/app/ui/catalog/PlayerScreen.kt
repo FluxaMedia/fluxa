@@ -138,9 +138,9 @@ fun PlayerScreen(
             seekHandler = { positionMs ->
                 val safePosition = positionMs.coerceAtLeast(0L)
                 activeEngine?.seekTo(safePosition, exact = true)
-                state.engine = state.engine.copy(
+                state.updateEngineSnapshot(state.engine.copy(
                     timeline = state.engine.timeline.copy(position = safePosition)
-                )
+                ))
                 state.timelinePosition = safePosition
             },
             speedSetter = { speed -> activeEngine?.setSpeed(speed) },
@@ -180,7 +180,7 @@ fun PlayerScreen(
     )
 
     val updateEngine: (PlayerEngineSnapshot.() -> PlayerEngineSnapshot) -> Unit = { f ->
-        state.updateEngineSnapshot(state.engine.f())
+        state.updateEngineSnapshot(f(state.engine))
     }
 
 
@@ -370,10 +370,10 @@ fun PlayerScreen(
                 }
             } else {
                 torrentParseRetryCount.intValue = 0
-                state.engine = state.engine.copy(
+                state.updateEngineSnapshot(state.engine.copy(
                     playerError = AppStrings.format(lang, "player.error_load", AppStrings.t(lang, "player.error_server")),
                     playback = state.engine.playback.copy(isBuffering = false),
-                )
+                ))
                 if (returnToSourcesOnError && state.currentStreams.size > 1) playbackActions.openSourceSelection()
             }
         }

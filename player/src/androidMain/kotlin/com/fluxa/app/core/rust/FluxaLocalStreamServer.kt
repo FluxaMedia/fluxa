@@ -35,7 +35,8 @@ object FluxaLocalStreamServer {
         zeroLevel5: Boolean = false,
         removeHdr10Plus: Boolean = false,
         fallbackMode: String = "auto",
-        preferredPort: Int = 0
+        preferredPort: Int = 0,
+        spoolDirectory: String? = null
     ): Session? {
         val dvConfigJson = gson.toJson(mapOf(
             "action" to action,
@@ -47,7 +48,7 @@ object FluxaLocalStreamServer {
             "fallback_mode" to fallbackMode
         ))
         val json = FluxaStreamingNative.startDvRewriteLocalStreamServer(
-            targetUrl, headers, dvConfigJson, preferredPort
+            targetUrl, headers, dvConfigJson, preferredPort, spoolDirectory
         )
         return runCatching { gson.fromJson(json, Session::class.java) }.getOrNull()
             ?.takeIf { it.id.isNotBlank() && it.url.isNotBlank() }

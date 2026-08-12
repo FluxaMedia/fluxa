@@ -215,7 +215,8 @@ class ExoPlayerEngine(
                     "never" -> false
                     else -> dvPlan.action == "rpu_convert" || isHlsConvert
                 },
-                fallbackMode = fallbackModeStr
+                fallbackMode = fallbackModeStr,
+                spoolDirectory = controller.context.cacheDir.resolve("fluxa-dv-spool").absolutePath
             )
             if (dvSession != null) {
                 localStreamSession = dvSession
@@ -241,7 +242,8 @@ class ExoPlayerEngine(
                         "never" -> false
                         else -> false
                     },
-                    fallbackMode = fallbackModeStr
+                    fallbackMode = fallbackModeStr,
+                    spoolDirectory = controller.context.cacheDir.resolve("fluxa-dv-spool").absolutePath
                 )
                 if (autoSession != null) {
                     localStreamSession = autoSession

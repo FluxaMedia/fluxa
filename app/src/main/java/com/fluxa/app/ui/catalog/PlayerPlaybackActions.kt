@@ -36,7 +36,7 @@ internal class PlayerPlaybackActions(
         val maxDuration = playbackDurationLimit()
         val target = targetPosition.coerceIn(0L, maxDuration)
         state.pendingSeekTarget = target
-        state.engine = state.engine.copy(timeline = state.engine.timeline.copy(position = target))
+        state.updateEngineSnapshot(state.engine.copy(timeline = state.engine.timeline.copy(position = target)))
 
         if (useMpvBackend) {
             activeEngine?.seekTo(target)
@@ -57,9 +57,9 @@ internal class PlayerPlaybackActions(
                 ) {
                     exoPlayer.seekTo(target)
                     state.timelinePosition = target
-                    state.engine = state.engine.copy(
+                    state.updateEngineSnapshot(state.engine.copy(
                         timeline = state.engine.timeline.copy(position = target),
-                    )
+                    ))
                 }
             }
         }
@@ -91,14 +91,14 @@ internal class PlayerPlaybackActions(
         state.lastSavedPosition = currentPosition()
         state.shouldApplyInitialProgress = false
         state.isSwitchingAudioSource = true
-        state.engine = state.engine.copy(
+        state.updateEngineSnapshot(state.engine.copy(
             playerError = null,
             playback = state.engine.playback.copy(
                 isBuffering = true,
                 hasStartedPlaying = false,
             ),
             render = RenderSnapshot(),
-        )
+        ))
         state.currentStreamIndex = streamIndex
         state.currentUrl = nextStream.playableUrl
         scope.launch {
