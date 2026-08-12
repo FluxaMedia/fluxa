@@ -23,6 +23,8 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 /**
  * Owns the headless-core playback/watchlist protocol used by [HomeViewModel].
@@ -476,11 +478,12 @@ internal class HomeHeadlessPlaybackCoordinator(
         return resolvePlayableTrailerUrl(trailers, dispatch)
     }
 
-    private fun <T> decodeList(value: Any?, type: java.lang.reflect.Type): List<T> = runCatching {
-        gson.fromJson<List<T>>(gson.toJson(value), type).orEmpty()
-    }.getOrElse { emptyList() }
+    private suspend fun <T> decodeList(value: Any?, type: java.lang.reflect.Type): List<T> = withContext(Dispatchers.Default) {
+        runCatching { gson.fromJson<List<T>>(gson.toJson(value), type).orEmpty() }
+            .getOrElse { emptyList() }
+    }
 
-    private fun <T> decodeObject(value: Any?, clazz: Class<T>): T? = runCatching {
-        gson.fromJson(gson.toJson(value), clazz)
-    }.getOrNull()
+    private suspend fun <T> decodeObject(value: Any?, clazz: Class<T>): T? = withContext(Dispatchers.Default) {
+        runCatching { gson.fromJson(gson.toJson(value), clazz) }.getOrNull()
+    }
 }

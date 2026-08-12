@@ -80,6 +80,8 @@ internal object MediaPlayerControllerFactory {
     private const val PREFS_PLAYER = "fluxa_player"
     private const val PREF_BW_ESTIMATE_BPS = "bw_estimate_bps"
     @Volatile private var playerDiskCache: SimpleCache? = null
+    @Volatile private var preferredVideoMimeTypeReady = false
+    @Volatile private var preferredVideoMimeTypeCached: String? = null
     @Volatile private var lastPersistedBandwidthAtMs: Long = 0L
     @Volatile private var lastPersistedBandwidthBps: Long = 0L
 
@@ -208,7 +210,7 @@ internal object MediaPlayerControllerFactory {
     ) {
         val uri = Uri.parse(url)
         if (!shouldUsePlayerDiskCache(uri)) return
-        val okHttp = OkHttpClient.Builder()
+        val okHttp = PlayerHttpResources.newBuilder()
             .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
             .apply { cronetTransportInterceptor(context)?.let { addInterceptor(it) } }
             .build()
@@ -245,7 +247,7 @@ internal object MediaPlayerControllerFactory {
         val subtitleScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
         val subtitleClock = com.fluxa.app.player.subtitle.MonotonicPlaybackClock()
         val subtitleFetcher = OkHttpSubtitleFetcher(
-            OkHttpClient.Builder()
+            PlayerHttpResources.newBuilder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(15, TimeUnit.SECONDS)
                 .build()
@@ -266,7 +268,7 @@ internal object MediaPlayerControllerFactory {
             setEnableDecoderFallback(true)
         }
 
-        val okHttpClient = OkHttpClient.Builder()
+        val okHttpClient = PlayerHttpResources.newBuilder()
             .addInterceptor { chain ->
                 val request = chain.request()
                 val host = request.url.host.lowercase()
@@ -414,6 +416,16 @@ internal object MediaPlayerControllerFactory {
     }
 
     private fun detectPreferredVideoMimeType(context: Context): String? {
+        if (preferredVideoMimeTypeReady) return preferredVideoMimeTypeCached
+        synchronized(this) {
+            if (preferredVideoMimeTypeReady) return preferredVideoMimeTypeCached
+            preferredVideoMimeTypeCached = detectPreferredVideoMimeTypeUncached(context)
+            preferredVideoMimeTypeReady = true
+            return preferredVideoMimeTypeCached
+        }
+    }
+
+    private fun detectPreferredVideoMimeTypeUncached(context: Context): String? {
         val caps = AndroidDolbyVisionCapabilities.detect(context)
         if (caps.displaySupportsDolbyVision && caps.decoderAnyDv) {
             return MimeTypes.VIDEO_DOLBY_VISION

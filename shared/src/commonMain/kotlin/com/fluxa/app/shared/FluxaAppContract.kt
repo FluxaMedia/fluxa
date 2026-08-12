@@ -91,6 +91,7 @@ internal data class FluxaProfileEditorBindings(
 
 internal data class FluxaAppPresentation(
     val deviceType: DeviceType = DeviceType.Mobile,
+    val isLowRamDevice: Boolean = false,
     val settingsBrandIcons: SettingsBrandIcons = SettingsBrandIcons(),
     val nuvioIcon: @Composable () -> Unit = {},
     val stremioIcon: @Composable () -> Unit = {},

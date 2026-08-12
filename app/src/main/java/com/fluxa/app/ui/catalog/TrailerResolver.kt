@@ -13,10 +13,11 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import okhttp3.OkHttpClient
+import com.fluxa.app.player.PlayerHttpResources
 
 internal object TrailerResolver {
 
-    private val httpClient = OkHttpClient.Builder().build()
+    private val httpClient = PlayerHttpResources.newBuilder().build()
 
     fun init(cacheDir: java.io.File) = Unit
 

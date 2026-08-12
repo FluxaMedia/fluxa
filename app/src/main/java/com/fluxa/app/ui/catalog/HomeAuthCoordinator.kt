@@ -5,8 +5,10 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.TraktDeviceCodeResponse
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal class HomeAuthCoordinator(
     private val scope: CoroutineScope,
@@ -142,7 +144,7 @@ internal class HomeAuthCoordinator(
         invalidateHome()
     }
 
-    private fun updatedProfile(result: NativeHeadlessEngineResult): UserProfile? {
+    private suspend fun updatedProfile(result: NativeHeadlessEngineResult): UserProfile? {
         val auth = result.state["auth"] as? Map<*, *>
         val authResult = auth?.get("result")
         val value = (authResult as? Map<*, *>)?.get("profile")
@@ -151,8 +153,8 @@ internal class HomeAuthCoordinator(
         return decode(value)
     }
 
-    private inline fun <reified T> decode(value: Any?): T? {
-        if (value == null) return null
-        return runCatching { gson.fromJson(gson.toJsonTree(value), T::class.java) }.getOrNull()
+    private suspend inline fun <reified T> decode(value: Any?): T? = withContext(Dispatchers.Default) {
+        if (value == null) return@withContext null
+        runCatching { gson.fromJson(gson.toJsonTree(value), T::class.java) }.getOrNull()
     }
 }

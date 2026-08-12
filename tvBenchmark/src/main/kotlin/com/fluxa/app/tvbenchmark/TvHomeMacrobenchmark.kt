@@ -2,6 +2,7 @@ package com.fluxa.app.tvbenchmark
 
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.FrameTimingMetric
+import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.benchmark.macro.StartupMode
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -30,6 +31,23 @@ class TvHomeMacrobenchmark {
         },
         measureBlock = {
             browseTvHome(includeBillboardRotation = true)
+        },
+    )
+
+    @Test
+    fun coldStartWithTorrentBootstrap() = benchmarkRule.measureRepeated(
+        packageName = TV_PACKAGE_NAME,
+        metrics = listOf(StartupTimingMetric(), FrameTimingMetric()),
+        compilationMode = CompilationMode.Partial(),
+        startupMode = StartupMode.COLD,
+        iterations = 5,
+        setupBlock = {
+            pressHome()
+        },
+        measureBlock = {
+            startActivityAndWait()
+            device.waitForIdle()
+            browseTvHome(includeBillboardRotation = false)
         },
     )
 }

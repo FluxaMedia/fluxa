@@ -19,10 +19,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.delay
 
 internal class HomeCatalogFeedCoordinator(
     private val repository: StremioRepository,
@@ -34,7 +36,8 @@ internal class HomeCatalogFeedCoordinator(
     private val isUpcoming: (Meta) -> Boolean,
     private val normalizeCatalogItems: suspend (List<Meta>, String, String, String?) -> List<Meta>,
     private val setCategories: (List<HomeCategory>) -> Unit,
-    private val currentCategories: () -> List<HomeCategory>
+    private val currentCategories: () -> List<HomeCategory>,
+    private val feedConcurrency: Int
 ) {
     private var remainingCatalogsJob: Job? = null
 
@@ -291,15 +294,41 @@ internal class HomeCatalogFeedCoordinator(
                     }
                     .drop(2)
 
-                val publishMutex = Mutex()
-                enabledFeeds.map { feed ->
-                    async {
-                        val category = fetchAddonFeedCategory(feed, lang) ?: return@async
-                        publishMutex.withLock {
-                            setCategories(optimizeHomeCategories(currentCategories() + category, lang))
+                val results = Channel<HomeCategory>(Channel.UNLIMITED)
+                val limiter = Semaphore(feedConcurrency.coerceIn(1, enabledFeeds.size.coerceAtLeast(1)))
+                val publisher = launch {
+                    val pending = mutableListOf<HomeCategory>()
+                    for (first in results) {
+                        pending += first
+                        delay(32)
+                        while (true) {
+                            val next = results.tryReceive().getOrNull() ?: break
+                            pending += next
+                        }
+                        val additions = pending.toList()
+                        pending.clear()
+                        if (additions.isNotEmpty()) {
+                            setCategories(
+                                optimizeHomeCategories(
+                                    currentCategories() + additions,
+                                    lang
+                                )
+                            )
                         }
                     }
-                }.awaitAll()
+                }
+                coroutineScope {
+                    enabledFeeds.map { feed ->
+                        async {
+                            limiter.withPermit {
+                                val category = fetchAddonFeedCategory(feed, lang)
+                                if (category != null) results.send(category)
+                            }
+                        }
+                    }.awaitAll()
+                }
+                results.close()
+                publisher.join()
             } catch (e: Exception) {
                 Log.e("HomeViewModel", "Remaining catalogs failed", e)
             }

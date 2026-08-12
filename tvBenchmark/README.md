@@ -11,6 +11,8 @@ Use a real Android TV/Google TV device when judging frame pacing. Open the TV fl
 
 The benchmark deliberately stays on Home for more than 18 seconds so `HomeBillboardRuntime` rotation is included in `FrameTimingMetric` and its Perfetto trace. It can run on the TV flavor's API 24 minimum. `frameOverrunMs` is available on API 31+, while older devices still report CPU frame duration.
 
+The cold-start benchmark includes torrent bootstrap contention. For an explicit system trace around torrent startup, run `tools/performance/torrent-startup-perfetto.sh com.fluxa.app.tv`.
+
 ## Baseline Profile capture
 
 `BaselineProfileRule` requires Android 13/API 33+ on an unrooted device, or a rooted API 28+ device.

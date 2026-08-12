@@ -36,6 +36,25 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
+private data class DetailInitialDecoded(
+    val detail: MetaDetail?,
+    val trailers: List<DetailTrailer>,
+    val userAddons: List<AddonDescriptor>
+)
+
+private data class DetailLocalDecoded(
+    val savedPlayback: Meta?,
+    val localWatchedVideoIds: Set<String>,
+    val userAddons: List<AddonDescriptor>
+)
+
+private data class DetailSecondaryDecoded(
+    val watchedVideoIds: List<String>,
+    val similarItems: List<Meta>,
+    val trailers: List<DetailTrailer>,
+    val ratings: List<MetaRating>
+)
+
 @HiltViewModel
 class DetailViewModel @Inject constructor(
     @ApplicationContext private val applicationContext: android.content.Context,
@@ -154,6 +173,9 @@ class DetailViewModel @Inject constructor(
                     val episodes = if (type == "series") {
                         seasonVideosForSelection(initialDetail.videos.orEmpty(), 1)
                     } else emptyList()
+                    val userAddons = withContext(Dispatchers.Default) {
+                        gson.fromStateList<AddonDescriptor>(localState?.get("userAddons"))
+                    }
                     _uiState.update {
                         it.copy(
                             detail = initialDetail,
@@ -167,7 +189,7 @@ class DetailViewModel @Inject constructor(
                             traktComments = emptyList(),
                             mdblistDiscussion = emptyList(),
                             hasStreamProviders = localState?.get("hasStreamProviders") as? Boolean ?: false,
-                            userAddons = gson.fromStateList(localState?.get("userAddons")),
+                            userAddons = userAddons,
                             isInWatchlist = providerState.first,
                             feedback = providerState.second.takeIf {
                                 provider != null && ProviderCapability.FAVORITES in provider.capabilities
@@ -191,12 +213,20 @@ class DetailViewModel @Inject constructor(
                     )
                 )
                 val detailState = headlessResult.state["detail"] as? Map<*, *>
-                val result = gson.fromState<MetaDetail>(detailState?.get("meta"))
+                val initialDecoded = withContext(Dispatchers.Default) {
+                    DetailInitialDecoded(
+                        detail = gson.fromState(detailState?.get("meta")),
+                        trailers = gson.fromStateList(detailState?.get("trailers")),
+                        userAddons = gson.fromStateList(detailState?.get("userAddons"))
+                    )
+                }
+                val result = initialDecoded.detail
                 if (generation != detailLoadGeneration) return@launch
                 _uiState.update {
                     it.copy(
                         detail = result ?: initialDetail,
-                        trailers = gson.fromStateList(detailState?.get("trailers")),
+                        trailers = initialDecoded.trailers,
+                        userAddons = initialDecoded.userAddons,
                         isLoading = false
                     )
                 }
@@ -219,12 +249,19 @@ class DetailViewModel @Inject constructor(
                 ).state["detail"] as? Map<*, *>
 
                 if (generation != detailLoadGeneration) return@launch
-                _uiState.update {
-                    it.copy(
+                val decodedLocal = withContext(Dispatchers.Default) {
+                    DetailLocalDecoded(
                         savedPlayback = gson.fromState(localState?.get("savedPlayback")),
                         localWatchedVideoIds = gson.fromStateList<String>(localState?.get("localWatchedVideoIds")).toSet(),
+                        userAddons = gson.fromStateList(localState?.get("userAddons"))
+                    )
+                }
+                _uiState.update {
+                    it.copy(
+                        savedPlayback = decodedLocal.savedPlayback,
+                        localWatchedVideoIds = decodedLocal.localWatchedVideoIds,
                         hasStreamProviders = localState?.get("hasStreamProviders") as? Boolean ?: false,
-                        userAddons = gson.fromStateList(localState?.get("userAddons")),
+                        userAddons = decodedLocal.userAddons,
                         isInWatchlist = localState?.get("isInWatchlist") as? Boolean ?: false,
                         feedback = localState?.get("feedback") as? Boolean
                     )
@@ -254,15 +291,22 @@ class DetailViewModel @Inject constructor(
                         )
                     ).state["detail"] as? Map<*, *>
                     if (generation != detailLoadGeneration) return@launch
-                    _uiState.update {
-                        val mdblistRatings = gson.fromStateList<MetaRating>(secondary?.get("mdblistRatings"))
-                        val currentDetail = it.detail
-                        it.copy(
+                    val decodedSecondary = withContext(Dispatchers.Default) {
+                        DetailSecondaryDecoded(
                             watchedVideoIds = gson.fromStateList(secondary?.get("watchedVideoIds")),
                             similarItems = gson.fromStateList(secondary?.get("similarItems")),
-                            trailers = if (it.trailers.isEmpty()) gson.fromStateList(secondary?.get("trailers")) else it.trailers,
+                            trailers = gson.fromStateList(secondary?.get("trailers")),
+                            ratings = gson.fromStateList(secondary?.get("mdblistRatings"))
+                        )
+                    }
+                    _uiState.update {
+                        val currentDetail = it.detail
+                        it.copy(
+                            watchedVideoIds = decodedSecondary.watchedVideoIds,
+                            similarItems = decodedSecondary.similarItems,
+                            trailers = if (it.trailers.isEmpty()) decodedSecondary.trailers else it.trailers,
                             detail = currentDetail?.copy(
-                                ratings = (currentDetail.ratings.orEmpty() + mdblistRatings)
+                                ratings = (currentDetail.ratings.orEmpty() + decodedSecondary.ratings)
                                     .distinctBy { rating -> rating.source.lowercase() }
                             )
                         )
@@ -394,7 +438,9 @@ class DetailViewModel @Inject constructor(
             )
         )
         val detailMap = result.state["detail"] as? Map<*, *>
-        val episodes: List<Video> = gson.fromStateList(detailMap?.get("seasonEpisodes"))
+        val episodes: List<Video> = withContext(Dispatchers.Default) {
+            gson.fromStateList(detailMap?.get("seasonEpisodes"))
+        }
         return episodes.filter { !detailIsUpcoming(it.released) }.randomOrNull()?.id
     }
 
@@ -424,7 +470,10 @@ class DetailViewModel @Inject constructor(
                 )
             )
             val detail = result.state["detail"] as? Map<*, *>
-            _uiState.update { it.copy(seasonEpisodes = gson.fromStateList(detail?.get("seasonEpisodes"))) }
+            val episodes = withContext(Dispatchers.Default) {
+                gson.fromStateList<Video>(detail?.get("seasonEpisodes"))
+            }
+            _uiState.update { it.copy(seasonEpisodes = episodes) }
         }
     }
 
@@ -694,7 +743,9 @@ class DetailViewModel @Inject constructor(
                 if (activeStreamsRequestIds != requestIds.toSet()) return@launch
                 val detail = result.state["detail"] as? Map<*, *>
                 applyDetailStreamState(detail)
-                val fetchedStreams: List<Stream> = gson.fromStateList(detail?.get("streams"))
+                val fetchedStreams: List<Stream> = withContext(Dispatchers.Default) {
+                    gson.fromStateList(detail?.get("streams"))
+                }
                 val resolvedRequestId = detail?.get("resolvedRequestId")?.toString() ?: requestIds.first()
 
                 if (fetchedStreams.isNotEmpty()) {
@@ -713,15 +764,22 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    private fun applyDetailStreamState(detail: Map<*, *>?) {
-        val allStreams: List<Stream> = gson.fromStateList(detail?.get("streams"))
+    private suspend fun applyDetailStreamState(detail: Map<*, *>?) {
+        val decoded = withContext(Dispatchers.Default) {
+            Triple(
+                gson.fromStateList<Stream>(detail?.get("streams")),
+                gson.fromStateList<String>(detail?.get("availableAddons")),
+                gson.fromStateList<String>(detail?.get("loadingAddonNames"))
+            )
+        }
+        val allStreams = decoded.first
         val sel = _uiState.value.selectedAddon
         _uiState.update {
             it.copy(
                 streams = allStreams,
                 filteredStreams = if (sel == null) allStreams else allStreams.filter { s -> s.addonName == sel },
-                availableAddons = gson.fromStateList(detail?.get("availableAddons")),
-                loadingAddonNames = gson.fromStateList(detail?.get("loadingAddonNames")),
+                availableAddons = decoded.second,
+                loadingAddonNames = decoded.third,
                 hasStreamProviders = detail?.get("hasStreamProviders") as? Boolean ?: it.hasStreamProviders
             )
         }
@@ -759,7 +817,9 @@ class DetailViewModel @Inject constructor(
             )
         )
         val addons = result.state["addons"] as? Map<*, *>
-        return gson.fromStateList(addons?.get("lastResourceResult"))
+        return withContext(Dispatchers.Default) {
+            gson.fromStateList(addons?.get("lastResourceResult"))
+        }
     }
 
     fun downloadEpisodes(episodes: List<Video?>, context: android.content.Context? = null) {
@@ -825,7 +885,9 @@ class DetailViewModel @Inject constructor(
             )
         )
         val detail = result.state["detail"] as? Map<*, *>
-        return gson.fromStateList(detail?.get("streams"))
+        return withContext(Dispatchers.Default) {
+            gson.fromStateList(detail?.get("streams"))
+        }
     }
 
     private suspend fun selectDownloadSubtitle(

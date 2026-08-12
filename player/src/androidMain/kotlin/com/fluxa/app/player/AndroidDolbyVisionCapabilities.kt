@@ -20,8 +20,17 @@ data class DvDeviceRuntimeCapabilities(
 
 object AndroidDolbyVisionCapabilities {
     private const val PREFS_NAME = "fluxa_dv_capability_probe"
+    @Volatile private var cachedCapabilities: DolbyVisionCapabilities? = null
+    @Volatile private var cachedRuntimeCapabilities: DvDeviceRuntimeCapabilities? = null
 
     fun detect(context: Context): DolbyVisionCapabilities {
+        cachedCapabilities?.let { return it }
+        return synchronized(this) {
+            cachedCapabilities ?: detectUncached(context).also { cachedCapabilities = it }
+        }
+    }
+
+    private fun detectUncached(context: Context): DolbyVisionCapabilities {
         val hdrTypes = queryDisplayHdrTypes(context)
         val decoders = queryDecoderProfiles()
         return DolbyVisionCapabilities(
@@ -37,6 +46,13 @@ object AndroidDolbyVisionCapabilities {
     }
 
     fun detectRuntimeCapabilities(context: Context): DvDeviceRuntimeCapabilities {
+        cachedRuntimeCapabilities?.let { return it }
+        return synchronized(this) {
+            cachedRuntimeCapabilities ?: detectRuntimeUncached(context).also { cachedRuntimeCapabilities = it }
+        }
+    }
+
+    private fun detectRuntimeUncached(context: Context): DvDeviceRuntimeCapabilities {
         val info = decoderInfoOrNull()
         val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return DvDeviceRuntimeCapabilities(

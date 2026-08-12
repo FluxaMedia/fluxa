@@ -30,7 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -103,7 +103,7 @@ fun CatalogCard(
         hovered && deviceType == DeviceType.Desktop -> 1.025f
         else -> 1f
     }
-    val cardScale by animateFloatAsState(
+    val cardScale = animateFloatAsState(
         targetValue = targetScale,
         animationSpec = tween(durationMillis = 140),
         label = "catalog-card-scale"
@@ -140,13 +140,14 @@ fun CatalogCard(
                 }
             )
             .zIndex(if (focused || (hovered && deviceType == DeviceType.Desktop)) 1f else 0f)
-            .scale(cardScale)
-            .then(
-                if (focused) {
-                    Modifier.border(3.dp, Color.White, RoundedCornerShape(model.cornerRadius))
-                } else {
-                    Modifier
-                }
+            .graphicsLayer {
+                scaleX = cardScale.value
+                scaleY = cardScale.value
+            }
+            .border(
+                3.dp,
+                if (focused) Color.White else Color.Transparent,
+                RoundedCornerShape(model.cornerRadius)
             )
             .combinedClickable(
                 interactionSource = interactionSource,

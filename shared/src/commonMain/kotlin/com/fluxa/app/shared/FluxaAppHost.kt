@@ -118,6 +118,7 @@ private fun FluxaAppHostContent(
     val authDataSource = dataSources.auth
     val settingsDataSource = dataSources.settings
     val deviceType = config.deviceType
+    val isLowRamDevice = config.isLowRamDevice
     val language = config.language
     val destination = config.destination
     val detailRequest = config.detailRequest
@@ -694,6 +695,7 @@ private fun FluxaAppHostContent(
         ),
         presentation = FluxaAppPresentation(
             deviceType = deviceType,
+            isLowRamDevice = isLowRamDevice,
             settingsBrandIcons = com.fluxa.app.shared.feature.settings.SettingsBrandIcons(
                 stremio = stremioIcon,
                 nuvio = nuvioIcon,

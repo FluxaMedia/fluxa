@@ -60,6 +60,10 @@ internal fun HeroTrailerVideoSurface(
     }
 
     LaunchedEffect(exoPlayer, cues) {
+        if (cues.isEmpty()) {
+            onActiveSubtitleChanged("")
+            return@LaunchedEffect
+        }
         var lastCueText = ""
         while (isActive) {
             val positionSeconds = exoPlayer.currentPosition / 1000.0

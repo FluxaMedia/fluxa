@@ -37,6 +37,7 @@ data class FluxaAppDataSources(
 /** Stable platform-facing configuration for [FluxaAppHost]. */
 data class FluxaAppHostConfig(
     val deviceType: DeviceType = DeviceType.Mobile,
+    val isLowRamDevice: Boolean = false,
     val language: String? = null,
     val destination: FluxaDestination? = null,
     val detailRequest: DetailRequestUiModel? = null,

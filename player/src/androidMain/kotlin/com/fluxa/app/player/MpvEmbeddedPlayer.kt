@@ -52,6 +52,12 @@ private data class PendingMpvLoad(
     val allowHardwareDecode: Boolean = true
 )
 
+private data class MpvMemoryPolicy(
+    val cacheSeconds: Int,
+    val demuxerMaxBytes: String,
+    val readaheadSeconds: Int
+)
+
 class MpvEmbeddedPlayer(context: Context, private val customOptions: String = "") {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -92,6 +98,8 @@ class MpvEmbeddedPlayer(context: Context, private val customOptions: String = ""
 
     private val _videoAspectRatio = MutableStateFlow<Float?>(null)
     val videoAspectRatio: StateFlow<Float?> = _videoAspectRatio
+
+    private val memoryPolicy = mpvMemoryPolicy()
 
     private val _chapters = MutableStateFlow<List<Chapter>>(emptyList())
     val chapters: StateFlow<List<Chapter>> = _chapters
@@ -402,9 +410,9 @@ class MpvEmbeddedPlayer(context: Context, private val customOptions: String = ""
             "interpolation" to "no",
             "deband" to "no",
             "cache" to "yes",
-            "cache-secs" to "60",
-            "demuxer-max-bytes" to "96MiB",
-            "demuxer-readahead-secs" to "60",
+            "cache-secs" to memoryPolicy.cacheSeconds.toString(),
+            "demuxer-max-bytes" to memoryPolicy.demuxerMaxBytes,
+            "demuxer-readahead-secs" to memoryPolicy.readaheadSeconds.toString(),
             "demuxer-lavf-o" to "allowed_extensions=ALL",
             "vd-lavc-threads" to "0",
             "ad-lavc-threads" to "0",
@@ -569,8 +577,30 @@ class MpvEmbeddedPlayer(context: Context, private val customOptions: String = ""
         pollJob = scope.launch {
             while (isActive) {
                 updatePositionOnly()
-                delay(500)
+                delay(
+                    when {
+                        !_state.value.isPlaying -> 1_500L
+                        !surfaceAttached -> 1_000L
+                        else -> 500L
+                    }
+                )
             }
+        }
+    }
+
+    private fun mpvMemoryPolicy(): MpvMemoryPolicy {
+        val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        val memoryInfo = android.app.ActivityManager.MemoryInfo()
+        activityManager?.getMemoryInfo(memoryInfo)
+        val totalRamMb = memoryInfo.totalMem / (1024L * 1024L)
+        val isTelevision = appContext.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+        return when {
+            activityManager?.isLowRamDevice == true || (isTelevision && totalRamMb <= 2_048L) ->
+                MpvMemoryPolicy(30, "40MiB", 30)
+            isTelevision && totalRamMb <= 3_072L ->
+                MpvMemoryPolicy(45, "64MiB", 45)
+            else ->
+                MpvMemoryPolicy(60, "96MiB", 60)
         }
     }
 

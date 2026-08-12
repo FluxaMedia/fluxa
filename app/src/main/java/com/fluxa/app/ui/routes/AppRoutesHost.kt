@@ -141,6 +141,7 @@ internal fun AppRoutesHost(
         platformServices = androidFluxaPlatformServices,
         config = com.fluxa.app.shared.FluxaAppHostConfig(
             deviceType = deviceType,
+            isLowRamDevice = context.getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice == true,
             language = activeProfile?.language,
             destination = currentDestination,
             showNavigationBar = true,

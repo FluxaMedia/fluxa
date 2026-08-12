@@ -429,6 +429,13 @@ class HomeViewModel @Inject constructor(
     }
 
     private val feedCoordinator by lazy {
+        val activityManager = appContext.getSystemService(android.app.ActivityManager::class.java)
+        val isTelevision = appContext.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+        val feedConcurrency = when {
+            isTelevision && activityManager?.isLowRamDevice == true -> 3
+            isTelevision -> 5
+            else -> 8
+        }
         HomeCatalogFeedCoordinator(
             repository = repository,
             addonRepository = addonRepository,
@@ -439,7 +446,8 @@ class HomeViewModel @Inject constructor(
             isUpcoming = continueWatchingCoordinator::isUpcoming,
             normalizeCatalogItems = ::normalizeCatalogItems,
             setCategories = ::setCategoriesState,
-            currentCategories = categoryState::currentCategories
+            currentCategories = categoryState::currentCategories,
+            feedConcurrency = feedConcurrency
         )
     }
 

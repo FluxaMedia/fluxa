@@ -63,21 +63,21 @@ private object AndroidAlphaTrimTransformation : Transformation() {
         val width = input.width
         val height = input.height
         if (width <= 1 || height <= 1 || !input.hasAlpha()) return input
-        val pixels = IntArray(width * height)
-        input.getPixels(pixels, 0, width, 0, 0, width, height)
+        val pixels = IntArray(width)
         val threshold = 8
         var left = width
         var top = height
         var right = -1
         var bottom = -1
-        pixels.forEachIndexed { index, color ->
-            if ((color ushr 24) > threshold) {
-                val x = index % width
-                val y = index / width
+        for (y in 0 until height) {
+            input.getPixels(pixels, 0, width, 0, y, width, 1)
+            for (x in 0 until width) {
+                if ((pixels[x] ushr 24) > threshold) {
                 if (x < left) left = x
                 if (x > right) right = x
                 if (y < top) top = y
                 if (y > bottom) bottom = y
+                }
             }
         }
         if (right < left || bottom < top) return input

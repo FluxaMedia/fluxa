@@ -1,6 +1,8 @@
 package com.fluxa.app.shared
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -116,6 +118,7 @@ internal fun FluxaApp(
     modifier: Modifier = Modifier,
 ) {
     val deviceType = presentation.deviceType
+    val isLowRamDevice = presentation.isLowRamDevice
     val settingsBrandIcons = presentation.settingsBrandIcons
     val nuvioIcon = presentation.nuvioIcon
     val stremioIcon = presentation.stremioIcon
@@ -233,6 +236,7 @@ internal fun FluxaApp(
                 targetState = screenKey,
                 transitionSpec = {
                     when {
+                        isTv && isLowRamDevice -> EnterTransition.None togetherWith ExitTransition.None
                         isTv -> fadeIn(tween(100)).togetherWith(fadeOut(tween(80)))
                         isDesktop -> {
                             // Desktop windows can contain several bitmap-heavy rows at once. Keep

@@ -23,6 +23,7 @@ class TorrentServerEngine(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     @Volatile private var running = false
     @Volatile private var generation: Long? = null
+    @Volatile private var torrentActive = false
 
     fun start() {
         if (isRunning() && healthResponds()) return
@@ -57,7 +58,7 @@ class TorrentServerEngine(private val context: Context) {
         watcherJob?.cancel()
         watcherJob = scope.launch {
             while (isActive) {
-                delay(3000)
+                delay(if (torrentActive) 3_000L else 30_000L)
                 if (!healthResponds()) {
                     Log.w("TorrentServer", "Rust torrent engine health check failed. Restarting...")
                     FluxaStreamingNative.stopTorrentServer(generation)
@@ -88,6 +89,10 @@ class TorrentServerEngine(private val context: Context) {
 
     fun isRunning(): Boolean {
         return running
+    }
+
+    fun setTorrentActive(active: Boolean) {
+        torrentActive = active
     }
 
     private fun healthResponds(): Boolean = runCatching {

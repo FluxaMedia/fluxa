@@ -11,6 +11,7 @@ data class CatalogItemUiModel(
     val type: String,
     val card: CatalogCardUiModel,
     val source: CatalogSourceUiModel = CatalogSourceUiModel(),
+    val lazyKey: String = catalogLazyKey(id, type, source),
     val resume: CatalogResumeUiModel? = null,
     /** Raw source-owned artwork. Card artwork may be a landscape progress image. */
     val posterUrl: String? = null,
@@ -24,7 +25,9 @@ data class CatalogItemUiModel(
     val runtimeLabel: String? = null
 )
 
-fun CatalogItemUiModel.stableLazyKey(): String = buildString {
+fun CatalogItemUiModel.stableLazyKey(): String = lazyKey
+
+private fun catalogLazyKey(id: String, type: String, source: CatalogSourceUiModel): String = buildString {
     append(source.providerId ?: source.addonTransportUrl ?: "catalog")
     append(':')
     append(source.providerAccountId.orEmpty())

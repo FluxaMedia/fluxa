@@ -178,6 +178,7 @@ class TorrentStreamManager private constructor() {
     fun stop() {
         statusJob?.cancel()
         statusJob = null
+        engine?.setTorrentActive(false)
         _status.value = TorrentStreamStatus()
         activeTorrentLink?.let { link ->
             scope.launch {
@@ -206,6 +207,7 @@ class TorrentStreamManager private constructor() {
     @Synchronized
     private fun activateTorrentLink(link: String) {
         activeTorrentLink = link
+        engine?.setTorrentActive(true)
         activeTelemetryContext = activeTelemetryContext?.let { context ->
             if (context.link == null) context.copy(link = link) else context
         }
