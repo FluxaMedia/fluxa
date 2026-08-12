@@ -103,7 +103,14 @@ pub fn library_snapshot(
         .query_map([&profile_key], |row| row.get::<_, String>(0))
         .ok()?;
     for row in rows {
-        watched.insert(row.ok()?, Value::Bool(true));
+        match row {
+            Ok(id) => {
+                watched.insert(id, Value::Bool(true));
+            }
+            Err(error) => {
+                log::warn!("library snapshot: skipping watched row: {error}");
+            }
+        }
     }
     drop(statement);
 
