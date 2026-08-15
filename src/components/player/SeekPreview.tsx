@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../../platform/invoke';
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { fmtTime, type Chapter } from './PlayerOverlayPrimitives';
 

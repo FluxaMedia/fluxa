@@ -7,9 +7,9 @@ import {
 } from './addonManifest';
 import { fetchJson } from './httpClient';
 import { fetchParsedAddonResource } from './fetchPlanning';
-import { loadAddons, saveAddons } from './libraryOps';
+import { loadAddons, loadActiveProfile, loadEnabledAddons, saveAddons } from './libraryOps';
 import { addonName, normalizeAddonDescriptor } from './addons';
-import type { AddonDescriptor } from './types';
+import type { AddonDescriptor, UserProfile } from './types';
 
 export async function fetchAddonManifest(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const transportUrl = payload.transportUrl as string;
@@ -31,8 +31,10 @@ export async function fetchAddonManifest(payload: Record<string, unknown>, signa
   throw new Error(`Unable to fetch addon manifest: ${transportUrl}`);
 }
 
-export async function refreshInstalledAddons(_payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
-  const addons = await loadAddons();
+export async function refreshInstalledAddons(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+  const payloadProfile = payload.profile;
+  const profile = payloadProfile && typeof payloadProfile === 'object' ? payloadProfile as UserProfile : await loadActiveProfile();
+  const addons = await loadEnabledAddons(profile);
   const refreshed: AddonDescriptor[] = [];
   for (const addon of addons) {
     try {
@@ -43,7 +45,7 @@ export async function refreshInstalledAddons(_payload: Record<string, unknown>, 
       refreshed.push(addon);
     }
   }
-  await saveAddons(refreshed);
+  if (!profile?.nuvioAccessToken) await saveAddons(refreshed);
   return { addons: refreshed };
 }
 

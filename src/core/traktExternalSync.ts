@@ -18,7 +18,7 @@ import { platformFetch } from './httpClient';
 import { refreshTraktProfile, traktHeaders } from './traktSync';
 import { replaceExternalContinueWatching } from './externalSyncUtils';
 import type { ImportCategory } from './importCategories';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 
 function debugLog(msg: string) {
   void invoke('debug_log', { msg }).catch(() => {});
@@ -131,6 +131,7 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
   const categories = payload.categories as ImportCategory[] | undefined;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
   const dryRun = payload.dryRun === true;
+  const readOnly = payload.readOnly === true;
   const force = payload.force === true;
 
   let headers = traktHeaders(token, clientId);
@@ -198,6 +199,7 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
 
   let watchlistCount = 0;
   let watchedCount = 0;
+  let providerSnapshot = { watchlist: [] as Record<string, unknown>[], watching: items, completed: [] as Record<string, unknown>[], dropped: [] as Record<string, unknown>[], favorites: [] as Record<string, unknown>[] };
   try {
     const [watchlistMovies, watchlistShows, watchedMovies, watchedShows] = await Promise.all([
       watchlistMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies/rank?extended=full,images', headers, 250) : Promise.resolve(cache.watchlistMovies ?? []),
@@ -220,11 +222,12 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
       resolveTraktShowArtwork(completedItemsRaw, headers),
       resolveTraktShowArtwork(favoriteItemsRaw, headers),
     ]);
+    providerSnapshot = { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: favoriteItems };
     debugLog(`syncTraktNow: completedItems=${JSON.stringify(completedItems.map((item) => ({ id: item.id, name: item.name, poster: item.poster, background: item.background })))}`);
     watchlistCount = watchlistItems.length;
     watchedCount = Object.values(watchedIds).filter(Boolean).length;
 
-    if (!dryRun) {
+    if (!dryRun && !readOnly) {
       await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: favoriteItems }, profileKey);
     }
 
@@ -235,13 +238,20 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     debugLog(`syncTraktNow: watchlist/completed block threw ${error instanceof Error ? `${error.message}\n${error.stack}` : String(error)}`);
   }
 
-  if (wants('continueWatching') && !dryRun) {
+  if (wants('continueWatching') && !dryRun && !readOnly) {
     await replaceExternalContinueWatching({ items, provider: 'trakt', profileKey });
     const { promoteExternalProgress } = await import('./externalSync');
     await promoteExternalProgress(items, 'trakt', refreshedProfile ?? null);
   }
 
-  return { synced: true, provider: 'trakt', continueWatchingCount: items.length, watchlistCount, watchedCount };
+  return {
+    synced: true,
+    provider: 'trakt',
+    continueWatchingCount: items.length,
+    watchlistCount,
+    watchedCount,
+    snapshot: providerSnapshot,
+  };
 }
 
 export async function fetchTraktCalendarItems(

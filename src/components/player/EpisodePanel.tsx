@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { emit } from '@tauri-apps/api/event';
+import { platformEmit as emit } from '../../platform/browser';
 import { ChevronDown } from 'lucide-react';
 import { t } from '../../i18n';
 import { Popover } from '../ui/Popover';

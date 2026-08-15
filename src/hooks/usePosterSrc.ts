@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { platformConvertFileSrc, platformInvoke as invoke } from '../platform/invoke';
 
 const resolved = new Map<string, Promise<string>>();
 
 function resolveLocalSrc(url: string): Promise<string> {
+  if (import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos') {
+    return Promise.resolve(url);
+  }
   let promise = resolved.get(url);
   if (!promise) {
-    promise = invoke<string>('cache_poster_image', { url }).then(convertFileSrc);
+    promise = invoke<string>('cache_poster_image', { url }).then(platformConvertFileSrc);
     promise.catch(() => resolved.delete(url));
     resolved.set(url, promise);
   }

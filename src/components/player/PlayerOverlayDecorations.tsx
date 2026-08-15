@@ -1,4 +1,4 @@
-import { emit } from '@tauri-apps/api/event';
+import { platformEmit as emit } from '../../platform/browser';
 import type { RefObject } from 'react';
 import type { Video } from '../../core/types';
 import { NextEpCard } from './NextEpCard';

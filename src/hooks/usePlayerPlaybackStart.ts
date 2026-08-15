@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 import { coreCanPrefetchNextEpisode, coreDetectAnimePlayback, coreInvoke, corePlaybackIntroLookupContentId, corePlaybackPreparePlan, coreResolveNextEpisode, coreSelectNextEpisodeStream, coreStreamShellPlan, coreTorrentReadyBudget, coreTorrentStatusInfo } from '../core/engine';
 import { fetchMetaVideos, fetchPlaybackSkipSegments, fetchStreamsForEpisode } from '../core/effectRunner';
 import { fetchContentLogo } from '../core/detailEffects';

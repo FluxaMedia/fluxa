@@ -1,13 +1,20 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig(async ({ mode }) => ({
-  base: mode === 'web' || mode === 'webos' ? process.env.VITE_BASE_PATH || '/' : '/',
+export default defineConfig(async ({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  return {
+  base: mode === 'web' || mode === 'webos' ? env.VITE_BASE_PATH || '/' : '/',
   define: {
     'import.meta.env.VITE_FLUXA_TARGET': JSON.stringify(mode === 'web' || mode === 'webos' ? mode : 'desktop'),
+    'import.meta.env.VITE_TRAKT_CLIENT_ID': JSON.stringify(env.VITE_TRAKT_CLIENT_ID || env.FLUXA_TRAKT_CLIENT_ID || ''),
+    'import.meta.env.VITE_SIMKL_CLIENT_ID': JSON.stringify(env.VITE_SIMKL_CLIENT_ID || env.FLUXA_SIMKL_CLIENT_ID || ''),
+    'import.meta.env.VITE_ANILIST_CLIENT_ID': JSON.stringify(env.VITE_ANILIST_CLIENT_ID || env.FLUXA_ANILIST_CLIENT_ID || ''),
+    'import.meta.env.VITE_NUVIO_SUPABASE_URL': JSON.stringify(env.VITE_NUVIO_SUPABASE_URL || env.FLUXA_NUVIO_SUPABASE_URL || ''),
+    'import.meta.env.VITE_NUVIO_SUPABASE_KEY': JSON.stringify(env.VITE_NUVIO_SUPABASE_KEY || env.FLUXA_NUVIO_SUPABASE_KEY || ''),
   },
   plugins: [
     react(),
@@ -47,4 +54,5 @@ export default defineConfig(async ({ mode }) => ({
     minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
   },
-}));
+  };
+});

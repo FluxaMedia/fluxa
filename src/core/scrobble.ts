@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { platformInvoke as invoke } from '../platform/invoke';
+import { platformFetch as tauriFetch } from '../platform/http';
 import { coreInvoke, coreParseVideoId, coreScrobbleCloseAction, coreSimklLookupIdForType, coreSimklMatchEpisode, coreSimklScrobbleBody, coreTraktScrobblePlan } from './engine';
 import { _appVersion } from './httpClient';
 import type { UserProfile, Meta, Video } from './types';

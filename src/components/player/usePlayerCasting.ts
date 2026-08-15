@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../../platform/invoke';
 import { sendCmd } from './PlayerOverlayPrimitives';
 import { castDisconnect, castPause, castPlay, discoverCastDevices, proxyMediaUrl, resolveCastMediaUrl, startCasting, type CastDevice } from '../../core/cast';
 import type { EmbeddedMpvStatus } from '../../core/mpvPlayer';

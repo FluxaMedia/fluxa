@@ -1,5 +1,5 @@
 import { useCallback, useEffect, type MutableRefObject } from 'react';
-import { listen } from '@tauri-apps/api/event';
+import { platformListen as listen } from '../platform/browser';
 import { coreInvoke } from '../core/engine';
 import type { EmbeddedMpvStatus } from '../core/mpvPlayer';
 import { embeddedMpvStatus } from '../core/mpvPlayer';

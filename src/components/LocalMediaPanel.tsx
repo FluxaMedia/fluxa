@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FolderOpen, Loader2, RefreshCw } from 'lucide-react';
-import { open } from '@tauri-apps/plugin-dialog';
+import { platformOpenDialog } from '../platform/browser';
 import { LocalMediaItem, localStream, resolveLocalMedia } from '../core/localMedia';
 import type { Meta, Stream, Video } from '../core/types';
 import { VirtualizedPosterGrid } from './VirtualizedPosterGrid';
@@ -34,7 +34,7 @@ export function LocalMediaPanel({
   useEffect(() => { if (root) void scan(); }, []);
 
   const chooseFolder = async () => {
-    const selected = await open({ directory: true, multiple: false, title: 'Select local media folder' });
+    const selected = await platformOpenDialog({ directory: true, multiple: false, title: 'Select local media folder' });
     if (typeof selected === 'string') await scan(selected);
   };
 

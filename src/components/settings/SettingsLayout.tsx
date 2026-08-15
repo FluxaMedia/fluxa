@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getVersion } from '@tauri-apps/api/app';
+import { platformInvoke } from '../../platform/invoke';
 import { styles, FONT } from './settingsStyles';
 
 export function SidebarItem({
@@ -151,6 +151,6 @@ export function SettingsPanel({ children }: { children: React.ReactNode }) {
 
 export function VersionFooter() {
   const [version, setVersion] = useState('');
-  useEffect(() => { getVersion().then((v) => setVersion(v)).catch(() => {}); }, []);
+  useEffect(() => { platformInvoke<string>('get_version').then((v) => setVersion(v)).catch(() => {}); }, []);
   return <p style={styles.versionFooter}>{version ? `v${version}` : ''}</p>;
 }

@@ -16,6 +16,8 @@ import {
 } from './engine';
 import { normalizeAddonDescriptor } from './addons';
 import { coreFilterEnabledAddons } from './engineCoreLibrary';
+import { nuvioPullAddons } from './nuvioApi';
+import { platformFetch } from '../platform/http';
 import type { AddonDescriptor, UserProfile } from './types';
 
 let _cachedLibraryKey: string | null = null;
@@ -115,9 +117,7 @@ export async function prefsStorageKey(): Promise<string> {
 }
 
 export async function loadPrefs(): Promise<Record<string, unknown>> {
-  const scoped = await storageRead<Record<string, unknown>>(await prefsStorageKey());
-  if (scoped) return scoped;
-  return (await storageRead<Record<string, unknown>>('prefs')) ?? {};
+  return (await storageRead<Record<string, unknown>>(await prefsStorageKey())) ?? {};
 }
 
 export async function savePrefs(value: Record<string, unknown>): Promise<void> {
@@ -131,9 +131,23 @@ export async function loadActiveProfile(): Promise<UserProfile | null> {
   return profiles.find((profile) => profile.id === profileId) ?? null;
 }
 
-export async function loadEnabledAddons(): Promise<AddonDescriptor[]> {
+export async function loadEnabledAddons(profileOverride?: UserProfile | null): Promise<AddonDescriptor[]> {
   const addons = await loadAddons();
-  const profile = await loadActiveProfile();
+  const profile = profileOverride === undefined ? await loadActiveProfile() : profileOverride;
+  if (profile?.nuvioAccessToken) {
+    const remoteAddons = await nuvioPullAddons(profile.nuvioAccessToken, profile.nuvioProfileIndex ?? 1).catch(() => []);
+    const remoteDescriptors = await Promise.all(remoteAddons.filter((addon) => addon.enabled).map(async (addon) => {
+      try {
+        const response = await platformFetch(addon.url);
+        if (!response.ok) return null;
+        const manifest = await response.json() as Record<string, unknown>;
+        return normalizeAddonDescriptor({ transportUrl: addon.url, manifest } as unknown as AddonDescriptor);
+      } catch {
+        return null;
+      }
+    }));
+    return remoteDescriptors.filter((descriptor): descriptor is AddonDescriptor => descriptor !== null);
+  }
   const disabledAddonKeys = profile?.addonSettings?.disabledLocalAddons ?? profile?.disabledLocalAddons ?? [];
   if (!disabledAddonKeys.length) return addons;
   return (await coreFilterEnabledAddons(addons, disabledAddonKeys)) ?? addons;

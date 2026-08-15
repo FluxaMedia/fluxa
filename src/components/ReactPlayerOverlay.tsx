@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { t } from '../i18n';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { platformSetCursorVisible } from '../platform/browser';
 import type { EmbeddedMpvStatus, TorrentStats } from '../core/mpvPlayer';
 import { embeddedMpvSetCursorVisible } from '../core/mpvPlayer';
 import type { TorrentTelemetryContext } from '../core/mpvPlayer';
@@ -189,7 +189,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
       controlsVisibleRef.current = true;
       setControlsVisible(true);
       if (overlayRef.current) overlayRef.current.classList.remove('fluxa-cursor-hidden');
-      getCurrentWindow().setCursorVisible(true).catch(() => {});
+      platformSetCursorVisible(true).catch(() => {});
       embeddedMpvSetCursorVisible(true).catch(() => {});
     }
   }, []);
@@ -234,7 +234,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
   usePlayerKeyboardShortcuts({ closePlayer, contextMenu, setContextMenu, flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, setPlayerFullscreen, toggleFullscreen, toggleMiniPlayer, shortcutOverrides, showEpisodePanel, setShowEpisodePanel, showShortcutsHelp, setShowShortcutsHelp, startSeekOverlay, trackPopover, setTrackPopover, triggerActiveSkip, episodePanelOpenRef, isFullscreenRef, holdTimerRef, holdActiveRef, preSpeedRef, pausedRef, posRef, durRef, chaptersRef, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, setPaused, setShowStats });
   useEffect(() => {
     return () => {
-      getCurrentWindow().setCursorVisible(true).catch(() => {});
+      platformSetCursorVisible(true).catch(() => {});
       embeddedMpvSetCursorVisible(true).catch(() => {});
     };
   }, []);

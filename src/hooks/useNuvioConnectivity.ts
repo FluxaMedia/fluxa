@@ -1,28 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { nuvioHealthCheck, nuvioPushWatchProgress, nuvioPushLibrary, nuvioPushWatchHistory } from '../core/nuvioApi';
-import { loadLibrary } from '../core/libraryOps';
-import { freshNuvioProfile, importNuvioProfileData, recordNuvioSyncMeta, refreshNuvioProfiles } from '../core/nuvioSync';
+import { nuvioHealthCheck } from '../core/nuvioApi';
 import type { UserProfile } from '../core/types';
-import { coreInvoke } from '../core/engine';
-
-async function pushLocalToNuvio(profile: UserProfile): Promise<void> {
-  const freshProfile = await freshNuvioProfile(profile).catch(() => profile);
-  const token = freshProfile.nuvioAccessToken!;
-  const profileIdx = freshProfile.nuvioProfileIndex ?? 1;
-  const lib = await loadLibrary();
-  const plan = await coreInvoke<{
-    progressEntries: Array<{ content_id: string; content_type: string; video_id: string; position: number; duration: number; last_watched: number; season?: number; episode?: number }>;
-    libraryItems: Array<{ content_id: string; content_type: string; name?: string; poster?: string | null; background?: string | null }>;
-    historyItems: Array<{ content_id: string; content_type: string; title?: string; season?: number; episode?: number; watched_at: number }>;
-  }>('nuvioExportPushPlan', JSON.stringify({ library: lib, nowMs: Date.now() }));
-  if (!plan) return;
-
-  await Promise.allSettled([
-    plan.progressEntries.length > 0 ? nuvioPushWatchProgress(token, profileIdx, plan.progressEntries) : Promise.resolve(),
-    plan.libraryItems.length > 0 ? nuvioPushLibrary(token, profileIdx, plan.libraryItems) : Promise.resolve(),
-    plan.historyItems.length > 0 ? nuvioPushWatchHistory(token, profileIdx, plan.historyItems) : Promise.resolve(),
-  ]);
-}
 
 export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced?: (changed: boolean) => void | Promise<void>) {
   const [serverDown, setServerDown] = useState(false);
@@ -48,8 +26,9 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
       try {
         const result = await nuvioHealthCheck();
         down = result?.status !== 'healthy' && result?.status !== 'ok';
-      } catch {
-        down = true;
+      } catch (error) {
+        console.error('[fluxa:nuvio:health-check]', error);
+        down = import.meta.env.VITE_FLUXA_TARGET !== 'web' && import.meta.env.VITE_FLUXA_TARGET !== 'webos';
       }
       if (cancelled) return;
 
@@ -64,21 +43,7 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
         setJustRecovered(true);
         setDismissed(false);
         setTimeout(() => { if (!cancelled) setJustRecovered(false); }, 2000);
-        void (async () => {
-          const report = await importNuvioProfileData(profile)
-            .then((report) => { void recordNuvioSyncMeta(report); return report; })
-            .catch((err) => {
-              const errorReport = { errors: { library: err instanceof Error ? err.message : String(err) }, changed: false };
-              void recordNuvioSyncMeta(errorReport);
-              return errorReport;
-            });
-          if (cancelled) return;
-          await refreshNuvioProfiles(profile).catch(() => profile);
-          if (cancelled) return;
-          await pushLocalToNuvio(profile).catch(() => undefined);
-          if (cancelled) return;
-          await onSynced?.(report.changed);
-        })();
+        void onSynced?.(false);
       } else if (!down && !pulledRemote) {
         pulledRemote = true;
       }

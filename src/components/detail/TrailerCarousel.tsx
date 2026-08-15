@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { open as shellOpen } from '@tauri-apps/plugin-shell';
+import { platformOpenExternal } from '../../platform/browser';
 import { t } from '../../i18n';
 import { S } from './detailStyles';
 import type { Trailer } from '../../core/types';
@@ -100,7 +100,7 @@ const TrailerCard = React.memo(function TrailerCard({ trailer, index, metadata }
   return (
     <button
       style={{ ...S.trailerCard, transform: hovered ? 'translateY(-0.125rem)' : 'translateY(0)', borderColor: hovered ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)' }}
-      onClick={() => shellOpen(trailer.url).catch(() => {})}
+      onClick={() => platformOpenExternal(trailer.url).catch(() => {})}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

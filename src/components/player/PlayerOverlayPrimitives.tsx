@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../../platform/invoke';
 import { Volume1, Volume2, VolumeOff } from 'lucide-react';
 import { t } from '../../i18n';
 import type { EpisodeInfo } from './EpisodePanel';

@@ -1,5 +1,5 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { emit } from '@tauri-apps/api/event';
+import { platformEmit as emit } from '../../platform/browser';
 import { t } from '../../i18n';
 import { comboFromEvent, findActionForCombo, type ShortcutOverrides } from '../../core/shortcuts';
 import { sendCmd, type Chapter, type FeedbackFlash } from './PlayerOverlayPrimitives';

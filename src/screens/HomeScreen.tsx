@@ -258,11 +258,12 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   }, [folderLoadingMore]);
 
   useEffect(() => {
+    if (deferStaleRefresh) return;
     const hasData = (home.categories?.length ?? 0) > 0 || !!home.billboard || (home.continueWatching?.length ?? 0) > 0;
     if (!hasData && !home.isLoading) {
       onDispatch(JSON.stringify({ type: 'homeLoadRequested', language: getLanguage() }));
     }
-  }, []);
+  }, [deferStaleRefresh, home.billboard, home.categories, home.continueWatching, home.isLoading, onDispatch]);
 
   useEffect(() => {
     if (!home.isStale || deferStaleRefresh || refreshStartedRef.current) return;

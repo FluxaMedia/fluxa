@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bookmark, BookmarkCheck, CheckCircle2, Film, Heart, MessageCircle, XCircle } from 'lucide-react';
-import { open as shellOpen } from '@tauri-apps/plugin-shell';
+import { platformOpenExternal } from '../../platform/browser';
 import { t } from '../../i18n';
 import { MS } from './detailStyles';
 import { ModernIconBtn, ModernPlayButton } from './DetailButtons';
@@ -42,7 +42,7 @@ export function ModernDetailActionRow({
         onClick={onPlayClick}
       />
       {trailerUrl && (
-        <ModernIconBtn title={t('detail.watch_trailer')} onClick={() => shellOpen(trailerUrl).catch(() => {})}>
+        <ModernIconBtn title={t('detail.watch_trailer')} onClick={() => platformOpenExternal(trailerUrl).catch(() => {})}>
           <Film size={18} />
         </ModernIconBtn>
       )}

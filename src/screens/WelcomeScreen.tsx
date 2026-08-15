@@ -3,7 +3,6 @@ import { t } from '../i18n';
 import type { UserProfile } from '../core/types';
 import { AuthView } from './welcome/AuthView';
 import { NuvioLoginView } from './welcome/NuvioLoginView';
-import { NuvioImportView } from './welcome/NuvioImportView';
 import { ProfileSetupView } from './welcome/ProfileSetupView';
 import { S } from './welcome/styles';
 
@@ -13,14 +12,13 @@ interface Props {
   onNuvioLogin: (profile: UserProfile) => void;
 }
 
-type View = 'welcome' | 'auth' | 'nuvio' | 'nuvio-import' | 'profile-setup';
+type View = 'welcome' | 'auth' | 'nuvio' | 'profile-setup';
 type AuthTab = 'login' | 'signup';
 
 export function WelcomeScreen({ onProfileCreated, onContinueLocal, onNuvioLogin }: Props) {
   const [view, setView] = useState<View>('welcome');
   const [tab, setTab] = useState<AuthTab>('login');
   const [localLoading, setLocalLoading] = useState(false);
-  const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null);
 
   const handleContinueLocal = async () => {
     setLocalLoading(true);
@@ -45,18 +43,9 @@ export function WelcomeScreen({ onProfileCreated, onContinueLocal, onNuvioLogin 
     return (
       <NuvioLoginView
         onBack={() => setView('auth')}
-        onImporting={(p) => { setPendingProfile(p); setView('nuvio-import'); }}
+        onImporting={onNuvioLogin}
         onContinueLocal={handleContinueLocal}
         localLoading={localLoading}
-      />
-    );
-  }
-
-  if (view === 'nuvio-import' && pendingProfile) {
-    return (
-      <NuvioImportView
-        profile={pendingProfile}
-        onDone={onNuvioLogin}
       />
     );
   }

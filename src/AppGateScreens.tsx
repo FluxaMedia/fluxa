@@ -1,14 +1,17 @@
 import React from 'react';
 import { WelcomeScreen, ProfileSelectionScreen } from './appScreens';
-import { setActiveProfileId, createProfileObject, saveProfile, loadProfiles } from './core/profiles';
+import { setActiveProfileId, createProfileObject, saveProfile, saveProfiles, loadProfiles } from './core/profiles';
 import { invalidateLibraryKeyCache } from './core/libraryOps';
-import { clearEnginePlugins, hydratePluginsFromStorage } from './core/pluginsStorage';
+import { clearEnginePlugins, hydratePluginsFromNuvio, hydratePluginsFromStorage } from './core/pluginsStorage';
 import { storageWrite } from './core/engine';
+import { buildLocalNuvioProfiles } from './core/nuvioSync';
+import { nuvioListAvatars, nuvioPullProfiles } from './core/nuvioApi';
 import { DEFAULT_STATE } from './appConstants';
 import type { AppState, UserProfile } from './core/types';
 
 export function AppWelcomeGate({
   dispatch,
+  updateState,
   applyStoredPrefs,
   setAllProfiles,
   setActiveProfile,
@@ -16,6 +19,7 @@ export function AppWelcomeGate({
   invalidateProfileWork,
 }: {
   dispatch: (actionJson: string) => Promise<void> | void;
+  updateState: (state: Partial<AppState>) => void;
   applyStoredPrefs: () => Promise<void>;
   setAllProfiles: (profiles: UserProfile[]) => void;
   setActiveProfile: (profile: UserProfile) => void;
@@ -50,13 +54,35 @@ export function AppWelcomeGate({
         onNuvioLogin={async (profile) => {
           invalidateProfileWork();
           await storageWrite('welcome_done', true);
-          const profiles = await loadProfiles();
-          setAllProfiles(profiles);
-          setActiveProfile(profile);
-          await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
+          const savedProfiles = await saveProfile(profile);
+          await setActiveProfileId(profile.id);
+          let visibleProfiles = savedProfiles;
+          let visibleActiveProfile = profile;
+          if (profile.nuvioAccessToken) {
+            const [remoteProfiles, avatarCatalog] = await Promise.all([
+              nuvioPullProfiles(profile.nuvioAccessToken),
+              nuvioListAvatars(),
+            ]);
+            const builtRemoteProfiles = await buildLocalNuvioProfiles(profile, remoteProfiles, avatarCatalog, []);
+            const remoteVisibleProfiles = builtRemoteProfiles.map((candidate) =>
+              candidate.nuvioProfileIndex === profile.nuvioProfileIndex
+                ? { ...candidate, id: profile.id }
+                : candidate,
+            );
+            visibleProfiles = [
+              ...savedProfiles.filter((candidate) => !candidate.nuvioAccessToken),
+              ...remoteVisibleProfiles,
+            ];
+            visibleActiveProfile = remoteVisibleProfiles.find((candidate) => candidate.nuvioProfileIndex === profile.nuvioProfileIndex) ?? profile;
+          }
+          await saveProfiles(visibleProfiles);
+          setAllProfiles(visibleProfiles);
+          setActiveProfile(visibleActiveProfile);
+          await dispatch(JSON.stringify({ type: 'profileActivated', profile: visibleActiveProfile }));
           await applyStoredPrefs();
           await dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-          void dispatch(JSON.stringify({ type: 'homeLoadRequested', force: true }));
+          await hydratePluginsFromNuvio(visibleActiveProfile);
+          await hydratePluginsFromStorage(updateState);
           setWelcomeCompleted(true);
         }}
       />
@@ -106,7 +132,8 @@ export function AppProfileGate({
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
           void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
           await clearEnginePlugins(outgoingRepositories, updateState);
-          void hydratePluginsFromStorage(updateState);
+          await hydratePluginsFromNuvio(profile);
+          await hydratePluginsFromStorage(updateState);
         }}
         onProfilesChanged={setAllProfiles}
       />

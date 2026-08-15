@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { platformInvoke as invoke } from '../platform/invoke';
+import { platformOpenDialog } from '../platform/browser';
 
 export interface CustomFont {
   fileName: string;
@@ -15,7 +15,7 @@ export async function removeCustomFont(fileName: string): Promise<void> {
 }
 
 export async function pickAndAddCustomFont(): Promise<CustomFont | null> {
-  const selected = await openDialog({
+  const selected = await platformOpenDialog({
     multiple: false,
     filters: [{ name: 'Fonts', extensions: ['ttf', 'otf', 'ttc'] }],
   });

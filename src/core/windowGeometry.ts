@@ -1,6 +1,7 @@
 import { availableMonitors, getCurrentWindow } from '@tauri-apps/api/window';
 import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
 import { storageRead, storageWrite } from './engine';
+import { isBrowserTarget } from '../platform/browser';
 
 type WindowGeometry = { width: number; height: number; x: number; y: number };
 
@@ -15,6 +16,7 @@ export function setSuppressWindowGeometrySave(value: boolean): void {
 }
 
 export async function restoreWindowGeometry(): Promise<void> {
+  if (isBrowserTarget()) return;
   const geometry = await storageRead<WindowGeometry>('windowGeometry');
   if (!geometry) return;
   const win = getCurrentWindow();
@@ -46,6 +48,11 @@ export async function restoreWindowGeometry(): Promise<void> {
 }
 
 export async function toggleWindowFullscreen(): Promise<void> {
+  if (isBrowserTarget()) {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen?.();
+    return;
+  }
   const win = getCurrentWindow();
   try {
     const isFullscreen = await win.isFullscreen();
@@ -54,6 +61,7 @@ export async function toggleWindowFullscreen(): Promise<void> {
 }
 
 export function watchWindowGeometry(): () => void {
+  if (isBrowserTarget()) return () => {};
   const win = getCurrentWindow();
   let timer: ReturnType<typeof setTimeout> | null = null;
 

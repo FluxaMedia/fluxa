@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { platformInvoke as invoke } from '../../platform/invoke';
+import { platformSaveDialog } from '../../platform/browser';
 import { FileDown } from 'lucide-react';
 import { t } from '../../i18n';
 import { ChoiceTile, ToggleTile, InputTile, SettingsSection, ActionTile } from './SettingsUI';
@@ -25,7 +25,7 @@ export function GeneralSection({ prefs, setPref }: { prefs: Prefs; setPref: <K e
 
   const exportDiagnostics = async () => {
     try {
-      const destination = await saveDialog({
+      const destination = await platformSaveDialog({
         defaultPath: `fluxa-diagnostics-${new Date().toISOString().slice(0, 10)}.log`,
         filters: [{ name: 'Log', extensions: ['log'] }],
       });

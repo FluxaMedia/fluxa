@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { platformInvoke as invoke } from '../../platform/invoke';
+import { platformOpenDialog } from '../../platform/browser';
 import { Type, X } from 'lucide-react';
 import { t } from '../../i18n';
 import { ActionTile, ChoiceTile, InputTile, SettingsSection, SliderTile, ToggleTile, langOptions, streamSourceOptions, subtitleFontOptions } from './SettingsUI';
@@ -16,7 +16,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
   const [externalPlayers, setExternalPlayers] = useState<Array<{ id: string; label: string }>>([]);
   useEffect(() => { void invoke<Array<{ id: string; label: string }>>('external_player_options').then(setExternalPlayers).catch(() => setExternalPlayers([])); }, []);
   const chooseExternalPlayer = async () => {
-    const selected = await openDialog({ directory: false, multiple: false, title: t('settings.external_player_choose') });
+    const selected = await platformOpenDialog({ directory: false, multiple: false, title: t('settings.external_player_choose') });
     if (typeof selected === 'string') setPref('externalPlayerTarget', selected);
   };
   useEffect(() => {

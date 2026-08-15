@@ -81,6 +81,10 @@ export async function runPluginScraper(
   season: number | null,
   episode: number | null,
 ): Promise<string> {
+  if (typeof window !== 'undefined') {
+    const { runWebPluginScraper } = await import('../platform/web/pluginRuntime');
+    return runWebPluginScraper(code, scraperId, scraperSettingsJson, tmdbId, mediaType, season, episode);
+  }
   return platformInvoke<string>("run_plugin_scraper", {
     code,
     repositoryUrl,

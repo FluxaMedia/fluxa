@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { coreInvoke, dispatchAction, getSnapshot, initEngine, storageRead } from '../core/engine';
+import { platformInvoke as invoke } from '../platform/invoke';
+import { dispatchAction, getSnapshot, initEngine, storageRead } from '../core/engine';
 import { getActiveProfileId, loadProfiles } from '../core/profiles';
-import { pumpEffects, syncExternalIntegrationNow } from '../core/effectRunner';
-import { importNuvioProfileData, recordNuvioSyncMeta } from '../core/nuvioSync';
-import { hydratePluginsFromStorage } from '../core/pluginsStorage';
+import { pumpEffects } from '../core/effectRunner';
+import { hydratePluginsFromNuvio, hydratePluginsFromStorage } from '../core/pluginsStorage';
+import { refreshNuvioProfiles } from '../core/nuvioSync';
 import { loadPrefs } from '../core/libraryOps';
 import { refreshAllAvatarPacks } from '../core/profileAvatarPacks';
 import { getLanguage, setLanguage } from '../i18n';
@@ -42,140 +42,12 @@ export function useAppInit(
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([]);
   const [updateModalState, setUpdateModalState] = useState<UpdateState>({ phase: 'idle' });
 
-  const syncExternalOnStartup = useCallback(async (profile: UserProfile) => {
+  const loadHomeOnStartup = useCallback(async () => {
     try {
-      const prefs = await loadPrefs();
-      const sourcePlan = await coreInvoke<{ provider?: 'trakt' | 'simkl' | 'nuvio' | 'anilist' | 'stremio' }>(
-        'continueWatchingSourcePlan',
-        JSON.stringify({ source: prefs.continueWatchingSource }),
-      );
-      const selectedProvider = sourcePlan?.provider;
-      const reloadLibraryAndHome = async () => {
-        const libResult = await dispatchAction(JSON.stringify({ type: 'libraryHydrateRequested' }));
-        if (libResult) updateState(libResult.state);
-        const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
-        if (homeResult) {
-          updateState(homeResult.state);
-          if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
-        }
-      };
-      const syncSelectedProvider = async () => {
-        if (selectedProvider === 'trakt' && profile.traktAccessToken) {
-          const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
-          await syncExternalIntegrationNow({ provider: 'trakt', profile, token: profile.traktAccessToken, clientId });
-          return true;
-        }
-        if (selectedProvider === 'simkl' && profile.simklAccessToken) {
-          const clientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' }).catch(() => '');
-          await syncExternalIntegrationNow({ provider: 'simkl', profile, token: profile.simklAccessToken, clientId });
-          return true;
-        }
-        return false;
-      };
-      if (await syncSelectedProvider().catch(() => false)) {
-        await reloadLibraryAndHome();
-        setExternalSyncPending(false);
-        void (async () => {
-          const tasks: Promise<unknown>[] = [];
-          if (profile.nuvioAccessToken) tasks.push(importNuvioProfileData(profile).then(recordNuvioSyncMeta).catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } })));
-          if (profile.anilistAccessToken) tasks.push(syncExternalIntegrationNow({ provider: 'anilist', profile, token: profile.anilistAccessToken }).catch(() => undefined));
-          if (profile.stremioAuthKey) tasks.push(syncExternalIntegrationNow({ provider: 'stremio', profile, token: profile.stremioAuthKey }).catch(() => undefined));
-          await Promise.allSettled(tasks);
-        })();
-        return;
-      }
-      if (profile.nuvioAccessToken && prefs.continueWatchingSource === 'nuvio') {
-        const report = await importNuvioProfileData(profile, undefined, undefined, ['continueWatching'])
-          .catch((err) => ({ errors: { library: err instanceof Error ? err.message : String(err) }, changed: false }));
-        await recordNuvioSyncMeta(report);
-        if (report.changed) {
-          await reloadLibraryAndHome();
-        }
-        setExternalSyncPending(false);
-        void (async () => {
-          const nuvioBackground = importNuvioProfileData(profile, undefined, undefined, ['addons', 'watchlist', 'watched', 'collections'])
-            .then(recordNuvioSyncMeta)
-            .then(async () => {
-              const refreshed = await importNuvioProfileData(profile, undefined, undefined, ['continueWatching']);
-              await recordNuvioSyncMeta(refreshed);
-              await reloadLibraryAndHome();
-            })
-            .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }));
-          const tasks: Promise<unknown>[] = [nuvioBackground];
-          if (profile.anilistAccessToken) tasks.push(syncExternalIntegrationNow({ provider: 'anilist', profile, token: profile.anilistAccessToken }).catch(() => undefined));
-          if (profile.stremioAuthKey) tasks.push(syncExternalIntegrationNow({ provider: 'stremio', profile, token: profile.stremioAuthKey }).catch(() => undefined));
-          if (profile.traktAccessToken) {
-            const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
-            tasks.push(syncExternalIntegrationNow({ provider: 'trakt', profile, token: profile.traktAccessToken, clientId }).catch(() => undefined));
-          }
-          if (profile.simklAccessToken) {
-            const clientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' }).catch(() => '');
-            tasks.push(syncExternalIntegrationNow({ provider: 'simkl', profile, token: profile.simklAccessToken, clientId }).catch(() => undefined));
-          }
-          await Promise.allSettled(tasks);
-        })();
-        return;
-      }
-      const syncTasks: Promise<unknown>[] = [];
-      let changed = false;
-      if (profile.nuvioAccessToken) {
-        syncTasks.push(
-          importNuvioProfileData(profile)
-            .then((report) => { changed = changed || report.changed; return recordNuvioSyncMeta(report); })
-            .catch((err) => recordNuvioSyncMeta({ errors: { library: err instanceof Error ? err.message : String(err) } }))
-        );
-      }
-      if (profile.anilistAccessToken) {
-        changed = true;
-        syncTasks.push(syncExternalIntegrationNow({
-          provider: 'anilist',
-          profile,
-          token: profile.anilistAccessToken,
-        }).catch(() => undefined));
-      }
-      if (profile.stremioAuthKey) {
-        changed = true;
-        syncTasks.push(syncExternalIntegrationNow({
-          provider: 'stremio',
-          profile,
-          token: profile.stremioAuthKey,
-        }).catch(() => undefined));
-      }
-      if (profile.traktAccessToken) {
-        changed = true;
-        const traktClientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
-        syncTasks.push(syncExternalIntegrationNow({
-          provider: 'trakt',
-          profile,
-          token: profile.traktAccessToken,
-          clientId: traktClientId,
-        }).catch(() => undefined));
-      }
-      if (profile.simklAccessToken) {
-        changed = true;
-        const simklClientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' }).catch(() => '');
-        syncTasks.push(syncExternalIntegrationNow({
-          provider: 'simkl',
-          profile,
-          token: profile.simklAccessToken,
-          clientId: simklClientId,
-        }).catch(() => undefined));
-      }
-      if (syncTasks.length > 0) {
-        await Promise.all(syncTasks);
-        if (!changed) return;
-        const addonsResult = await dispatchAction(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-        if (addonsResult) {
-          updateState(addonsResult.state);
-          if (addonsResult.effects.length > 0) await pumpEffects(addonsResult.effects, updateState);
-        }
-        const libResult = await dispatchAction(JSON.stringify({ type: 'libraryHydrateRequested' }));
-        if (libResult) updateState(libResult.state);
-        const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
-        if (homeResult) {
-          updateState(homeResult.state);
-          if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
-        }
+      const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
+      if (homeResult) {
+        updateState(homeResult.state);
+        if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
       }
     } catch {
     } finally {
@@ -192,9 +64,12 @@ export function useAppInit(
         const snap = await getSnapshot();
         const prefs = await loadPrefs();
         storedPrefsRef.current = prefs;
-        void invoke('player_set_seek_thumbnail_enabled', { enabled: prefBool(prefs, 'seekThumbnailEnabled', false) });
-        void invoke('discord_presence_configure', { enabled: prefBool(prefs, 'discordRichPresenceEnabled', true) });
-        void invoke('set_diagnostic_mode', { enabled: prefBool(prefs, 'diagnosticMode', false) });
+        const webTarget = import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
+        if (!webTarget) {
+          void invoke('player_set_seek_thumbnail_enabled', { enabled: prefBool(prefs, 'seekThumbnailEnabled', false) });
+          void invoke('discord_presence_configure', { enabled: prefBool(prefs, 'discordRichPresenceEnabled', true) });
+          void invoke('set_diagnostic_mode', { enabled: prefBool(prefs, 'diagnosticMode', false) });
+        }
         setRpdbApiKey(prefString(prefs, 'rpdbApiKey', ''));
         setLanguage(typeof prefs.language === 'string' ? prefs.language : null);
         const startPage = prefString({ ...prefs }, 'startPage', 'home') as NavRoute;
@@ -216,27 +91,29 @@ export function useAppInit(
         setReady(true);
       }
 
-      void hydratePluginsFromStorage(updateState).catch(() => undefined);
-
-      let startupProfile: UserProfile | null = null;
       try {
         const [profileId, profiles] = await Promise.all([getActiveProfileId(), loadProfiles()]);
-        setAllProfiles(profiles);
+        let resolvedProfiles = profiles;
         if (profileId) {
-          const found = profiles.find((p) => p.id === profileId) ?? null;
+          let found = profiles.find((p) => p.id === profileId) ?? null;
+          if (found?.nuvioAccessToken) {
+            const refreshed = await refreshNuvioProfiles(found).catch(() => found);
+            resolvedProfiles = await loadProfiles();
+            found = resolvedProfiles.find((p) => p.id === profileId) ?? refreshed;
+          }
+          setAllProfiles(resolvedProfiles);
           setActiveProfile(found);
-          startupProfile = found;
+          if (found) {
+            await hydratePluginsFromNuvio(found).catch(() => undefined);
+            await hydratePluginsFromStorage(updateState);
+          }
         }
       } catch {
       } finally {
         setProfilesChecked(true);
       }
 
-      if (startupProfile) {
-        void syncExternalOnStartup(startupProfile);
-      } else {
-        setExternalSyncPending(false);
-      }
+      void loadHomeOnStartup();
 
       if (prefBool(storedPrefsRef.current, 'automaticUpdates', true)) {
         void invoke<boolean>('in_app_updates_supported').then((supported) => {

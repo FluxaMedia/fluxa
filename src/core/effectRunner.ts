@@ -1,5 +1,5 @@
 import { withSentrySpan } from './sentryRuntime';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 import { completeEffect, coreInvoke, dispatchAction, enqueueOfflineDownload, httpExecuteText, libraryContinueWatchingDelete, libraryProgressDelete, registerTrailerProxyUrl } from './engine';
 import { startTorrentStream, stopTorrentStream } from './mpvPlayer';
 import { effectRunnerLibraryKey, loadActiveProfile, loadEnabledAddons, loadLibrary, loadPrefs, saveLibrary, persistLastWatchedEpisode } from './libraryOps';
@@ -117,7 +117,7 @@ async function runEffect(
 
   switch (effect.type) {
     case 'readHomeBootstrap':
-      value = await readHomeBootstrap(p);
+      value = await readHomeBootstrap(p, signal);
       break;
 
     case 'refreshContinueWatching': {
@@ -450,7 +450,8 @@ export async function pumpEffects(
       let dispatchResult: Awaited<ReturnType<typeof completeEffect>> = null;
       try {
         dispatchResult = await completeEffect({ ...result, effectId: effect.id });
-      } catch {
+      } catch (error) {
+        console.error('[fluxa:web:effect:complete-error]', effect.type, effect.id, error);
         return;
       }
       // The request may have belonged to a profile/session that was replaced

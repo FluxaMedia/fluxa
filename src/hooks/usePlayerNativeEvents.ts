@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { listen } from '@tauri-apps/api/event';
+import { platformListen as listen } from '../platform/browser';
 import { t } from '../i18n';
 import type { Meta, Stream, Video } from '../core/types';
 import { appPrefs } from '../core/appPrefs';

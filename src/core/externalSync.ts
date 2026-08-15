@@ -10,8 +10,7 @@ import { loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistProg
 import { providerAdapters } from './providers';
 import type { PushWatchedArgs, WatchedEpisodeInfo, WatchProgressInfo } from './providers';
 import type { UserProfile } from './types';
-import type { ImportCategory } from './importCategories';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 
 function debugLog(msg: string) {
   void invoke('debug_log', { msg }).catch(() => {});
@@ -248,21 +247,20 @@ export async function syncExternalIntegrationNow(payload: Record<string, unknown
 async function syncNuvioNow(payload: Record<string, unknown>): Promise<unknown> {
   const profile = payload.profile as UserProfile | undefined;
   if (!profile?.nuvioAccessToken) return { synced: false, error: 'Nuvio is not connected' };
-  const { importNuvioProfileData } = await import('./nuvioSync');
-  const categories = payload.categories as ImportCategory[] | undefined;
-  const dryRun = payload.dryRun === true;
-  const report = await importNuvioProfileData(profile, undefined, undefined, categories, dryRun);
-  const failures = Object.entries(report.errors);
-  if (failures.length > 0) {
-    return { synced: false, error: failures.map(([step, msg]) => `${step}: ${msg}`).join('; ') };
-  }
+  const { nuvioPullAddons, nuvioPullLibrary, nuvioPullWatchProgress } = await import('./nuvioApi');
+  const profileId = profile.nuvioProfileIndex ?? 1;
+  const [addons, library, progress] = await Promise.all([
+    nuvioPullAddons(profile.nuvioAccessToken, profileId),
+    nuvioPullLibrary(profile.nuvioAccessToken, profileId),
+    nuvioPullWatchProgress(profile.nuvioAccessToken, profileId),
+  ]);
   return {
     synced: true,
     provider: 'nuvio',
-    watchlistCount: report.counts?.watchlist ?? 0,
-    continueWatchingCount: report.counts?.continueWatching ?? 0,
-    watchedCount: report.counts?.watched ?? 0,
-    collectionsCount: report.counts?.collections ?? 0,
-    addonCount: report.counts?.addons ?? 0,
+    watchlistCount: library.length,
+    continueWatchingCount: progress.length,
+    watchedCount: 0,
+    collectionsCount: 0,
+    addonCount: addons.length,
   };
 }

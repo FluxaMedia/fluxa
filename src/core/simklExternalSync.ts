@@ -15,7 +15,7 @@ import { replaceExternalContinueWatching } from './externalSyncUtils';
 import { saveProviderLibrary } from './providerLibraries';
 import { getOAuthClientId } from './traktSync';
 import type { ImportCategory } from './importCategories';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 
 function debugLog(msg: string) {
   void invoke('debug_log', { msg }).catch(() => {});
@@ -115,6 +115,7 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   const force = payload.force === true;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
   const dryRun = payload.dryRun === true;
+  const readOnly = payload.readOnly === true;
 
   const headers: HeadersInit = {
     'Authorization': `Bearer ${token}`,
@@ -202,7 +203,7 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
     ? await resolveSimklEpisodeDetails(mergedItems, headers, query).catch(() => mergedItems)
     : mergedItems;
   debugLog(`syncSimklNow: progressItems=${JSON.stringify(items.map((item) => ({ id: item.id, resumeProgressPercent: item.resumeProgressPercent, badge: item.continueWatchingBadge, poster: item.poster, background: item.background, lastEpisodeThumbnail: item.lastEpisodeThumbnail })))}`);
-  if (wants('continueWatching') && !dryRun) {
+  if (wants('continueWatching') && !dryRun && !readOnly) {
     await replaceExternalContinueWatching({ items, provider: 'simkl', profileKey });
     const { promoteExternalProgress } = await import('./externalSync');
     await promoteExternalProgress(items, 'simkl', profile ?? null);
@@ -215,14 +216,21 @@ export async function syncSimklNow(payload: Record<string, unknown>): Promise<un
   const doneShowsData = JSON.stringify(doneShows);
   const doneMoviesData = JSON.stringify(doneMovies);
   const completedItems = ((await coreSimklWatchlistToItems(doneShowsData, doneMoviesData)) ?? []) as Record<string, unknown>[];
-  if (!dryRun) await saveProviderLibrary('simkl', { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: [] }, profileKey);
+  if (!dryRun && !readOnly) await saveProviderLibrary('simkl', { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: [] }, profileKey);
 
   const watchedMap = ((await coreSimklWatchedToIds(doneShowsData, doneMoviesData)) ?? {}) as Record<string, boolean>;
 
   const watchlistCount = watchlistItems.length;
   const watchedCount = Object.values(watchedMap).filter(Boolean).length;
 
-  return { synced: true, provider: 'simkl', continueWatchingCount: items.length, watchlistCount, watchedCount };
+  return {
+    synced: true,
+    provider: 'simkl',
+    continueWatchingCount: items.length,
+    watchlistCount,
+    watchedCount,
+    snapshot: { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: [] },
+  };
 }
 
 export async function dropSimklPlaybackProgress(showId: string): Promise<void> {

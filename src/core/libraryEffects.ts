@@ -42,7 +42,7 @@ import { fetchAniListCalendarItems } from "./anilistExternalSync";
 import { getOAuthClientId, refreshTraktProfile } from "./traktSync";
 import { notify } from "./notifications";
 import { t } from "../i18n";
-import { invoke } from "@tauri-apps/api/core";
+import { platformInvoke as invoke } from "../platform/invoke";
 
 function debugLog(msg: string) {
   void invoke("debug_log", { msg }).catch(() => {});

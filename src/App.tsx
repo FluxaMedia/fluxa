@@ -5,8 +5,8 @@ import { CalendarRoute, DetailRoute, DiscoverRoute, GlobalSearchRoute, HomeRoute
 import { PlaybackHost } from './components/PlaybackHost';
 import { AppShell } from './components/AppShell';
 import { AppBootstrap } from './components/AppBootstrap';
-import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
+import { platformListen } from './platform/browser';
+import { platformInvoke as invoke } from './platform/invoke';
 import { setBrowsingDiscordPresence } from './core/discordPresence';
 import { appStyles, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
 import { useNativePlayerEvents } from './hooks/useNativePlayerEvents';
@@ -201,7 +201,8 @@ export default function App() {
   }, [activeRoute, setDetailMeta]);
 
   useEffect(() => {
-    const unlisten = listen<{ url?: string }>('deep-link-opened', (e) => {
+    if (isWebTarget) return undefined;
+    const unlisten = platformListen<{ url?: string }>('deep-link-opened', (e) => {
       const raw = e.payload.url ?? '';
       const match = raw.match(/^fluxa:\/\/addon\/(.+)$/i);
       if (!match) return;
@@ -212,7 +213,7 @@ export default function App() {
       navigateRoute('settings');
     });
     return () => { void unlisten.then((fn) => fn()); };
-  }, [navigateRoute]);
+  }, [isWebTarget, navigateRoute]);
 
   const goBack = useCallback(() => {
     if (detailMeta) {
@@ -251,10 +252,12 @@ export default function App() {
     storedPrefsRef.current = freshPrefs;
     setLanguage(typeof freshPrefs.language === 'string' ? freshPrefs.language : null);
     setRpdbApiKey(prefString(freshPrefs, 'rpdbApiKey', ''));
-    void invoke('discord_presence_configure', { enabled: prefBool(freshPrefs, 'discordRichPresenceEnabled', true) });
-    void invoke('set_diagnostic_mode', { enabled: prefBool(freshPrefs, 'diagnosticMode', false) });
+    if (!isWebTarget) {
+      void invoke('discord_presence_configure', { enabled: prefBool(freshPrefs, 'discordRichPresenceEnabled', true) });
+      void invoke('set_diagnostic_mode', { enabled: prefBool(freshPrefs, 'diagnosticMode', false) });
+    }
     updateState({ settings: { values: freshPrefs } });
-  }, [updateState]);
+  }, [isWebTarget, updateState]);
 
   const switchToNoProfile = useCallback(async () => {
     invalidateProfileWork();
@@ -307,6 +310,7 @@ export default function App() {
   const welcomeGate = (
     <AppWelcomeGate
         dispatch={dispatch}
+        updateState={updateState}
         applyStoredPrefs={applyStoredPrefs}
         setAllProfiles={setAllProfiles}
         setActiveProfile={setActiveProfile}

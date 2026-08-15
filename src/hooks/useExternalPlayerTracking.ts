@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
+import { platformListen as listen } from '../platform/browser';
+import { platformInvoke as invoke } from '../platform/invoke';
 
 function debugLog(msg: string) {
   void invoke('debug_log', { msg }).catch(() => {});

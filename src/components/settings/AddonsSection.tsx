@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { open as shellOpen } from "@tauri-apps/plugin-shell";
+import { platformOpenExternal } from '../../platform/browser';
 import {
   addonKey,
   addonLogo,
@@ -234,7 +234,7 @@ function AddonTile({
 
   const handleConfigure = () => {
     const base = (addon.transportUrl ?? "").replace(/\/manifest\.json$/, "");
-    if (base) shellOpen(`${base}/configure`).catch(() => {});
+    if (base) platformOpenExternal(`${base}/configure`).catch(() => {});
   };
 
   return (

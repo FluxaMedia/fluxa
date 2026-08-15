@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { open as shellOpen } from '@tauri-apps/plugin-shell';
+import { platformOpenExternal } from '../../platform/browser';
 import type { WatchProvider, WatchProviders } from '../../core/types';
 
 export function dedupedWatchProviders(watchProviders?: WatchProviders): WatchProvider[] {
@@ -49,5 +49,5 @@ export const WatchProviderLogo = React.memo(function WatchProviderLogo({ name, l
 
 export function openWatchProvidersLink(link?: string) {
   if (!link) return;
-  void shellOpen(link).catch(() => {});
+  void platformOpenExternal(link).catch(() => {});
 }

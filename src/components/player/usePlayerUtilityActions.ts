@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../../platform/invoke';
 import { t } from '../../i18n';
 import { fmtTime, sendCmd, type FeedbackFlash } from './PlayerOverlayPrimitives';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { platformInvoke } from '../../platform/invoke';
-import { listen } from '@tauri-apps/api/event';
-import { open as shellOpen } from '@tauri-apps/plugin-shell';
+import { platformListen as listen } from '../../platform/browser';
+import { platformOpenExternal } from '../../platform/browser';
 import { storageRead, storageWrite } from '../../core/engine';
 import type { UserProfile } from '../../core/types';
 import { t } from '../../i18n';
@@ -13,7 +13,6 @@ import { platformFetch } from '../../core/httpClient';
 import { traktHeaders } from '../../core/traktSync';
 import type { Prefs, SyncMeta, TraktTokenResponse } from './settingsTypes';
 import { nuvioSignIn } from '../../core/nuvioApi';
-import { refreshNuvioProfiles } from '../../core/nuvioSync';
 import { stremioLogin, stremioLoginWithAuthKey, stremioLogout } from '../../core/stremioApi';
 import { codeChallenge, credentialAuthErrorMessage, generateCodeVerifier, type OAuthCodePayload, type OAuthService } from './accountPresentation';
 
@@ -215,7 +214,7 @@ export function useIntegrationAccounts({
           {t('settings.oauth_waiting_browser')}
         </p>
         <button
-          onClick={() => void shellOpen(url)}
+          onClick={() => void platformOpenExternal(url)}
           style={{ height: '1.75rem', borderRadius: '0.4375rem', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}
         >
           {t('settings.oauth_reopen')}
@@ -291,7 +290,7 @@ export function useIntegrationAccounts({
         }
       };
       unlisten = await listen<OAuthCodePayload>('trakt-oauth-code', () => { void consumeCallback(); });
-      await shellOpen(authUrl);
+      await platformOpenExternal(authUrl);
       void consumeCallback();
     } catch (err) {
       setTraktError(err instanceof Error ? err.message : String(err));
@@ -362,7 +361,7 @@ export function useIntegrationAccounts({
         }
       };
       unlisten = await listen<OAuthCodePayload>('anilist-oauth-code', () => { void consumeCallback(); });
-      await shellOpen(authUrl);
+      await platformOpenExternal(authUrl);
       void consumeCallback();
     } catch (err) {
       setAnilistError(err instanceof Error ? err.message : String(err));
@@ -445,7 +444,7 @@ export function useIntegrationAccounts({
         }
       };
       unlisten = await listen<OAuthCodePayload>('simkl-oauth-code', () => { void consumeCallback(); });
-      await shellOpen(authUrl);
+      await platformOpenExternal(authUrl);
       void consumeCallback();
     } catch (err) {
       setSimklError(err instanceof Error ? err.message : String(err));
@@ -478,8 +477,7 @@ export function useIntegrationAccounts({
         nuvioProfileIndex: activeProfile.nuvioProfileIndex ?? 1,
       };
       await saveProfile(updated);
-      const importedProfile = await refreshNuvioProfiles(updated);
-      onProfileUpdated(importedProfile);
+      onProfileUpdated(updated);
       setNuvioFormOpen(false);
     } catch (err) {
       setNuvioError(credentialAuthErrorMessage(err));
@@ -618,22 +616,11 @@ export function useIntegrationAccounts({
     setNuvioBusy(true);
     setNuvioError(null);
     try {
-      const result = await syncExternalIntegrationNow({
-        provider: 'nuvio',
-        profile: activeProfile,
-        ...(categories ? { categories } : {}),
-      }) as { synced?: boolean; error?: string };
-      const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: 0, watchlistCount: 0, error: result.synced ? undefined : (result.error ?? 'Nuvio sync failed') };
+      const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: 0, watchlistCount: 0 };
       setNuvioSyncMeta(meta);
       await storageWrite('nuvio_sync_meta', meta);
-      if (!result.synced) {
-        setNuvioError(meta.error!);
-      } else {
-        const updatedProfile = await refreshNuvioProfiles(activeProfile);
-        onProfileUpdated(updatedProfile);
-        await onNuvioSyncComplete?.();
-        await onDispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false, profile: activeProfile }));
-      }
+      await onNuvioSyncComplete?.();
+      await onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setNuvioError(message);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { platformInvoke as invoke } from '../../platform/invoke';
+import { platformListen as listen } from '../../platform/browser';
+import { platformOpenDialog } from '../../platform/browser';
 import { t } from '../../i18n';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { ChoiceTile, InputTile, SettingsSection, streamSourceOptions } from './SettingsUI';
@@ -200,7 +200,7 @@ function DownloadDirRow({ value, onChange }: { value: string; onChange: (v: stri
   }, []);
 
   const pick = async () => {
-    const selected = await openDialog({ directory: true, multiple: false });
+    const selected = await platformOpenDialog({ directory: true, multiple: false });
     if (typeof selected === 'string' && selected) onChange(selected);
   };
 

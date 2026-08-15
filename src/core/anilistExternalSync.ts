@@ -64,14 +64,15 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
 
   const categories = payload.categories as ImportCategory[] | undefined;
   const dryRun = payload.dryRun === true;
+  const readOnly = payload.readOnly === true;
 
   const plan = await coreAnilistEntriesToSync(entries, Date.now(), categories, dryRun);
   if (!plan) return { synced: false, error: 'AniList entries could not be processed' };
 
-  if (plan.watching != null) {
+  if (plan.watching != null && !readOnly) {
     await replaceExternalContinueWatching({ provider: 'anilist', items: plan.watching, profileKey });
   }
-  if (!dryRun) {
+  if (!dryRun && !readOnly) {
     await saveProviderLibrary('anilist', {
       watchlist: plan.watchlist ?? [],
       watching: plan.watching ?? [],
@@ -88,6 +89,13 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
     watchlistCount: plan.watchlistCount,
     completedCount: plan.completedCount,
     droppedCount: plan.droppedCount,
+    snapshot: {
+      watchlist: plan.watchlist ?? [],
+      watching: plan.watching ?? [],
+      completed: plan.completed ?? [],
+      dropped: plan.dropped ?? [],
+      favorites: [],
+    },
   };
 }
 

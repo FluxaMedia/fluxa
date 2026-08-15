@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 import { coreInvoke, getSnapshot, runPluginScraper } from './engine';
 import { platformFetch } from './httpClient';
 

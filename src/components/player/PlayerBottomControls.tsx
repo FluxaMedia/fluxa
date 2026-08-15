@@ -1,6 +1,6 @@
 import { AudioLines, Captions, Fullscreen, GalleryVerticalEnd, Gauge, Pause, Play, RotateCcw, RotateCw, Share2, SkipForward } from 'lucide-react';
 import { useRef, useState, type CSSProperties, type MouseEvent, type MutableRefObject, type RefObject } from 'react';
-import { emit } from '@tauri-apps/api/event';
+import { platformEmit as emit } from '../../platform/browser';
 import { t } from '../../i18n';
 import { VolumeBar } from './VolumeBar';
 import { PlayerSeekBar } from './PlayerSeekBar';

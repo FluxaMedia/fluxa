@@ -17,7 +17,7 @@ import { useLibraryBulkSelection } from '../hooks/useLibraryBulkSelection';
 import { useLibraryCollections } from '../hooks/useLibraryCollections';
 import { NAV_RAIL_WIDTH, PX, styles } from './libraryScreenStyles';
 import { CircleBtn, HistoryTimeline, TabChip } from './LibraryScreenParts';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 import { LocalMediaPanel } from '../components/LocalMediaPanel';
 
 function debugLog(msg: string) {
@@ -52,7 +52,6 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'rating'>(() => (getViewPrefs().librarySort as 'recent' | 'title' | 'rating') ?? 'recent');
   const [librarySource, setLibrarySource] = useState<LibrarySource>(() => (getViewPrefs().librarySource as LibrarySource) ?? 'local');
   const [providerLibraries, setProviderLibraries] = useState<Partial<Record<LibraryProvider, ProviderLibrarySnapshot>>>({});
-  const [providerLibrariesLoaded, setProviderLibrariesLoaded] = useState(false);
 
   useEffect(() => {
     void whenViewPrefsReady().then(() => {
@@ -83,7 +82,6 @@ export const LibraryScreen = React.memo(function LibraryScreen({
         debugLog(`LibraryScreen: loadProviderLibraries resolved keys=${Object.keys(libraries).join(',')}`);
         if (!active) return;
         setProviderLibraries(libraries);
-        setProviderLibrariesLoaded(true);
       });
     };
     refreshProviderLibraries();
@@ -93,14 +91,6 @@ export const LibraryScreen = React.memo(function LibraryScreen({
       window.removeEventListener(PROVIDER_LIBRARIES_CHANGED, refreshProviderLibraries);
     };
   }, [activeProfile?.id]);
-
-  useEffect(() => {
-    if (!providerLibrariesLoaded) return;
-    if (librarySource !== 'local' && !providerLibraries[librarySource]) {
-      debugLog(`LibraryScreen: reverting to local, librarySource=${librarySource} has no providerLibraries entry (keys=${Object.keys(providerLibraries).join(',')})`);
-      changeLibrarySource('local');
-    }
-  }, [librarySource, providerLibraries, providerLibrariesLoaded]);
 
   const TAB_ORDER: Tab[] = ['watchlist', 'watching', 'completed', 'dropped', 'favorites', 'collections', 'airing', 'rated', 'history'];
   useEffect(() => {
@@ -126,13 +116,21 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   }, []);
 
   const selectedProviderLibrary = librarySource === 'local' ? null : providerLibraries[librarySource];
-  const watchlist = (selectedProviderLibrary?.watchlist ?? library.lastWrite?.watchlist ?? library.watchlist ?? []) as LibraryItem[];
-  const watching = (selectedProviderLibrary?.watching ?? library.lastWrite?.continueWatching ?? library.continueWatching ?? []) as LibraryItem[];
-  const rawCompleted = (selectedProviderLibrary?.completed ?? library.lastWrite?.completed ?? library.completed ?? []) as LibraryItem[];
-  const rawDropped = (selectedProviderLibrary?.dropped ?? library.lastWrite?.dropped ?? library.dropped ?? []) as LibraryItem[];
-  const favorites = (librarySource === 'trakt'
-    ? (selectedProviderLibrary?.favorites ?? [])
-    : ((library.lastWrite?.favorites ?? library.favorites) ?? [])) as LibraryItem[];
+  const watchlist = (librarySource === 'local'
+    ? (library.lastWrite?.watchlist ?? library.watchlist ?? [])
+    : (selectedProviderLibrary?.watchlist ?? [])) as LibraryItem[];
+  const watching = (librarySource === 'local'
+    ? (library.lastWrite?.continueWatching ?? library.continueWatching ?? [])
+    : (selectedProviderLibrary?.watching ?? [])) as LibraryItem[];
+  const rawCompleted = (librarySource === 'local'
+    ? (library.lastWrite?.completed ?? library.completed ?? [])
+    : (selectedProviderLibrary?.completed ?? [])) as LibraryItem[];
+  const rawDropped = (librarySource === 'local'
+    ? (library.lastWrite?.dropped ?? library.dropped ?? [])
+    : (selectedProviderLibrary?.dropped ?? [])) as LibraryItem[];
+  const favorites = (librarySource === 'local'
+    ? (library.lastWrite?.favorites ?? library.favorites ?? [])
+    : (selectedProviderLibrary?.favorites ?? [])) as LibraryItem[];
 
   const watchlistLabelKey = librarySource === 'trakt' || librarySource === 'nuvio' || librarySource === 'stremio'
     ? 'library.watchlist'

@@ -59,10 +59,29 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
       return coreInvoke(args?.method as string, args?.argsJson as string) as Promise<T>;
     case 'engine_init':
       return engineInit(args?.initialJson as string) as Promise<T>;
-    case 'engine_dispatch':
-      return engineDispatch(args?.actionJson as string) as Promise<T>;
-    case 'engine_complete_effect':
-      return engineCompleteEffect(args?.resultJson as string) as Promise<T>;
+    case 'engine_dispatch': {
+      const actionJson = args?.actionJson as string;
+      console.debug('[fluxa:web:engine:dispatch:start]', JSON.parse(actionJson).type);
+      return engineDispatch(actionJson).then((result) => {
+        console.debug('[fluxa:web:engine:dispatch:end]', JSON.parse(actionJson).type, Boolean(result));
+        return result as T;
+      }).catch((error) => {
+        console.error('[fluxa:web:engine:dispatch:error]', JSON.parse(actionJson).type, error);
+        throw error;
+      });
+    }
+    case 'engine_complete_effect': {
+      const resultJson = args?.resultJson as string;
+      const effect = JSON.parse(resultJson) as { effectId?: string; status?: string; error?: string };
+      console.debug('[fluxa:web:engine:effect:start]', effect.effectId, effect.status, effect.error);
+      return engineCompleteEffect(resultJson).then((result) => {
+        console.debug('[fluxa:web:engine:effect:end]', effect.effectId, Boolean(result));
+        return result as T;
+      }).catch((error) => {
+        console.error('[fluxa:web:engine:effect:error]', effect.effectId, error);
+        throw error;
+      });
+    }
     case 'engine_snapshot':
       return engineSnapshot() as Promise<T>;
     case 'storage_read':
@@ -71,6 +90,8 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
       return storageWrite(args?.key as string, args?.value as string) as T;
     case 'storage_delete':
       return storageDelete(args?.key as string) as T;
+    case 'library_snapshot':
+      return storageRead(args?.profileKey as string) as T;
     case 'http_fetch_text': {
       const response = await fetch(args?.url as string);
       return { status_code: response.status, body: await response.text() } as T;
@@ -115,7 +136,9 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
       if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) throw new Error('invalid Nuvio path');
       const method = args?.method as string;
       const token = args?.token as string | null | undefined;
-      const response = await fetch(`${nuvioUrl.replace(/\/$/, '')}${path}`, {
+      const requestUrl = `${nuvioUrl.replace(/\/$/, '')}${path}`;
+      console.debug('[fluxa:web:nuvio:start]', method, path);
+      const response = await fetch(requestUrl, {
         method,
         headers: {
           apikey: nuvioKey,
@@ -124,7 +147,9 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
         },
         body: args?.body == null ? (method === 'POST' ? '{}' : undefined) : String(args.body),
       });
-      return [response.status, await response.text()] as T;
+      const responseText = await response.text();
+      console.debug('[fluxa:web:nuvio:end]', response.status, path);
+      return [response.status, responseText] as T;
     }
     case 'start_torrent_stream': {
       const response = await companion('/torrent/start', {

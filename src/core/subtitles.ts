@@ -1,5 +1,5 @@
 import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex } from './engine';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 import {
   coreResourceFetchPlan,
   coreResourceParsePlan,

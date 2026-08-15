@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
+import { platformListen as listen } from '../platform/browser';
+import { platformInvoke as invoke } from '../platform/invoke';
 import { notify } from '../core/notifications';
 import { t } from '../i18n';
 

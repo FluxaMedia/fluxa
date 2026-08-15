@@ -1,6 +1,7 @@
-import { coreInvoke, dispatchAction, storageRead } from './engine';
+import { coreInvoke, dispatchAction, storageRead, storageWrite } from './engine';
 import { pumpEffects } from './effectRunner';
-import type { AppState, UserProfile } from './types';
+import { nuvioPullPlugins, nuvioPushPlugins } from './nuvioApi';
+import type { AppState, PluginRepository, UserProfile } from './types';
 
 const LEGACY_REPOSITORY_URLS_KEY = 'plugin_repository_urls';
 const LEGACY_SCRAPER_ENABLED_KEY = 'plugin_scraper_enabled';
@@ -54,6 +55,46 @@ export async function hydratePluginsFromStorage(
     const result = await dispatchAction(JSON.stringify({ type: 'pluginScraperToggled', scraperId, enabled }));
     if (result) updateState(result.state);
   }
+}
+
+function remotePluginUrls(rows: Array<{ url?: unknown }>): string[] {
+  return Array.from(new Set(rows
+    .map((row) => typeof row.url === 'string' ? row.url.trim() : '')
+    .filter(Boolean)));
+}
+
+export async function hydratePluginsFromNuvio(
+  profile: UserProfile | null | undefined,
+): Promise<void> {
+  if (!profile?.nuvioAccessToken) return;
+  const rows = await nuvioPullPlugins(profile.nuvioAccessToken, profile.nuvioProfileIndex ?? 1);
+  const urls = remotePluginUrls(rows);
+  const key = await pluginRepositoryUrlsKey();
+  if (urls.length === 0) {
+    const localUrls = await storageRead<string[]>(key) ?? [];
+    if (localUrls.length > 0) {
+      await pushPluginsToNuvio(profile, localUrls.map((manifestUrl) => ({ manifestUrl })));
+      return;
+    }
+  }
+  await storageWrite(key, urls);
+}
+
+export async function pushPluginsToNuvio(
+  profile: UserProfile | null | undefined,
+  repositories: PluginRepository[],
+): Promise<void> {
+  if (!profile?.nuvioAccessToken) return;
+  await nuvioPushPlugins(
+    profile.nuvioAccessToken,
+    profile.nuvioProfileIndex ?? 1,
+    repositories.map((repository, index) => ({
+      url: repository.manifestUrl,
+      name: repository.name,
+      enabled: true,
+      sort_order: index,
+    })),
+  );
 }
 
 export async function clearEnginePlugins(

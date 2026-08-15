@@ -462,6 +462,16 @@ export async function coreNuvioProgressMetaNeeds(
   );
 }
 
+export async function coreNuvioResolveContinueWatching(
+  progress: unknown[],
+  addonMetas: Record<string, unknown> = {},
+): Promise<unknown[] | null> {
+  return coreInvoke(
+    "nuvioResolveContinueWatching",
+    JSON.stringify({ progress, addonMetas }),
+  );
+}
+
 export async function coreNuvioImportMergePlan(args: {
   progress: Record<string, unknown>;
   watched: Record<string, boolean>;
@@ -541,4 +551,3 @@ export async function coreTorrentReadyBudget(): Promise<{
     maxPeerRetriesSingleSource: 2,
   };
 }
-

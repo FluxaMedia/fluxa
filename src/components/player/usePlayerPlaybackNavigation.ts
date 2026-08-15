@@ -1,5 +1,5 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { emit, listen } from '@tauri-apps/api/event';
+import { platformEmit as emit, platformListen as listen } from '../../platform/browser';
 import { playerGetPlaybackInfo } from '../../core/mpvPlayer';
 import type { EpisodeInfo } from './EpisodePanel';
 import { parseChapters, parseEpisodes, parseSegments, type ActiveSkip, type Chapter, type SkipSegment } from './PlayerOverlayPrimitives';

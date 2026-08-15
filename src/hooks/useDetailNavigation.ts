@@ -64,23 +64,25 @@ export function useDetailNavigation() {
     const resumeAt = resumeAtOverride ?? (resumePercent === undefined ? item.timeOffset : undefined);
 
     prefetchArtworkFor(meta, episode);
+    setDetailInitialEpisode(episode);
+    setDetailAutoShowStreams(true);
+    setDetailResumeAt(resumeAt ?? undefined);
+    setDetailResumePercent(resumePercent);
+    setDetailMeta(meta);
 
     void (async () => {
-      const stream = item.lastStream ?? await readStoredPlaybackSource(meta.id);
-      const url = item.lastStreamUrl?.trim();
-      const resumeStream: Stream | null = stream ?? (url
-        ? { url, title: item.lastStreamTitle, name: item.lastStreamTitle }
-        : null);
-
-      if (!resumeStream) {
-        setDetailInitialEpisode(episode);
-        setDetailAutoShowStreams(true);
-        setDetailResumeAt(resumeAt ?? undefined);
-        setDetailResumePercent(resumePercent);
+      try {
+        const stream = item.lastStream ?? await readStoredPlaybackSource(meta.id);
+        const url = item.lastStreamUrl?.trim();
+        const resumeStream: Stream | null = stream ?? (url
+          ? { url, title: item.lastStreamTitle, name: item.lastStreamTitle }
+          : null);
+        if (resumeStream) {
+          await guardedPlayRef.current(resumeStream, meta, episode, resumeAt, item.duration, undefined, resumePercent);
+        }
+      } catch {
         setDetailMeta(meta);
-        return;
       }
-      await guardedPlayRef.current(resumeStream, meta, episode, resumeAt, item.duration, undefined, resumePercent);
     })();
   }, []);
 

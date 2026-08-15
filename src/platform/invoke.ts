@@ -4,3 +4,8 @@ export function platformInvoke<T>(command: string, args?: Record<string, unknown
   }
   return import('@tauri-apps/api/core').then(({ invoke }) => invoke<T>(command, args));
 }
+
+export function platformConvertFileSrc(path: string): Promise<string> {
+  if (import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos') return Promise.resolve(path);
+  return import('@tauri-apps/api/core').then(({ convertFileSrc }) => convertFileSrc(path));
+}

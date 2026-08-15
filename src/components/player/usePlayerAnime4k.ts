@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { platformInvoke as invoke } from '../../platform/invoke';
+import { platformListen as listen } from '../../platform/browser';
 import { t } from '../../i18n';
 import { ANIME4K_MODES, type FeedbackFlash } from './PlayerOverlayPrimitives';
 

@@ -5,6 +5,8 @@ export const FONT = "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI'
 export const S: Record<string, React.CSSProperties> = {
   root: {
     position: 'fixed', inset: 0, zIndex: 9999, background: '#0C0C0C',
+    backgroundImage: `linear-gradient(rgba(3, 8, 12, 0.62), rgba(3, 8, 12, 0.78)), url(${import.meta.env.BASE_URL}welcome-background.png)`,
+    backgroundPosition: 'center', backgroundSize: 'cover',
     color: '#FFFFFF', overflow: 'auto', fontFamily: FONT,
     display: 'flex', flexDirection: 'column',
   },

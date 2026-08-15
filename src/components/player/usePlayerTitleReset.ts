@@ -1,5 +1,5 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { listen } from '@tauri-apps/api/event';
+import { platformListen as listen } from '../../platform/browser';
 
 export function usePlayerTitleReset({ setTitle, setEpisodeTitle, setAbLoopStage, setNextEpisodeDismissed, autoSkippedKeysRef, stallCountRef, prevPausedForCacheRef, bufferHistoryRef, networkHistoryRef, resetTorrentSpeedHistory }: { setTitle: Dispatch<SetStateAction<string>>; setEpisodeTitle: Dispatch<SetStateAction<string>>; setAbLoopStage: Dispatch<SetStateAction<'none' | 'a' | 'ab'>>; setNextEpisodeDismissed: Dispatch<SetStateAction<boolean>>; autoSkippedKeysRef: MutableRefObject<Set<string>>; stallCountRef: MutableRefObject<number>; prevPausedForCacheRef: MutableRefObject<boolean>; bufferHistoryRef: MutableRefObject<number[]>; networkHistoryRef: MutableRefObject<number[]>; resetTorrentSpeedHistory: () => void }) {
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 import { coreApplyPreferenceUpdate, coreInvoke, httpFetchText, storageRead, storageWrite } from '../core/engine';
 import { Keyboard, Search } from 'lucide-react';
 import {
@@ -12,8 +12,8 @@ import {
 import type { AddonDescriptor, AppState, PluginRepository, PluginScraper, UserProfile } from '../core/types';
 import { addonKey, normalizeAddonDescriptor } from '../core/addons';
 import { saveProfile } from '../core/profiles';
-import { loadAddons, loadPrefs, saveAddons, savePrefs } from '../core/libraryOps';
-import { pluginRepositoryUrlsKey, pluginScraperEnabledKey } from '../core/pluginsStorage';
+import { loadAddons, loadEnabledAddons, loadPrefs, saveAddons, savePrefs } from '../core/libraryOps';
+import { pluginRepositoryUrlsKey, pluginScraperEnabledKey, pushPluginsToNuvio } from '../core/pluginsStorage';
 import { nuvioReplaceAddons } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
 import { syncStremioAddons } from '../core/stremioExternalSync';
@@ -152,15 +152,15 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
           void savePrefs(detected);
         }).catch(() => undefined);
       }
-      void import('@tauri-apps/api/core').then(({ invoke }) =>
-        invoke('player_set_seek_thumbnail_enabled', { enabled: merged.seekThumbnailEnabled })
-      );
+      if (import.meta.env.VITE_FLUXA_TARGET !== 'web' && import.meta.env.VITE_FLUXA_TARGET !== 'webos') {
+        void invoke('player_set_seek_thumbnail_enabled', { enabled: merged.seekThumbnailEnabled });
+      }
     });
-    loadAddons().then((a) => setInstalledAddons(a));
+    loadEnabledAddons().then((a) => setInstalledAddons(a));
   }, []);
 
   const reloadInstalledAddons = async () => {
-    setInstalledAddons(await loadAddons());
+    setInstalledAddons(await loadEnabledAddons());
   };
 
   const syncNuvioAddons = async (profile: UserProfile | null | undefined, addons: AddonDescriptor[]) => {
@@ -247,6 +247,12 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       setPrefs(previous);
     }
   };
+
+  useEffect(() => {
+    if (!activeProfile?.nuvioAccessToken) return;
+    if (prefs.continueWatchingSource !== 'nuvio') void setPref('continueWatchingSource', 'nuvio');
+    if (prefs.integrationLibrarySource !== 'nuvio') void setPref('integrationLibrarySource', 'nuvio');
+  }, [activeProfile?.id, activeProfile?.nuvioAccessToken]);
 
   const handleInstall = async () => {
     const rawUrl = addonUrl.trim();
@@ -353,6 +359,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       const key = await pluginRepositoryUrlsKey();
       const persisted = await storageRead<string[]>(key) ?? [];
       await storageWrite(key, [...new Set([...persisted, normalizedUrl])]);
+      void pushPluginsToNuvio(activeProfile, [...pluginRepositories, { manifestUrl: normalizedUrl }]).catch(() => undefined);
       setPluginUrl('');
     } catch (error) {
       setPluginInstallError(error instanceof Error ? error.message : String(error));
@@ -366,6 +373,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
     const key = await pluginRepositoryUrlsKey();
     const persisted = await storageRead<string[]>(key) ?? [];
     await storageWrite(key, persisted.filter((url) => url !== repository.manifestUrl));
+    void pushPluginsToNuvio(activeProfile, pluginRepositories.filter((item) => item.manifestUrl !== repository.manifestUrl)).catch(() => undefined);
   };
 
   const handleRefreshPlugin = async (repository: PluginRepository) => {

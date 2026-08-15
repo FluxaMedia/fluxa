@@ -79,6 +79,7 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
   const categories = payload.categories as ImportCategory[] | undefined;
   const wants = (category: ImportCategory) => !categories || categories.includes(category);
   const dryRun = payload.dryRun === true;
+  const readOnly = payload.readOnly === true;
 
   let libraryItems: Record<string, unknown>[];
   try {
@@ -89,17 +90,19 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
 
   const rawItems = ((await coreLibraryContinueWatchingItems(libraryItems)) ?? []) as Record<string, unknown>[];
   const items = await enrichWithAddonMeta(rawItems);
-  if (wants('continueWatching') && !dryRun) await replaceExternalContinueWatching({ items, provider: 'stremio', profileKey });
+  if (wants('continueWatching') && !dryRun && !readOnly) await replaceExternalContinueWatching({ items, provider: 'stremio', profileKey });
 
   let watchlistCount = 0;
   let watchedCount = 0;
+  let providerSnapshot = { watchlist: [] as Record<string, unknown>[], watching: items, completed: [] as Record<string, unknown>[], dropped: [] as Record<string, unknown>[], favorites: [] as Record<string, unknown>[] };
   try {
     const watchlistItems = ((await coreStremioWatchlistToItems(libraryItems)) ?? []) as Record<string, unknown>[];
     const watchedIds = ((await coreStremioWatchedToIds(libraryItems)) ?? {}) as Record<string, boolean>;
     watchlistCount = watchlistItems.length;
     watchedCount = Object.values(watchedIds).filter(Boolean).length;
+    providerSnapshot = { watchlist: watchlistItems, watching: items, completed: [], dropped: [], favorites: [] };
 
-    if (!dryRun) {
+    if (!dryRun && !readOnly) {
       await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [], favorites: [] }, profileKey);
     }
   } catch {}
@@ -109,9 +112,17 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
     try {
       const addons = await stremioPullAddons(authKey);
       addonCount = addons.length;
-      if (!dryRun) await saveAddons(await Promise.all(addons.map(normalizeAddonDescriptor)));
+      if (!dryRun && !readOnly) await saveAddons(await Promise.all(addons.map(normalizeAddonDescriptor)));
     } catch {}
   }
 
-  return { synced: true, provider: 'stremio', continueWatchingCount: items.length, watchlistCount, watchedCount, addonCount };
+  return {
+    synced: true,
+    provider: 'stremio',
+    continueWatchingCount: items.length,
+    watchlistCount,
+    watchedCount,
+    addonCount,
+    snapshot: providerSnapshot,
+  };
 }

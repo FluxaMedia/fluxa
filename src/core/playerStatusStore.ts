@@ -1,5 +1,5 @@
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
+import { platformListen as listen, type UnlistenFn } from '../platform/browser';
+import { platformInvoke as invoke } from '../platform/invoke';
 import type { EmbeddedMpvStatus, PlayerPositionStatus, PlayerStaticStatus } from './mpvPlayer';
 
 type Listener = (status: EmbeddedMpvStatus) => void;

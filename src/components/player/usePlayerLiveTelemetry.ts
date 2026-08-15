@@ -1,4 +1,4 @@
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { platformSetCursorVisible } from '../../platform/browser';
 import { useEffect, useLayoutEffect, useRef, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
 import { imdbButtonFor, updateDiscordPresence } from '../../core/discordPresence';
 import { embeddedMpvSetCursorVisible, playerTorrentStats, playerTorrentTelemetry, type EmbeddedMpvStatus, type TorrentStats, type TorrentTelemetryContext } from '../../core/mpvPlayer';
@@ -187,7 +187,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
         controlsVisibleRef.current = false;
         setControlsVisible(false);
         overlayRef.current?.classList.add('fluxa-cursor-hidden');
-        getCurrentWindow().setCursorVisible(false).catch(() => {});
+        platformSetCursorVisible(false).catch(() => {});
         embeddedMpvSetCursorVisible(false).catch(() => {});
       }
       if (miniProgressRef.current) miniProgressRef.current.style.width = `${(fraction * 100).toFixed(3)}%`;

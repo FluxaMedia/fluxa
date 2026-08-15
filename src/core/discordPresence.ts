@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../platform/invoke';
 
 export function configureDiscordPresence(enabled: boolean): void {
   void invoke('discord_presence_configure', { enabled }).catch(() => undefined);

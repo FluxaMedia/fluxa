@@ -23,6 +23,7 @@ import {
   type NuvioLibraryDeltaEvent,
   type NuvioWatchedItemDeltaEvent,
 } from './nuvioApi';
+import { platformInvoke } from '../platform/invoke';
 import { platformFetch } from './httpClient';
 import { buildContinueWatching } from './libraryOps';
 import {
@@ -283,9 +284,7 @@ async function importNuvioProfileDataInner(
 
   const suffix = profileStorageSuffix(profile);
   const profileKey = `library_${suffix}`;
-  void import('@tauri-apps/api/core').then(({ invoke }) =>
-    invoke('debug_log', { msg: `nuvio-import-debug: importNuvioProfileData start profile.id=${profile.id} profileIdx=${profileIdx} profileKey=${profileKey}` }),
-  );
+  void platformInvoke('debug_log', { msg: `nuvio-import-debug: importNuvioProfileData start profile.id=${profile.id} profileIdx=${profileIdx} profileKey=${profileKey}` });
   const progressBefore: Record<string, unknown> = {};
   const watchedBefore: Record<string, boolean> = {};
   let mappedWatchlist: unknown[] = [];

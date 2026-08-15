@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke as invoke } from '../../platform/invoke';
 import { useCallback, useRef, useState } from 'react';
 import { t } from '../../i18n';
 import { sendCmd, type FeedbackFlash } from './PlayerOverlayPrimitives';

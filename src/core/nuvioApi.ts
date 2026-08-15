@@ -37,6 +37,16 @@ export interface NuvioAddon {
   updated_at: string;
 }
 
+export interface NuvioPlugin {
+  id?: string;
+  user_id?: string;
+  profile_id?: number;
+  url: string;
+  name?: string | null;
+  enabled?: boolean;
+  sort_order?: number;
+}
+
 export interface NuvioLibraryItem {
   id?: string;
   user_id?: string;
@@ -324,11 +334,19 @@ export async function nuvioReplaceAddons(
   await Promise.all(plan.creates.map((payload) => post<void>('/rest/v1/addons', payload, token)));
 }
 
-export async function nuvioPullPlugins(token: string, profileId: number): Promise<unknown[]> {
-  return get<unknown[]>(
+export async function nuvioPullPlugins(token: string, profileId: number): Promise<NuvioPlugin[]> {
+  return get<NuvioPlugin[]>(
     `/rest/v1/plugins?select=*&profile_id=eq.${profileId}&order=sort_order`,
     token,
   );
+}
+
+export async function nuvioPushPlugins(
+  token: string,
+  profileId: number,
+  plugins: Array<{ url: string; name?: string; enabled?: boolean; sort_order?: number }>,
+): Promise<void> {
+  await post('/rest/v1/rpc/sync_push_plugins', { p_profile_id: profileId, p_plugins: plugins }, token);
 }
 
 export async function nuvioPullLibrary(
