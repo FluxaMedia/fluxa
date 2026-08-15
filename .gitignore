@@ -2,6 +2,8 @@ CLAUDE.md
 AGENTS.md
 node_modules/
 dist/
+dist-web/
+dist-webos/
 src-tauri/target/
 src-tauri/gen/
 .env

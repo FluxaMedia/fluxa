@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { platformInvoke as invoke } from '../platform/invoke';
 
 export async function storageRead<T>(key: string): Promise<T | null> {
   const raw = await invoke<string | null>("storage_read", { key });

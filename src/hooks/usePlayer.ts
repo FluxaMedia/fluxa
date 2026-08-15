@@ -50,6 +50,7 @@ import { usePlayerRetry } from './usePlayerRetry';
 import { usePlayerPlaybackStart } from './usePlayerPlaybackStart';
 import { useExternalPlayerTracking, type ExternalPlayerSession, type ExternalPlayerStatus } from './useExternalPlayerTracking';
 import { AsyncScope } from '../core/asyncScope';
+import { useWebPlayer, type WebPlayerResult } from './useWebPlayer';
 
 function playbackErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
@@ -110,7 +111,7 @@ interface UsePlayerResult {
   skipSegmentCoverage: Record<string, string[]>;
 }
 
-export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdated, onEpisodePlaybackFailed }: UsePlayerOptions): UsePlayerResult {
+function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdated, onEpisodePlaybackFailed }: UsePlayerOptions): UsePlayerResult {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
   const [playerTorrentTelemetryContext, setPlayerTorrentTelemetryContext] = useState<import('../core/mpvPlayer').TorrentTelemetryContext | null>(null);
   const [playerTitle, setPlayerTitle] = useState<string | undefined>();
@@ -607,4 +608,11 @@ export function usePlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   }, []);
 
   return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
+}
+
+export function usePlayer(options: UsePlayerOptions): UsePlayerResult | WebPlayerResult {
+  if (import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos') {
+    return useWebPlayer(options);
+  }
+  return useDesktopPlayer(options);
 }

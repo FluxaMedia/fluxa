@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { platformInvoke } from '../platform/invoke';
 import { withSentrySpan } from "./sentryRuntime";
 import type { DispatchResult, EffectResult } from "./types";
 import type { CoreMethod } from "./coreMethods";
@@ -7,7 +7,7 @@ let engineHandle: number | null = null;
 
 export async function initEngine(initialJson: string = "{}"): Promise<void> {
   if (engineHandle !== null) return;
-  engineHandle = await invoke<number>("engine_init", { initialJson });
+  engineHandle = await platformInvoke<number>("engine_init", { initialJson });
 }
 
 export async function dispatchAction(
@@ -20,7 +20,7 @@ export async function dispatchAction(
     }`;
   } catch {}
   return withSentrySpan(label, "fluxa.ipc", async () => {
-    const raw = await invoke<string | null>("engine_dispatch", { actionJson });
+    const raw = await platformInvoke<string | null>("engine_dispatch", { actionJson });
     if (!raw) return null;
     return JSON.parse(raw) as DispatchResult;
   });
@@ -30,7 +30,7 @@ export async function completeEffect(
   result: EffectResult,
 ): Promise<DispatchResult | null> {
   return withSentrySpan(`completeEffect:${result.effectId}`, "fluxa.ipc", async () => {
-    const raw = await invoke<string | null>("engine_complete_effect", {
+    const raw = await platformInvoke<string | null>("engine_complete_effect", {
       resultJson: JSON.stringify(result),
     });
     if (!raw) return null;
@@ -39,7 +39,7 @@ export async function completeEffect(
 }
 
 export async function getSnapshot(): Promise<unknown | null> {
-  const raw = await invoke<string | null>("engine_snapshot");
+  const raw = await platformInvoke<string | null>("engine_snapshot");
   if (!raw) return null;
   return JSON.parse(raw);
 }
@@ -47,7 +47,7 @@ export async function getSnapshot(): Promise<unknown | null> {
 export async function httpFetchText(
   url: string,
 ): Promise<{ statusCode: number; body: string }> {
-  const response = await invoke<{ status_code: number; body: string }>(
+  const response = await platformInvoke<{ status_code: number; body: string }>(
     "http_fetch_text",
     { url },
   );
@@ -60,7 +60,7 @@ export async function httpExecuteText(
   headers: Record<string, string>,
   body?: unknown,
 ): Promise<{ statusCode: number; body: string }> {
-  const response = await invoke<{ status_code: number; body: string }>(
+  const response = await platformInvoke<{ status_code: number; body: string }>(
     "http_execute_text",
     { url, method, headers, body },
   );
@@ -68,7 +68,7 @@ export async function httpExecuteText(
 }
 
 export async function registerTrailerProxyUrl(url: string): Promise<string> {
-  return invoke<string>("register_trailer_proxy_url", { url });
+  return platformInvoke<string>("register_trailer_proxy_url", { url });
 }
 
 export async function runPluginScraper(
@@ -81,7 +81,7 @@ export async function runPluginScraper(
   season: number | null,
   episode: number | null,
 ): Promise<string> {
-  return invoke<string>("run_plugin_scraper", {
+  return platformInvoke<string>("run_plugin_scraper", {
     code,
     repositoryUrl,
     scraperId,

@@ -4,7 +4,11 @@ import { visualizer } from "rollup-plugin-visualizer";
 
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig(async () => ({
+export default defineConfig(async ({ mode }) => ({
+  base: mode === 'web' || mode === 'webos' ? process.env.VITE_BASE_PATH || '/' : '/',
+  define: {
+    'import.meta.env.VITE_FLUXA_TARGET': JSON.stringify(mode === 'web' || mode === 'webos' ? mode : 'desktop'),
+  },
   plugins: [
     react(),
     ...(process.env.ANALYZE_BUNDLE
@@ -32,9 +36,12 @@ export default defineConfig(async () => ({
     entries: ["index.html"],
   },
   build: {
+    outDir: mode === 'webos' ? 'dist-webos' : mode === 'web' ? 'dist-web' : 'dist',
     chunkSizeWarningLimit: 500,
     target:
-      process.env.TAURI_ENV_PLATFORM === "windows"
+      mode === 'webos'
+        ? 'chrome87'
+        : process.env.TAURI_ENV_PLATFORM === "windows"
         ? "chrome105"
         : "safari15",
     minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,

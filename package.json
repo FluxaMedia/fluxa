@@ -10,6 +10,9 @@
     "build": "node scripts/gen-core-methods.mjs && tsc && vite build",
     "check": "npm run build && cd src-tauri && cargo check",
     "preview": "vite preview",
+    "build:web": "node scripts/gen-core-methods.mjs && tsc && vite build --mode web",
+    "build:web:pages": "VITE_BASE_PATH=/fluxa-desktop/ npm run build:web",
+    "build:webos": "node scripts/gen-core-methods.mjs && tsc && vite build --mode webos",
     "tauri": "tauri",
     "bump": "bash scripts/bump-version.sh"
   },
@@ -24,6 +27,7 @@
     "@tauri-apps/plugin-process": "^2",
     "@tauri-apps/plugin-shell": "^2",
     "@tauri-apps/plugin-updater": "^2",
+    "fluxa_core": "file:../fluxa-core/pkg",
     "lucide-react": "^1.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"

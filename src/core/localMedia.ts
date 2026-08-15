@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke } from '../platform/invoke';
 import { coreInvoke } from './engine';
 import { runSearch } from './catalogEffects';
 import { fetchMetaDetail } from './detailEffects';
@@ -32,7 +32,7 @@ export function localFileUrl(path: string): string {
 }
 
 export async function scanLocalMedia(root: string): Promise<LocalMediaFile[]> {
-  return invoke<LocalMediaFile[]>('local_media_scan', { root });
+  return platformInvoke<LocalMediaFile[]>('local_media_scan', { root });
 }
 
 function parsedFor(file: LocalMediaFile, kind: 'movies' | 'tvShows'): Promise<ParsedName | null> {

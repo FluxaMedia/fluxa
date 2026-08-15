@@ -1,4 +1,4 @@
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { platformFetch as nativeFetch } from '../platform/http';
 import { getVersion } from '@tauri-apps/api/app';
 
 export let _appVersion = '1';
@@ -13,11 +13,11 @@ export async function platformFetch(url: string, init?: RequestInit): Promise<Re
   const signal = init?.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
   const hostname = new URL(url).hostname;
   if (NO_CORS_HOSTS.has(hostname)) {
-    return tauriFetch(url, { ...init, signal });
+    return nativeFetch(url, { ...init, signal });
   }
   const { ['User-Agent']: _omitted, ...nativeHeaders } = (init?.headers ?? {}) as Record<string, string>;
   if (NATIVE_FETCH_HOSTS.has(hostname)) {
-    return tauriFetch(url, {
+    return nativeFetch(url, {
       ...init,
       headers: { ...nativeHeaders, 'User-Agent': `Fluxa Desktop/${_appVersion}` },
       signal,
@@ -27,7 +27,7 @@ export async function platformFetch(url: string, init?: RequestInit): Promise<Re
     return await fetch(url, { ...init, headers: nativeHeaders, signal });
   } catch (error) {
     if (signal.aborted) throw error;
-    return tauriFetch(url, { ...init, signal });
+    return nativeFetch(url, { ...init, signal });
   }
 }
 

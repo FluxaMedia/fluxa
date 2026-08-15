@@ -1,0 +1,60 @@
+name: Deploy Web
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: FluxaMedia/fluxa-core
+          path: fluxa-core
+
+      - name: Link core sibling path
+        run: ln -s "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Build fluxa-core WASM
+        working-directory: fluxa-core
+        run: |
+          cargo install wasm-bindgen-cli --locked
+          cargo build --release --target wasm32-unknown-unknown --no-default-features --features wasm
+          wasm-bindgen target/wasm32-unknown-unknown/release/fluxa_core.wasm --target web --out-dir pkg
+          printf '%s\n' '{"name":"fluxa_core","type":"module"}' > pkg/package.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build GitHub Pages bundle
+        env:
+          VITE_BASE_PATH: /fluxa-desktop/
+        run: npm run build:web
+
+      - name: Publish gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: dist-web
+          force_orphan: true

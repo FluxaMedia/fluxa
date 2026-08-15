@@ -12,6 +12,10 @@ export function useNativePlayerEvents(flushProgressOnQuit: () => Promise<void>) 
   const [nativePlayerActive, setNativePlayerActive] = useState(false);
   const [softwareVideoActive, setSoftwareVideoActive] = useState(false);
 
+  if (import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos') {
+    return { nativePlayerActive: false, setNativePlayerActive, softwareVideoActive: false, setSoftwareVideoActive };
+  }
+
   useEffect(() => {
     const unlisteners: Array<() => void> = [];
     let cancelled = false;

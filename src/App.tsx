@@ -36,6 +36,7 @@ import { AsyncScope } from './core/asyncScope';
 import { usePlayer } from './hooks/usePlayer';
 import { useAppInit } from './hooks/useAppInit';
 import type { AppState, Meta, Stream, Video, UserProfile } from './core/types';
+import { WebPlayerOverlay } from './components/WebPlayerOverlay';
 
 const settingsStateEqual = appStateSliceEqual('settings');
 const profileStateEqual = appStateSliceEqual('plugins');
@@ -136,7 +137,10 @@ export default function App() {
     episodePlaybackFailureRef.current = openEpisodeSourcePicker;
   }, [openEpisodeSourcePicker]);
 
-  const { nativePlayerActive, softwareVideoActive } = useNativePlayerEvents(flushProgressOnQuit);
+  const nativeEvents = useNativePlayerEvents(flushProgressOnQuit);
+  const isWebTarget = import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
+  const nativePlayerActive = isWebTarget ? Boolean(playerUrl) : nativeEvents.nativePlayerActive;
+  const softwareVideoActive = isWebTarget ? false : nativeEvents.softwareVideoActive;
 
   const guardedPlay = useCallback(async (
     stream: Stream,
@@ -521,7 +525,7 @@ export default function App() {
       <UpdateModal state={updateModalState} onClose={() => setUpdateModalState({ phase: 'idle' })} />
   </>;
   const playback = (
-      <PlaybackHost
+      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} title={playerTitle} onClose={closePlayer} onFirstFrame={notifyFirstFrame} /> : <PlaybackHost
         active={nativePlayerActive}
         loading={playerLoadingOverlay}
         closePlayer={closePlayer}
