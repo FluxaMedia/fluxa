@@ -144,11 +144,7 @@ pub(crate) async fn player_capture_subtitle_cues(
         .ok_or_else(|| "playback time is unavailable".to_string())?;
     let subtitle_text = load_subtitle_text(&subtitle_source).await?;
     let request = json!({ "subtitleText": subtitle_text, "currentTime": current_time });
-    FluxaCore::subtitle_cues_around_time_json(&request.to_string())
+    FluxaCore::subtitle_sync_capture_json(&request.to_string())
         .and_then(|result| serde_json::from_str(&result).ok())
-        .map(|mut result: Value| {
-            result["capturedTime"] = json!(current_time);
-            result
-        })
         .ok_or_else(|| "could not read subtitle cues".to_string())
 }

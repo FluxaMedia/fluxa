@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { t } from '../../i18n';
 import { sendCmd, type FeedbackFlash } from './PlayerOverlayPrimitives';
 import type { SubtitleCaptureCue } from './TrackPopover';
+import { coreInvoke } from '../../core/engine';
 
 type SubtitleStyleKey = 'subtitleTextOpacity' | 'subtitleBackgroundColor' | 'subtitleBackgroundOpacity' | 'subtitleOutlineColor' | 'subtitleOutlineOpacity' | 'subtitleForceStyle' | 'subtitleCharacterEdge' | 'subtitleShadow';
 
@@ -55,9 +56,11 @@ export function usePlayerSubtitleControls({ prefs, persistPreference, flashFeedb
       setAutoSyncingSubtitles(false);
     }
   }, [autoSyncingSubtitles, flashFeedback]);
-  const applySubtitleCapture = useCallback((cueStart: number) => {
+  const applySubtitleCapture = useCallback(async (cueStart: number) => {
     if (subtitleCaptureTime === null) return;
-    const delay = Math.round((subtitleCaptureTime - cueStart) * 10) / 10;
+    const result = await coreInvoke<{ delaySeconds: number }>('subtitleSyncApply', JSON.stringify({ capturedTime: subtitleCaptureTime, cueStart }));
+    if (!result) return;
+    const delay = result.delaySeconds;
     sendCmd(`set sub-delay ${delay.toFixed(3)}`);
     setSubtitleDelay(delay);
     setSubtitleCaptureCues([]);
