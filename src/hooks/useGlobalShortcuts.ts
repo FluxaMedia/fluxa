@@ -14,6 +14,7 @@ export function useGlobalShortcuts({
   navigateRoute: (route: NavRoute) => void;
   goBack: () => void;
 }) {
+  const isWebTarget = import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   const [shortcutOverrides, setShortcutOverrides] = useState<ShortcutOverrides>({});
   const windowFullscreenRef = useRef(false);
@@ -24,14 +25,22 @@ export function useGlobalShortcuts({
   }, []);
 
   const refreshWindowFullscreen = useCallback(() => {
+    if (isWebTarget) {
+      windowFullscreenRef.current = Boolean(document.fullscreenElement);
+      return;
+    }
     getCurrentWindow().isFullscreen()
       .then((isFullscreen) => { windowFullscreenRef.current = isFullscreen; })
       .catch(() => undefined);
-  }, []);
-
-  useEffect(() => watchWindowGeometry(), []);
+  }, [isWebTarget]);
 
   useEffect(() => {
+    if (isWebTarget) return undefined;
+    return watchWindowGeometry();
+  }, [isWebTarget]);
+
+  useEffect(() => {
+    if (isWebTarget) return undefined;
     const win = getCurrentWindow();
     let unlisten: (() => void) | null = null;
     refreshWindowFullscreen();
@@ -39,7 +48,7 @@ export function useGlobalShortcuts({
       .then((fn) => { unlisten = fn; })
       .catch(() => undefined);
     return () => { unlisten?.(); };
-  }, [refreshWindowFullscreen]);
+  }, [isWebTarget, refreshWindowFullscreen]);
 
   useEffect(() => {
     const directions: Record<string, 'up' | 'down' | 'left' | 'right'> = {
@@ -64,14 +73,20 @@ export function useGlobalShortcuts({
       const combo = comboFromEvent(e);
       if (findActionForCombo(combo, 'global', shortcutOverrides) === 'toggle_window_fullscreen') {
         e.preventDefault();
-        windowFullscreenRef.current = !windowFullscreenRef.current;
-        void toggleWindowFullscreen().finally(refreshWindowFullscreen);
+        if (isWebTarget) {
+          if (document.fullscreenElement) void document.exitFullscreen();
+          else void document.documentElement.requestFullscreen();
+        } else {
+          windowFullscreenRef.current = !windowFullscreenRef.current;
+          void toggleWindowFullscreen().finally(refreshWindowFullscreen);
+        }
         return;
       }
       if (e.key === 'Escape' && windowFullscreenRef.current) {
         e.preventDefault();
         windowFullscreenRef.current = false;
-        void getCurrentWindow().setFullscreen(false).catch(() => undefined).finally(refreshWindowFullscreen);
+        if (isWebTarget) void document.exitFullscreen().catch(() => undefined).finally(refreshWindowFullscreen);
+        else void getCurrentWindow().setFullscreen(false).catch(() => undefined).finally(refreshWindowFullscreen);
         return;
       }
       const target = e.target as HTMLElement | null;
@@ -96,7 +111,7 @@ export function useGlobalShortcuts({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [nativePlayerActive, navigateRoute, goBack, refreshWindowFullscreen, shortcutOverrides]);
+  }, [isWebTarget, nativePlayerActive, navigateRoute, goBack, refreshWindowFullscreen, shortcutOverrides]);
 
   return { searchFocusSignal, setSearchFocusSignal, windowFullscreenRef, refreshWindowFullscreen };
 }
