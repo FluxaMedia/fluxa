@@ -13,15 +13,19 @@ class SubtitleCoordinator(
 ) {
     private val _frames = MutableStateFlow(SubtitleFrame(emptyList(), null))
     val frames: StateFlow<SubtitleFrame> = _frames
+    private val _cues = MutableStateFlow<List<TextCue>>(emptyList())
+    val cues: StateFlow<List<TextCue>> = _cues
 
     private var collectJob: Job? = null
 
     fun selectSidecar(source: SubtitleSource.Sidecar) {
         sidecar.load(source)
+        scope.launch { sidecar.cues.collect { _cues.value = it } }
         collect(sidecar.frames)
     }
 
     fun selectEmbedded() {
+        scope.launch { embedded.cues.collect { _cues.value = it } }
         collect(embedded.frames)
     }
 
@@ -29,6 +33,7 @@ class SubtitleCoordinator(
         collectJob?.cancel()
         collectJob = null
         _frames.value = SubtitleFrame(emptyList(), null)
+        _cues.value = emptyList()
     }
 
     fun setDelayUs(value: Long) {

@@ -50,6 +50,49 @@ import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
+data class SubtitleCueUiModel(
+    val startSeconds: Double,
+    val endSeconds: Double,
+    val text: String,
+)
+
+private fun subtitleCueTime(seconds: Double): String {
+    val total = seconds.coerceAtLeast(0.0).toInt()
+    return "%02d:%02d:%02d".format(total / 3600, (total / 60) % 60, total % 60)
+}
+
+@Composable
+private fun SubtitleSyncCueList(
+    lang: String,
+    cues: List<SubtitleCueUiModel>,
+    deviceType: DeviceType,
+    onCueClick: (SubtitleCueUiModel) -> Unit,
+) {
+    if (cues.isEmpty()) {
+        Text(
+            text = AppStrings.t(lang, "player.no_tracks_available"),
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 13.sp,
+            modifier = Modifier.padding(vertical = 12.dp),
+        )
+        return
+    }
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(max = if (deviceType == DeviceType.TV) 400.dp else 440.dp),
+    ) {
+        items(cues, key = { "${it.startSeconds}:${it.text}" }) { cue ->
+            TrackItem(
+                title = cue.text,
+                subtitle = "${subtitleCueTime(cue.startSeconds)} – ${subtitleCueTime(cue.endSeconds)}",
+                isSelected = false,
+                onClick = { onCueClick(cue) },
+                deviceType = deviceType,
+            )
+        }
+    }
+}
+
 @Composable
 fun UniversalSettingsSidebar(
     activeTab: Int,
@@ -72,6 +115,8 @@ fun UniversalSettingsSidebar(
     onSubtitleTextOpacityChange: (Float) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleOutlineOpacityChange: (Float) -> Unit,
+    subtitleCues: List<SubtitleCueUiModel> = emptyList(),
+    onSubtitleCueClick: (SubtitleCueUiModel) -> Unit = {},
     deviceType: DeviceType,
     lang: String = "en",
     languageDisplayName: (String) -> String = { it },
@@ -89,6 +134,7 @@ fun UniversalSettingsSidebar(
         var liveTextOpacity by remember(subtitleTextOpacity) { mutableStateOf(subtitleTextOpacity) }
         var liveBackgroundOpacity by remember(subtitleBackgroundOpacity) { mutableStateOf(subtitleBackgroundOpacity) }
         var liveOutlineOpacity by remember(subtitleOutlineOpacity) { mutableStateOf(subtitleOutlineOpacity) }
+        var showSubtitleSync by remember(activeTab) { mutableStateOf(false) }
         val listMaxHeight = if (deviceType == DeviceType.TV) 400.dp else 440.dp
 
         val audioList: @Composable () -> Unit = {
@@ -155,33 +201,49 @@ fun UniversalSettingsSidebar(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             ) {
-                DelayAdjustmentItem(
-                    title = AppStrings.t(lang, "player.subtitle_delay"),
-                    valueMs = subtitleDelayMs,
-                    deviceType = deviceType,
-                    onChange = onSubtitleDelayChange
-                )
-                OpacityAdjustmentItem(
-                    title = AppStrings.t(lang, "settings.subtitle_text"),
-                    value = liveTextOpacity,
-                    deviceType = deviceType,
-                    onChange = { liveTextOpacity = it },
-                    onCommit = { onSubtitleTextOpacityChange(liveTextOpacity) }
-                )
-                OpacityAdjustmentItem(
-                    title = AppStrings.t(lang, "settings.subtitle_background"),
-                    value = liveBackgroundOpacity,
-                    deviceType = deviceType,
-                    onChange = { liveBackgroundOpacity = it },
-                    onCommit = { onSubtitleBackgroundOpacityChange(liveBackgroundOpacity) }
-                )
-                OpacityAdjustmentItem(
-                    title = AppStrings.t(lang, "settings.subtitle_outline"),
-                    value = liveOutlineOpacity,
-                    deviceType = deviceType,
-                    onChange = { liveOutlineOpacity = it },
-                    onCommit = { onSubtitleOutlineOpacityChange(liveOutlineOpacity) }
-                )
+                if (showSubtitleSync) {
+                    SubtitleSyncCueList(
+                        lang = lang,
+                        cues = subtitleCues,
+                        deviceType = deviceType,
+                        onCueClick = onSubtitleCueClick,
+                    )
+                } else {
+                    DelayAdjustmentItem(
+                        title = AppStrings.t(lang, "player.subtitle_delay"),
+                        valueMs = subtitleDelayMs,
+                        deviceType = deviceType,
+                        onChange = onSubtitleDelayChange
+                    )
+                    TrackItem(
+                        title = AppStrings.t(lang, "player.subtitle_sync_title"),
+                        subtitle = AppStrings.t(lang, "player.subtitle_capture"),
+                        isSelected = false,
+                        onClick = { showSubtitleSync = true },
+                        deviceType = deviceType
+                    )
+                    OpacityAdjustmentItem(
+                        title = AppStrings.t(lang, "settings.subtitle_text"),
+                        value = liveTextOpacity,
+                        deviceType = deviceType,
+                        onChange = { liveTextOpacity = it },
+                        onCommit = { onSubtitleTextOpacityChange(liveTextOpacity) }
+                    )
+                    OpacityAdjustmentItem(
+                        title = AppStrings.t(lang, "settings.subtitle_background"),
+                        value = liveBackgroundOpacity,
+                        deviceType = deviceType,
+                        onChange = { liveBackgroundOpacity = it },
+                        onCommit = { onSubtitleBackgroundOpacityChange(liveBackgroundOpacity) }
+                    )
+                    OpacityAdjustmentItem(
+                        title = AppStrings.t(lang, "settings.subtitle_outline"),
+                        value = liveOutlineOpacity,
+                        deviceType = deviceType,
+                        onChange = { liveOutlineOpacity = it },
+                        onCommit = { onSubtitleOutlineOpacityChange(liveOutlineOpacity) }
+                    )
+                }
             }
         }
 

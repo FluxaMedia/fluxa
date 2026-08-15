@@ -255,7 +255,7 @@ internal object MediaPlayerControllerFactory {
                 .build()
         )
         val subtitleCoordinator = com.fluxa.app.player.subtitle.SubtitleCoordinator(
-            sidecar = com.fluxa.app.player.subtitle.SidecarTextEngineImpl(subtitleClock, subtitleScope, subtitleFetcher),
+            sidecar = com.fluxa.app.player.subtitle.SidecarTextEngineImpl(subtitleClock, subtitleScope, subtitleFetcher, CoreSubtitleCueDecoder),
             embedded = com.fluxa.app.player.subtitle.EmbeddedTextEngine(subtitleClock, subtitleScope),
             scope = subtitleScope
         )

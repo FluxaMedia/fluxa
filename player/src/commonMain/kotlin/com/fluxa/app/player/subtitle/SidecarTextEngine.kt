@@ -13,8 +13,13 @@ interface SubtitleFetcher {
     )
 }
 
+interface SubtitleCueDecoder {
+    fun decode(content: String): List<TextCue>
+}
+
 interface SidecarTextEngine {
     val frames: StateFlow<SubtitleFrame>
+    val cues: StateFlow<List<TextCue>>
     fun load(source: SubtitleSource.Sidecar)
     fun setDelayUs(value: Long)
 }
@@ -22,22 +27,27 @@ interface SidecarTextEngine {
 class SidecarTextEngineImpl(
     private val clock: PlaybackClock,
     private val scope: CoroutineScope,
-    private val fetcher: SubtitleFetcher
+    private val fetcher: SubtitleFetcher,
+    private val decoder: SubtitleCueDecoder,
 ) : SidecarTextEngine {
     private val scheduler = SubtitleScheduler(clock, scope)
     override val frames: StateFlow<SubtitleFrame> = scheduler.frames
+    private val _cues = kotlinx.coroutines.flow.MutableStateFlow<List<TextCue>>(emptyList())
+    override val cues: StateFlow<List<TextCue>> = _cues
 
     private var loadJob: Job? = null
 
     override fun load(source: SubtitleSource.Sidecar) {
         loadJob?.cancel()
         loadJob = scope.launch {
-            val parser = cueParserFor(source.format)
             val buffer = StringBuilder()
             fetcher.fetchProgressive(source.url, source.headers) { chunk ->
                 buffer.append(chunk)
-                val cues = parser.parse(buffer.toString())
-                if (cues.isNotEmpty()) scheduler.setCueIndex(CueIndex(cues))
+                val cues = decoder.decode(buffer.toString())
+                if (cues.isNotEmpty()) {
+                    _cues.value = cues
+                    scheduler.setCueIndex(CueIndex(cues))
+                }
             }
         }
     }

@@ -56,6 +56,7 @@ import com.fluxa.app.shared.feature.player.PlayerTopIconButton
 import com.fluxa.app.shared.feature.player.PlayerTransientOverlays
 import com.fluxa.app.shared.feature.player.SourceSidebar
 import com.fluxa.app.shared.feature.player.UniversalSettingsSidebar
+import com.fluxa.app.shared.feature.player.SubtitleCueUiModel
 import com.fluxa.app.shared.feature.player.ZoomOverlayMode
 import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
 
@@ -495,6 +496,8 @@ internal fun PlayerSettingsPanel(
     onSubtitleTextOpacityChange: (Float) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleOutlineOpacityChange: (Float) -> Unit,
+    subtitleCues: List<SubtitleCueUiModel> = emptyList(),
+    onSubtitleCueClick: (SubtitleCueUiModel) -> Unit = {},
     currentPositionMs: Long = 0L,
     markSegmentType: String? = null,
     markSegmentStartMs: Long? = null,
@@ -593,6 +596,8 @@ internal fun PlayerSettingsPanel(
             onSubtitleTextOpacityChange = onSubtitleTextOpacityChange,
             onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
             onSubtitleOutlineOpacityChange = onSubtitleOutlineOpacityChange,
+            subtitleCues = subtitleCues,
+            onSubtitleCueClick = onSubtitleCueClick,
             deviceType = deviceType,
             lang = lang,
             languageDisplayName = ::nativeLanguageName,

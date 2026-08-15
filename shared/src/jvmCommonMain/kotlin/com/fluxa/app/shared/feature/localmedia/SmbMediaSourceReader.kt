@@ -1,5 +1,6 @@
 package com.fluxa.app.shared.feature.localmedia
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import jcifs.CIFSContext
 import jcifs.context.SingletonContext
 import jcifs.smb.NtlmPasswordAuthenticator
@@ -33,7 +34,7 @@ class SmbMediaSourceReader : LocalMediaSourceReader {
             if (name.startsWith('.')) continue
             if (runCatching { child.isDirectory }.getOrDefault(false)) {
                 walk(root, child, out, depth + 1)
-            } else if (LocalMediaFilenameParser.isVideoFile(name)) {
+            } else if (FluxaCoreNative.localMediaIsVideoFile(name)) {
                 val relative = child.path.removePrefix(root.path).trim('/')
                 val parents = relative.split('/').dropLast(1).asReversed().take(4)
                 out += LocalMediaFileCandidate(

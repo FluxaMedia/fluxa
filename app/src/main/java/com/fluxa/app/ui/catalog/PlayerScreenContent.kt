@@ -47,14 +47,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToLong
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.repository.IntroDbSubmitResult
 import com.fluxa.app.shared.feature.player.MediaTrack
+import com.fluxa.app.shared.feature.player.SubtitleCueUiModel
+import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
+import com.fluxa.app.player.subtitle.TextCue
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.shared.feature.player.TorrentStreamStatus
 import com.fluxa.app.shared.feature.player.PlayerTopIconButton
 import com.fluxa.app.shared.feature.player.playerInputControls
@@ -114,6 +119,12 @@ internal fun PlayerScreenContent(
     switchToStream: (Int) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val subtitleCoordinator = remember(exoPlayer) { MediaPlayerController.getSubtitleCoordinator(exoPlayer) }
+    val emptySubtitleCues = remember { MutableStateFlow<List<TextCue>>(emptyList()) }
+    val subtitleCues by (subtitleCoordinator?.cues ?: emptySubtitleCues).collectAsStateWithLifecycle()
+    val subtitleCueUiModels = subtitleCues.map { cue ->
+        SubtitleCueUiModel(cue.startUs / 1_000_000.0, cue.endUs / 1_000_000.0, cue.text)
+    }
     val gestureState = remember { object { var startedInOriginal = false; var snappedToFillThisGesture = false } }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     val emptyVideoAspectRatio = remember { MutableStateFlow<Float?>(null) }
@@ -418,6 +429,18 @@ internal fun PlayerScreenContent(
                 },
                 onAudioDelayChange = { state.audioDelayMs = it.coerceIn(-5_000L, 5_000L) },
                 onSubtitleDelayChange = { state.subtitleDelayMs = it.coerceIn(-5_000L, 5_000L) },
+                subtitleCues = subtitleCueUiModels,
+                onSubtitleCueClick = { cue ->
+                    val result = runCatching {
+                        FluxaCoreNative.subtitleSyncApply(
+                            capturedTime = (if (useMpvBackend) state.engine.timeline.position else state.timelinePosition) / 1000.0,
+                            cueStart = cue.startSeconds,
+                        )
+                    }.getOrNull()
+                    result?.get("delaySeconds")?.asDouble?.let { delaySeconds ->
+                        state.subtitleDelayMs = (delaySeconds * 1000.0).roundToLong().coerceIn(-5_000L, 5_000L)
+                    }
+                },
                 onSubtitleTextOpacityChange = { value ->
                     activeProfile?.let { onUpdateProfile(it.copy(subtitleTextOpacity = value.coerceIn(0f, 1f))) }
                 },

@@ -21,16 +21,16 @@ internal class LocalMediaMetadataResolver(
     private val language: () -> String,
 ) {
     suspend fun resolve(
-        parsed: LocalMediaFilenameParser.ParsedName,
+        parsed: LocalMediaParsedName,
         kind: LocalMediaKind,
     ): LocalMediaMetadataMatch? = withContext(Dispatchers.IO) {
         val requestedType = if (kind == LocalMediaKind.Movies) "movie" else "series"
 
-        if (parsed.explicitMetadataProvider == "imdb" && !parsed.explicitMetadataId.isNullOrBlank()) {
+        if (parsed.explicitMetadataProvider in setOf("imdb", "tmdb") && !parsed.explicitMetadataId.isNullOrBlank()) {
             val detail = runCatching {
                 addonRepository.getAddonMetaDetail(
                     type = requestedType,
-                    id = parsed.explicitMetadataId,
+                    id = if (parsed.explicitMetadataProvider == "tmdb") "tmdb:${parsed.explicitMetadataId}" else parsed.explicitMetadataId,
                     authKey = authKey(),
                     localAddons = localAddons(),
                 )
@@ -83,39 +83,23 @@ internal class LocalMediaMetadataResolver(
     }
 
     fun resolveVideo(
-        parsed: LocalMediaFilenameParser.ParsedName,
+        parsed: LocalMediaParsedName,
         detail: MetaDetail?,
     ): Video? {
         val videos = detail?.videos.orEmpty()
-        if (videos.isEmpty()) return null
-        if (parsed.season != null && parsed.episode != null) {
-            return videos.firstOrNull { it.season == parsed.season && it.number == parsed.episode }
-                ?: videos.firstOrNull { it.number == parsed.episode }
-        }
-        val absolute = parsed.absoluteEpisode ?: return null
-        videos.firstOrNull { it.number == absolute && (it.season ?: 1) <= 1 }?.let { return it }
-        return videos
-            .filter { (it.season ?: 0) >= 0 && (it.number ?: 0) > 0 }
-            .sortedWith(compareBy<Video> { it.season ?: 0 }.thenBy { it.number ?: 0 })
-            .getOrNull(absolute - 1)
+        val matched = jvmLocalMediaCorePolicy.resolveVideo(
+            parsed,
+            videos.map { LocalMediaCoreVideo(it.id, it.season, it.number) },
+        ) ?: return null
+        return videos.firstOrNull { it.id == matched.id }
     }
 
-    private fun score(parsed: LocalMediaFilenameParser.ParsedName, meta: Meta, kind: LocalMediaKind): Float {
-        var score = LocalMediaFilenameParser.titleSimilarity(parsed.title, meta.name) * 0.82f
-        val metaYear = meta.releaseInfo?.take(4)?.toIntOrNull() ?: meta.released?.take(4)?.toIntOrNull()
-        if (parsed.year != null && metaYear != null) {
-            score += when (kotlin.math.abs(parsed.year - metaYear)) {
-                0 -> 0.18f
-                1 -> 0.06f
-                else -> -0.12f
-            }
-        } else {
-            score += 0.08f
-        }
-        val type = meta.type.lowercase()
-        val typeMatches = if (kind == LocalMediaKind.Movies) type == "movie" else type in setOf("series", "tv", "anime")
-        if (!typeMatches) score -= 0.35f
-        return score.coerceIn(0f, 1f)
+    private fun score(parsed: LocalMediaParsedName, meta: Meta, kind: LocalMediaKind): Float {
+        return jvmLocalMediaCorePolicy.score(
+            parsed,
+            LocalMediaCoreMeta(meta.id, meta.name, meta.type, meta.releaseInfo, meta.released),
+            kind,
+        )
     }
 
     private fun Meta.toCatalogEntry(kind: LocalMediaKind, metadataAddonUrl: String?, fileCount: Int) = LocalMediaCatalogEntry(

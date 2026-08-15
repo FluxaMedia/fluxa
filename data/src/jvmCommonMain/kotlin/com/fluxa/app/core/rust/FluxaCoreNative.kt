@@ -112,6 +112,16 @@ private fun JsonObject.toDolbyVisionRpuConvertResult(): NativeDolbyVisionRpuConv
 
 
 
+data class NativeLocalMediaParsedName(
+    val title: String,
+    val year: Int?,
+    val season: Int?,
+    val episode: Int?,
+    val absoluteEpisode: Int?,
+    val explicitMetadataId: String?,
+    val explicitMetadataProvider: String?,
+)
+
 object FluxaCoreNative {
     private val gson = Gson()
     private val stringListType = object : TypeToken<List<String>>() {}.type
@@ -235,6 +245,81 @@ object FluxaCoreNative {
 
     fun coreInvoke(method: String, argsJson: String): String = call {
         coreInvokeNative(method, argsJson).orEmpty()
+    }
+
+    fun subtitleSyncCapture(subtitleText: String, currentTime: Double): JsonObject =
+        FluxaCoreUniFfi.coreInvokeValue(
+            "subtitleSyncCapture",
+            JsonObject().apply {
+                addProperty("subtitleText", subtitleText)
+                addProperty("currentTime", currentTime)
+            }.toString(),
+        ).asJsonObject
+
+    fun subtitleSyncApply(capturedTime: Double, cueStart: Double): JsonObject =
+        FluxaCoreUniFfi.coreInvokeValue(
+            "subtitleSyncApply",
+            JsonObject().apply {
+                addProperty("capturedTime", capturedTime)
+                addProperty("cueStart", cueStart)
+            }.toString(),
+        ).asJsonObject
+
+    fun localMediaParseFilename(fileName: String, parentHints: List<String>, kind: String): NativeLocalMediaParsedName? {
+        val args = JsonObject().apply {
+            addProperty("fileName", fileName)
+            add("parentHints", gson.toJsonTree(parentHints))
+            addProperty("kind", kind)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("localMediaParseFilename", args.toString())
+            .takeUnless { it.isJsonNull }?.asJsonObject ?: return null
+        return NativeLocalMediaParsedName(
+            title = value.stringOrNull("title") ?: return null,
+            year = value.intOrNull("year"),
+            season = value.intOrNull("season"),
+            episode = value.intOrNull("episode"),
+            absoluteEpisode = value.intOrNull("absoluteEpisode"),
+            explicitMetadataId = value.stringOrNull("explicitMetadataId"),
+            explicitMetadataProvider = value.stringOrNull("explicitMetadataProvider"),
+        )
+    }
+
+    fun localMediaIsVideoFile(name: String): Boolean =
+        FluxaCoreUniFfi.coreInvokeValue(
+            "localMediaIsVideoFile",
+            JsonObject().apply { addProperty("name", name) }.toString(),
+        ).asBoolean
+
+    fun localMediaNormalizedTitle(value: String): String =
+        FluxaCoreUniFfi.coreInvokeValue(
+            "localMediaNormalizedTitle",
+            JsonObject().apply { addProperty("value", value) }.toString(),
+        ).asString
+
+    fun localMediaTitleSimilarity(left: String, right: String): Float {
+        val args = JsonObject().apply {
+            addProperty("left", left)
+            addProperty("right", right)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("localMediaTitleSimilarity", args.toString()).asFloat
+    }
+
+    fun localMediaScoreCandidate(parsed: NativeLocalMediaParsedName, meta: Meta, kind: String): Float {
+        val args = JsonObject().apply {
+            add("parsed", gson.toJsonTree(parsed))
+            add("meta", gson.toJsonTree(meta))
+            addProperty("kind", kind)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("localMediaScoreCandidate", args.toString()).asFloat
+    }
+
+    fun localMediaResolveVideo(parsed: NativeLocalMediaParsedName, videos: List<Video>): Video? {
+        val args = JsonObject().apply {
+            add("parsed", gson.toJsonTree(parsed))
+            add("videos", gson.toJsonTree(videos))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("localMediaResolveVideo", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, Video::class.java) }
     }
 
     fun normalizeManifestUrl(rawUrl: String): String =

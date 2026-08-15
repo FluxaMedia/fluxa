@@ -1,5 +1,6 @@
 package com.fluxa.app.shared.feature.localmedia
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -14,7 +15,7 @@ class DesktopFileMediaSourceReader : LocalMediaSourceReader {
         require(root.isDirectory) { "Media folder is unavailable: ${source.displayName}" }
         root.walkTopDown()
             .onEnter { dir -> !dir.name.startsWith('.') }
-            .filter { it.isFile && LocalMediaFilenameParser.isVideoFile(it.name) }
+            .filter { it.isFile && FluxaCoreNative.localMediaIsVideoFile(it.name) }
             .map { file ->
                 val parentHints = generateSequence(file.parentFile) { it.parentFile }
                     .takeWhile { it.absolutePath.startsWith(root.absolutePath) }

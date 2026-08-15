@@ -142,7 +142,7 @@ class JvmLocalMediaLibraryService(
         data class Pending(
             val source: LocalMediaSourceConfig,
             val candidate: LocalMediaFileCandidate,
-            val parsed: LocalMediaFilenameParser.ParsedName,
+            val parsed: LocalMediaParsedName,
             val signature: String,
         )
 
@@ -155,13 +155,13 @@ class JvmLocalMediaLibraryService(
                 retained += cached
                 continue
             }
-            val parsed = LocalMediaFilenameParser.parse(candidate.displayName, candidate.parentHints, source.kind) ?: continue
+            val parsed = jvmLocalMediaCorePolicy.parse(candidate.displayName, candidate.parentHints, source.kind) ?: continue
             pending += Pending(source, candidate, parsed, signature)
         }
 
         val catalogById = before.catalog.associateBy { it.contentId }.toMutableMap()
         val groups = pending.groupBy { item ->
-            listOf(item.source.kind.name, LocalMediaFilenameParser.normalizedTitle(item.parsed.title), item.parsed.year?.toString().orEmpty()).joinToString("|")
+            listOf(item.source.kind.name, jvmLocalMediaCorePolicy.normalizedTitle(item.parsed.title), item.parsed.year?.toString().orEmpty()).joinToString("|")
         }
         for (group in groups.values) {
             val representative = group.first()

@@ -9,6 +9,30 @@ enum class LocalMediaKind { Movies, TvShows, Anime }
 @Serializable
 enum class LocalMediaSourceType { LocalFolder, Smb, WebDav }
 
+data class LocalMediaParsedName(
+    val title: String,
+    val year: Int?,
+    val season: Int?,
+    val episode: Int?,
+    val absoluteEpisode: Int?,
+    val explicitMetadataId: String? = null,
+    val explicitMetadataProvider: String? = null,
+)
+
+data class LocalMediaCoreMeta(
+    val id: String,
+    val name: String,
+    val type: String,
+    val releaseInfo: String? = null,
+    val released: String? = null,
+)
+
+data class LocalMediaCoreVideo(
+    val id: String,
+    val season: Int? = null,
+    val number: Int? = null,
+)
+
 @Serializable
 data class LocalMediaSourceConfig(
     val id: String,

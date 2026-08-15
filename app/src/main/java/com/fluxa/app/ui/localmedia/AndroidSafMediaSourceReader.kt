@@ -3,8 +3,8 @@ package com.fluxa.app.ui.localmedia
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.shared.feature.localmedia.LocalMediaFileCandidate
-import com.fluxa.app.shared.feature.localmedia.LocalMediaFilenameParser
 import com.fluxa.app.shared.feature.localmedia.LocalMediaOpenedStream
 import com.fluxa.app.shared.feature.localmedia.LocalMediaSourceConfig
 import com.fluxa.app.shared.feature.localmedia.LocalMediaSourceReader
@@ -40,7 +40,7 @@ class AndroidSafMediaSourceReader(
             if (name.startsWith('.')) continue
             when {
                 child.isDirectory -> walk(child, (listOf(name) + parents).take(4), out, depth + 1)
-                child.isFile && LocalMediaFilenameParser.isVideoFile(name) -> out += LocalMediaFileCandidate(
+                child.isFile && FluxaCoreNative.localMediaIsVideoFile(name) -> out += LocalMediaFileCandidate(
                     locator = child.uri.toString(),
                     displayName = name,
                     parentHints = parents,

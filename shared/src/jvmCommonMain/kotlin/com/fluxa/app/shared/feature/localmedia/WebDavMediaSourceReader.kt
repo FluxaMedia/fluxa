@@ -1,5 +1,6 @@
 package com.fluxa.app.shared.feature.localmedia
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
@@ -73,7 +74,7 @@ class WebDavMediaSourceReader(
                     ?: URLDecoder.decode(resolved.path.substringAfterLast('/').ifBlank { resolved.path.trim('/').substringAfterLast('/') }, "UTF-8")
                 if (isCollection) {
                     walk(source, root, ensureDirectoryUri(resolved), out, seen, depth + 1)
-                } else if (LocalMediaFilenameParser.isVideoFile(displayName)) {
+                } else if (FluxaCoreNative.localMediaIsVideoFile(displayName)) {
                     val relative = resolved.path.removePrefix(root.path).trim('/')
                     val parentHints = relative.split('/').dropLast(1).asReversed().take(4)
                     val length = element.getElementsByTagNameNS("DAV:", "getcontentlength").item(0)?.textContent?.trim()?.toLongOrNull() ?: 0L
