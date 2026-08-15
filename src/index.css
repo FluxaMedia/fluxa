@@ -205,6 +205,41 @@ button, input, select, textarea {
   font-family: inherit;
 }
 
+@media (max-width: 700px) {
+  .app-content {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .settings-screen {
+    display: block !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 1.25rem 1rem 5rem !important;
+  }
+
+  .settings-sidebar {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .settings-content {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 0 3rem !important;
+  }
+
+  .settings-screen .settingsCard,
+  .settings-screen [style*="min-width: 10.9375rem"] {
+    max-width: 100%;
+  }
+}
+
 [data-animations="off"] *,
 [data-animations="off"] *::before,
 [data-animations="off"] *::after {

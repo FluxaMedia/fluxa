@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, Maximize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
+import { Captions, ChevronLeft, Maximize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import { t } from '../i18n';
 import { transcodeUrl } from '../platform/web/stream';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
+import type { PlayerSubtitleSource } from '../core/playerUtils';
 
 interface Props {
   url: string;
   title?: string;
+  subtitles: PlayerSubtitleSource[];
   onClose: () => Promise<void>;
   onFirstFrame: () => void;
 }
@@ -22,7 +24,12 @@ function formatTime(value: number) {
 
 const iconButton = { width: '2.75rem', height: '2.75rem', border: 'none', borderRadius: '0.5rem', background: 'none', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' } as const;
 
-export function WebPlayerOverlay({ url, title, onClose, onFirstFrame }: Props) {
+function subtitleToVtt(text: string): string {
+  if (/^\s*WEBVTT(?:\s|$)/i.test(text)) return text;
+  return `WEBVTT\n\n${text.replace(/\r/g, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')}`;
+}
+
+export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fallbackUsedRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,6 +39,40 @@ export function WebPlayerOverlay({ url, title, onClose, onFirstFrame }: Props) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [subtitleTracks, setSubtitleTracks] = useState<Array<{ subtitle: PlayerSubtitleSource; url: string }>>([]);
+  const [selectedSubtitle, setSelectedSubtitle] = useState<number>(subtitles.length > 0 ? 0 : -1);
+  const [subtitleMenuOpen, setSubtitleMenuOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const objectUrls: string[] = [];
+    setSelectedSubtitle(subtitles.length > 0 ? 0 : -1);
+    setSubtitleTracks([]);
+    void Promise.all(subtitles.map(async (subtitle) => {
+      try {
+        const response = await fetch(subtitle.url);
+        if (!response.ok) throw new Error(`subtitle request failed: ${response.status}`);
+        const body = subtitleToVtt(await response.text());
+        const objectUrl = URL.createObjectURL(new Blob([body], { type: 'text/vtt' }));
+        objectUrls.push(objectUrl);
+        return { subtitle, url: objectUrl };
+      } catch {
+        return { subtitle, url: subtitle.url };
+      }
+    })).then((tracks) => {
+      if (!cancelled) setSubtitleTracks(tracks);
+    });
+    return () => {
+      cancelled = true;
+      objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+    };
+  }, [subtitles]);
+
+  useEffect(() => {
+    const tracks = videoRef.current?.textTracks;
+    if (!tracks) return;
+    for (let index = 0; index < tracks.length; index += 1) tracks[index].mode = index === selectedSubtitle ? 'showing' : 'disabled';
+  }, [selectedSubtitle, subtitleTracks]);
 
   const resetActivity = useCallback(() => {
     setControlsVisible(true);
@@ -129,7 +170,11 @@ export function WebPlayerOverlay({ url, title, onClose, onFirstFrame }: Props) {
           void video.play().catch(() => setPaused(true));
         }}
         style={{ width: '100%', height: '100%', flex: 1, objectFit: 'contain', minHeight: 0 }}
-      />
+      >
+        {subtitleTracks.map(({ subtitle, url: trackUrl }, index) => (
+          <track key={`${subtitle.url}-${index}`} kind="subtitles" src={trackUrl} srcLang={subtitle.lang ?? 'und'} label={subtitle.label ?? subtitle.lang ?? t('player.subtitles')} />
+        ))}
+      </video>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none', opacity: controlsVisible ? 1 : 0, transition: 'opacity 0.25s ease' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '0.875rem 0.75rem', background: 'linear-gradient(rgba(0,0,0,0.7), transparent)', pointerEvents: 'auto' }}>
           <button type="button" onClick={() => { void onClose(); }} style={{ ...iconButton, background: 'rgba(255,255,255,0.1)' }} title={t('player.back')}><ChevronLeft size={22} /></button>
@@ -146,6 +191,19 @@ export function WebPlayerOverlay({ url, title, onClose, onFirstFrame }: Props) {
             <input aria-label={t('player.volume')} type="range" min={0} max={1} step={0.01} value={muted ? 0 : volume} onChange={(event) => setVideoVolume(Number(event.target.value))} style={{ width: '5rem', accentColor: 'var(--primary-accent-color)' }} />
             <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', marginLeft: '0.4rem' }}>{formatTime(currentTime)} / {formatTime(duration)}</span>
             <div style={{ flex: 1 }} />
+            {subtitleTracks.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <button type="button" onClick={() => setSubtitleMenuOpen((value) => !value)} style={{ ...iconButton, color: selectedSubtitle >= 0 ? 'var(--primary-accent-color)' : '#fff' }} title={t('player.subtitles')}><Captions size={21} /></button>
+                {subtitleMenuOpen && (
+                  <div style={{ position: 'absolute', right: 0, bottom: '3rem', minWidth: '11rem', padding: '0.35rem', borderRadius: '0.55rem', background: 'rgba(20,20,20,0.98)', boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.45)' }}>
+                    <button type="button" onClick={() => { setSelectedSubtitle(-1); setSubtitleMenuOpen(false); }} style={{ display: 'block', width: '100%', padding: '0.55rem 0.7rem', border: 0, borderRadius: '0.35rem', textAlign: 'left', color: '#fff', background: selectedSubtitle < 0 ? 'rgba(255,255,255,0.14)' : 'transparent', cursor: 'pointer' }}>{t('player.subtitles_off')}</button>
+                    {subtitleTracks.map(({ subtitle }, index) => (
+                      <button key={`${subtitle.url}-menu-${index}`} type="button" onClick={() => { setSelectedSubtitle(index); setSubtitleMenuOpen(false); }} style={{ display: 'block', width: '100%', padding: '0.55rem 0.7rem', border: 0, borderRadius: '0.35rem', textAlign: 'left', color: '#fff', background: selectedSubtitle === index ? 'rgba(255,255,255,0.14)' : 'transparent', cursor: 'pointer' }}>{subtitle.label ?? subtitle.lang ?? t('player.subtitles')}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <button type="button" onClick={toggleFullscreen} style={iconButton} title={t('player.fullscreen')}><Maximize size={21} /></button>
           </div>
         </div>

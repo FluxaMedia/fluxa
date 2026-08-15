@@ -50,6 +50,7 @@ import { usePlayerPlaybackStart } from './usePlayerPlaybackStart';
 import { useExternalPlayerTracking, type ExternalPlayerSession, type ExternalPlayerStatus } from './useExternalPlayerTracking';
 import { AsyncScope } from '../core/asyncScope';
 import { useWebPlayer, type WebPlayerResult } from './useWebPlayer';
+import type { PlayerSubtitleSource } from '../core/playerUtils';
 
 function playbackErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
@@ -97,6 +98,7 @@ interface UsePlayerResult {
   playerLogoUrl: string | undefined;
   playerMetaId: string | undefined;
   playerSubtitleUrl: string | undefined;
+  playerSubtitles: PlayerSubtitleSource[];
   playerStreamHeaders: Record<string, string> | undefined;
   playingStreamRef: RefObject<Stream | null>;
   playingMetaRef: RefObject<Meta | null>;
@@ -606,7 +608,7 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerSubtitleWarning(null);
   }, []);
 
-  return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
+  return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles: [], playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
 }
 
 export function usePlayer(options: UsePlayerOptions): UsePlayerResult | WebPlayerResult {

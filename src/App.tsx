@@ -116,7 +116,7 @@ export default function App() {
     setWelcomeCompleted,
   } = useAppInit(updateState, setActiveRoute, storedPrefsRef);
 
-  const { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit, skipSegmentCoverage } = usePlayer({
+  const { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit, skipSegmentCoverage } = usePlayer({
     stateRef,
     activeProfile,
     updateState,
@@ -529,7 +529,7 @@ export default function App() {
       <UpdateModal state={updateModalState} onClose={() => setUpdateModalState({ phase: 'idle' })} />
   </>;
   const playback = (
-      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} title={playerTitle} onClose={closePlayer} onFirstFrame={notifyFirstFrame} /> : <PlaybackHost
+      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} title={playerTitle} subtitles={playerSubtitles} onClose={closePlayer} onFirstFrame={notifyFirstFrame} /> : <PlaybackHost
         active={nativePlayerActive}
         loading={playerLoadingOverlay}
         closePlayer={closePlayer}

@@ -402,8 +402,8 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
     : [];
 
   return (
-    <div style={styles.screen}>
-      <div style={styles.sidebar}>
+    <div className="settings-screen" style={styles.screen}>
+      <div className="settings-sidebar" style={styles.sidebar}>
         <p style={styles.sidebarTitle}>{t('nav.settings')}</p>
         <p style={styles.sidebarSubtitle}>{t('auto.general_0dbbccaf')}</p>
         <div style={settingsSearchStyles.wrap}>
@@ -445,7 +445,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
         <VersionFooter />
       </div>
 
-      <div style={styles.content}>
+      <div className="settings-content" style={styles.content}>
         <SettingsDetailHeader title={t(TABS.find((item) => item.id === tab)?.labelKey ?? 'nav.settings')} />
         {normalizedSettingsQuery && searchResults.length === 0 && (
           <div style={settingsSearchStyles.noResults}>{t('settings.search_no_results')}</div>

@@ -1,6 +1,10 @@
 import { useCallback, useRef, useState, type RefObject } from 'react';
 import { platformInvoke } from '../platform/invoke';
 import { canDirectPlay, probeStream, proxyUrl, transcodeUrl } from '../platform/web/stream';
+import { loadEnabledAddons } from '../core/libraryOps';
+import { resolvePlaybackSubtitles } from '../core/subtitles';
+import type { PlayerSubtitleSource } from '../core/playerUtils';
+import { corePlaybackPreparePlan } from '../core/engine';
 import type { AppState, Meta, Stream, UserProfile, Video } from '../core/types';
 import type { PlayerLoadingOverlayState } from './usePlayer';
 
@@ -24,6 +28,7 @@ export interface WebPlayerResult {
   playerLogoUrl: string | undefined;
   playerMetaId: string | undefined;
   playerSubtitleUrl: string | undefined;
+  playerSubtitles: PlayerSubtitleSource[];
   playerStreamHeaders: Record<string, string> | undefined;
   playingStreamRef: RefObject<Stream | null>;
   playingMetaRef: RefObject<Meta | null>;
@@ -47,6 +52,7 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
   const [playerLogoUrl, setPlayerLogoUrl] = useState<string>();
   const [playerMetaId, setPlayerMetaId] = useState<string>();
   const [playerStreamHeaders, setPlayerStreamHeaders] = useState<Record<string, string>>();
+  const [playerSubtitles, setPlayerSubtitles] = useState<PlayerSubtitleSource[]>([]);
   const [playerLoadingOverlay, setPlayerLoadingOverlay] = useState<PlayerLoadingOverlayState | null>(null);
   const [playerPlaybackError, setPlayerPlaybackError] = useState<string | null>(null);
   const playingStreamRef = useRef<Stream | null>(null);
@@ -63,7 +69,20 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
         ? await platformInvoke<string>('start_torrent_stream', { streamJson: JSON.stringify(stream), title: meta?.name ?? null, preferences: null })
         : source;
       const headers = stream.behaviorHints?.proxyHeaders as Record<string, string> | undefined;
+      const subtitlePromise = Promise.all([
+        loadEnabledAddons(),
+        corePlaybackPreparePlan({ stream, meta, episode, preferredPlayer: 'web' }),
+      ])
+        .then(([addons, plan]) => resolvePlaybackSubtitles(
+          stream,
+          meta,
+          episode,
+          typeof plan?.subtitleExtraArgs === 'string' ? plan.subtitleExtraArgs : undefined,
+          addons,
+        ))
+        .catch(() => ({ subtitles: [], failedAddons: [] }));
       const probe = isTorrent ? null : await probeStream(url, headers);
+      const resolvedSubtitles = await subtitlePromise;
       const direct = !headers && (!probe || canDirectPlay(source, probe.videoCodec, probe.audioCodec));
       const playbackUrl = direct
         ? url
@@ -81,6 +100,7 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
       setPlayerLogoUrl(meta?.logo);
       setPlayerMetaId(meta?.id);
       setPlayerStreamHeaders(headers);
+      setPlayerSubtitles(resolvedSubtitles.subtitles);
       setPlayerLoadingOverlay(null);
     } catch (error) {
       setPlayerPlaybackError(error instanceof Error ? error.message : String(error));
@@ -93,13 +113,14 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
     setPlayerUrl(null);
     setPlayerLoadingOverlay(null);
     setPlayerUsesTorrent(false);
+    setPlayerSubtitles([]);
     playingStreamRef.current = null;
     playingMetaRef.current = null;
   }, [playerUsesTorrent]);
 
   return {
     playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext: null, playerTitle, playerEpisodeTitle, playerEpisode,
-    playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerStreamHeaders,
+    playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerSubtitles, playerStreamHeaders,
     playingStreamRef, playingMetaRef, playerPlaybackError, playerSubtitleWarning: null, dismissSubtitleWarning: () => {},
     handlePlay, closePlayer, notifyFirstFrame: () => {}, flushProgressOnQuit: async () => {}, skipSegmentCoverage: {},
   };
