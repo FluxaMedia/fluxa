@@ -49,6 +49,11 @@ jobs:
       - name: Build GitHub Pages bundle
         env:
           VITE_BASE_PATH: /fluxa-desktop/
+          VITE_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+          VITE_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+          VITE_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+          VITE_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+          VITE_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
         run: npm run build:web
 
       - name: Publish gh-pages

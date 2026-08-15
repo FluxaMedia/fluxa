@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke } from '../../platform/invoke';
 import { listen } from '@tauri-apps/api/event';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { storageRead, storageWrite } from '../../core/engine';
@@ -133,6 +133,73 @@ export function useIntegrationAccounts({
     setAuthUrls((current) => ({ ...current, [service]: url }));
   };
 
+  const browserTarget = import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
+  const browserRedirectUri = (service: OAuthService) => `${window.location.origin}${window.location.pathname}?oauth=${service}`;
+
+  useEffect(() => {
+    if (!browserTarget || !activeProfile) return;
+    const params = new URLSearchParams(window.location.search);
+    const service = params.get('oauth');
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const code = params.get('code');
+    const implicitToken = hash.get('access_token');
+    const state = params.get('state') ?? hash.get('state');
+    if ((service !== 'trakt' && service !== 'simkl' && service !== 'anilist') || (!code && !implicitToken) || !state) return;
+    const expectedState = sessionStorage.getItem(`fluxa-oauth-state-${service}`);
+    sessionStorage.removeItem(`fluxa-oauth-state-${service}`);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    if (!expectedState || expectedState !== state) {
+      if (service === 'trakt') setTraktError(t('settings.oauth_state_mismatch'));
+      else setSimklError(t('settings.oauth_state_mismatch'));
+      return;
+    }
+    const finish = async () => {
+      if (service === 'trakt') setTraktBusy(true);
+      else if (service === 'simkl') setSimklBusy(true);
+      else setAnilistBusy(true);
+      try {
+        if (service === 'anilist' && implicitToken) {
+          const clientId = await platformInvoke<string>('get_oauth_client_id', { service });
+          const username = await fetchAnilistUsername(implicitToken);
+          const updated: UserProfile = { ...activeProfile, anilistAccessToken: implicitToken, anilistRefreshToken: undefined, anilistTokenExpiresAt: undefined, anilistUsername: username };
+          await saveProfile(updated);
+          onProfileUpdated(updated);
+          return;
+        }
+        const verifier = service === 'simkl' ? sessionStorage.getItem('fluxa-simkl-verifier') : null;
+        if (service === 'simkl' && !verifier) throw new Error(t('settings.oauth_state_mismatch'));
+        const tokenJson = await platformInvoke<string>(`${service}_oauth_exchange`, {
+          code,
+          ...(verifier ? { codeVerifier: verifier } : {}),
+        });
+        if (verifier) sessionStorage.removeItem('fluxa-simkl-verifier');
+        const tokens = JSON.parse(tokenJson) as TraktTokenResponse & { created_at?: number; expires_in?: number; refresh_token?: string };
+        if (service === 'trakt') {
+          const clientId = await platformInvoke<string>('get_oauth_client_id', { service });
+          const username = await fetchTraktUsername(tokens.access_token, clientId);
+          const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: (tokens.created_at ?? Math.floor(Date.now() / 1000)) + (tokens.expires_in ?? 0), traktUsername: username };
+          await saveProfile(updated);
+          onProfileUpdated(updated);
+        } else {
+          const clientId = await platformInvoke<string>('get_oauth_client_id', { service });
+          const username = await fetchSimklUsername(tokens.access_token, clientId);
+          const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token, simklTokenExpiresAt: (tokens.created_at ?? Math.floor(Date.now() / 1000)) + (tokens.expires_in ?? 0), simklUsername: username };
+          await saveProfile(updated);
+          onProfileUpdated(updated);
+        }
+      } catch (error) {
+        if (service === 'trakt') setTraktError(error instanceof Error ? error.message : String(error));
+        else if (service === 'simkl') setSimklError(error instanceof Error ? error.message : String(error));
+        else setAnilistError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (service === 'trakt') setTraktBusy(false);
+        else if (service === 'simkl') setSimklBusy(false);
+        else setAnilistBusy(false);
+      }
+    };
+    void finish();
+  }, [activeProfile, browserTarget]);
+
   const copyAuthUrl = async (service: OAuthService) => {
     const url = authUrls[service];
     if (!url) return;
@@ -168,14 +235,38 @@ export function useIntegrationAccounts({
     setTraktBusy(true);
     setTraktError(null);
     try {
-      const traktClientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' });
+      const traktClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' });
       const state = generateCodeVerifier();
       traktStateRef.current = state;
+      if (browserTarget) {
+        const device = JSON.parse(await platformInvoke<string>('trakt_device_start')) as { device_code: string; user_code: string; verification_url: string; expires_in?: number; interval?: number };
+        window.open(device.verification_url, '_blank', 'noopener,noreferrer');
+        window.alert(`${t('trakt.device.open_url')} ${device.verification_url}\n${t('trakt.device.enter_code')} ${device.user_code}`);
+        const deadline = Date.now() + (device.expires_in ?? 600) * 1000;
+        let tokenJson = '';
+        while (Date.now() < deadline) {
+          await new Promise((resolve) => window.setTimeout(resolve, (device.interval ?? 5) * 1000));
+          try {
+            tokenJson = await platformInvoke<string>('trakt_device_poll', { deviceCode: device.device_code });
+            if (tokenJson !== 'pending') break;
+          } catch {
+            break;
+          }
+        }
+        if (!tokenJson || tokenJson === 'pending') throw new Error(t('toast.trakt_device_code_expired'));
+        const tokens = JSON.parse(tokenJson) as TraktTokenResponse;
+        const traktUsername = await fetchTraktUsername(tokens.access_token, traktClientId);
+        const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: tokens.created_at + tokens.expires_in, traktUsername };
+        await saveProfile(updated);
+        onProfileUpdated(updated);
+        setTraktBusy(false);
+        return;
+      }
       const authUrl = `https://trakt.tv/oauth/authorize?response_type=code&client_id=${traktClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/trakt')}&state=${state}`;
       setAuthUrl('trakt', authUrl);
       let unlisten: (() => void) | undefined;
       const consumeCallback = async () => {
-        const payload = await invoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'trakt' });
+        const payload = await platformInvoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'trakt' });
         if (!payload) return;
         unlisten?.();
         if (payload.state !== traktStateRef.current) {
@@ -187,7 +278,7 @@ export function useIntegrationAccounts({
         traktStateRef.current = null;
         setAuthUrl('trakt');
         try {
-          const tokenJson = await invoke<string>('trakt_oauth_exchange', { code: payload.code });
+          const tokenJson = await platformInvoke<string>('trakt_oauth_exchange', { code: payload.code });
           const tokens = JSON.parse(tokenJson) as TraktTokenResponse;
           const traktUsername = await fetchTraktUsername(tokens.access_token, traktClientId);
           const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: tokens.created_at + tokens.expires_in, traktUsername };
@@ -221,7 +312,7 @@ export function useIntegrationAccounts({
     setAnilistBusy(true);
     setAnilistError(null);
     try {
-      const anilistClientId = await invoke<string>('get_oauth_client_id', { service: 'anilist' });
+      const anilistClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'anilist' });
       if (!anilistClientId) {
         setAnilistError('FLUXA_ANILIST_CLIENT_ID is not set.');
         setAnilistBusy(false);
@@ -229,11 +320,18 @@ export function useIntegrationAccounts({
       }
       const state = generateCodeVerifier();
       anilistStateRef.current = state;
+      if (browserTarget) {
+        sessionStorage.setItem('fluxa-oauth-state-anilist', state);
+        const authUrl = `https://anilist.co/api/v2/oauth/authorize?response_type=token&client_id=${anilistClientId}&redirect_uri=${encodeURIComponent(browserRedirectUri('anilist'))}&state=${state}`;
+        setAuthUrl('anilist', authUrl);
+        window.location.assign(authUrl);
+        return;
+      }
       const authUrl = `https://anilist.co/api/v2/oauth/authorize?response_type=code&client_id=${anilistClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/anilist')}&state=${state}`;
       setAuthUrl('anilist', authUrl);
       let unlisten: (() => void) | undefined;
       const consumeCallback = async () => {
-        const payload = await invoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'anilist' });
+        const payload = await platformInvoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'anilist' });
         if (!payload) return;
         unlisten?.();
         if (payload.state !== anilistStateRef.current) {
@@ -245,7 +343,7 @@ export function useIntegrationAccounts({
         anilistStateRef.current = null;
         setAuthUrl('anilist');
         try {
-          const tokenJson = await invoke<string>('anilist_oauth_exchange', { code: payload.code });
+          const tokenJson = await platformInvoke<string>('anilist_oauth_exchange', { code: payload.code });
           const tokens = JSON.parse(tokenJson) as { access_token: string; expires_in?: number };
           const anilistUsername = await fetchAnilistUsername(tokens.access_token);
           const updated: UserProfile = {
@@ -292,7 +390,7 @@ export function useIntegrationAccounts({
     setSimklBusy(true);
     setSimklError(null);
     try {
-      const simklClientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' });
+      const simklClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'simkl' });
       if (!simklClientId) {
         setSimklError('FLUXA_SIMKL_CLIENT_ID is not set.');
         setSimklBusy(false);
@@ -303,11 +401,19 @@ export function useIntegrationAccounts({
       simklStateRef.current = state;
       simklCodeVerifierRef.current = verifier;
       const challenge = await codeChallenge(verifier);
+      if (browserTarget) {
+        sessionStorage.setItem('fluxa-oauth-state-simkl', state);
+        sessionStorage.setItem('fluxa-simkl-verifier', verifier);
+        const authUrl = `https://simkl.com/oauth/authorize?response_type=code&client_id=${simklClientId}&redirect_uri=${encodeURIComponent(browserRedirectUri('simkl'))}&state=${state}&code_challenge=${challenge}&code_challenge_method=S256&app-name=fluxa&app-version=1`;
+        setAuthUrl('simkl', authUrl);
+        window.location.assign(authUrl);
+        return;
+      }
       const authUrl = `https://simkl.com/oauth/authorize?response_type=code&client_id=${simklClientId}&redirect_uri=${encodeURIComponent('fluxa://oauth/simkl')}&state=${state}&code_challenge=${challenge}&code_challenge_method=S256&app-name=fluxa&app-version=1`;
       setAuthUrl('simkl', authUrl);
       let unlisten: (() => void) | undefined;
       const consumeCallback = async () => {
-        const payload = await invoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'simkl' });
+        const payload = await platformInvoke<OAuthCodePayload | null>('take_oauth_callback', { service: 'simkl' });
         if (!payload) return;
         unlisten?.();
         if (payload.state !== simklStateRef.current) {
@@ -322,7 +428,7 @@ export function useIntegrationAccounts({
         try {
           const codeVerifier = simklCodeVerifierRef.current;
           if (!codeVerifier) throw new Error(t('settings.oauth_state_mismatch'));
-          const tokenJson = await invoke<string>('simkl_oauth_exchange', { code: payload.code, codeVerifier });
+          const tokenJson = await platformInvoke<string>('simkl_oauth_exchange', { code: payload.code, codeVerifier });
           const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; created_at?: number; expires_in?: number };
           const expiresAt = tokens.expires_in
             ? (tokens.created_at ?? Math.floor(Date.now() / 1000)) + tokens.expires_in
@@ -454,7 +560,7 @@ export function useIntegrationAccounts({
     setTraktBusy(true);
     setTraktError(null);
     try {
-      const traktClientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' });
+      const traktClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' });
       const result = await syncExternalIntegrationNow({
         provider: 'trakt',
         profile: activeProfile,
@@ -483,7 +589,7 @@ export function useIntegrationAccounts({
     setSimklBusy(true);
     setSimklError(null);
     try {
-      const simklClientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' });
+      const simklClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'simkl' });
       const result = await syncExternalIntegrationNow({
         provider: 'simkl',
         profile: activeProfile,

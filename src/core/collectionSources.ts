@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke } from '../platform/invoke';
 import { platformFetch } from './httpClient';
 import type { Meta, NuvioRemoteCollectionSource } from './types';
 import { loadPrefs } from './libraryOps';
@@ -8,7 +8,7 @@ import { coreInvoke } from './engine';
 export async function loadNuvioCollectionSource(source: NuvioRemoteCollectionSource, page = 1): Promise<Meta[]> {
   const prefs = await loadPrefs();
   const clientId = source.provider === 'trakt'
-    ? await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '')
+    ? await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '')
     : '';
   const plan = await coreInvoke<{
     url: string;

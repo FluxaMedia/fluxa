@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke } from '../platform/invoke';
 import { coreInvoke, httpExecuteText } from './engine';
 import { _appVersion, tryFetchJson } from './httpClient';
 import { enrichWithAddonMeta } from './externalSyncUtils';
@@ -37,7 +37,7 @@ async function tryCoreMapper<T>(method: 'traktRelatedLookupSlug' | 'traktRelated
 // known to 404 on some shows even though they work for most — so we resolve the
 // slug via /search first rather than passing the imdb id straight through.
 export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: string; contentType: string }): Promise<Meta[]> {
-  const clientId = await invoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
+  const clientId = await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '');
   if (!clientId) return [];
   const headers = {
     'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: 
 // simkl id (no imdb/tmdb), so each item needs one more detail lookup to resolve
 // a navigable imdb id.
 export async function fetchSimklSimilarItems({ imdbId, contentType }: { imdbId: string; contentType: string }): Promise<Meta[]> {
-  const clientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' }).catch(() => '');
+  const clientId = await platformInvoke<string>('get_oauth_client_id', { service: 'simkl' }).catch(() => '');
   if (!clientId) return [];
 
   const simklQuery = `client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`;

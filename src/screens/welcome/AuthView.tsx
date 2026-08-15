@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { t } from '../../i18n';
+import { assetUrl } from '../../platform/assets';
 import { S } from './styles';
 import { TopBar, Field, PasswordField } from './fields';
 
@@ -60,7 +61,7 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
         <div style={S.card}>
           <button style={S.nuvioBtn} onClick={onNuvioClick}>
             <img
-              src="/nuvio.png"
+              src={assetUrl('nuvio.png')}
               alt="Nuvio"
               style={{ width: '1.375rem', height: '1.375rem', objectFit: 'contain', flexShrink: 0 }}
             />

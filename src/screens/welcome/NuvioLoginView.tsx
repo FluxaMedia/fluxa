@@ -4,6 +4,7 @@ import { nuvioAuthErrorKind, nuvioSignIn, type NuvioSession } from '../../core/n
 import type { UserProfile } from '../../core/types';
 import { S, FONT } from './styles';
 import { TopBar, Field, PasswordField } from './fields';
+import { assetUrl } from '../../platform/assets';
 
 function buildNuvioProfile(session: NuvioSession, email: string): UserProfile {
   const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -87,7 +88,7 @@ export function NuvioLoginView({ onBack, onImporting, onContinueLocal, localLoad
         <div style={S.card}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
             <img
-              src="/nuvio.png"
+              src={assetUrl('nuvio.png')}
               alt="Nuvio"
               style={{ width: '2.25rem', height: '2.25rem', objectFit: 'contain' }}
             />

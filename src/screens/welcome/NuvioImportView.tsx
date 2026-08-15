@@ -8,6 +8,7 @@ import {
 import { loadProfiles, saveProfiles, setActiveProfileId } from '../../core/profiles';
 import { invalidateLibraryKeyCache } from '../../core/libraryOps';
 import { buildLocalNuvioProfiles, importNuvioProfileData, type NuvioImportStep } from '../../core/nuvioSync';
+import { assetUrl } from '../../platform/assets';
 import type { UserProfile } from '../../core/types';
 import { S, FONT } from './styles';
 
@@ -124,7 +125,7 @@ export function NuvioImportView({ profile, onDone }: NuvioImportViewProps) {
         <div style={{ ...S.card, maxWidth: '22.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
             <img
-              src="/nuvio.png"
+              src={assetUrl('nuvio.png')}
               alt="Nuvio"
               style={{ width: '2rem', height: '2rem', objectFit: 'contain' }}
             />

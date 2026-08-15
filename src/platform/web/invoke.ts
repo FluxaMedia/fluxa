@@ -2,6 +2,13 @@ import { storageDelete, storageRead, storageWrite } from './storage';
 import { coreInvoke, engineCompleteEffect, engineDispatch, engineInit, engineSnapshot } from './wasmEngine';
 
 const companionUrl = import.meta.env.VITE_FLUXA_COMPANION_URL || 'http://127.0.0.1:19876';
+const nuvioUrl = import.meta.env.VITE_NUVIO_SUPABASE_URL || '';
+const nuvioKey = import.meta.env.VITE_NUVIO_SUPABASE_KEY || '';
+const oauthClientIds: Record<string, string> = {
+  trakt: import.meta.env.VITE_TRAKT_CLIENT_ID || '',
+  simkl: import.meta.env.VITE_SIMKL_CLIENT_ID || '',
+  anilist: import.meta.env.VITE_ANILIST_CLIENT_ID || '',
+};
 
 export class PlatformUnsupportedError extends Error {
   constructor(command: string) {
@@ -12,6 +19,38 @@ export class PlatformUnsupportedError extends Error {
 
 async function companion(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${companionUrl}${path}`, init);
+}
+
+async function oauthExchange(service: string, code: string): Promise<string> {
+  const response = await companion(`/oauth/${service}/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  if (!response.ok) throw new Error(`${service} OAuth exchange failed (${response.status})`);
+  return response.text();
+}
+
+async function oauthRefresh(service: string, refreshToken: string): Promise<string> {
+  const response = await companion(`/oauth/${service}/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+  if (!response.ok) throw new Error(`${service} OAuth refresh failed (${response.status})`);
+  return response.text();
+}
+
+async function traktDeviceRequest(path: string, body: Record<string, string>): Promise<string> {
+  const clientId = oauthClientIds.trakt;
+  if (!clientId) throw new Error('Trakt OAuth client is not configured');
+  const response = await fetch(`https://api.trakt.tv${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'trakt-api-key': clientId },
+    body: JSON.stringify({ ...body, client_id: clientId }),
+  });
+  if (!response.ok) throw new Error(`Trakt device request failed (${response.status})`);
+  return response.text();
 }
 
 export async function webInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -47,6 +86,46 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
     case 'debug_log':
       console.debug('[fluxa]', args?.msg);
       return undefined as T;
+    case 'get_version':
+      return 'web' as T;
+    case 'get_oauth_client_id':
+      return (oauthClientIds[String(args?.service)] || '') as T;
+    case 'trakt_device_start':
+      return traktDeviceRequest('/oauth/device/code', {}) as Promise<T>;
+    case 'trakt_device_poll':
+      return traktDeviceRequest('/oauth/device/token', { code: String(args?.deviceCode) }) as Promise<T>;
+    case 'trakt_oauth_exchange':
+      return oauthExchange('trakt', String(args?.code)) as Promise<T>;
+    case 'anilist_oauth_exchange':
+      return oauthExchange('anilist', String(args?.code)) as Promise<T>;
+    case 'simkl_oauth_exchange':
+      return fetch('https://api.simkl.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: args?.code, client_id: oauthClientIds.simkl, code_verifier: args?.codeVerifier, redirect_uri: `${window.location.origin}${window.location.pathname}?oauth=simkl`, grant_type: 'authorization_code' }),
+      }).then(async (response) => {
+        if (!response.ok) throw new Error(`Simkl OAuth exchange failed (${response.status})`);
+        return response.text();
+      }) as Promise<T>;
+    case 'trakt_oauth_refresh':
+      return oauthRefresh('trakt', String(args?.refreshToken)) as Promise<T>;
+    case 'nuvio_request': {
+      if (!nuvioUrl || !nuvioKey) throw new Error('Nuvio web configuration is missing');
+      const path = args?.path as string;
+      if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) throw new Error('invalid Nuvio path');
+      const method = args?.method as string;
+      const token = args?.token as string | null | undefined;
+      const response = await fetch(`${nuvioUrl.replace(/\/$/, '')}${path}`, {
+        method,
+        headers: {
+          apikey: nuvioKey,
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: args?.body == null ? (method === 'POST' ? '{}' : undefined) : String(args.body),
+      });
+      return [response.status, await response.text()] as T;
+    }
     case 'start_torrent_stream': {
       const response = await companion('/torrent/start', {
         method: 'POST',

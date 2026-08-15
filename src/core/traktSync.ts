@@ -1,6 +1,6 @@
 import { _appVersion, platformFetch } from './httpClient';
 import { loadActiveProfile } from './libraryOps';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke } from '../platform/invoke';
 import { coreInvoke } from './engine';
 import { saveProfile } from './profiles';
 import type { UserProfile } from './types';
@@ -8,7 +8,7 @@ import type { UserProfile } from './types';
 export async function refreshTraktProfile(profile: UserProfile, force = false): Promise<UserProfile> {
   const expiresAt = profile.traktTokenExpiresAt ?? 0;
   if (!profile.traktAccessToken || !profile.traktRefreshToken || (!force && expiresAt > Math.floor(Date.now() / 1000) + 60)) return profile;
-  const tokenJson = await invoke<string>('trakt_oauth_refresh', { refreshToken: profile.traktRefreshToken });
+  const tokenJson = await platformInvoke<string>('trakt_oauth_refresh', { refreshToken: profile.traktRefreshToken });
   const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; created_at?: number; expires_in?: number };
   const updated: UserProfile = {
     ...profile,
@@ -22,7 +22,7 @@ export async function refreshTraktProfile(profile: UserProfile, force = false): 
 
 export async function getOAuthClientId(service: string): Promise<string> {
   try {
-    return await invoke<string>('get_oauth_client_id', { service });
+    return await platformInvoke<string>('get_oauth_client_id', { service });
   } catch {
     return '';
   }

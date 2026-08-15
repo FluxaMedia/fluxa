@@ -1,8 +1,8 @@
 import { platformFetch as nativeFetch } from '../platform/http';
-import { getVersion } from '@tauri-apps/api/app';
+import { platformInvoke } from '../platform/invoke';
 
 export let _appVersion = '1';
-getVersion().then((v) => { _appVersion = v; }).catch(() => {});
+platformInvoke<string>('get_version').then((v) => { _appVersion = v; }).catch(() => {});
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 

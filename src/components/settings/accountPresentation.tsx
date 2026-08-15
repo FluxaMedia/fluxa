@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { t } from '../../i18n';
 import { nuvioAuthErrorKind } from '../../core/nuvioApi';
+import { assetUrl } from '../../platform/assets';
 
 const PROVIDER_ICON: Record<string, { src: string; alt: string; background: string }> = {
-  trakt: { src: '/trakt.svg', alt: 'Trakt', background: 'rgba(237,28,36,0.12)' },
-  simkl: { src: '/simkl.svg', alt: 'Simkl', background: 'rgba(255,255,255,0.06)' },
-  anilist: { src: '/anilist.svg', alt: 'AniList', background: 'rgba(2,169,255,0.12)' },
-  stremio: { src: '/stremio.svg', alt: 'Stremio', background: 'rgba(123,91,245,0.12)' },
-  nuvio: { src: '/nuvio.png', alt: 'Nuvio', background: 'rgba(255,255,255,0.06)' },
+  trakt: { src: assetUrl('trakt.svg'), alt: 'Trakt', background: 'rgba(237,28,36,0.12)' },
+  simkl: { src: assetUrl('simkl.svg'), alt: 'Simkl', background: 'rgba(255,255,255,0.06)' },
+  anilist: { src: assetUrl('anilist.svg'), alt: 'AniList', background: 'rgba(2,169,255,0.12)' },
+  stremio: { src: assetUrl('stremio.svg'), alt: 'Stremio', background: 'rgba(123,91,245,0.12)' },
+  nuvio: { src: assetUrl('nuvio.png'), alt: 'Nuvio', background: 'rgba(255,255,255,0.06)' },
 };
 
 export function providerIcon(key: string): React.ReactNode {

@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke } from '../platform/invoke';
 import { coreInvoke } from './engine';
 
 export interface NuvioSession {
@@ -192,7 +192,7 @@ async function rawNuvioRequest(
   body?: unknown,
   token?: string,
 ): Promise<[number, string]> {
-  return invoke<[number, string]>('nuvio_request', {
+  return platformInvoke<[number, string]>('nuvio_request', {
     method,
     path,
     body: body !== undefined ? JSON.stringify(body) : null,

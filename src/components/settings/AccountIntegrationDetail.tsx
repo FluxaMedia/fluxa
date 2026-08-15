@@ -1,5 +1,5 @@
 import React from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { platformInvoke } from '../../platform/invoke';
 import type { UserProfile } from '../../core/types';
 import { t } from '../../i18n';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -133,8 +133,8 @@ export function AccountIntegrationDetail({
             : provider === 'anilist' ? activeProfile.anilistAccessToken
             : provider === 'stremio' ? activeProfile.stremioAuthKey
             : activeProfile.nuvioAccessToken;
-          const clientId = provider === 'trakt' ? await invoke<string>('get_oauth_client_id', { service: 'trakt' })
-            : provider === 'simkl' ? await invoke<string>('get_oauth_client_id', { service: 'simkl' })
+          const clientId = provider === 'trakt' ? await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' })
+            : provider === 'simkl' ? await platformInvoke<string>('get_oauth_client_id', { service: 'simkl' })
             : undefined;
           const result = await syncExternalIntegrationNow({
             provider, profile: activeProfile, token, clientId, categories: selected, dryRun: true,
@@ -163,8 +163,8 @@ export function AccountIntegrationDetail({
             else if (source === 'nuvio') await handleNuvioSyncNow(selected);
 
             if (!destination || !activeProfile) return;
-            const traktClientId = destination === 'trakt' ? await invoke<string>('get_oauth_client_id', { service: 'trakt' }) : undefined;
-            const simklClientId = destination === 'simkl' ? await invoke<string>('get_oauth_client_id', { service: 'simkl' }) : undefined;
+            const traktClientId = destination === 'trakt' ? await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' }) : undefined;
+            const simklClientId = destination === 'simkl' ? await platformInvoke<string>('get_oauth_client_id', { service: 'simkl' }) : undefined;
             const { errors } = await pushImportedCategoriesToDestination({
               destination,
               categories: selected,

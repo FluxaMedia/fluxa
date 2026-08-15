@@ -9,6 +9,7 @@ import type { Prefs } from './settingsTypes';
 import { AuthKeyLoginForm, CredentialLoginForm, type IntegrationService } from './accountPresentation';
 import { useIntegrationAccounts } from './useIntegrationAccounts';
 import { AccountIntegrationDetail } from './AccountIntegrationDetail';
+import { assetUrl } from '../../platform/assets';
 
 export function AccountSection({
   prefs,
@@ -79,7 +80,7 @@ export function AccountSection({
         {/* Trakt */}
         {!traktConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/trakt.svg" alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
+            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('trakt.svg')} alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
             title="Trakt.tv"
             value={traktBusy ? t('trakt.device.waiting') : t('auto.connect_trakt_tv_account')}
             onClick={() => setSelectedIntegration('trakt')}
@@ -95,7 +96,7 @@ export function AccountSection({
         {traktConnected && (
           <div ref={traktRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/trakt.svg" alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
+              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('trakt.svg')} alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
               title="Trakt.tv"
               value={traktBusy ? t('sync.device.syncing') : (activeProfile?.traktUsername ? t('settings.connected_as', activeProfile.traktUsername) : t('sync.device.connected'))}
               valueColor="#54D17A"
