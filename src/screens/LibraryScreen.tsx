@@ -5,7 +5,7 @@ import { FilterDropdown } from '../components/FilterDropdown';
 import { posterPrefsFromState } from '../core/posterPrefs';
 import { appPrefs, prefString } from '../core/appPrefs';
 import { getViewPrefs, setViewPref, whenViewPrefsReady } from '../core/viewPrefs';
-import type { AppState, HomeCategory, LibraryItem, Meta, UserProfile } from '../core/types';
+import type { AppState, HomeCategory, LibraryItem, Meta, Stream, UserProfile, Video } from '../core/types';
 import { t } from '../i18n';
 import { CategoryGridScreen } from './CategoryGridScreen';
 import { CollectionEditorScreen } from './CollectionEditorScreen';
@@ -18,6 +18,7 @@ import { useLibraryCollections } from '../hooks/useLibraryCollections';
 import { NAV_RAIL_WIDTH, PX, styles } from './libraryScreenStyles';
 import { CircleBtn, HistoryTimeline, TabChip } from './LibraryScreenParts';
 import { invoke } from '@tauri-apps/api/core';
+import { LocalMediaPanel } from '../components/LocalMediaPanel';
 
 function debugLog(msg: string) {
   void invoke('debug_log', { msg }).catch(() => {});
@@ -33,6 +34,7 @@ interface Props {
   onBack: () => void;
   activeProfile?: UserProfile | null;
   onProfileUpdated?: (profile: UserProfile) => void;
+  onPlayLocal?: (stream: Stream, meta: Meta, episode?: Video) => void;
 }
 
 export const LibraryScreen = React.memo(function LibraryScreen({
@@ -42,7 +44,9 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   onBack,
   activeProfile,
   onProfileUpdated,
+  onPlayLocal,
 }: Props) {
+  const [localMediaOpen, setLocalMediaOpen] = useState(false);
   const [tab, setTab] = useState<Tab>(() => (getViewPrefs().libraryTab as Tab) ?? 'watchlist');
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'rating'>(() => (getViewPrefs().librarySort as 'recent' | 'title' | 'rating') ?? 'recent');
@@ -276,7 +280,10 @@ export const LibraryScreen = React.memo(function LibraryScreen({
         <TabChip active={tab === 'history'} onClick={() => changeTab('history')}>
           {t('library.history')}{smartLists.history.length > 0 ? ` (${smartLists.history.length})` : ''}
         </TabChip>
-        {tab !== 'collections' && (
+        <TabChip active={localMediaOpen} onClick={() => setLocalMediaOpen(true)}>
+          Local media
+        </TabChip>
+        {tab !== 'collections' && !localMediaOpen && (
           <div style={styles.controls}>
             <div style={styles.searchWrap}>
               <Search size={15} style={{ color: 'rgba(255,255,255,0.35)', flexShrink: 0 }} />
@@ -322,7 +329,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
         )}
       </div>
 
-      {bulkMode && tab !== 'collections' && (
+      {bulkMode && tab !== 'collections' && !localMediaOpen && (
         <div style={styles.bulkBar}>
           <button style={styles.bulkGhostBtn} onClick={() => {
             if (selectedIds.size === sorted.length) clearSelection();
@@ -357,7 +364,12 @@ export const LibraryScreen = React.memo(function LibraryScreen({
 
       <div style={{ height: '0.5rem' }} />
 
-      {tab === 'collections' ? (
+      {localMediaOpen ? (
+        <LocalMediaPanel
+          posterPrefs={posterPrefs}
+          onPlay={(stream, meta, episode) => onPlayLocal?.(stream, meta, episode)}
+        />
+      ) : tab === 'collections' ? (
         <div ref={collectionsScrollRef} style={styles.collectionsScroll}>
           <CollectionsTab
             collections={collections}
@@ -429,5 +441,6 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   prev.onDispatch === next.onDispatch &&
   prev.onNavigateDetail === next.onNavigateDetail &&
   prev.onBack === next.onBack &&
-  prev.onProfileUpdated === next.onProfileUpdated,
+  prev.onProfileUpdated === next.onProfileUpdated &&
+  prev.onPlayLocal === next.onPlayLocal,
 );

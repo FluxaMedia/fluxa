@@ -461,6 +461,7 @@ export default function App() {
               onBack={handleLibraryBack}
               activeProfile={activeProfile!}
               onProfileUpdated={handleProfileUpdated}
+              onPlayLocal={(stream, meta, episode) => { void handlePlay(stream, meta, episode); }}
             />
           </React.Suspense>
         )}

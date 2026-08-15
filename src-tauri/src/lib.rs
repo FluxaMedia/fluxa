@@ -10,6 +10,7 @@ mod discord_presence;
 mod downloads;
 mod external_player;
 mod libvlc_render;
+mod local_media;
 #[cfg(target_os = "linux")]
 mod linux_player_surface;
 #[cfg(target_os = "linux")]
@@ -52,6 +53,7 @@ use core_commands::*;
 use custom_fonts::*;
 use discord_presence::*;
 use downloads::*;
+use local_media::*;
 use external_player::*;
 use oauth::*;
 use oauth_callbacks::{queue_oauth_callback, take_oauth_callback, PendingOAuthCallbacks};
@@ -590,6 +592,7 @@ pub fn run() {
             library_continue_watching_upsert,
             library_continue_watching_delete,
             core_invoke,
+            local_media_scan,
             run_plugin_scraper,
             stream_magnet_link,
             start_torrent_stream,
