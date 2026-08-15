@@ -41,7 +41,7 @@ jobs:
           cargo install wasm-bindgen-cli --locked
           cargo build --release --target wasm32-unknown-unknown --no-default-features --features wasm
           wasm-bindgen target/wasm32-unknown-unknown/release/fluxa_core.wasm --target web --out-dir pkg
-          printf '%s\n' '{"name":"fluxa_core","type":"module"}' > pkg/package.json
+          printf '%s\n' '{"name":"fluxa_core","type":"module","main":"fluxa_core.js","types":"fluxa_core.d.ts"}' > pkg/package.json
 
       - name: Install frontend dependencies
         run: npm ci
