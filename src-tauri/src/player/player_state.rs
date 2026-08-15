@@ -217,18 +217,20 @@ pub fn player_track_options(
 pub fn player_destroy(state: State<DesktopState>) -> bool {
     state.pending_hide.store(true, Ordering::Release);
     let _ = state.sleep_inhibitor.lock().unwrap().set_enabled(false);
-    if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
-        return state.player_renderer_vlc.lock().unwrap().take().is_some();
-    }
+    let had_vlc = state.player_renderer_vlc.lock().unwrap().take().is_some();
     #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-    if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+    let native_surface = state.native_player_surface.lock().unwrap().take();
+    #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
+    if let Some(surface) = native_surface {
+        #[cfg(target_os = "macos")]
+        let _ = surface.shutdown();
+        #[cfg(not(target_os = "macos"))]
         surface.hide();
-        return state.player_mpv_client.lock().unwrap().is_some();
     }
 
     let had_render = state.player_render_state.lock().unwrap().take().is_some();
     let had_client = state.player_mpv_client.lock().unwrap().take().is_some();
-    had_render || had_client
+    had_vlc || had_render || had_client
 }
 
 #[tauri::command]
@@ -258,12 +260,11 @@ pub fn player_set_skip_info(
     auto_skip_segments: Option<bool>,
 ) {
     let mut overlay = state.player_overlay.lock().unwrap();
-    overlay.skip_segments_json =
-        if segments_json.trim().is_empty() || segments_json == "[]" {
-            None
-        } else {
-            Some(segments_json)
-        };
+    overlay.skip_segments_json = if segments_json.trim().is_empty() || segments_json == "[]" {
+        None
+    } else {
+        Some(segments_json)
+    };
     overlay.next_ep_subtitle = next_ep_subtitle.unwrap_or_default();
     overlay.eof_next_fired = false;
     if let Some(t) = next_ep_threshold_percent {
@@ -315,7 +316,7 @@ pub fn player_get_seek_thumbnail(
     state: State<DesktopState>,
     time_pos: f64,
 ) -> Result<String, String> {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
 
     let mut thumbnail = state.thumbnail.lock().unwrap();
     if !thumbnail.enabled {

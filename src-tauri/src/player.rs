@@ -1,3 +1,4 @@
+use crate::DesktopState;
 use crate::artwork::{
     artwork_bg_decoded, artwork_logo_decoded, fetch_player_artwork_bytes_owned, normalize_url,
     scale_artwork_cover, scale_artwork_fit,
@@ -6,9 +7,8 @@ use crate::custom_fonts;
 use crate::libvlc_render;
 use crate::mpv_render;
 use crate::playback_engine::{self, PlaybackEngine, PlayerEngine};
-use crate::DesktopState;
 use fluxa_core::FluxaCore;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::process::Command;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -67,10 +67,35 @@ pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
 ) -> Option<macos_player_surface::NativePlayerSurface> {
+    let requested = macos_player_surface::requested_backend(app_handle);
     if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
-        return Some(surface);
+        if surface.backend() == requested {
+            return Some(surface);
+        }
+        log::info!(
+            "macOS render backend changed from {} to {}; rebuilding native surface",
+            surface.backend_name(),
+            requested.name()
+        );
+        let old = state.native_player_surface.lock().unwrap().take();
+        if let Some(old) = old {
+            if let Err(error) = old.shutdown() {
+                log::warn!("failed to stop previous macOS native surface: {error}");
+            }
+        }
     }
-    match macos_player_surface::install(app_handle.clone()) {
+    let installed = macos_player_surface::install(app_handle.clone()).or_else(|error| {
+        if requested == macos_player_surface::RenderBackend::Vulkan {
+            log::warn!("macOS Vulkan initialization failed; retrying with OpenGL: {error}");
+            macos_player_surface::install_with_backend(
+                app_handle.clone(),
+                macos_player_surface::RenderBackend::OpenGl,
+            )
+        } else {
+            Err(error)
+        }
+    });
+    match installed {
         Ok(surface) => {
             *state.native_player_surface.lock().unwrap() = Some(surface.clone());
             Some(surface)
@@ -82,23 +107,23 @@ pub fn ensure_native_player_surface(
     }
 }
 
-mod player_preferences;
-mod lifecycle;
-mod presentation;
 mod controls;
+mod lifecycle;
+mod player_preferences;
+mod presentation;
 
-use player_preferences::*;
+pub use controls::{
+    player_add_subtitle, player_command, player_get_anime4k_enabled, player_render_frame,
+    player_set_anime4k_enabled, player_set_sleep_inhibition, player_torrent_sibling_subtitles,
+};
 pub use lifecycle::{
     player_apply_preferences, player_init, player_last_stream_error, player_load,
     player_set_http_headers,
 };
+use player_preferences::*;
 pub use presentation::{
     player_prefetch_artwork, player_set_cursor_visible, player_set_loading_artwork,
     player_set_title,
-};
-pub use controls::{
-    player_add_subtitle, player_command, player_get_anime4k_enabled, player_render_frame,
-    player_set_anime4k_enabled, player_set_sleep_inhibition, player_torrent_sibling_subtitles,
 };
 
 fn encode_query_component(value: &str) -> String {
@@ -126,9 +151,11 @@ fn torrent_sibling_subtitles(state: &DesktopState) -> Vec<(String, String, Optio
     let status_url = format!("{}/torrents", base_url.trim_end_matches('/'));
     let body =
         serde_json::json!({ "action": "get", "link": link, "file_id": selected_id }).to_string();
-    let Some(response) =
-        crate::torrent_transport::request(&status_url, Some(&body), std::time::Duration::from_secs(5))
-    else {
+    let Some(response) = crate::torrent_transport::request(
+        &status_url,
+        Some(&body),
+        std::time::Duration::from_secs(5),
+    ) else {
         log::warn!("torrent subtitles: status request failed");
         return Vec::new();
     };
@@ -259,14 +286,14 @@ where
     Err("player renderer busy".to_string())
 }
 
-mod subtitles;
 mod player_state;
+mod subtitles;
 
-pub(crate) use subtitles::{player_auto_sync_subtitles, player_capture_subtitle_cues};
 pub use player_state::{
     player_clear_chapters, player_clear_episodes, player_clear_skip_info, player_destroy,
-    player_get_playback_info, player_get_seek_thumbnail, player_hide, player_set_chapters,
-    player_set_episodes, player_set_seek_thumbnail_enabled, player_set_skip_info,
-    player_set_status_interval, player_show_loading, player_screenshot, player_status, player_title, player_track_options,
-    player_set_stats_enabled,
+    player_get_playback_info, player_get_seek_thumbnail, player_hide, player_screenshot,
+    player_set_chapters, player_set_episodes, player_set_seek_thumbnail_enabled,
+    player_set_skip_info, player_set_stats_enabled, player_set_status_interval,
+    player_show_loading, player_status, player_title, player_track_options,
 };
+pub(crate) use subtitles::{player_auto_sync_subtitles, player_capture_subtitle_cues};

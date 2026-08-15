@@ -70,7 +70,6 @@ impl MpvClientHandle {
             client.set_option("hwdec-codecs", "all")?;
 
             client.set_option("video-sync", "audio")?;
-            client.set_option("display-fps-override", "60")?;
 
             // Start playback immediately without waiting for the cache to fill.
             // cache-pause-initial=yes (default in many MPV builds) causes MPV to pause
@@ -101,7 +100,8 @@ impl MpvClientHandle {
         }
 
         let level = CString::new("info").unwrap();
-        let log_result = unsafe { (client.api.mpv_request_log_messages)(client.handle, level.as_ptr()) };
+        let log_result =
+            unsafe { (client.api.mpv_request_log_messages)(client.handle, level.as_ptr()) };
         if log_result < 0 {
             log::warn!(
                 "mpv: failed to enable info logging: {}",
@@ -138,7 +138,10 @@ impl MpvClientHandle {
                 )
             };
             if result < 0 {
-                log::debug!("mpv: failed to observe static property {name:?}: {}", client.api.error_string(result));
+                log::debug!(
+                    "mpv: failed to observe static property {name:?}: {}",
+                    client.api.error_string(result)
+                );
             }
         }
         let track_count_name = CString::new("track-list/count").unwrap();
@@ -151,7 +154,10 @@ impl MpvClientHandle {
             )
         };
         if result < 0 {
-            log::debug!("mpv: failed to observe track-list/count: {}", client.api.error_string(result));
+            log::debug!(
+                "mpv: failed to observe track-list/count: {}",
+                client.api.error_string(result)
+            );
         }
 
         Ok((client, render))
@@ -213,6 +219,21 @@ impl MpvClientHandle {
         Ok(())
     }
 
+    #[cfg(target_os = "macos")]
+    pub fn fallback_to_videotoolbox_copy(&mut self) -> Result<(), String> {
+        let url = self
+            .current_url
+            .clone()
+            .ok_or_else(|| "no active media for VideoToolbox fallback".to_string())?;
+        let position = self
+            .get_string_property("time-pos")
+            .and_then(|value| value.parse::<f64>().ok())
+            .filter(|value| value.is_finite() && *value > 0.0)
+            .map(|value| value as u64);
+        self.set_option("hwdec", "videotoolbox-copy")?;
+        self.load(&url, position)
+    }
+
     pub fn load_thumbnail(&mut self, url: &str) -> Result<(), String> {
         self.frame_state.loaded.store(false, Ordering::Release);
         self.command(&["loadfile", url, "replace"])?;
@@ -221,7 +242,9 @@ impl MpvClientHandle {
     }
 
     pub fn first_frame_presented(&self) -> bool {
-        self.frame_state.first_frame_presented.load(Ordering::Acquire)
+        self.frame_state
+            .first_frame_presented
+            .load(Ordering::Acquire)
     }
 
     pub fn seek_to(&self, time_pos: f64) -> Result<(), String> {

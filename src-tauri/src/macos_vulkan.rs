@@ -1,4 +1,4 @@
-use std::ffi::{c_void, CString};
+use std::ffi::{CString, c_void};
 use std::path::PathBuf;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -17,6 +17,7 @@ type VkCommandBuffer = *mut c_void;
 type VkResult = i32;
 
 const VK_SUCCESS: VkResult = 0;
+const VK_ERROR_OUT_OF_DATE_KHR: VkResult = -1000001004;
 const VK_SUBOPTIMAL_KHR: VkResult = 1000001003;
 const VK_STRUCTURE_TYPE_APPLICATION_INFO: i32 = 0;
 const VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO: i32 = 1;
@@ -46,7 +47,7 @@ const VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT: i32 = 1000104002;
 const VK_SHARING_MODE_EXCLUSIVE: i32 = 0;
 const VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR: u32 = 0x1;
 const VK_PRESENT_MODE_FIFO_KHR: i32 = 2;
-const VK_API_VERSION_1_3: u32 = (1 << 22) | (3 << 12);
+const VK_API_VERSION_1_0: u32 = 1 << 22;
 const VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: i32 = 1000001002;
 const VK_IMAGE_ASPECT_COLOR_BIT: u32 = 0x1;
 const VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT: u32 = 0x00002000;
@@ -486,13 +487,19 @@ pub struct VulkanContext {
     command_pool: VkCommandPool,
     command_buffer: VkCommandBuffer,
     hdr: AtomicBool,
+    device_extension_names: Vec<CString>,
 }
 
 unsafe impl Send for VulkanContext {}
 
 impl VulkanContext {
     pub fn new(metal_layer: *const c_void, width: i32, height: i32) -> Result<Self, String> {
-        let module = dlopen_path(&find_moltenvk_path())
+        let moltenvk_path = find_moltenvk_path();
+        log::info!(
+            "macOS Vulkan: loading MoltenVK from {}",
+            moltenvk_path.display()
+        );
+        let module = dlopen_path(&moltenvk_path)
             .ok_or("libMoltenVK.dylib not found (bundle it alongside libmpv.dylib)")?;
 
         let get_instance_proc_addr: PfnGetInstanceProcAddr =
@@ -536,6 +543,9 @@ impl VulkanContext {
             })
         };
         let portability_enumeration = has_instance_ext("VK_KHR_portability_enumeration");
+        if !has_instance_ext("VK_KHR_surface") || !has_instance_ext("VK_EXT_metal_surface") {
+            return Err("MoltenVK does not expose the required surface extensions".to_string());
+        }
 
         let app_name = CString::new("fluxa-desktop").unwrap();
         let app_info = VkApplicationInfo {
@@ -545,13 +555,15 @@ impl VulkanContext {
             application_version: 0,
             p_engine_name: app_name.as_ptr(),
             engine_version: 0,
-            api_version: VK_API_VERSION_1_3,
+            api_version: VK_API_VERSION_1_0,
         };
         let mut extensions = vec![
             CString::new("VK_KHR_surface").unwrap(),
             CString::new("VK_EXT_metal_surface").unwrap(),
-            CString::new("VK_EXT_swapchain_colorspace").unwrap(),
         ];
+        if has_instance_ext("VK_EXT_swapchain_colorspace") {
+            extensions.push(CString::new("VK_EXT_swapchain_colorspace").unwrap());
+        }
         if portability_enumeration {
             extensions.push(CString::new("VK_KHR_portability_enumeration").unwrap());
         }
@@ -741,25 +753,22 @@ impl VulkanContext {
             queue_count: 1,
             p_queue_priorities: &queue_priority,
         };
+        if !has_device_ext("VK_KHR_swapchain") {
+            unsafe {
+                destroy_surface_khr(instance, surface, ptr::null());
+                destroy_instance(instance, ptr::null());
+            }
+            return Err("selected Vulkan device does not expose VK_KHR_swapchain".to_string());
+        }
         let mut device_extensions = vec![CString::new("VK_KHR_swapchain").unwrap()];
         if has_device_ext("VK_KHR_portability_subset") {
             device_extensions.push(CString::new("VK_KHR_portability_subset").unwrap());
         }
         let device_extension_ptrs: Vec<*const i8> =
             device_extensions.iter().map(|e| e.as_ptr()).collect();
-        let mut synchronization2_features = VkPhysicalDeviceSynchronization2Features {
-            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
-            p_next: ptr::null_mut(),
-            synchronization2: 1,
-        };
-        let mut timeline_semaphore_features = VkPhysicalDeviceTimelineSemaphoreFeatures {
-            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
-            p_next: &mut synchronization2_features as *mut _ as *mut c_void,
-            timeline_semaphore: 1,
-        };
         let device_create_info = VkDeviceCreateInfo {
             s_type: VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            p_next: &mut timeline_semaphore_features as *mut _ as *const c_void,
+            p_next: ptr::null(),
             flags: 0,
             queue_create_info_count: 1,
             p_queue_create_infos: &queue_create_info,
@@ -858,6 +867,7 @@ impl VulkanContext {
             command_pool: ptr::null_mut(),
             command_buffer: ptr::null_mut(),
             hdr: AtomicBool::new(false),
+            device_extension_names: device_extensions,
         };
         ctx.create_swapchain(width.max(2) as u32, height.max(2) as u32)?;
         ctx.create_semaphores()?;
@@ -1005,6 +1015,14 @@ impl VulkanContext {
             (f, false)
         };
         self.hdr.store(hdr, Ordering::Release);
+        log::info!(
+            "macOS Vulkan swapchain: format={} color_space={} hdr={} surface_extent={}x{}",
+            chosen_format.format,
+            chosen_format.color_space,
+            hdr,
+            caps.current_extent.width,
+            caps.current_extent.height
+        );
 
         let mut image_count = caps.min_image_count + 1;
         if caps.max_image_count > 0 && image_count > caps.max_image_count {
@@ -1047,11 +1065,11 @@ impl VulkanContext {
         let result = unsafe {
             (self.fns.create_swapchain_khr)(self.device, &create_info, ptr::null(), &mut swapchain)
         };
-        if old_swapchain != 0 {
-            unsafe { (self.fns.destroy_swapchain_khr)(self.device, old_swapchain, ptr::null()) };
-        }
         if result != VK_SUCCESS {
             return Err(format!("vkCreateSwapchainKHR failed: VkResult {result}"));
+        }
+        if old_swapchain != 0 {
+            unsafe { (self.fns.destroy_swapchain_khr)(self.device, old_swapchain, ptr::null()) };
         }
 
         let mut image_count_out: u32 = 0;
@@ -1088,6 +1106,13 @@ impl VulkanContext {
             self.queue_family_index,
             1,
         )
+    }
+
+    pub fn enabled_device_extensions(&self) -> Vec<*const i8> {
+        self.device_extension_names
+            .iter()
+            .map(|name| name.as_ptr())
+            .collect()
     }
 
     pub fn image_usage(&self) -> u32 {
@@ -1155,6 +1180,9 @@ impl VulkanContext {
                 &mut image_index,
             )
         };
+        if result == VK_ERROR_OUT_OF_DATE_KHR {
+            return Err("vkAcquireNextImageKHR reported VK_ERROR_OUT_OF_DATE_KHR".to_string());
+        }
         if result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR {
             return Err(format!("vkAcquireNextImageKHR failed: VkResult {result}"));
         }
@@ -1245,6 +1273,9 @@ impl VulkanContext {
             p_results: ptr::null_mut(),
         };
         let result = unsafe { (self.fns.queue_present_khr)(self.queue, &present_info) };
+        if result == VK_ERROR_OUT_OF_DATE_KHR {
+            return Err("vkQueuePresentKHR reported VK_ERROR_OUT_OF_DATE_KHR".to_string());
+        }
         if result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR {
             return Err(format!("vkQueuePresentKHR failed: VkResult {result}"));
         }

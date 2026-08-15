@@ -10,13 +10,13 @@ mod discord_presence;
 mod downloads;
 mod external_player;
 mod libvlc_render;
-mod local_media;
 #[cfg(target_os = "linux")]
 mod linux_player_surface;
 #[cfg(target_os = "linux")]
 mod linux_vulkan;
 #[cfg(target_os = "linux")]
 mod linux_wayland_subsurface;
+mod local_media;
 #[cfg(target_os = "macos")]
 mod macos_player_surface;
 #[cfg(target_os = "macos")]
@@ -33,9 +33,9 @@ mod roku;
 mod sleep_inhibitor;
 mod storage;
 mod stream_proxy;
-mod trailer_proxy;
-mod torrent_transport;
 mod torrent_stream;
+mod torrent_transport;
+mod trailer_proxy;
 #[cfg(target_os = "windows")]
 mod windows_d3d11;
 #[cfg(target_os = "windows")]
@@ -53,24 +53,25 @@ use core_commands::*;
 use custom_fonts::*;
 use discord_presence::*;
 use downloads::*;
-use local_media::*;
 use external_player::*;
+use local_media::*;
 use oauth::*;
-use oauth_callbacks::{queue_oauth_callback, take_oauth_callback, PendingOAuthCallbacks};
+use oauth_callbacks::{PendingOAuthCallbacks, queue_oauth_callback, take_oauth_callback};
 use player::*;
 use poster_cache::*;
 use roku::*;
 use storage::*;
-use torrent_stream::{
-    player_torrent_stats, player_torrent_telemetry, start_torrent_stream, stop_torrent_stream, stream_magnet_link,
-};
 pub(crate) use torrent_stream::resolve_torrent_download_url;
+use torrent_stream::{
+    player_torrent_stats, player_torrent_telemetry, start_torrent_stream, stop_torrent_stream,
+    stream_magnet_link,
+};
 
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 
@@ -234,7 +235,9 @@ fn debug_log(msg: String) {
     }
     if msg.starts_with("subtitles:") {
         log::warn!("[app] {msg}");
-    } else { log::debug!("[app] {msg}"); }
+    } else {
+        log::debug!("[app] {msg}");
+    }
 }
 
 #[tauri::command]
@@ -698,8 +701,16 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building Fluxa Desktop")
-        .run(|_app_handle, event| {
+        .run(|app_handle, event| {
             if let tauri::RunEvent::Exit = event {
+                let state = app_handle.state::<DesktopState>();
+                #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
+                if let Some(surface) = state.native_player_surface.lock().unwrap().take() {
+                    #[cfg(target_os = "macos")]
+                    let _ = surface.shutdown();
+                    #[cfg(not(target_os = "macos"))]
+                    surface.hide();
+                }
                 fluxa_streaming_engine::stop_torrent_server(None);
             }
         });

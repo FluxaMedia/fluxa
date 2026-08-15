@@ -4,21 +4,49 @@
 // NSOpenGLContext renders mpv frames into it every 16 ms.
 // Window size is queried via Tauri (no NSRect stret needed).
 
+use crate::DesktopState;
 use crate::macos_vulkan::VulkanContext;
 use crate::mpv_render::VulkanTargetImage;
 use crate::playback_engine::{PlaybackEngine, PlayerEngine};
-use crate::DesktopState;
 use fluxa_core::FluxaCore;
-use std::ffi::{c_void, CString};
-use std::sync::{mpsc, OnceLock};
+use std::ffi::{CStr, CString, c_void};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 
 #[link(name = "QuartzCore", kind = "framework")]
 unsafe extern "C" {}
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum RenderBackend {
+#[link(name = "OpenGL", kind = "framework")]
+unsafe extern "C" {
+    fn glGetString(name: u32) -> *const u8;
+}
+
+const GL_VENDOR: u32 = 0x1F00;
+const GL_RENDERER: u32 = 0x1F01;
+const GL_VERSION: u32 = 0x1F02;
+const GL_SHADING_LANGUAGE_VERSION: u32 = 0x8B8C;
+
+fn log_gl_diagnostics() {
+    unsafe {
+        let value = |name| {
+            let ptr = glGetString(name);
+            (!ptr.is_null())
+                .then(|| CStr::from_ptr(ptr.cast()).to_string_lossy().into_owned())
+                .unwrap_or_else(|| "unavailable".to_string())
+        };
+        log::info!(
+            "macOS OpenGL initialized: vendor={} renderer={} version={} glsl={}",
+            value(GL_VENDOR),
+            value(GL_RENDERER),
+            value(GL_VERSION),
+            value(GL_SHADING_LANGUAGE_VERSION)
+        );
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum RenderBackend {
     OpenGl,
     Vulkan,
 }
@@ -28,6 +56,19 @@ fn read_render_backend(app: &AppHandle) -> RenderBackend {
     match crate::storage::read_pref_field(state, "renderBackend").as_deref() {
         Some("vulkan") => RenderBackend::Vulkan,
         _ => RenderBackend::OpenGl,
+    }
+}
+
+pub fn requested_backend(app: &AppHandle) -> RenderBackend {
+    read_render_backend(app)
+}
+
+impl RenderBackend {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::OpenGl => "opengl",
+            Self::Vulkan => "vulkan",
+        }
     }
 }
 
@@ -269,14 +310,48 @@ enum SurfaceCommand {
         background: Option<(Vec<u8>, i32, i32)>,
         logo: Option<(Vec<u8>, i32, i32)>,
     },
+    Shutdown {
+        ack: mpsc::Sender<()>,
+    },
 }
 
 #[derive(Clone)]
 pub struct NativePlayerSurface {
     sender: mpsc::Sender<SurfaceCommand>,
+    backend: RenderBackend,
+    thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
 }
 
 impl NativePlayerSurface {
+    pub fn backend(&self) -> RenderBackend {
+        self.backend
+    }
+
+    pub fn backend_name(&self) -> &'static str {
+        self.backend.name()
+    }
+
+    pub fn shutdown(&self) -> Result<(), String> {
+        let (ack_tx, ack_rx) = mpsc::channel();
+        self.sender
+            .send(SurfaceCommand::Shutdown { ack: ack_tx })
+            .map_err(|e| format!("surface unavailable: {e}"))?;
+        ack_rx
+            .recv_timeout(Duration::from_secs(5))
+            .map_err(|e| format!("surface shutdown timed out: {e}"))?;
+        let thread = self
+            .thread
+            .lock()
+            .map_err(|_| "surface thread lock poisoned".to_string())?
+            .take();
+        if let Some(thread) = thread {
+            thread
+                .join()
+                .map_err(|_| "surface render thread panicked".to_string())?;
+        }
+        Ok(())
+    }
+
     pub fn load(
         &self,
         url: String,
@@ -325,6 +400,14 @@ impl NativePlayerSurface {
 // install
 
 pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
+    let backend = read_render_backend(&app_handle);
+    install_with_backend(app_handle, backend)
+}
+
+pub fn install_with_backend(
+    app_handle: AppHandle,
+    backend: RenderBackend,
+) -> Result<NativePlayerSurface, String> {
     let (sender, receiver) = mpsc::channel::<SurfaceCommand>();
 
     // Get the Tauri window's NSView.
@@ -362,13 +445,13 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
         .map_err(|_| "macOS render view creation timed out".to_string())
         .and_then(|r| r)?;
 
-    let backend = read_render_backend(&app_handle);
     log::info!(
-        "macos_player_surface: experimental render backend = {}",
-        match backend {
-            RenderBackend::OpenGl => "opengl",
-            RenderBackend::Vulkan => "vulkan",
-        }
+        "macos_player_surface: requested render backend={} arch={} scale={} drawable={}x{}",
+        backend.name(),
+        std::env::consts::ARCH,
+        scale,
+        init_w,
+        init_h
     );
 
     enum MacRenderTarget {
@@ -400,6 +483,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                 msg0(gl_ctx.0, "makeCurrentContext");
                 enable_vsync(gl_ctx.0);
             }
+            log_gl_diagnostics();
 
             {
                 let state = app_handle.state::<DesktopState>();
@@ -466,6 +550,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
             if let Some(r) = render_guard.as_mut() {
                 let (instance, phys_device, device, queue_index, queue_count) =
                     vk_ctx.device_handles();
+                let enabled_extensions = vk_ctx.enabled_device_extensions();
                 r.create_vulkan_context(
                     instance,
                     phys_device,
@@ -473,7 +558,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                     queue_index,
                     queue_count,
                     std::ptr::null_mut(),
-                    &[],
+                    &enabled_extensions,
                 )
                 .map_err(|e| format!("mpv Vulkan context failed: {e}"))?;
                 if let Some(icc) = query_colorsync_icc_profile() {
@@ -482,19 +567,17 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                     }
                 }
             }
-            if vk_ctx.is_hdr() {
-                if let Some(c) = client_guard.as_ref() {
-                    let _ = c.set_option("target-trc", "linear");
-                    let _ = c.set_option("target-prim", "bt.709");
-                }
-            }
-
             MacRenderTarget::Vulkan {
                 ctx: vk_ctx,
                 metal_layer: metal_layer.0 as usize,
             }
         }
     };
+    log::info!(
+        "macos_player_surface: initialized render backend={} requested_backend={}",
+        backend.name(),
+        read_render_backend(&app_handle).name()
+    );
 
     let (ready_tx, ready_rx) = mpsc::channel::<Result<(), String>>();
     let app = app_handle.clone();
@@ -503,7 +586,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
     // across a thread boundary when the caller guarantees exclusive access.
     let render_view_usize: usize = render_view.0 as usize;
 
-    std::thread::spawn(move || {
+    let thread = std::thread::spawn(move || {
         let rv: *mut c_void = render_view_usize as _;
         let mut render_target = render_target;
 
@@ -516,6 +599,8 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
         let mut last_size = (init_w, init_h);
         let mut last_gl_render_error: Option<String> = None;
         let mut last_vk_render_error: Option<String> = None;
+        let mut hwcopy_fallback_attempted = false;
+        let mut gl_failure_reported = false;
 
         loop {
             while let Ok(cmd) = receiver.try_recv() {
@@ -604,6 +689,37 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                         let _ =
                             app.emit("native-player-title", serde_json::json!({ "title": title }));
                     }
+                    SurfaceCommand::Shutdown { ack } => {
+                        visible = false;
+                        let state = app.state::<DesktopState>();
+                        if let Some(renderer) = state.player_mpv_client.lock().unwrap().as_ref() {
+                            let _ = renderer.command_args(&["stop"]);
+                        }
+                        state
+                            .player_render_state
+                            .lock()
+                            .unwrap()
+                            .as_mut()
+                            .map(|renderer| renderer.reset_render_context());
+                        if let MacRenderTarget::Gl { gl_ctx } = &render_target {
+                            unsafe {
+                                msg0(*gl_ctx as Id, "clearCurrentContext");
+                                msg0(cls("NSOpenGLContext"), "clearCurrentContext");
+                            }
+                        }
+                        let view = rv as usize;
+                        let (cleanup_tx, cleanup_rx) = mpsc::channel();
+                        run_on_main(move || unsafe {
+                            msg1_bool(view as Id, "setHidden:", 1);
+                            msg1_id(view as Id, "setLayer:", std::ptr::null_mut());
+                            msg0(view as Id, "removeFromSuperview");
+                            let _ = cleanup_tx.send(());
+                        });
+                        let _ = cleanup_rx.recv_timeout(Duration::from_secs(5));
+                        drop(render_target);
+                        let _ = ack.send(());
+                        break;
+                    }
                 }
             }
 
@@ -686,6 +802,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
 
                 match &mut render_target {
                     MacRenderTarget::Gl { gl_ctx } => {
+                        let mut render_error = None;
                         {
                             let state = app.state::<DesktopState>();
 
@@ -696,13 +813,40 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                                     if last_gl_render_error.as_deref() != Some(e.as_str()) {
                                         crate::diagnostics::report(
                                             &app,
-                                            format!("macos_player_surface: OpenGL render failed: {e}"),
+                                            format!(
+                                                "macos_player_surface: OpenGL render failed: {e}"
+                                            ),
                                             sentry::Level::Error,
                                         );
                                         last_gl_render_error = Some(e.clone());
                                     }
+                                    render_error = Some(e);
                                 } else {
                                     last_gl_render_error = None;
+                                    gl_failure_reported = false;
+                                }
+                            }
+                        }
+                        if let Some(error) = render_error {
+                            if fallback_to_hwcopy(&app, &error, &mut hwcopy_fallback_attempted) {
+                                let state = app.state::<DesktopState>();
+                                if let Some(r) = state.player_render_state.lock().unwrap().as_mut()
+                                {
+                                    r.reset_render_context();
+                                }
+                            } else if !gl_failure_reported {
+                                let _ = app.emit("native-player-error", error);
+                                gl_failure_reported = true;
+                                visible = false;
+                                let view = rv as usize;
+                                run_on_main(move || unsafe {
+                                    msg1_bool(view as Id, "setHidden:", 1);
+                                });
+                                let state = app.state::<DesktopState>();
+                                if let Some(renderer) =
+                                    state.player_mpv_client.lock().unwrap().as_ref()
+                                {
+                                    let _ = renderer.command_args(&["stop"]);
                                 }
                             }
                         }
@@ -756,7 +900,9 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                                     if last_vk_render_error.as_deref() != Some(e.as_str()) {
                                         crate::diagnostics::report(
                                             &app,
-                                            format!("macos_player_surface: Vulkan render failed: {e}"),
+                                            format!(
+                                                "macos_player_surface: Vulkan render failed: {e}"
+                                            ),
                                             sentry::Level::Error,
                                         );
                                         last_vk_render_error = Some(e.clone());
@@ -775,11 +921,54 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
         }
     });
 
-    ready_rx
+    let ready = ready_rx
         .recv_timeout(Duration::from_secs(5))
         .map_err(|_| "macOS render thread setup timed out".to_string())
-        .and_then(|r| r)
-        .map(|()| NativePlayerSurface { sender })
+        .and_then(|r| r);
+    if let Err(error) = ready {
+        let (ack_tx, ack_rx) = mpsc::channel();
+        let _ = sender.send(SurfaceCommand::Shutdown { ack: ack_tx });
+        let _ = ack_rx.recv_timeout(Duration::from_secs(5));
+        let _ = thread.join();
+        return Err(error);
+    }
+    Ok(NativePlayerSurface {
+        sender,
+        backend,
+        thread: Arc::new(Mutex::new(Some(thread))),
+    })
+}
+
+fn fallback_to_hwcopy(app: &AppHandle, error: &str, attempted: &mut bool) -> bool {
+    if *attempted {
+        return false;
+    }
+    *attempted = true;
+    let state = app.state::<DesktopState>();
+    let mut client = state.player_mpv_client.lock().unwrap();
+    let Some(client) = client.as_mut() else {
+        return false;
+    };
+    #[cfg(target_os = "macos")]
+    {
+        match client.fallback_to_videotoolbox_copy() {
+            Ok(()) => {
+                log::warn!(
+                    "macOS OpenGL renderer failed; switched VideoToolbox to copy mode: {error}"
+                );
+                true
+            }
+            Err(fallback_error) => {
+                log::error!("macOS renderer fallback failed: {fallback_error}");
+                false
+            }
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = error;
+        false
+    }
 }
 
 // ObjC helpers
@@ -827,7 +1016,6 @@ unsafe fn create_metal_layer(view: Id, contents_scale: f64, w: i32, h: i32) -> R
         return Err("CAMetalLayer init failed".to_string());
     }
     msg1_f64(layer, "setContentsScale:", contents_scale);
-    msg1_bool(layer, "setWantsExtendedDynamicRangeContent:", 1);
     msg_set_drawable_size(
         layer,
         NSSize {

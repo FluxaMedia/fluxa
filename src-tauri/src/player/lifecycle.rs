@@ -69,9 +69,7 @@ fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
                 break;
             }
             let position_due = last_position_sent.elapsed()
-                >= Duration::from_millis(
-                    state.player_position_interval_ms.load(Ordering::Acquire),
-                );
+                >= Duration::from_millis(state.player_position_interval_ms.load(Ordering::Acquire));
             let active_engine = *state.active_player_engine.lock().unwrap();
             let stats_enabled = state.player_stats_enabled.load(Ordering::Acquire);
             let (static_status, position_status) = match active_engine {
@@ -96,10 +94,15 @@ fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
                     .player_renderer_vlc
                     .try_lock()
                     .ok()
-                    .and_then(|renderer| renderer.as_ref().map(|renderer| {
-                        let status = renderer.status();
-                        (Some(status.static_status()), position_due.then(|| status.position_status()))
-                    }))
+                    .and_then(|renderer| {
+                        renderer.as_ref().map(|renderer| {
+                            let status = renderer.status();
+                            (
+                                Some(status.static_status()),
+                                position_due.then(|| status.position_status()),
+                            )
+                        })
+                    })
                     .unwrap_or((None, None)),
             };
             if let Some(static_status) = static_status {
@@ -182,7 +185,9 @@ pub async fn player_load(
             match surface.load(url.clone(), start_at, total_duration) {
                 Ok(()) => return Ok(()),
                 Err(error) => {
-                    log::warn!("player_load: Windows native player surface failed, using software video rendering: {error}");
+                    log::warn!(
+                        "player_load: Windows native player surface failed, using software video rendering: {error}"
+                    );
                     *state.native_player_surface.lock().unwrap() = None;
                 }
             }
@@ -202,13 +207,23 @@ pub async fn player_load(
         );
     }
 
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(surface) = ensure_native_player_surface(&app, &state) {
+            return surface.load(url, start_at, total_duration);
+        }
+        return Err(
+            "macOS native player renderer is unavailable; playback was stopped".to_string(),
+        );
+    }
+
+    #[cfg(target_os = "linux")]
     {
         if let Some(surface) = ensure_native_player_surface(&app, &state) {
             return surface.load(url, start_at, total_duration);
         }
         log::warn!(
-            "player_load: no native player surface available, falling back to headless renderer"
+            "player_load: no native player surface available, using the Linux software renderer"
         );
     }
 
