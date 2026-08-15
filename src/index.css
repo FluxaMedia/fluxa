@@ -65,6 +65,13 @@ html, body, #root {
   background: #040508;
 }
 
+.app-content {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+}
+
 html[data-native-player-active],
 html[data-native-player-active] body,
 html[data-native-player-active] #root {
@@ -209,14 +216,14 @@ button, input, select, textarea {
   .app-content {
     padding-left: 0 !important;
     padding-right: 0 !important;
+    overflow: auto !important;
   }
 
   .settings-screen {
     display: block !important;
     height: 100% !important;
     min-height: 0 !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
+    overflow: auto !important;
     padding: 1.25rem 1rem 5rem !important;
   }
 
