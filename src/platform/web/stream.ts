@@ -122,12 +122,15 @@ function codecString(videoCodec: string | null | undefined, audioCodec: string |
   return [video, audio].filter(Boolean).join(', ');
 }
 
+const WEBOS_NATIVE_CONTAINERS = new Set(['mkv', 'mp4', 'm4v', 'mov', 'webm', 'avi', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'm3u8', 'mpd', 'wmv', 'asf', 'flv', '3gp', 'vob']);
+
 export function canDirectPlay(
   sourceUrl: string,
   videoCodec: string | null | undefined,
   audioCodec: string | null | undefined,
 ): boolean {
   const extension = extensionOf(sourceUrl);
+  if (IS_WEBOS) return extension === '' || WEBOS_NATIVE_CONTAINERS.has(extension);
   if (['mkv', 'avi', 'wmv', 'flv', 'm2ts', 'ts'].includes(extension)) return false;
   const video = document.createElement('video');
   const codecs = codecString(videoCodec, audioCodec);
@@ -143,7 +146,33 @@ export function canDirectPlay(
   return true;
 }
 
+export interface PlaybackUrlChoice {
+  url: string;
+  mode: 'direct' | 'proxy' | 'transcode';
+}
+
+export function choosePlaybackUrl(
+  playUrl: string,
+  remoteSource: string,
+  probe: { videoCodec: string | null; audioCodec: string | null } | null,
+  headers: Record<string, string> | undefined,
+  resumeAtSeconds?: number,
+): PlaybackUrlChoice {
+  const playable = canDirectPlay(remoteSource, probe?.videoCodec, probe?.audioCodec);
+
+  if (IS_WEBOS) {
+    if (!headers) return { url: playUrl, mode: 'direct' };
+    return { url: proxyUrl(remoteSource, headers), mode: 'proxy' };
+  }
+
+  if (!headers && (!probe || playable)) return { url: playUrl, mode: 'direct' };
+  if (probe && playable) return { url: proxyUrl(remoteSource, headers ?? {}), mode: 'proxy' };
+  const target = probe ? chooseBrowserTranscodeTarget(probe.videoCodec, probe.audioCodec) : undefined;
+  return { url: transcodeUrl(playUrl, resumeAtSeconds, headers, target), mode: 'transcode' };
+}
+
 export async function probeStream(sourceUrl: string, headers?: Record<string, string>): Promise<{ videoCodec: string | null; audioCodec: string | null; duration: number | null } | null> {
+  if (IS_WEBOS) return null;
   try {
     const input = isLocalCompanionUrl(sourceUrl) ? sourceUrl : proxyUrl(sourceUrl, headers ?? {});
     const response = await fetch(`${companionUrl}/probe?url=${encodeURIComponent(input)}`);

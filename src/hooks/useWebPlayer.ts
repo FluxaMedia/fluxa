@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type RefObject } from 'react';
 import { platformInvoke } from '../platform/invoke';
-import { canDirectPlay, chooseBrowserTranscodeTarget, probeStream, proxyUrl, transcodeUrl } from '../platform/web/stream';
+import { choosePlaybackUrl, probeStream } from '../platform/web/stream';
 import { loadEnabledAddons } from '../core/libraryOps';
 import { resolvePlaybackSubtitles } from '../core/subtitles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
@@ -85,13 +85,8 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
         .catch(() => ({ subtitles: [], failedAddons: [] }));
       const probe = isTorrent ? null : await probeStream(url, headers);
       const resolvedSubtitles = await subtitlePromise;
-      const direct = !headers && (!probe || canDirectPlay(source, probe.videoCodec, probe.audioCodec));
-      const target = probe ? chooseBrowserTranscodeTarget(probe.videoCodec, probe.audioCodec) : null;
-      const playbackUrl = direct
-        ? url
-        : probe && canDirectPlay(source, probe.videoCodec, probe.audioCodec)
-          ? proxyUrl(source, headers ?? {})
-          : transcodeUrl(url, resumeAtSeconds, headers, target ?? undefined);
+      const playback = choosePlaybackUrl(url, source, probe, headers, resumeAtSeconds);
+      const playbackUrl = playback.url;
       playingStreamRef.current = stream;
       playingMetaRef.current = meta ?? null;
       setPlayerUrl(playbackUrl);
