@@ -186,7 +186,7 @@ export const CalendarScreen = React.memo(
       : [];
 
     return (
-      <div style={styles.screen}>
+      <div className="calendar-screen" style={styles.screen}>
         {traktCalendarError && (
           <div style={{ position: "fixed", top: "1rem", right: "1rem", zIndex: 100 }}>
             <Toast

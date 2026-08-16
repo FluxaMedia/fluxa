@@ -202,6 +202,16 @@ impl Default for DesktopState {
 
 pub(crate) static DIAGNOSTIC_MODE: AtomicBool = AtomicBool::new(false);
 static SENTRY_GUARD: Mutex<Option<sentry::ClientInitGuard>> = Mutex::new(None);
+const COMPANION_PORT: u16 = 19876;
+
+fn start_companion_server() {
+    tauri::async_runtime::spawn(async {
+        match fluxa_streaming_engine::companion_server::serve(COMPANION_PORT).await {
+            Ok(()) => log::info!("companion server stopped"),
+            Err(error) => log::warn!("companion server unavailable on 127.0.0.1:{COMPANION_PORT}: {error}"),
+        }
+    });
+}
 
 #[cfg(test)]
 mod tests {
@@ -446,6 +456,7 @@ pub fn run() {
         .manage(stream_proxy::StreamProxyState::default())
         .setup(|app| {
             diagnostics::set_app_handle(app.handle().clone());
+            start_companion_server();
 
             #[cfg(any(target_os = "linux", all(debug_assertions, target_os = "windows")))]
             app.deep_link().register_all()?;

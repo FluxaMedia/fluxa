@@ -35,7 +35,7 @@ export function ModernDetailActionRow({
   onOpenComments?: () => void;
 }) {
   return (
-    <div style={MS.actionRow}>
+    <div className="detail-action-row" style={MS.actionRow}>
       <ModernPlayButton
         continueLabel={continueLabel}
         hasProgress={hasProgress}

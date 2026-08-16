@@ -69,13 +69,24 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
     setViewport((current) => (current.scrollTop === 0 ? current : { ...current, scrollTop: 0 }));
   }, [resetKey]);
 
-  const cardExtraHeight = posterPrefs.hideTitles ? 0 : 40;
-  const itemHeight = posterPrefs.height + cardExtraHeight;
-  const availableWidth = Math.max(0, viewport.width - GRID_PADDING_X * 2);
-  const columns = Math.max(1, Math.floor((availableWidth + GRID_GAP_X) / (GRID_MIN_COLUMN_WIDTH + GRID_GAP_X)));
-  const columnWidth = columns > 0
-    ? Math.max(GRID_MIN_COLUMN_WIDTH, (availableWidth - GRID_GAP_X * (columns - 1)) / columns)
+  const narrow = viewport.width > 0 && viewport.width <= 820;
+  const paddingX = narrow ? 16 : GRID_PADDING_X;
+  const gapX = narrow ? 12 : GRID_GAP_X;
+  const availableWidth = Math.max(0, viewport.width - paddingX * 2);
+  const minColumnWidth = narrow
+    ? Math.min(GRID_MIN_COLUMN_WIDTH, Math.max(96, Math.floor((availableWidth - gapX) / 2)))
     : GRID_MIN_COLUMN_WIDTH;
+  const columns = Math.max(1, Math.floor((availableWidth + gapX) / (minColumnWidth + gapX)));
+  const columnWidth = columns > 0
+    ? Math.max(minColumnWidth, (availableWidth - gapX * (columns - 1)) / columns)
+    : minColumnWidth;
+  const cardWidth = narrow ? Math.min(posterPrefs.width, Math.floor(columnWidth)) : posterPrefs.width;
+  const cardHeight = cardWidth === posterPrefs.width
+    ? posterPrefs.height
+    : Math.round(posterPrefs.height * (cardWidth / posterPrefs.width));
+  const cardPrefs = cardWidth === posterPrefs.width ? posterPrefs : { ...posterPrefs, width: cardWidth, height: cardHeight };
+  const cardExtraHeight = posterPrefs.hideTitles ? 0 : 40;
+  const itemHeight = cardHeight + cardExtraHeight;
   const rowStep = itemHeight + GRID_GAP_Y;
   const placeholderCount = isLoadingMore ? columns : 0;
   const slotCount = items.length + placeholderCount;
@@ -131,7 +142,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
     >
       <div style={{ position: 'relative', height: totalHeight, minHeight: '100%' }}>
         {visible.map(({ item, row, col }) => {
-          const left = GRID_PADDING_X + col * (columnWidth + GRID_GAP_X) + Math.max(0, (columnWidth - posterPrefs.width) / 2);
+          const left = paddingX + col * (columnWidth + gapX) + Math.max(0, (columnWidth - cardWidth) / 2);
           const top = GRID_PADDING_TOP + row * rowStep;
           return (
             <div
@@ -140,7 +151,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
                 position: 'absolute',
                 left: 0,
                 top: 0,
-                width: posterPrefs.width,
+                width: cardWidth,
                 height: itemHeight,
                 transform: `translate3d(${left}px, ${top}px, 0)`,
               }}
@@ -148,7 +159,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
               <PosterCard
                 meta={item}
                 selected={selectedId === item.id || selectedIds?.has(item.id) === true}
-                posterPrefs={posterPrefs}
+                posterPrefs={cardPrefs}
                 onHover={onHover}
                 onClick={onClick}
               />
@@ -156,7 +167,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
           );
         })}
         {placeholders.map(({ row, col }) => {
-          const left = GRID_PADDING_X + col * (columnWidth + GRID_GAP_X) + Math.max(0, (columnWidth - posterPrefs.width) / 2);
+          const left = paddingX + col * (columnWidth + gapX) + Math.max(0, (columnWidth - cardWidth) / 2);
           const top = GRID_PADDING_TOP + row * rowStep;
           return (
             <div
@@ -165,8 +176,8 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
                 position: 'absolute',
                 left: 0,
                 top: 0,
-                width: posterPrefs.width,
-                height: posterPrefs.height,
+                width: cardWidth,
+                height: cardHeight,
                 borderRadius: posterPrefs.radius,
                 background: '#1B212B',
                 transform: `translate3d(${left}px, ${top}px, 0)`,

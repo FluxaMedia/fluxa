@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { t } from '../../i18n';
 import { assetUrl } from '../../platform/assets';
+import { OFFICIAL_FLUXA_SYNC_URL } from '../../appConstants';
+import { fluxaSignIn, fluxaSignUp, fluxaAuthErrorKind, type FluxaSession } from '../../core/fluxaSyncApi';
 import { S } from './styles';
 import { TopBar, Field, PasswordField } from './fields';
 
@@ -10,19 +12,43 @@ interface AuthViewProps {
   tab: AuthTab;
   onTabChange: (t: AuthTab) => void;
   onBack: () => void;
-  onSubmit: () => void;
+  onSubmit: (session: FluxaSession) => void;
   onNuvioClick: () => void;
   onContinueLocal: () => Promise<void>;
   localLoading: boolean;
+}
+
+function authErrorMessage(error: unknown): string {
+  switch (fluxaAuthErrorKind(error)) {
+    case 'invalid_credentials':
+      return t('auth.error.invalid_credentials');
+    case 'account_exists':
+      return t('auth.error.account_exists');
+    case 'email_not_confirmed':
+      return t('auth.error.email_not_confirmed');
+    case 'rate_limited':
+      return t('auth.error.rate_limited');
+    case 'no_instance':
+      return t('auth.error.no_instance');
+    case 'unreachable':
+      return t('auth.error.instance_unreachable');
+    case 'server':
+      return t('auth.error.instance_server');
+    default:
+      return error instanceof Error ? error.message : t('auth.error.unknown');
+  }
 }
 
 export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onContinueLocal, localLoading }: AuthViewProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [instanceUrl, setInstanceUrl] = useState('');
+  const [showInstance, setShowInstance] = useState(!OFFICIAL_FLUXA_SYNC_URL);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [globalError, setGlobalError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = (): boolean => {
@@ -32,6 +58,7 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
     if (!password) next.password = t('auth.error.password_required');
     else if (password.length < 8) next.password = t('auth.error.password_too_short');
     if (tab === 'signup' && password !== confirmPassword) next.confirmPassword = t('auth.error.passwords_mismatch');
+    if (!OFFICIAL_FLUXA_SYNC_URL && !instanceUrl.trim()) next.instanceUrl = t('auth.error.instance_required');
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -40,13 +67,23 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    onSubmit();
+    setGlobalError('');
+    try {
+      const session = tab === 'login'
+        ? await fluxaSignIn(instanceUrl, email, password)
+        : await fluxaSignUp(instanceUrl, email, password);
+      onSubmit(session);
+    } catch (error) {
+      setGlobalError(authErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleTabChange = (next: AuthTab) => {
     onTabChange(next);
     setErrors({});
+    setGlobalError('');
     setPassword('');
     setConfirmPassword('');
     setShowPassword(false);
@@ -127,6 +164,25 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
                 </button>
               </div>
             )}
+
+            {showInstance ? (
+              <Field
+                label={t('auth.field.instance')}
+                type="url"
+                value={instanceUrl}
+                onChange={setInstanceUrl}
+                placeholder={t('auth.placeholder.instance')}
+                error={errors.instanceUrl}
+              />
+            ) : (
+              <div style={{ textAlign: 'left', marginTop: '-0.25rem' }}>
+                <button type="button" style={S.forgotBtn} onClick={() => setShowInstance(true)}>
+                  {t('auth.use_own_instance')}
+                </button>
+              </div>
+            )}
+
+            {globalError && <p style={S.globalError}>{globalError}</p>}
 
             <button
               type="submit"

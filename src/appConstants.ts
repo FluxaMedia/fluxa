@@ -2,6 +2,10 @@ import type React from 'react';
 import type { NavRoute } from './components/NavSidebar';
 import type { AppState } from './core/types';
 
+export const OFFICIAL_FLUXA_SYNC_URL: string = '';
+
+export const OFFICIAL_WATCH_TOGETHER_URL: string = '';
+
 export const BROWSING_LABELS: Record<NavRoute, string> = {
   home: 'Browsing Home',
   search: 'Searching',

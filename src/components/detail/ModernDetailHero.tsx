@@ -107,12 +107,12 @@ export function ModernDetailHero({
         </div>
       )}
 
-      <div style={MS.heroWrap}>
-        <button style={MS.backBtn} onClick={onBack}>
+      <div className="detail-hero" style={MS.heroWrap}>
+        <button className="detail-back" style={MS.backBtn} onClick={onBack}>
           <ArrowLeft size={18} color="rgba(255,255,255,0.85)" />
         </button>
 
-        <div style={{ ...MS.logoWrap, opacity: trailerActive ? 0 : 1, transition: 'opacity 0.4s ease' }}>
+        <div className="detail-logo" style={{ ...MS.logoWrap, opacity: trailerActive ? 0 : 1, transition: 'opacity 0.4s ease' }}>
           {heroLogo ? (
             <img src={heroLogo} alt={displayMetaName} style={MS.logo} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
           ) : (

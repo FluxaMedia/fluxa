@@ -81,10 +81,10 @@ export function CategoryGridScreen({ title, items, groups, isLoading = false, lo
   }, [onNavigateDetail]);
 
   return (
-    <div style={S.screen}>
+    <div className="category-screen" style={S.screen}>
       {/* Left: header + grid */}
       <div style={S.left}>
-        <div style={S.header}>
+        <div className="category-header" style={S.header}>
           <button style={S.backBtn} onClick={onBack}>
             <ChevronLeft size={20} />
           </button>
@@ -125,7 +125,7 @@ export function CategoryGridScreen({ title, items, groups, isLoading = false, lo
       </div>
 
       {/* Right: detail panel */}
-      <div style={S.right}>
+      <div className="category-panel" style={S.right}>
         {panelMeta ? (
           <DetailPanel meta={panelMeta} onPlay={() => onNavigateDetail(panelMeta)} onDispatch={onDispatch} />
         ) : (

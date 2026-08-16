@@ -5,7 +5,9 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { initDiagnosticsSentry } from './core/sentryRuntime';
 import { loadPrefs } from './core/libraryOps';
 import { prefBool } from './core/appPrefs';
+import { startViewportFlags } from './platform/viewport';
 import './index.css';
+import './mobile.css';
 
 const TAURI_HTTP_ABORT_RACE = /The resource id \d+ is invalid/;
 
@@ -16,6 +18,8 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 async function bootstrap() {
+  startViewportFlags();
+
   if (import.meta.env.PROD) {
     try {
       const prefs = await loadPrefs();

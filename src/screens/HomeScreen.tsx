@@ -505,7 +505,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   }
 
   return (
-    <div ref={scrollRef} style={styles.screen}>
+    <div ref={scrollRef} className="home-screen" style={styles.screen}>
       {billboardWithTrailer && showHero && (
         <HeroSection
           meta={billboardWithTrailer}
@@ -523,7 +523,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
         />
       )}
 
-      <div style={{ ...styles.shelves, marginTop: billboardWithTrailer && showHero ? styles.shelves.marginTop : 0 }}>
+      <div className="home-shelves" style={{ ...styles.shelves, marginTop: billboardWithTrailer && showHero ? styles.shelves.marginTop : 0 }}>
         {showContinueWatching && cwItems.length > 0 && (
           <ContinueWatchingRow
             items={cwItems}
@@ -625,7 +625,7 @@ function HomeStateMessage({ title, body, primaryLabel, onPrimary }: {
   onPrimary?: () => void;
 }) {
   return (
-    <div style={styles.empty}>
+    <div className="home-empty" style={styles.empty}>
       <p style={styles.emptyTitle}>{title}</p>
       <p style={styles.emptyText}>{body}</p>
       {primaryLabel && onPrimary && (

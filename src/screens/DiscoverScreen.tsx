@@ -216,9 +216,9 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
   }, [onNavigateDetail]);
 
   return (
-    <div style={S.screen}>
+    <div className="discover-screen" style={S.screen}>
       <div style={S.left}>
-        <div style={S.filterBar}>
+        <div className="discover-filterbar" style={S.filterBar}>
           <FilterDropdown
             value={typeOptions.find((o) => o.value === contentType)?.label ?? contentType}
             options={typeOptions}
@@ -243,7 +243,7 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
         </div>
 
         {isLoading && displayResults.length === 0 ? (
-          <div style={S.loadingGrid}>
+          <div className="discover-loading-grid" style={S.loadingGrid}>
             {Array.from({ length: 24 }).map((_, i) => (
               <div key={i} style={{ borderRadius: '0.625rem', background: '#1B212B', aspectRatio: '2/3', animation: 'pulse 1.6s ease-in-out infinite', animationDelay: `${(i % 8) * 0.07}s` }} />
             ))}
@@ -267,7 +267,7 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
         )}
       </div>
 
-      <div style={S.right}>
+      <div className="discover-panel" style={S.right}>
         {panelMeta ? (
           <DiscoverDetailPanel meta={panelMeta} onPlay={() => onNavigateDetail(panelMeta)} onDispatch={onDispatch} />
         ) : (

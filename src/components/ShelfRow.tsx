@@ -4,6 +4,7 @@ import { MovieCard } from './MovieCard';
 import type { Meta } from '../core/types';
 import type { PosterPrefs } from '../core/posterPrefs';
 import { useDragScroll } from '../hooks/useDragScroll';
+import { useIsMobile } from '../platform/viewport';
 
 const ROW_PADDING_LEFT = '2rem';
 const NEAR_END_THRESHOLD_PX = 1200;
@@ -44,11 +45,14 @@ export const ShelfRow = React.memo(function ShelfRow({
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragScroll = useDragScroll(scrollRef);
+  const isMobile = useIsMobile();
   const [hovered, setHovered] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const width = cardWidth ?? posterPrefs?.width ?? 156;
-  const height = cardHeight ?? posterPrefs?.height ?? 234;
+  const baseWidth = cardWidth ?? posterPrefs?.width ?? 156;
+  const baseHeight = cardHeight ?? posterPrefs?.height ?? 234;
+  const width = isMobile ? Math.min(baseWidth, Math.round((window.innerWidth - 48) / 2.4)) : baseWidth;
+  const height = width === baseWidth ? baseHeight : Math.round(baseHeight * (width / baseWidth));
   const radius = posterPrefs?.radius ?? 12;
   const layout = posterPrefs?.layout ?? 'vertical';
   const hideTitle = posterPrefs?.hideTitles ?? false;
@@ -111,25 +115,26 @@ export const ShelfRow = React.memo(function ShelfRow({
 
   return (
     <div
+      className="shelf-row"
       style={styles.row}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={styles.header}>
-        <p style={styles.title}>{title}</p>
+      <div className="shelf-header" style={styles.header}>
+        <p className="shelf-title" style={styles.title}>{title}</p>
         <button style={styles.viewAll} onClick={() => onViewAll?.(title, items)}>
           View All
           <ChevronRight size={14} />
         </button>
       </div>
       <div style={{ position: 'relative', overflow: 'visible' }}>
-        {hovered && canScrollLeft && (
+        {hovered && !isMobile && canScrollLeft && (
           <ScrollArrow
             direction="left"
             onClick={() => scrollRef.current?.scrollBy({ left: -520, behavior: 'smooth' })}
           />
         )}
-        <div ref={scrollRef} style={styles.scroll} {...dragScroll}>
+        <div ref={scrollRef} className="shelf-scroll" style={styles.scroll} {...dragScroll}>
           {isLoading
             ? SKELETON_INDICES.map((i) => (
                 <SkeletonCard key={i} width={width} height={height} radius={radius} delay={i * 0.06} />
@@ -160,7 +165,7 @@ export const ShelfRow = React.memo(function ShelfRow({
             <SkeletonCard key="loading-more" width={width} height={height} radius={radius} delay={0} />
           )}
         </div>
-        {hovered && canScrollRight && (
+        {hovered && !isMobile && canScrollRight && (
           <ScrollArrow
             direction="right"
             onClick={() => scrollRef.current?.scrollBy({ left: 520, behavior: 'smooth' })}

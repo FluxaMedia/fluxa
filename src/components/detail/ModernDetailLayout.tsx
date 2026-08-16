@@ -214,7 +214,7 @@ export function ModernDetailLayout({
   ];
 
   return (
-    <div style={MS.screen} ref={screenRef}>
+    <div className="detail-screen" style={MS.screen} ref={screenRef}>
       <ModernDetailHero
         bgUrl={bgUrl}
         bgLayers={bgLayers}
@@ -228,7 +228,7 @@ export function ModernDetailLayout({
         displayMetaName={displayMeta.name}
       />
 
-      <div style={MS.content}>
+      <div className="detail-content" style={MS.content}>
         <>
           <ModernDetailActionRow
             continueLabel={isSeries ? continueLabel : null}
@@ -354,16 +354,16 @@ export function ModernDetailLayout({
       </div>
 
       {showSources && selectedEpisode && isSeries && (
-        <div style={MS.overlayBackdrop} onClick={onBackToEpisodes}>
-          <div style={MS.overlaySheet} onClick={(e) => e.stopPropagation()}>
+        <div className="detail-overlay-backdrop" style={MS.overlayBackdrop} onClick={onBackToEpisodes}>
+          <div className="detail-overlay-sheet" style={MS.overlaySheet} onClick={(e) => e.stopPropagation()}>
             <InlineSourceList episode={selectedEpisode} meta={displayMeta} streams={streams} isLoading={!!detail.isLoadingStreams} availableAddons={availableAddons} failedAddons={detail.failedAddons ?? []} playbackFailure={playbackFailure} streamAddonCount={streamAddonCount} onBack={onBackToEpisodes} onPlay={onPlaySource} onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))} onRetryFailed={onRetryFailed} />
           </div>
         </div>
       )}
 
       {showSources && !isSeries && (
-        <div style={MS.overlayBackdrop} onClick={onBackToEpisodes}>
-          <div style={MS.overlaySheet} onClick={(e) => e.stopPropagation()}>
+        <div className="detail-overlay-backdrop" style={MS.overlayBackdrop} onClick={onBackToEpisodes}>
+          <div className="detail-overlay-sheet" style={MS.overlaySheet} onClick={(e) => e.stopPropagation()}>
             <MovieSourcePanel meta={displayMeta} streams={streams} isLoading={!!detail.isLoadingStreams} availableAddons={availableAddons} failedAddons={detail.failedAddons ?? []} playbackFailure={playbackFailure} streamAddonCount={streamAddonCount} onPlay={(stream) => onPlay(stream, displayMeta, null, undefined, streams)} onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))} onClose={onBackToEpisodes} onRetryFailed={onRetryFailed} />
           </div>
         </div>

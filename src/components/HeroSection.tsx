@@ -261,7 +261,7 @@ export const HeroSection = React.memo(function HeroSection({
       <div style={{ ...styles.gradientLeft, opacity: trailerActive ? 0.45 : 1, transition: 'opacity 0.6s ease' }} />
       <div style={styles.gradientBottom} />
 
-      <div style={{ ...styles.panel, ...contentStyle }}>
+      <div className="hero-panel" style={{ ...styles.panel, ...contentStyle }}>
         {logoUrl ? (
           <img
             src={logoUrl}
@@ -294,7 +294,7 @@ export const HeroSection = React.memo(function HeroSection({
           {tagline && <p style={styles.tagline}>{tagline}</p>}
 
           {activeMeta.description && (
-            <p style={{ ...styles.description, animation: 'heroFadeIn 0.4s ease' }}>{activeMeta.description}</p>
+            <p className="hero-desc" style={{ ...styles.description, animation: 'heroFadeIn 0.4s ease' }}>{activeMeta.description}</p>
           )}
 
           {(!isNaN(imdbNum) || certification || genreLine.length > 0) && (
@@ -317,7 +317,7 @@ export const HeroSection = React.memo(function HeroSection({
           {awards && <p style={styles.awards}>{awards}</p>}
         </div>
 
-        <div style={styles.actions}>
+        <div className="hero-actions" style={styles.actions}>
           <button style={styles.watchBtn} onClick={() => onPlay?.(activeMeta)}>
             <Play size={13} fill="currentColor" />
             {t('common.play')}

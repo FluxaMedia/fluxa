@@ -31,6 +31,7 @@ export function AppShell({
 }: Props) {
   return (
     <div
+      className="app-root"
       style={rootStyle}
       data-animations={animations}
       data-density={density}

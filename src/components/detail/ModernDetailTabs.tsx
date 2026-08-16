@@ -107,7 +107,7 @@ export function EpisodesTabContent({
       ) : (
         <>
           <p style={MS.episodeCount}>{t('format.episode_count', filteredEps.length)}</p>
-          <div style={episodeGridStyle}>
+          <div className="detail-episode-grid" style={episodeGridStyle}>
             {filteredEps.map((ep, i) => {
               const isWatched = watchedMap[ep.id] === true;
               const metaProgress = progressMap[metaId];
@@ -160,7 +160,7 @@ export function RelatedTabContent({
       {similarItems.length === 0 ? (
         <p style={MS.episodeCount}>{t('auto.no_similar_titles')}</p>
       ) : (
-        <div style={MS.relatedGrid}>
+        <div className="detail-related-grid" style={MS.relatedGrid}>
           {similarItems.slice(0, 24).map((item) => (
             <MovieCard key={`${item.type}:${item.id}`} meta={item} width={poster.width} height={poster.height} radius={poster.radius} hideTitle={poster.hideTitles} layout={poster.layout} onClick={onNavigateDetail} />
           ))}

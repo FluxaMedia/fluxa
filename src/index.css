@@ -212,7 +212,7 @@ button, input, select, textarea {
   font-family: inherit;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 820px) {
   .app-content {
     padding-left: 0 !important;
     padding-right: 0 !important;

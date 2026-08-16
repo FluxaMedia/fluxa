@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { NavSidebar, TopBar, type NavRoute } from './components/NavSidebar';
+import { MobileTabBar } from './components/MobileTabBar';
+import { useIsMobile } from './platform/viewport';
 import { ProfileChip } from './components/ProfileChip';
 import { CalendarRoute, DetailRoute, DiscoverRoute, GlobalSearchRoute, HomeRoute, LibraryRoute, SearchRoute, SettingsRoute } from './components/AppRouteHosts';
 import { PlaybackHost } from './components/PlaybackHost';
@@ -148,6 +150,7 @@ export default function App() {
 
   const nativeEvents = useNativePlayerEvents(flushProgressOnQuit);
   const isWebTarget = isBrowserTarget();
+  const isMobile = useIsMobile();
   const nativePlayerActive = isWebTarget ? Boolean(playerUrl) : nativeEvents.nativePlayerActive;
   const softwareVideoActive = isWebTarget ? false : nativeEvents.softwareVideoActive;
 
@@ -348,7 +351,9 @@ export default function App() {
   const showDetail = detailMeta !== null;
   const bannerOffset = (serverDown && !dismissed) || justRecovered ? 36 : 0;
 
-  const navigation = !nativePlayerActive && (isTopBar ? (
+  const navigation = !nativePlayerActive && (isMobile ? (
+        <MobileTabBar activeRoute={activeRoute} onNavigate={navigateRoute} />
+      ) : isTopBar ? (
         <TopBar
           activeRoute={activeRoute}
           onNavigate={navigateRoute}
@@ -370,6 +375,7 @@ export default function App() {
 
   const globalControls = !nativePlayerActive ? (
         <div
+          className="app-topbar"
           style={{
             position: 'fixed',
             top: 18 + bannerOffset,
@@ -577,7 +583,7 @@ export default function App() {
       reducedEffects={prefBool(prefs, 'reducedEffects', false) ? 'true' : 'false'}
       navigation={navigation}
       globalControls={globalControls}
-      contentStyle={{ ...appStyles.content, top: (isTopBar && navBarPosition === 'top' && activeRoute !== 'home' && !showDetail ? 76 : 0) + bannerOffset, paddingLeft: sidebarAlwaysOpen && navBarPosition !== 'right' ? sidebarOffset : 0, paddingRight: sidebarAlwaysOpen && navBarPosition === 'right' ? sidebarOffset : 0, display: nativePlayerActive ? 'none' : undefined }}
+      contentStyle={{ ...appStyles.content, top: (!isMobile && isTopBar && navBarPosition === 'top' && activeRoute !== 'home' && !showDetail ? 76 : 0) + bannerOffset, paddingLeft: !isMobile && sidebarAlwaysOpen && navBarPosition !== 'right' ? sidebarOffset : 0, paddingRight: !isMobile && sidebarAlwaysOpen && navBarPosition === 'right' ? sidebarOffset : 0, display: nativePlayerActive ? 'none' : undefined }}
       content={content}
       notices={notices}
       dialogs={dialogs}

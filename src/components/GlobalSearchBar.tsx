@@ -246,7 +246,7 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
   }
 
   return (
-    <div style={{ position: 'relative', width: '22.5rem', pointerEvents: 'auto' }}>
+    <div className="global-search-expanded" style={{ position: 'relative', width: '22.5rem', pointerEvents: 'auto' }}>
       <div
         style={{
           display: 'flex',

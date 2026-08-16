@@ -12,6 +12,7 @@ import { WatchTogetherClient, type WatchTogetherConnection, type WatchTogetherCo
 import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
 import { applyWebOSMediaOption, hdrKindFrom, IS_WEBOS } from '../platform/webos';
 import { isTextEntryTarget, tvActionFor } from '../platform/webosKeys';
+import { useIsTouch } from '../platform/viewport';
 
 interface Props {
   url: string;
@@ -51,6 +52,7 @@ const iconButton = { width: '2.75rem', height: '2.75rem', border: 'none', border
 export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent, skipSegments = [], nextEpisode, onPlayNextEpisode, autoSkip = false, autoPlayNext = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isTouch = useIsTouch();
   const fallbackUsedRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [paused, setPaused] = useState(false);
@@ -255,6 +257,17 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
     setMuted(video.muted);
   };
 
+  const handleSurfaceClick = (event: React.MouseEvent) => {
+    if (!isTouch) { resetActivity(); return; }
+    if ((event.target as HTMLElement).closest('button, input')) { resetActivity(); return; }
+    if (controlsVisible) {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      setControlsVisible(false);
+    } else {
+      resetActivity();
+    }
+  };
+
   const toggleFullscreen = () => {
     const root = videoRef.current?.parentElement;
     if (!root) return;
@@ -264,7 +277,7 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
   };
 
   return (
-    <div onMouseMove={resetActivity} onClick={resetActivity} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: '#000', display: 'flex', flexDirection: 'column' }}>
+    <div onMouseMove={resetActivity} onClick={handleSurfaceClick} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: '#000', display: 'flex', flexDirection: 'column' }}>
       <PlayerOverlayStyles />
       <video
         ref={videoRef}
@@ -314,7 +327,7 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
         </div>
       )}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none', opacity: controlsVisible ? 1 : 0, transition: 'opacity 0.25s ease' }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0.875rem 0.75rem', background: 'linear-gradient(rgba(0,0,0,0.7), transparent)', pointerEvents: 'auto' }}>
+        <div className="web-player-topbar" style={{ display: 'flex', alignItems: 'center', padding: '0.875rem 0.75rem', background: 'linear-gradient(rgba(0,0,0,0.7), transparent)', pointerEvents: 'auto' }}>
           <button type="button" onClick={() => { void onClose(); }} style={{ ...iconButton, background: 'rgba(255,255,255,0.1)' }} title={t('player.back')}><ChevronLeft size={22} /></button>
           <div style={{ color: '#fff', fontSize: '0.9375rem', fontWeight: 700, marginLeft: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title ?? ''}</div>
           <div style={{ flex: 1 }} />
@@ -323,14 +336,14 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
           </button>}
         </div>
         <div style={{ flex: 1 }} />
-        <div style={{ pointerEvents: 'auto', padding: '0 0.75rem 0.875rem', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}>
-          <input aria-label={t('player.seek')} type="range" min={0} max={duration || 0} step={0.1} value={Math.min(currentTime, duration || 0)} onChange={(event) => { if (videoRef.current) { videoRef.current.currentTime = Number(event.target.value); watchTogetherRef.current?.notifyLocalPlayback(); } }} style={{ width: '100%', accentColor: 'var(--primary-accent-color)' }} />
+        <div className="web-player-controls" style={{ pointerEvents: 'auto', padding: '0 0.75rem 0.875rem', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}>
+          <input className="web-player-seek" aria-label={t('player.seek')} type="range" min={0} max={duration || 0} step={0.1} value={Math.min(currentTime, duration || 0)} onChange={(event) => { if (videoRef.current) { videoRef.current.currentTime = Number(event.target.value); watchTogetherRef.current?.notifyLocalPlayback(); } }} style={{ width: '100%', accentColor: 'var(--primary-accent-color)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
             <button type="button" onClick={togglePause} style={iconButton} title={paused ? t('player.play') : t('player.pause')}>{paused ? <Play size={25} fill="currentColor" strokeWidth={0} /> : <Pause size={25} fill="currentColor" strokeWidth={0} />}</button>
             <button type="button" onClick={() => seek(-10)} style={iconButton} title={t('player.seek_back')}><RotateCcw size={21} /></button>
             <button type="button" onClick={() => seek(10)} style={iconButton} title={t('player.seek_forward')}><RotateCw size={21} /></button>
-            <button type="button" onClick={toggleMute} style={iconButton} title={muted ? t('player.unmute') : t('player.mute')}>{muted ? <VolumeX size={21} /> : <Volume2 size={21} />}</button>
-            <input aria-label={t('player.volume')} type="range" min={0} max={1} step={0.01} value={muted ? 0 : volume} onChange={(event) => setVideoVolume(Number(event.target.value))} style={{ width: '5rem', accentColor: 'var(--primary-accent-color)' }} />
+            <button type="button" className="web-player-volume" onClick={toggleMute} style={iconButton} title={muted ? t('player.unmute') : t('player.mute')}>{muted ? <VolumeX size={21} /> : <Volume2 size={21} />}</button>
+            <input className="web-player-volume" aria-label={t('player.volume')} type="range" min={0} max={1} step={0.01} value={muted ? 0 : volume} onChange={(event) => setVideoVolume(Number(event.target.value))} style={{ width: '5rem', accentColor: 'var(--primary-accent-color)' }} />
             <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', marginLeft: '0.4rem' }}>{formatTime(currentTime)} / {formatTime(duration)}</span>
             <div style={{ flex: 1 }} />
             {subtitles.length > 0 && (

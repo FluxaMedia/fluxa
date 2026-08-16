@@ -16,7 +16,7 @@ function itemActivityTime(item: LibraryItem): number {
 
 export function HistoryTimeline({ items, onNavigateDetail }: { items: LibraryItem[]; onNavigateDetail: (meta: Meta) => void }) {
   return (
-    <div style={styles.historyScroll}>
+    <div className="library-history" style={styles.historyScroll}>
       {items.map((item) => {
         const at = itemActivityTime(item);
         const progress = (item.timeOffset ?? 0) > 0 && (item.duration ?? 0) > 0

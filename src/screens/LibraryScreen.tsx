@@ -237,8 +237,8 @@ export const LibraryScreen = React.memo(function LibraryScreen({
   }
 
   return (
-    <div style={styles.screen}>
-      <div style={styles.header}>
+    <div className="library-screen" style={styles.screen}>
+      <div className="library-header" style={styles.header}>
         <CircleBtn onClick={onBack} size={48}>
           <ArrowLeft size={24} color="#fff" />
         </CircleBtn>
@@ -368,7 +368,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
           onPlay={(stream, meta, episode) => onPlayLocal?.(stream, meta, episode)}
         />
       ) : tab === 'collections' ? (
-        <div ref={collectionsScrollRef} style={styles.collectionsScroll}>
+        <div ref={collectionsScrollRef} className="library-scroll" style={styles.collectionsScroll}>
           <CollectionsTab
             collections={collections}
             accent={accent}

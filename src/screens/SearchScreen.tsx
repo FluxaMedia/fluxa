@@ -150,8 +150,8 @@ export const SearchScreen = React.memo(function SearchScreen({ state, onDispatch
   };
 
   return (
-    <div style={styles.screen}>
-      <div style={styles.content}>
+    <div className="search-screen" style={styles.screen}>
+      <div className="search-content" style={styles.content}>
         <button style={styles.backBtn} onClick={onBack}>
           <ArrowLeft size={18} strokeWidth={2.2} />
           {t('auto.back')}
