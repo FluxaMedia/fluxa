@@ -1705,14 +1705,10 @@
   "settings.system_default": "Sistem varsayılanı",
   "player.watch_party": "Birlikte İzle",
   "player.watch_party_room": "Oda",
-  "player.watch_party_server_prompt": "Birlikte İzle sunucu adresi",
-  "player.watch_party_server_default": "wss://watch-sunucunuz.example/ws",
   "player.watch_party_secret_prompt": "Sunucu gizli anahtarı (isteğe bağlı)",
   "player.watch_party_name_prompt": "Görünen ad",
   "player.watch_party_guest": "Misafir",
   "player.watch_party_room_prompt": "Katılmak için oda kodunu girin; oda oluşturmak için boş bırakın",
-  "player.watch_party_transport_prompt": "Bağlantı: websocket veya supabase",
-  "player.watch_party_supabase_url_prompt": "Supabase proje adresi",
   "player.watch_party_supabase_key_prompt": "Supabase public anon anahtarı",
   "auth.field.instance": "Instance adresi",
   "auth.placeholder.instance": "Boş bırakırsan resmi instance kullanılır",
@@ -1724,5 +1720,6 @@
   "auth.error.account_exists": "Bu e-posta ile bir hesap zaten var",
   "auth.error.email_not_confirmed": "Giriş yapmadan önce e-postanı doğrula",
   "auth.error.rate_limited": "Çok fazla deneme, biraz sonra tekrar dene",
-  "auth.error.unknown": "Giriş başarısız"
+  "auth.error.unknown": "Giriş başarısız",
+  "player.watch_party_instance_prompt": "Watch Together instance adresi"
 }

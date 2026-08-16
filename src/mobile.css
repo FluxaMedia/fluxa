@@ -109,9 +109,10 @@ html[data-mobile="true"] .hero-panel h1 {
   font-size: clamp(1.75rem, 8vw, 2.5rem) !important;
 }
 
-html[data-mobile="true"] .hero-panel img[alt] {
-  height: clamp(3.25rem, 14vw, 5rem) !important;
-  max-width: 80% !important;
+html[data-mobile="true"] .hero-logo {
+  height: clamp(3.25rem, 16vw, 5rem) !important;
+  max-width: 70% !important;
+  margin-bottom: 0.75rem !important;
 }
 
 html[data-mobile="true"] .hero-desc {

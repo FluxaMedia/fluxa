@@ -13,6 +13,16 @@ import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
 import { applyWebOSMediaOption, hdrKindFrom, IS_WEBOS } from '../platform/webos';
 import { isTextEntryTarget, tvActionFor } from '../platform/webosKeys';
 import { useIsTouch } from '../platform/viewport';
+import { OFFICIAL_WATCH_TOGETHER_URL } from '../appConstants';
+
+function isSupabaseInstance(instanceUrl: string): boolean {
+  try {
+    const absolute = /^https?:\/\//.test(instanceUrl) ? instanceUrl : `https://${instanceUrl}`;
+    return new URL(absolute).hostname.endsWith('.supabase.co');
+  } catch {
+    return false;
+  }
+}
 
 interface Props {
   url: string;
@@ -91,27 +101,23 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
       client.leave();
       return;
     }
-    const mode = window.prompt(t('player.watch_party_transport_prompt'), window.localStorage.getItem('fluxa.watchTogether.transport') ?? 'websocket')?.trim().toLowerCase();
-    if (mode !== 'websocket' && mode !== 'supabase') return;
-    window.localStorage.setItem('fluxa.watchTogether.transport', mode);
+    const stored = window.localStorage.getItem('fluxa.watchTogether.instanceUrl') ?? OFFICIAL_WATCH_TOGETHER_URL;
+    const instanceUrl = (stored || window.prompt(t('player.watch_party_instance_prompt')) || '').trim();
+    if (!instanceUrl) return;
+    window.localStorage.setItem('fluxa.watchTogether.instanceUrl', instanceUrl);
     const displayName = window.prompt(t('player.watch_party_name_prompt'), t('player.watch_party_guest')) ?? t('player.watch_party_guest');
     const roomCode = window.prompt(t('player.watch_party_room_prompt'));
     try {
       let connection: WatchTogetherConnection;
-      if (mode === 'supabase') {
-        const projectUrl = window.localStorage.getItem('fluxa.watchTogether.supabaseUrl') ?? window.prompt(t('player.watch_party_supabase_url_prompt'));
+      if (isSupabaseInstance(instanceUrl)) {
         const anonKey = window.localStorage.getItem('fluxa.watchTogether.supabaseAnonKey') ?? window.prompt(t('player.watch_party_supabase_key_prompt'));
-        if (!projectUrl || !anonKey) return;
-        window.localStorage.setItem('fluxa.watchTogether.supabaseUrl', projectUrl);
+        if (!anonKey) return;
         window.localStorage.setItem('fluxa.watchTogether.supabaseAnonKey', anonKey);
-        connection = { mode: 'supabase', projectUrl, anonKey };
+        connection = { mode: 'supabase', projectUrl: instanceUrl, anonKey };
       } else {
-        const serverUrl = window.localStorage.getItem('fluxa.watchTogether.serverUrl') ?? window.prompt(t('player.watch_party_server_prompt'), t('player.watch_party_server_default'));
-        if (!serverUrl) return;
-        window.localStorage.setItem('fluxa.watchTogether.serverUrl', serverUrl);
         const secret = window.prompt(t('player.watch_party_secret_prompt'), window.localStorage.getItem('fluxa.watchTogether.secret') ?? '') ?? '';
         window.localStorage.setItem('fluxa.watchTogether.secret', secret);
-        connection = { mode: 'websocket', serverUrl, secret };
+        connection = { mode: 'websocket', serverUrl: instanceUrl, secret };
       }
       const secret = connection.mode === 'websocket' ? connection.secret : undefined;
       if (roomCode?.trim()) await client.join(connection, roomCode.trim(), displayName, secret);

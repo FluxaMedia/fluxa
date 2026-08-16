@@ -264,6 +264,7 @@ export const HeroSection = React.memo(function HeroSection({
       <div className="hero-panel" style={{ ...styles.panel, ...contentStyle }}>
         {logoUrl ? (
           <img
+            className="hero-logo"
             src={logoUrl}
             alt={activeMeta.name}
             decoding="async"
