@@ -4,6 +4,8 @@ import { t } from '../i18n';
 import { transcodeUrl } from '../platform/web/stream';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
+import { WatchTogetherClient, type WatchTogetherConnection, type WatchTogetherContent, type WatchTogetherState } from '../core/watchTogether';
+import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
 
 interface Props {
   url: string;
@@ -11,6 +13,9 @@ interface Props {
   subtitles: PlayerSubtitleSource[];
   onClose: () => Promise<void>;
   onFirstFrame: () => void;
+  contentId?: string;
+  contentType?: string;
+  videoId?: string;
 }
 
 function formatTime(value: number) {
@@ -24,13 +29,9 @@ function formatTime(value: number) {
 
 const iconButton = { width: '2.75rem', height: '2.75rem', border: 'none', borderRadius: '0.5rem', background: 'none', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' } as const;
 
-function subtitleToVtt(text: string): string {
-  if (/^\s*WEBVTT(?:\s|$)/i.test(text)) return text;
-  return `WEBVTT\n\n${text.replace(/\r/g, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')}`;
-}
-
-export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame }: Props) {
+export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackUsedRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [paused, setPaused] = useState(false);
@@ -39,40 +40,69 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [subtitleTracks, setSubtitleTracks] = useState<Array<{ subtitle: PlayerSubtitleSource; url: string }>>([]);
   const [selectedSubtitle, setSelectedSubtitle] = useState<number>(subtitles.length > 0 ? 0 : -1);
   const [subtitleMenuOpen, setSubtitleMenuOpen] = useState(false);
+  const [watchTogetherState, setWatchTogetherState] = useState<WatchTogetherState>({ connectionState: 'disconnected', roomCode: null, isHost: false, members: [], content: null, errorMessage: null });
+  const watchTogetherRef = useRef<WatchTogetherClient | null>(null);
+  const watchTogetherContent: WatchTogetherContent | null = contentId ? { id: contentId, contentType, videoId, title: title ?? '' } : null;
+
+  if (!watchTogetherRef.current) watchTogetherRef.current = new WatchTogetherClient({ onState: setWatchTogetherState });
+
+  useEffect(() => () => watchTogetherRef.current?.leave(), []);
 
   useEffect(() => {
-    let cancelled = false;
-    const objectUrls: string[] = [];
-    setSelectedSubtitle(subtitles.length > 0 ? 0 : -1);
-    setSubtitleTracks([]);
-    void Promise.all(subtitles.map(async (subtitle) => {
-      try {
-        const response = await fetch(subtitle.url);
-        if (!response.ok) throw new Error(`subtitle request failed: ${response.status}`);
-        const body = subtitleToVtt(await response.text());
-        const objectUrl = URL.createObjectURL(new Blob([body], { type: 'text/vtt' }));
-        objectUrls.push(objectUrl);
-        return { subtitle, url: objectUrl };
-      } catch {
-        return { subtitle, url: subtitle.url };
+    const video = videoRef.current;
+    if (!video || !watchTogetherContent) return;
+    watchTogetherRef.current?.attach(video, watchTogetherContent);
+    return () => watchTogetherRef.current?.detach();
+  }, [watchTogetherContent?.id, watchTogetherContent?.contentType, watchTogetherContent?.videoId, watchTogetherContent?.title]);
+
+  useEffect(() => {
+    if (watchTogetherContent) watchTogetherRef.current?.updateContent(watchTogetherContent);
+  }, [watchTogetherContent?.id, watchTogetherContent?.contentType, watchTogetherContent?.videoId, watchTogetherContent?.title]);
+
+  const openWatchTogether = async () => {
+    const client = watchTogetherRef.current;
+    if (!client) return;
+    if (watchTogetherState.roomCode) {
+      client.leave();
+      return;
+    }
+    const mode = window.prompt(t('player.watch_party_transport_prompt'), window.localStorage.getItem('fluxa.watchTogether.transport') ?? 'websocket')?.trim().toLowerCase();
+    if (mode !== 'websocket' && mode !== 'supabase') return;
+    window.localStorage.setItem('fluxa.watchTogether.transport', mode);
+    const displayName = window.prompt(t('player.watch_party_name_prompt'), t('player.watch_party_guest')) ?? t('player.watch_party_guest');
+    const roomCode = window.prompt(t('player.watch_party_room_prompt'));
+    try {
+      let connection: WatchTogetherConnection;
+      if (mode === 'supabase') {
+        const projectUrl = window.localStorage.getItem('fluxa.watchTogether.supabaseUrl') ?? window.prompt(t('player.watch_party_supabase_url_prompt'));
+        const anonKey = window.localStorage.getItem('fluxa.watchTogether.supabaseAnonKey') ?? window.prompt(t('player.watch_party_supabase_key_prompt'));
+        if (!projectUrl || !anonKey) return;
+        window.localStorage.setItem('fluxa.watchTogether.supabaseUrl', projectUrl);
+        window.localStorage.setItem('fluxa.watchTogether.supabaseAnonKey', anonKey);
+        connection = { mode: 'supabase', projectUrl, anonKey };
+      } else {
+        const serverUrl = window.localStorage.getItem('fluxa.watchTogether.serverUrl') ?? window.prompt(t('player.watch_party_server_prompt'), t('player.watch_party_server_default'));
+        if (!serverUrl) return;
+        window.localStorage.setItem('fluxa.watchTogether.serverUrl', serverUrl);
+        const secret = window.prompt(t('player.watch_party_secret_prompt'), window.localStorage.getItem('fluxa.watchTogether.secret') ?? '') ?? '';
+        window.localStorage.setItem('fluxa.watchTogether.secret', secret);
+        connection = { mode: 'websocket', serverUrl, secret };
       }
-    })).then((tracks) => {
-      if (!cancelled) setSubtitleTracks(tracks);
-    });
-    return () => {
-      cancelled = true;
-      objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
-    };
+      const secret = connection.mode === 'websocket' ? connection.secret : undefined;
+      if (roomCode?.trim()) await client.join(connection, roomCode.trim(), displayName, secret);
+      else await client.create(connection, displayName, secret);
+    } catch (error) {
+      setWatchTogetherState((state) => ({ ...state, connectionState: 'error', errorMessage: error instanceof Error ? error.message : String(error) }));
+    }
+  };
+
+  useEffect(() => {
+    setSelectedSubtitle(subtitles.length > 0 ? 0 : -1);
   }, [subtitles]);
 
-  useEffect(() => {
-    const tracks = videoRef.current?.textTracks;
-    if (!tracks) return;
-    for (let index = 0; index < tracks.length; index += 1) tracks[index].mode = index === selectedSubtitle ? 'showing' : 'disabled';
-  }, [selectedSubtitle, subtitleTracks]);
+  useLibassSubtitles(videoRef, subtitleCanvasRef, subtitles, selectedSubtitle);
 
   const resetActivity = useCallback(() => {
     setControlsVisible(true);
@@ -157,8 +187,8 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame 
         playsInline
         onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-        onPlay={() => { setPaused(false); resetActivity(); }}
-        onPause={() => { setPaused(true); setControlsVisible(true); }}
+        onPlay={() => { setPaused(false); resetActivity(); watchTogetherRef.current?.notifyLocalPlayback(); }}
+        onPause={() => { setPaused(true); setControlsVisible(true); watchTogetherRef.current?.notifyLocalPlayback(); }}
         onVolumeChange={(event) => { setMuted(event.currentTarget.muted); setVolume(event.currentTarget.volume); }}
         onPlaying={onFirstFrame}
         onError={() => {
@@ -170,19 +200,20 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame 
           void video.play().catch(() => setPaused(true));
         }}
         style={{ width: '100%', height: '100%', flex: 1, objectFit: 'contain', minHeight: 0 }}
-      >
-        {subtitleTracks.map(({ subtitle, url: trackUrl }, index) => (
-          <track key={`${subtitle.url}-${index}`} kind="subtitles" src={trackUrl} srcLang={subtitle.lang ?? 'und'} label={subtitle.label ?? subtitle.lang ?? t('player.subtitles')} />
-        ))}
-      </video>
+      />
+      <canvas ref={subtitleCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none', opacity: controlsVisible ? 1 : 0, transition: 'opacity 0.25s ease' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '0.875rem 0.75rem', background: 'linear-gradient(rgba(0,0,0,0.7), transparent)', pointerEvents: 'auto' }}>
           <button type="button" onClick={() => { void onClose(); }} style={{ ...iconButton, background: 'rgba(255,255,255,0.1)' }} title={t('player.back')}><ChevronLeft size={22} /></button>
           <div style={{ color: '#fff', fontSize: '0.9375rem', fontWeight: 700, marginLeft: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title ?? ''}</div>
+          <div style={{ flex: 1 }} />
+          {contentId && <button type="button" onClick={() => { void openWatchTogether(); }} style={{ ...iconButton, width: 'auto', padding: '0 0.75rem', background: watchTogetherState.roomCode ? 'var(--primary-accent-color)' : 'rgba(255,255,255,0.1)', fontSize: '0.75rem', fontWeight: 700 }} title={t('player.watch_party')}>
+            {watchTogetherState.roomCode ? `${t('player.watch_party_room')} ${watchTogetherState.roomCode}` : t('player.watch_party')}
+          </button>}
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ pointerEvents: 'auto', padding: '0 0.75rem 0.875rem', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}>
-          <input aria-label={t('player.seek')} type="range" min={0} max={duration || 0} step={0.1} value={Math.min(currentTime, duration || 0)} onChange={(event) => { if (videoRef.current) videoRef.current.currentTime = Number(event.target.value); }} style={{ width: '100%', accentColor: 'var(--primary-accent-color)' }} />
+          <input aria-label={t('player.seek')} type="range" min={0} max={duration || 0} step={0.1} value={Math.min(currentTime, duration || 0)} onChange={(event) => { if (videoRef.current) { videoRef.current.currentTime = Number(event.target.value); watchTogetherRef.current?.notifyLocalPlayback(); } }} style={{ width: '100%', accentColor: 'var(--primary-accent-color)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
             <button type="button" onClick={togglePause} style={iconButton} title={paused ? t('player.play') : t('player.pause')}>{paused ? <Play size={25} fill="currentColor" strokeWidth={0} /> : <Pause size={25} fill="currentColor" strokeWidth={0} />}</button>
             <button type="button" onClick={() => seek(-10)} style={iconButton} title={t('player.seek_back')}><RotateCcw size={21} /></button>
@@ -191,13 +222,13 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame 
             <input aria-label={t('player.volume')} type="range" min={0} max={1} step={0.01} value={muted ? 0 : volume} onChange={(event) => setVideoVolume(Number(event.target.value))} style={{ width: '5rem', accentColor: 'var(--primary-accent-color)' }} />
             <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', marginLeft: '0.4rem' }}>{formatTime(currentTime)} / {formatTime(duration)}</span>
             <div style={{ flex: 1 }} />
-            {subtitleTracks.length > 0 && (
+            {subtitles.length > 0 && (
               <div style={{ position: 'relative' }}>
                 <button type="button" onClick={() => setSubtitleMenuOpen((value) => !value)} style={{ ...iconButton, color: selectedSubtitle >= 0 ? 'var(--primary-accent-color)' : '#fff' }} title={t('player.subtitles')}><Captions size={21} /></button>
                 {subtitleMenuOpen && (
                   <div style={{ position: 'absolute', right: 0, bottom: '3rem', minWidth: '11rem', padding: '0.35rem', borderRadius: '0.55rem', background: 'rgba(20,20,20,0.98)', boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.45)' }}>
                     <button type="button" onClick={() => { setSelectedSubtitle(-1); setSubtitleMenuOpen(false); }} style={{ display: 'block', width: '100%', padding: '0.55rem 0.7rem', border: 0, borderRadius: '0.35rem', textAlign: 'left', color: '#fff', background: selectedSubtitle < 0 ? 'rgba(255,255,255,0.14)' : 'transparent', cursor: 'pointer' }}>{t('player.subtitles_off')}</button>
-                    {subtitleTracks.map(({ subtitle }, index) => (
+                    {subtitles.map((subtitle, index) => (
                       <button key={`${subtitle.url}-menu-${index}`} type="button" onClick={() => { setSelectedSubtitle(index); setSubtitleMenuOpen(false); }} style={{ display: 'block', width: '100%', padding: '0.55rem 0.7rem', border: 0, borderRadius: '0.35rem', textAlign: 'left', color: '#fff', background: selectedSubtitle === index ? 'rgba(255,255,255,0.14)' : 'transparent', cursor: 'pointer' }}>{subtitle.label ?? subtitle.lang ?? t('player.subtitles')}</button>
                     ))}
                   </div>

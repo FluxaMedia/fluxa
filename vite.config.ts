@@ -8,6 +8,11 @@ export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
   base: mode === 'web' || mode === 'webos' ? env.VITE_BASE_PATH || '/' : '/',
+  resolve: {
+    alias: mode === 'web' || mode === 'webos'
+      ? []
+      : [{ find: /^.*\/platform\/web\/libass$/, replacement: new URL('./src/platform/web/libass.stub.ts', import.meta.url).pathname }],
+  },
   define: {
     'import.meta.env.VITE_FLUXA_TARGET': JSON.stringify(mode === 'web' || mode === 'webos' ? mode : 'desktop'),
     'import.meta.env.VITE_TRAKT_CLIENT_ID': JSON.stringify(env.VITE_TRAKT_CLIENT_ID || env.FLUXA_TRAKT_CLIENT_ID || ''),
