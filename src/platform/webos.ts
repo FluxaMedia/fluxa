@@ -152,6 +152,21 @@ export async function applyWebOSMediaOption(
   }
 }
 
+export const WEBOS_PROXY_SERVICE = 'luna://com.fluxa.app.proxy';
+
+let proxyReady: Promise<boolean> | null = null;
+
+export function ensureWebosProxy(): Promise<boolean> {
+  if (!IS_WEBOS) return Promise.resolve(false);
+  proxyReady ??= lunaCall<WebOSServiceResponse & { port?: number }>(WEBOS_PROXY_SERVICE, 'start')
+    .then((response) => response.returnValue === true)
+    .catch((error) => {
+      console.warn('[fluxa:webos:proxy]', error);
+      return false;
+    });
+  return proxyReady;
+}
+
 export function webosPlatformBack(): boolean {
   if (typeof webOS !== 'undefined' && typeof webOS.platformBack === 'function') {
     webOS.platformBack();

@@ -13,6 +13,7 @@
     "build:web": "node scripts/gen-core-methods.mjs && tsc && vite build --mode web",
     "build:web:pages": "VITE_BASE_PATH=/fluxa-desktop/ npm run build:web",
     "build:webos": "node scripts/gen-core-methods.mjs && tsc && vite build --mode webos",
+    "package:webos": "bash scripts/package-webos.sh",
     "tauri": "tauri",
     "bump": "bash scripts/bump-version.sh"
   },

@@ -1,0 +1,22 @@
+{
+  "id": "com.fluxa.app",
+  "title": "Fluxa",
+  "main": "index.html",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "type": "web",
+  "version": "0.1.30",
+  "vendor": "Fluxa",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "trustLevel": "default",
+  "bgColor": "#040508",
+  "allowVideoCapture": false,
+  "allowAudioCapture": false,
+  "supportPortraitMode": false,
+  "requiredPermissions": [
+    "MEDIA_OPERATION",
+    "time.query",
+    "activity.operation"
+  ]
+}

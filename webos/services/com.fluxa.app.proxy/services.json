@@ -1,0 +1,9 @@
+{
+  "id": "com.fluxa.app.proxy",
+  "services": [
+    {
+      "name": "com.fluxa.app.proxy",
+      "description": "Fluxa local stream and subtitle proxy"
+    }
+  ]
+}

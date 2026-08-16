@@ -6,7 +6,7 @@ import { PlaybackHost } from './components/PlaybackHost';
 import { AppShell } from './components/AppShell';
 import { AppBootstrap } from './components/AppBootstrap';
 import { isBrowserTarget, platformListen } from './platform/browser';
-import { IS_WEBOS, webosExitApp, webosStageReady } from './platform/webos';
+import { ensureWebosProxy, IS_WEBOS, webosExitApp, webosStageReady } from './platform/webos';
 import { platformInvoke as invoke } from './platform/invoke';
 import { setBrowsingDiscordPresence } from './core/discordPresence';
 import { appStyles, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
@@ -141,6 +141,10 @@ export default function App() {
   useEffect(() => {
     if (ready) webosStageReady();
   }, [ready]);
+
+  useEffect(() => {
+    void ensureWebosProxy();
+  }, []);
 
   const nativeEvents = useNativePlayerEvents(flushProgressOnQuit);
   const isWebTarget = isBrowserTarget();

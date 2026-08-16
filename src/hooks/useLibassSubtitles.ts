@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { isBrowserTarget } from '../platform/browser';
+import { fetchThroughProxyIfNeeded } from '../platform/web/stream';
 import type { LibassRenderer } from '../platform/web/libass';
 import { loadPrefs } from '../core/libraryOps';
 import { subtitleStylePrefsFrom, toAssDocument, type SubtitleStylePrefs } from '../core/webSubtitles';
@@ -48,8 +49,7 @@ export function useLibassSubtitles(
     void (async () => {
       let document: string | null = null;
       try {
-        const response = await fetch(source.url);
-        if (!response.ok) throw new Error(`subtitle request failed: ${response.status}`);
+        const response = await fetchThroughProxyIfNeeded(source.url);
         document = toAssDocument(await response.text(), stylePrefs);
       } catch (error) {
         console.error('[fluxa:web:subtitles]', source.url, error);
