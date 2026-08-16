@@ -6,6 +6,7 @@ import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
 import { WatchTogetherClient, type WatchTogetherConnection, type WatchTogetherContent, type WatchTogetherState } from '../core/watchTogether';
 import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
+import { applyWebOSMediaOption, hdrKindFrom, IS_WEBOS } from '../platform/webos';
 
 interface Props {
   url: string;
@@ -16,6 +17,7 @@ interface Props {
   contentId?: string;
   contentType?: string;
   videoId?: string;
+  codecs?: { videoCodec: string | null; audioCodec: string | null } | null;
 }
 
 function formatTime(value: number) {
@@ -29,7 +31,7 @@ function formatTime(value: number) {
 
 const iconButton = { width: '2.75rem', height: '2.75rem', border: 'none', borderRadius: '0.5rem', background: 'none', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' } as const;
 
-export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId }: Props) {
+export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackUsedRef = useRef(false);
@@ -116,15 +118,27 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
     const video = videoRef.current;
     if (!video) return;
     fallbackUsedRef.current = false;
-    video.src = url;
-    video.load();
-    void video.play().catch(() => setPaused(true));
+    let cancelled = false;
+    const start = async () => {
+      if (IS_WEBOS) {
+        await applyWebOSMediaOption(video, url, {
+          hdr: hdrKindFrom(codecs?.videoCodec),
+          multiChannelAudio: true,
+        });
+        if (cancelled) return;
+      }
+      video.src = url;
+      video.load();
+      void video.play().catch(() => setPaused(true));
+    };
+    void start();
     return () => {
+      cancelled = true;
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       video.pause();
       video.removeAttribute('src');
     };
-  }, [url]);
+  }, [url, codecs?.videoCodec]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

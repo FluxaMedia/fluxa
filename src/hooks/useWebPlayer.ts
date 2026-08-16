@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type RefObject } from 'react';
 import { platformInvoke } from '../platform/invoke';
-import { canDirectPlay, probeStream, proxyUrl, transcodeUrl } from '../platform/web/stream';
+import { canDirectPlay, chooseBrowserTranscodeTarget, probeStream, proxyUrl, transcodeUrl } from '../platform/web/stream';
 import { loadEnabledAddons } from '../core/libraryOps';
 import { resolvePlaybackSubtitles } from '../core/subtitles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
@@ -29,6 +29,7 @@ export interface WebPlayerResult {
   playerMetaId: string | undefined;
   playerSubtitleUrl: string | undefined;
   playerSubtitles: PlayerSubtitleSource[];
+  playerCodecs: { videoCodec: string | null; audioCodec: string | null } | null;
   playerStreamHeaders: Record<string, string> | undefined;
   playingStreamRef: RefObject<Stream | null>;
   playingMetaRef: RefObject<Meta | null>;
@@ -44,6 +45,7 @@ export interface WebPlayerResult {
 
 export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfile, updateState: _updateState, onProfileUpdated: _onProfileUpdated, onEpisodePlaybackFailed: _onEpisodePlaybackFailed }: UsePlayerOptions): WebPlayerResult {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
+  const [playerCodecs, setPlayerCodecs] = useState<{ videoCodec: string | null; audioCodec: string | null } | null>(null);
   const [playerTitle, setPlayerTitle] = useState<string>();
   const [playerEpisodeTitle, setPlayerEpisodeTitle] = useState<string>();
   const [playerEpisode, setPlayerEpisode] = useState<Video | null>(null);
@@ -84,11 +86,12 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
       const probe = isTorrent ? null : await probeStream(url, headers);
       const resolvedSubtitles = await subtitlePromise;
       const direct = !headers && (!probe || canDirectPlay(source, probe.videoCodec, probe.audioCodec));
+      const target = probe ? chooseBrowserTranscodeTarget(probe.videoCodec, probe.audioCodec) : null;
       const playbackUrl = direct
         ? url
         : probe && canDirectPlay(source, probe.videoCodec, probe.audioCodec)
           ? proxyUrl(source, headers ?? {})
-          : transcodeUrl(url, resumeAtSeconds, headers);
+          : transcodeUrl(url, resumeAtSeconds, headers, target ?? undefined);
       playingStreamRef.current = stream;
       playingMetaRef.current = meta ?? null;
       setPlayerUrl(playbackUrl);
@@ -101,6 +104,7 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
       setPlayerMetaId(meta?.id);
       setPlayerStreamHeaders(headers);
       setPlayerSubtitles(resolvedSubtitles.subtitles);
+      setPlayerCodecs(probe ? { videoCodec: probe.videoCodec, audioCodec: probe.audioCodec } : null);
       setPlayerLoadingOverlay(null);
     } catch (error) {
       setPlayerPlaybackError(error instanceof Error ? error.message : String(error));
@@ -114,13 +118,14 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
     setPlayerLoadingOverlay(null);
     setPlayerUsesTorrent(false);
     setPlayerSubtitles([]);
+    setPlayerCodecs(null);
     playingStreamRef.current = null;
     playingMetaRef.current = null;
   }, [playerUsesTorrent]);
 
   return {
     playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext: null, playerTitle, playerEpisodeTitle, playerEpisode,
-    playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerSubtitles, playerStreamHeaders,
+    playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerSubtitles, playerCodecs, playerStreamHeaders,
     playingStreamRef, playingMetaRef, playerPlaybackError, playerSubtitleWarning: null, dismissSubtitleWarning: () => {},
     handlePlay, closePlayer, notifyFirstFrame: () => {}, flushProgressOnQuit: async () => {}, skipSegmentCoverage: {},
   };
