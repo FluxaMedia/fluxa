@@ -6,6 +6,7 @@ import { PlaybackHost } from './components/PlaybackHost';
 import { AppShell } from './components/AppShell';
 import { AppBootstrap } from './components/AppBootstrap';
 import { isBrowserTarget, platformListen } from './platform/browser';
+import { IS_WEBOS, webosExitApp, webosStageReady } from './platform/webos';
 import { platformInvoke as invoke } from './platform/invoke';
 import { setBrowsingDiscordPresence } from './core/discordPresence';
 import { appStyles, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
@@ -137,6 +138,10 @@ export default function App() {
     episodePlaybackFailureRef.current = openEpisodeSourcePicker;
   }, [openEpisodeSourcePicker]);
 
+  useEffect(() => {
+    if (ready) webosStageReady();
+  }, [ready]);
+
   const nativeEvents = useNativePlayerEvents(flushProgressOnQuit);
   const isWebTarget = isBrowserTarget();
   const nativePlayerActive = isWebTarget ? Boolean(playerUrl) : nativeEvents.nativePlayerActive;
@@ -222,7 +227,8 @@ export default function App() {
       return;
     }
     if (activeRoute === 'settings') { navigateRoute(lastNonSettingsRouteRef.current); return; }
-    if (activeRoute === 'search') { navigateRoute(lastNonSearchRouteRef.current); }
+    if (activeRoute === 'search') { navigateRoute(lastNonSearchRouteRef.current); return; }
+    if (IS_WEBOS) webosExitApp();
   }, [detailMeta, activeRoute, navigateRoute, closePlayer, resetDetail]);
 
   const { searchFocusSignal, setSearchFocusSignal } = useGlobalShortcuts({ nativePlayerActive, navigateRoute, goBack });

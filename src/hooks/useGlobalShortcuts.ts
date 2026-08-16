@@ -4,6 +4,8 @@ import { toggleWindowFullscreen, watchWindowGeometry } from '../core/windowGeome
 import { comboFromEvent, findActionForCombo, loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from '../core/shortcuts';
 import { focusNearestCard, isNavCard } from '../core/spatialNav';
 import { isBrowserTarget } from '../platform/browser';
+import { IS_WEBOS } from '../platform/webos';
+import { tvActionFor } from '../platform/webosKeys';
 
 export function useGlobalShortcuts({
   nativePlayerActive,
@@ -100,6 +102,11 @@ export function useGlobalShortcuts({
         return;
       }
       if (globalAction === 'go_back') {
+        e.preventDefault();
+        goBack();
+        return;
+      }
+      if (IS_WEBOS && tvActionFor(e) === 'back') {
         e.preventDefault();
         goBack();
         return;

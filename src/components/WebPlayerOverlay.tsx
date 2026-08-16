@@ -7,6 +7,7 @@ import type { PlayerSubtitleSource } from '../core/playerUtils';
 import { WatchTogetherClient, type WatchTogetherConnection, type WatchTogetherContent, type WatchTogetherState } from '../core/watchTogether';
 import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
 import { applyWebOSMediaOption, hdrKindFrom, IS_WEBOS } from '../platform/webos';
+import { isTextEntryTarget, tvActionFor } from '../platform/webosKeys';
 
 interface Props {
   url: string;
@@ -142,10 +143,26 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { void onClose(); return; }
-      if (event.key === ' ') { event.preventDefault(); videoRef.current?.paused ? videoRef.current.play() : videoRef.current?.pause(); }
-      if (event.key === 'ArrowLeft') { event.preventDefault(); if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }
-      if (event.key === 'ArrowRight') { event.preventDefault(); if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || Infinity, videoRef.current.currentTime + 10); }
+      if (isTextEntryTarget(event.target)) return;
+      const video = videoRef.current;
+      const nudge = (delta: number) => {
+        if (!video) return;
+        video.currentTime = Math.max(0, Math.min(video.duration || Infinity, video.currentTime + delta));
+        watchTogetherRef.current?.notifyLocalPlayback();
+      };
+      const action = tvActionFor(event);
+      if (action === 'back' || action === 'stop') { event.preventDefault(); void onClose(); return; }
+      if (action === 'play') { event.preventDefault(); void video?.play(); }
+      else if (action === 'pause') { event.preventDefault(); video?.pause(); }
+      else if (action === 'playPause' || action === 'enter' || event.key === ' ') {
+        event.preventDefault();
+        if (video?.paused) void video.play(); else video?.pause();
+      }
+      else if (action === 'rewind') { event.preventDefault(); nudge(-30); }
+      else if (action === 'fastForward') { event.preventDefault(); nudge(30); }
+      else if (action === 'left') { event.preventDefault(); nudge(-10); }
+      else if (action === 'right') { event.preventDefault(); nudge(10); }
+      else if (action === 'blue') { event.preventDefault(); setSubtitleMenuOpen((value) => !value); }
       resetActivity();
     };
     window.addEventListener('keydown', onKeyDown);
