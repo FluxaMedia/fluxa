@@ -266,11 +266,10 @@ fn set_diagnostic_mode(enabled: bool) {
         if !cfg!(debug_assertions) {
             let mut guard = SENTRY_GUARD.lock().unwrap();
             if guard.is_none() {
-                *guard = Some(sentry::init(sentry::ClientOptions {
-                    dsn: sentry_dsn(),
-                    release: sentry::release_name!(),
-                    ..Default::default()
-                }));
+                let mut options = sentry::ClientOptions::default();
+                options.dsn = sentry_dsn();
+                options.release = sentry::release_name!();
+                *guard = Some(sentry::init(options));
             }
         }
     } else if !enabled && was {

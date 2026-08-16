@@ -1,4 +1,4 @@
-use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
+use aes_gcm::aead::{Aead, Generate, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use rusqlite::Connection;
 use rusqlite::params;
@@ -231,7 +231,9 @@ fn load_or_create_key(dir: &Path) -> Result<Key<Aes256Gcm>, String> {
     let path = key_file_path(dir);
     if let Ok(bytes) = fs::read(&path) {
         if bytes.len() == 32 {
-            let key = *Key::<Aes256Gcm>::from_slice(&bytes);
+            let Ok(key) = Key::<Aes256Gcm>::try_from(&bytes[..]) else {
+                return Err("stored key is not a valid AES-256 key".to_string());
+            };
             keys
                 .lock()
                 .map_err(|_| "storage key cache poisoned".to_string())?
@@ -240,7 +242,7 @@ fn load_or_create_key(dir: &Path) -> Result<Key<Aes256Gcm>, String> {
         }
     }
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    let key = Aes256Gcm::generate_key(&mut OsRng);
+    let key = Key::<Aes256Gcm>::generate();
     let mut options = fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
     #[cfg(unix)]
@@ -261,7 +263,7 @@ fn load_or_create_key(dir: &Path) -> Result<Key<Aes256Gcm>, String> {
 fn encrypt(dir: &Path, plaintext: &[u8]) -> Result<Vec<u8>, String> {
     let key = load_or_create_key(dir)?;
     let cipher = Aes256Gcm::new(&key);
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let nonce = Nonce::generate();
     let ciphertext = cipher
         .encrypt(&nonce, plaintext)
         .map_err(|e| e.to_string())?;
@@ -283,8 +285,8 @@ fn decrypt_or_legacy(dir: &Path, bytes: &[u8]) -> Option<String> {
         return None;
     }
     let (nonce_bytes, ciphertext) = rest.split_at(12);
-    let nonce = Nonce::from_slice(nonce_bytes);
-    let plaintext = cipher.decrypt(nonce, ciphertext).ok()?;
+    let nonce = Nonce::try_from(nonce_bytes).ok()?;
+    let plaintext = cipher.decrypt(&nonce, ciphertext).ok()?;
     String::from_utf8(plaintext).ok()
 }
 

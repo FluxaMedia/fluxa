@@ -86,11 +86,10 @@ fn send_one_shot(
     level: sentry::Level,
     configure_scope: impl Fn(&mut sentry::Scope) + Send + Sync + 'static,
 ) {
-    let guard = sentry::init(sentry::ClientOptions {
-        dsn: crate::sentry_dsn(),
-        release: sentry::release_name!(),
-        ..Default::default()
-    });
+    let mut options = sentry::ClientOptions::default();
+    options.dsn = crate::sentry_dsn();
+    options.release = sentry::release_name!();
+    let guard = sentry::init(options);
     sentry::with_scope(configure_scope, || sentry::capture_message(message, level));
     drop(guard);
 }
