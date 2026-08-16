@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { platformInvoke as invoke } from '../../platform/invoke';
-import { platformOpenDialog } from '../../platform/browser';
+import { isBrowserTarget, platformOpenDialog } from '../../platform/browser';
 import { Type, X } from 'lucide-react';
 import { t } from '../../i18n';
 import { ActionTile, ChoiceTile, InputTile, SettingsSection, SliderTile, ToggleTile, langOptions, streamSourceOptions, subtitleFontOptions } from './SettingsUI';
@@ -14,21 +14,26 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
   const [mpvScriptsDir, setMpvScriptsDir] = useState<string | null>(null);
   const [scriptsDirCopied, setScriptsDirCopied] = useState(false);
   const [externalPlayers, setExternalPlayers] = useState<Array<{ id: string; label: string }>>([]);
-  useEffect(() => { void invoke<Array<{ id: string; label: string }>>('external_player_options').then(setExternalPlayers).catch(() => setExternalPlayers([])); }, []);
+  const browserTarget = isBrowserTarget();
+  useEffect(() => {
+    if (browserTarget) return;
+    void invoke<Array<{ id: string; label: string }>>('external_player_options').then(setExternalPlayers).catch(() => setExternalPlayers([]));
+  }, [browserTarget]);
   const chooseExternalPlayer = async () => {
     const selected = await platformOpenDialog({ directory: false, multiple: false, title: t('settings.external_player_choose') });
     if (typeof selected === 'string') setPref('externalPlayerTarget', selected);
   };
   useEffect(() => {
+    if (browserTarget) return;
     invoke<string | null>('get_data_dir').then((dir) => {
       if (dir) setMpvScriptsDir(`${dir}/mpv/scripts`);
     }).catch(() => {});
-  }, []);
+  }, [browserTarget]);
 
   const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
   const [fontUploadError, setFontUploadError] = useState<string | null>(null);
   const refreshCustomFonts = () => { void listCustomFonts().then(setCustomFonts); };
-  useEffect(() => { refreshCustomFonts(); }, []);
+  useEffect(() => { if (!browserTarget) refreshCustomFonts(); }, [browserTarget]);
   const uploadCustomFont = async () => {
     setFontUploadError(null);
     try {
@@ -70,8 +75,8 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
         checked={prefs.p2pEnabled}
         onToggle={(v) => setPref('p2pEnabled', v)}
       />
-      <ChoiceTile title={t('settings.preferred_player')} subtitle={t('settings.preferred_player_desc')} options={[{ value: 'mpv', label: t('settings.player_internal') }, { value: 'external', label: t('settings.player_external') }]} selected={prefs.preferredPlayer} onSelect={(v) => setPref('preferredPlayer', v)} />
-      {prefs.preferredPlayer === 'external' && <>
+      {!browserTarget && <ChoiceTile title={t('settings.preferred_player')} subtitle={t('settings.preferred_player_desc')} options={[{ value: 'mpv', label: t('settings.player_internal') }, { value: 'external', label: t('settings.player_external') }]} selected={prefs.preferredPlayer} onSelect={(v) => setPref('preferredPlayer', v)} />}
+      {!browserTarget && prefs.preferredPlayer === 'external' && <>
         <ChoiceTile title={t('settings.external_player')} subtitle={t('settings.external_player_desc')} options={[...externalPlayers.map((player) => ({ value: player.id, label: player.id === 'system' ? t('settings.system_default') : player.label })), ...(externalPlayers.some((player) => player.id === prefs.externalPlayerTarget) ? [] : [{ value: prefs.externalPlayerTarget, label: prefs.externalPlayerTarget }])]} selected={prefs.externalPlayerTarget} onSelect={(v) => setPref('externalPlayerTarget', v)} />
         <ActionTile title={t('settings.external_player_choose')} subtitle={t('settings.external_player_choose_desc')} icon={<Type size={18} />} onClick={() => void chooseExternalPlayer()} />
       </>}
@@ -311,13 +316,13 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
         selected={prefs.subtitleFont}
         onSelect={(v) => setPref('subtitleFont', v)}
       />
-      <ActionTile
+      {!browserTarget && <ActionTile
         title={t('settings.upload_custom_font')}
         subtitle={fontUploadError ?? t('settings.upload_custom_font_desc')}
         icon={<Type size={18} />}
         onClick={() => void uploadCustomFont()}
         accent={fontUploadError ? '#FF5D5D' : '#FFFFFF'}
-      />
+      />}
       {customFonts.map((font) => (
         <div key={font.fileName} style={{ width: '100%', minHeight: '2.75rem', borderBottom: '1px solid rgba(255,255,255,0.055)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 1rem 0.5rem 2.875rem', boxSizing: 'border-box', gap: '0.75rem' }}>
           <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.75)', fontFamily: FONT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{font.family}</span>

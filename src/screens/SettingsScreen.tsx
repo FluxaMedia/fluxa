@@ -89,6 +89,10 @@ const TABS: { id: Tab; labelKey: string; subtitleKey: string; icon: React.ReactN
   { id: 'downloads', labelKey: 'auto.downloads', subtitleKey: 'auto.download_and_storage_settings', icon: <DownloadIcon /> },
 ];
 
+const DESKTOP_ONLY_TABS = new Set<Tab>(['downloads']);
+
+const VISIBLE_TABS = TABS.filter((entry) => !isBrowserTarget() || !DESKTOP_ONLY_TABS.has(entry.id));
+
 const SETTINGS_SEARCH_TERMS: Record<Tab, string[]> = {
   account: ['profile', 'sync', 'trakt', 'simkl', 'anilist', 'nuvio', 'devices'],
   general: ['language', 'startup', 'start page', 'background playback', 'notifications', 'discord'],
@@ -392,7 +396,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
   const disabledAddonKeys = activeProfile?.addonSettings?.disabledLocalAddons ?? activeProfile?.disabledLocalAddons ?? [];
   const normalizedSettingsQuery = settingsQuery.trim().toLowerCase();
   const searchResults = normalizedSettingsQuery
-    ? TABS.filter((item) => {
+    ? VISIBLE_TABS.filter((item) => {
         const haystack = [
           t(item.labelKey),
           t(item.subtitleKey),
@@ -418,7 +422,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-          {(searchResults.length > 0 ? searchResults : TABS).map((tabItem) => (
+          {(searchResults.length > 0 ? searchResults : VISIBLE_TABS).map((tabItem) => (
             <SidebarItem
               key={tabItem.id}
               label={t(tabItem.labelKey)}
@@ -499,7 +503,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
             onToggleScraper={handleTogglePluginScraper}
           />
         )}
-        {tab === 'downloads' && <DownloadsSection prefs={prefs} setPref={setPref} />}
+        {tab === 'downloads' && !isBrowserTarget() && <DownloadsSection prefs={prefs} setPref={setPref} />}
       </div>
       {addedAddonName && (
         <AddonAddedDialog addonName={addedAddonName} onConfirm={() => setAddedAddonName(null)} />
