@@ -14,6 +14,7 @@ import { restoreWindowGeometry } from '../core/windowGeometry';
 import { startUpdateCheck, type UpdateState } from '../components/UpdateModal';
 import type { AppState, UserProfile } from '../core/types';
 import type { NavRoute } from '../components/NavSidebar';
+import { isBrowserTarget } from '../platform/browser';
 
 interface AppInitResult {
   ready: boolean;
@@ -64,7 +65,7 @@ export function useAppInit(
         const snap = await getSnapshot();
         const prefs = await loadPrefs();
         storedPrefsRef.current = prefs;
-        const webTarget = import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
+        const webTarget = isBrowserTarget();
         if (!webTarget) {
           void invoke('player_set_seek_thumbnail_enabled', { enabled: prefBool(prefs, 'seekThumbnailEnabled', false) });
           void invoke('discord_presence_configure', { enabled: prefBool(prefs, 'discordRichPresenceEnabled', true) });

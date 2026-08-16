@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { platformInvoke } from '../../platform/invoke';
-import { platformListen as listen } from '../../platform/browser';
+import { isBrowserTarget, platformListen as listen } from '../../platform/browser';
 import { platformOpenExternal } from '../../platform/browser';
 import { storageRead, storageWrite } from '../../core/engine';
 import type { UserProfile } from '../../core/types';
@@ -132,7 +132,7 @@ export function useIntegrationAccounts({
     setAuthUrls((current) => ({ ...current, [service]: url }));
   };
 
-  const browserTarget = import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
+  const browserTarget = isBrowserTarget();
   const browserRedirectUri = (service: OAuthService) => `${window.location.origin}${window.location.pathname}?oauth=${service}`;
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { nuvioHealthCheck } from '../core/nuvioApi';
 import type { UserProfile } from '../core/types';
+import { isBrowserTarget } from '../platform/browser';
 
 export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced?: (changed: boolean) => void | Promise<void>) {
   const [serverDown, setServerDown] = useState(false);
@@ -28,7 +29,7 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
         down = result?.status !== 'healthy' && result?.status !== 'ok';
       } catch (error) {
         console.error('[fluxa:nuvio:health-check]', error);
-        down = import.meta.env.VITE_FLUXA_TARGET !== 'web' && import.meta.env.VITE_FLUXA_TARGET !== 'webos';
+        down = !isBrowserTarget();
       }
       if (cancelled) return;
 

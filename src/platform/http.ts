@@ -1,3 +1,5 @@
+import { isBrowserTarget } from './browser';
+
 function redactUrl(rawUrl: string): string {
   try {
     const url = new URL(rawUrl);
@@ -11,7 +13,7 @@ function redactUrl(rawUrl: string): string {
 }
 
 export function platformFetch(url: string, init?: RequestInit): Promise<Response> {
-  if (import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos') {
+  if (isBrowserTarget()) {
     const startedAt = performance.now();
     console.debug('[fluxa:web:http:start]', init?.method ?? 'GET', redactUrl(url));
     return fetch(url, init).then((response) => {

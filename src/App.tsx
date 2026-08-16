@@ -5,7 +5,7 @@ import { CalendarRoute, DetailRoute, DiscoverRoute, GlobalSearchRoute, HomeRoute
 import { PlaybackHost } from './components/PlaybackHost';
 import { AppShell } from './components/AppShell';
 import { AppBootstrap } from './components/AppBootstrap';
-import { platformListen } from './platform/browser';
+import { isBrowserTarget, platformListen } from './platform/browser';
 import { platformInvoke as invoke } from './platform/invoke';
 import { setBrowsingDiscordPresence } from './core/discordPresence';
 import { appStyles, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
@@ -138,7 +138,7 @@ export default function App() {
   }, [openEpisodeSourcePicker]);
 
   const nativeEvents = useNativePlayerEvents(flushProgressOnQuit);
-  const isWebTarget = import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
+  const isWebTarget = isBrowserTarget();
   const nativePlayerActive = isWebTarget ? Boolean(playerUrl) : nativeEvents.nativePlayerActive;
   const softwareVideoActive = isWebTarget ? false : nativeEvents.softwareVideoActive;
 
@@ -529,7 +529,7 @@ export default function App() {
       <UpdateModal state={updateModalState} onClose={() => setUpdateModalState({ phase: 'idle' })} />
   </>;
   const playback = (
-      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} title={playerTitle} subtitles={playerSubtitles} onClose={closePlayer} onFirstFrame={notifyFirstFrame} /> : <PlaybackHost
+      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} title={playerTitle} subtitles={playerSubtitles} contentId={playerMetaId} contentType={playerEpisode ? 'series' : 'movie'} videoId={playerEpisode?.id} onClose={closePlayer} onFirstFrame={notifyFirstFrame} /> : <PlaybackHost
         active={nativePlayerActive}
         loading={playerLoadingOverlay}
         closePlayer={closePlayer}

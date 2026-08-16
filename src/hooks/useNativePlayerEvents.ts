@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { platformListen as listen } from '../platform/browser';
+import { isBrowserTarget, platformListen as listen } from '../platform/browser';
 import { platformInvoke as invoke } from '../platform/invoke';
 import { notify } from '../core/notifications';
 import { t } from '../i18n';
@@ -12,7 +12,7 @@ export function useNativePlayerEvents(flushProgressOnQuit: () => Promise<void>) 
   const [nativePlayerActive, setNativePlayerActive] = useState(false);
   const [softwareVideoActive, setSoftwareVideoActive] = useState(false);
 
-  if (import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos') {
+  if (isBrowserTarget()) {
     return { nativePlayerActive: false, setNativePlayerActive, softwareVideoActive: false, setSoftwareVideoActive };
   }
 

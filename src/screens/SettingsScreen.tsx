@@ -47,6 +47,7 @@ import { PluginsSection } from '../components/settings/PluginsSection';
 import { DownloadsSection } from '../components/settings/DownloadsSection';
 import { AddonAddedDialog } from '../components/AddonAddedDialog';
 import { Toast } from '../components/Toast';
+import { isBrowserTarget } from '../platform/browser';
 
 async function settingsFetchJson(url: string): Promise<unknown> {
   const response = await httpFetchText(url);
@@ -152,7 +153,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
           void savePrefs(detected);
         }).catch(() => undefined);
       }
-      if (import.meta.env.VITE_FLUXA_TARGET !== 'web' && import.meta.env.VITE_FLUXA_TARGET !== 'webos') {
+      if (!isBrowserTarget()) {
         void invoke('player_set_seek_thumbnail_enabled', { enabled: merged.seekThumbnailEnabled });
       }
     });

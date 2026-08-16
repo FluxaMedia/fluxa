@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { platformConvertFileSrc, platformInvoke as invoke } from '../platform/invoke';
+import { isBrowserTarget } from '../platform/browser';
 
 const resolved = new Map<string, Promise<string>>();
 
 function resolveLocalSrc(url: string): Promise<string> {
-  if (import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos') {
+  if (isBrowserTarget()) {
     return Promise.resolve(url);
   }
   let promise = resolved.get(url);

@@ -51,6 +51,7 @@ import { useExternalPlayerTracking, type ExternalPlayerSession, type ExternalPla
 import { AsyncScope } from '../core/asyncScope';
 import { useWebPlayer, type WebPlayerResult } from './useWebPlayer';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
+import { isBrowserTarget } from '../platform/browser';
 
 function playbackErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
@@ -612,7 +613,7 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
 }
 
 export function usePlayer(options: UsePlayerOptions): UsePlayerResult | WebPlayerResult {
-  if (import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos') {
+  if (isBrowserTarget()) {
     return useWebPlayer(options);
   }
   return useDesktopPlayer(options);
