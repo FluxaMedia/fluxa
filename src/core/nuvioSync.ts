@@ -96,12 +96,17 @@ function profileStorageSuffix(profile: UserProfile): string {
   return profile.id.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
+function nuvioSyncScope(profile: UserProfile): string {
+  const identity = profile.nuvioUserId?.trim() || profile.nuvioEmail?.trim() || profile.id;
+  return `${identity}#${profile.nuvioProfileIndex ?? 1}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 function deltaCursorKey(profile: UserProfile, resource: 'library' | 'progress' | 'history'): string {
-  return `nuvio_${resource}_event_cursor_${profileStorageSuffix(profile)}`;
+  return `nuvio_${resource}_event_cursor_${nuvioSyncScope(profile)}`;
 }
 
 function deltaCacheKey(profile: UserProfile, resource: 'library' | 'progress' | 'history'): string {
-  return `nuvio_${resource}_remote_cache_${profileStorageSuffix(profile)}`;
+  return `nuvio_${resource}_remote_cache_${nuvioSyncScope(profile)}`;
 }
 
 async function pullAllProgressDelta(token: string, profileId: number, cursor: number): Promise<NuvioWatchProgressDeltaEvent[]> {
