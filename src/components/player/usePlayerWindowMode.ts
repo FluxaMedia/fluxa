@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
-import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
+import type { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
 import { setSuppressWindowGeometrySave } from '../../core/windowGeometry';
 import { isBrowserTarget } from '../../platform/browser';
 
@@ -13,14 +12,21 @@ export function usePlayerWindowMode(resetActivity: () => void) {
 
   useEffect(() => {
     if (isBrowserTarget()) return undefined;
-    const win = getCurrentWindow();
-    void win.isFullscreen().then((fullscreen) => { isFullscreenRef.current = fullscreen; }).catch(() => undefined);
     let unlisten: (() => void) | undefined;
-    void win.listen('tauri://resize', () => {
+    let disposed = false;
+    void (async () => {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const win = getCurrentWindow();
       void win.isFullscreen().then((fullscreen) => { isFullscreenRef.current = fullscreen; }).catch(() => undefined);
-      resetActivity();
-    }).then((stop) => { unlisten = stop; }).catch(() => undefined);
-    return () => unlisten?.();
+      const stop = await win.listen('tauri://resize', () => {
+        void win.isFullscreen().then((fullscreen) => { isFullscreenRef.current = fullscreen; }).catch(() => undefined);
+        resetActivity();
+      }).catch(() => undefined);
+      if (!stop) return;
+      if (disposed) stop();
+      else unlisten = stop;
+    })();
+    return () => { disposed = true; unlisten?.(); };
   }, [resetActivity]);
 
   const setPlayerFullscreen = useCallback(async (next: boolean) => {
@@ -30,6 +36,7 @@ export function usePlayerWindowMode(resetActivity: () => void) {
       else if (document.fullscreenElement) await document.exitFullscreen();
       return;
     }
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
     await getCurrentWindow().setFullscreen(next);
   }, []);
 
@@ -39,6 +46,8 @@ export function usePlayerWindowMode(resetActivity: () => void) {
 
   const toggleMiniPlayer = useCallback(async () => {
     if (isBrowserTarget()) return;
+    const { currentMonitor, getCurrentWindow } = await import('@tauri-apps/api/window');
+    const { PhysicalPosition, PhysicalSize } = await import('@tauri-apps/api/dpi');
     const win = getCurrentWindow();
     if (!miniPlayerActive) {
       if (isFullscreenRef.current) await setPlayerFullscreen(false);
@@ -80,11 +89,14 @@ export function usePlayerWindowMode(resetActivity: () => void) {
   useEffect(() => () => {
     if (isBrowserTarget()) return;
     if (!miniPlayerActiveRef.current) return;
-    const win = getCurrentWindow();
     setSuppressWindowGeometrySave(false);
-    void win.setAlwaysOnTop(false).catch(() => undefined);
-    if (preMiniPlayerSizeRef.current) void win.setSize(preMiniPlayerSizeRef.current).catch(() => undefined);
-    if (preMiniPlayerPosRef.current) void win.setPosition(preMiniPlayerPosRef.current).catch(() => undefined);
+    void (async () => {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const win = getCurrentWindow();
+      void win.setAlwaysOnTop(false).catch(() => undefined);
+      if (preMiniPlayerSizeRef.current) void win.setSize(preMiniPlayerSizeRef.current).catch(() => undefined);
+      if (preMiniPlayerPosRef.current) void win.setPosition(preMiniPlayerPosRef.current).catch(() => undefined);
+    })();
   }, []);
 
   return { miniPlayerActive, isFullscreenRef, setPlayerFullscreen, toggleFullscreen, toggleMiniPlayer };

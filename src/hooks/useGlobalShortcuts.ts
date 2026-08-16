@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { NavRoute } from '../components/NavSidebar';
 import { toggleWindowFullscreen, watchWindowGeometry } from '../core/windowGeometry';
 import { comboFromEvent, findActionForCombo, loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from '../core/shortcuts';
 import { focusNearestCard, isNavCard } from '../core/spatialNav';
+import { isBrowserTarget } from '../platform/browser';
 
 export function useGlobalShortcuts({
   nativePlayerActive,
@@ -14,7 +14,7 @@ export function useGlobalShortcuts({
   navigateRoute: (route: NavRoute) => void;
   goBack: () => void;
 }) {
-  const isWebTarget = import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
+  const isWebTarget = isBrowserTarget();
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   const [shortcutOverrides, setShortcutOverrides] = useState<ShortcutOverrides>({});
   const windowFullscreenRef = useRef(false);
@@ -29,7 +29,8 @@ export function useGlobalShortcuts({
       windowFullscreenRef.current = Boolean(document.fullscreenElement);
       return;
     }
-    getCurrentWindow().isFullscreen()
+    void import('@tauri-apps/api/window')
+      .then(({ getCurrentWindow }) => getCurrentWindow().isFullscreen())
       .then((isFullscreen) => { windowFullscreenRef.current = isFullscreen; })
       .catch(() => undefined);
   }, [isWebTarget]);
@@ -41,13 +42,14 @@ export function useGlobalShortcuts({
 
   useEffect(() => {
     if (isWebTarget) return undefined;
-    const win = getCurrentWindow();
     let unlisten: (() => void) | null = null;
+    let disposed = false;
     refreshWindowFullscreen();
-    win.listen('tauri://resize', refreshWindowFullscreen)
-      .then((fn) => { unlisten = fn; })
+    void import('@tauri-apps/api/window')
+      .then(({ getCurrentWindow }) => getCurrentWindow().listen('tauri://resize', refreshWindowFullscreen))
+      .then((fn) => { if (disposed) fn(); else unlisten = fn; })
       .catch(() => undefined);
-    return () => { unlisten?.(); };
+    return () => { disposed = true; unlisten?.(); };
   }, [isWebTarget, refreshWindowFullscreen]);
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export function useGlobalShortcuts({
         e.preventDefault();
         windowFullscreenRef.current = false;
         if (isWebTarget) void document.exitFullscreen().catch(() => undefined).finally(refreshWindowFullscreen);
-        else void getCurrentWindow().setFullscreen(false).catch(() => undefined).finally(refreshWindowFullscreen);
+        else void import('@tauri-apps/api/window').then(({ getCurrentWindow }) => getCurrentWindow().setFullscreen(false)).catch(() => undefined).finally(refreshWindowFullscreen);
         return;
       }
       const target = e.target as HTMLElement | null;

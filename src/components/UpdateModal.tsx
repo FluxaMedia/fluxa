@@ -1,6 +1,5 @@
 import React from 'react';
-import { check as checkUpdate, type Update } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-process';
+import type { Update } from '@tauri-apps/plugin-updater';
 import { t } from '../i18n';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 
@@ -23,6 +22,7 @@ export async function startUpdateCheck(
 ): Promise<void> {
   setState({ phase: 'checking' });
   try {
+    const { check: checkUpdate } = await import('@tauri-apps/plugin-updater');
     const update = await checkUpdate();
     if (update?.available) {
       setState({ phase: 'available', update });
@@ -53,6 +53,7 @@ export async function installUpdate(
         setState({ phase: 'installing' });
       }
     });
+    const { relaunch } = await import('@tauri-apps/plugin-process');
     await relaunch();
   } catch {
     setState({ phase: 'error', message: t('update.install_failed') });

@@ -1,5 +1,3 @@
-import { availableMonitors, getCurrentWindow } from '@tauri-apps/api/window';
-import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
 import { storageRead, storageWrite } from './engine';
 import { isBrowserTarget } from '../platform/browser';
 
@@ -19,6 +17,8 @@ export async function restoreWindowGeometry(): Promise<void> {
   if (isBrowserTarget()) return;
   const geometry = await storageRead<WindowGeometry>('windowGeometry');
   if (!geometry) return;
+  const { availableMonitors, getCurrentWindow } = await import('@tauri-apps/api/window');
+  const { PhysicalPosition, PhysicalSize } = await import('@tauri-apps/api/dpi');
   const win = getCurrentWindow();
   try {
     if (await win.isFullscreen()) return;
@@ -53,6 +53,7 @@ export async function toggleWindowFullscreen(): Promise<void> {
     else await document.documentElement.requestFullscreen?.();
     return;
   }
+  const { getCurrentWindow } = await import('@tauri-apps/api/window');
   const win = getCurrentWindow();
   try {
     const isFullscreen = await win.isFullscreen();
@@ -62,29 +63,42 @@ export async function toggleWindowFullscreen(): Promise<void> {
 
 export function watchWindowGeometry(): () => void {
   if (isBrowserTarget()) return () => {};
-  const win = getCurrentWindow();
   let timer: ReturnType<typeof setTimeout> | null = null;
-
-  const save = () => {
-    if (suppressed) return;
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(async () => {
-      try {
-        if (await win.isFullscreen()) return;
-        const size = await win.outerSize();
-        if (size.width < MIN_SAVED_WINDOW_WIDTH || size.height < MIN_SAVED_WINDOW_HEIGHT) return;
-        const pos = await win.outerPosition();
-        await storageWrite('windowGeometry', { width: size.width, height: size.height, x: pos.x, y: pos.y });
-      } catch { /* ignore */ }
-    }, 500);
-  };
-
   let unlistenResize: (() => void) | null = null;
   let unlistenMove: (() => void) | null = null;
-  void win.onResized(save).then((f) => { unlistenResize = f; });
-  void win.onMoved(save).then((f) => { unlistenMove = f; });
+  let disposed = false;
+
+  void (async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const win = getCurrentWindow();
+
+    const save = () => {
+      if (suppressed) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(async () => {
+        try {
+          if (await win.isFullscreen()) return;
+          const size = await win.outerSize();
+          if (size.width < MIN_SAVED_WINDOW_WIDTH || size.height < MIN_SAVED_WINDOW_HEIGHT) return;
+          const pos = await win.outerPosition();
+          await storageWrite('windowGeometry', { width: size.width, height: size.height, x: pos.x, y: pos.y });
+        } catch { /* ignore */ }
+      }, 500);
+    };
+
+    const stopResize = await win.onResized(save);
+    const stopMove = await win.onMoved(save);
+    if (disposed) {
+      stopResize();
+      stopMove();
+      return;
+    }
+    unlistenResize = stopResize;
+    unlistenMove = stopMove;
+  })();
 
   return () => {
+    disposed = true;
     if (timer) clearTimeout(timer);
     unlistenResize?.();
     unlistenMove?.();
