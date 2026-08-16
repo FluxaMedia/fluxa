@@ -28,6 +28,16 @@ export type WatchTogetherConnection =
   | { mode: 'websocket'; serverUrl: string; secret?: string }
   | { mode: 'supabase'; projectUrl: string; anonKey: string };
 
+type SupabaseConnection = Extract<WatchTogetherConnection, { mode: 'supabase' }>;
+type WebSocketConnection = Extract<WatchTogetherConnection, { mode: 'websocket' }>;
+
+interface WatchRoom {
+  code: string;
+  host_id: string;
+  max_members: number;
+  expires_at: string;
+}
+
 interface ClientOptions {
   onState: (state: WatchTogetherState) => void;
 }
@@ -53,6 +63,9 @@ interface Transport {
   send(message: string): void;
   close(): Promise<void>;
 }
+
+const websocketHeartbeatMs = 1000;
+const supabaseHeartbeatMs = 10000;
 
 const initialState: WatchTogetherState = {
   connectionState: 'disconnected',
@@ -104,38 +117,35 @@ class WebSocketTransport implements Transport {
 interface PresenceMember {
   id: string;
   name: string;
-  isHost: boolean;
   buffering: boolean;
 }
 
 class SupabaseRealtimeTransport implements Transport {
-  private client: SupabaseClient;
   private channel: RealtimeChannel | null = null;
-  private readonly clientId = crypto.randomUUID();
 
   constructor(
-    private readonly projectUrl: string,
-    private readonly anonKey: string,
+    private readonly client: SupabaseClient,
     private readonly roomCode: string,
+    private readonly userId: string,
     private readonly displayName: string,
-    private readonly isHost: boolean,
-    private readonly onMessage: (message: string) => void,
+    private readonly onMessage: (message: string, senderId: string | null) => void,
     private readonly onMembers: (members: PresenceMember[]) => void,
-  ) {
-    this.client = createClient(projectUrl, anonKey, { realtime: { params: { eventsPerSecond: 20 } } });
-  }
+  ) {}
 
   async connect() {
-    const channel = this.client.channel(`watch-together:${this.roomCode}`, { config: { broadcast: { self: false }, presence: { key: this.clientId } } });
+    const channel = this.client.channel(`watch-together:${this.roomCode}`, {
+      config: { private: true, broadcast: { self: false }, presence: { key: this.userId } },
+    });
     this.channel = channel;
     channel.on('broadcast', { event: 'message' }, (event) => {
       const message = event.payload?.message;
-      if (typeof message === 'string') this.onMessage(message);
+      const senderId = event.payload?.senderId;
+      if (typeof message === 'string') this.onMessage(message, typeof senderId === 'string' ? senderId : null);
     });
     const updateMembers = () => {
       const members = Object.entries(channel.presenceState()).flatMap(([id, values]) => {
         const value = values[0] as Record<string, unknown> | undefined;
-        return value ? [{ id, name: String(value.name ?? 'Guest'), isHost: Boolean(value.isHost), buffering: Boolean(value.buffering) }] : [];
+        return value ? [{ id, name: String(value.name ?? 'Guest'), buffering: Boolean(value.buffering) }] : [];
       });
       this.onMembers(members);
     };
@@ -145,7 +155,7 @@ class SupabaseRealtimeTransport implements Transport {
     await new Promise<void>((resolve, reject) => {
       channel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          void channel.track({ name: this.displayName, isHost: this.isHost, buffering: false }).then(() => {
+          void channel.track({ name: this.displayName, buffering: false }).then(() => {
             updateMembers();
             resolve();
           }).catch(reject);
@@ -157,7 +167,7 @@ class SupabaseRealtimeTransport implements Transport {
   }
 
   send(message: string) {
-    void this.channel?.send({ type: 'broadcast', event: 'message', payload: { message } });
+    void this.channel?.send({ type: 'broadcast', event: 'message', payload: { message, senderId: this.userId } });
   }
 
   async close() {
@@ -168,13 +178,17 @@ class SupabaseRealtimeTransport implements Transport {
 
 export class WatchTogetherClient {
   private transport: Transport | null = null;
+  private supabase: SupabaseClient | null = null;
+  private mode: 'websocket' | 'supabase' = 'websocket';
   private video: HTMLVideoElement | null = null;
   private content: WatchTogetherContent | null = null;
   private clientId: string | null = null;
+  private hostId: string | null = null;
   private state: WatchTogetherState = initialState;
   private lastSequence = -1;
   private clockOffsetMs = 0;
   private lastSentAt = 0;
+  private minSendIntervalMs = websocketHeartbeatMs;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private options: ClientOptions;
 
@@ -193,24 +207,40 @@ export class WatchTogetherClient {
   }
 
   async create(connection: WatchTogetherConnection, displayName: string, secret = '') {
-    const roomCode = connection.mode === 'supabase' ? await this.generateRoomCode() : null;
-    await this.connect(connection, roomCode, displayName, true, secret);
-    if (connection.mode === 'websocket') await this.sendCoreMessage('watchTogetherCreate', { displayName });
-    else {
-      this.setState({ roomCode, isHost: true, members: [{ id: this.clientId ?? '', name: displayName, isHost: true, buffering: false }] });
-      await this.sendState(true);
+    if (connection.mode === 'websocket') {
+      await this.connectWebSocket(connection, secret);
+      await this.sendCoreMessage('watchTogetherCreate', { displayName });
+      return;
     }
+    this.stop();
+    const { client, userId } = await this.signIn(connection);
+    const room = await this.callRoomFunction(client, 'create_watch_room', { display_name: displayName });
+    await this.connectSupabase(client, userId, room, displayName);
+    await this.sendState(true);
   }
 
   async join(connection: WatchTogetherConnection, roomCode: string, displayName: string, secret = '') {
-    await this.connect(connection, roomCode, displayName, false, secret);
-    if (connection.mode === 'websocket') await this.sendCoreMessage('watchTogetherJoin', { roomCode, displayName });
-    else this.setState({ roomCode, isHost: false });
+    if (connection.mode === 'websocket') {
+      await this.connectWebSocket(connection, secret);
+      await this.sendCoreMessage('watchTogetherJoin', { roomCode, displayName });
+      return;
+    }
+    this.stop();
+    const { client, userId } = await this.signIn(connection);
+    const room = await this.callRoomFunction(client, 'join_watch_room', { code: roomCode, display_name: displayName });
+    await this.connectSupabase(client, userId, room, displayName);
   }
 
   leave() {
     if (!this.transport) {
       this.stop();
+      return;
+    }
+    if (this.mode === 'supabase') {
+      const client = this.supabase;
+      const code = this.state.roomCode;
+      if (client && code) void client.rpc('leave_watch_room', { code }).then(() => this.stop(), () => this.stop());
+      else this.stop();
       return;
     }
     if (this.state.roomCode) void this.sendCoreMessage('watchTogetherLeave', {}).finally(() => this.stop());
@@ -230,26 +260,66 @@ export class WatchTogetherClient {
     return this.state;
   }
 
-  private async connect(connection: WatchTogetherConnection, roomCode: string | null, displayName: string, isHost: boolean, secret: string) {
+  private async signIn(connection: SupabaseConnection) {
+    const projectUrl = connection.projectUrl.trim();
+    const anonKey = connection.anonKey.trim();
+    if (!/^https:\/\//.test(projectUrl) || !anonKey) throw new Error('Supabase project URL and anon key are required');
+    const client = createClient(projectUrl, anonKey, { realtime: { params: { eventsPerSecond: 10 } } });
+    const { data, error } = await client.auth.getSession();
+    if (error) throw new Error(error.message);
+    if (!data.session) throw new Error('Sign in before starting Watch Together');
+    await client.realtime.setAuth(data.session.access_token);
+    return { client, userId: data.session.user.id };
+  }
+
+  private async callRoomFunction(client: SupabaseClient, name: string, args: Record<string, unknown>) {
+    const { data, error } = await client.rpc(name, args);
+    if (error) throw new Error(error.message);
+    const room = (Array.isArray(data) ? data[0] : data) as WatchRoom | null;
+    if (!room?.code) throw new Error('Watch Together room unavailable');
+    return room;
+  }
+
+  private async connectWebSocket(connection: WebSocketConnection, secret: string) {
     this.stop();
+    this.mode = 'websocket';
+    this.minSendIntervalMs = websocketHeartbeatMs;
     this.setState({ connectionState: 'connecting', errorMessage: null });
-    if (connection.mode === 'websocket') {
-      const input = connection.serverUrl.trim().replace(/^http:/, 'ws:').replace(/^https:/, 'wss:').replace(/\/$/, '');
-      const endpoint = input.endsWith('/ws') ? input : `${input}/ws`;
-      if (!/^wss?:\/\//.test(endpoint)) throw new Error('Invalid Watch Together server URL');
-      this.transport = new WebSocketTransport(endpoint, secret, (message) => void this.handleMessage(message), () => this.handleClose());
-    } else {
-      if (!roomCode) throw new Error('Supabase room code is required');
-      if (!/^https:\/\//.test(connection.projectUrl.trim()) || !connection.anonKey.trim()) throw new Error('Supabase project URL and anon key are required');
-      this.clientId = crypto.randomUUID();
-      this.transport = new SupabaseRealtimeTransport(connection.projectUrl.trim(), connection.anonKey.trim(), roomCode, displayName, isHost, (message) => void this.handleMessage(message), (members) => this.handlePresence(members));
-    }
+    const input = connection.serverUrl.trim().replace(/^http:/, 'ws:').replace(/^https:/, 'wss:').replace(/\/$/, '');
+    const endpoint = input.endsWith('/ws') ? input : `${input}/ws`;
+    if (!/^wss?:\/\//.test(endpoint)) throw new Error('Invalid Watch Together server URL');
+    this.transport = new WebSocketTransport(endpoint, secret, (message) => void this.handleMessage(message, null), () => this.handleClose());
+    await this.startTransport(websocketHeartbeatMs);
+  }
+
+  private async connectSupabase(client: SupabaseClient, userId: string, room: WatchRoom, displayName: string) {
+    this.mode = 'supabase';
+    this.minSendIntervalMs = supabaseHeartbeatMs;
+    this.setState({ connectionState: 'connecting', errorMessage: null });
+    this.supabase = client;
+    this.clientId = userId;
+    this.hostId = room.host_id;
+    this.transport = new SupabaseRealtimeTransport(
+      client,
+      room.code,
+      userId,
+      displayName,
+      (message, senderId) => void this.handleMessage(message, senderId),
+      (members) => this.handlePresence(members),
+    );
+    await this.startTransport(supabaseHeartbeatMs);
+    this.setState({ roomCode: room.code, isHost: userId === room.host_id });
+  }
+
+  private async startTransport(heartbeatMs: number) {
+    const transport = this.transport;
+    if (!transport) throw new Error('Watch Together transport unavailable');
     try {
-      await this.transport.connect();
+      await transport.connect();
       this.setState({ connectionState: 'connected' });
-      this.heartbeat = setInterval(() => void this.sendHeartbeat(), 1000);
+      this.heartbeat = setInterval(() => void this.sendHeartbeat(), heartbeatMs);
     } catch (error) {
-      await this.transport.close();
+      await transport.close();
       this.transport = null;
       this.setState({ connectionState: 'error', errorMessage: error instanceof Error ? error.message : String(error) });
       throw error;
@@ -257,20 +327,26 @@ export class WatchTogetherClient {
   }
 
   private handlePresence(members: PresenceMember[]) {
-    const host = members.find((member) => member.isHost);
-    this.setState({ members, isHost: members.some((member) => member.id === this.clientId && member.isHost), roomCode: this.state.roomCode });
-    if (host && this.state.isHost && members.length > 1) void this.sendState(true);
+    const isHost = this.clientId !== null && this.clientId === this.hostId;
+    this.setState({
+      members: members.map((member) => ({ ...member, isHost: member.id === this.hostId })),
+      isHost,
+    });
+    if (isHost && members.length > 1) void this.sendState(true);
   }
 
-  private async handleMessage(text: string) {
+  private async handleMessage(text: string, senderId: string | null) {
+    if (this.mode === 'supabase' && this.hostId !== null && senderId !== this.hostId) return;
     const message = await coreInvoke<DecodedMessage>('watchTogetherDecode', JSON.stringify({ text, localContent: this.content }));
     if (!message) return;
     if (message.kind === 'room') {
       this.clientId = message.clientId ?? '';
+      this.hostId = message.hostId;
       const isHost = Boolean(message.hostId) && this.clientId === message.hostId;
       this.setState({ connectionState: 'connected', roomCode: message.roomCode ?? '', isHost, members: message.members, errorMessage: null });
       if (isHost) await this.sendState(true);
     } else if (message.kind === 'members') {
+      this.hostId = message.hostId;
       this.setState({ isHost: Boolean(message.hostId) && this.clientId === message.hostId, members: message.members });
     } else if (message.kind === 'content') {
       this.setState({ content: message.content });
@@ -308,7 +384,7 @@ export class WatchTogetherClient {
   }
 
   private async sendState(force: boolean) {
-    if (!this.video || !this.state.isHost || (!force && Date.now() - this.lastSentAt < 1000)) return;
+    if (!this.video || !this.state.isHost || (!force && Date.now() - this.lastSentAt < this.minSendIntervalMs)) return;
     this.lastSentAt = Date.now();
     await this.sendCoreMessage('watchTogetherPlaybackState', { snapshot: { positionMs: Math.round(this.video.currentTime * 1000), durationMs: Number.isFinite(this.video.duration) ? Math.round(this.video.duration * 1000) : 0, isPlaying: !this.video.paused, isBuffering: this.video.readyState < 3 }, content: this.content });
   }
@@ -328,7 +404,9 @@ export class WatchTogetherClient {
     this.stopHeartbeat();
     void this.transport?.close();
     this.transport = null;
+    this.supabase = null;
     this.clientId = null;
+    this.hostId = null;
     this.lastSequence = -1;
     this.setState({ ...initialState });
   }
@@ -348,13 +426,5 @@ export class WatchTogetherClient {
   private setState(next: Partial<WatchTogetherState>) {
     this.state = { ...this.state, ...next };
     this.options.onState(this.state);
-  }
-
-  private async generateRoomCode() {
-    const spec = await coreInvoke<{ alphabet: string; length: number }>('watchTogetherRoomCodeSpec', '{}');
-    if (!spec) throw new Error('Watch Together room code spec unavailable');
-    const bytes = new Uint8Array(spec.length);
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes, (byte) => spec.alphabet[byte % spec.alphabet.length]).join('');
   }
 }
