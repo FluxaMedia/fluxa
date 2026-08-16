@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Captions, ChevronLeft, Maximize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
+import { Captions, ChevronLeft, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import { t } from '../i18n';
 import { transcodeUrl } from '../platform/web/stream';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
@@ -13,6 +13,8 @@ import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
 import { applyWebOSMediaOption, hdrKindFrom, IS_WEBOS } from '../platform/webos';
 import { isTextEntryTarget, tvActionFor } from '../platform/webosKeys';
 import { useIsTouch } from '../platform/viewport';
+import { enterFullscreen, exitFullscreen } from '../platform/fullscreenOrientation';
+import { useWakeLock } from '../hooks/useWakeLock';
 import { OFFICIAL_WATCH_TOGETHER_URL } from '../appConstants';
 
 function isSupabaseInstance(instanceUrl: string): boolean {
@@ -59,10 +61,16 @@ const S = {
 
 const iconButton = { width: '2.75rem', height: '2.75rem', border: 'none', borderRadius: '0.5rem', background: 'none', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' } as const;
 
+const DOUBLE_TAP_MS = 320;
+
+const pipSupported = typeof document !== 'undefined' && document.pictureInPictureEnabled === true;
+
 export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent, skipSegments = [], nextEpisode, onPlayNextEpisode, autoSkip = false, autoPlayNext = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
   const isTouch = useIsTouch();
+  const lastTapRef = useRef<{ at: number; side: 'left' | 'right' } | null>(null);
+  const [seekFlash, setSeekFlash] = useState<{ side: 'left' | 'right'; at: number } | null>(null);
   const fallbackUsedRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [paused, setPaused] = useState(false);
@@ -165,6 +173,39 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
     return undefined;
   }, [autoPlayNext, nextEpisode, onPlayNextEpisode, duration, currentTime]);
 
+  useWakeLock(!paused);
+
+  useEffect(() => {
+    const session = typeof navigator !== 'undefined' ? navigator.mediaSession : undefined;
+    if (!session || typeof MediaMetadata === 'undefined') return undefined;
+    session.metadata = new MediaMetadata({ title: title ?? 'Fluxa', artist: 'Fluxa' });
+    const nudge = (delta: number) => () => {
+      const video = videoRef.current;
+      if (!video) return;
+      video.currentTime = Math.max(0, Math.min(video.duration || Infinity, video.currentTime + delta));
+    };
+    session.setActionHandler('play', () => { void videoRef.current?.play(); });
+    session.setActionHandler('pause', () => videoRef.current?.pause());
+    session.setActionHandler('seekbackward', nudge(-10));
+    session.setActionHandler('seekforward', nudge(10));
+    session.setActionHandler('seekto', (details) => {
+      const video = videoRef.current;
+      if (video && details.seekTime != null) video.currentTime = details.seekTime;
+    });
+    session.setActionHandler('nexttrack', nextEpisode && onPlayNextEpisode ? () => onPlayNextEpisode() : null);
+    return () => {
+      for (const action of ['play', 'pause', 'seekbackward', 'seekforward', 'seekto', 'nexttrack'] as const) {
+        session.setActionHandler(action, null);
+      }
+      session.metadata = null;
+    };
+  }, [title, nextEpisode, onPlayNextEpisode]);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaSession) return;
+    navigator.mediaSession.playbackState = paused ? 'paused' : 'playing';
+  }, [paused]);
+
   const recordSnapshot = useCallback((video: HTMLVideoElement) => {
     if (!snapshotRef) return;
     snapshotRef.current = { timePos: video.currentTime, duration: video.duration };
@@ -266,6 +307,20 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
   const handleSurfaceClick = (event: React.MouseEvent) => {
     if (!isTouch) { resetActivity(); return; }
     if ((event.target as HTMLElement).closest('button, input')) { resetActivity(); return; }
+
+    const now = Date.now();
+    const side = event.clientX < window.innerWidth / 2 ? 'left' : 'right';
+    const last = lastTapRef.current;
+    lastTapRef.current = { at: now, side };
+    if (last && now - last.at < DOUBLE_TAP_MS && last.side === side) {
+      lastTapRef.current = null;
+      const delta = side === 'left' ? -10 : 10;
+      seek(delta);
+      setSeekFlash({ side, at: now });
+      window.setTimeout(() => setSeekFlash((current) => (current?.at === now ? null : current)), 550);
+      return;
+    }
+
     if (controlsVisible) {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       setControlsVisible(false);
@@ -277,8 +332,16 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
   const toggleFullscreen = () => {
     const root = videoRef.current?.parentElement;
     if (!root) return;
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void root.requestFullscreen?.();
+    if (document.fullscreenElement) void exitFullscreen();
+    else void enterFullscreen(root, isTouch);
+    resetActivity();
+  };
+
+  const togglePictureInPicture = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (document.pictureInPictureElement) void document.exitPictureInPicture().catch(() => undefined);
+    else void video.requestPictureInPicture().catch(() => undefined);
     resetActivity();
   };
 
@@ -318,6 +381,30 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
         style={{ width: '100%', height: '100%', flex: 1, objectFit: 'contain', minHeight: 0 }}
       />
       <canvas ref={subtitleCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+      {seekFlash && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            [seekFlash.side]: '15%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            padding: '0.75rem 1rem',
+            borderRadius: '62.4375rem',
+            background: 'rgba(0,0,0,0.55)',
+            color: '#fff',
+            fontSize: '0.875rem',
+            fontWeight: 800,
+            pointerEvents: 'none',
+            animation: 'fadeIn 0.12s ease-out',
+          }}
+        >
+          {seekFlash.side === 'left' ? <RotateCcw size={18} /> : <RotateCw size={18} />}
+          10s
+        </div>
+      )}
       {(activeSegment || (nextCountdown !== null && nextEpisode)) && (
         <div style={{ position: 'absolute', right: '1.25rem', bottom: '5.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', zIndex: 2 }}>
           {activeSegment && (
@@ -369,6 +456,9 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
               <button type="button" onClick={onPlayNextEpisode} style={{ ...iconButton, width: 'auto', padding: '0 0.7rem', fontSize: '0.75rem', fontWeight: 700 }} title={t('auto.next_episode')}>
                 {t('auto.next_episode')}
               </button>
+            )}
+            {pipSupported && (
+              <button type="button" onClick={togglePictureInPicture} style={iconButton} title={t('player.picture_in_picture')}><PictureInPicture2 size={21} /></button>
             )}
             <button type="button" onClick={toggleFullscreen} style={iconButton} title={t('player.fullscreen')}><Maximize size={21} /></button>
           </div>

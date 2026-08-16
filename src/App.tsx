@@ -14,6 +14,7 @@ import { setBrowsingDiscordPresence } from './core/discordPresence';
 import { appStyles, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
 import { useNativePlayerEvents } from './hooks/useNativePlayerEvents';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
+import { useEdgeSwipeBack } from './hooks/useEdgeSwipeBack';
 import { useDetailNavigation } from './hooks/useDetailNavigation';
 import { useAppLayoutPrefs } from './hooks/useAppLayoutPrefs';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -239,6 +240,13 @@ export default function App() {
   }, [detailMeta, activeRoute, navigateRoute, closePlayer, resetDetail]);
 
   const { searchFocusSignal, setSearchFocusSignal } = useGlobalShortcuts({ nativePlayerActive, navigateRoute, goBack });
+
+  const swipeBack = useCallback(() => {
+    if (detailMeta || activeRoute === 'settings' || activeRoute === 'search') { goBack(); return; }
+    if (activeRoute !== 'home') navigateRoute('home');
+  }, [detailMeta, activeRoute, goBack, navigateRoute]);
+
+  useEdgeSwipeBack(isMobile && !nativePlayerActive && (detailMeta !== null || activeRoute !== 'home'), swipeBack);
 
   const dispatch = useCallback(async (actionJson: string) => {
     const profileRevision = profileScopeRef.current.capture();

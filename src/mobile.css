@@ -293,8 +293,22 @@ html[data-mobile="true"] .settings-screen {
   padding-top: calc(3.75rem + var(--mobile-safe-top)) !important;
 }
 
-html[data-mobile="true"] .ui-popover {
+html[data-mobile="true"] .ui-popover:not(.ui-sheet) {
   max-width: calc(100vw - 1.5rem) !important;
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(8%); opacity: 0.6; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.ui-sheet {
+  animation: sheetUp 0.18s ease-out;
+}
+
+.ui-sheet button,
+.ui-sheet [role="button"] {
+  min-height: 2.75rem;
 }
 
 html[data-mobile="true"] .web-player-controls {

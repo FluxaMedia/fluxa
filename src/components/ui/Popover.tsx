@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
+import { useIsMobile } from '../../platform/viewport';
 
 export const POPOVER_SURFACE: CSSProperties = {
   background: '#1A1A1A',
@@ -37,9 +38,10 @@ export function Popover({
 }: PopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number; anchorWidth?: number } | null>(null);
+  const asSheet = useIsMobile();
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || asSheet) return;
     const compute = () => {
       const panel = panelRef.current;
       const pw = panel?.offsetWidth ?? 0;
@@ -79,7 +81,7 @@ export function Popover({
       window.removeEventListener('resize', compute);
       observer?.disconnect();
     };
-  }, [open, anchorRef, point?.x, point?.y, placement, gap, matchWidth]);
+  }, [open, asSheet, anchorRef, point?.x, point?.y, placement, gap, matchWidth]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -103,6 +105,36 @@ export function Popover({
   }, [open, onClose, anchorRef]);
 
   if (!open) return null;
+
+  if (asSheet) {
+    return createPortal(
+      <div
+        className="ui-sheet-backdrop"
+        onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex, display: 'flex', alignItems: 'flex-end' }}
+      >
+        <div
+          ref={panelRef}
+          className="ui-popover ui-sheet"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            ...POPOVER_SURFACE,
+            width: '100%',
+            maxHeight: '80dvh',
+            overflowY: 'auto',
+            borderRadius: '1rem 1rem 0 0',
+            borderBottom: 'none',
+            padding,
+            paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))',
+          }}
+        >
+          {children}
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div

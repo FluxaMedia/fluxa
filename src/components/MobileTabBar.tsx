@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookMarked, Calendar, Compass, Home, Settings } from 'lucide-react';
 import { t } from '../i18n';
+import { hapticTap } from '../platform/haptics';
 import type { NavRoute } from './NavSidebar';
 
 const TABS: { route: NavRoute; icon: React.ElementType; labelKey: string }[] = [
@@ -27,7 +28,7 @@ export const MobileTabBar = React.memo(function MobileTabBar({
             key={route}
             className="mobile-tabbar-item"
             aria-current={active ? 'page' : undefined}
-            onClick={() => onNavigate(route)}
+            onClick={() => { hapticTap(); onNavigate(route); }}
             style={{ color: active ? '#FFFFFF' : 'rgba(255,255,255,0.42)' }}
           >
             <Icon size={21} strokeWidth={active ? 2.4 : 1.75} />
