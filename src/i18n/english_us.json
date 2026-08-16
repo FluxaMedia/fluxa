@@ -1703,4 +1703,15 @@
   "settings.external_player_choose_desc": "Select a player executable installed on this computer.",
   "player.external_player_failed": "The external player could not start playback.",
   "settings.system_default": "System default"
+  ,"player.watch_party":"Watch Party"
+  ,"player.watch_party_room":"Room"
+  ,"player.watch_party_server_prompt":"Watch Together server URL"
+  ,"player.watch_party_server_default":"wss://your-watch-server.example/ws"
+  ,"player.watch_party_secret_prompt":"Server secret (optional)"
+  ,"player.watch_party_name_prompt":"Display name"
+  ,"player.watch_party_guest":"Guest"
+  ,"player.watch_party_room_prompt":"Enter a room code to join, or leave empty to create a room"
+  ,"player.watch_party_transport_prompt":"Transport: websocket or supabase"
+  ,"player.watch_party_supabase_url_prompt":"Supabase project URL"
+  ,"player.watch_party_supabase_key_prompt":"Supabase public anon key"
 }

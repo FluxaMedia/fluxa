@@ -6,6 +6,8 @@ import { resolvePlaybackSubtitles } from '../core/subtitles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
 import { corePlaybackPreparePlan } from '../core/engine';
 import { appPrefs } from '../core/appPrefs';
+import { fetchPlaybackSkipSegments, type IntroSegmentResult } from '../core/effectRunner';
+import { corePlaybackIntroLookupContentId, coreResolveNextEpisode } from '../core/engine';
 import { persistLastPlaybackSource } from '../core/libraryStorage';
 import {
   persistPlaybackProgress,
@@ -40,6 +42,9 @@ export interface WebPlayerResult {
   playerSubtitles: PlayerSubtitleSource[];
   playerCodecs: { videoCodec: string | null; audioCodec: string | null } | null;
   playerResumeAt: number | undefined;
+  playerSkipSegments: IntroSegmentResult[];
+  playerNextEpisode: Video | null;
+  playNextEpisode: () => Promise<void>;
   playbackSnapshotRef: RefObject<PlaybackSnapshot | null>;
   reportPlaybackEvent: (event: ScrobbleEvent) => void;
   playerStreamHeaders: Record<string, string> | undefined;
@@ -70,6 +75,9 @@ export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUp
   const [playerLoadingOverlay, setPlayerLoadingOverlay] = useState<PlayerLoadingOverlayState | null>(null);
   const [playerPlaybackError, setPlayerPlaybackError] = useState<string | null>(null);
   const [playerResumeAt, setPlayerResumeAt] = useState<number>();
+  const [playerSkipSegments, setPlayerSkipSegments] = useState<IntroSegmentResult[]>([]);
+  const [playerNextEpisode, setPlayerNextEpisode] = useState<Video | null>(null);
+  const [skipSegmentCoverage, setSkipSegmentCoverage] = useState<Record<string, string[]>>({});
   const playingStreamRef = useRef<Stream | null>(null);
   const playingMetaRef = useRef<Meta | null>(null);
   const playingEpisodeRef = useRef<Video | null>(null);
@@ -80,6 +88,51 @@ export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUp
   const scrobbleStoppedRef = useRef(false);
 
   useEffect(() => { activeProfileRef.current = activeProfile; }, [activeProfile]);
+
+  const resolveSkipSegments = useCallback(async (meta?: Meta, episode?: Video | null) => {
+    setPlayerSkipSegments([]);
+    setSkipSegmentCoverage({});
+    const prefs = appPrefs(stateRef.current);
+    const useSkipSegments = prefs.useSkipSegments === true;
+    const useAnimeSkip = prefs.useAnimeSkip === true;
+    if ((!useSkipSegments && !useAnimeSkip) || !episode) return;
+    try {
+      const resolvedId = useSkipSegments && meta?.id ? await corePlaybackIntroLookupContentId(meta.id) : '';
+      const imdbId = resolvedId.startsWith('tt') ? resolvedId : '';
+      const tmdbId = !imdbId && /^\d+$/.test(resolvedId) ? Number(resolvedId) : undefined;
+      const { segments, coverage } = await fetchPlaybackSkipSegments({
+        imdbId,
+        tmdbId,
+        season: episode.season ?? 1,
+        episode: episode.episode ?? episode.number ?? 1,
+        title: meta?.name ?? '',
+        useSkipSegments,
+        useAnimeSkip,
+        animeSkipClientId: typeof prefs.animeSkipClientId === 'string' ? prefs.animeSkipClientId : undefined,
+      });
+      setPlayerSkipSegments(segments);
+      setSkipSegmentCoverage(coverage);
+    } catch {
+      setPlayerSkipSegments([]);
+    }
+  }, [stateRef]);
+
+  const resolveFollowingEpisode = useCallback(async (meta?: Meta, episode?: Video | null) => {
+    setPlayerNextEpisode(null);
+    if (!meta || !episode) return;
+    try {
+      const next = await coreResolveNextEpisode(
+        JSON.stringify(meta.videos ?? []),
+        episode.season ?? 1,
+        episode.episode ?? episode.number ?? 1,
+        Date.now(),
+        true,
+      );
+      setPlayerNextEpisode((next as Video | null) ?? null);
+    } catch {
+      setPlayerNextEpisode(null);
+    }
+  }, []);
 
   const saveProgress = useCallback(async () => {
     const snapshot = playbackSnapshotRef.current;
@@ -183,11 +236,20 @@ export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUp
       setPlayerSubtitles(resolvedSubtitles.subtitles);
       setPlayerCodecs(probe ? { videoCodec: probe.videoCodec, audioCodec: probe.audioCodec } : null);
       setPlayerLoadingOverlay(null);
+      void resolveSkipSegments(meta, episode);
+      void resolveFollowingEpisode(meta, episode);
     } catch (error) {
       setPlayerPlaybackError(error instanceof Error ? error.message : String(error));
       setPlayerLoadingOverlay((current) => current ? { ...current, error: error instanceof Error ? error.message : String(error) } : null);
     }
   }, []);
+
+  const playNextEpisode = useCallback(async () => {
+    const meta = playingMetaRef.current;
+    const stream = playingStreamRef.current;
+    if (!meta || !playerNextEpisode || !stream) return;
+    await handlePlay(stream, meta, playerNextEpisode);
+  }, [handlePlay, playerNextEpisode]);
 
   const closePlayer = useCallback(async () => {
     await saveProgress();
@@ -207,8 +269,9 @@ export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUp
 
   return {
     playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext: null, playerTitle, playerEpisodeTitle, playerEpisode,
-    playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerSubtitles, playerCodecs, playerResumeAt, playbackSnapshotRef, reportPlaybackEvent, playerStreamHeaders,
+    playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerSubtitles, playerCodecs, playerResumeAt, playerSkipSegments, playerNextEpisode,
+    playNextEpisode, playbackSnapshotRef, reportPlaybackEvent, playerStreamHeaders,
     playingStreamRef, playingMetaRef, playerPlaybackError, playerSubtitleWarning: null, dismissSubtitleWarning: () => {},
-    handlePlay, closePlayer, notifyFirstFrame: () => {}, flushProgressOnQuit: saveProgress, skipSegmentCoverage: {},
+    handlePlay, closePlayer, notifyFirstFrame: () => {}, flushProgressOnQuit: saveProgress, skipSegmentCoverage,
   };
 }

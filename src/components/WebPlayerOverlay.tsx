@@ -5,6 +5,9 @@ import { transcodeUrl } from '../platform/web/stream';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
 import type { PlaybackSnapshot, ScrobbleEvent } from '../core/playbackSession';
+import type { IntroSegmentResult } from '../core/effectRunner';
+import { skipLabelForType } from './player/PlayerOverlayPrimitives';
+import { appPrefs, prefBool } from '../core/appPrefs';
 import { WatchTogetherClient, type WatchTogetherConnection, type WatchTogetherContent, type WatchTogetherState } from '../core/watchTogether';
 import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
 import { applyWebOSMediaOption, hdrKindFrom, IS_WEBOS } from '../platform/webos';
@@ -23,6 +26,11 @@ interface Props {
   resumeAt?: number;
   snapshotRef?: React.RefObject<PlaybackSnapshot | null>;
   onPlaybackEvent?: (event: ScrobbleEvent) => void;
+  skipSegments?: IntroSegmentResult[];
+  nextEpisode?: { title?: string; season?: number; episode?: number; number?: number } | null;
+  onPlayNextEpisode?: () => void;
+  autoSkip?: boolean;
+  autoPlayNext?: boolean;
 }
 
 function formatTime(value: number) {
@@ -34,9 +42,13 @@ function formatTime(value: number) {
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}` : `${minutes}:${String(remainder).padStart(2, '0')}`;
 }
 
+const S = {
+  skipButton: { padding: '0.6rem 1rem', borderRadius: '0.45rem', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(20,25,34,0.92)', color: '#fff', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', pointerEvents: 'auto' },
+} as const;
+
 const iconButton = { width: '2.75rem', height: '2.75rem', border: 'none', borderRadius: '0.5rem', background: 'none', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' } as const;
 
-export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent }: Props) {
+export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent, skipSegments = [], nextEpisode, onPlayNextEpisode, autoSkip = false, autoPlayNext = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackUsedRef = useRef(false);
@@ -49,6 +61,8 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
   const [controlsVisible, setControlsVisible] = useState(true);
   const [selectedSubtitle, setSelectedSubtitle] = useState<number>(subtitles.length > 0 ? 0 : -1);
   const [subtitleMenuOpen, setSubtitleMenuOpen] = useState(false);
+  const [nextCountdown, setNextCountdown] = useState<number | null>(null);
+  const autoSkippedRef = useRef<Set<string>>(new Set());
   const [watchTogetherState, setWatchTogetherState] = useState<WatchTogetherState>({ connectionState: 'disconnected', roomCode: null, isHost: false, members: [], content: null, errorMessage: null });
   const watchTogetherRef = useRef<WatchTogetherClient | null>(null);
   const watchTogetherContent: WatchTogetherContent | null = contentId ? { id: contentId, contentType, videoId, title: title ?? '' } : null;
@@ -110,6 +124,38 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
   }, [subtitles]);
 
   useLibassSubtitles(videoRef, subtitleCanvasRef, subtitles, selectedSubtitle);
+
+  const activeSegment = skipSegments.find(
+    (segment) => currentTime >= segment.startTime && currentTime < segment.endTime,
+  ) ?? null;
+
+  const skipActiveSegment = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !activeSegment) return;
+    video.currentTime = activeSegment.endTime;
+  }, [activeSegment]);
+
+  useEffect(() => {
+    if (!autoSkip || !activeSegment) return;
+    const key = `${activeSegment.type}:${activeSegment.startTime}`;
+    if (autoSkippedRef.current.has(key)) return;
+    autoSkippedRef.current.add(key);
+    skipActiveSegment();
+  }, [autoSkip, activeSegment, skipActiveSegment]);
+
+  useEffect(() => { autoSkippedRef.current = new Set(); }, [url]);
+
+  useEffect(() => {
+    if (!autoPlayNext || !nextEpisode || !onPlayNextEpisode) return undefined;
+    const remaining = duration - currentTime;
+    if (!Number.isFinite(duration) || duration <= 0 || remaining > 15 || remaining < 0) {
+      setNextCountdown(null);
+      return undefined;
+    }
+    setNextCountdown(Math.max(0, Math.ceil(remaining)));
+    if (remaining <= 1) onPlayNextEpisode();
+    return undefined;
+  }, [autoPlayNext, nextEpisode, onPlayNextEpisode, duration, currentTime]);
 
   const recordSnapshot = useCallback((video: HTMLVideoElement) => {
     if (!snapshotRef) return;
@@ -253,6 +299,20 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
         style={{ width: '100%', height: '100%', flex: 1, objectFit: 'contain', minHeight: 0 }}
       />
       <canvas ref={subtitleCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+      {(activeSegment || (nextCountdown !== null && nextEpisode)) && (
+        <div style={{ position: 'absolute', right: '1.25rem', bottom: '5.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', zIndex: 2 }}>
+          {activeSegment && (
+            <button type="button" onClick={skipActiveSegment} style={S.skipButton}>
+              {skipLabelForType(activeSegment.type)}
+            </button>
+          )}
+          {nextCountdown !== null && nextEpisode && onPlayNextEpisode && (
+            <button type="button" onClick={onPlayNextEpisode} style={S.skipButton}>
+              {t('player.playing_in_seconds', String(nextCountdown))}
+            </button>
+          )}
+        </div>
+      )}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none', opacity: controlsVisible ? 1 : 0, transition: 'opacity 0.25s ease' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '0.875rem 0.75rem', background: 'linear-gradient(rgba(0,0,0,0.7), transparent)', pointerEvents: 'auto' }}>
           <button type="button" onClick={() => { void onClose(); }} style={{ ...iconButton, background: 'rgba(255,255,255,0.1)' }} title={t('player.back')}><ChevronLeft size={22} /></button>
@@ -285,6 +345,11 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
                   </div>
                 )}
               </div>
+            )}
+            {nextEpisode && onPlayNextEpisode && (
+              <button type="button" onClick={onPlayNextEpisode} style={{ ...iconButton, width: 'auto', padding: '0 0.7rem', fontSize: '0.75rem', fontWeight: 700 }} title={t('auto.next_episode')}>
+                {t('auto.next_episode')}
+              </button>
             )}
             <button type="button" onClick={toggleFullscreen} style={iconButton} title={t('player.fullscreen')}><Maximize size={21} /></button>
           </div>
