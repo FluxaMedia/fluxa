@@ -1,5 +1,6 @@
 import type React from 'react';
 import type { NavRoute } from './components/NavSidebar';
+import { isMobileLayout } from './platform/viewport';
 import type { AppState } from './core/types';
 
 export const OFFICIAL_FLUXA_SYNC_URL: string = '';
@@ -32,6 +33,7 @@ export const DEFAULT_STATE: AppState = {
 };
 
 export function computeAutoUiScale(): number {
+  if (isMobileLayout()) return 100;
   const width = window.screen.width || 1920;
   const raw = Math.round((width / 1920) * 100 / 5) * 5;
   return Math.min(150, Math.max(75, raw));

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-const MOBILE_QUERY = '(max-width: 820px)';
+const MOBILE_QUERY = '(max-width: 820px), (orientation: landscape) and (max-height: 480px)';
 const TOUCH_QUERY = '(pointer: coarse)';
 
 function query(value: string): MediaQueryList | null {

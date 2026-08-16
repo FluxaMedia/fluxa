@@ -81,7 +81,11 @@ html[data-mobile="true"] .global-search-expanded {
 }
 
 html[data-mobile="true"] .home-screen {
-  --hero-height: clamp(26rem, 74vh, 34rem) !important;
+  --hero-height: clamp(24rem, 64vh, 32rem) !important;
+}
+
+html[data-mobile="true"] .hero-indicators {
+  bottom: 3.25rem !important;
 }
 
 html[data-mobile="true"] .home-empty {
@@ -94,14 +98,14 @@ html[data-mobile="true"] .home-empty p:first-child {
 }
 
 html[data-mobile="true"] .home-shelves {
-  margin-top: -3.5rem !important;
+  margin-top: -2.5rem !important;
   padding-bottom: 2rem !important;
 }
 
 html[data-mobile="true"] .hero-panel {
   left: var(--mobile-gutter) !important;
   right: var(--mobile-gutter) !important;
-  bottom: 4.5rem !important;
+  bottom: 5rem !important;
   max-width: none !important;
 }
 
@@ -144,6 +148,7 @@ html[data-mobile="true"] .shelf-scroll {
 html[data-mobile="true"] .shelf-scroll {
   padding-bottom: 1rem !important;
   scroll-snap-type: x proximity;
+  scroll-padding-left: var(--mobile-gutter);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -254,6 +259,22 @@ html[data-mobile="true"] .library-header {
   padding: calc(3.75rem + var(--mobile-safe-top)) var(--mobile-gutter) 0.75rem !important;
 }
 
+html[data-mobile="true"] .library-tabs {
+  padding-left: var(--mobile-gutter) !important;
+  padding-right: var(--mobile-gutter) !important;
+}
+
+html[data-mobile="true"] .library-controls {
+  margin-left: 0 !important;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+html[data-mobile="true"] .library-controls > :first-child {
+  flex: 1 1 10rem;
+  width: auto !important;
+}
+
 html[data-mobile="true"] .library-scroll,
 html[data-mobile="true"] .library-history {
   padding-left: var(--mobile-gutter) !important;
@@ -333,5 +354,29 @@ html[data-mobile="true"] .calendar-modal-item > :first-child {
 @media (max-width: 820px) {
   html {
     touch-action: manipulation;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  html[data-mobile="true"] {
+    --mobile-tabbar-height: 3rem;
+  }
+
+  html[data-mobile="true"] .home-screen {
+    --hero-height: 20rem !important;
+  }
+
+  html[data-mobile="true"] .hero-panel {
+    bottom: 3.25rem !important;
+    max-width: 60% !important;
+  }
+
+  html[data-mobile="true"] .hero-desc {
+    -webkit-line-clamp: 2;
+  }
+
+  html[data-mobile="true"] .detail-hero {
+    height: 70vh !important;
+    min-height: 16rem !important;
   }
 }

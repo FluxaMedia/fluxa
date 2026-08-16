@@ -331,7 +331,7 @@ export const HeroSection = React.memo(function HeroSection({
       </div>
 
       {canSlide && !trailerActive && (
-        <div style={styles.indicators}>
+        <div className="hero-indicators" style={styles.indicators}>
           {items.map((item, i) => (
             <button
               key={item.id || item.name}

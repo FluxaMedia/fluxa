@@ -248,7 +248,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
         </div>
       </div>
 
-      <div style={styles.tabRow}>
+      <div className="library-tabs" style={styles.tabRow}>
         <TabChip active={tab === 'watchlist'} onClick={() => changeTab('watchlist')}>
           {t(watchlistLabelKey)}{watchlist.length > 0 ? ` (${watchlist.length})` : ''}
         </TabChip>
@@ -282,7 +282,7 @@ export const LibraryScreen = React.memo(function LibraryScreen({
           Local media
         </TabChip>
         {tab !== 'collections' && !localMediaOpen && (
-          <div style={styles.controls}>
+          <div className="library-controls" style={styles.controls}>
             <div style={styles.searchWrap}>
               <Search size={15} style={{ color: 'rgba(255,255,255,0.35)', flexShrink: 0 }} />
               <input

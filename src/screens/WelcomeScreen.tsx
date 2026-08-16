@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { t } from '../i18n';
 import type { UserProfile } from '../core/types';
+import { setFluxaSession, syncFluxaNow } from '../core/fluxaSync';
+import type { FluxaSession } from '../core/fluxaSyncApi';
 import { AuthView } from './welcome/AuthView';
 import { NuvioLoginView } from './welcome/NuvioLoginView';
 import { ProfileSetupView } from './welcome/ProfileSetupView';
@@ -25,13 +27,19 @@ export function WelcomeScreen({ onProfileCreated, onContinueLocal, onNuvioLogin 
     await onContinueLocal();
   };
 
+  const handleAuthenticated = async (session: FluxaSession) => {
+    await setFluxaSession(session);
+    await syncFluxaNow().catch(() => undefined);
+    setView('profile-setup');
+  };
+
   if (view === 'auth') {
     return (
       <AuthView
         tab={tab}
         onTabChange={setTab}
         onBack={() => setView('welcome')}
-        onSubmit={() => setView('profile-setup')}
+        onSubmit={handleAuthenticated}
         onNuvioClick={() => setView('nuvio')}
         onContinueLocal={handleContinueLocal}
         localLoading={localLoading}

@@ -342,6 +342,7 @@ export interface UserProfile {
   nuvioTokenExpiresAt?: number;
   nuvioUserId?: string;
   pinHash?: string;
+  fluxaProfileId?: string;
   nuvioEmail?: string;
   nuvioProfileIndex?: number;
   usesPrimaryAddons?: boolean;
