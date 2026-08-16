@@ -101,6 +101,9 @@ interface UsePlayerResult {
   playerSubtitleUrl: string | undefined;
   playerSubtitles: PlayerSubtitleSource[];
   playerCodecs: { videoCodec: string | null; audioCodec: string | null } | null;
+  playerResumeAt: number | undefined;
+  playbackSnapshotRef: React.RefObject<import('../core/playbackSession').PlaybackSnapshot | null>;
+  reportPlaybackEvent: (event: import('../core/playbackSession').ScrobbleEvent) => void;
   playerStreamHeaders: Record<string, string> | undefined;
   playingStreamRef: RefObject<Stream | null>;
   playingMetaRef: RefObject<Meta | null>;
@@ -127,6 +130,7 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   const [playerStreamHeaders, setPlayerStreamHeaders] = useState<Record<string, string> | undefined>();
   const [playerUsesTorrent, setPlayerUsesTorrent] = useState(false);
   const [skipSegmentCoverage, setSkipSegmentCoverage] = useState<Record<string, string[]>>({});
+  const nativeSnapshotRef = useRef<import('../core/playbackSession').PlaybackSnapshot | null>(null);
   const [playerLoadingOverlay, setPlayerLoadingOverlay] = useState<PlayerLoadingOverlayState | null>(null);
   const [playerPlaybackError, setPlayerPlaybackError] = useState<string | null>(null);
   const [playerSubtitleWarning, setPlayerSubtitleWarning] = useState<string[] | null>(null);
@@ -610,7 +614,7 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerSubtitleWarning(null);
   }, []);
 
-  return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles: [], playerCodecs: null, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
+  return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles: [], playerCodecs: null, playerResumeAt: undefined, playbackSnapshotRef: nativeSnapshotRef, reportPlaybackEvent: () => {}, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
 }
 
 export function usePlayer(options: UsePlayerOptions): UsePlayerResult | WebPlayerResult {

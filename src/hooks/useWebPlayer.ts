@@ -1,10 +1,19 @@
-import { useCallback, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { platformInvoke } from '../platform/invoke';
 import { choosePlaybackUrl, probeStream } from '../platform/web/stream';
 import { loadEnabledAddons } from '../core/libraryOps';
 import { resolvePlaybackSubtitles } from '../core/subtitles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
 import { corePlaybackPreparePlan } from '../core/engine';
+import { appPrefs } from '../core/appPrefs';
+import { persistLastPlaybackSource } from '../core/libraryStorage';
+import {
+  persistPlaybackProgress,
+  runScrobbleLifecycle,
+  snapshotIsUsable,
+  type PlaybackSnapshot,
+  type ScrobbleEvent,
+} from '../core/playbackSession';
 import type { AppState, Meta, Stream, UserProfile, Video } from '../core/types';
 import type { PlayerLoadingOverlayState } from './usePlayer';
 
@@ -30,6 +39,9 @@ export interface WebPlayerResult {
   playerSubtitleUrl: string | undefined;
   playerSubtitles: PlayerSubtitleSource[];
   playerCodecs: { videoCodec: string | null; audioCodec: string | null } | null;
+  playerResumeAt: number | undefined;
+  playbackSnapshotRef: RefObject<PlaybackSnapshot | null>;
+  reportPlaybackEvent: (event: ScrobbleEvent) => void;
   playerStreamHeaders: Record<string, string> | undefined;
   playingStreamRef: RefObject<Stream | null>;
   playingMetaRef: RefObject<Meta | null>;
@@ -43,7 +55,7 @@ export interface WebPlayerResult {
   skipSegmentCoverage: Record<string, string[]>;
 }
 
-export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfile, updateState: _updateState, onProfileUpdated: _onProfileUpdated, onEpisodePlaybackFailed: _onEpisodePlaybackFailed }: UsePlayerOptions): WebPlayerResult {
+export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUpdated, onEpisodePlaybackFailed: _onEpisodePlaybackFailed }: UsePlayerOptions): WebPlayerResult {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
   const [playerCodecs, setPlayerCodecs] = useState<{ videoCodec: string | null; audioCodec: string | null } | null>(null);
   const [playerTitle, setPlayerTitle] = useState<string>();
@@ -57,8 +69,72 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
   const [playerSubtitles, setPlayerSubtitles] = useState<PlayerSubtitleSource[]>([]);
   const [playerLoadingOverlay, setPlayerLoadingOverlay] = useState<PlayerLoadingOverlayState | null>(null);
   const [playerPlaybackError, setPlayerPlaybackError] = useState<string | null>(null);
+  const [playerResumeAt, setPlayerResumeAt] = useState<number>();
   const playingStreamRef = useRef<Stream | null>(null);
   const playingMetaRef = useRef<Meta | null>(null);
+  const playingEpisodeRef = useRef<Video | null>(null);
+  const playbackSnapshotRef = useRef<PlaybackSnapshot | null>(null);
+  const activeProfileRef = useRef<UserProfile | null>(activeProfile);
+  const scrobbleStartedRef = useRef(false);
+  const scrobbleWasPausedRef = useRef(false);
+  const scrobbleStoppedRef = useRef(false);
+
+  useEffect(() => { activeProfileRef.current = activeProfile; }, [activeProfile]);
+
+  const saveProgress = useCallback(async () => {
+    const snapshot = playbackSnapshotRef.current;
+    const meta = playingMetaRef.current;
+    if (!meta || !snapshotIsUsable(snapshot)) return;
+    await persistLastPlaybackSource(meta, playingStreamRef.current).catch(() => undefined);
+    await persistPlaybackProgress({
+      meta,
+      episode: playingEpisodeRef.current,
+      stream: playingStreamRef.current,
+      nextEpisode: null,
+      snapshot,
+      streamIndex: stateRef.current.player.currentStreamIndex ?? null,
+      prefs: appPrefs(stateRef.current),
+      updateState,
+    }).catch(() => undefined);
+  }, [stateRef, updateState]);
+
+  const reportPlaybackEvent = useCallback((event: ScrobbleEvent) => {
+    const snapshot = playbackSnapshotRef.current;
+    if (!snapshotIsUsable(snapshot)) return;
+    void runScrobbleLifecycle({
+      event,
+      profile: activeProfileRef.current,
+      meta: playingMetaRef.current,
+      episode: playingEpisodeRef.current,
+      snapshot,
+      flags: {
+        hasStarted: scrobbleStartedRef.current,
+        hasPaused: scrobbleWasPausedRef.current,
+        hasStopped: scrobbleStoppedRef.current,
+      },
+      onProfileUpdated,
+    }).then((action) => {
+      if (action === 'start') {
+        scrobbleStartedRef.current = true;
+        scrobbleWasPausedRef.current = false;
+      }
+      if (action === 'pause') scrobbleWasPausedRef.current = true;
+      if (action === 'stop') scrobbleStoppedRef.current = true;
+    }).catch(() => undefined);
+  }, [onProfileUpdated]);
+
+  useEffect(() => {
+    if (!playerUrl) return undefined;
+    const interval = setInterval(() => { void saveProgress(); }, 30000);
+    return () => clearInterval(interval);
+  }, [playerUrl, saveProgress]);
+
+  useEffect(() => {
+    if (!playerUrl) return undefined;
+    const flush = () => { void saveProgress(); };
+    window.addEventListener('pagehide', flush);
+    return () => window.removeEventListener('pagehide', flush);
+  }, [playerUrl, saveProgress]);
 
   const handlePlay = useCallback(async (stream: Stream, meta?: Meta, episode?: Video | null, resumeAtSeconds?: number) => {
     const source = stream.playableUrl ?? stream.url;
@@ -89,6 +165,12 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
       const playbackUrl = playback.url;
       playingStreamRef.current = stream;
       playingMetaRef.current = meta ?? null;
+      playingEpisodeRef.current = episode ?? null;
+      playbackSnapshotRef.current = null;
+      scrobbleStartedRef.current = false;
+      scrobbleWasPausedRef.current = false;
+      scrobbleStoppedRef.current = false;
+      setPlayerResumeAt(playback.mode === 'transcode' ? undefined : resumeAtSeconds);
       setPlayerUrl(playbackUrl);
       setPlayerTitle(meta?.name);
       setPlayerEpisodeTitle(episode?.title);
@@ -108,20 +190,25 @@ export function useWebPlayer({ stateRef: _stateRef, activeProfile: _activeProfil
   }, []);
 
   const closePlayer = useCallback(async () => {
+    await saveProgress();
+    reportPlaybackEvent('stop');
     if (playerUsesTorrent) await platformInvoke('stop_torrent_stream').catch(() => undefined);
     setPlayerUrl(null);
     setPlayerLoadingOverlay(null);
     setPlayerUsesTorrent(false);
     setPlayerSubtitles([]);
     setPlayerCodecs(null);
+    setPlayerResumeAt(undefined);
     playingStreamRef.current = null;
     playingMetaRef.current = null;
-  }, [playerUsesTorrent]);
+    playingEpisodeRef.current = null;
+    playbackSnapshotRef.current = null;
+  }, [playerUsesTorrent, reportPlaybackEvent, saveProgress]);
 
   return {
     playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext: null, playerTitle, playerEpisodeTitle, playerEpisode,
-    playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerSubtitles, playerCodecs, playerStreamHeaders,
+    playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerSubtitles, playerCodecs, playerResumeAt, playbackSnapshotRef, reportPlaybackEvent, playerStreamHeaders,
     playingStreamRef, playingMetaRef, playerPlaybackError, playerSubtitleWarning: null, dismissSubtitleWarning: () => {},
-    handlePlay, closePlayer, notifyFirstFrame: () => {}, flushProgressOnQuit: async () => {}, skipSegmentCoverage: {},
+    handlePlay, closePlayer, notifyFirstFrame: () => {}, flushProgressOnQuit: saveProgress, skipSegmentCoverage: {},
   };
 }

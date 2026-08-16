@@ -1,6 +1,5 @@
 import { useCallback, useEffect, type MutableRefObject } from 'react';
-import { coreInvoke, dispatchAction } from '../core/engine';
-import { pumpEffects } from '../core/effectRunner';
+import { persistPlaybackProgress } from '../core/playbackSession';
 import { appPrefs } from '../core/appPrefs';
 import { embeddedMpvStatus, type EmbeddedMpvStatus } from '../core/mpvPlayer';
 import { persistLastPlaybackSource } from '../core/libraryStorage';
@@ -27,22 +26,19 @@ export function usePlayerProgressPersistence(options: Options) {
     if (!status) return;
     lastPlaybackStatusRef.current = status;
     try {
-      const plan = await coreInvoke<{ shouldScrobble: boolean; progressAction: Record<string, unknown> }>('playbackClosePlan', JSON.stringify({
+      await persistPlaybackProgress({
         meta: playingMetaRef.current,
         episode: playingEpisodeRef.current,
         stream: playingStreamRef.current,
         nextEpisode: null,
-        timePos: parseFloat(status.timePos ?? '0'),
-        duration: Math.floor(parseFloat(status.duration ?? '0')),
+        snapshot: {
+          timePos: parseFloat(status.timePos ?? '0'),
+          duration: parseFloat(status.duration ?? '0'),
+        },
         streamIndex: stateRef.current.player.currentStreamIndex ?? null,
         prefs: appPrefs(stateRef.current),
-        scrobbleTraktPause: false,
-      }));
-      if (!plan?.shouldScrobble || !plan.progressAction) return;
-      const result = await dispatchAction(JSON.stringify(plan.progressAction));
-      if (!result) return;
-      updateState(result.state);
-      if (result.effects.length > 0) await pumpEffects(result.effects, updateState);
+        updateState,
+      });
     } catch {}
   }, [closingPlayerRef, inNativePlayerRef, lastPlaybackStatusRef, playingEpisodeRef, playingMetaRef, playingStreamRef, stateRef, updateState]);
   useEffect(() => {

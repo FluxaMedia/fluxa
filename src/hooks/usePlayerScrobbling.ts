@@ -1,10 +1,8 @@
 import { useCallback, useEffect, type MutableRefObject } from 'react';
 import { platformListen as listen } from '../platform/browser';
-import { coreInvoke } from '../core/engine';
 import type { EmbeddedMpvStatus } from '../core/mpvPlayer';
 import { embeddedMpvStatus } from '../core/mpvPlayer';
-import { scrobblePlaybackAction } from '../core/scrobble';
-import { saveProfile } from '../core/profiles';
+import { runScrobbleLifecycle } from '../core/playbackSession';
 import type { Meta, UserProfile, Video } from '../core/types';
 
 type Options = {
@@ -27,15 +25,27 @@ export function usePlayerScrobbling(options: Options) {
     const profile = activeProfileRef.current;
     const meta = playingMetaRef.current;
     if (!profile || !meta) return;
-    const timePosSec = parseFloat(status.timePos ?? '0');
-    const durationSec = parseFloat(status.duration ?? '0');
-    if (!Number.isFinite(timePosSec) || !Number.isFinite(durationSec) || durationSec <= 0) return;
-    const action = await coreInvoke<{ action: 'start' | 'pause' | 'stop' }>('playerScrobbleLifecycleAction', JSON.stringify({ event, token: profile.traktAccessToken ?? profile.simklAccessToken, hasStarted: scrobbleStartedRef.current, hasPaused: scrobbleWasPausedRef.current, hasStopped: scrobbleStoppedRef.current, progress: (timePosSec / durationSec) * 100 }));
-    if (!action) return;
-    scrobblePlaybackAction(profile, meta, playingEpisodeRef.current, timePosSec, durationSec, action.action, (revoked) => { void saveProfile(revoked); onProfileUpdated?.(revoked); });
-    if (action.action === 'start') scrobbleStartedRef.current = true;
-    if (action.action === 'start') scrobbleWasPausedRef.current = false;
-    if (action.action === 'stop') scrobbleStoppedRef.current = true;
+    const action = await runScrobbleLifecycle({
+      event,
+      profile,
+      meta,
+      episode: playingEpisodeRef.current,
+      snapshot: {
+        timePos: parseFloat(status.timePos ?? '0'),
+        duration: parseFloat(status.duration ?? '0'),
+      },
+      flags: {
+        hasStarted: scrobbleStartedRef.current,
+        hasPaused: scrobbleWasPausedRef.current,
+        hasStopped: scrobbleStoppedRef.current,
+      },
+      onProfileUpdated,
+    });
+    if (action === 'start') {
+      scrobbleStartedRef.current = true;
+      scrobbleWasPausedRef.current = false;
+    }
+    if (action === 'stop') scrobbleStoppedRef.current = true;
   }, [activeProfileRef, onProfileUpdated, playingEpisodeRef, playingMetaRef, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef]);
 
   useEffect(() => {

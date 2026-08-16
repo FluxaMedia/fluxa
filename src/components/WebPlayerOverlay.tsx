@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { transcodeUrl } from '../platform/web/stream';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
+import type { PlaybackSnapshot, ScrobbleEvent } from '../core/playbackSession';
 import { WatchTogetherClient, type WatchTogetherConnection, type WatchTogetherContent, type WatchTogetherState } from '../core/watchTogether';
 import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
 import { applyWebOSMediaOption, hdrKindFrom, IS_WEBOS } from '../platform/webos';
@@ -19,6 +20,9 @@ interface Props {
   contentType?: string;
   videoId?: string;
   codecs?: { videoCodec: string | null; audioCodec: string | null } | null;
+  resumeAt?: number;
+  snapshotRef?: React.RefObject<PlaybackSnapshot | null>;
+  onPlaybackEvent?: (event: ScrobbleEvent) => void;
 }
 
 function formatTime(value: number) {
@@ -32,7 +36,7 @@ function formatTime(value: number) {
 
 const iconButton = { width: '2.75rem', height: '2.75rem', border: 'none', borderRadius: '0.5rem', background: 'none', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' } as const;
 
-export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs }: Props) {
+export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackUsedRef = useRef(false);
@@ -106,6 +110,11 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
   }, [subtitles]);
 
   useLibassSubtitles(videoRef, subtitleCanvasRef, subtitles, selectedSubtitle);
+
+  const recordSnapshot = useCallback((video: HTMLVideoElement) => {
+    if (!snapshotRef) return;
+    snapshotRef.current = { timePos: video.currentTime, duration: video.duration };
+  }, [snapshotRef]);
 
   const resetActivity = useCallback(() => {
     setControlsVisible(true);
@@ -216,10 +225,21 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
         title={title}
         controls={false}
         playsInline
-        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
-        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-        onPlay={() => { setPaused(false); resetActivity(); watchTogetherRef.current?.notifyLocalPlayback(); }}
-        onPause={() => { setPaused(true); setControlsVisible(true); watchTogetherRef.current?.notifyLocalPlayback(); }}
+        onLoadedMetadata={(event) => {
+          const video = event.currentTarget;
+          setDuration(video.duration);
+          recordSnapshot(video);
+          if (resumeAt && resumeAt > 0 && Number.isFinite(video.duration) && resumeAt < video.duration - 5) {
+            video.currentTime = resumeAt;
+          }
+        }}
+        onTimeUpdate={(event) => {
+          setCurrentTime(event.currentTarget.currentTime);
+          recordSnapshot(event.currentTarget);
+        }}
+        onPlay={() => { setPaused(false); resetActivity(); watchTogetherRef.current?.notifyLocalPlayback(); onPlaybackEvent?.('start'); }}
+        onPause={() => { setPaused(true); setControlsVisible(true); watchTogetherRef.current?.notifyLocalPlayback(); onPlaybackEvent?.('pause'); }}
+        onEnded={() => onPlaybackEvent?.('stop')}
         onVolumeChange={(event) => { setMuted(event.currentTarget.muted); setVolume(event.currentTarget.volume); }}
         onPlaying={onFirstFrame}
         onError={() => {
