@@ -133,6 +133,7 @@ Questions, bug reports, feature requests, or just want to hang out — join the 
 
 - [Fluxa Desktop](https://github.com/FluxaMedia/fluxa-desktop) — the Windows, macOS, and Linux counterpart
 - [fluxa-core](https://github.com/FluxaMedia/fluxa-core) — the shared Rust library powering both
+- [watch-together-server](https://github.com/KhooLy/watch-together-server) — an independent, application-agnostic self-hosted room and playback synchronization server
 
 <!-- MARKDOWN LINKS -->
 [contributors-shield]: https://img.shields.io/github/contributors/FluxaMedia/fluxa.svg?style=for-the-badge
