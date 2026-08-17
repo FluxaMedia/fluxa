@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discord
+    url: https://discord.gg/wan9FeDEfe
+    about: Questions, help, and general discussion — faster than an issue.
+  - name: fluxa-core (shared logic)
+    url: https://github.com/FluxaMedia/fluxa-core/issues
+    about: If the bug is in addon resolution, stream policy, ranking, or library rules, it likely belongs here.
