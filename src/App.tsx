@@ -41,6 +41,9 @@ import { usePlayer } from './hooks/usePlayer';
 import { useAppInit } from './hooks/useAppInit';
 import type { AppState, Meta, Stream, Video, UserProfile } from './core/types';
 import { WebPlayerOverlay } from './components/WebPlayerOverlay';
+import { ExternalHandoffPrompt } from './components/ExternalHandoffPrompt';
+import { useExternalHandoff } from './hooks/useExternalHandoff';
+import { runtimeSeconds } from './core/externalSession';
 
 const settingsStateEqual = appStateSliceEqual('settings');
 const profileStateEqual = appStateSliceEqual('plugins');
@@ -127,6 +130,23 @@ export default function App() {
     onProfileUpdated: setActiveProfile,
     onEpisodePlaybackFailed: handleEpisodePlaybackFailed,
   });
+
+  const externalHandoff = useExternalHandoff({ stateRef, activeProfile, updateState, onProfileUpdated: setActiveProfile });
+
+  const handleExternalHandoff = useCallback((target: string, positionSeconds: number) => {
+    const meta = playingMetaRef.current;
+    if (!meta) return;
+    externalHandoff.start({
+      id: `${Date.now()}`,
+      meta,
+      episode: playerEpisode,
+      stream: playingStreamRef.current,
+      target,
+      startedAt: Date.now(),
+      resumeAt: positionSeconds,
+      runtime: runtimeSeconds(meta, playerEpisode),
+    });
+  }, [externalHandoff, playerEpisode, playingMetaRef, playingStreamRef]);
 
   const openEpisodeSourcePicker = useCallback(async (meta: Meta, episode: Video, message: string) => {
     await closePlayer();
@@ -536,6 +556,13 @@ export default function App() {
         <OfflineBanner online={isOnline} />
       );
   const dialogs = <>
+      {externalHandoff.prompt && (
+        <ExternalHandoffPrompt
+          prompt={externalHandoff.prompt}
+          onCommit={(timePos, duration) => { void externalHandoff.commit(timePos, duration); }}
+          onDismiss={externalHandoff.dismiss}
+        />
+      )}
       {p2pDialog && (
         <P2PDialog
           mode={p2pDialog.mode}
@@ -553,7 +580,7 @@ export default function App() {
       <UpdateModal state={updateModalState} onClose={() => setUpdateModalState({ phase: 'idle' })} />
   </>;
   const playback = (
-      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} title={playerTitle} subtitles={playerSubtitles} codecs={playerCodecs} resumeAt={playerResumeAt} snapshotRef={playbackSnapshotRef} onPlaybackEvent={reportPlaybackEvent} skipSegments={playerSkipSegments} nextEpisode={playerNextEpisode} onPlayNextEpisode={() => { void playNextEpisode(); }} autoSkip={prefBool(storedPrefsRef.current, 'autoSkipIntro', false)} autoPlayNext={prefBool(storedPrefsRef.current, 'autoPlayNextEpisode', true)} contentId={playerMetaId} contentType={playerEpisode ? 'series' : 'movie'} videoId={playerEpisode?.id} onClose={closePlayer} onFirstFrame={notifyFirstFrame} /> : <PlaybackHost
+      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} title={playerTitle} subtitles={playerSubtitles} codecs={playerCodecs} resumeAt={playerResumeAt} snapshotRef={playbackSnapshotRef} onPlaybackEvent={reportPlaybackEvent} skipSegments={playerSkipSegments} nextEpisode={playerNextEpisode} onPlayNextEpisode={() => { void playNextEpisode(); }} autoSkip={prefBool(storedPrefsRef.current, 'autoSkipIntro', false)} autoPlayNext={prefBool(storedPrefsRef.current, 'autoPlayNextEpisode', true)} contentId={playerMetaId} contentType={playerEpisode ? 'series' : 'movie'} videoId={playerEpisode?.id} onClose={closePlayer} onFirstFrame={notifyFirstFrame} onHandoff={handleExternalHandoff} /> : <PlaybackHost
         active={nativePlayerActive}
         loading={playerLoadingOverlay}
         closePlayer={closePlayer}

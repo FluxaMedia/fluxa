@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Captions, ChevronLeft, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Captions, ChevronLeft, ExternalLink, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import { t } from '../i18n';
 import { transcodeUrl } from '../platform/web/stream';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
@@ -15,6 +15,7 @@ import { isTextEntryTarget, tvActionFor } from '../platform/webosKeys';
 import { useIsTouch } from '../platform/viewport';
 import { enterFullscreen, exitFullscreen } from '../platform/fullscreenOrientation';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { externalLinkTargets } from '../platform/externalPlayerLinks';
 import { OFFICIAL_WATCH_TOGETHER_URL } from '../appConstants';
 
 function isSupabaseInstance(instanceUrl: string): boolean {
@@ -44,6 +45,7 @@ interface Props {
   onPlayNextEpisode?: () => void;
   autoSkip?: boolean;
   autoPlayNext?: boolean;
+  onHandoff?: (target: string, positionSeconds: number) => void;
 }
 
 function formatTime(value: number) {
@@ -65,12 +67,17 @@ const DOUBLE_TAP_MS = 320;
 
 const pipSupported = typeof document !== 'undefined' && document.pictureInPictureEnabled === true;
 
-export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent, skipSegments = [], nextEpisode, onPlayNextEpisode, autoSkip = false, autoPlayNext = false }: Props) {
+export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent, skipSegments = [], nextEpisode, onPlayNextEpisode, autoSkip = false, autoPlayNext = false, onHandoff }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
   const isTouch = useIsTouch();
   const lastTapRef = useRef<{ at: number; side: 'left' | 'right' } | null>(null);
   const [seekFlash, setSeekFlash] = useState<{ side: 'left' | 'right'; at: number } | null>(null);
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const externalTargets = useMemo(
+    () => (onHandoff ? externalLinkTargets(url, `${window.location.origin}${window.location.pathname}?fluxa_external=done`) : []),
+    [url, onHandoff],
+  );
   const fallbackUsedRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [paused, setPaused] = useState(false);
@@ -424,6 +431,32 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
           <button type="button" onClick={() => { void onClose(); }} style={{ ...iconButton, background: 'rgba(255,255,255,0.1)' }} title={t('player.back')}><ChevronLeft size={22} /></button>
           <div style={{ color: '#fff', fontSize: '0.9375rem', fontWeight: 700, marginLeft: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title ?? ''}</div>
           <div style={{ flex: 1 }} />
+          {onHandoff && externalTargets.length > 0 && (
+            <div style={{ position: 'relative' }}>
+              <button type="button" onClick={() => setHandoffOpen((value) => !value)} style={{ ...iconButton, width: 'auto', padding: '0 0.75rem', background: 'rgba(255,255,255,0.1)', fontSize: '0.75rem', fontWeight: 700 }} title={t('external.open_in_app')}>
+                <ExternalLink size={16} />
+              </button>
+              {handoffOpen && (
+                <div style={{ position: 'absolute', right: 0, top: '3rem', minWidth: '10rem', padding: '0.35rem', borderRadius: '0.55rem', background: 'rgba(20,20,20,0.98)', boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.45)' }}>
+                  {externalTargets.map((target) => (
+                    <button
+                      key={target.id}
+                      type="button"
+                      onClick={() => {
+                        setHandoffOpen(false);
+                        videoRef.current?.pause();
+                        onHandoff(target.id, Math.floor(videoRef.current?.currentTime ?? 0));
+                        window.location.href = target.href;
+                      }}
+                      style={{ display: 'block', width: '100%', padding: '0.55rem 0.7rem', border: 0, borderRadius: '0.35rem', textAlign: 'left', color: '#fff', background: 'transparent', cursor: 'pointer' }}
+                    >
+                      {target.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {contentId && <button type="button" onClick={() => { void openWatchTogether(); }} style={{ ...iconButton, width: 'auto', padding: '0 0.75rem', background: watchTogetherState.roomCode ? 'var(--primary-accent-color)' : 'rgba(255,255,255,0.1)', fontSize: '0.75rem', fontWeight: 700 }} title={t('player.watch_party')}>
             {watchTogetherState.roomCode ? `${t('player.watch_party_room')} ${watchTogetherState.roomCode}` : t('player.watch_party')}
           </button>}
