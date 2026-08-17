@@ -3,6 +3,7 @@ mod artwork;
 mod cast;
 mod cast_proxy;
 mod chromecast;
+mod fcast;
 mod core_commands;
 mod custom_fonts;
 mod diagnostics;
@@ -49,6 +50,7 @@ use airplay::*;
 use cast::*;
 use cast_proxy::*;
 use chromecast::*;
+use fcast::*;
 use core_commands::*;
 use custom_fonts::*;
 use discord_presence::*;
@@ -449,6 +451,7 @@ pub fn run() {
         .manage(discord_presence::DiscordPresenceState::default())
         .manage(cast::CastState::default())
         .manage(chromecast::ChromecastState::default())
+        .manage(fcast::FcastState::default())
         .manage(airplay::AirplayState::default())
         .manage(roku::RokuState::default())
         .manage(cast_proxy::CastProxyState::default())
@@ -701,6 +704,15 @@ pub fn run() {
             airplay_seek,
             airplay_set_volume,
             airplay_disconnect,
+            fcast_discover_devices,
+            fcast_connect,
+            fcast_play,
+            fcast_pause,
+            fcast_seek,
+            fcast_set_volume,
+            fcast_set_speed,
+            fcast_stop,
+            fcast_disconnect,
             roku_discover_devices,
             roku_set_media,
             roku_play_pause,

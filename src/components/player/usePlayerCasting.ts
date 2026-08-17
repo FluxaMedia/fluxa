@@ -42,7 +42,7 @@ export function usePlayerCasting({ title, episodeTitle, initialSubtitleUrl, init
     }
     const mediaUrl = initialStreamHeaders && Object.keys(initialStreamHeaders).length > 0 ? await proxyMediaUrl(streamUrl, initialStreamHeaders) : await resolveCastMediaUrl(streamUrl);
     try {
-      await startCasting(device, mediaUrl, title || episodeTitle || 'Fluxa', initialSubtitleUrl);
+      await startCasting(device, mediaUrl, title || episodeTitle || 'Fluxa', initialSubtitleUrl, Number(status?.timePos ?? 0) || 0);
       setActiveCastDeviceId(device.id);
       setActiveCastDeviceName(device.name);
       setCastPaused(false);

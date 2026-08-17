@@ -43,7 +43,7 @@ export function CastPopover({ devices, discovering, activeDeviceId, anchorRef, o
           style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', width: '100%', background: 'none', border: 'none', color: activeDeviceId === device.id ? '#fff' : 'rgba(255,255,255,0.7)', fontSize: '0.8125rem', fontWeight: activeDeviceId === device.id ? 600 : 400, padding: '0.5rem 0.875rem', cursor: 'pointer', textAlign: 'left' }}
         >
           <span style={{ width: '0.875rem', flexShrink: 0, color: 'var(--primary-accent-color)' }}>
-            {activeDeviceId === device.id ? <Check size={14} /> : device.kind === 'chromecast' ? <Cast size={14} /> : <Tv size={14} />}
+            {activeDeviceId === device.id ? <Check size={14} /> : device.kind === 'chromecast' || device.kind === 'fcast' ? <Cast size={14} /> : <Tv size={14} />}
           </span>
           {device.name}
         </button>
