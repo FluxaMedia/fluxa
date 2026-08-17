@@ -1,4 +1,5 @@
 import { storageDelete, storageRead, storageWrite } from './storage';
+import * as library from './libraryStorage';
 import { coreInvoke, engineCompleteEffect, engineDispatch, engineInit, engineSnapshot } from './wasmEngine';
 
 const companionUrl = import.meta.env.VITE_FLUXA_COMPANION_URL || 'http://127.0.0.1:19876';
@@ -91,7 +92,37 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
     case 'storage_delete':
       return storageDelete(args?.key as string) as T;
     case 'library_snapshot':
-      return storageRead(args?.profileKey as string) as T;
+      return library.librarySnapshot(args?.profileKey as string) as T;
+    case 'library_progress_read':
+      return library.progressRead(args?.profileKey as string, args?.mediaId as string) as T;
+    case 'library_progress_list':
+      return library.progressList(args?.profileKey as string) as T;
+    case 'library_progress_upsert':
+      return library.progressUpsert(args?.profileKey as string, args?.mediaId as string, args?.progressJson as string) as T;
+    case 'library_progress_upsert_many':
+      return library.progressUpsertMany(args?.profileKey as string, args?.updatesJson as string) as T;
+    case 'library_progress_delete':
+      return library.progressDelete(args?.profileKey as string, args?.mediaId as string) as T;
+    case 'library_status_set':
+      return library.statusSet(args?.profileKey as string, args?.mediaId as string, (args?.status as string | null) ?? null, (args?.itemJson as string | null) ?? null) as T;
+    case 'library_status_list':
+      return library.statusList(args?.profileKey as string) as T;
+    case 'library_watched_set':
+      return library.watchedSet(args?.profileKey as string, args?.videoId as string, args?.watched === true) as T;
+    case 'library_watched_list':
+      return library.watchedList(args?.profileKey as string) as T;
+    case 'library_last_watched_list':
+      return library.lastWatchedList(args?.profileKey as string) as T;
+    case 'library_last_watched_upsert':
+      return library.lastWatchedUpsert(args?.profileKey as string, args?.seriesId as string, args?.entryJson as string) as T;
+    case 'library_last_watched_delete':
+      return library.lastWatchedDelete(args?.profileKey as string, args?.seriesId as string) as T;
+    case 'library_continue_watching_list':
+      return library.continueWatchingList(args?.profileKey as string) as T;
+    case 'library_continue_watching_upsert':
+      return library.continueWatchingUpsert(args?.profileKey as string, args?.mediaId as string, args?.itemJson as string) as T;
+    case 'library_continue_watching_delete':
+      return library.continueWatchingDelete(args?.profileKey as string, args?.mediaId as string) as T;
     case 'http_fetch_text': {
       const response = await fetch(args?.url as string);
       return { status_code: response.status, body: await response.text() } as T;
