@@ -7,6 +7,7 @@ import { heroKeyframes, heroStyles as styles } from './heroStyles';
 import { readOptionalString } from './HeroSectionParts';
 import { youtubeVideoId } from './detail/TrailerCarousel';
 import { useTrailerPlayback } from '../hooks/useTrailerPlayback';
+import { assetUrl } from '../platform/assets';
 
 const SWIPE_THRESHOLD_PX = 60;
 
@@ -302,7 +303,7 @@ export const HeroSection = React.memo(function HeroSection({
             <div style={styles.metaRow}>
               {!isNaN(imdbNum) && (
                 <span style={styles.imdbBadge}>
-                  <img src="/imdb.svg" alt="IMDb" style={styles.imdbLogo} />
+                  <img src={assetUrl('imdb.svg')} alt="IMDb" style={styles.imdbLogo} />
                   <span style={styles.imdbScore}>{imdbNum.toFixed(1)}</span>
                 </span>
               )}

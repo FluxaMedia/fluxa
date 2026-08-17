@@ -1,3 +1,4 @@
+import { assetUrl } from '../../platform/assets';
 export interface RatingSourceInfo {
   icon?: string;
   label: string;
@@ -27,19 +28,19 @@ const metacriticUserColor = (value: number) => {
   return METACRITIC_RED;
 };
 
-const tomatoIcon = (value: number) => (value >= 60 ? '/rt-tomato-fresh.svg' : '/rt-tomato-rotten.svg');
-const popcornIcon = (value: number) => (value >= 60 ? '/rt-popcorn-full.svg' : '/rt-popcorn-spilled.svg');
+const tomatoIcon = (value: number) => (value >= 60 ? assetUrl('rt-tomato-fresh.svg') : assetUrl('rt-tomato-rotten.svg'));
+const popcornIcon = (value: number) => (value >= 60 ? assetUrl('rt-popcorn-full.svg') : assetUrl('rt-popcorn-spilled.svg'));
 
 export const RATING_SOURCES: Record<string, RatingSourceInfo> = {
-  imdb: { icon: '/imdb.svg', label: 'IMDb', format: outOfTen },
-  tmdb: { icon: '/tmdb.svg', label: 'TMDB', format: percent },
-  trakt: { icon: '/trakt.svg', label: 'Trakt', format: percent },
-  letterboxd: { icon: '/letterboxd.svg', label: 'Letterboxd', format: outOfTen },
-  tomatoes: { icon: '/rt-tomato-fresh.svg', label: 'Rotten Tomatoes (Critics)', format: percent, iconForValue: tomatoIcon },
-  popcorn: { icon: '/rt-popcorn-full.svg', label: 'Rotten Tomatoes (Audience)', format: percent, iconForValue: popcornIcon },
-  metacritic: { icon: '/metacritic.svg', label: 'Metacritic', format: bareScore, maskColor: METACRITIC_GREEN, colorForValue: metacriticCriticColor },
-  metacriticuser: { icon: '/metacritic.svg', label: 'Metacritic Users', format: outOfTen, maskColor: METACRITIC_GREEN, colorForValue: metacriticUserColor },
-  myanimelist: { icon: '/mal.svg', label: 'MyAnimeList', format: outOfTen },
+  imdb: { icon: assetUrl('imdb.svg'), label: 'IMDb', format: outOfTen },
+  tmdb: { icon: assetUrl('tmdb.svg'), label: 'TMDB', format: percent },
+  trakt: { icon: assetUrl('trakt.svg'), label: 'Trakt', format: percent },
+  letterboxd: { icon: assetUrl('letterboxd.svg'), label: 'Letterboxd', format: outOfTen },
+  tomatoes: { icon: assetUrl('rt-tomato-fresh.svg'), label: 'Rotten Tomatoes (Critics)', format: percent, iconForValue: tomatoIcon },
+  popcorn: { icon: assetUrl('rt-popcorn-full.svg'), label: 'Rotten Tomatoes (Audience)', format: percent, iconForValue: popcornIcon },
+  metacritic: { icon: assetUrl('metacritic.svg'), label: 'Metacritic', format: bareScore, maskColor: METACRITIC_GREEN, colorForValue: metacriticCriticColor },
+  metacriticuser: { icon: assetUrl('metacritic.svg'), label: 'Metacritic Users', format: outOfTen, maskColor: METACRITIC_GREEN, colorForValue: metacriticUserColor },
+  myanimelist: { icon: assetUrl('mal.svg'), label: 'MyAnimeList', format: outOfTen },
 };
 
 export const RATING_DISPLAY_ORDER = [
