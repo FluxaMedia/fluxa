@@ -9,6 +9,7 @@ import { colors } from '../theme';
 import { t } from '../i18n';
 import { ProfileForm, AvatarPreview } from './ProfileForm';
 import { PinPrompt } from '../components/PinPrompt';
+import { nuvioVerifyProfilePin } from '../core/nuvioPin';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { loadProfilePickerSettings, refreshAllAvatarPacks, type ProfilePickerSettings } from '../core/profileAvatarPacks';
 import { ProfilePickerSettings as ProfilePickerSettingsView } from './ProfilePickerSettings';
@@ -39,7 +40,7 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
   }, [profiles]);
 
   const handleSelect = async (profile: UserProfile) => {
-    if (profile.pinHash) { setPinProfile(profile); return; }
+    if (profile.pinHash || profile.nuvioPinEnabled) { setPinProfile(profile); return; }
     await setActiveProfileId(profile.id);
     onProfileSelected(profile);
   };

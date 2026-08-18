@@ -9,7 +9,7 @@ import {
 } from '../core/profiles';
 import { saveAddons } from '../core/libraryOps';
 import { coreInvoke } from '../core/engine';
-import { nuvioPushProfiles } from '../core/nuvioApi';
+import { nuvioClearPin, nuvioPushProfiles, nuvioSetPin } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
 import type { AddonDescriptor, UserProfile } from '../core/types';
 import type { ProfileAvatarPack } from '../core/profileAvatarPacks';
@@ -111,6 +111,7 @@ export function ProfileForm({
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(existing?.avatarUrl);
   const [busy, setBusy] = useState(false);
   const [pin, setPin] = useState('');
+  const [currentPin, setCurrentPin] = useState('');
   const [removePin, setRemovePin] = useState(false);
   const [usesPrimaryAddons, setUsesPrimaryAddons] = useState(existing?.usesPrimaryAddons ?? false);
   const [usesPrimaryPlugins, setUsesPrimaryPlugins] = useState(existing?.usesPrimaryPlugins ?? false);
@@ -188,6 +189,11 @@ export function ProfileForm({
       if (profile.nuvioAccessToken && profile.nuvioUserId && profile.nuvioProfileIndex != null) {
         try {
           const freshProfile = await freshNuvioProfile(profile);
+          if (removePin && freshProfile.nuvioPinEnabled) {
+            await nuvioClearPin(freshProfile.nuvioAccessToken!, freshProfile.nuvioProfileIndex!, currentPin || undefined);
+          } else if (pin.trim().length === 4) {
+            await nuvioSetPin(freshProfile.nuvioAccessToken!, freshProfile.nuvioProfileIndex!, pin.trim(), currentPin || undefined);
+          }
           const remoteProfiles = [...allProfiles.filter((candidate) =>
             candidate.id !== profile.id && candidate.nuvioUserId === freshProfile.nuvioUserId && candidate.nuvioProfileIndex != null,
           ), freshProfile];
@@ -281,6 +287,17 @@ export function ProfileForm({
               </button>
             )}
             {removePin && <p style={S.fieldNote}>{t('profiles.pin_will_be_removed')}</p>}
+            {existing?.nuvioPinEnabled && (
+              <input
+                id="profile-current-pin"
+                value={currentPin}
+                onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="Current Nuvio PIN (if changing/removing)"
+                style={S.input}
+              />
+            )}
           </div>
           {!isPrimary && (
             <div>

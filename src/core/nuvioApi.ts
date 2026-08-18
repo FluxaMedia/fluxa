@@ -269,6 +269,45 @@ export async function nuvioPullProfiles(token: string): Promise<NuvioProfile[]> 
   return get<NuvioProfile[]>('/rest/v1/profiles?select=*&order=profile_index', token);
 }
 
+export interface NuvioPinVerifyResult {
+  unlocked: boolean;
+  retry_after_seconds?: number;
+  message?: string | null;
+}
+
+export async function nuvioVerifyPin(token: string, profileId: number, pin: string): Promise<NuvioPinVerifyResult> {
+  return post<NuvioPinVerifyResult>('/rest/v1/rpc/verify_profile_pin', {
+    p_profile_id: profileId,
+    p_pin: pin,
+  }, token);
+}
+
+export async function nuvioSetPin(token: string, profileId: number, pin: string, currentPin?: string): Promise<void> {
+  await post('/rest/v1/rpc/set_profile_pin', {
+    p_profile_id: profileId,
+    p_pin: pin,
+    ...(currentPin ? { p_current_pin: currentPin } : {}),
+  }, token);
+}
+
+export async function nuvioClearPin(token: string, profileId: number, currentPin?: string): Promise<void> {
+  await post('/rest/v1/rpc/clear_profile_pin', {
+    p_profile_id: profileId,
+    ...(currentPin ? { p_current_pin: currentPin } : {}),
+  }, token);
+}
+
+export async function nuvioClearPinWithPassword(token: string, profileId: number, accountPassword: string): Promise<void> {
+  await post('/rest/v1/rpc/clear_profile_pin_with_account_password', {
+    p_profile_id: profileId,
+    p_account_password: accountPassword,
+  }, token);
+}
+
+export async function nuvioPullProfileLocks(token: string): Promise<Array<Pick<NuvioProfile, 'profile_index' | 'pin_enabled' | 'pin_locked_until'>>> {
+  return post('/rest/v1/rpc/sync_pull_profile_locks', {}, token);
+}
+
 export async function nuvioPushProfiles(
   token: string,
   profiles: Array<{

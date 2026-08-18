@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { verifyPin } from '../core/profiles';
+import { nuvioVerifyProfilePin } from '../core/nuvioPin';
 import type { UserProfile } from '../core/types';
 import { t } from '../i18n';
 
@@ -10,16 +11,24 @@ export function PinPrompt({ profile, overridePin, onSuccess, onCancel }: {
   onCancel: () => void;
 }) {
   const [pin, setPin] = useState('');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 30); }, []);
 
   const submit = async (value: string) => {
-    if (await verifyPin(profile, value) || (overridePin && await verifyPin(overridePin, value))) {
+    const remoteResult = profile.nuvioPinEnabled ? await nuvioVerifyProfilePin(profile, value) : null;
+    const local = !profile.nuvioPinEnabled && profile.pinHash ? await verifyPin(profile, value) : false;
+    const remote = remoteResult?.unlocked ?? false;
+    const overrideResult = overridePin?.nuvioPinEnabled ? await nuvioVerifyProfilePin(overridePin, value) : null;
+    const override = overridePin && (overridePin.nuvioPinEnabled
+      ? overrideResult?.unlocked ?? false
+      : overridePin.pinHash ? await verifyPin(overridePin, value) : false);
+    if (local || remote || override) {
       onSuccess();
     } else {
-      setError(true);
+      const retry = remoteResult?.retry_after_seconds ?? overrideResult?.retry_after_seconds ?? 0;
+      setError(retry > 0 ? `Locked. Try again in ${retry}s.` : 'Incorrect PIN');
       setPin('');
     }
   };
@@ -38,13 +47,13 @@ export function PinPrompt({ profile, overridePin, onSuccess, onCancel }: {
           onChange={(e) => {
             const next = e.target.value.replace(/\D/g, '').slice(0, 4);
             setPin(next);
-            setError(false);
+            setError(null);
             if (next.length === 4) void submit(next);
           }}
           onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
           style={S.input}
         />
-        {error && <p style={S.error}>{t('profiles.pin_incorrect')}</p>}
+        {error && <p style={S.error}>{error}</p>}
       </div>
     </div>
   );

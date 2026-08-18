@@ -345,6 +345,9 @@ export interface UserProfile {
   fluxaProfileId?: string;
   nuvioEmail?: string;
   nuvioProfileIndex?: number;
+  nuvioPinEnabled?: boolean;
+  nuvioPinLockedUntil?: string | null;
+  nuvioProfileUpdatedAt?: string;
   usesPrimaryAddons?: boolean;
   usesPrimaryPlugins?: boolean;
 }
