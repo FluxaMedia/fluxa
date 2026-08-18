@@ -51,11 +51,19 @@ export function AccountSection({
   const connectedSources = { nuvio: nuvioConnected, trakt: traktConnected, simkl: simklConnected, anilist: anilistConnected, stremio: stremioConnected };
   const cwOptions = cwSourceOfTruthOptions(connectedSources);
   const libraryOptions = librarySourceOfTruthOptions(connectedSources);
-  const isConnectedSource = (source: string) => source === 'local' || Boolean(connectedSources[source as keyof typeof connectedSources]);
+  const preferredConnectedSource = nuvioConnected ? 'nuvio'
+    : traktConnected ? 'trakt'
+      : simklConnected ? 'simkl'
+        : anilistConnected ? 'anilist'
+          : stremioConnected ? 'stremio' : 'local';
+  const isConnectedSource = (source: string) => source === 'local'
+    ? preferredConnectedSource === 'local'
+    : Boolean(connectedSources[source as keyof typeof connectedSources]);
+  const validSource = (source: string) => isConnectedSource(source) ? source : preferredConnectedSource;
 
   useEffect(() => {
-    if (!isConnectedSource(prefs.continueWatchingSource)) void setPref('continueWatchingSource', 'local');
-    if (!isConnectedSource(prefs.integrationLibrarySource)) void setPref('integrationLibrarySource', 'local');
+    if (!isConnectedSource(prefs.continueWatchingSource)) void setPref('continueWatchingSource', preferredConnectedSource);
+    if (!isConnectedSource(prefs.integrationLibrarySource)) void setPref('integrationLibrarySource', preferredConnectedSource);
   }, [prefs.continueWatchingSource, prefs.integrationLibrarySource, nuvioConnected, traktConnected, simklConnected, anilistConnected, stremioConnected, setPref]);
 
   if (selectedIntegration) {
@@ -324,8 +332,8 @@ export function AccountSection({
       </SettingsSection>
 
       <SettingsSection title={t('settings.cw_conflict_resolution')} subtitle={t('settings.cw_conflict_resolution_desc')}>
-        <ChoiceTile title={t('settings.cw_source_of_truth')} subtitle={t('settings.cw_source_of_truth_desc')} options={cwOptions} selected={isConnectedSource(prefs.continueWatchingSource) ? prefs.continueWatchingSource : 'local'} onSelect={(value) => setPref('continueWatchingSource', value)} />
-        <ChoiceTile title={t('settings.library_source_of_truth')} subtitle={t('settings.library_source_of_truth_desc')} options={libraryOptions} selected={isConnectedSource(prefs.integrationLibrarySource) ? prefs.integrationLibrarySource : 'local'} onSelect={(value) => setPref('integrationLibrarySource', value)} />
+        <ChoiceTile title={t('settings.cw_source_of_truth')} subtitle={t('settings.cw_source_of_truth_desc')} options={cwOptions} selected={validSource(prefs.continueWatchingSource)} onSelect={(value) => setPref('continueWatchingSource', value)} />
+        <ChoiceTile title={t('settings.library_source_of_truth')} subtitle={t('settings.library_source_of_truth_desc')} options={libraryOptions} selected={validSource(prefs.integrationLibrarySource)} onSelect={(value) => setPref('integrationLibrarySource', value)} />
         <ChoiceTile title={t('settings.similar_titles_source')} subtitle={t('settings.similar_titles_source_desc')} options={similarTitlesSourceOptions()} selected={prefs.similarTitlesSource} onSelect={(value) => setPref('similarTitlesSource', value)} />
       </SettingsSection>
 

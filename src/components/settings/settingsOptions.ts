@@ -57,14 +57,16 @@ export function streamSourceOptions() {
 export type ConnectedSourceState = Partial<Record<'nuvio' | 'trakt' | 'simkl' | 'anilist' | 'stremio', boolean>>;
 
 function connectedSourceOptions(connected: ConnectedSourceState = {}) {
-  return [
-    { value: 'local', label: t('settings.cw_source_of_truth_local') },
+  const remote = [
     ...(connected.nuvio ? [{ value: 'nuvio', label: t('settings.cw_source_of_truth_nuvio') }] : []),
     ...(connected.trakt ? [{ value: 'trakt', label: t('settings.cw_source_of_truth_trakt') }] : []),
     ...(connected.simkl ? [{ value: 'simkl', label: t('settings.cw_source_of_truth_simkl') }] : []),
     ...(connected.anilist ? [{ value: 'anilist', label: t('settings.cw_source_of_truth_anilist') }] : []),
     ...(connected.stremio ? [{ value: 'stremio', label: t('settings.cw_source_of_truth_stremio') }] : []),
   ];
+  return remote.length > 0
+    ? remote
+    : [{ value: 'local', label: t('settings.cw_source_of_truth_local') }];
 }
 
 export function cwSourceOfTruthOptions(connected: ConnectedSourceState = {}) {
