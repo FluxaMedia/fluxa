@@ -9,6 +9,8 @@ data class ProfileUiModel(
     val language: String,
     val accentColorArgb: Long,
     val hasPin: Boolean = false,
+    val nuvioPinEnabled: Boolean = false,
+    val nuvioProfileIndex: Int? = null,
     val biometricEnabled: Boolean = false
 )
 
@@ -41,6 +43,7 @@ data class ProfileEditUiModel(
     val name: String,
     val avatarUrl: String?,
     val newPin: String? = null,
+    val currentPin: String? = null,
     val keepExistingPin: Boolean = false,
     val biometricEnabled: Boolean
 )

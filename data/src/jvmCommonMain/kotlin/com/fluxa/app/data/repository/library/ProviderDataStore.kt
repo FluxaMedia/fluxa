@@ -10,6 +10,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.ConsistentCopyVisibility
 
 /**
  * Account-scoped mirror of remote provider data.
@@ -27,6 +28,7 @@ class ProviderDataStore @Inject constructor(
     private val generations = ConcurrentHashMap<String, Long>()
     private val scopeLocks = ConcurrentHashMap<String, Mutex>()
 
+    @ConsistentCopyVisibility
     data class WriteLease internal constructor(
         val owner: ProviderDataOwner,
         internal val generation: Long

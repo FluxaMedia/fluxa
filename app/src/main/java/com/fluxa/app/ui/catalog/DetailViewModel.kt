@@ -57,7 +57,7 @@ private data class DetailSecondaryDecoded(
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    @ApplicationContext private val applicationContext: android.content.Context,
+    @param:ApplicationContext private val applicationContext: android.content.Context,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
     private val gson: Gson,
     private val communityDiscussionRepository: CommunityDiscussionRepository,

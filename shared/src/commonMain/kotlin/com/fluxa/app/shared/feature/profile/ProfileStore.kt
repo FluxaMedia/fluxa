@@ -53,6 +53,7 @@ data class ProfileStoreSnapshot(
 interface ProfilePersistence {
     fun observe(): Flow<ProfileStoreSnapshot>
     suspend fun pinHash(profileId: String): String?
+    suspend fun hasPin(profileId: String): Boolean = !pinHash(profileId).isNullOrBlank()
     suspend fun createPinHash(pin: String): String = PinHasher.hash(pin)
     suspend fun verifyPin(profileId: String, pin: String, storedHash: String): Boolean = PinHasher.hash(pin) == storedHash
     suspend fun canAttemptPin(profileId: String): Boolean = true
@@ -61,6 +62,7 @@ interface ProfilePersistence {
     suspend fun activate(profileId: String)
     suspend fun delete(profileId: String)
     suspend fun save(edit: ProfileEditUiModel, pinHash: String?): String
+    suspend fun syncRemotePin(edit: ProfileEditUiModel): Result<Unit> = Result.success(Unit)
     suspend fun setPickerBackground(url: String?) {}
     suspend fun addAvatarPack(repositoryUrl: String): Result<Unit> = Result.success(Unit)
     suspend fun removeAvatarPack(packId: String) {}
@@ -92,7 +94,7 @@ class SharedProfileDataSource(
     }
 
     override suspend fun selectProfile(id: String) {
-        if (store.pinHash(id).isNullOrBlank()) {
+        if (!store.hasPin(id)) {
             store.activate(id)
         } else {
             pendingPinId.value = id
@@ -106,7 +108,7 @@ class SharedProfileDataSource(
             return
         }
         val storedHash = store.pinHash(profileId)
-        if (!storedHash.isNullOrBlank() && store.verifyPin(profileId, pin, storedHash)) {
+        if (store.hasPin(profileId) && store.verifyPin(profileId, pin, storedHash.orEmpty())) {
             store.clearPinFailures(profileId)
             store.activate(profileId)
             pendingPinId.value = null
@@ -130,7 +132,7 @@ class SharedProfileDataSource(
 
     override suspend fun deleteProfile(id: String, pin: String?): Boolean {
         val expectedPinHash = store.pinHash(id)
-        if (!expectedPinHash.isNullOrBlank() && !store.verifyPin(id, pin.orEmpty(), expectedPinHash)) {
+        if (store.hasPin(id) && !store.verifyPin(id, pin.orEmpty(), expectedPinHash.orEmpty())) {
             store.recordPinFailure(id)
             return false
         }
@@ -145,6 +147,7 @@ class SharedProfileDataSource(
             edit.keepExistingPin && edit.id != null -> store.pinHash(edit.id)
             else -> null
         }
+        store.syncRemotePin(edit).getOrThrow()
         return store.save(edit, pinHash)
     }
 

@@ -202,6 +202,12 @@ class ProfileManager @Inject constructor(
         notifyChanged()
     }
 
+    fun getNuvioPinCache(profileId: String): String? = prefsGet("nuvio_pin_cache_$profileId")
+
+    fun saveNuvioPinCache(profileId: String, payload: String) = prefsPut("nuvio_pin_cache_$profileId", payload)
+
+    fun clearNuvioPinCache(profileId: String) = prefsRemove("nuvio_pin_cache_$profileId")
+
     private fun pinAttemptKey(profileId: String): String = "pin_attempt_$profileId"
 }
 

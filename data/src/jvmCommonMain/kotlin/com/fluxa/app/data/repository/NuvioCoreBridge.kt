@@ -6,6 +6,35 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 
 object NuvioCoreBridge {
+    fun pinHash(profileIndex: Int, salt: String, pin: String): String = invoke(
+        "nuvioPinHash",
+        JsonObject().apply {
+            addProperty("profileIndex", profileIndex)
+            addProperty("salt", salt)
+            addProperty("pin", pin)
+        }
+    ).asString
+
+    fun pinCachePayload(profileIndex: Int, salt: String, pin: String, profileUpdatedAt: String?): JsonObject = invoke(
+        "nuvioPinCachePayload",
+        JsonObject().apply {
+            addProperty("profileIndex", profileIndex)
+            addProperty("salt", salt)
+            addProperty("pin", pin)
+            addProperty("profileUpdatedAt", profileUpdatedAt.orEmpty())
+        }
+    ).asJsonObject
+
+    fun verifyCachedPin(profileIndex: Int, pin: String, pinEnabled: Boolean, profileUpdatedAt: String?, cache: JsonElement?): JsonObject = invoke(
+        "nuvioPinVerifyCached",
+        JsonObject().apply {
+            addProperty("profileIndex", profileIndex)
+            addProperty("pin", pin)
+            addProperty("pinEnabled", pinEnabled)
+            addProperty("profileUpdatedAt", profileUpdatedAt.orEmpty())
+            cache?.let { add("cache", it) }
+        }
+    ).asJsonObject
     fun buildLocalProfiles(
         sessionProfile: JsonObject,
         nuvioProfiles: JsonElement,

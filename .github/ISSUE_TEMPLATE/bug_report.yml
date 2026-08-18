@@ -1,0 +1,61 @@
+name: Bug report
+description: Something in Fluxa is broken or behaving wrong
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please search existing issues first — a quick check saves everyone time.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and what did you expect instead?
+      placeholder: When I open a series, tapping Play opens a black player that never loads. I expected it to start playing.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a series detail page
+        2. Pick a source
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Android (phone / tablet)
+        - Android TV
+        - iOS
+        - tvOS
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version & device
+      placeholder: Android 14 · Pixel 8 · or · Android TV 12 · Shield TV
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Fluxa version
+      description: Settings → About, or the release/build you installed.
+      placeholder: 1.4.0
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logcat / error text
+      description: A logcat excerpt around the failure, or an in-app error message, helps a lot.
+      render: text
+    validations:
+      required: false

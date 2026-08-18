@@ -304,7 +304,7 @@ internal fun AppRoutesHost(
                     } else {
                         homeViewModel.setProviderSyncing("stremio", true)
                         homeViewModel.syncStremioIntegration(
-                            profile = profile!!,
+                            profile = profile,
                             onProfileUpdated = { updated ->
                                 onActiveProfileChanged(updated)
                                 profileManager.saveProfile(updated)
@@ -322,7 +322,7 @@ internal fun AppRoutesHost(
                     } else {
                         homeViewModel.setProviderSyncing("nuvio", true)
                         homeViewModel.syncNuvioIntegration(
-                            profile = profile!!,
+                            profile = profile,
                             onProfileUpdated = { updated ->
                                 onActiveProfileChanged(updated)
                                 profileManager.saveProfile(updated)

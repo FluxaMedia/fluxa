@@ -20,6 +20,7 @@ import com.fluxa.app.data.remote.NuvioCollectionFolder
 import com.fluxa.app.data.remote.NuvioCollectionFolderSource
 import com.fluxa.app.data.remote.NuvioCredentials
 import com.fluxa.app.data.remote.NuvioProfileDto
+import com.fluxa.app.data.remote.NuvioProfileLockDto
 import com.fluxa.app.data.remote.NuvioPluginDto
 import com.fluxa.app.data.remote.NuvioService
 import com.fluxa.app.data.remote.NuvioSession
@@ -41,6 +42,59 @@ class NuvioAccountImportCoordinator(
     private val supabaseUrl: String,
     private val gson: Gson
 ) {
+    suspend fun verifyNuvioProfilePin(profile: UserProfile, pin: String): com.fluxa.app.data.remote.NuvioPinVerifyResult {
+        val fresh = refreshProfileIfNeeded(profile)
+        val token = fresh.nuvioAccessToken?.takeIf { it.isNotBlank() }
+            ?: return com.fluxa.app.data.remote.NuvioPinVerifyResult(message = "Nuvio is not connected")
+        return nuvioService.verifyProfilePin(
+            authorization = "Bearer $token",
+            body = mapOf("p_profile_id" to (fresh.nuvioProfileIndex ?: 1), "p_pin" to pin),
+        ).requireBody().toDomain()
+    }
+
+    suspend fun setNuvioProfilePin(profile: UserProfile, pin: String, currentPin: String? = null) {
+        val fresh = refreshProfileIfNeeded(profile)
+        val token = fresh.nuvioAccessToken?.takeIf { it.isNotBlank() }
+            ?: error("Nuvio is not connected")
+        nuvioService.setProfilePin(
+            authorization = "Bearer $token",
+            body = buildMap {
+                put("p_profile_id", fresh.nuvioProfileIndex ?: 1)
+                put("p_pin", pin)
+                currentPin?.let { put("p_current_pin", it) }
+            },
+        ).requirePinSuccess()
+    }
+
+    suspend fun clearNuvioProfilePin(profile: UserProfile, currentPin: String? = null) {
+        val fresh = refreshProfileIfNeeded(profile)
+        val token = fresh.nuvioAccessToken?.takeIf { it.isNotBlank() }
+            ?: error("Nuvio is not connected")
+        nuvioService.clearProfilePin(
+            authorization = "Bearer $token",
+            body = buildMap {
+                put("p_profile_id", fresh.nuvioProfileIndex ?: 1)
+                currentPin?.let { put("p_current_pin", it) }
+            },
+        ).requirePinSuccess()
+    }
+
+    suspend fun clearNuvioProfilePinWithPassword(profile: UserProfile, accountPassword: String) {
+        val fresh = refreshProfileIfNeeded(profile)
+        val token = fresh.nuvioAccessToken?.takeIf { it.isNotBlank() }
+            ?: error("Nuvio is not connected")
+        nuvioService.clearProfilePinWithAccountPassword(
+            authorization = "Bearer $token",
+            body = mapOf("p_profile_id" to (fresh.nuvioProfileIndex ?: 1), "p_account_password" to accountPassword),
+        ).requirePinSuccess()
+    }
+
+    suspend fun pullNuvioProfileLocks(profile: UserProfile): List<NuvioProfileLockDto> {
+        val fresh = refreshProfileIfNeeded(profile)
+        val token = fresh.nuvioAccessToken?.takeIf { it.isNotBlank() } ?: return emptyList()
+        return nuvioService.pullProfileLocks("Bearer $token").requireBody()
+    }
+
     suspend fun refreshProfileIfNeeded(profile: UserProfile): UserProfile {
         val refreshToken = profile.nuvioRefreshToken?.takeIf { it.isNotBlank() } ?: return profile
         val expiresAt = profile.nuvioTokenExpiresAt ?: 0L
@@ -318,7 +372,7 @@ class NuvioAccountImportCoordinator(
         currentProfile: UserProfile? = profileManager.getProfiles().firstOrNull { it.id == profileId }
     ) {
         val currentOwner = currentProfile?.providerDataOwner(ThirdPartyProviderId.NUVIO)
-        if (currentOwner != expectedOwner || currentProfile?.nuvioAccessToken.isNullOrBlank()) {
+        if (currentOwner != expectedOwner || currentProfile.nuvioAccessToken.isNullOrBlank()) {
             throw IllegalStateException("Nuvio account changed or disconnected during sync")
         }
     }
@@ -393,6 +447,10 @@ class NuvioAccountImportCoordinator(
         defaultValue
     }
 
+}
+
+private fun retrofit2.Response<*>.requirePinSuccess() {
+    if (!isSuccessful) error("Nuvio PIN request failed: ${code()} ${message()}")
 }
 
 

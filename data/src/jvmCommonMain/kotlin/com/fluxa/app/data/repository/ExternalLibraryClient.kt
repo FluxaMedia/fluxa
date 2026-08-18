@@ -253,7 +253,9 @@ class ExternalLibraryClient @Inject constructor(
             val showsWithStills = supervisorScope {
                 shows.map { (item, meta) -> async { attachSimklEpisodeDetails(item, meta) } }.awaitAll()
             }
-            val unmatchedSessions = playbackSessions.filter { it.get("id")?.asInt !in consumedSessionIds }
+            val unmatchedSessions = playbackSessions.filter { session ->
+                session.get("id")?.takeUnless { it.isJsonNull }?.asInt?.let { it !in consumedSessionIds } == true
+            }
             val standaloneSessionItems = supervisorScope {
                 unmatchedSessions.map { session -> async {
                     runCatching { metaFromPlaybackSession(session, language) }.getOrNull()

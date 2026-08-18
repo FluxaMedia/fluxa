@@ -28,6 +28,21 @@ interface NuvioService {
     @POST("rest/v1/rpc/sync_pull_profiles")
     suspend fun pullProfiles(@Header("Authorization") authorization: String, @Body body: Map<String, String> = emptyMap()): Response<List<NuvioProfileDto>>
 
+    @POST("rest/v1/rpc/verify_profile_pin")
+    suspend fun verifyProfilePin(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<NuvioPinVerifyResultDto>
+
+    @POST("rest/v1/rpc/set_profile_pin")
+    suspend fun setProfilePin(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @POST("rest/v1/rpc/clear_profile_pin")
+    suspend fun clearProfilePin(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @POST("rest/v1/rpc/clear_profile_pin_with_account_password")
+    suspend fun clearProfilePinWithAccountPassword(@Header("Authorization") authorization: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @POST("rest/v1/rpc/sync_pull_profile_locks")
+    suspend fun pullProfileLocks(@Header("Authorization") authorization: String, @Body body: Map<String, String> = emptyMap()): Response<List<NuvioProfileLockDto>>
+
     @GET("rest/v1/addons")
     suspend fun pullAddons(
         @Header("Authorization") authorization: String,

@@ -10,6 +10,8 @@ fun UserProfile.toProfileUiModel(): ProfileUiModel = ProfileUiModel(
     avatarUrl = avatarUrl,
     language = safeLanguage,
     accentColorArgb = safeAccentColorArgb.toLong() and 0xffffffffL,
-    hasPin = !pinHash.isNullOrBlank(),
+    hasPin = !pinHash.isNullOrBlank() || nuvioPinEnabled,
+    nuvioPinEnabled = nuvioPinEnabled,
+    nuvioProfileIndex = nuvioProfileIndex,
     biometricEnabled = biometricEnabled == true,
 )

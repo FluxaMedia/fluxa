@@ -13,6 +13,7 @@ import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.shared.feature.catalog.toHomeCollectionRows
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +36,7 @@ class AndroidCatalogHomeDataSource(
      * Row/card mapping is intentionally isolated from billboard state. Billboard rotation,
      * trailer resolution and subtitle updates must not rebuild every row on the Home screen.
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeHome(): Flow<CatalogHomeUiState> {
         val rows = combine(
             homeViewModel.categories,

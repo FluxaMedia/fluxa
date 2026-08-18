@@ -69,7 +69,7 @@ internal fun PlayerRoute(
         if (externalUrl != null) {
             val context = LocalContext.current
             val externalTitle = request.lastStreamTitle ?: selectedStream?.title ?: request.meta.name
-            LaunchedEffect(request, activeProfile?.externalPlayerTarget, externalUrl, externalLaunchStarted) {
+            LaunchedEffect(request, activeProfile.externalPlayerTarget, externalUrl, externalLaunchStarted) {
                 if (externalLaunchStarted) return@LaunchedEffect
                 externalLaunchStarted = true
                 if (!homeViewModel.externalPlaybackMediaSessionAccessAvailable() && !externalTrackingPermissionPrompted) {
@@ -107,7 +107,7 @@ internal fun PlayerRoute(
                     url = launchUrl,
                     title = playbackNotificationTitle(request.meta, request.videoId),
                     positionMs = request.initialProgress,
-                    packageName = activeProfile?.externalPlayerTarget,
+                    packageName = activeProfile.externalPlayerTarget,
                     headers = selectedStream?.resolveHeaders().orEmpty(),
                     subtitles = subtitles,
                 )
@@ -128,7 +128,7 @@ internal fun PlayerRoute(
                             episodeName = playbackNotificationTitle(request.meta, request.videoId),
                             streamUrl = launchUrl,
                             streamTitle = externalTitle,
-                            targetPackage = activeProfile?.externalPlayerTarget,
+                            targetPackage = activeProfile.externalPlayerTarget,
                         )
                     }
                     .onFailure {

@@ -32,4 +32,6 @@ __pycache__/
 /.agents/
 *.md
 !README.md
+!CONTRIBUTING.md
+!.github/**/*.md
 /docs/

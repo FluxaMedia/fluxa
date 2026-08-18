@@ -31,7 +31,17 @@ data class NuvioProfile(
     val name: String?,
     val avatarColorHex: String?,
     val avatarId: String?,
-    val avatarUrl: String?
+    val avatarUrl: String?,
+    val pinEnabled: Boolean = false,
+    val pinLockedUntil: String? = null,
+    val updatedAt: String? = null,
+)
+
+@Serializable
+data class NuvioPinVerifyResult(
+    val unlocked: Boolean = false,
+    val retryAfterSeconds: Int = 0,
+    val message: String? = null,
 )
 
 @Serializable

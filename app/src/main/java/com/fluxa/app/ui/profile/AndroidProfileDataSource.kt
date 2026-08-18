@@ -5,6 +5,8 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.ProfilePickerSettingsStore
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.repository.ProfileAvatarPackRepository
+import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
+import com.fluxa.app.data.repository.NuvioCoreBridge
 import com.fluxa.app.common.PinHasher
 import com.fluxa.app.shared.feature.profile.ProfileAvatarPackUiModel
 import com.fluxa.app.shared.feature.profile.ProfileAvatarUiModel
@@ -13,21 +15,26 @@ import com.fluxa.app.shared.feature.profile.JvmPbkdf2PinHasher
 import com.fluxa.app.shared.feature.profile.ProfileBase64Codec
 import com.fluxa.app.shared.feature.profile.ProfileManagerPersistence
 import com.fluxa.app.shared.feature.profile.ProfileStoreSnapshot
+import com.fluxa.app.shared.feature.profile.ProfileEditUiModel
 import com.fluxa.app.shared.feature.profile.SharedProfileDataSource
 import com.fluxa.app.shared.feature.profile.toProfileUiModel
 import android.util.Base64
+import com.google.gson.JsonParser
+import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class AndroidProfileDataSource(
     profileManager: ProfileManager,
-    pickerSettingsStore: ProfilePickerSettingsStore
-) : ProfileDataSource by SharedProfileDataSource(AndroidProfileStore(profileManager, pickerSettingsStore))
+    pickerSettingsStore: ProfilePickerSettingsStore,
+    nuvioImportCoordinator: NuvioAccountImportCoordinator,
+) : ProfileDataSource by SharedProfileDataSource(AndroidProfileStore(profileManager, pickerSettingsStore, nuvioImportCoordinator))
 
 private class AndroidProfileStore(
     profileManager: ProfileManager,
     private val pickerSettingsStore: ProfilePickerSettingsStore,
+    private val nuvioImportCoordinator: NuvioAccountImportCoordinator,
 ) : ProfileManagerPersistence(
     profileManager = profileManager,
     initializeNewProfile = { profile ->
@@ -94,11 +101,61 @@ private class AndroidProfileStore(
 
     override suspend fun createPinHash(pin: String): String = pinHasher.hash(pin)
 
+    override suspend fun hasPin(profileId: String): Boolean =
+        profileManager.getProfiles().firstOrNull { it.id == profileId }?.let { profile ->
+            !profile.pinHash.isNullOrBlank() || profile.nuvioPinEnabled
+        } == true
+
     override suspend fun verifyPin(profileId: String, pin: String, storedHash: String): Boolean {
+        val profile = profileManager.getProfiles().firstOrNull { it.id == profileId }
+        if (profile?.nuvioPinEnabled == true) {
+            val cache = profileManager.getNuvioPinCache(profileId)?.let { JsonParser.parseString(it) }
+            val cached = NuvioCoreBridge.verifyCachedPin(
+                profileIndex = profile.nuvioProfileIndex ?: 1,
+                pin = pin,
+                pinEnabled = true,
+                profileUpdatedAt = profile.nuvioProfileUpdatedAt,
+                cache = cache,
+            )
+            if (cached.get("unlocked")?.asBoolean == true) return true
+            if (cached.get("reason")?.asString == "profile_changed") profileManager.clearNuvioPinCache(profileId)
+
+            val remote = runCatching { nuvioImportCoordinator.verifyNuvioProfilePin(profile, pin) }.getOrNull()
+            if (remote?.unlocked == true) {
+                val payload = NuvioCoreBridge.pinCachePayload(
+                    profileIndex = profile.nuvioProfileIndex ?: 1,
+                    salt = UUID.randomUUID().toString(),
+                    pin = pin,
+                    profileUpdatedAt = profile.nuvioProfileUpdatedAt,
+                )
+                profileManager.saveNuvioPinCache(profileId, payload.toString())
+                return true
+            }
+            return false
+        }
         if (pinHasher.verify(pin, storedHash)) return true
         if (storedHash.length != 64 || PinHasher.hash(pin) != storedHash) return false
         profileManager.updateProfile(profileId) { it.copy(pinHash = pinHasher.hash(pin)) }
         return true
+    }
+
+    override suspend fun syncRemotePin(edit: ProfileEditUiModel): Result<Unit> = runCatching {
+        val profile = edit.id?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
+            ?: return@runCatching
+        if (profile.nuvioAccessToken.isNullOrBlank() || profile.nuvioProfileIndex == null) return@runCatching
+
+        val newPin = edit.newPin
+        when {
+            newPin != null -> {
+                nuvioImportCoordinator.setNuvioProfilePin(profile, newPin, edit.currentPin)
+                profileManager.updateProfile(profile.id) { it.copy(nuvioPinEnabled = true) }
+            }
+            !edit.keepExistingPin && profile.nuvioPinEnabled -> {
+                nuvioImportCoordinator.clearNuvioProfilePin(profile, edit.currentPin)
+                profileManager.updateProfile(profile.id) { it.copy(nuvioPinEnabled = false, nuvioPinLockedUntil = null) }
+                profileManager.clearNuvioPinCache(profile.id)
+            }
+        }
     }
 }
 

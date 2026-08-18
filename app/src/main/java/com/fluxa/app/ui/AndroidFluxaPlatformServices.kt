@@ -86,7 +86,7 @@ class AndroidFluxaPlatformServices(
         deviceType = deviceType,
     )
     override val detailDataSource = AndroidDetailDataSource(detailViewModel, activeProfile, localMediaLibrary, deviceType)
-    override val profileDataSource = AndroidProfileDataSource(profileManager, profilePickerSettingsStore)
+    override val profileDataSource = AndroidProfileDataSource(profileManager, profilePickerSettingsStore, nuvioImportCoordinator)
     override val addonStoreDataSource = AndroidAddonStoreDataSource(
         repository = repository,
         profileManager = profileManager,

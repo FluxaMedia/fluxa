@@ -66,6 +66,7 @@ val generateFluxaCoreUniFfiBindings by tasks.registering(Exec::class) {
         "kotlin",
         "--config",
         "uniffi.toml",
+        "--no-format",
         "--out-dir",
         uniffiKotlinOutDir.get().asFile.absolutePath
     )

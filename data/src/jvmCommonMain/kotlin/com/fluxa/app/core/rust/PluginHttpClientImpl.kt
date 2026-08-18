@@ -26,7 +26,7 @@ private object PluginGuardedDns : Dns {
 }
 
 class PluginHttpClientImpl @Inject constructor(
-    @param:Named("PluginScraperClient") baseClient: OkHttpClient
+    @Named("PluginScraperClient") baseClient: OkHttpClient
 ) : PluginHttpClient {
 
     private val guardedClient = baseClient.newBuilder()

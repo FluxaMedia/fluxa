@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest an idea or improvement for Fluxa
+labels: ["enhancement", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Please search existing issues first in case it's already been suggested.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the itch, not just the solution. What are you trying to do that's hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Which platforms is this for?
+      multiple: true
+      options:
+        - All
+        - Android (phone / tablet)
+        - Android TV
+        - iOS
+        - tvOS
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false

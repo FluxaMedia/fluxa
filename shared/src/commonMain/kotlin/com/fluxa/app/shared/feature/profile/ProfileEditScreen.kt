@@ -75,6 +75,7 @@ fun ProfileEditScreen(
 ) {
     var name by remember(initialProfile?.id) { mutableStateOf(initialProfile?.name.orEmpty()) }
     var pin by remember(initialProfile?.id) { mutableStateOf("") }
+    var currentPin by remember(initialProfile?.id) { mutableStateOf("") }
     var removePin by remember(initialProfile?.id) { mutableStateOf(false) }
     var biometricEnabled by remember(initialProfile?.id) { mutableStateOf(initialProfile?.biometricEnabled == true) }
     var showAvatarSheet by remember { mutableStateOf(false) }
@@ -110,6 +111,7 @@ fun ProfileEditScreen(
                             name = name,
                             avatarUrl = avatarUrl,
                             newPin = pin.takeIf { it.length == 4 },
+                            currentPin = currentPin.takeIf { it.length == 4 },
                             keepExistingPin = !removePin && pin.length != 4 && initialProfile?.hasPin == true,
                             biometricEnabled = willHavePin && biometricEnabled
                         )
@@ -201,6 +203,19 @@ fun ProfileEditScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 colors = profileFieldColors()
             )
+
+            if (initialProfile?.nuvioPinEnabled == true) {
+                OutlinedTextField(
+                    value = currentPin,
+                    onValueChange = { currentPin = it.filter(Char::isDigit).take(4) },
+                    placeholder = { Text("Current Nuvio PIN (for changing/removing)") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    colors = profileFieldColors(),
+                )
+            }
             if (initialProfile?.hasPin == true && !removePin) {
                 TextButton(onClick = { removePin = true; pin = "" }) {
                     Text(AppStrings.t(language, "profiles.pin_remove"), color = FluxaColors.errorRed)

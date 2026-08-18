@@ -29,10 +29,27 @@ data class NuvioProfileDto(
     @SerializedName("avatar_id") val avatarId: String?,
     @SerializedName("avatar_url") val avatarUrl: String?,
     @SerializedName("uses_primary_addons") val usesPrimaryAddons: Boolean = false,
-    @SerializedName("uses_primary_plugins") val usesPrimaryPlugins: Boolean = false
+    @SerializedName("uses_primary_plugins") val usesPrimaryPlugins: Boolean = false,
+    @SerializedName("pin_enabled") val pinEnabled: Boolean = false,
+    @SerializedName("pin_locked_until") val pinLockedUntil: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
 ) {
-    fun toDomain(): NuvioProfile = NuvioProfile(id, userId, profileIndex, name, avatarColorHex, avatarId, avatarUrl)
+    fun toDomain(): NuvioProfile = NuvioProfile(id, userId, profileIndex, name, avatarColorHex, avatarId, avatarUrl, pinEnabled, pinLockedUntil, updatedAt)
 }
+
+data class NuvioPinVerifyResultDto(
+    val unlocked: Boolean = false,
+    @SerializedName("retry_after_seconds") val retryAfterSeconds: Int = 0,
+    val message: String? = null,
+) {
+    fun toDomain() = NuvioPinVerifyResult(unlocked, retryAfterSeconds, message)
+}
+
+data class NuvioProfileLockDto(
+    @SerializedName("profile_index") val profileIndex: Int,
+    @SerializedName("pin_enabled") val pinEnabled: Boolean = false,
+    @SerializedName("pin_locked_until") val pinLockedUntil: String? = null,
+)
 
 data class NuvioAddonDto(
     val id: String? = null,
