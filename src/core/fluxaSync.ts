@@ -3,6 +3,8 @@ import { loadActiveProfile, loadAddons, loadLibrary, loadPrefs, saveAddons, save
 import { pluginRepositoryUrlsKey, pluginScraperEnabledKey } from './pluginsStorage';
 import { loadProfiles, saveProfiles } from './profiles';
 import { DEFAULT_APP_PREFS } from './appPrefs';
+import { normalizeAddonDescriptor } from './addons';
+import { platformFetch } from '../platform/http';
 import {
   fluxaCreateProfile,
   fluxaProfiles,
@@ -163,7 +165,28 @@ async function writeLocalState(profile: UserProfile, local: LocalState): Promise
     watched: local.watched,
     lastWatchedEpisodes: local.lastWatched,
   });
-  if (Array.isArray(local.addons)) await saveAddons(local.addons);
+  if (Array.isArray(local.addons)) {
+    const cached = await loadAddons();
+    const hydrated = await Promise.all(local.addons.map(async (entry) => {
+      const candidate = entry as AddonDescriptor & { url?: string; name?: string };
+      if (candidate.manifest?.id) return candidate;
+      const url = candidate.transportUrl || candidate.url;
+      if (!url) return null;
+      const previous = cached.find((addon) => addon.transportUrl === url);
+      try {
+        const result = await platformFetch(url);
+        if (!result.ok) throw new Error(`manifest ${result.status}`);
+        const manifest = await result.json();
+        return normalizeAddonDescriptor({ transportUrl: url, manifest } as AddonDescriptor);
+      } catch {
+        return previous ?? normalizeAddonDescriptor({
+          transportUrl: url,
+          manifest: { id: url, name: candidate.name || url, version: '0.0.1', resources: [], types: [], catalogs: [] },
+        } as AddonDescriptor);
+      }
+    }));
+    await saveAddons(hydrated.filter((addon): addon is AddonDescriptor => addon !== null));
+  }
   if (local.settings) await savePrefs(local.settings);
   if (local.plugins) {
     await storageWrite(await pluginRepositoryUrlsKey(), local.plugins.repositoryUrls ?? []);
