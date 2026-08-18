@@ -1,3 +1,7 @@
+[profile.dev]
+debug = 1
+incremental = true
+
 [package]
 name = "fluxa-desktop"
 version = "0.1.30"
