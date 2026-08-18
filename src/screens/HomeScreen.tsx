@@ -9,7 +9,7 @@ import { CollectionShelfRow } from '../components/CollectionShelfRow';
 import { posterPrefsFromState } from '../core/posterPrefs';
 import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { buildResourceUrl } from '../core/addonManifest';
-import { coreInvoke, httpFetchText } from '../core/engine';
+import { coreInvoke, coreResolveTransportUrl, httpFetchText } from '../core/engine';
 
 import { prewarmYoutubeTrailerConfig } from '../core/effectRunner';
 import { fetchContentLogo, fetchTmdbTrailers } from '../core/detailEffects';
@@ -212,7 +212,17 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
   const handleFolderTileClick = useCallback(async (folderMeta: Meta) => {
     const allCats = (home.categories ?? []) as HomeCategory[];
     const folderCat = allCats.find((c) => c.id === folderMeta.id && c.type === 'collection_folder');
-    const sources = (folderCat?.catalogSources ?? []) as FolderSource[];
+    const tileSources = (folderMeta as Meta & { collectionSources?: unknown[] }).collectionSources ?? [];
+    const rawSources = folderCat?.catalogSources ?? tileSources;
+    const installedAddons = state.addons.installed ?? [];
+    const sources = (await Promise.all((rawSources as Record<string, unknown>[]).map(async (source) => {
+      if (typeof source.transportUrl === 'string') return source as unknown as FolderSource;
+      if (source.provider === 'trakt' || source.provider === 'tmdb') return source as unknown as FolderSource;
+      const transportUrl = await coreResolveTransportUrl(JSON.stringify(source), JSON.stringify(installedAddons));
+      return transportUrl
+        ? { ...source, transportUrl } as unknown as FolderSource
+        : null;
+    }))).filter((source): source is FolderSource => source !== null);
     if (!sources.length) return;
     savedScrollRef.current = scrollRef.current?.scrollTop ?? 0;
     setViewAllCategory({ title: folderMeta.name, items: [] });
@@ -232,7 +242,7 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
     } finally {
       setFolderLoading(false);
     }
-  }, [home.categories]);
+  }, [home.categories, state.addons.installed]);
 
   const handleLoadMoreFolder = useCallback(async () => {
     const sources = folderSourcesRef.current ?? [];
