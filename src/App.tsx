@@ -123,7 +123,7 @@ export default function App() {
     setWelcomeCompleted,
   } = useAppInit(updateState, setActiveRoute, storedPrefsRef);
 
-  const { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles, playerCodecs, playerResumeAt, playerSkipSegments, playerNextEpisode, playNextEpisode, playbackSnapshotRef, reportPlaybackEvent, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit, skipSegmentCoverage } = usePlayer({
+  const { playerLoadingOverlay, playerUrl, playerMode, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles, playerCodecs, playerResumeAt, playerSkipSegments, playerNextEpisode, playNextEpisode, playbackSnapshotRef, reportPlaybackEvent, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit, skipSegmentCoverage } = usePlayer({
     stateRef,
     activeProfile,
     updateState,
@@ -580,7 +580,7 @@ export default function App() {
       <UpdateModal state={updateModalState} onClose={() => setUpdateModalState({ phase: 'idle' })} />
   </>;
   const playback = (
-      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} title={playerTitle} subtitles={playerSubtitles} codecs={playerCodecs} resumeAt={playerResumeAt} snapshotRef={playbackSnapshotRef} onPlaybackEvent={reportPlaybackEvent} skipSegments={playerSkipSegments} nextEpisode={playerNextEpisode} onPlayNextEpisode={() => { void playNextEpisode(); }} autoSkip={prefBool(storedPrefsRef.current, 'autoSkipIntro', false)} autoPlayNext={prefBool(storedPrefsRef.current, 'autoPlayNextEpisode', true)} contentId={playerMetaId} contentType={playerEpisode ? 'series' : 'movie'} videoId={playerEpisode?.id} onClose={closePlayer} onFirstFrame={notifyFirstFrame} onHandoff={handleExternalHandoff} /> : <PlaybackHost
+      isWebTarget && playerUrl ? <WebPlayerOverlay url={playerUrl} mode={playerMode} title={playerTitle} subtitles={playerSubtitles} codecs={playerCodecs} resumeAt={playerResumeAt} snapshotRef={playbackSnapshotRef} onPlaybackEvent={reportPlaybackEvent} skipSegments={playerSkipSegments} nextEpisode={playerNextEpisode} onPlayNextEpisode={() => { void playNextEpisode(); }} autoSkip={prefBool(storedPrefsRef.current, 'autoSkipIntro', false)} autoPlayNext={prefBool(storedPrefsRef.current, 'autoPlayNextEpisode', true)} contentId={playerMetaId} contentType={playerEpisode ? 'series' : 'movie'} videoId={playerEpisode?.id} onClose={closePlayer} onFirstFrame={notifyFirstFrame} onHandoff={handleExternalHandoff} /> : <PlaybackHost
         active={nativePlayerActive}
         loading={playerLoadingOverlay}
         closePlayer={closePlayer}

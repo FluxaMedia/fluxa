@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Captions, ChevronLeft, ExternalLink, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import { t } from '../i18n';
-import { transcodeUrl } from '../platform/web/stream';
+import { transcodeUrl, type PlaybackUrlChoice } from '../platform/web/stream';
+import { attachMseRemuxSource } from '../platform/web/mseMkvSource';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
 import type { PlaybackSnapshot, ScrobbleEvent } from '../core/playbackSession';
@@ -29,6 +30,7 @@ function isSupabaseInstance(instanceUrl: string): boolean {
 
 interface Props {
   url: string;
+  mode?: PlaybackUrlChoice['mode'] | null;
   title?: string;
   subtitles: PlayerSubtitleSource[];
   onClose: () => Promise<void>;
@@ -67,7 +69,7 @@ const DOUBLE_TAP_MS = 320;
 
 const pipSupported = typeof document !== 'undefined' && document.pictureInPictureEnabled === true;
 
-export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent, skipSegments = [], nextEpisode, onPlayNextEpisode, autoSkip = false, autoPlayNext = false, onHandoff }: Props) {
+export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent, skipSegments = [], nextEpisode, onPlayNextEpisode, autoSkip = false, autoPlayNext = false, onHandoff }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
   const isTouch = useIsTouch();
@@ -231,6 +233,7 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
     if (!video) return;
     fallbackUsedRef.current = false;
     let cancelled = false;
+    let releaseMseSource: (() => void) | null = null;
     const start = async () => {
       if (IS_WEBOS) {
         await applyWebOSMediaOption(video, url, {
@@ -239,8 +242,24 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
         });
         if (cancelled) return;
       }
-      video.src = url;
-      video.load();
+      if (mode === 'mse-remux') {
+        try {
+          releaseMseSource = await attachMseRemuxSource(video, url, codecs?.videoCodec ?? null, codecs?.audioCodec ?? null);
+        } catch {
+          // In-browser remux failed (most commonly: the source doesn't send
+          // CORS headers, so we can't read its bytes via fetch()). Fall back
+          // to the same companion-server transcode path the plain <video>
+          // onError handler below uses.
+          if (cancelled) return;
+          fallbackUsedRef.current = true;
+          video.src = transcodeUrl(url);
+          video.load();
+        }
+        if (cancelled) return;
+      } else {
+        video.src = url;
+        video.load();
+      }
       void video.play().catch(() => setPaused(true));
     };
     void start();
@@ -249,8 +268,9 @@ export function WebPlayerOverlay({ url, title, subtitles, onClose, onFirstFrame,
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       video.pause();
       video.removeAttribute('src');
+      releaseMseSource?.();
     };
-  }, [url, codecs?.videoCodec]);
+  }, [url, mode, codecs?.videoCodec, codecs?.audioCodec]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

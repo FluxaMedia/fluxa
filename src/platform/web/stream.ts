@@ -100,7 +100,7 @@ function extensionOf(sourceUrl: string): string {
   }
 }
 
-function codecString(videoCodec: string | null | undefined, audioCodec: string | null | undefined): string {
+export function codecString(videoCodec: string | null | undefined, audioCodec: string | null | undefined): string {
   const video = videoCodec?.toLowerCase().includes('h264') || videoCodec?.toLowerCase().includes('avc')
     ? 'avc1.42E01E'
     : videoCodec?.toLowerCase().includes('vp9')
@@ -123,6 +123,26 @@ function codecString(videoCodec: string | null | undefined, audioCodec: string |
 }
 
 const WEBOS_NATIVE_CONTAINERS = new Set(['mkv', 'mp4', 'm4v', 'mov', 'webm', 'avi', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'm3u8', 'mpd', 'wmv', 'asf', 'flv', '3gp', 'vob']);
+
+// MKV -> WebM in-browser remux only covers codecs the WebM container itself
+// supports (bitstream copy, no re-encode) — VP8/VP9/AV1 + Opus/Vorbis/none.
+// H.264/HEVC+AAC MKVs still fall through to the companion-server transcode
+// path below until an MP4 remux target exists.
+export function canRemuxToWebm(
+  sourceUrl: string,
+  videoCodec: string | null | undefined,
+  audioCodec: string | null | undefined,
+): boolean {
+  if (IS_WEBOS) return false;
+  if (extensionOf(sourceUrl) !== 'mkv') return false;
+  const video = videoCodec?.toLowerCase() ?? '';
+  const isWebmVideoCodec = ['vp8', 'vp9', 'av1'].some((codec) => video.includes(codec));
+  if (!isWebmVideoCodec || !browserSupportsVideo(video)) return false;
+  const audio = audioCodec?.toLowerCase() ?? '';
+  if (audio && !(audio.includes('opus') || audio.includes('vorbis'))) return false;
+  if (audio && !browserSupportsAudio(audio)) return false;
+  return true;
+}
 
 export function canDirectPlay(
   sourceUrl: string,
@@ -148,7 +168,7 @@ export function canDirectPlay(
 
 export interface PlaybackUrlChoice {
   url: string;
-  mode: 'direct' | 'proxy' | 'transcode';
+  mode: 'direct' | 'proxy' | 'transcode' | 'mse-remux';
 }
 
 export function choosePlaybackUrl(
@@ -167,6 +187,9 @@ export function choosePlaybackUrl(
 
   if (!headers && (!probe || playable)) return { url: playUrl, mode: 'direct' };
   if (probe && playable) return { url: proxyUrl(remoteSource, headers ?? {}), mode: 'proxy' };
+  if (probe && canRemuxToWebm(remoteSource, probe.videoCodec, probe.audioCodec)) {
+    return { url: headers ? proxyUrl(remoteSource, headers) : remoteSource, mode: 'mse-remux' };
+  }
   const target = probe ? chooseBrowserTranscodeTarget(probe.videoCodec, probe.audioCodec) : undefined;
   return { url: transcodeUrl(playUrl, resumeAtSeconds, headers, target), mode: 'transcode' };
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { platformInvoke } from '../platform/invoke';
-import { choosePlaybackUrl, probeStream } from '../platform/web/stream';
+import { choosePlaybackUrl, probeStream, type PlaybackUrlChoice } from '../platform/web/stream';
 import { loadEnabledAddons } from '../core/libraryOps';
 import { resolvePlaybackSubtitles } from '../core/subtitles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
@@ -30,6 +30,7 @@ interface UsePlayerOptions {
 export interface WebPlayerResult {
   playerLoadingOverlay: PlayerLoadingOverlayState | null;
   playerUrl: string | null;
+  playerMode: PlaybackUrlChoice['mode'] | null;
   playerTorrentTelemetryContext: null;
   playerTitle: string | undefined;
   playerEpisodeTitle: string | undefined;
@@ -62,6 +63,7 @@ export interface WebPlayerResult {
 
 export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUpdated, onEpisodePlaybackFailed: _onEpisodePlaybackFailed }: UsePlayerOptions): WebPlayerResult {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
+  const [playerMode, setPlayerMode] = useState<PlaybackUrlChoice['mode'] | null>(null);
   const [playerCodecs, setPlayerCodecs] = useState<{ videoCodec: string | null; audioCodec: string | null } | null>(null);
   const [playerTitle, setPlayerTitle] = useState<string>();
   const [playerEpisodeTitle, setPlayerEpisodeTitle] = useState<string>();
@@ -225,6 +227,7 @@ export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUp
       scrobbleStoppedRef.current = false;
       setPlayerResumeAt(playback.mode === 'transcode' ? undefined : resumeAtSeconds);
       setPlayerUrl(playbackUrl);
+      setPlayerMode(playback.mode);
       setPlayerTitle(meta?.name);
       setPlayerEpisodeTitle(episode?.title);
       setPlayerEpisode(episode ?? null);
@@ -256,6 +259,7 @@ export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUp
     reportPlaybackEvent('stop');
     if (playerUsesTorrent) await platformInvoke('stop_torrent_stream').catch(() => undefined);
     setPlayerUrl(null);
+    setPlayerMode(null);
     setPlayerLoadingOverlay(null);
     setPlayerUsesTorrent(false);
     setPlayerSubtitles([]);
@@ -268,7 +272,7 @@ export function useWebPlayer({ stateRef, activeProfile, updateState, onProfileUp
   }, [playerUsesTorrent, reportPlaybackEvent, saveProgress]);
 
   return {
-    playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext: null, playerTitle, playerEpisodeTitle, playerEpisode,
+    playerLoadingOverlay, playerUrl, playerMode, playerTorrentTelemetryContext: null, playerTitle, playerEpisodeTitle, playerEpisode,
     playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl: undefined, playerSubtitles, playerCodecs, playerResumeAt, playerSkipSegments, playerNextEpisode,
     playNextEpisode, playbackSnapshotRef, reportPlaybackEvent, playerStreamHeaders,
     playingStreamRef, playingMetaRef, playerPlaybackError, playerSubtitleWarning: null, dismissSubtitleWarning: () => {},

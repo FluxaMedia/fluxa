@@ -90,6 +90,7 @@ interface UsePlayerOptions {
 interface UsePlayerResult {
   playerLoadingOverlay: PlayerLoadingOverlayState | null;
   playerUrl: string | null;
+  playerMode: import('../platform/web/stream').PlaybackUrlChoice['mode'] | null;
   playerTorrentTelemetryContext: import('../core/mpvPlayer').TorrentTelemetryContext | null;
   playerTitle: string | undefined;
   playerEpisodeTitle: string | undefined;
@@ -617,7 +618,7 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerSubtitleWarning(null);
   }, []);
 
-  return { playerLoadingOverlay, playerUrl, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles: [], playerCodecs: null, playerResumeAt: undefined, playerSkipSegments: [], playerNextEpisode: null, playNextEpisode: async () => {}, playbackSnapshotRef: nativeSnapshotRef, reportPlaybackEvent: () => {}, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
+  return { playerLoadingOverlay, playerUrl, playerMode: null, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles: [], playerCodecs: null, playerResumeAt: undefined, playerSkipSegments: [], playerNextEpisode: null, playNextEpisode: async () => {}, playbackSnapshotRef: nativeSnapshotRef, reportPlaybackEvent: () => {}, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
 }
 
 export function usePlayer(options: UsePlayerOptions): UsePlayerResult | WebPlayerResult {
