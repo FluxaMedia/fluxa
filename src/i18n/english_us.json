@@ -1089,6 +1089,7 @@
   "settings.cw_source_of_truth": "Continue Watching Source",
   "settings.cw_source_of_truth_desc": "Show Continue Watching entries from the selected service only.",
   "settings.cw_source_of_truth_fluxa": "Fluxa Sync",
+  "settings.cw_source_of_truth_local": "Fluxa (Local)",
   "settings.cw_source_of_truth_nuvio": "Nuvio Sync",
   "settings.cw_source_of_truth_trakt": "Trakt",
   "settings.cw_source_of_truth_simkl": "Simkl",

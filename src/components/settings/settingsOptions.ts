@@ -54,26 +54,25 @@ export function streamSourceOptions() {
   ];
 }
 
-export function cwSourceOfTruthOptions() {
+export type ConnectedSourceState = Partial<Record<'nuvio' | 'trakt' | 'simkl' | 'anilist' | 'stremio', boolean>>;
+
+function connectedSourceOptions(connected: ConnectedSourceState = {}) {
   return [
-    { value: 'local', label: t('settings.cw_source_of_truth_fluxa') },
-    { value: 'nuvio', label: t('settings.cw_source_of_truth_nuvio') },
-    { value: 'trakt', label: t('settings.cw_source_of_truth_trakt') },
-    { value: 'simkl', label: t('settings.cw_source_of_truth_simkl') },
-    { value: 'anilist', label: t('settings.cw_source_of_truth_anilist') },
-    { value: 'stremio', label: t('settings.cw_source_of_truth_stremio') },
+    { value: 'local', label: t('settings.cw_source_of_truth_local') },
+    ...(connected.nuvio ? [{ value: 'nuvio', label: t('settings.cw_source_of_truth_nuvio') }] : []),
+    ...(connected.trakt ? [{ value: 'trakt', label: t('settings.cw_source_of_truth_trakt') }] : []),
+    ...(connected.simkl ? [{ value: 'simkl', label: t('settings.cw_source_of_truth_simkl') }] : []),
+    ...(connected.anilist ? [{ value: 'anilist', label: t('settings.cw_source_of_truth_anilist') }] : []),
+    ...(connected.stremio ? [{ value: 'stremio', label: t('settings.cw_source_of_truth_stremio') }] : []),
   ];
 }
 
-export function librarySourceOfTruthOptions() {
-  return [
-    { value: 'local', label: t('settings.cw_source_of_truth_fluxa') },
-    { value: 'nuvio', label: t('settings.cw_source_of_truth_nuvio') },
-    { value: 'trakt', label: t('settings.cw_source_of_truth_trakt') },
-    { value: 'simkl', label: t('settings.cw_source_of_truth_simkl') },
-    { value: 'anilist', label: t('settings.cw_source_of_truth_anilist') },
-    { value: 'stremio', label: t('settings.cw_source_of_truth_stremio') },
-  ];
+export function cwSourceOfTruthOptions(connected: ConnectedSourceState = {}) {
+  return connectedSourceOptions(connected);
+}
+
+export function librarySourceOfTruthOptions(connected: ConnectedSourceState = {}) {
+  return connectedSourceOptions(connected);
 }
 
 export function cwRankingOptions() {
