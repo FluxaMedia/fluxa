@@ -112,6 +112,61 @@ export async function refreshReleasedContinueWatching(
   return (result ?? []) as Record<string, unknown>[];
 }
 
+async function continueWatchingFromCompactProgress(
+  library: Record<string, unknown>,
+  addons: AddonDescriptor[],
+): Promise<Record<string, unknown>[]> {
+  const progressMap = (library.progress as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const libraryItems = Object.entries(progressMap).map(([key, entry]) => {
+    const meta = (entry.meta as Record<string, unknown> | undefined) ?? {};
+    return {
+      content_id: String(entry.contentId ?? meta.id ?? key),
+      content_type: String(entry.contentType ?? meta.type ?? (entry.lastEpisodeSeason != null ? 'series' : 'movie')),
+      name: meta.name ?? null,
+      poster: meta.poster ?? null,
+      background: meta.background ?? null,
+    };
+  });
+  const watchProgress = Object.entries(progressMap).map(([key, entry]) => ({
+    content_id: String(entry.contentId ?? (entry.meta as Record<string, unknown> | undefined)?.id ?? key),
+    content_type: String(entry.contentType ?? (entry.meta as Record<string, unknown> | undefined)?.type ?? (entry.lastEpisodeSeason != null ? 'series' : 'movie')),
+    video_id: entry.videoId ?? entry.lastVideoId ?? null,
+    season: entry.season ?? entry.lastEpisodeSeason ?? null,
+    episode: entry.episode ?? entry.lastEpisodeNumber ?? null,
+    position: entry.position ?? entry.timeOffset ?? 0,
+    duration: entry.duration ?? 0,
+    last_watched: typeof entry.lastWatched === 'number'
+      ? entry.lastWatched
+      : (Date.parse(String(entry.lastWatched ?? entry.savedAt ?? '')) || 0),
+    progress_key: entry.progressKey ?? key,
+  }));
+  if (watchProgress.length === 0) return [];
+
+  const needs = (await coreNuvioProgressMetaNeeds(watchProgress, libraryItems)) ?? [];
+  const fetchedMetadata = await runWithConcurrency(needs, 3, async (need) => {
+    const values = await fetchPlannedResources({
+      kind: 'metaDetail',
+      addons,
+      contentType: need.contentType,
+      id: need.contentId,
+    }).catch(() => []);
+    const result = values.find((value) => value && typeof value === 'object' && 'meta' in value) as { meta?: Record<string, unknown> } | undefined;
+    return [need.contentId, result?.meta ?? null] as const;
+  });
+  const addonMetas = Object.fromEntries(fetchedMetadata.filter(([, meta]) => meta));
+  const resolved = await coreNuvioResolveContinueWatching(watchProgress, addonMetas);
+  const mapped = await coreNuvioImportMergePlan({
+    progress: progressMap,
+    watched: (library.watched as Record<string, boolean> | undefined) ?? {},
+    library: libraryItems,
+    addonMetas,
+    watchProgress: resolved ?? watchProgress,
+    watchHistory: [],
+    categories: ['continueWatching'],
+  });
+  return (await buildContinueWatching(mapped?.progress ?? progressMap)) as Record<string, unknown>[];
+}
+
 export async function continueWatchingForSelectedSource(
   library: Record<string, unknown>,
   prefs: Record<string, unknown>,
@@ -167,8 +222,7 @@ export async function continueWatchingForSelectedSource(
     return items;
   }
 
-  const local = (library.continueWatching as Record<string, unknown>[] | undefined) ?? [];
-  return refreshReleasedContinueWatching(local, library, addons);
+  return continueWatchingFromCompactProgress(library, addons);
 }
 
 export async function readHomeBootstrap(

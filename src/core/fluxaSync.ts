@@ -74,10 +74,53 @@ function profileIdentity(profile: UserProfile): Record<string, unknown> {
     name: profile.name ?? null,
     avatarUrl: profile.avatarUrl ?? null,
     color: profile.color ?? null,
-    pinHash: profile.pinHash ?? null,
     usesPrimaryAddons: profile.usesPrimaryAddons ?? null,
     usesPrimaryPlugins: profile.usesPrimaryPlugins ?? null,
   };
+}
+
+function sanitizeAddonForSync(addon: AddonDescriptor): AddonDescriptor {
+  return {
+    manifest: {
+      id: addon.manifest.id,
+      name: addon.manifest.name,
+      description: addon.manifest.description ?? null,
+      version: addon.manifest.version ?? null,
+      resources: addon.manifest.resources,
+      types: addon.manifest.types,
+      catalogs: addon.manifest.catalogs,
+      idPrefixes: addon.manifest.idPrefixes ?? null,
+      logo: addon.manifest.logo ?? null,
+      background: addon.manifest.background ?? null,
+      configurable: addon.manifest.configurable ?? null,
+    },
+    transportUrl: sanitizeRepositoryUrl(addon.transportUrl) ?? addon.transportUrl,
+    id: addon.id,
+    name: addon.name,
+    version: addon.version,
+    description: addon.description,
+    logo: addon.logo,
+    background: addon.background,
+    resources: addon.resources,
+    types: addon.types,
+    catalogs: addon.catalogs,
+    behaviorHints: addon.behaviorHints,
+  };
+}
+
+function sanitizeRepositoryUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    url.username = '';
+    url.password = '';
+    for (const key of [...url.searchParams.keys()]) {
+      if (/token|secret|password|passwd|api[_-]?key|auth/i.test(key)) url.searchParams.delete(key);
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 async function readLocalState(profile: UserProfile): Promise<LocalState> {
@@ -99,8 +142,13 @@ async function readLocalState(profile: UserProfile): Promise<LocalState> {
     watched: (library.watched as Record<string, boolean>) ?? {},
     lastWatched: (library.lastWatchedEpisodes as Record<string, unknown>) ?? {},
     collections: profile.libraryCollections ?? [],
-    addons,
-    plugins: { repositoryUrls: repositoryUrls ?? [], scraperOverrides: scraperOverrides ?? {} },
+    addons: addons.map(sanitizeAddonForSync),
+    plugins: {
+      repositoryUrls: (repositoryUrls ?? []).map(sanitizeRepositoryUrl).filter((url): url is string => Boolean(url)),
+      scraperOverrides: Object.fromEntries(
+        Object.entries(scraperOverrides ?? {}).filter(([key, value]) => typeof key === 'string' && typeof value === 'boolean'),
+      ),
+    },
     settings,
     profile: profileIdentity(profile),
   };
