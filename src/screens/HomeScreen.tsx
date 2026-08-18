@@ -213,7 +213,8 @@ export const HomeScreen = React.memo(function HomeScreen({ state, onDispatch, on
     const allCats = (home.categories ?? []) as HomeCategory[];
     const folderCat = allCats.find((c) => c.id === folderMeta.id && c.type === 'collection_folder');
     const tileSources = (folderMeta as Meta & { collectionSources?: unknown[] }).collectionSources ?? [];
-    const rawSources = folderCat?.catalogSources ?? tileSources;
+    const categorySources = folderCat?.catalogSources ?? [];
+    const rawSources = categorySources.length > 0 ? categorySources : tileSources;
     const installedAddons = state.addons.installed ?? [];
     const sources = (await Promise.all((rawSources as Record<string, unknown>[]).map(async (source) => {
       if (typeof source.transportUrl === 'string') return source as unknown as FolderSource;
