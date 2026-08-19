@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import type { Meta } from '../core/types';
+import type { AddonDescriptor, Meta, NuvioCollectionSource } from '../core/types';
 import type { PosterPrefs } from '../core/posterPrefs';
 import { ModernTabBar } from '../components/detail/DetailButtons';
 import { VirtualizedPosterGrid } from '../components/VirtualizedPosterGrid';
 import { ShelfRow } from '../components/ShelfRow';
+import { coreInvoke, coreResolveTransportUrl } from '../core/engine';
+import { initFolderSourceState, loadFolderSourcePage, type FolderSourceState } from '../core/folderPagination';
 import { t } from '../i18n';
 
 export interface FolderTab {
@@ -13,6 +15,7 @@ export interface FolderTab {
   title: string;
   type: string;
   items: Meta[];
+  source?: NuvioCollectionSource;
 }
 
 interface Props {
@@ -21,6 +24,7 @@ interface Props {
   tabs: FolderTab[];
   posterPrefs: PosterPrefs;
   typeSuffixEnabled?: boolean;
+  installedAddons: AddonDescriptor[];
   onNavigateDetail: (meta: Meta) => void;
   onBack: () => void;
 }
@@ -37,10 +41,51 @@ function tabDisplayTitle(tab: FolderTab, typeSuffixEnabled?: boolean): string {
   return suffix ? `${tab.title} · ${suffix}` : tab.title;
 }
 
-export function FolderDetailScreen({ title, viewMode, tabs, posterPrefs, typeSuffixEnabled, onNavigateDetail, onBack }: Props) {
+export function FolderDetailScreen({
+  title,
+  viewMode,
+  tabs,
+  posterPrefs,
+  typeSuffixEnabled,
+  installedAddons,
+  onNavigateDetail,
+  onBack,
+}: Props) {
   const isTabbed = viewMode === 'TABBED_GRID';
   const [activeTab, setActiveTab] = useState(() => tabs[0]?.id ?? '');
-  const activeItems = useMemo(() => tabs.find((tab) => tab.id === activeTab)?.items ?? tabs[0]?.items ?? [], [tabs, activeTab]);
+  const activeFolderTab = useMemo(() => tabs.find((tab) => tab.id === activeTab) ?? tabs[0], [tabs, activeTab]);
+  const [extraItemsByTab, setExtraItemsByTab] = useState<Record<string, Meta[]>>({});
+  const pageStateRef = useRef<Record<string, FolderSourceState>>({});
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const activeItems = useMemo(
+    () => [...(activeFolderTab?.items ?? []), ...(extraItemsByTab[activeFolderTab?.id ?? ''] ?? [])],
+    [activeFolderTab, extraItemsByTab],
+  );
+
+  async function handleLoadMore() {
+    const tab = activeFolderTab;
+    if (!tab || tab.source?.provider !== 'addon' || loadingMore) return;
+    const state = pageStateRef.current[tab.id] ?? initFolderSourceState();
+    if (state.exhausted) return;
+    setLoadingMore(true);
+    try {
+      const transportUrl = await coreResolveTransportUrl(JSON.stringify(tab.source), JSON.stringify(installedAddons));
+      if (!transportUrl) return;
+      const batch = await loadFolderSourcePage(
+        { transportUrl, catalogId: tab.source.catalogId, type: tab.source.type, genre: tab.source.genre },
+        state.skip,
+      );
+      const nextState = (await coreInvoke<FolderSourceState>('folderPageState', JSON.stringify({ state, batch }))) ?? {
+        ...state,
+        exhausted: true,
+      };
+      pageStateRef.current[tab.id] = nextState;
+      setExtraItemsByTab((prev) => ({ ...prev, [tab.id]: nextState.items }));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   return (
     <div style={S.screen}>
@@ -73,6 +118,8 @@ export function FolderDetailScreen({ title, viewMode, tabs, posterPrefs, typeSuf
                 onHover={() => false}
                 onClick={onNavigateDetail}
                 onScrollActivity={() => {}}
+                onNearEnd={() => void handleLoadMore()}
+                isLoadingMore={loadingMore}
               />
             )}
           </div>

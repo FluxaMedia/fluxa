@@ -33,7 +33,7 @@ type Tab = 'watchlist' | 'watching' | 'completed' | 'dropped' | 'collections' | 
 type LibrarySource = 'local' | LibraryProvider;
 
 interface Props {
-  state: Pick<AppState, 'home' | 'library' | 'settings'>;
+  state: Pick<AppState, 'home' | 'library' | 'settings' | 'addons'>;
   onDispatch: (actionJson: string) => void;
   onNavigateDetail: (meta: Meta) => void;
   onBack: () => void;
@@ -254,6 +254,7 @@ export const LibraryScreen = React.memo(
           tabs={viewAllFolder.tabs}
           posterPrefs={posterPrefs}
           typeSuffixEnabled={prefBool(prefs, 'catalogTypeSuffixEnabled', false)}
+          installedAddons={state.addons?.installed ?? []}
           onNavigateDetail={onNavigateDetail}
           onBack={() => setViewAllFolder(null)}
         />

@@ -41,7 +41,7 @@ export function DiscoverRoute({ store, ...props }: StoreProp & Omit<ComponentPro
 export function LibraryRoute({ store, ...props }: StoreProp & Omit<ComponentProps<typeof LibraryScreen>, 'state'>) {
   const state = useAppStateSelector(
     store,
-    (value) => ({ library: value.library, settings: value.settings, home: value.home }),
+    (value) => ({ library: value.library, settings: value.settings, home: value.home, addons: value.addons }),
     shallowEqual,
   );
   return <LibraryScreen state={state} {...props} />;
