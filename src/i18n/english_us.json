@@ -384,6 +384,8 @@
   "auto.interface_density": "Interface Density",
   "auto.poster_width": "Poster Width",
   "auto.hide_titles": "Hide Titles",
+  "settings.catalog_type_suffix": "Show content type on rows",
+  "settings.catalog_type_suffix_desc": "Append \"Movies\"/\"Series\" to folder tab and row titles",
   "auto.catalogs_4c9bb98e": "CATALOGS",
   "auto.hero_banner": "HERO BANNER",
   "auto.home_screen": "HOME SCREEN",

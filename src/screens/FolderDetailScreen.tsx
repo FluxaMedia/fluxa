@@ -20,11 +20,24 @@ interface Props {
   viewMode?: string;
   tabs: FolderTab[];
   posterPrefs: PosterPrefs;
+  typeSuffixEnabled?: boolean;
   onNavigateDetail: (meta: Meta) => void;
   onBack: () => void;
 }
 
-export function FolderDetailScreen({ title, viewMode, tabs, posterPrefs, onNavigateDetail, onBack }: Props) {
+function typeSuffixLabel(type: string): string {
+  if (type === 'movie') return t('auto.movies');
+  if (type === 'series') return t('auto.series');
+  return '';
+}
+
+function tabDisplayTitle(tab: FolderTab, typeSuffixEnabled?: boolean): string {
+  if (!typeSuffixEnabled || tab.id === 'all') return tab.title;
+  const suffix = typeSuffixLabel(tab.type);
+  return suffix ? `${tab.title} · ${suffix}` : tab.title;
+}
+
+export function FolderDetailScreen({ title, viewMode, tabs, posterPrefs, typeSuffixEnabled, onNavigateDetail, onBack }: Props) {
   const isTabbed = viewMode === 'TABBED_GRID';
   const [activeTab, setActiveTab] = useState(() => tabs[0]?.id ?? '');
   const activeItems = useMemo(() => tabs.find((tab) => tab.id === activeTab)?.items ?? tabs[0]?.items ?? [], [tabs, activeTab]);
@@ -43,7 +56,7 @@ export function FolderDetailScreen({ title, viewMode, tabs, posterPrefs, onNavig
           {tabs.length > 1 && (
             <div style={S.tabBarWrap}>
               <ModernTabBar
-                tabs={tabs.map((tab) => ({ id: tab.id, label: tab.title }))}
+                tabs={tabs.map((tab) => ({ id: tab.id, label: tabDisplayTitle(tab, typeSuffixEnabled) }))}
                 active={activeTab || tabs[0]?.id}
                 onChange={setActiveTab}
               />
@@ -69,7 +82,13 @@ export function FolderDetailScreen({ title, viewMode, tabs, posterPrefs, onNavig
           {tabs
             .filter((tab) => tab.id !== 'all')
             .map((tab) => (
-              <ShelfRow key={tab.id} title={tab.title} items={tab.items} onItemClick={onNavigateDetail} posterPrefs={posterPrefs} />
+              <ShelfRow
+                key={tab.id}
+                title={tabDisplayTitle(tab, typeSuffixEnabled)}
+                items={tab.items}
+                onItemClick={onNavigateDetail}
+                posterPrefs={posterPrefs}
+              />
             ))}
         </div>
       )}

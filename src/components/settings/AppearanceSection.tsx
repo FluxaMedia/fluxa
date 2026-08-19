@@ -143,6 +143,12 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           checked={prefs.posterHideTitles}
           onToggle={(v) => setPref('posterHideTitles', v)}
         />
+        <ToggleTile
+          title={t('settings.catalog_type_suffix')}
+          subtitle={t('settings.catalog_type_suffix_desc')}
+          checked={prefs.catalogTypeSuffixEnabled}
+          onToggle={(v) => setPref('catalogTypeSuffixEnabled', v)}
+        />
         <ChoiceTile
           title={t('auto.card_layout')}
           subtitle={t('auto.tune_language_and_visual_layout')}

@@ -384,6 +384,8 @@
   "auto.interface_density": "Arayüz Yoğunluğu",
   "auto.poster_width": "Kart Genişliği",
   "auto.hide_titles": "İsimleri Gizle",
+  "settings.catalog_type_suffix": "Satırlarda içerik türünü göster",
+  "settings.catalog_type_suffix_desc": "Klasör sekmesi ve satır başlıklarına \"Film\"/\"Dizi\" ekle",
   "auto.catalogs_4c9bb98e": "KATALOGLAR",
   "auto.hero_banner": "DEV AFİŞ (HERO BANNER)",
   "auto.home_screen": "ANA EKRAN",

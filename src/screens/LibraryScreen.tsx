@@ -3,7 +3,7 @@ import { ArrowLeft, CheckSquare2, Search, Square, X } from 'lucide-react';
 import { VirtualizedPosterGrid } from '../components/VirtualizedPosterGrid';
 import { FilterDropdown } from '../components/FilterDropdown';
 import { posterPrefsFromState } from '../core/posterPrefs';
-import { appPrefs, prefString } from '../core/appPrefs';
+import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { getViewPrefs, setViewPref, whenViewPrefsReady } from '../core/viewPrefs';
 import type { AppState, HomeCategory, LibraryItem, Meta, Stream, UserProfile, Video } from '../core/types';
 import { t } from '../i18n';
@@ -253,6 +253,7 @@ export const LibraryScreen = React.memo(
           viewMode={viewAllFolder.viewMode}
           tabs={viewAllFolder.tabs}
           posterPrefs={posterPrefs}
+          typeSuffixEnabled={prefBool(prefs, 'catalogTypeSuffixEnabled', false)}
           onNavigateDetail={onNavigateDetail}
           onBack={() => setViewAllFolder(null)}
         />

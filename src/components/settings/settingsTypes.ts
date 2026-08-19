@@ -42,6 +42,7 @@ export interface Prefs {
   posterLandscapeMode: boolean;
   posterHideTitles: boolean;
   cardLayout: string;
+  catalogTypeSuffixEnabled: boolean;
   continueWatchingLayout: string;
   continueWatchingArtwork: string;
   continueWatchingRemainingFormat: string;
@@ -201,6 +202,7 @@ export const DEFAULT_PREFS: Prefs = {
   posterLandscapeMode: false,
   posterHideTitles: false,
   cardLayout: 'vertical',
+  catalogTypeSuffixEnabled: false,
   continueWatchingLayout: 'horizontal',
   continueWatchingArtwork: 'episode',
   continueWatchingRemainingFormat: 'time',
