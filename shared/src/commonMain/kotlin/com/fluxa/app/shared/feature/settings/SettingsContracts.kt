@@ -264,6 +264,7 @@ sealed interface SettingsAction {
     data class TopTenFeedToggled(val key: String) : SettingsAction
     data object ManageAddonsRequested : SettingsAction
     data object ManagePluginsRequested : SettingsAction
+    data object ManageStreamBadgesRequested : SettingsAction
     data object ConnectStremioRequested : SettingsAction
     data object ConnectNuvioRequested : SettingsAction
     data class ConnectStremioWithCredentials(val email: String, val password: String) : SettingsAction

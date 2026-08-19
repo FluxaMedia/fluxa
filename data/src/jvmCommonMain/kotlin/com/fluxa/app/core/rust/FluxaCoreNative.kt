@@ -49,6 +49,7 @@ import com.fluxa.app.core.rust.models.NativeStreamAddonRequest
 import com.fluxa.app.core.rust.models.NativeStreamDiscoveryEpisodeContext
 import com.fluxa.app.core.rust.models.NativeStreamDiscoveryExecutionPolicy
 import com.fluxa.app.core.rust.models.NativeStreamDiscoveryPlan
+import com.fluxa.app.core.rust.models.NativeStreamBadge
 import com.fluxa.app.core.rust.models.NativeStreamPlaybackInfo
 import com.fluxa.app.core.rust.models.NativeTorrentFallbackFilePolicy
 import com.fluxa.app.core.rust.models.NativeTraktCommentsRequest
@@ -684,6 +685,53 @@ object FluxaCoreNative {
     fun streamPlaybackInfo(stream: Stream): NativeStreamPlaybackInfo {
         val value = FluxaCoreUniFfi.coreInvokeValue("streamPlaybackInfo", gson.toJson(stream))
         return gson.fromJson(value, NativeStreamPlaybackInfo::class.java) ?: NativeStreamPlaybackInfo()
+    }
+
+    fun matchStreamBadges(stream: Stream, rulesJson: String): List<NativeStreamBadge> {
+        val args = JsonObject().apply {
+            addProperty("streamJson", gson.toJson(stream))
+            addProperty("rulesJson", rulesJson)
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("matchStreamBadges", args.toString())
+        return gson.fromJson(value, Array<NativeStreamBadge>::class.java)?.toList() ?: emptyList()
+    }
+
+    fun parseStreamBadgeImport(sourceUrl: String, payload: String): String {
+        val args = JsonObject().apply {
+            addProperty("sourceUrl", sourceUrl)
+            addProperty("payload", payload)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("parseStreamBadgeImport", args.toString()).toString()
+    }
+
+    fun normalizeStreamBadgeRules(rulesJson: String): String {
+        val args = JsonObject().apply { addProperty("rulesJson", rulesJson) }
+        return FluxaCoreUniFfi.coreInvokeValue("normalizeStreamBadgeRules", args.toString()).toString()
+    }
+
+    fun upsertStreamBadgeImport(rulesJson: String, importJson: String, activate: Boolean = true): String {
+        val args = JsonObject().apply {
+            addProperty("rulesJson", rulesJson)
+            addProperty("importJson", importJson)
+            addProperty("activate", activate)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("upsertStreamBadgeImport", args.toString()).toString()
+    }
+
+    fun setActiveStreamBadgeSource(rulesJson: String, sourceUrl: String): String {
+        val args = JsonObject().apply {
+            addProperty("rulesJson", rulesJson)
+            addProperty("sourceUrl", sourceUrl)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("setActiveStreamBadgeSource", args.toString()).toString()
+    }
+
+    fun removeStreamBadgeSource(rulesJson: String, sourceUrl: String): String {
+        val args = JsonObject().apply {
+            addProperty("rulesJson", rulesJson)
+            addProperty("sourceUrl", sourceUrl)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("removeStreamBadgeSource", args.toString()).toString()
     }
 
     fun dvProxyPlan(

@@ -29,6 +29,8 @@ import com.fluxa.app.shared.feature.settings.SettingsAction
 import com.fluxa.app.shared.feature.settings.SettingsBrandIcons
 import com.fluxa.app.shared.feature.settings.SettingsCategory
 import com.fluxa.app.shared.feature.settings.SettingsUiState
+import com.fluxa.app.shared.feature.streambadges.StreamBadgesAction
+import com.fluxa.app.shared.feature.streambadges.StreamBadgesUiState
 import com.fluxa.app.ui.catalog.DeviceType
 
 internal data class FluxaAppFeatureStates(
@@ -43,6 +45,7 @@ internal data class FluxaAppFeatureStates(
     val plugins: PluginsUiState? = null,
     val auth: AuthUiState? = null,
     val player: PlayerRenderState? = null,
+    val streamBadges: StreamBadgesUiState? = null,
 )
 
 internal data class FluxaAppActions(
@@ -72,6 +75,8 @@ internal data class FluxaAppActions(
     val onAddonStoreBackRequested: () -> Unit = {},
     val onPluginsAction: (PluginsAction) -> Unit = {},
     val onPluginsBackRequested: () -> Unit = {},
+    val onStreamBadgesAction: (StreamBadgesAction) -> Unit = {},
+    val onStreamBadgesBackRequested: () -> Unit = {},
     val onAuthAction: (AuthAction) -> Unit = {},
     val onProfileListAction: (ProfileAction) -> Unit = {},
     val onProfileBiometricRequested: (ProfileUiModel) -> Unit = {},

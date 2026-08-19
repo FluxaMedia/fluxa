@@ -21,6 +21,7 @@ import com.fluxa.app.ui.catalog.HomeViewModel
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.profile.AndroidProfileDataSource
 import com.fluxa.app.ui.settings.AndroidPluginsDataSource
+import com.fluxa.app.ui.settings.AndroidStreamBadgesDataSource
 import com.fluxa.app.data.remote.StremioService
 import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
 import com.fluxa.app.data.repository.AddonRepository
@@ -101,6 +102,7 @@ class AndroidFluxaPlatformServices(
         profileManager = profileManager,
         language = { activeProfile()?.language ?: "en" }
     )
+    override val streamBadgesDataSource = AndroidStreamBadgesDataSource(context.applicationContext)
     override val authDataSource = AndroidAuthDataSource(
         authService = authService,
         nuvioCoordinator = nuvioImportCoordinator,

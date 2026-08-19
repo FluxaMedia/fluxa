@@ -16,6 +16,7 @@ import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreStore
 import com.fluxa.app.shared.feature.plugins.PluginsAction
 import com.fluxa.app.shared.feature.plugins.PluginsStore
+import com.fluxa.app.shared.feature.streambadges.StreamBadgesStore
 import com.fluxa.app.shared.feature.auth.AuthAction
 import com.fluxa.app.shared.feature.auth.AuthStore
 import com.fluxa.app.shared.feature.catalog.CatalogAction
@@ -48,6 +49,7 @@ import com.fluxa.app.shared.platform.FluxaPlatformServices
 import com.fluxa.app.shared.platform.FluxaProfileServices
 import com.fluxa.app.shared.platform.FluxaSearchServices
 import com.fluxa.app.shared.platform.FluxaSettingsServices
+import com.fluxa.app.shared.platform.FluxaStreamBadgesServices
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -73,6 +75,7 @@ fun FluxaAppHost(
             plugins = (platformServices as? FluxaPluginsServices)?.pluginsDataSource,
             auth = (platformServices as? FluxaAuthServices)?.authDataSource,
             settings = (platformServices as? FluxaSettingsServices)?.settingsDataSource,
+            streamBadges = (platformServices as? FluxaStreamBadgesServices)?.streamBadgesDataSource,
         ),
         config = config,
         callbacks = callbacks,
@@ -117,6 +120,7 @@ private fun FluxaAppHostContent(
     val pluginsDataSource = dataSources.plugins
     val authDataSource = dataSources.auth
     val settingsDataSource = dataSources.settings
+    val streamBadgesDataSource = dataSources.streamBadges
     val deviceType = config.deviceType
     val isLowRamDevice = config.isLowRamDevice
     val language = config.language
@@ -141,6 +145,7 @@ private fun FluxaAppHostContent(
     val onOpenUrlRequested = navigationCallbacks.onOpenUrlRequested
     val onAddonStoreBackRequested = navigationCallbacks.onAddonStoreBackRequested
     val onPluginsBackRequested = navigationCallbacks.onPluginsBackRequested
+    val onStreamBadgesBackRequested = navigationCallbacks.onStreamBadgesBackRequested
     val onDownloadOpened = navigationCallbacks.onDownloadOpened
     val onDestinationChanged = navigationCallbacks.onDestinationChanged
 
@@ -161,6 +166,7 @@ private fun FluxaAppHostContent(
 
     val onManageAddonsRequested = settingsCallbacks.onManageAddonsRequested
     val onManagePluginsRequested = settingsCallbacks.onManagePluginsRequested
+    val onManageStreamBadgesRequested = settingsCallbacks.onManageStreamBadgesRequested
     val onCheckForUpdateRequested = settingsCallbacks.onCheckForUpdateRequested
     val onSettingsBackRequested = settingsCallbacks.onSettingsBackRequested
     val onSettingsCanPopChanged = settingsCallbacks.onSettingsCanPopChanged
@@ -305,6 +311,13 @@ private fun FluxaAppHostContent(
     }
     val pluginsState = if (currentAppState.destination == FluxaDestination.Plugins || currentAppState.destination == FluxaDestination.AddonStore) {
         pluginsStore?.state?.collectAsState()?.value
+    } else null
+
+    val streamBadgesStore = streamBadgesDataSource?.let { source ->
+        remember(source) { StreamBadgesStore(source, scope) }
+    }
+    val streamBadgesState = if (currentAppState.destination == FluxaDestination.StreamBadges) {
+        streamBadgesStore?.state?.collectAsState()?.value
     } else null
 
     val authStore = authDataSource?.let { source ->
@@ -506,6 +519,7 @@ private fun FluxaAppHostContent(
             addonStore = addonStoreState,
             plugins = pluginsState,
             auth = authState,
+            streamBadges = streamBadgesState,
         ),
         actions = FluxaAppActions(
             onDestinationSelected = appState::selectDestination,
@@ -601,6 +615,7 @@ private fun FluxaAppHostContent(
                     SettingsAction.SwitchProfilesRequested -> appState.selectDestination(FluxaDestination.ProfileList)
                     SettingsAction.ManageAddonsRequested -> onManageAddonsRequested()
                     SettingsAction.ManagePluginsRequested -> onManagePluginsRequested()
+                    SettingsAction.ManageStreamBadgesRequested -> onManageStreamBadgesRequested()
                     SettingsAction.ConnectStremioRequested -> onConnectStremioRequested()
                     SettingsAction.ConnectNuvioRequested -> onConnectNuvioRequested()
                     is SettingsAction.ConnectStremioWithCredentials -> onConnectStremioWithCredentials(action.email, action.password)
@@ -631,6 +646,12 @@ private fun FluxaAppHostContent(
                 }
             },
             onPluginsBackRequested = onPluginsBackRequested,
+            onStreamBadgesAction = { action ->
+                scope.launch {
+                    streamBadgesStore?.dispatch(action)
+                }
+            },
+            onStreamBadgesBackRequested = onStreamBadgesBackRequested,
             onAuthAction = { action ->
                 when (action) {
                     AuthAction.BackRequested -> onAuthBackRequested()

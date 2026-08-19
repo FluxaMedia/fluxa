@@ -37,6 +37,15 @@ data class NativeSimklEpisodeMatch(
     val episode: Int = 0
 )
 
+data class NativeStreamBadge(
+    val name: String = "",
+    val imageUrl: String = "",
+    val tagColor: String = "",
+    val tagStyle: String = "",
+    val textColor: String = "",
+    val borderColor: String = ""
+)
+
 data class NativeStreamPlaybackInfo(
     val playableUrl: String? = null,
     val effectiveVideoHash: String? = null,

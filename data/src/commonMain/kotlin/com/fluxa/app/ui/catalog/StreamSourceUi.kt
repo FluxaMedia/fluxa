@@ -1,17 +1,20 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.core.rust.models.NativeStreamBadge
 import com.fluxa.app.data.remote.Stream
 
 data class StreamSourceUiModel(
     val playableUrl: String?,
     val header: String,
-    val body: String?
+    val body: String?,
+    val badges: List<NativeStreamBadge> = emptyList()
 )
 
-fun Stream.toSourceUiModel(): StreamSourceUiModel = StreamSourceUiModel(
+fun Stream.toSourceUiModel(badges: List<NativeStreamBadge> = emptyList()): StreamSourceUiModel = StreamSourceUiModel(
     playableUrl = playableUrl,
     header = streamSourceHeader(),
-    body = streamRawBody()
+    body = streamRawBody(),
+    badges = badges
 )
 
 fun Stream.streamSourceHeader(): String {

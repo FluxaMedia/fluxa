@@ -42,6 +42,7 @@ class SettingsStore(
             is SettingsAction.TopTenFeedToggled -> dataSource.toggleTopTenFeed(action.key)
             SettingsAction.ManageAddonsRequested -> Unit
             SettingsAction.ManagePluginsRequested -> Unit
+            SettingsAction.ManageStreamBadgesRequested -> Unit
             SettingsAction.ConnectStremioRequested -> Unit
             SettingsAction.ConnectNuvioRequested -> Unit
             is SettingsAction.ConnectStremioWithCredentials -> Unit

@@ -277,6 +277,7 @@ internal fun AppRoutesHost(
                 },
                 onAddonStoreBackRequested = navigateBackSafely,
                 onPluginsBackRequested = navigateBackSafely,
+                onStreamBadgesBackRequested = navigateBackSafely,
                 onDownloadOpened = { id ->
                     offlineDownloadManager.items.value.firstOrNull { it.id == id }?.let { item ->
                         if (item.isPlayable) {
@@ -437,6 +438,7 @@ internal fun AppRoutesHost(
             settings = com.fluxa.app.shared.FluxaAppSettingsCallbacks(
                 onManageAddonsRequested = { onNavigateToDestination(FluxaDestination.AddonStore) },
                 onManagePluginsRequested = { onNavigateToDestination(FluxaDestination.Plugins) },
+                onManageStreamBadgesRequested = { onNavigateToDestination(FluxaDestination.StreamBadges) },
                 onCheckForUpdateRequested = {
                     coroutineScope.launch {
                         val update = com.fluxa.app.ui.catalog.UpdateManager.checkUpdate()

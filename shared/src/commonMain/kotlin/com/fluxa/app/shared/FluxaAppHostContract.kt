@@ -12,6 +12,7 @@ import com.fluxa.app.shared.feature.plugins.PluginsDataSource
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.settings.SettingsDataSource
+import com.fluxa.app.shared.feature.streambadges.StreamBadgesDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.detail.DetailNavigationEvent
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
@@ -32,6 +33,7 @@ data class FluxaAppDataSources(
     val plugins: PluginsDataSource? = null,
     val auth: AuthDataSource? = null,
     val settings: SettingsDataSource? = null,
+    val streamBadges: StreamBadgesDataSource? = null,
 )
 
 /** Stable platform-facing configuration for [FluxaAppHost]. */
@@ -64,6 +66,7 @@ data class FluxaAppNavigationCallbacks(
     val onOpenUrlRequested: (String) -> Unit = {},
     val onAddonStoreBackRequested: () -> Unit = {},
     val onPluginsBackRequested: () -> Unit = {},
+    val onStreamBadgesBackRequested: () -> Unit = {},
     val onDownloadOpened: (String) -> Unit = {},
     val onDestinationChanged: (FluxaDestination) -> Unit = {},
 )
@@ -90,6 +93,7 @@ data class FluxaAppProfileCallbacks(
 data class FluxaAppSettingsCallbacks(
     val onManageAddonsRequested: () -> Unit = {},
     val onManagePluginsRequested: () -> Unit = {},
+    val onManageStreamBadgesRequested: () -> Unit = {},
     val onCheckForUpdateRequested: () -> Unit = {},
     val onSettingsBackRequested: () -> Unit = {},
     val onSettingsCanPopChanged: (Boolean) -> Unit = {},

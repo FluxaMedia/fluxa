@@ -1,12 +1,14 @@
 package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.core.rust.models.NativeStreamBadge
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.StreamSourceUiModel
 
+import coil3.compose.AsyncImage
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -48,7 +50,7 @@ import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 
 @Composable
-fun SourceSidebar(streams: List<StreamSourceUiModel>, currentUrl: String, deviceType: DeviceType, lang: String = "en", onSelect: (String) -> Unit, onClose: (() -> Unit)? = null) {
+fun SourceSidebar(streams: List<StreamSourceUiModel>, currentUrl: String, deviceType: DeviceType, lang: String = "en", badgePlacement: String = "bottom", onSelect: (String) -> Unit, onClose: (() -> Unit)? = null) {
     PlayerSidebarShell(
         title = AppStrings.t(lang, "player.source_selection_title"),
         deviceType = deviceType,
@@ -65,9 +67,28 @@ fun SourceSidebar(streams: List<StreamSourceUiModel>, currentUrl: String, device
                     onClick = { playableUrl?.let(onSelect) },
                     subtitle = stream.body,
                     deviceType = deviceType,
-                    leadingIcon = FluxaIcons.PlayArrow
+                    leadingIcon = FluxaIcons.PlayArrow,
+                    badgeRow = if (stream.badges.none { it.imageUrl.isNotBlank() }) null else {
+                        { StreamBadgeChipsRow(stream.badges) }
+                    },
+                    badgeRowOnTop = badgePlacement == "top"
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun StreamBadgeChipsRow(badges: List<NativeStreamBadge>) {
+    val imageBadges = badges.filter { it.imageUrl.isNotBlank() }
+    if (imageBadges.isEmpty()) return
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        imageBadges.forEach { badge ->
+            AsyncImage(
+                model = badge.imageUrl,
+                contentDescription = badge.name,
+                modifier = Modifier.height(12.dp)
+            )
         }
     }
 }
@@ -267,6 +288,8 @@ fun TrackItem(
     subtitle: String? = null,
     badge: String? = null,
     formatBadge: (@Composable () -> Unit)? = null,
+    badgeRow: (@Composable () -> Unit)? = null,
+    badgeRowOnTop: Boolean = false,
     deviceType: DeviceType? = null,
     leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null
@@ -302,6 +325,9 @@ fun TrackItem(
         }
 
         Column(modifier = Modifier.weight(1f)) {
+            if (badgeRow != null && badgeRowOnTop) {
+                Box(modifier = Modifier.padding(bottom = 3.dp)) { badgeRow() }
+            }
             Text(
                 text = title,
                 color = Color.White.copy(alpha = contentAlpha),
@@ -326,6 +352,9 @@ fun TrackItem(
                     }
                     formatBadge?.invoke()
                 }
+            }
+            if (badgeRow != null && !badgeRowOnTop) {
+                Box(modifier = Modifier.padding(top = 3.dp)) { badgeRow() }
             }
         }
 

@@ -139,6 +139,10 @@ fun SettingsScreen(
                         label = AppStrings.t(lang, "settings.plugins.manage"),
                         selected = false
                     ) { onAction(SettingsAction.ManagePluginsRequested) }
+                    SettingsTvRailRow(
+                        label = AppStrings.t(lang, "settings.stream_badges.manage"),
+                        selected = false
+                    ) { onAction(SettingsAction.ManageStreamBadgesRequested) }
                 }
             }
             AnimatedContent(
@@ -410,6 +414,7 @@ internal fun SettingsHubContent(
         SettingsNavRow(AppStrings.t(lang, "auto.catalogs")) { onNavigate(SettingsCategory.Content) }
         SettingsNavRow(AppStrings.t(lang, "auto.add_ons")) { onAction(SettingsAction.ManageAddonsRequested) }
         SettingsNavRow(AppStrings.t(lang, "settings.plugins.manage")) { onAction(SettingsAction.ManagePluginsRequested) }
+        SettingsNavRow(AppStrings.t(lang, "settings.stream_badges.manage")) { onAction(SettingsAction.ManageStreamBadgesRequested) }
         SettingsNavRow(AppStrings.t(lang, "auto.downloads")) { onNavigate(SettingsCategory.Downloads) }
     }
 

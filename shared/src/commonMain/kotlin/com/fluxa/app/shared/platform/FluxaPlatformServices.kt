@@ -11,6 +11,7 @@ import com.fluxa.app.shared.feature.plugins.PluginsDataSource
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.settings.SettingsDataSource
+import com.fluxa.app.shared.feature.streambadges.StreamBadgesDataSource
 
 interface FluxaPlatformServices {
     val catalogHomeDataSource: CatalogHomeDataSource
@@ -56,6 +57,10 @@ interface FluxaSettingsServices {
     val settingsDataSource: SettingsDataSource
 }
 
+interface FluxaStreamBadgesServices {
+    val streamBadgesDataSource: StreamBadgesDataSource
+}
+
 interface FluxaMobilePlatformServices :
     FluxaPlatformServices,
     FluxaSearchServices,
@@ -67,4 +72,5 @@ interface FluxaMobilePlatformServices :
     FluxaAddonStoreServices,
     FluxaPluginsServices,
     FluxaAuthServices,
-    FluxaSettingsServices
+    FluxaSettingsServices,
+    FluxaStreamBadgesServices

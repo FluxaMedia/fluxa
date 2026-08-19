@@ -52,6 +52,7 @@ import com.fluxa.app.shared.feature.discover.DiscoverAction
 import com.fluxa.app.shared.feature.discover.DiscoverScreen
 import com.fluxa.app.shared.feature.library.LibraryAction
 import com.fluxa.app.shared.feature.library.LibraryFolderDetailScreen
+import com.fluxa.app.shared.feature.library.LibraryFolderEditorScreen
 import com.fluxa.app.shared.feature.library.LibraryScreen
 import com.fluxa.app.shared.feature.plugins.PluginsScreen
 import com.fluxa.app.shared.feature.profile.ProfileAction
@@ -89,6 +90,7 @@ enum class FluxaDestination(val titleKey: String) {
     Settings("nav.settings"),
     AddonStore("auto.addons"),
     Plugins("settings.plugins.title"),
+    StreamBadges("settings.stream_badges.title"),
     Auth("auth.log_in"),
     ProfileList("auto.profile")
 }
@@ -135,6 +137,7 @@ internal fun FluxaApp(
     val settingsState = features.settings
     val addonStoreState = features.addonStore
     val pluginsState = features.plugins
+    val streamBadgesState = features.streamBadges
     val authState = features.auth
     val playerState = features.player
 
@@ -163,6 +166,8 @@ internal fun FluxaApp(
     val onOpenUrlRequested = actions.onOpenUrlRequested
     val onAddonStoreBackRequested = actions.onAddonStoreBackRequested
     val onPluginsAction = actions.onPluginsAction
+    val onStreamBadgesAction = actions.onStreamBadgesAction
+    val onStreamBadgesBackRequested = actions.onStreamBadgesBackRequested
     val onPluginsBackRequested = actions.onPluginsBackRequested
     val onAuthAction = actions.onAuthAction
     val onProfileListAction = actions.onProfileListAction
@@ -342,6 +347,22 @@ internal fun FluxaApp(
                     onItemSelected = onLibraryItemSelected,
                     modifier = Modifier.fillMaxSize()
                 )
+                libraryState?.folderEditor?.isOpen == true -> LibraryFolderEditorScreen(
+                    state = libraryState.folderEditor,
+                    language = state.language,
+                    catalogOptions = libraryState.catalogOptions,
+                    onDraftChanged = { draft -> onLibraryAction(LibraryAction.FolderEditorDraftChanged(draft)) },
+                    onSaveRequested = { onLibraryAction(LibraryAction.FolderEditorSaveRequested) },
+                    onDeleteRequested = {
+                        val collectionId = libraryState.folderEditor.collectionId
+                        val folderId = libraryState.folderEditor.draft.id
+                        if (collectionId != null && folderId != null) {
+                            onLibraryAction(LibraryAction.FolderDeleteRequested(collectionId, folderId))
+                        }
+                    },
+                    onBack = { onLibraryAction(LibraryAction.FolderEditorClosed) },
+                    modifier = Modifier.fillMaxSize()
+                )
                 state.selectedCategoryId != null -> CategoryResultsScreen(
                     title = state.selectedCategoryTitle.orEmpty(),
                     items = catalogHome.rows.firstOrNull { it.id == state.selectedCategoryId }?.items.orEmpty(),
@@ -458,6 +479,13 @@ internal fun FluxaApp(
                     language = state.language,
                     onAction = onPluginsAction,
                     onBackRequested = onPluginsBackRequested,
+                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
+                )
+                state.destination == FluxaDestination.StreamBadges && streamBadgesState != null -> com.fluxa.app.shared.feature.streambadges.StreamBadgesScreen(
+                    state = streamBadgesState,
+                    language = state.language,
+                    onAction = onStreamBadgesAction,
+                    onBackRequested = onStreamBadgesBackRequested,
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.destination == FluxaDestination.Auth && authState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.auth.TvAuthScreen(
