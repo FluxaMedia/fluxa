@@ -8,6 +8,7 @@ import type { Meta, Stream, Video } from '../core/types';
 import type { EpisodeInfo } from './player/EpisodePanel';
 import { streamShellPlan } from '../core/streamLinks';
 import { PlayerBufferingOverlay } from './player/PlayerBufferingOverlay';
+import { PlayerPauseMetadataOverlay } from './player/PlayerPauseMetadataOverlay';
 import { PlayerStatusToasts } from './player/PlayerStatusToasts';
 import { PlayerContextMenu } from './player/PlayerContextMenu';
 import { PlayerHeader } from './player/PlayerHeader';
@@ -120,6 +121,14 @@ export function ReactPlayerOverlay({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [title, setTitle] = useState(initialTitle ?? '');
   const [episodeTitle, setEpisodeTitle] = useState(initialEpisodeTitle ?? '');
+  const [pausedOverlayReady, setPausedOverlayReady] = useState(false);
+  useEffect(() => {
+    setPausedOverlayReady(false);
+    if (!paused || isLoadingOverlayActive || playbackError) return;
+    const timer = window.setTimeout(() => setPausedOverlayReady(true), 5000);
+    return () => window.clearTimeout(timer);
+  }, [paused, isLoadingOverlayActive, playbackError]);
+  const showPausedOverlay = pausedOverlayReady && !controlsVisible;
   const playerNavigation = usePlayerNavigationState();
   const {
     chapters,
@@ -615,6 +624,14 @@ export function ReactPlayerOverlay({
       }}
     >
       {isBuffering && <PlayerBufferingOverlay logoUrl={initialLogoUrl} progress={bufferingProgress} />}
+      {showPausedOverlay && (
+        <PlayerPauseMetadataOverlay
+          title={title}
+          episodeTitle={episodeTitle}
+          logoUrl={initialLogoUrl}
+          description={metaRef?.current?.description ?? undefined}
+        />
+      )}
       <PlayerOverlayStyles />
 
       {softwareVideoActive && <SoftwareVideoCanvas key={currentEpisode?.id} statusRef={liveStatusRef} onFirstFrame={onFirstFrame} />}
