@@ -35,6 +35,13 @@ interface ExternalSyncApi {
     ): List<TraktSearchResult>
 
     @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("lists/{listId}")
+    suspend fun getList(
+        @Path("listId") listId: String,
+        @Header("trakt-api-key") apiKey: String
+    ): TraktListSummary
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
     @GET("lists/{listId}/items/{type}")
     suspend fun getListItems(
         @Path("listId") listId: Long,

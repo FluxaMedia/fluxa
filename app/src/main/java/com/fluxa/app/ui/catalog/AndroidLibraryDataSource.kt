@@ -1,7 +1,9 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.LibraryUserCollection
+import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.OfflineDownloadManager
 import com.fluxa.app.data.local.isPlayable
 import com.fluxa.app.data.local.ProfileManager
@@ -17,6 +19,7 @@ import com.fluxa.app.shared.feature.library.LibraryCollectionUiModel
 import com.fluxa.app.shared.feature.library.LibraryDataSource
 import com.fluxa.app.shared.feature.library.LibraryDownloadEpisodeUiModel
 import com.fluxa.app.shared.feature.library.LibraryDownloadGroupUiModel
+import com.fluxa.app.shared.feature.library.LibraryFolderEditorUiModel
 import com.fluxa.app.shared.feature.library.LibraryFolderSectionUiModel
 import com.fluxa.app.shared.feature.library.LibraryFolderUiModel
 import com.fluxa.app.shared.feature.library.LibraryUiState
@@ -34,7 +37,8 @@ import kotlinx.coroutines.withContext
 private data class AndroidLibrarySources(
     val watchlist: List<com.fluxa.app.data.remote.Meta>,
     val likedItems: List<com.fluxa.app.data.remote.Meta>,
-    val remoteLibrary: com.fluxa.app.ui.catalog.LibraryUiState
+    val remoteLibrary: com.fluxa.app.ui.catalog.LibraryUiState,
+    val userAddons: List<com.fluxa.app.data.remote.AddonDescriptor>
 )
 
 class AndroidLibraryDataSource(
@@ -59,9 +63,10 @@ class AndroidLibraryDataSource(
     private val librarySources = combine(
         watchlistStore.observeWatchlist(),
         watchlistStore.observeLiked(),
-        homeViewModel.libraryUiState
-    ) { watchlist, likedItems, remoteLibrary ->
-        AndroidLibrarySources(watchlist, likedItems, remoteLibrary)
+        homeViewModel.libraryUiState,
+        homeViewModel.userAddons
+    ) { watchlist, likedItems, remoteLibrary, userAddons ->
+        AndroidLibrarySources(watchlist, likedItems, remoteLibrary, userAddons)
     }
 
     override fun observeLibrary(): Flow<LibraryUiState> = combine(
@@ -148,6 +153,27 @@ class AndroidLibraryDataSource(
                 )
             }
 
+            val catalogOptions = sources.userAddons.flatMap { addon ->
+                addon.manifest.catalogs.orEmpty()
+                    .filter { catalog ->
+                        catalog.extra.orEmpty().none { extra -> extra.isRequired == true && !extra.name.equals("genre", ignoreCase = true) }
+                    }
+                    .mapNotNull { catalog ->
+                        val catalogId = catalog.id ?: return@mapNotNull null
+                        val catalogType = catalog.type ?: return@mapNotNull null
+                        com.fluxa.app.shared.feature.library.LibraryCatalogOptionUiModel(
+                            addonId = addon.manifest.id,
+                            addonName = addon.manifest.name,
+                            catalogId = catalogId,
+                            catalogType = catalogType,
+                            catalogName = catalog.name ?: catalogId,
+                            genreOptions = catalog.extra.orEmpty()
+                                .firstOrNull { it.name.equals("genre", ignoreCase = true) }
+                                ?.options.orEmpty()
+                        )
+                    }
+            }
+
             val availableSources = buildList {
                 add("local")
                 if (!profile?.authKey.isNullOrBlank()) add("stremio")
@@ -179,7 +205,8 @@ class AndroidLibraryDataSource(
                 localMediaIsScanning = localMedia.isScanning,
                 localMediaError = localMedia.error,
                 librarySource = source,
-                availableLibrarySources = availableSources
+                availableLibrarySources = availableSources,
+                catalogOptions = catalogOptions
             )
         }
     }
@@ -253,6 +280,110 @@ class AndroidLibraryDataSource(
         return homeViewModel.loadFolderSections(domainFolder).map { (title, metas) ->
             LibraryFolderSectionUiModel(title = title, items = metas.toCatalogItems(profile, deviceType = deviceType))
         }
+    }
+
+    override suspend fun folderForEditing(collectionId: String, folderId: String): LibraryFolderEditorUiModel? {
+        val profile = activeProfile() ?: return null
+        val folder = profile.safeLibraryCollections
+            .firstOrNull { it.id == collectionId }
+            ?.folders.orEmpty()
+            .firstOrNull { it.id == folderId }
+            ?: return null
+        val tmdbSource = folder.sources.orEmpty().firstOrNull { it.provider == "tmdb" }
+        val traktSource = folder.sources.orEmpty().firstOrNull { it.provider == "trakt" }
+        val catalogSource = folder.catalogSources.orEmpty().firstOrNull()
+        val sourceKind = when {
+            traktSource != null -> com.fluxa.app.shared.feature.library.LibraryFolderSourceKind.Trakt
+            catalogSource != null -> com.fluxa.app.shared.feature.library.LibraryFolderSourceKind.AddonCatalog
+            else -> com.fluxa.app.shared.feature.library.LibraryFolderSourceKind.Tmdb
+        }
+        return LibraryFolderEditorUiModel(
+            id = folder.id,
+            title = folder.title,
+            coverEmoji = folder.coverEmoji,
+            sourceKind = sourceKind,
+            tmdbSourceType = tmdbSource?.tmdbSourceType ?: "LIST",
+            tmdbId = tmdbSource?.tmdbId?.toString().orEmpty(),
+            traktInput = traktSource?.traktListId?.toString().orEmpty(),
+            catalogAddonId = catalogSource?.addonId,
+            catalogId = catalogSource?.catalogId,
+            catalogGenre = catalogSource?.genre
+        )
+    }
+
+    override suspend fun saveFolder(collectionId: String, folder: LibraryFolderEditorUiModel): Boolean {
+        val profile = activeProfile() ?: return false
+        val title = folder.title.trim()
+        if (title.isEmpty()) return false
+
+        var sources: List<LibraryRemoteSource>? = null
+        var catalogSources: List<com.fluxa.app.data.local.LibraryCatalogSource>? = null
+        when (folder.sourceKind) {
+            com.fluxa.app.shared.feature.library.LibraryFolderSourceKind.Tmdb -> {
+                val tmdbId = folder.tmdbId.trim().toLongOrNull() ?: return false
+                sources = listOf(LibraryRemoteSource(provider = "tmdb", tmdbSourceType = folder.tmdbSourceType, tmdbId = tmdbId))
+            }
+            com.fluxa.app.shared.feature.library.LibraryFolderSourceKind.Trakt -> {
+                val listId = com.fluxa.app.data.repository.TraktIntegration.resolveTraktListId(
+                    folder.traktInput.trim(),
+                    com.fluxa.app.BuildConfig.TRAKT_CLIENT_ID
+                ) ?: return false
+                sources = listOf(LibraryRemoteSource(provider = "trakt", traktListId = listId))
+            }
+            com.fluxa.app.shared.feature.library.LibraryFolderSourceKind.AddonCatalog -> {
+                val addonId = folder.catalogAddonId?.trim().orEmpty()
+                val catalogId = folder.catalogId?.trim().orEmpty()
+                if (addonId.isEmpty() || catalogId.isEmpty()) return false
+                val catalogType = homeViewModel.userAddons.value
+                    .firstOrNull { it.manifest.id == addonId }
+                    ?.manifest?.catalogs.orEmpty()
+                    .firstOrNull { it.id == catalogId }
+                    ?.type ?: "movie"
+                catalogSources = listOf(
+                    com.fluxa.app.data.local.LibraryCatalogSource(
+                        addonId = addonId,
+                        catalogId = catalogId,
+                        type = catalogType,
+                        genre = folder.catalogGenre?.trim()?.takeIf { it.isNotEmpty() }
+                    )
+                )
+            }
+        }
+
+        val folderId = folder.id ?: "folder_${System.currentTimeMillis()}"
+        val updated = profileManager.updateProfile(profile.id) { current ->
+            current.copy(libraryCollections = current.safeLibraryCollections.map { collection ->
+                if (collection.id != collectionId) return@map collection
+                val existingFolders = collection.folders.orEmpty()
+                val nextFolder = LibraryUserCollectionFolder(
+                    id = folderId,
+                    title = title,
+                    coverEmoji = folder.coverEmoji?.trim()?.takeIf { it.isNotEmpty() },
+                    sources = sources,
+                    catalogSources = catalogSources
+                )
+                val nextFolders = if (existingFolders.any { it.id == folderId }) {
+                    existingFolders.map { if (it.id == folderId) nextFolder else it }
+                } else {
+                    existingFolders + nextFolder
+                }
+                collection.copy(folders = nextFolders)
+            })
+        } ?: return false
+        onProfileChanged(updated)
+        return true
+    }
+
+    override suspend fun deleteFolder(collectionId: String, folderId: String): Boolean {
+        val profile = activeProfile() ?: return false
+        val updated = profileManager.updateProfile(profile.id) { current ->
+            current.copy(libraryCollections = current.safeLibraryCollections.map { collection ->
+                if (collection.id != collectionId) return@map collection
+                collection.copy(folders = collection.folders.orEmpty().filterNot { it.id == folderId })
+            })
+        } ?: return false
+        onProfileChanged(updated)
+        return true
     }
 }
 

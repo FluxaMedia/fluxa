@@ -62,6 +62,13 @@ data class TraktWatchedEpisode(
 data class TraktListItem(val movie: TraktSummary? = null, val show: TraktSummary? = null)
 
 @Serializable
+data class TraktListSummary(
+    val name: String? = null,
+    val description: String? = null,
+    val ids: TraktIds? = null
+)
+
+@Serializable
 data class TraktPlaybackItem(
     val id: Long? = null,
     val progress: Float? = null,

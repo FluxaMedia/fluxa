@@ -12,11 +12,13 @@ class LibraryStore(
     scope: CoroutineScope
 ) {
     private val folderDetail = MutableStateFlow(LibraryFolderDetailUiState())
+    private val folderEditor = MutableStateFlow(LibraryFolderEditorUiState())
 
     val state: StateFlow<LibraryUiState> = combine(
         dataSource.observeLibrary(),
-        folderDetail
-    ) { base, folder -> base.copy(folderDetail = folder) }
+        folderDetail,
+        folderEditor
+    ) { base, folder, editor -> base.copy(folderDetail = folder, folderEditor = editor) }
         .stateIn(scope, SharingStarted.WhileSubscribed(5_000), LibraryUiState(isLoading = true))
 
     suspend fun dispatch(action: LibraryAction) {
@@ -35,6 +37,36 @@ class LibraryStore(
             }
             LibraryAction.FolderClosed -> {
                 folderDetail.value = LibraryFolderDetailUiState()
+            }
+            is LibraryAction.FolderEditorOpened -> {
+                val draft = action.folderId?.let { dataSource.folderForEditing(action.collectionId, it) }
+                    ?: LibraryFolderEditorUiModel()
+                folderEditor.value = LibraryFolderEditorUiState(isOpen = true, collectionId = action.collectionId, draft = draft)
+            }
+            LibraryAction.FolderEditorClosed -> {
+                folderEditor.value = LibraryFolderEditorUiState()
+            }
+            is LibraryAction.FolderEditorDraftChanged -> {
+                folderEditor.value = folderEditor.value.copy(draft = action.draft)
+            }
+            LibraryAction.FolderEditorSaveRequested -> {
+                val current = folderEditor.value
+                val collectionId = current.collectionId
+                if (collectionId != null) {
+                    folderEditor.value = current.copy(isSaving = true, error = null)
+                    val saved = dataSource.saveFolder(collectionId, current.draft)
+                    folderEditor.value = if (saved) {
+                        LibraryFolderEditorUiState()
+                    } else {
+                        current.copy(isSaving = false, error = "save_failed")
+                    }
+                    if (saved) dataSource.refresh()
+                }
+            }
+            is LibraryAction.FolderDeleteRequested -> {
+                dataSource.deleteFolder(action.collectionId, action.folderId)
+                folderEditor.value = LibraryFolderEditorUiState()
+                dataSource.refresh()
             }
             is LibraryAction.SourceChanged -> dataSource.setLibrarySource(action.source)
             is LibraryAction.LocalMediaFolderPickerRequested -> Unit

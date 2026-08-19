@@ -75,6 +75,27 @@ object TraktIntegration {
     fun contentIdentityKey(meta: Meta): String {
         return ContentIdentity.traktKey(meta)
     }
+
+    suspend fun resolveTraktListId(input: String, apiKey: String): Long? {
+        val path = parseTraktListPath(input) ?: return null
+        if (!hasClient(apiKey)) return null
+        return runCatching {
+            ExternalSyncApi.create().getList(listId = path, apiKey = apiKey).ids?.trakt?.toLong()
+                ?: path.toLongOrNull()
+        }.getOrNull()
+    }
+
+    private fun parseTraktListPath(input: String): String? {
+        val trimmed = input.trim()
+        if (trimmed.isBlank()) return null
+        trimmed.toLongOrNull()?.let { return it.toString() }
+        Regex("""[?&]id=([^&#/]+)""").find(trimmed)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }?.let { return it }
+        Regex("""trakt\.tv/lists/([^/?#]+)""", RegexOption.IGNORE_CASE)
+            .find(trimmed)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }?.let { return it }
+        Regex("""trakt\.tv/users/[^/]+/lists/([^/?#]+)""", RegexOption.IGNORE_CASE)
+            .find(trimmed)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }?.let { return it }
+        return trimmed.takeIf { it.matches(Regex("""[A-Za-z0-9_-]+""")) }
+    }
 }
 
 data class EpisodeLocator(val season: Int, val episode: Int)

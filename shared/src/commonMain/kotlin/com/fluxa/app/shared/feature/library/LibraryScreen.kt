@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -107,7 +108,14 @@ fun LibraryScreen(
                         collection = collection,
                         language = language,
                         onBack = { viewingCollectionId = null },
-                        onItemSelected = onItemSelected
+                        onItemSelected = onItemSelected,
+                        onFolderClick = { folder -> onAction(LibraryAction.FolderSelected(folder)) },
+                        onFolderEditClick = { folder ->
+                            onAction(LibraryAction.FolderEditorOpened(collection.id ?: collection.title, folder.id))
+                        },
+                        onAddFolderClick = {
+                            onAction(LibraryAction.FolderEditorOpened(collection.id ?: collection.title))
+                        }
                     )
                 } else {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -654,11 +662,70 @@ private fun LibraryCollectionDetailPage(
     collection: LibraryCollectionUiModel,
     language: String?,
     onBack: () -> Unit,
-    onItemSelected: (com.fluxa.app.shared.feature.catalog.CatalogItemUiModel) -> Unit
+    onItemSelected: (com.fluxa.app.shared.feature.catalog.CatalogItemUiModel) -> Unit,
+    onFolderClick: (LibraryFolderUiModel) -> Unit,
+    onFolderEditClick: (LibraryFolderUiModel) -> Unit,
+    onAddFolderClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryDetailHeader(title = collection.title, onBack = onBack)
+        LibraryCollectionFoldersRow(
+            folders = collection.folders,
+            language = language,
+            onFolderClick = onFolderClick,
+            onFolderEditClick = onFolderEditClick,
+            onAddFolderClick = onAddFolderClick
+        )
         LibraryItemGrid(collection.items, language, onItemSelected)
+    }
+}
+
+@Composable
+private fun LibraryCollectionFoldersRow(
+    folders: List<LibraryFolderUiModel>,
+    language: String?,
+    onFolderClick: (LibraryFolderUiModel) -> Unit,
+    onFolderEditClick: (LibraryFolderUiModel) -> Unit,
+    onAddFolderClick: () -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(folders, key = { it.id }) { folder ->
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .clickable { onFolderClick(folder) }
+                    .padding(12.dp)
+                    .widthIn(min = 120.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    folder.coverEmoji?.takeIf { it.isNotBlank() } ?: "📁",
+                    fontSize = 20.sp
+                )
+                Text(folder.title, color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                TextButton(onClick = { onFolderEditClick(folder) }) {
+                    Text(AppStrings.t(language, "auto.edit"), color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+                }
+            }
+        }
+        item {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.03f))
+                    .clickable(onClick = onAddFolderClick)
+                    .padding(16.dp)
+                    .widthIn(min = 120.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(AppStrings.t(language, "library.add_folder"), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+            }
+        }
     }
 }
 

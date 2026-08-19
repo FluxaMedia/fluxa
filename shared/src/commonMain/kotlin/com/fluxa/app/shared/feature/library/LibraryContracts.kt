@@ -45,6 +45,38 @@ data class LibraryFolderDetailUiState(
     val isLoading: Boolean = false
 )
 
+enum class LibraryFolderSourceKind { Tmdb, Trakt, AddonCatalog }
+
+data class LibraryCatalogOptionUiModel(
+    val addonId: String,
+    val addonName: String,
+    val catalogId: String,
+    val catalogType: String,
+    val catalogName: String,
+    val genreOptions: List<String> = emptyList()
+)
+
+data class LibraryFolderEditorUiModel(
+    val id: String? = null,
+    val title: String = "",
+    val coverEmoji: String? = null,
+    val sourceKind: LibraryFolderSourceKind = LibraryFolderSourceKind.Tmdb,
+    val tmdbSourceType: String = "LIST",
+    val tmdbId: String = "",
+    val traktInput: String = "",
+    val catalogAddonId: String? = null,
+    val catalogId: String? = null,
+    val catalogGenre: String? = null
+)
+
+data class LibraryFolderEditorUiState(
+    val isOpen: Boolean = false,
+    val collectionId: String? = null,
+    val draft: LibraryFolderEditorUiModel = LibraryFolderEditorUiModel(),
+    val isSaving: Boolean = false,
+    val error: String? = null
+)
+
 data class LibraryDownloadEpisodeUiModel(
     val id: String,
     val title: String,
@@ -81,6 +113,8 @@ data class LibraryUiState(
     val localMediaIsScanning: Boolean = false,
     val localMediaError: String? = null,
     val folderDetail: LibraryFolderDetailUiState = LibraryFolderDetailUiState(),
+    val folderEditor: LibraryFolderEditorUiState = LibraryFolderEditorUiState(),
+    val catalogOptions: List<LibraryCatalogOptionUiModel> = emptyList(),
     val librarySource: String = "local",
     val availableLibrarySources: List<String> = listOf("local")
 )
@@ -95,6 +129,11 @@ sealed interface LibraryAction {
     data class DownloadCancelled(val id: String) : LibraryAction
     data class FolderSelected(val folder: LibraryFolderUiModel) : LibraryAction
     data object FolderClosed : LibraryAction
+    data class FolderEditorOpened(val collectionId: String, val folderId: String? = null) : LibraryAction
+    data object FolderEditorClosed : LibraryAction
+    data class FolderEditorDraftChanged(val draft: LibraryFolderEditorUiModel) : LibraryAction
+    data object FolderEditorSaveRequested : LibraryAction
+    data class FolderDeleteRequested(val collectionId: String, val folderId: String) : LibraryAction
     data class SourceChanged(val source: String) : LibraryAction
     data class LocalMediaFolderPickerRequested(val kind: LocalMediaKind) : LibraryAction
     data class LocalMediaSourceAdded(val source: LocalMediaSourceInput) : LibraryAction
@@ -110,6 +149,9 @@ interface LibraryDataSource {
     suspend fun deleteCollection(id: String)
     suspend fun cancelDownload(id: String)
     suspend fun loadFolder(folder: LibraryFolderUiModel): List<LibraryFolderSectionUiModel>
+    suspend fun folderForEditing(collectionId: String, folderId: String): LibraryFolderEditorUiModel? = null
+    suspend fun saveFolder(collectionId: String, folder: LibraryFolderEditorUiModel): Boolean = false
+    suspend fun deleteFolder(collectionId: String, folderId: String): Boolean = false
     suspend fun setLibrarySource(source: String)
     suspend fun addLocalMediaSource(source: LocalMediaSourceInput) = Unit
     suspend fun removeLocalMediaSource(sourceId: String) = Unit
