@@ -39,7 +39,9 @@ export function ExternalHandoffPrompt({
             {t('external.save_position', clock(estimate.timePos))}
           </button>
         )}
-        <button style={styles.ghost} onClick={onDismiss}>{t('external.save_nothing')}</button>
+        <button style={styles.ghost} onClick={onDismiss}>
+          {t('external.save_nothing')}
+        </button>
       </div>
     </div>
   );
@@ -68,16 +70,29 @@ const styles: Record<string, React.CSSProperties> = {
   title: { color: '#FFFFFF', fontSize: '1rem', fontWeight: 800, margin: 0 },
   subtitle: { color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', margin: '0 0 0.5rem' },
   primary: {
-    minHeight: '2.75rem', borderRadius: '0.625rem', border: 'none',
-    background: '#FFFFFF', color: '#000000', fontSize: '0.875rem', fontWeight: 800,
+    minHeight: '2.75rem',
+    borderRadius: '0.625rem',
+    border: 'none',
+    background: '#FFFFFF',
+    color: '#000000',
+    fontSize: '0.875rem',
+    fontWeight: 800,
   },
   secondary: {
-    minHeight: '2.75rem', borderRadius: '0.625rem',
-    border: '1px solid rgba(255,255,255,0.18)', background: 'transparent',
-    color: '#FFFFFF', fontSize: '0.875rem', fontWeight: 700,
+    minHeight: '2.75rem',
+    borderRadius: '0.625rem',
+    border: '1px solid rgba(255,255,255,0.18)',
+    background: 'transparent',
+    color: '#FFFFFF',
+    fontSize: '0.875rem',
+    fontWeight: 700,
   },
   ghost: {
-    minHeight: '2.5rem', border: 'none', background: 'transparent',
-    color: 'rgba(255,255,255,0.5)', fontSize: '0.8125rem', fontWeight: 700,
+    minHeight: '2.5rem',
+    border: 'none',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: '0.8125rem',
+    fontWeight: 700,
   },
 };

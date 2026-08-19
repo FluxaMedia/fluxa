@@ -12,16 +12,7 @@ interface Props {
   children: ReactNode;
 }
 
-export function AppBootstrap({
-  ready,
-  profilesChecked,
-  welcomeCompleted,
-  profileReady,
-  loading,
-  welcome,
-  profile,
-  children,
-}: Props) {
+export function AppBootstrap({ ready, profilesChecked, welcomeCompleted, profileReady, loading, welcome, profile, children }: Props) {
   if (!ready || !profilesChecked) {
     return <div style={appStyles.loading}>{loading}</div>;
   }

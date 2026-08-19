@@ -1,10 +1,4 @@
-import {
-  coreAddonResourceRequestPlan,
-  manifestFetchPlan,
-  mergeLiveManifest,
-  parseManifest,
-  resolveManifestAssets,
-} from './addonManifest';
+import { coreAddonResourceRequestPlan, manifestFetchPlan, mergeLiveManifest, parseManifest, resolveManifestAssets } from './addonManifest';
 import { fetchJson } from './httpClient';
 import { fetchParsedAddonResource } from './fetchPlanning';
 import { loadAddons, loadActiveProfile, loadEnabledAddons, saveAddons } from './libraryOps';
@@ -33,7 +27,7 @@ export async function fetchAddonManifest(payload: Record<string, unknown>, signa
 
 export async function refreshInstalledAddons(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const payloadProfile = payload.profile;
-  const profile = payloadProfile && typeof payloadProfile === 'object' ? payloadProfile as UserProfile : await loadActiveProfile();
+  const profile = payloadProfile && typeof payloadProfile === 'object' ? (payloadProfile as UserProfile) : await loadActiveProfile();
   const addons = await loadEnabledAddons(profile);
   const refreshed: AddonDescriptor[] = [];
   for (const addon of addons) {

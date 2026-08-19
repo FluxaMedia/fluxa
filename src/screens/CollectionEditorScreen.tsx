@@ -45,11 +45,7 @@ function CollectionEditorPage({
   const [folders, setFolders] = useState<UserCollectionFolder[]>(initial.folders ?? []);
   const [editingFolder, setEditingFolder] = useState<UserCollectionFolder | null>(null);
 
-  function buildDraft(
-    nextFolders = folders,
-    nextShowOnHome = showOnHome,
-    nextImageUrl = imageUrl,
-  ): UserCollection {
+  function buildDraft(nextFolders = folders, nextShowOnHome = showOnHome, nextImageUrl = imageUrl): UserCollection {
     return {
       ...initial,
       title: title.trim(),
@@ -82,7 +78,15 @@ function CollectionEditorPage({
       }}
     >
       <div style={{ width: '100%', maxWidth: '40rem', display: 'flex', flexDirection: 'column', gap: '1.375rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '1.125rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            paddingBottom: '1.125rem',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
           <button
             onClick={onDismiss}
             style={{
@@ -161,7 +165,9 @@ function CollectionEditorPage({
           label={t('library.save_collection')}
           accent={accent}
           disabled={!canSave}
-          onClick={() => { if (canSave) onSave(buildDraft()); }}
+          onClick={() => {
+            if (canSave) onSave(buildDraft());
+          }}
         />
 
         <div>

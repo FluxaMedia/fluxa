@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import type React from 'react';
 
-const observerEntries = new Map<string, {
-  observer: IntersectionObserver;
-  callbacks: WeakMap<Element, (visible: boolean) => void>;
-  counts: Map<Element, number>;
-}>();
+const observerEntries = new Map<
+  string,
+  {
+    observer: IntersectionObserver;
+    callbacks: WeakMap<Element, (visible: boolean) => void>;
+    counts: Map<Element, number>;
+  }
+>();
 
-export function useInViewport<T extends Element>(
-  ref: React.RefObject<T | null>,
-  rootMargin = '200px',
-): boolean {
+export function useInViewport<T extends Element>(ref: React.RefObject<T | null>, rootMargin = '200px'): boolean {
   const [inView, setInView] = useState(false);
 
   useEffect(() => {
@@ -20,11 +20,14 @@ export function useInViewport<T extends Element>(
     if (!entry) {
       const callbacks = new WeakMap<Element, (visible: boolean) => void>();
       const counts = new Map<Element, number>();
-      const observer = new IntersectionObserver((entries) => {
-        for (const intersection of entries) {
-          callbacks.get(intersection.target)?.(intersection.isIntersecting);
-        }
-      }, { rootMargin });
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const intersection of entries) {
+            callbacks.get(intersection.target)?.(intersection.isIntersecting);
+          }
+        },
+        { rootMargin },
+      );
       entry = { observer, callbacks, counts };
       observerEntries.set(rootMargin, entry);
     }

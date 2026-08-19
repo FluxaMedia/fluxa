@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest run",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "typecheck": "node scripts/gen-core-methods.mjs && tsc --noEmit",
     "build": "node scripts/gen-core-methods.mjs && tsc && vite build",
     "check": "npm run build && cd src-tauri && cargo check",
@@ -47,6 +48,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "esbuild": "^0.28.1",
     "jsdom": "^30.0.1",
+    "prettier": "^3.9.6",
     "rollup-plugin-visualizer": "^7.0.1",
     "typescript": "^7.0.2",
     "vite": "^8.1.1",

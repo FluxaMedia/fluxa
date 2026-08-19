@@ -1,5 +1,5 @@
-export const IS_WEBOS = import.meta.env.VITE_FLUXA_TARGET === 'webos'
-  || (typeof navigator !== 'undefined' && /Web0S|webOS/i.test(navigator.userAgent));
+export const IS_WEBOS =
+  import.meta.env.VITE_FLUXA_TARGET === 'webos' || (typeof navigator !== 'undefined' && /Web0S|webOS/i.test(navigator.userAgent));
 
 export type HdrKind = 'none' | 'hdr10' | 'hlg' | 'dolbyVision';
 
@@ -101,7 +101,8 @@ export function containerFor(url: string): string {
 export function hdrKindFrom(videoCodec: string | null | undefined, transferHint?: string | null): HdrKind {
   const codec = `${videoCodec ?? ''}`.toLowerCase();
   const transfer = `${transferHint ?? ''}`.toLowerCase();
-  if (codec.includes('dvhe') || codec.includes('dvh1') || codec.includes('dolbyvision') || transfer.includes('dolbyvision')) return 'dolbyVision';
+  if (codec.includes('dvhe') || codec.includes('dvh1') || codec.includes('dolbyvision') || transfer.includes('dolbyvision'))
+    return 'dolbyVision';
   if (transfer.includes('hlg') || transfer.includes('arib-std-b67')) return 'hlg';
   if (transfer.includes('pq') || transfer.includes('smpte2084') || transfer.includes('hdr10')) return 'hdr10';
   return 'none';
@@ -114,26 +115,19 @@ export interface MediaOptionHints {
   adaptive?: boolean;
 }
 
-export async function applyWebOSMediaOption(
-  video: HTMLVideoElement,
-  url: string,
-  hints: MediaOptionHints = {},
-): Promise<void> {
+export async function applyWebOSMediaOption(video: HTMLVideoElement, url: string, hints: MediaOptionHints = {}): Promise<void> {
   if (!IS_WEBOS) return;
   const capabilities = await webosCapabilities();
   const container = containerFor(url);
   const requested = hints.hdr ?? 'none';
-  const supported = requested === 'dolbyVision'
-    ? capabilities?.dolbyVision !== false
-    : requested === 'none' || capabilities?.hdr10 !== false;
+  const supported =
+    requested === 'dolbyVision' ? capabilities?.dolbyVision !== false : requested === 'none' || capabilities?.hdr10 !== false;
   const hdr = supported ? requested : 'none';
 
   const option: Record<string, unknown> = {
     mediaFormat: { type: container },
     transmission: { contentsType: 'VOD' },
-    hdrInfo: hdr === 'none'
-      ? { isHDRContent: false }
-      : { isHDRContent: true, hdrType: hdr },
+    hdrInfo: hdr === 'none' ? { isHDRContent: false } : { isHDRContent: true, hdrType: hdr },
     audioInfo: {
       isMultiChannel: hints.multiChannelAudio ?? true,
       isBitstreamRequired: hints.bitstreamAudio ?? Boolean(capabilities?.dolbyAtmos),

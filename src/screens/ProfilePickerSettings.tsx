@@ -102,36 +102,86 @@ export function ProfilePickerSettings({
         <h2 style={S.heading}>{t('profiles.picker_background')}</h2>
         <p style={S.copy}>{t('profiles.picker_background_desc')}</p>
         <div style={S.row}>
-          <input value={backgroundUrl} onChange={(event) => setBackgroundUrl(event.target.value)} onBlur={() => void updateBackground(backgroundUrl)} placeholder={t('profiles.picker_background_placeholder')} style={S.input} />
-          <button onClick={() => fileInputRef.current?.click()} style={S.secondaryButton} title={t('profiles.choose_image')}><ImagePlus size={16} /></button>
-          {backgroundUrl && <button onClick={() => void updateBackground('')} style={S.secondaryButton} title={t('profiles.clear_background')}><Trash2 size={16} /></button>}
+          <input
+            value={backgroundUrl}
+            onChange={(event) => setBackgroundUrl(event.target.value)}
+            onBlur={() => void updateBackground(backgroundUrl)}
+            placeholder={t('profiles.picker_background_placeholder')}
+            style={S.input}
+          />
+          <button onClick={() => fileInputRef.current?.click()} style={S.secondaryButton} title={t('profiles.choose_image')}>
+            <ImagePlus size={16} />
+          </button>
+          {backgroundUrl && (
+            <button onClick={() => void updateBackground('')} style={S.secondaryButton} title={t('profiles.clear_background')}>
+              <Trash2 size={16} />
+            </button>
+          )}
         </div>
       </div>
       <div style={S.section}>
         <h2 style={S.heading}>{t('profiles.avatar_packs')}</h2>
         <p style={S.copy}>{t('profiles.avatar_packs_desc')}</p>
         <div style={S.row}>
-          <input value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void addRepository(); }} placeholder={t('profiles.avatar_pack_repository_placeholder')} style={S.input} />
-          <button onClick={() => void addRepository()} disabled={!repositoryUrl.trim() || busy} style={S.primaryButton}><Plus size={16} />{busy ? t('common.loading') : t('profiles.add_pack')}</button>
+          <input
+            value={repositoryUrl}
+            onChange={(event) => setRepositoryUrl(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void addRepository();
+            }}
+            placeholder={t('profiles.avatar_pack_repository_placeholder')}
+            style={S.input}
+          />
+          <button onClick={() => void addRepository()} disabled={!repositoryUrl.trim() || busy} style={S.primaryButton}>
+            <Plus size={16} />
+            {busy ? t('common.loading') : t('profiles.add_pack')}
+          </button>
         </div>
         <div style={S.packList}>
-          {packs.length === 0 ? <p style={S.empty}>{t('profiles.no_avatar_packs')}</p> : packs.map((pack) => (
-            <div key={pack.id} style={S.packRow}>
-              <div style={S.packSummary}>
-                <div style={S.packPreview}>
-                  {pack.avatars.slice(0, 6).map((avatar) => <img key={avatar.url} src={avatar.url} alt="" style={S.packPreviewImage} />)}
+          {packs.length === 0 ? (
+            <p style={S.empty}>{t('profiles.no_avatar_packs')}</p>
+          ) : (
+            packs.map((pack) => (
+              <div key={pack.id} style={S.packRow}>
+                <div style={S.packSummary}>
+                  <div style={S.packPreview}>
+                    {pack.avatars.slice(0, 6).map((avatar) => (
+                      <img key={avatar.url} src={avatar.url} alt="" style={S.packPreviewImage} />
+                    ))}
+                  </div>
+                  <span>
+                    {pack.title} · {t('profiles.avatar_pack_count', pack.avatars.length)}
+                  </span>
                 </div>
-                <span>{pack.title} · {t('profiles.avatar_pack_count', pack.avatars.length)}</span>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button
+                    onClick={() => void refreshPack(pack.repositoryUrl)}
+                    disabled={refreshingRepo === pack.repositoryUrl}
+                    style={S.refreshButton}
+                    title={t('profiles.refresh_pack')}
+                  >
+                    <RefreshCw size={16} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const nextPacks = packs.filter((candidate) => candidate.id !== pack.id);
+                      setPacks(nextPacks);
+                      void save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks });
+                    }}
+                    style={S.removeButton}
+                    title={t('profiles.remove_pack')}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                <button onClick={() => void refreshPack(pack.repositoryUrl)} disabled={refreshingRepo === pack.repositoryUrl} style={S.refreshButton} title={t('profiles.refresh_pack')}><RefreshCw size={16} /></button>
-                <button onClick={() => { const nextPacks = packs.filter((candidate) => candidate.id !== pack.id); setPacks(nextPacks); void save({ backgroundUrl: backgroundUrl || undefined, avatarPacks: nextPacks }); }} style={S.removeButton} title={t('profiles.remove_pack')}><Trash2 size={16} /></button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
-      <button onClick={onBack} style={S.backButton}>{t('common.back')}</button>
+      <button onClick={onBack} style={S.backButton}>
+        {t('common.back')}
+      </button>
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadBackground} />
       {avatarPackError && (
         <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 100 }}>
@@ -169,15 +219,55 @@ export function ProfilePickerSettings({
 
 const S: Record<string, React.CSSProperties> = {
   shell: { display: 'grid', gap: '1.5rem', maxWidth: '43rem' },
-  section: { padding: '1.25rem', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.03)' },
+  section: {
+    padding: '1.25rem',
+    border: '1px solid rgba(255,255,255,0.09)',
+    borderRadius: '0.75rem',
+    background: 'rgba(255,255,255,0.03)',
+  },
   heading: { margin: 0, fontSize: '1rem' },
   copy: { margin: '0.5rem 0 1rem', color: 'rgba(255,255,255,0.48)', fontSize: '0.8125rem' },
   row: { display: 'flex', gap: '0.5rem' },
-  input: { minWidth: 0, flex: 1, border: '1px solid rgba(255,255,255,0.12)', borderRadius: '0.5rem', background: '#0C0C0C', color: '#fff', padding: '0.625rem 0.75rem' },
-  primaryButton: { border: 0, borderRadius: '0.5rem', background: '#fff', color: '#000', display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0 0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' },
-  secondaryButton: { border: '1px solid rgba(255,255,255,0.12)', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '0.625rem', cursor: 'pointer' },
+  input: {
+    minWidth: 0,
+    flex: 1,
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '0.5rem',
+    background: '#0C0C0C',
+    color: '#fff',
+    padding: '0.625rem 0.75rem',
+  },
+  primaryButton: {
+    border: 0,
+    borderRadius: '0.5rem',
+    background: '#fff',
+    color: '#000',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.375rem',
+    padding: '0 0.75rem',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  secondaryButton: {
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '0.5rem',
+    background: 'rgba(255,255,255,0.05)',
+    color: '#fff',
+    padding: '0.625rem',
+    cursor: 'pointer',
+  },
   packList: { display: 'grid', gap: '0.5rem', marginTop: '1rem' },
-  packRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.8)', fontSize: '0.8125rem', padding: '0.625rem 0.75rem', background: 'rgba(255,255,255,0.04)', borderRadius: '0.5rem' },
+  packRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '0.8125rem',
+    padding: '0.625rem 0.75rem',
+    background: 'rgba(255,255,255,0.04)',
+    borderRadius: '0.5rem',
+  },
   packSummary: { minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' },
   packPreview: { display: 'flex', overflow: 'hidden', borderRadius: '0.375rem', flexShrink: 0 },
   packPreviewImage: { width: '2.25rem', height: '2.25rem', objectFit: 'cover', marginLeft: '-0.375rem', border: '1px solid #202020' },

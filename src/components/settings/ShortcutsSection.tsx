@@ -15,15 +15,7 @@ import {
   type ShortcutOverrides,
 } from '../../core/shortcuts';
 
-function ShortcutKeyButton({
-  combo,
-  recording,
-  onStartRecording,
-}: {
-  combo: string;
-  recording: boolean;
-  onStartRecording: () => void;
-}) {
+function ShortcutKeyButton({ combo, recording, onStartRecording }: { combo: string; recording: boolean; onStartRecording: () => void }) {
   const [hovered, setHovered] = useState(false);
   return (
     <button
@@ -90,7 +82,14 @@ function ShortcutRow({
           type="button"
           aria-label={t('settings.shortcuts_reset_one')}
           onClick={onReset}
-          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', display: 'flex', padding: '0.25rem' }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'rgba(255,255,255,0.35)',
+            cursor: 'pointer',
+            display: 'flex',
+            padding: '0.25rem',
+          }}
         >
           <RotateCcw size={14} />
         </button>
@@ -114,11 +113,17 @@ export function ShortcutsSection() {
       e.preventDefault();
       e.stopPropagation();
       if (isModifierCode(e.code)) return;
-      if (e.code === 'Escape') { setRecordingId(null); return; }
+      if (e.code === 'Escape') {
+        setRecordingId(null);
+        return;
+      }
 
       const combo = comboFromEvent(e);
       const def = SHORTCUT_DEFS.find((d) => d.id === recordingId);
-      if (!def) { setRecordingId(null); return; }
+      if (!def) {
+        setRecordingId(null);
+        return;
+      }
 
       const next: ShortcutOverrides = { ...overrides };
       for (const other of SHORTCUT_DEFS) {

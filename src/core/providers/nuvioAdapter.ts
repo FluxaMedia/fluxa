@@ -65,7 +65,10 @@ export const nuvioAdapter: ProviderAdapter = {
       if (!token) return;
       const profileIdx = nuvioProfile.nuvioProfileIndex ?? 1;
       const remote = await nuvioPullLibrary(token, profileIdx);
-      const updated = await coreInvoke<typeof remote>('nuvioLibraryMutationPlan', JSON.stringify({ remote, item, command, nowMs: Date.now() }));
+      const updated = await coreInvoke<typeof remote>(
+        'nuvioLibraryMutationPlan',
+        JSON.stringify({ remote, item, command, nowMs: Date.now() }),
+      );
       if (updated) await nuvioPushLibrary(token, profileIdx, updated);
     });
   },
@@ -80,9 +83,11 @@ export const nuvioAdapter: ProviderAdapter = {
         return;
       }
       if (args.episodes.length > 0) {
-        await Promise.all(args.episodes.map((info) =>
-          nuvioDeleteWatchProgress(token, profileIdx, info.contentId, info.season, info.episode).catch(() => undefined),
-        ));
+        await Promise.all(
+          args.episodes.map((info) =>
+            nuvioDeleteWatchProgress(token, profileIdx, info.contentId, info.season, info.episode).catch(() => undefined),
+          ),
+        );
         await nuvioPushWatchHistory(token, profileIdx, args.historyItems);
       }
       if (args.progressEntry) {

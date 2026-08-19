@@ -5,11 +5,14 @@ function orientation(): LockableOrientation | null {
 }
 
 export async function enterFullscreen(element: HTMLElement, landscape: boolean): Promise<void> {
-  const request = element.requestFullscreen ?? (element as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen;
+  const request =
+    element.requestFullscreen ?? (element as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen;
   if (!request) return;
   await request.call(element).catch(() => undefined);
   if (!landscape) return;
-  await orientation()?.lock?.('landscape').catch(() => undefined);
+  await orientation()
+    ?.lock?.('landscape')
+    .catch(() => undefined);
 }
 
 export async function exitFullscreen(): Promise<void> {

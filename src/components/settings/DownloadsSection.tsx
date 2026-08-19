@@ -44,11 +44,19 @@ function TrashIcon() {
 }
 
 function PauseIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z" /></svg>;
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 5h4v14H6zm8 0h4v14h-4z" />
+    </svg>
+  );
 }
 
 function ResumeIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>;
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
 }
 
 function ActionBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
@@ -79,7 +87,12 @@ function ActionBtn({ onClick, title, children }: { onClick: () => void; title: s
   );
 }
 
-function DownloadItemRow({ item, onDelete, onPause, onResume }: {
+function DownloadItemRow({
+  item,
+  onDelete,
+  onPause,
+  onResume,
+}: {
   item: OfflineDownloadItem;
   onDelete: () => void;
   onPause: () => void;
@@ -116,12 +129,22 @@ function DownloadItemRow({ item, onDelete, onPause, onResume }: {
               {item.status === 'failed'
                 ? t('downloads.status_failed')
                 : item.status === 'paused'
-                ? t('downloads.status_paused')
-                : t('downloads.status_downloading', progressPct ?? 0)}
+                  ? t('downloads.status_paused')
+                  : t('downloads.status_downloading', progressPct ?? 0)}
               {item.totalBytes ? ` · ${formatBytes(item.downloadedBytes ?? 0)} / ${formatBytes(item.totalBytes)}` : ''}
             </p>
-            <div style={{ height: '0.1875rem', borderRadius: '0.125rem', background: 'rgba(255,255,255,0.08)', marginTop: '0.375rem', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progressPct ?? 0}%`, background: 'rgba(255,255,255,0.5)', transition: 'width 0.2s' }} />
+            <div
+              style={{
+                height: '0.1875rem',
+                borderRadius: '0.125rem',
+                background: 'rgba(255,255,255,0.08)',
+                marginTop: '0.375rem',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{ height: '100%', width: `${progressPct ?? 0}%`, background: 'rgba(255,255,255,0.5)', transition: 'width 0.2s' }}
+              />
             </div>
           </>
         ) : (
@@ -129,10 +152,14 @@ function DownloadItemRow({ item, onDelete, onPause, onResume }: {
         )}
       </div>
       {item.status === 'downloading' && (
-        <ActionBtn onClick={onPause} title={t('downloads.pause')}><PauseIcon /></ActionBtn>
+        <ActionBtn onClick={onPause} title={t('downloads.pause')}>
+          <PauseIcon />
+        </ActionBtn>
       )}
       {(item.status === 'paused' || item.status === 'failed') && (
-        <ActionBtn onClick={onResume} title={t('downloads.resume')}><ResumeIcon /></ActionBtn>
+        <ActionBtn onClick={onResume} title={t('downloads.resume')}>
+          <ResumeIcon />
+        </ActionBtn>
       )}
       <button
         style={{
@@ -195,7 +222,9 @@ function DownloadDirRow({ value, onChange }: { value: string; onChange: (v: stri
 
   useEffect(() => {
     invoke<string | null>('get_data_dir')
-      .then((d) => { if (d) setDefaultDir(`${d}/offline`); })
+      .then((d) => {
+        if (d) setDefaultDir(`${d}/offline`);
+      })
       .catch(() => {});
   }, []);
 
@@ -303,7 +332,9 @@ export function DownloadsSection({ prefs, setPref }: { prefs: Prefs; setPref: <K
       .catch(() => setDownloads([]));
   };
 
-  useEffect(() => { refreshDownloads(); }, []);
+  useEffect(() => {
+    refreshDownloads();
+  }, []);
 
   useEffect(() => {
     const unlisten = listen<DownloadProgressEvent>('download-progress', (e) => {
@@ -322,7 +353,9 @@ export function DownloadsSection({ prefs, setPref }: { prefs: Prefs; setPref: <K
       });
       if (e.payload.status === 'downloaded') refreshDownloads();
     });
-    return () => { void unlisten.then((fn) => fn()); };
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
   }, []);
 
   const handleDelete = async (item: OfflineDownloadItem) => {
@@ -330,15 +363,26 @@ export function DownloadsSection({ prefs, setPref }: { prefs: Prefs; setPref: <K
       await invoke('cancel_offline_download', { id: item.id });
       await invoke('delete_offline_download', { fileName: item.videoFileName });
       refreshDownloads();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   const handlePause = async (item: OfflineDownloadItem) => {
-    try { await invoke('pause_offline_download', { id: item.id }); } catch { /* ignore */ }
+    try {
+      await invoke('pause_offline_download', { id: item.id });
+    } catch {
+      /* ignore */
+    }
   };
 
   const handleResume = async (item: OfflineDownloadItem) => {
-    try { await invoke('resume_offline_download', { id: item.id }); refreshDownloads(); } catch { /* ignore */ }
+    try {
+      await invoke('resume_offline_download', { id: item.id });
+      refreshDownloads();
+    } catch {
+      /* ignore */
+    }
   };
 
   const totalSize = downloads.reduce((acc, d) => acc + (d.sizeBytes ?? 0), 0);
@@ -346,10 +390,7 @@ export function DownloadsSection({ prefs, setPref }: { prefs: Prefs; setPref: <K
   return (
     <>
       <SettingsSection title={t('auto.downloads')} subtitle={t('settings.downloads_desc')}>
-        <DownloadDirRow
-          value={prefs.downloadDir}
-          onChange={(v) => setPref('downloadDir', v)}
-        />
+        <DownloadDirRow value={prefs.downloadDir} onChange={(v) => setPref('downloadDir', v)} />
         <ChoiceTile
           title={t('settings.download_source_selection')}
           subtitle={t('settings.download_source_selection_desc')}

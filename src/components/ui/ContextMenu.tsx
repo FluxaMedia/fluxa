@@ -35,10 +35,19 @@ export function ContextMenu({
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(activeIndex + 1); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(activeIndex - 1); }
-    else if (e.key === 'Home') { e.preventDefault(); moveFocus(0); }
-    else if (e.key === 'End') { e.preventDefault(); moveFocus(items.length - 1); }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveFocus(activeIndex + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveFocus(activeIndex - 1);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      moveFocus(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      moveFocus(items.length - 1);
+    }
   };
 
   return (
@@ -47,10 +56,15 @@ export function ContextMenu({
         {items.map((item, i) => (
           <button
             key={i}
-            ref={(el) => { rowRefs.current[i] = el; }}
+            ref={(el) => {
+              rowRefs.current[i] = el;
+            }}
             type="button"
             className="ui-popover-row"
-            onClick={() => { item.onSelect(); onClose(); }}
+            onClick={() => {
+              item.onSelect();
+              onClose();
+            }}
             onMouseEnter={() => setActiveIndex(i)}
             style={item.danger ? rowStyleDanger : rowStyle}
           >

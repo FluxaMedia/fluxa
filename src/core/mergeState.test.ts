@@ -10,21 +10,25 @@ function appState(continueWatching: LibraryItem[]): AppState {
 
 describe('mergeAppState', () => {
   it('does not keep an old episode label when the resume video changes', () => {
-    const previous = appState([{
-      id: 'series-1',
-      name: 'Example Series',
-      type: 'series',
-      lastVideoId: 'series-1:1:2',
-      lastEpisodeName: 'Episode Two',
-    }]);
+    const previous = appState([
+      {
+        id: 'series-1',
+        name: 'Example Series',
+        type: 'series',
+        lastVideoId: 'series-1:1:2',
+        lastEpisodeName: 'Episode Two',
+      },
+    ]);
     const updated = {
       home: {
-        continueWatching: [{
-          id: 'series-1',
-          name: 'Example Series',
-          type: 'series',
-          lastVideoId: 'series-1:1:4',
-        }],
+        continueWatching: [
+          {
+            id: 'series-1',
+            name: 'Example Series',
+            type: 'series',
+            lastVideoId: 'series-1:1:4',
+          },
+        ],
       },
     };
 

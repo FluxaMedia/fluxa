@@ -15,7 +15,19 @@ export function providerIcon(key: string): React.ReactNode {
   const icon = PROVIDER_ICON[key];
   if (!icon) return null;
   return (
-    <div style={{ width: '1.5rem', height: '1.5rem', borderRadius: '0.375rem', background: icon.background, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+    <div
+      style={{
+        width: '1.5rem',
+        height: '1.5rem',
+        borderRadius: '0.375rem',
+        background: icon.background,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
       <img src={icon.src} alt={icon.alt} style={{ width: '1.0625rem', height: '1.0625rem', objectFit: 'contain' }} />
     </div>
   );
@@ -57,7 +69,15 @@ function tokenRefreshCountdown(seconds: number): string {
     : t('format.duration_minutes_seconds', minutes, remainingSeconds);
 }
 
-export function ProviderTokenStatus({ expiresAt, verified, refreshScheduled }: { expiresAt?: number; verified: boolean; refreshScheduled: boolean }) {
+export function ProviderTokenStatus({
+  expiresAt,
+  verified,
+  refreshScheduled,
+}: {
+  expiresAt?: number;
+  verified: boolean;
+  refreshScheduled: boolean;
+}) {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
@@ -67,16 +87,13 @@ export function ProviderTokenStatus({ expiresAt, verified, refreshScheduled }: {
 
   const refreshAt = expiresAt ? expiresAt - 60 : undefined;
   const expired = expiresAt != null && expiresAt <= now;
-  const status = expired
-    ? t('settings.token_status_expired')
-    : verified
-    ? t('settings.token_status_verified')
-    : t('sync.device.connected');
-  const refresh = !refreshScheduled || refreshAt == null
-    ? t('settings.token_refresh_not_scheduled')
-    : refreshAt <= now
-    ? t('settings.token_refresh_due')
-    : t('settings.token_refresh_in', tokenRefreshCountdown(refreshAt - now));
+  const status = expired ? t('settings.token_status_expired') : verified ? t('settings.token_status_verified') : t('sync.device.connected');
+  const refresh =
+    !refreshScheduled || refreshAt == null
+      ? t('settings.token_refresh_not_scheduled')
+      : refreshAt <= now
+        ? t('settings.token_refresh_due')
+        : t('settings.token_refresh_in', tokenRefreshCountdown(refreshAt - now));
 
   return (
     <div style={{ display: 'grid', gap: '0.25rem', padding: '0 1.125rem 0.75rem', color: 'rgba(255,255,255,0.66)', fontSize: '0.75rem' }}>
@@ -142,7 +159,15 @@ export function CredentialLoginForm({
     whiteSpace: 'nowrap',
   };
   return (
-    <div style={{ padding: '0 1.125rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.055)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+    <div
+      style={{
+        padding: '0 1.125rem 0.75rem',
+        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        display: 'flex',
+        gap: '0.5rem',
+        alignItems: 'center',
+      }}
+    >
       <input
         type="email"
         placeholder={t('auth.placeholder.email')}
@@ -156,13 +181,17 @@ export function CredentialLoginForm({
         placeholder={t('auth.placeholder.password_login')}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit) onSubmit(email.trim(), password); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && canSubmit) onSubmit(email.trim(), password);
+        }}
         style={input}
       />
       <button disabled={!canSubmit} onClick={() => onSubmit(email.trim(), password)} style={{ ...btn, opacity: canSubmit ? 1 : 0.5 }}>
         {busy ? t('auth.signing_in') : t('auth.sign_in')}
       </button>
-      <button onClick={onCancel} disabled={busy} style={btn}>{t('common.cancel')}</button>
+      <button onClick={onCancel} disabled={busy} style={btn}>
+        {t('common.cancel')}
+      </button>
     </div>
   );
 }
@@ -203,7 +232,15 @@ export function AuthKeyLoginForm({
     whiteSpace: 'nowrap',
   };
   return (
-    <div style={{ padding: '0 1.125rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.055)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+    <div
+      style={{
+        padding: '0 1.125rem 0.75rem',
+        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.5rem',
+      }}
+    >
       <p style={{ margin: 0, fontSize: '0.6875rem', color: 'rgba(255,255,255,0.55)' }}>{t('auth.stremio.authkey_hint')}</p>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
         <input
@@ -211,14 +248,18 @@ export function AuthKeyLoginForm({
           placeholder={t('auth.placeholder.stremio_authkey')}
           value={authKey}
           onChange={(e) => setAuthKey(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit) onSubmit(authKey.trim()); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && canSubmit) onSubmit(authKey.trim());
+          }}
           style={input}
           autoFocus
         />
         <button disabled={!canSubmit} onClick={() => onSubmit(authKey.trim())} style={{ ...btn, opacity: canSubmit ? 1 : 0.5 }}>
           {busy ? t('auth.signing_in') : t('auth.sign_in')}
         </button>
-        <button onClick={onCancel} disabled={busy} style={btn}>{t('common.cancel')}</button>
+        <button onClick={onCancel} disabled={busy} style={btn}>
+          {t('common.cancel')}
+        </button>
       </div>
     </div>
   );

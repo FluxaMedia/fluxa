@@ -17,9 +17,7 @@ interface Props {
   onClose: () => void;
 }
 
-export async function startUpdateCheck(
-  setState: (s: UpdateState) => void,
-): Promise<void> {
+export async function startUpdateCheck(setState: (s: UpdateState) => void): Promise<void> {
   setState({ phase: 'checking' });
   try {
     const { check: checkUpdate } = await import('@tauri-apps/plugin-updater');
@@ -34,10 +32,7 @@ export async function startUpdateCheck(
   }
 }
 
-export async function installUpdate(
-  update: Update,
-  setState: (s: UpdateState) => void,
-): Promise<void> {
+export async function installUpdate(update: Update, setState: (s: UpdateState) => void): Promise<void> {
   let downloaded = 0;
   let total = 0;
   setState({ phase: 'downloading', progress: 0 });
@@ -62,7 +57,9 @@ export async function installUpdate(
 
 export function UpdateModal({ state, onClose }: Props) {
   const canClose = state.phase !== 'idle' && state.phase !== 'downloading' && state.phase !== 'installing';
-  useEscapeKey(() => { if (canClose) onClose(); });
+  useEscapeKey(() => {
+    if (canClose) onClose();
+  });
   if (state.phase === 'idle') return null;
 
   return (
@@ -94,7 +91,9 @@ function UpToDateView({ onClose }: { onClose: () => void }) {
       <Title>{t('update.up_to_date')}</Title>
       <Subtitle>{t('update.up_to_date_subtitle')}</Subtitle>
       <ButtonRow>
-        <Btn onClick={onClose} primary>{t('common.close')}</Btn>
+        <Btn onClick={onClose} primary>
+          {t('common.close')}
+        </Btn>
       </ButtonRow>
     </>
   );
@@ -167,7 +166,9 @@ function ErrorView({ message, onClose }: { message: string; onClose: () => void 
       <Title>{t('update.failed')}</Title>
       <Subtitle>{message}</Subtitle>
       <ButtonRow>
-        <Btn onClick={onClose} primary>{t('common.close')}</Btn>
+        <Btn onClick={onClose} primary>
+          {t('common.close')}
+        </Btn>
       </ButtonRow>
     </>
   );
@@ -201,26 +202,36 @@ function ButtonRow({ children }: { children: React.ReactNode }) {
   return <div style={btnRow}>{children}</div>;
 }
 
-function Btn({ children, onClick, primary, disabled }: {
+function Btn({
+  children,
+  onClick,
+  primary,
+  disabled,
+}: {
   children: React.ReactNode;
   onClick?: () => void;
   primary?: boolean;
   disabled?: boolean;
 }) {
   return (
-    <button style={{ ...btnBase, ...(primary ? btnPrimary : btnSecondary), ...(disabled ? btnDisabled : {}) }} onClick={onClick} disabled={disabled}>
+    <button
+      style={{ ...btnBase, ...(primary ? btnPrimary : btnSecondary), ...(disabled ? btnDisabled : {}) }}
+      onClick={onClick}
+      disabled={disabled}
+    >
       {children}
     </button>
   );
 }
 
-
-
 const overlay: React.CSSProperties = {
-  position: 'fixed', inset: 0,
+  position: 'fixed',
+  inset: 0,
   background: 'rgba(0,0,0,0.72)',
   backdropFilter: 'blur(0.5rem)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   zIndex: 9999,
 };
 

@@ -14,12 +14,18 @@ import { traktHeaders } from '../../core/traktSync';
 import type { Prefs, SyncMeta, TraktTokenResponse } from './settingsTypes';
 import { nuvioSignIn } from '../../core/nuvioApi';
 import { stremioLogin, stremioLoginWithAuthKey, stremioLogout } from '../../core/stremioApi';
-import { codeChallenge, credentialAuthErrorMessage, generateCodeVerifier, type OAuthCodePayload, type OAuthService } from './accountPresentation';
+import {
+  codeChallenge,
+  credentialAuthErrorMessage,
+  generateCodeVerifier,
+  type OAuthCodePayload,
+  type OAuthService,
+} from './accountPresentation';
 
 async function fetchTraktUsername(token: string, clientId: string): Promise<string | undefined> {
   try {
     const res = await platformFetch('https://api.trakt.tv/users/settings', { headers: traktHeaders(token, clientId) });
-    const json = await res.json() as { user?: { username?: string } };
+    const json = (await res.json()) as { user?: { username?: string } };
     return json.user?.username;
   } catch {
     return undefined;
@@ -33,7 +39,7 @@ async function fetchAnilistUsername(token: string): Promise<string | undefined> 
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ query: '{ Viewer { name } }' }),
     });
-    const json = await res.json() as { data?: { Viewer?: { name?: string } } };
+    const json = (await res.json()) as { data?: { Viewer?: { name?: string } } };
     return json.data?.Viewer?.name;
   } catch {
     return undefined;
@@ -45,7 +51,7 @@ async function fetchSimklUsername(token: string, clientId: string): Promise<stri
     const res = await platformFetch('https://api.simkl.com/users/settings', {
       headers: { Authorization: `Bearer ${token}`, 'simkl-api-key': clientId },
     });
-    const json = await res.json() as { user?: { name?: string } };
+    const json = (await res.json()) as { user?: { name?: string } };
     return json.user?.name;
   } catch {
     return undefined;
@@ -101,11 +107,21 @@ export function useIntegrationAccounts({
   const [confirmDisconnect, setConfirmDisconnect] = useState<{ title: string; onConfirm: () => void } | null>(null);
 
   useEffect(() => {
-    storageRead<SyncMeta>('trakt_sync_meta').then((m) => { if (m) setTraktSyncMeta(m); });
-    storageRead<SyncMeta>('anilist_sync_meta').then((m) => { if (m) setAnilistSyncMeta(m); });
-    storageRead<SyncMeta>('simkl_sync_meta').then((m) => { if (m) setSimklSyncMeta(m); });
-    storageRead<SyncMeta>('nuvio_sync_meta').then((m) => { if (m) setNuvioSyncMeta(m); });
-    storageRead<SyncMeta>('stremio_sync_meta').then((m) => { if (m) setStremioSyncMeta(m); });
+    storageRead<SyncMeta>('trakt_sync_meta').then((m) => {
+      if (m) setTraktSyncMeta(m);
+    });
+    storageRead<SyncMeta>('anilist_sync_meta').then((m) => {
+      if (m) setAnilistSyncMeta(m);
+    });
+    storageRead<SyncMeta>('simkl_sync_meta').then((m) => {
+      if (m) setSimklSyncMeta(m);
+    });
+    storageRead<SyncMeta>('nuvio_sync_meta').then((m) => {
+      if (m) setNuvioSyncMeta(m);
+    });
+    storageRead<SyncMeta>('stremio_sync_meta').then((m) => {
+      if (m) setStremioSyncMeta(m);
+    });
   }, []);
 
   const [traktConnected, setTraktConnected] = useState(false);
@@ -124,9 +140,15 @@ export function useIntegrationAccounts({
     };
   }, [activeProfile]);
 
-  useEffect(() => { if (traktConnected) setTraktBusy(false); }, [traktConnected]);
-  useEffect(() => { if (anilistConnected) setAnilistBusy(false); }, [anilistConnected]);
-  useEffect(() => { if (simklConnected) setSimklBusy(false); }, [simklConnected]);
+  useEffect(() => {
+    if (traktConnected) setTraktBusy(false);
+  }, [traktConnected]);
+  useEffect(() => {
+    if (anilistConnected) setAnilistBusy(false);
+  }, [anilistConnected]);
+  useEffect(() => {
+    if (simklConnected) setSimklBusy(false);
+  }, [simklConnected]);
 
   const setAuthUrl = (service: OAuthService, url?: string) => {
     setAuthUrls((current) => ({ ...current, [service]: url }));
@@ -160,7 +182,13 @@ export function useIntegrationAccounts({
         if (service === 'anilist' && implicitToken) {
           const clientId = await platformInvoke<string>('get_oauth_client_id', { service });
           const username = await fetchAnilistUsername(implicitToken);
-          const updated: UserProfile = { ...activeProfile, anilistAccessToken: implicitToken, anilistRefreshToken: undefined, anilistTokenExpiresAt: undefined, anilistUsername: username };
+          const updated: UserProfile = {
+            ...activeProfile,
+            anilistAccessToken: implicitToken,
+            anilistRefreshToken: undefined,
+            anilistTokenExpiresAt: undefined,
+            anilistUsername: username,
+          };
           await saveProfile(updated);
           onProfileUpdated(updated);
           return;
@@ -176,13 +204,25 @@ export function useIntegrationAccounts({
         if (service === 'trakt') {
           const clientId = await platformInvoke<string>('get_oauth_client_id', { service });
           const username = await fetchTraktUsername(tokens.access_token, clientId);
-          const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: (tokens.created_at ?? Math.floor(Date.now() / 1000)) + (tokens.expires_in ?? 0), traktUsername: username };
+          const updated: UserProfile = {
+            ...activeProfile,
+            traktAccessToken: tokens.access_token,
+            traktRefreshToken: tokens.refresh_token,
+            traktTokenExpiresAt: (tokens.created_at ?? Math.floor(Date.now() / 1000)) + (tokens.expires_in ?? 0),
+            traktUsername: username,
+          };
           await saveProfile(updated);
           onProfileUpdated(updated);
         } else {
           const clientId = await platformInvoke<string>('get_oauth_client_id', { service });
           const username = await fetchSimklUsername(tokens.access_token, clientId);
-          const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token, simklTokenExpiresAt: (tokens.created_at ?? Math.floor(Date.now() / 1000)) + (tokens.expires_in ?? 0), simklUsername: username };
+          const updated: UserProfile = {
+            ...activeProfile,
+            simklAccessToken: tokens.access_token,
+            simklRefreshToken: tokens.refresh_token,
+            simklTokenExpiresAt: (tokens.created_at ?? Math.floor(Date.now() / 1000)) + (tokens.expires_in ?? 0),
+            simklUsername: username,
+          };
           await saveProfile(updated);
           onProfileUpdated(updated);
         }
@@ -209,19 +249,53 @@ export function useIntegrationAccounts({
     const url = authUrls[service];
     if (!url) return null;
     return (
-      <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <p style={{ color: 'rgba(255,255,255,0.44)', fontSize: '0.75rem', margin: 0, flex: 1, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif' }}>
+      <div
+        style={{
+          padding: '0 1.125rem 0.625rem',
+          borderBottom: '1px solid rgba(255,255,255,0.055)',
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+        }}
+      >
+        <p
+          style={{
+            color: 'rgba(255,255,255,0.44)',
+            fontSize: '0.75rem',
+            margin: 0,
+            flex: 1,
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
+          }}
+        >
           {t('settings.oauth_waiting_browser')}
         </p>
         <button
           onClick={() => void platformOpenExternal(url)}
-          style={{ height: '1.75rem', borderRadius: '0.4375rem', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}
+          style={{
+            height: '1.75rem',
+            borderRadius: '0.4375rem',
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(255,255,255,0.06)',
+            color: '#fff',
+            fontSize: '0.75rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
         >
           {t('settings.oauth_reopen')}
         </button>
         <button
           onClick={() => void copyAuthUrl(service)}
-          style={{ height: '1.75rem', borderRadius: '0.4375rem', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}
+          style={{
+            height: '1.75rem',
+            borderRadius: '0.4375rem',
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(255,255,255,0.06)',
+            color: '#fff',
+            fontSize: '0.75rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
         >
           {t('settings.oauth_copy_link')}
         </button>
@@ -238,7 +312,13 @@ export function useIntegrationAccounts({
       const state = generateCodeVerifier();
       traktStateRef.current = state;
       if (browserTarget) {
-        const device = JSON.parse(await platformInvoke<string>('trakt_device_start')) as { device_code: string; user_code: string; verification_url: string; expires_in?: number; interval?: number };
+        const device = JSON.parse(await platformInvoke<string>('trakt_device_start')) as {
+          device_code: string;
+          user_code: string;
+          verification_url: string;
+          expires_in?: number;
+          interval?: number;
+        };
         window.open(device.verification_url, '_blank', 'noopener,noreferrer');
         window.alert(`${t('trakt.device.open_url')} ${device.verification_url}\n${t('trakt.device.enter_code')} ${device.user_code}`);
         const deadline = Date.now() + (device.expires_in ?? 600) * 1000;
@@ -255,7 +335,13 @@ export function useIntegrationAccounts({
         if (!tokenJson || tokenJson === 'pending') throw new Error(t('toast.trakt_device_code_expired'));
         const tokens = JSON.parse(tokenJson) as TraktTokenResponse;
         const traktUsername = await fetchTraktUsername(tokens.access_token, traktClientId);
-        const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: tokens.created_at + tokens.expires_in, traktUsername };
+        const updated: UserProfile = {
+          ...activeProfile,
+          traktAccessToken: tokens.access_token,
+          traktRefreshToken: tokens.refresh_token,
+          traktTokenExpiresAt: tokens.created_at + tokens.expires_in,
+          traktUsername,
+        };
         await saveProfile(updated);
         onProfileUpdated(updated);
         setTraktBusy(false);
@@ -280,7 +366,13 @@ export function useIntegrationAccounts({
           const tokenJson = await platformInvoke<string>('trakt_oauth_exchange', { code: payload.code });
           const tokens = JSON.parse(tokenJson) as TraktTokenResponse;
           const traktUsername = await fetchTraktUsername(tokens.access_token, traktClientId);
-          const updated: UserProfile = { ...activeProfile, traktAccessToken: tokens.access_token, traktRefreshToken: tokens.refresh_token, traktTokenExpiresAt: tokens.created_at + tokens.expires_in, traktUsername };
+          const updated: UserProfile = {
+            ...activeProfile,
+            traktAccessToken: tokens.access_token,
+            traktRefreshToken: tokens.refresh_token,
+            traktTokenExpiresAt: tokens.created_at + tokens.expires_in,
+            traktUsername,
+          };
           await saveProfile(updated);
           onProfileUpdated(updated);
         } catch (err) {
@@ -289,7 +381,9 @@ export function useIntegrationAccounts({
           setTraktBusy(false);
         }
       };
-      unlisten = await listen<OAuthCodePayload>('trakt-oauth-code', () => { void consumeCallback(); });
+      unlisten = await listen<OAuthCodePayload>('trakt-oauth-code', () => {
+        void consumeCallback();
+      });
       await platformOpenExternal(authUrl);
       void consumeCallback();
     } catch (err) {
@@ -301,7 +395,13 @@ export function useIntegrationAccounts({
 
   const handleTraktDisconnect = async () => {
     if (!activeProfile) return;
-    const updated: UserProfile = { ...activeProfile, traktAccessToken: undefined, traktRefreshToken: undefined, traktTokenExpiresAt: undefined, traktUsername: undefined };
+    const updated: UserProfile = {
+      ...activeProfile,
+      traktAccessToken: undefined,
+      traktRefreshToken: undefined,
+      traktTokenExpiresAt: undefined,
+      traktUsername: undefined,
+    };
     await saveProfile(updated);
     onProfileUpdated(updated);
   };
@@ -360,7 +460,9 @@ export function useIntegrationAccounts({
           setAnilistBusy(false);
         }
       };
-      unlisten = await listen<OAuthCodePayload>('anilist-oauth-code', () => { void consumeCallback(); });
+      unlisten = await listen<OAuthCodePayload>('anilist-oauth-code', () => {
+        void consumeCallback();
+      });
       await platformOpenExternal(authUrl);
       void consumeCallback();
     } catch (err) {
@@ -428,12 +530,21 @@ export function useIntegrationAccounts({
           const codeVerifier = simklCodeVerifierRef.current;
           if (!codeVerifier) throw new Error(t('settings.oauth_state_mismatch'));
           const tokenJson = await platformInvoke<string>('simkl_oauth_exchange', { code: payload.code, codeVerifier });
-          const tokens = JSON.parse(tokenJson) as { access_token: string; refresh_token?: string; created_at?: number; expires_in?: number };
-          const expiresAt = tokens.expires_in
-            ? (tokens.created_at ?? Math.floor(Date.now() / 1000)) + tokens.expires_in
-            : undefined;
+          const tokens = JSON.parse(tokenJson) as {
+            access_token: string;
+            refresh_token?: string;
+            created_at?: number;
+            expires_in?: number;
+          };
+          const expiresAt = tokens.expires_in ? (tokens.created_at ?? Math.floor(Date.now() / 1000)) + tokens.expires_in : undefined;
           const simklUsername = await fetchSimklUsername(tokens.access_token, simklClientId);
-          const updated: UserProfile = { ...activeProfile, simklAccessToken: tokens.access_token, simklRefreshToken: tokens.refresh_token, simklTokenExpiresAt: expiresAt, simklUsername };
+          const updated: UserProfile = {
+            ...activeProfile,
+            simklAccessToken: tokens.access_token,
+            simklRefreshToken: tokens.refresh_token,
+            simklTokenExpiresAt: expiresAt,
+            simklUsername,
+          };
           await saveProfile(updated);
           onProfileUpdated(updated);
         } catch (err) {
@@ -443,7 +554,9 @@ export function useIntegrationAccounts({
           setSimklBusy(false);
         }
       };
-      unlisten = await listen<OAuthCodePayload>('simkl-oauth-code', () => { void consumeCallback(); });
+      unlisten = await listen<OAuthCodePayload>('simkl-oauth-code', () => {
+        void consumeCallback();
+      });
       await platformOpenExternal(authUrl);
       void consumeCallback();
     } catch (err) {
@@ -456,7 +569,13 @@ export function useIntegrationAccounts({
   const handleSimklDisconnect = async () => {
     if (!activeProfile) return;
     setSimklPopoverOpen(false);
-    const updated: UserProfile = { ...activeProfile, simklAccessToken: undefined, simklRefreshToken: undefined, simklTokenExpiresAt: undefined, simklUsername: undefined };
+    const updated: UserProfile = {
+      ...activeProfile,
+      simklAccessToken: undefined,
+      simklRefreshToken: undefined,
+      simklTokenExpiresAt: undefined,
+      simklUsername: undefined,
+    };
     await saveProfile(updated);
     onProfileUpdated(updated);
   };
@@ -559,17 +678,22 @@ export function useIntegrationAccounts({
     setTraktError(null);
     try {
       const traktClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' });
-      const result = await syncExternalIntegrationNow({
+      const result = (await syncExternalIntegrationNow({
         provider: 'trakt',
         profile: activeProfile,
         token: activeProfile.traktAccessToken,
         clientId: traktClientId,
         ...(categories ? { categories } : {}),
-      }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
+      })) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
       if (!result.synced) {
         setTraktError(result.error ?? t('toast.trakt_sync_failed'));
       } else {
-        const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: result.continueWatchingCount ?? 0, watchlistCount: result.watchlistCount ?? 0, watchedCount: result.watchedCount ?? 0 };
+        const meta: SyncMeta = {
+          lastSyncAt: Date.now(),
+          continueWatchingCount: result.continueWatchingCount ?? 0,
+          watchlistCount: result.watchlistCount ?? 0,
+          watchedCount: result.watchedCount ?? 0,
+        };
         setTraktSyncMeta(meta);
         await storageWrite('trakt_sync_meta', meta);
       }
@@ -588,17 +712,22 @@ export function useIntegrationAccounts({
     setSimklError(null);
     try {
       const simklClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'simkl' });
-      const result = await syncExternalIntegrationNow({
+      const result = (await syncExternalIntegrationNow({
         provider: 'simkl',
         profile: activeProfile,
         token: activeProfile.simklAccessToken,
         clientId: simklClientId,
         ...(categories ? { categories } : {}),
-      }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
+      })) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
       if (!result.synced) {
         setSimklError(result.error ?? 'Simkl sync failed');
       } else {
-        const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: result.continueWatchingCount ?? 0, watchlistCount: result.watchlistCount ?? 0, watchedCount: result.watchedCount ?? 0 };
+        const meta: SyncMeta = {
+          lastSyncAt: Date.now(),
+          continueWatchingCount: result.continueWatchingCount ?? 0,
+          watchlistCount: result.watchlistCount ?? 0,
+          watchedCount: result.watchedCount ?? 0,
+        };
         setSimklSyncMeta(meta);
         await storageWrite('simkl_sync_meta', meta);
       }
@@ -639,16 +768,20 @@ export function useIntegrationAccounts({
     setStremioBusy(true);
     setStremioError(null);
     try {
-      const result = await syncExternalIntegrationNow({
+      const result = (await syncExternalIntegrationNow({
         provider: 'stremio',
         profile: activeProfile,
         token: activeProfile.stremioAuthKey,
         ...(categories ? { categories } : {}),
-      }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
+      })) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
       if (!result.synced) {
         setStremioError(result.error ?? 'Stremio sync failed');
       } else {
-        const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: result.continueWatchingCount ?? 0, watchlistCount: result.watchlistCount ?? 0 };
+        const meta: SyncMeta = {
+          lastSyncAt: Date.now(),
+          continueWatchingCount: result.continueWatchingCount ?? 0,
+          watchlistCount: result.watchlistCount ?? 0,
+        };
         setStremioSyncMeta(meta);
         await storageWrite('stremio_sync_meta', meta);
       }
@@ -668,17 +801,21 @@ export function useIntegrationAccounts({
     try {
       const updated = await refreshAnimeTrackingProfile(activeProfile);
       if (updated !== activeProfile) onProfileUpdated(updated);
-      const result = await syncExternalIntegrationNow({
+      const result = (await syncExternalIntegrationNow({
         provider: 'anilist',
         profile: updated,
         token: updated.anilistAccessToken,
         ...(categories ? { categories } : {}),
-      }) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
+      })) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
       if (!result.synced) {
         setAnilistError(result.error ?? 'AniList sync failed');
         return;
       }
-      const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: result.continueWatchingCount ?? 0, watchlistCount: result.watchlistCount ?? 0 };
+      const meta: SyncMeta = {
+        lastSyncAt: Date.now(),
+        continueWatchingCount: result.continueWatchingCount ?? 0,
+        watchlistCount: result.watchlistCount ?? 0,
+      };
       setAnilistSyncMeta(meta);
       await storageWrite('anilist_sync_meta', meta);
     } catch (error) {
@@ -691,18 +828,70 @@ export function useIntegrationAccounts({
   };
 
   return {
-    traktBusy, traktError, setTraktError, traktPopoverOpen, setTraktPopoverOpen, traktRowRef, traktSyncMeta, traktConnected,
-    anilistBusy, anilistError, setAnilistError, anilistPopoverOpen, setAnilistPopoverOpen, anilistRowRef, anilistSyncMeta, anilistConnected,
-    simklBusy, simklError, setSimklError, simklPopoverOpen, setSimklPopoverOpen, simklRowRef, simklSyncMeta, simklConnected,
-    nuvioBusy, nuvioError, setNuvioError, nuvioPopoverOpen, setNuvioPopoverOpen, nuvioRowRef, nuvioSyncMeta, nuvioConnected, nuvioFormOpen, setNuvioFormOpen,
-    stremioBusy, stremioError, setStremioError, stremioPopoverOpen, setStremioPopoverOpen, stremioRowRef, stremioSyncMeta, stremioConnected,
-    stremioFormOpen, setStremioFormOpen, stremioAuthKeyMode, setStremioAuthKeyMode,
-    confirmDisconnect, setConfirmDisconnect,
+    traktBusy,
+    traktError,
+    setTraktError,
+    traktPopoverOpen,
+    setTraktPopoverOpen,
+    traktRowRef,
+    traktSyncMeta,
+    traktConnected,
+    anilistBusy,
+    anilistError,
+    setAnilistError,
+    anilistPopoverOpen,
+    setAnilistPopoverOpen,
+    anilistRowRef,
+    anilistSyncMeta,
+    anilistConnected,
+    simklBusy,
+    simklError,
+    setSimklError,
+    simklPopoverOpen,
+    setSimklPopoverOpen,
+    simklRowRef,
+    simklSyncMeta,
+    simklConnected,
+    nuvioBusy,
+    nuvioError,
+    setNuvioError,
+    nuvioPopoverOpen,
+    setNuvioPopoverOpen,
+    nuvioRowRef,
+    nuvioSyncMeta,
+    nuvioConnected,
+    nuvioFormOpen,
+    setNuvioFormOpen,
+    stremioBusy,
+    stremioError,
+    setStremioError,
+    stremioPopoverOpen,
+    setStremioPopoverOpen,
+    stremioRowRef,
+    stremioSyncMeta,
+    stremioConnected,
+    stremioFormOpen,
+    setStremioFormOpen,
+    stremioAuthKeyMode,
+    setStremioAuthKeyMode,
+    confirmDisconnect,
+    setConfirmDisconnect,
     renderOAuthFallback,
-    handleTraktConnect, handleTraktDisconnect, handleTraktSyncNow,
-    handleAnilistConnect, handleAnilistDisconnect, handleAnilistSyncNow,
-    handleSimklConnect, handleSimklDisconnect, handleSimklSyncNow,
-    handleNuvioConnect, handleNuvioDisconnect, handleNuvioSyncNow,
-    handleStremioConnect, handleStremioConnectWithAuthKey, handleStremioDisconnect, handleStremioSyncNow,
+    handleTraktConnect,
+    handleTraktDisconnect,
+    handleTraktSyncNow,
+    handleAnilistConnect,
+    handleAnilistDisconnect,
+    handleAnilistSyncNow,
+    handleSimklConnect,
+    handleSimklDisconnect,
+    handleSimklSyncNow,
+    handleNuvioConnect,
+    handleNuvioDisconnect,
+    handleNuvioSyncNow,
+    handleStremioConnect,
+    handleStremioConnectWithAuthKey,
+    handleStremioDisconnect,
+    handleStremioSyncNow,
   };
 }

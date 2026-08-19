@@ -33,15 +33,24 @@ export function useExternalPlayerTracking({ session, onStatus, onCallback }: Opt
     const unlisten = listen<{ url?: string }>('deep-link-opened', (event) => {
       const raw = event.payload.url ?? '';
       let url: URL;
-      try { url = new URL(raw); } catch { return; }
+      try {
+        url = new URL(raw);
+      } catch {
+        return;
+      }
       if (url.protocol !== 'fluxa:' || !['external-player', 'external-player-error'].includes(url.hostname)) return;
       if (url.searchParams.get('session') !== session.sessionId) return;
       const position = Number(url.searchParams.get('position'));
-      debugLog(`externalPlayerTracking: session=${session.sessionId} deep-link callback position=${position} failed=${url.hostname === 'external-player-error'}`);
+      debugLog(
+        `externalPlayerTracking: session=${session.sessionId} deep-link callback position=${position} failed=${url.hostname === 'external-player-error'}`,
+      );
       onCallback(Number.isFinite(position) ? position : null, url.hostname === 'external-player-error');
     });
     if (session.tracking !== 'live') {
-      return () => { cancelled = true; void unlisten.then((fn) => fn()); };
+      return () => {
+        cancelled = true;
+        void unlisten.then((fn) => fn());
+      };
     }
     let polling = false;
     let lastSeenAt = session.startedAt;
@@ -49,11 +58,15 @@ export function useExternalPlayerTracking({ session, onStatus, onCallback }: Opt
       if (polling) return;
       polling = true;
       try {
-        const status = await invoke<ExternalPlayerStatus | null>('external_player_status', { sessionId: session.sessionId }).catch(() => null);
+        const status = await invoke<ExternalPlayerStatus | null>('external_player_status', { sessionId: session.sessionId }).catch(
+          () => null,
+        );
         if (cancelled) return;
         if (status) {
           lastSeenAt = Date.now();
-          debugLog(`externalPlayerTracking: session=${session.sessionId} status active=${status.active} paused=${status.paused} timePos=${status.timePos} duration=${status.duration}`);
+          debugLog(
+            `externalPlayerTracking: session=${session.sessionId} status active=${status.active} paused=${status.paused} timePos=${status.timePos} duration=${status.duration}`,
+          );
           onStatus(status);
         } else if (Date.now() - lastSeenAt > 5_000) {
           debugLog(`externalPlayerTracking: session=${session.sessionId} no status for ${Date.now() - lastSeenAt}ms, treating as closed`);
@@ -67,10 +80,14 @@ export function useExternalPlayerTracking({ session, onStatus, onCallback }: Opt
     const statusUnlisten = listen<ExternalPlayerStatus & { sessionId: string }>('external-player-status', (event) => {
       if (event.payload.sessionId !== session.sessionId) return;
       lastSeenAt = Date.now();
-      debugLog(`externalPlayerTracking: session=${session.sessionId} pushed status paused=${event.payload.paused} timePos=${event.payload.timePos} duration=${event.payload.duration}`);
+      debugLog(
+        `externalPlayerTracking: session=${session.sessionId} pushed status paused=${event.payload.paused} timePos=${event.payload.timePos} duration=${event.payload.duration}`,
+      );
       onStatus(event.payload);
     });
-    const timer = window.setInterval(() => { void poll(); }, 10_000);
+    const timer = window.setInterval(() => {
+      void poll();
+    }, 10_000);
     return () => {
       debugLog(`externalPlayerTracking: session=${session.sessionId} tracking stopped`);
       cancelled = true;

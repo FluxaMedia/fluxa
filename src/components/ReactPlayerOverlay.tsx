@@ -74,20 +74,86 @@ interface Props {
   skipSegmentCoverage?: Record<string, string[]>;
 }
 
-export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlayActive = false, initialTitle, initialEpisodeTitle, currentEpisode, isTorrentStream = false, initialPosterUrl, initialLogoUrl, metaId, initialSubtitleUrl, initialStreamHeaders, streamRef, metaRef, playbackUrl, torrentTelemetryContext, playbackError, subtitleWarning, onDismissSubtitleWarning, softwareVideoActive = false, bannerOffset = 0, prefs, onDispatch, skipSegmentCoverage }: Props) {
+export function ReactPlayerOverlay({
+  closePlayer,
+  onFirstFrame,
+  isLoadingOverlayActive = false,
+  initialTitle,
+  initialEpisodeTitle,
+  currentEpisode,
+  isTorrentStream = false,
+  initialPosterUrl,
+  initialLogoUrl,
+  metaId,
+  initialSubtitleUrl,
+  initialStreamHeaders,
+  streamRef,
+  metaRef,
+  playbackUrl,
+  torrentTelemetryContext,
+  playbackError,
+  subtitleWarning,
+  onDismissSubtitleWarning,
+  softwareVideoActive = false,
+  bannerOffset = 0,
+  prefs,
+  onDispatch,
+  skipSegmentCoverage,
+}: Props) {
   const playerTelemetry = usePlayerTelemetryState();
-  const { paused, muted, volumeLevel, isBuffering, bufferingProgress, hdrLabel, statsSnap, torrentStatsSnap, torrentSpeedHistory, setPaused, setMuted, setVolumeLevel, resetTorrentSpeedHistory } = playerTelemetry;
+  const {
+    paused,
+    muted,
+    volumeLevel,
+    isBuffering,
+    bufferingProgress,
+    hdrLabel,
+    statsSnap,
+    torrentStatsSnap,
+    torrentSpeedHistory,
+    setPaused,
+    setMuted,
+    setVolumeLevel,
+    resetTorrentSpeedHistory,
+  } = playerTelemetry;
   const [controlsVisible, setControlsVisible] = useState(true);
   const [title, setTitle] = useState(initialTitle ?? '');
   const [episodeTitle, setEpisodeTitle] = useState(initialEpisodeTitle ?? '');
   const playerNavigation = usePlayerNavigationState();
-  const { chapters, skipSegments, nextEpSubtitle, nextEpThreshold, autoPlayNextEpisode, autoPlayCountdownSecs, countdown, nextEpDismissed, episodes, activeSkip, autoSkipSegments, showNextEpCard, setChapters, setSkipSegments, setNextEpSubtitle, setNextEpThreshold, setAutoPlayNextEpisode, setAutoPlayCountdownSecs, setCountdown, setNextEpDismissed, setEpisodes, setActiveSkip, setAutoSkipSegments, setShowNextEpCard } = playerNavigation;
+  const {
+    chapters,
+    skipSegments,
+    nextEpSubtitle,
+    nextEpThreshold,
+    autoPlayNextEpisode,
+    autoPlayCountdownSecs,
+    countdown,
+    nextEpDismissed,
+    episodes,
+    activeSkip,
+    autoSkipSegments,
+    showNextEpCard,
+    setChapters,
+    setSkipSegments,
+    setNextEpSubtitle,
+    setNextEpThreshold,
+    setAutoPlayNextEpisode,
+    setAutoPlayCountdownSecs,
+    setCountdown,
+    setNextEpDismissed,
+    setEpisodes,
+    setActiveSkip,
+    setAutoSkipSegments,
+    setShowNextEpCard,
+  } = playerNavigation;
   const [nextEpThumbnail, setNextEpThumbnail] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     if (!currentEpisode) {
       setNextEpThumbnail(null);
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }
     void coreResolveNextEpisode(
       JSON.stringify(episodes),
@@ -98,7 +164,9 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
     ).then((next) => {
       if (active) setNextEpThumbnail((next as EpisodeInfo | null)?.thumbnail ?? null);
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [episodes, currentEpisode]);
   const [showEpisodePanel, setShowEpisodePanel] = useState(false);
   const autoSkippedKeysRef = useRef<Set<string>>(new Set());
@@ -113,7 +181,10 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
   const skipDbApiKey = typeof prefs?.skipDbApiKey === 'string' ? prefs.skipDbApiKey : '';
   const theIntroDbSubmitEnabled = prefs?.theIntroDbSubmitEnabled === true;
   const theIntroDbApiKey = typeof prefs?.theIntroDbApiKey === 'string' ? prefs.theIntroDbApiKey : '';
-  const { imdbId: introDbImdbId, tmdbId: introDbTmdbId } = usePlayerIntroDb(metaId, introDbSubmitEnabled || skipDbSubmitEnabled || theIntroDbSubmitEnabled);
+  const { imdbId: introDbImdbId, tmdbId: introDbTmdbId } = usePlayerIntroDb(
+    metaId,
+    introDbSubmitEnabled || skipDbSubmitEnabled || theIntroDbSubmitEnabled,
+  );
   const [showTorrentPopover, setShowTorrentPopover] = useState(false);
   const [hasRenderedFirstFrame, setHasRenderedFirstFrame] = useState(false);
   const contentWarnings = usePlayerContentWarnings(metaRef?.current ?? undefined, currentEpisode, playbackUrl, hasRenderedFirstFrame);
@@ -194,17 +265,43 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
       embeddedMpvSetCursorVisible(true).catch(() => {});
     }
   }, []);
-  const { trackPopover, setTrackPopover, playbackSpeed, setPlaybackSpeed, audioTracks, subTracks, openTrackPopover, setSpeed, selectTrack, disableSubs } = usePlayerTrackControls(resetActivity);
+  const {
+    trackPopover,
+    setTrackPopover,
+    playbackSpeed,
+    setPlaybackSpeed,
+    audioTracks,
+    subTracks,
+    openTrackPopover,
+    setSpeed,
+    selectTrack,
+    disableSubs,
+  } = usePlayerTrackControls(resetActivity);
 
   const { miniPlayerActive, isFullscreenRef, setPlayerFullscreen, toggleFullscreen, toggleMiniPlayer } = usePlayerWindowMode(resetActivity);
-  const { activeCastDeviceId, activeCastDeviceIdRef, activeCastDeviceName, castDevices, castDiscovering, castPaused, castPopoverOpen, disconnectCast, openCastPopover, openCastPopoverRef, selectCastDevice, setCastPopoverOpen, toggleCastPause } = usePlayerCasting({ title, episodeTitle, initialSubtitleUrl, initialStreamHeaders, resetActivity });
+  const {
+    activeCastDeviceId,
+    activeCastDeviceIdRef,
+    activeCastDeviceName,
+    castDevices,
+    castDiscovering,
+    castPaused,
+    castPopoverOpen,
+    disconnectCast,
+    openCastPopover,
+    openCastPopoverRef,
+    selectCastDevice,
+    setCastPopoverOpen,
+    toggleCastPause,
+  } = usePlayerCasting({ title, episodeTitle, initialSubtitleUrl, initialStreamHeaders, resetActivity });
 
   const flashFeedback = useCallback((icon: FeedbackFlash['icon'], label: string) => {
     setFeedback({ icon, label });
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     feedbackTimerRef.current = setTimeout(() => setFeedback(null), 700);
   }, []);
-  const { abLoopStage, setAbLoopStage, cycleAbLoop, cycleAbLoopRef, takeScreenshot, takeScreenshotRef, copyTimestamp } = usePlayerUtilityActions({ title, posRef, resetActivity, flashFeedback });
+  const { abLoopStage, setAbLoopStage, cycleAbLoop, cycleAbLoopRef, takeScreenshot, takeScreenshotRef, copyTimestamp } =
+    usePlayerUtilityActions({ title, posRef, resetActivity, flashFeedback });
 
   const startSeekOverlay = useCallback(() => {
     setShowSeekOverlay(true);
@@ -214,16 +311,111 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
 
   usePlayerMediaSession({ title, episodeTitle, posterUrl: initialPosterUrl, setPaused, startSeekOverlay, flashFeedback });
 
-  const { applyFills, onSeekPointerDown } = usePlayerSeekInteractions({ durRef, lastSeekAtRef, activeCastDeviceIdRef, seekbarRef, seekFillRef, seekBufferRef, seekDotRef, chapterSegmentsRef, segmentFillRefs: segFillRefs, segmentBufferRefs: segBufRefs, isDraggingRef, dragPosRef, startSeekOverlay, resetActivity });
-
-  usePlayerLiveTelemetry({
-    skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, isTorrentStream, playbackUrl, torrentTelemetryContext, showStats, showTorrentPopover, controlsVisible, onFirstFrame, applyFills, flashFeedback,
-    telemetry: playerTelemetry, setShowSeekOverlay, setControlsVisible, setActiveSkip, setShowNextEpCard,
-    liveStatusRef, torrentStatsRef, prevPausedForCacheRef, stallCountRef, bufferHistoryRef, netSpeedHistoryRef, posRef, durRef, pausedRef, firstFrameFiredRef, hasAppliedInitialFillRef, currentTimeRef, durationRef, lastSeekAtRef, isDraggingRef, seekOverlayTimerRef, lastActivityRef, controlsVisibleRef, overlayRef, episodePanelOpenRef, isOverControlsRef, miniProgressRef, activeSkipKeyRef, autoSkippedKeysRef, skipFillRef, discordPresenceKeyRef, discordPresenceSentAtRef,
+  const { applyFills, onSeekPointerDown } = usePlayerSeekInteractions({
+    durRef,
+    lastSeekAtRef,
+    activeCastDeviceIdRef,
+    seekbarRef,
+    seekFillRef,
+    seekBufferRef,
+    seekDotRef,
+    chapterSegmentsRef,
+    segmentFillRefs: segFillRefs,
+    segmentBufferRefs: segBufRefs,
+    isDraggingRef,
+    dragPosRef,
+    startSeekOverlay,
+    resetActivity,
   });
 
-  usePlayerPlaybackNavigation({ chaptersRef, setChapters, setSkipSegments, setNextEpSubtitle, setNextEpDismissed, setNextEpThreshold, setAutoPlayNextEpisode, setAutoPlayCountdownSecs, setAutoSkipSegments, setEpisodes, showNextEpCard, autoPlayNextEpisode, nextEpDismissed, autoPlayCountdownSecs, setCountdown, activeSkip, setActiveSkip, countdown, pausedRef, resetActivity });
-  usePlayerTitleReset({ setTitle, setEpisodeTitle, setAbLoopStage, setNextEpisodeDismissed: setNextEpDismissed, autoSkippedKeysRef, stallCountRef, prevPausedForCacheRef, bufferHistoryRef, networkHistoryRef: netSpeedHistoryRef, resetTorrentSpeedHistory });
+  usePlayerLiveTelemetry({
+    skipSegments,
+    nextEpSubtitle,
+    nextEpThreshold,
+    nextEpDismissed,
+    trackPopover,
+    title,
+    episodeTitle,
+    initialPosterUrl,
+    metaId,
+    autoSkipSegments,
+    isTorrentStream,
+    playbackUrl,
+    torrentTelemetryContext,
+    showStats,
+    showTorrentPopover,
+    controlsVisible,
+    onFirstFrame,
+    applyFills,
+    flashFeedback,
+    telemetry: playerTelemetry,
+    setShowSeekOverlay,
+    setControlsVisible,
+    setActiveSkip,
+    setShowNextEpCard,
+    liveStatusRef,
+    torrentStatsRef,
+    prevPausedForCacheRef,
+    stallCountRef,
+    bufferHistoryRef,
+    netSpeedHistoryRef,
+    posRef,
+    durRef,
+    pausedRef,
+    firstFrameFiredRef,
+    hasAppliedInitialFillRef,
+    currentTimeRef,
+    durationRef,
+    lastSeekAtRef,
+    isDraggingRef,
+    seekOverlayTimerRef,
+    lastActivityRef,
+    controlsVisibleRef,
+    overlayRef,
+    episodePanelOpenRef,
+    isOverControlsRef,
+    miniProgressRef,
+    activeSkipKeyRef,
+    autoSkippedKeysRef,
+    skipFillRef,
+    discordPresenceKeyRef,
+    discordPresenceSentAtRef,
+  });
+
+  usePlayerPlaybackNavigation({
+    chaptersRef,
+    setChapters,
+    setSkipSegments,
+    setNextEpSubtitle,
+    setNextEpDismissed,
+    setNextEpThreshold,
+    setAutoPlayNextEpisode,
+    setAutoPlayCountdownSecs,
+    setAutoSkipSegments,
+    setEpisodes,
+    showNextEpCard,
+    autoPlayNextEpisode,
+    nextEpDismissed,
+    autoPlayCountdownSecs,
+    setCountdown,
+    activeSkip,
+    setActiveSkip,
+    countdown,
+    pausedRef,
+    resetActivity,
+  });
+  usePlayerTitleReset({
+    setTitle,
+    setEpisodeTitle,
+    setAbLoopStage,
+    setNextEpisodeDismissed: setNextEpDismissed,
+    autoSkippedKeysRef,
+    stallCountRef,
+    prevPausedForCacheRef,
+    bufferHistoryRef,
+    networkHistoryRef: netSpeedHistoryRef,
+    resetTorrentSpeedHistory,
+  });
 
   const triggerActiveSkip = useCallback(() => {
     if (!activeSkip) return false;
@@ -232,8 +424,67 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
     return true;
   }, [activeSkip, flashFeedback]);
 
-  usePlayerKeyboardShortcuts({ closePlayer, contextMenu, setContextMenu, flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, setPlayerFullscreen, toggleFullscreen, toggleMiniPlayer, shortcutOverrides, showEpisodePanel, setShowEpisodePanel, showShortcutsHelp, setShowShortcutsHelp, startSeekOverlay, trackPopover, setTrackPopover, triggerActiveSkip, episodePanelOpenRef, isFullscreenRef, holdTimerRef, holdActiveRef, preSpeedRef, pausedRef, posRef, durRef, chaptersRef, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, setPaused, setShowStats });
-  usePlayerGamepadShortcuts({ closePlayer, flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, toggleFullscreen, toggleMiniPlayer, setShowShortcutsHelp, showShortcutsHelp, startSeekOverlay, triggerActiveSkip, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, pausedRef, setPaused, setShowStats, showEpisodePanel, setShowEpisodePanel, episodePanelOpenRef, trackPopover, setTrackPopover });
+  usePlayerKeyboardShortcuts({
+    closePlayer,
+    contextMenu,
+    setContextMenu,
+    flashFeedback,
+    nextEpSubtitle,
+    playbackSpeed,
+    setPlaybackSpeed,
+    setPlayerFullscreen,
+    toggleFullscreen,
+    toggleMiniPlayer,
+    shortcutOverrides,
+    showEpisodePanel,
+    setShowEpisodePanel,
+    showShortcutsHelp,
+    setShowShortcutsHelp,
+    startSeekOverlay,
+    trackPopover,
+    setTrackPopover,
+    triggerActiveSkip,
+    episodePanelOpenRef,
+    isFullscreenRef,
+    holdTimerRef,
+    holdActiveRef,
+    preSpeedRef,
+    pausedRef,
+    posRef,
+    durRef,
+    chaptersRef,
+    cycleAbLoopRef,
+    openCastPopoverRef,
+    takeScreenshotRef,
+    cycleAnime4kModeRef,
+    setPaused,
+    setShowStats,
+  });
+  usePlayerGamepadShortcuts({
+    closePlayer,
+    flashFeedback,
+    nextEpSubtitle,
+    playbackSpeed,
+    setPlaybackSpeed,
+    toggleFullscreen,
+    toggleMiniPlayer,
+    setShowShortcutsHelp,
+    showShortcutsHelp,
+    startSeekOverlay,
+    triggerActiveSkip,
+    cycleAbLoopRef,
+    openCastPopoverRef,
+    takeScreenshotRef,
+    cycleAnime4kModeRef,
+    pausedRef,
+    setPaused,
+    setShowStats,
+    showEpisodePanel,
+    setShowEpisodePanel,
+    episodePanelOpenRef,
+    trackPopover,
+    setTrackPopover,
+  });
   useEffect(() => {
     return () => {
       platformSetCursorVisible(true).catch(() => {});
@@ -241,26 +492,52 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
     };
   }, []);
 
-
   const onOverlayWheel = usePlayerOverlayInput({ resetActivity, startSeekOverlay, flashFeedback });
 
-  const setSubtitlePref = useCallback(<K extends string>(key: K, value: string | boolean) => {
-    void onDispatch?.(JSON.stringify({ type: 'settingsChanged', key, value }));
-  }, [onDispatch]);
+  const setSubtitlePref = useCallback(
+    <K extends string>(key: K, value: string | boolean) => {
+      void onDispatch?.(JSON.stringify({ type: 'settingsChanged', key, value }));
+    },
+    [onDispatch],
+  );
 
-  const { anime4kEnabled, toggleAnime4k, cycleAnime4kMode } = usePlayerAnime4k({ prefs, persistPreference: setSubtitlePref, flashFeedback });
+  const { anime4kEnabled, toggleAnime4k, cycleAnime4kMode } = usePlayerAnime4k({
+    prefs,
+    persistPreference: setSubtitlePref,
+    flashFeedback,
+  });
 
   const [stableVolumeEnabled, setStableVolumeEnabled] = useState(() => prefs?.stableVolume === true);
-  const toggleStableVolume = useCallback((enabled: boolean) => {
-    sendCmd(`set af ${enabled ? 'dynaudnorm' : '""'}`);
-    setStableVolumeEnabled(enabled);
-    setSubtitlePref('stableVolume', enabled);
-  }, [setSubtitlePref]);
+  const toggleStableVolume = useCallback(
+    (enabled: boolean) => {
+      sendCmd(`set af ${enabled ? 'dynaudnorm' : '""'}`);
+      setStableVolumeEnabled(enabled);
+      setSubtitlePref('stableVolume', enabled);
+    },
+    [setSubtitlePref],
+  );
 
   const subtitleControls = usePlayerSubtitleControls({ prefs, persistPreference: setSubtitlePref, flashFeedback });
-  useEffect(() => { cycleAnime4kModeRef.current = cycleAnime4kMode; }, [cycleAnime4kMode]);
+  useEffect(() => {
+    cycleAnime4kModeRef.current = cycleAnime4kMode;
+  }, [cycleAnime4kMode]);
 
-  const { onCenterPointerDown, releaseCenterHold, onCenterClick } = usePlayerCenterGesture({ playbackSpeed, preSpeedRef, pausedRef, episodePanelOpenRef, showEpisodePanel, setShowEpisodePanel, trackPopover, setTrackPopover, setPaused, resetActivity, flashFeedback, toggleFullscreen, holdTimerRef, holdActiveRef });
+  const { onCenterPointerDown, releaseCenterHold, onCenterClick } = usePlayerCenterGesture({
+    playbackSpeed,
+    preSpeedRef,
+    pausedRef,
+    episodePanelOpenRef,
+    showEpisodePanel,
+    setShowEpisodePanel,
+    trackPopover,
+    setTrackPopover,
+    setPaused,
+    resetActivity,
+    flashFeedback,
+    toggleFullscreen,
+    holdTimerRef,
+    holdActiveRef,
+  });
 
   const opacityStyle: React.CSSProperties = {
     opacity: controlsVisible ? 1 : 0,
@@ -269,44 +546,113 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
   };
 
   const dur = durRef.current;
-  const chapterSegments = chapters.length >= 2 && dur > 0
-    ? chapters.map((ch, i) => {
-        const start = ch.startMs / 1000 / dur;
-        const end = i + 1 < chapters.length ? chapters[i + 1].startMs / 1000 / dur : 1;
-        return { start, end };
-      })
-    : null;
+  const chapterSegments =
+    chapters.length >= 2 && dur > 0
+      ? chapters.map((ch, i) => {
+          const start = ch.startMs / 1000 / dur;
+          const end = i + 1 < chapters.length ? chapters[i + 1].startMs / 1000 / dur : 1;
+          return { start, end };
+        })
+      : null;
   chapterSegmentsRef.current = chapterSegments;
-  const skipMarkers = dur > 0
-    ? skipSegments
-        .map((seg) => ({
-          start: Math.max(0, Math.min(1, (seg.startTime / 1000) / dur)),
-          end: Math.max(0, Math.min(1, (seg.endTime / 1000) / dur)),
-        }))
-        .filter((seg) => seg.end > seg.start)
-    : [];
+  const skipMarkers =
+    dur > 0
+      ? skipSegments
+          .map((seg) => ({
+            start: Math.max(0, Math.min(1, seg.startTime / 1000 / dur)),
+            end: Math.max(0, Math.min(1, seg.endTime / 1000 / dur)),
+          }))
+          .filter((seg) => seg.end > seg.start)
+      : [];
 
   if (miniPlayerActive) {
-    return <PlayerMiniMode overlayRef={overlayRef} miniProgressRef={miniProgressRef} opacityStyle={opacityStyle} paused={paused} onTogglePause={() => { resetActivity(); flashFeedback(paused ? 'play' : 'pause', ''); setPaused((value) => !value); sendCmd('cycle pause'); }} onRestore={() => { resetActivity(); void toggleMiniPlayer(); }} onClose={() => { void closePlayer(); }} onActivity={resetActivity} />;
+    return (
+      <PlayerMiniMode
+        overlayRef={overlayRef}
+        miniProgressRef={miniProgressRef}
+        opacityStyle={opacityStyle}
+        paused={paused}
+        onTogglePause={() => {
+          resetActivity();
+          flashFeedback(paused ? 'play' : 'pause', '');
+          setPaused((value) => !value);
+          sendCmd('cycle pause');
+        }}
+        onRestore={() => {
+          resetActivity();
+          void toggleMiniPlayer();
+        }}
+        onClose={() => {
+          void closePlayer();
+        }}
+        onActivity={resetActivity}
+      />
+    );
   }
 
   return (
     <div
       ref={overlayRef}
-      style={{ position: 'fixed', inset: 0, zIndex: 9998, display: 'flex', flexDirection: 'column', background: softwareVideoActive ? '#000' : 'transparent' }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9998,
+        display: 'flex',
+        flexDirection: 'column',
+        background: softwareVideoActive ? '#000' : 'transparent',
+      }}
       onWheel={onOverlayWheel}
-      onContextMenu={(e) => { e.preventDefault(); resetActivity(); setContextMenu({ x: e.clientX, y: e.clientY }); }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        resetActivity();
+        setContextMenu({ x: e.clientX, y: e.clientY });
+      }}
     >
       {isBuffering && <PlayerBufferingOverlay logoUrl={initialLogoUrl} progress={bufferingProgress} />}
       <PlayerOverlayStyles />
 
       {softwareVideoActive && <SoftwareVideoCanvas key={currentEpisode?.id} statusRef={liveStatusRef} onFirstFrame={onFirstFrame} />}
 
-      <PlayerOverlayDecorations controlsVisible={controlsVisible} feedback={feedback} muted={muted} volumeLevel={volumeLevel} showSeekOverlay={showSeekOverlay} activeSkip={activeSkip} showNextEpCard={showNextEpCard} nextEpSubtitle={nextEpSubtitle} nextEpThumbnail={nextEpThumbnail} countdown={countdown} autoPlayCountdownSecs={autoPlayCountdownSecs} showEpisodePanel={showEpisodePanel} episodes={episodes} currentEpisode={currentEpisode} skipFillRef={skipFillRef} onActivity={resetActivity} onDismissSkip={() => setActiveSkip(null)} onDismissNextEpisode={() => setNextEpDismissed(true)} onCloseEpisodePanel={() => { setShowEpisodePanel(false); episodePanelOpenRef.current = false; }} />
+      <PlayerOverlayDecorations
+        controlsVisible={controlsVisible}
+        feedback={feedback}
+        muted={muted}
+        volumeLevel={volumeLevel}
+        showSeekOverlay={showSeekOverlay}
+        activeSkip={activeSkip}
+        showNextEpCard={showNextEpCard}
+        nextEpSubtitle={nextEpSubtitle}
+        nextEpThumbnail={nextEpThumbnail}
+        countdown={countdown}
+        autoPlayCountdownSecs={autoPlayCountdownSecs}
+        showEpisodePanel={showEpisodePanel}
+        episodes={episodes}
+        currentEpisode={currentEpisode}
+        skipFillRef={skipFillRef}
+        onActivity={resetActivity}
+        onDismissSkip={() => setActiveSkip(null)}
+        onDismissNextEpisode={() => setNextEpDismissed(true)}
+        onCloseEpisodePanel={() => {
+          setShowEpisodePanel(false);
+          episodePanelOpenRef.current = false;
+        }}
+      />
 
-      <ContentWarningOverlay warnings={contentWarnings.warnings} isVisible={contentWarnings.isVisible} onAnimationComplete={contentWarnings.onAnimationComplete} />
+      <ContentWarningOverlay
+        warnings={contentWarnings.warnings}
+        isVisible={contentWarnings.isVisible}
+        onAnimationComplete={contentWarnings.onAnimationComplete}
+      />
 
-      <PlayerStatusToasts bannerOffset={bannerOffset} playbackError={playbackError} subtitleWarning={subtitleWarning} onClosePlayer={() => { void closePlayer(); }} onDismissSubtitleWarning={onDismissSubtitleWarning} />
+      <PlayerStatusToasts
+        bannerOffset={bannerOffset}
+        playbackError={playbackError}
+        subtitleWarning={subtitleWarning}
+        onClosePlayer={() => {
+          void closePlayer();
+        }}
+        onDismissSubtitleWarning={onDismissSubtitleWarning}
+      />
 
       <PlayerHeader
         style={opacityStyle}
@@ -321,12 +667,22 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
         streamLinksButtonRef={streamLinksBtnRef}
         settingsButtonRef={playerSettingsBtnRef}
         showSegmentMarker={showSegmentMarker}
-        canMarkSegments={(introDbSubmitEnabled && Boolean(introDbApiKey)) || (skipDbSubmitEnabled && Boolean(skipDbApiKey)) || (theIntroDbSubmitEnabled && Boolean(theIntroDbApiKey))}
-        onClose={() => { void closePlayer(); }}
+        canMarkSegments={
+          (introDbSubmitEnabled && Boolean(introDbApiKey)) ||
+          (skipDbSubmitEnabled && Boolean(skipDbApiKey)) ||
+          (theIntroDbSubmitEnabled && Boolean(theIntroDbApiKey))
+        }
+        onClose={() => {
+          void closePlayer();
+        }}
         onResetActivity={resetActivity}
         onToggleCastPause={toggleCastPause}
-        onOpenCast={() => { void openCastPopover(); }}
-        onToggleMiniPlayer={() => { void toggleMiniPlayer(); }}
+        onOpenCast={() => {
+          void openCastPopover();
+        }}
+        onToggleMiniPlayer={() => {
+          void toggleMiniPlayer();
+        }}
         onOpenStreamLinks={() => {
           const rect = streamLinksBtnRef.current?.getBoundingClientRect();
           const stream = streamRef?.current;
@@ -336,26 +692,130 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
         onToggleSettings={() => setShowPlayerSettings((value) => !value)}
         onToggleSegmentMarker={() => setShowSegmentMarker((value) => !value)}
       />
-      <div style={{ flex: 1, cursor: 'default' }} onPointerDown={onCenterPointerDown} onPointerUp={releaseCenterHold} onPointerLeave={releaseCenterHold} onClick={onCenterClick} />
+      <div
+        style={{ flex: 1, cursor: 'default' }}
+        onPointerDown={onCenterPointerDown}
+        onPointerUp={releaseCenterHold}
+        onPointerLeave={releaseCenterHold}
+        onClick={onCenterClick}
+      />
 
-      {trackPopover && <PlayerTrackPanel type={trackPopover} audioTracks={audioTracks} subTracks={subTracks} playbackSpeed={playbackSpeed} refs={{ audio: audioTrackBtnRef, sub: subTrackBtnRef, speed: speedBtnRef }} onClose={() => setTrackPopover(null)} onSetSpeed={setSpeed} onSelectTrack={selectTrack} onDisableSubs={disableSubs} subtitleControls={subtitleControls} />}
+      {trackPopover && (
+        <PlayerTrackPanel
+          type={trackPopover}
+          audioTracks={audioTracks}
+          subTracks={subTracks}
+          playbackSpeed={playbackSpeed}
+          refs={{ audio: audioTrackBtnRef, sub: subTrackBtnRef, speed: speedBtnRef }}
+          onClose={() => setTrackPopover(null)}
+          onSetSpeed={setSpeed}
+          onSelectTrack={selectTrack}
+          onDisableSubs={disableSubs}
+          subtitleControls={subtitleControls}
+        />
+      )}
 
-      <PlayerStreamLinksMenu point={streamLinksMenuPoint} onClose={() => setStreamLinksMenuPoint(null)} plan={streamLinksPlan} streamRef={streamRef} metaRef={metaRef} currentEpisode={currentEpisode} />
+      <PlayerStreamLinksMenu
+        point={streamLinksMenuPoint}
+        onClose={() => setStreamLinksMenuPoint(null)}
+        plan={streamLinksPlan}
+        streamRef={streamRef}
+        metaRef={metaRef}
+        currentEpisode={currentEpisode}
+      />
 
       <PlayerSupplementalPanels
-        cast={castPopoverOpen ? { devices: castDevices, discovering: castDiscovering, activeDeviceId: activeCastDeviceId, anchorRef: castBtnRef, onClose: () => setCastPopoverOpen(false), onSelectDevice: (device) => void selectCastDevice(device), onDisconnect: disconnectCast } : undefined}
-        torrent={showTorrentPopover ? { stats: torrentStatsSnap, anchorRef: torrentBtnRef, onClose: () => setShowTorrentPopover(false) } : undefined}
-        marker={showSegmentMarker && ((introDbSubmitEnabled && introDbApiKey) || (skipDbSubmitEnabled && skipDbApiKey) || (theIntroDbSubmitEnabled && theIntroDbApiKey)) ? { onClose: () => setShowSegmentMarker(false), getPosMs: () => posRef.current * 1000, imdbId: introDbImdbId, tmdbId: introDbTmdbId, mediaType: metaRef?.current?.type === 'series' ? 'tv' : 'movie', season: currentEpisode?.season ?? null, episode: currentEpisode?.episode ?? currentEpisode?.number ?? null, introDbApiKey: introDbSubmitEnabled ? introDbApiKey : '', skipDbApiKey: skipDbSubmitEnabled ? skipDbApiKey : '', theIntroDbApiKey: theIntroDbSubmitEnabled ? theIntroDbApiKey : '', coverage: skipSegmentCoverage ?? {} } : undefined}
-        settings={showPlayerSettings ? { anchorRef: playerSettingsBtnRef, onClose: () => setShowPlayerSettings(false), anime4kEnabled, onToggleAnime4k: toggleAnime4k, stableVolumeEnabled, onToggleStableVolume: toggleStableVolume } : undefined}
+        cast={
+          castPopoverOpen
+            ? {
+                devices: castDevices,
+                discovering: castDiscovering,
+                activeDeviceId: activeCastDeviceId,
+                anchorRef: castBtnRef,
+                onClose: () => setCastPopoverOpen(false),
+                onSelectDevice: (device) => void selectCastDevice(device),
+                onDisconnect: disconnectCast,
+              }
+            : undefined
+        }
+        torrent={
+          showTorrentPopover
+            ? { stats: torrentStatsSnap, anchorRef: torrentBtnRef, onClose: () => setShowTorrentPopover(false) }
+            : undefined
+        }
+        marker={
+          showSegmentMarker &&
+          ((introDbSubmitEnabled && introDbApiKey) ||
+            (skipDbSubmitEnabled && skipDbApiKey) ||
+            (theIntroDbSubmitEnabled && theIntroDbApiKey))
+            ? {
+                onClose: () => setShowSegmentMarker(false),
+                getPosMs: () => posRef.current * 1000,
+                imdbId: introDbImdbId,
+                tmdbId: introDbTmdbId,
+                mediaType: metaRef?.current?.type === 'series' ? 'tv' : 'movie',
+                season: currentEpisode?.season ?? null,
+                episode: currentEpisode?.episode ?? currentEpisode?.number ?? null,
+                introDbApiKey: introDbSubmitEnabled ? introDbApiKey : '',
+                skipDbApiKey: skipDbSubmitEnabled ? skipDbApiKey : '',
+                theIntroDbApiKey: theIntroDbSubmitEnabled ? theIntroDbApiKey : '',
+                coverage: skipSegmentCoverage ?? {},
+              }
+            : undefined
+        }
+        settings={
+          showPlayerSettings
+            ? {
+                anchorRef: playerSettingsBtnRef,
+                onClose: () => setShowPlayerSettings(false),
+                anime4kEnabled,
+                onToggleAnime4k: toggleAnime4k,
+                stableVolumeEnabled,
+                onToggleStableVolume: toggleStableVolume,
+              }
+            : undefined
+        }
         shortcuts={showShortcutsHelp ? { overrides: shortcutOverrides, onClose: () => setShowShortcutsHelp(false) } : undefined}
-        stats={showStats ? { stats: statsSnap, torrentStats: torrentStatsSnap, bufferHistory: bufferHistoryRef.current, networkSpeedHistory: netSpeedHistoryRef.current, torrentSpeedHistory, stallCount: stallCountRef.current } : undefined}
+        stats={
+          showStats
+            ? {
+                stats: statsSnap,
+                torrentStats: torrentStatsSnap,
+                bufferHistory: bufferHistoryRef.current,
+                networkSpeedHistory: netSpeedHistoryRef.current,
+                torrentSpeedHistory,
+                stallCount: stallCountRef.current,
+              }
+            : undefined
+        }
       />
-      {contextMenu && <PlayerContextMenu point={contextMenu} abLoopStage={abLoopStage} showStats={showStats} onClose={() => setContextMenu(null)} onCycleAbLoop={cycleAbLoop} onCopyTimestamp={() => { void copyTimestamp(); }} onToggleStats={() => setShowStats((value) => !value)} onToggleShortcuts={() => setShowShortcutsHelp((value) => !value)} onOpenAudioTracks={() => { void openTrackPopover('audio'); }} onScreenshot={() => { void takeScreenshot(); }} />}
+      {contextMenu && (
+        <PlayerContextMenu
+          point={contextMenu}
+          abLoopStage={abLoopStage}
+          showStats={showStats}
+          onClose={() => setContextMenu(null)}
+          onCycleAbLoop={cycleAbLoop}
+          onCopyTimestamp={() => {
+            void copyTimestamp();
+          }}
+          onToggleStats={() => setShowStats((value) => !value)}
+          onToggleShortcuts={() => setShowShortcutsHelp((value) => !value)}
+          onOpenAudioTracks={() => {
+            void openTrackPopover('audio');
+          }}
+          onScreenshot={() => {
+            void takeScreenshot();
+          }}
+        />
+      )}
 
       <PlayerBottomControls
         style={opacityStyle}
         showEpisodePanel={showEpisodePanel}
-        onControlsHover={(hovering) => { isOverControlsRef.current = hovering; }}
+        onControlsHover={(hovering) => {
+          isOverControlsRef.current = hovering;
+        }}
         seekbarRef={seekbarRef}
         seekFillRef={seekFillRef}
         seekBufferRef={seekBufferRef}
@@ -370,26 +830,66 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
         paused={paused}
         muted={muted}
         volumeLevel={volumeLevel}
-        onTogglePause={() => { resetActivity(); flashFeedback(paused ? 'play' : 'pause', ''); setPaused((value) => !value); sendCmd('cycle pause'); }}
-        onSeek={(seconds) => { resetActivity(); startSeekOverlay(); flashFeedback(seconds < 0 ? 'seekBack' : 'seekFwd', `${seconds > 0 ? '+' : ''}${seconds}s`); sendCmd(`seek ${seconds} relative`); }}
-        onToggleMute={() => { resetActivity(); setMuted((value) => !value); sendCmd('cycle mute'); }}
-        onVolumeWheel={(delta) => { resetActivity(); flashFeedback('volume', ''); sendCmd(`add volume ${delta}`); }}
-        onSetVolume={(value) => { resetActivity(); flashFeedback('volume', ''); if (activeCastDeviceIdRef.current) { castSetVolume(value / 100); return; } sendCmd(`set volume ${value}`); if (muted && value > 0) sendCmd('set mute no'); }}
+        onTogglePause={() => {
+          resetActivity();
+          flashFeedback(paused ? 'play' : 'pause', '');
+          setPaused((value) => !value);
+          sendCmd('cycle pause');
+        }}
+        onSeek={(seconds) => {
+          resetActivity();
+          startSeekOverlay();
+          flashFeedback(seconds < 0 ? 'seekBack' : 'seekFwd', `${seconds > 0 ? '+' : ''}${seconds}s`);
+          sendCmd(`seek ${seconds} relative`);
+        }}
+        onToggleMute={() => {
+          resetActivity();
+          setMuted((value) => !value);
+          sendCmd('cycle mute');
+        }}
+        onVolumeWheel={(delta) => {
+          resetActivity();
+          flashFeedback('volume', '');
+          sendCmd(`add volume ${delta}`);
+        }}
+        onSetVolume={(value) => {
+          resetActivity();
+          flashFeedback('volume', '');
+          if (activeCastDeviceIdRef.current) {
+            castSetVolume(value / 100);
+            return;
+          }
+          sendCmd(`set volume ${value}`);
+          if (muted && value > 0) sendCmd('set mute no');
+        }}
         currentTimeRef={currentTimeRef}
         durationLabelRef={durationRef}
         isTorrentStream={isTorrentStream}
         torrentButtonRef={torrentBtnRef}
         showTorrentPopover={showTorrentPopover}
-        onToggleTorrent={() => { resetActivity(); setShowTorrentPopover((value) => !value); }}
+        onToggleTorrent={() => {
+          resetActivity();
+          setShowTorrentPopover((value) => !value);
+        }}
         nextEpisodeSubtitle={nextEpSubtitle}
         episodeCount={episodes.length}
-        onToggleEpisodes={() => { resetActivity(); const next = !showEpisodePanel; setShowEpisodePanel(next); episodePanelOpenRef.current = next; }}
+        onToggleEpisodes={() => {
+          resetActivity();
+          const next = !showEpisodePanel;
+          setShowEpisodePanel(next);
+          episodePanelOpenRef.current = next;
+        }}
         subtitleButtonRef={subTrackBtnRef}
         audioButtonRef={audioTrackBtnRef}
         speedButtonRef={speedBtnRef}
-        onOpenTracks={(type) => { void openTrackPopover(type); }}
+        onOpenTracks={(type) => {
+          void openTrackPopover(type);
+        }}
         playbackSpeed={playbackSpeed}
-        onToggleFullscreen={() => { resetActivity(); void toggleFullscreen(); }}
+        onToggleFullscreen={() => {
+          resetActivity();
+          void toggleFullscreen();
+        }}
       />
     </div>
   );

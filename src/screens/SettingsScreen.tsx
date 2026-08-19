@@ -97,7 +97,22 @@ const SETTINGS_SEARCH_TERMS: Record<Tab, string[]> = {
   account: ['profile', 'sync', 'trakt', 'simkl', 'anilist', 'nuvio', 'devices'],
   general: ['language', 'startup', 'start page', 'background playback', 'notifications', 'discord'],
   appearance: ['accent', 'color', 'theme', 'poster', 'layout', 'navigation', 'hero', 'continue watching', 'animations'],
-  playback: ['player', 'mpv', 'pip', 'hdr', 'p2p', 'speed', 'seek', 'subtitles', 'audio', 'skip intro', 'skip outro', 'auto skip', 'buffer', 'decoder'],
+  playback: [
+    'player',
+    'mpv',
+    'pip',
+    'hdr',
+    'p2p',
+    'speed',
+    'seek',
+    'subtitles',
+    'audio',
+    'skip intro',
+    'skip outro',
+    'auto skip',
+    'buffer',
+    'decoder',
+  ],
   shortcuts: ['keyboard', 'shortcuts', 'keybindings', 'hotkeys', 'rebind'],
   content: ['catalog', 'home', 'ranking', 'top 10', 'tmdb', 'rpdb', 'omdb', 'fanart', 'episodes'],
   addons: ['addons', 'manifest', 'install', 'remove', 'reorder', 'source'],
@@ -116,7 +131,16 @@ interface Props {
   initialAddonUrl?: string | null;
 }
 
-export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpdated, onSwitchProfile, onBack, onCheckForUpdates, initialAddonUrl }: Props) {
+export function SettingsScreen({
+  state,
+  onDispatch,
+  activeProfile,
+  onProfileUpdated,
+  onSwitchProfile,
+  onBack,
+  onCheckForUpdates,
+  initialAddonUrl,
+}: Props) {
   const [tab, setTab] = useState<Tab>('account');
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [addonUrl, setAddonUrl] = useState('');
@@ -130,15 +154,16 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
   const [inAppUpdatesSupported, setInAppUpdatesSupported] = useState(true);
 
   useEffect(() => {
-    invoke<boolean>('in_app_updates_supported').then(setInAppUpdatesSupported).catch(() => undefined);
+    invoke<boolean>('in_app_updates_supported')
+      .then(setInAppUpdatesSupported)
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
     loadPrefs().then((raw) => {
       const p = Object.keys(raw).length > 0 ? (raw as unknown as Prefs) : undefined;
-      const legacyAnimeQuality = p && ['anime4k_s', 'anime4k_m', 'anime4k_l'].includes(p.animeUpscalingMode)
-        ? p.animeUpscalingMode
-        : undefined;
+      const legacyAnimeQuality =
+        p && ['anime4k_s', 'anime4k_m', 'anime4k_l'].includes(p.animeUpscalingMode) ? p.animeUpscalingMode : undefined;
       const merged = p
         ? {
             ...DEFAULT_PREFS,
@@ -151,11 +176,13 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       setPrefs(merged);
       if (legacyAnimeQuality) void savePrefs(merged as unknown as Record<string, unknown>);
       if (!p?.hdrDetectionCompleted) {
-        void invoke<boolean>('player_hdr_supported').then((supported) => {
-          const detected = { ...merged, hdrEnabled: supported, hdrDetectionCompleted: true };
-          setPrefs(detected);
-          void savePrefs(detected);
-        }).catch(() => undefined);
+        void invoke<boolean>('player_hdr_supported')
+          .then((supported) => {
+            const detected = { ...merged, hdrEnabled: supported, hdrDetectionCompleted: true };
+            setPrefs(detected);
+            void savePrefs(detected);
+          })
+          .catch(() => undefined);
       }
       if (!isBrowserTarget()) {
         void invoke('player_set_seek_thumbnail_enabled', { enabled: merged.seekThumbnailEnabled });
@@ -190,7 +217,9 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
 
   const syncStremioAddonsForProfile = async (profile: UserProfile | null | undefined, addons: AddonDescriptor[]) => {
     if (!profile?.stremioAuthKey) return;
-    try { await syncStremioAddons(profile, addons); } catch {}
+    try {
+      await syncStremioAddons(profile, addons);
+    } catch {}
   };
 
   useEffect(() => {
@@ -205,7 +234,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
     if (engineAddons.length > 0) {
       loadAddons().then((stored) => {
         coreAddonCollectionMutationPlan({ existing: stored, incoming: engineAddons })
-          .then((plan) => ((plan?.addons as AddonDescriptor[] | undefined) ?? stored))
+          .then((plan) => (plan?.addons as AddonDescriptor[] | undefined) ?? stored)
           .then((merged) => {
             setInstalledAddons(merged);
           });
@@ -226,26 +255,30 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       await savePrefs(updated);
       onDispatch(JSON.stringify({ type: 'settingsChanged', key, value }));
       if (
-        key === 'heroFeedToggles'
-        || key === 'homeFeedToggles'
-        || key === 'topTenFeedToggles'
-        || key === 'heroFeedOrder'
-        || key === 'homeFeedOrder'
-        || key === 'showHeroSection'
+        key === 'heroFeedToggles' ||
+        key === 'homeFeedToggles' ||
+        key === 'topTenFeedToggles' ||
+        key === 'heroFeedOrder' ||
+        key === 'homeFeedOrder' ||
+        key === 'showHeroSection'
       ) {
-        onDispatch(JSON.stringify({
-          type: 'homeLoadRequested',
-          force: true,
-          language: String(updated.language ?? prefs.language),
-          profile: activeProfile ?? null,
-        }));
+        onDispatch(
+          JSON.stringify({
+            type: 'homeLoadRequested',
+            force: true,
+            language: String(updated.language ?? prefs.language),
+            profile: activeProfile ?? null,
+          }),
+        );
       }
       if (key === 'continueWatchingSource') {
-        await onDispatch(JSON.stringify({
-          type: 'refreshContinueWatchingRequested',
-          language: String(updated.language ?? prefs.language),
-          source: String(value),
-        }));
+        await onDispatch(
+          JSON.stringify({
+            type: 'refreshContinueWatchingRequested',
+            language: String(updated.language ?? prefs.language),
+            source: String(value),
+          }),
+        );
       }
     } catch (e) {
       if (key === 'language') setLanguage(String(previous.language));
@@ -274,7 +307,11 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
 
       let syncProfile = activeProfile;
       if (activeProfile) {
-        const updatedProfile = (await coreInvoke<UserProfile>('addonProfileMutationPlan', JSON.stringify({ profile: activeProfile, command: 'install', addonKey: normalizedUrl }))) ?? activeProfile;
+        const updatedProfile =
+          (await coreInvoke<UserProfile>(
+            'addonProfileMutationPlan',
+            JSON.stringify({ profile: activeProfile, command: 'install', addonKey: normalizedUrl }),
+          )) ?? activeProfile;
         await saveProfile(updatedProfile);
         onProfileUpdated(updatedProfile);
         syncProfile = updatedProfile;
@@ -287,7 +324,9 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       setAddonInstallStatus({ loading: false, error: null });
       setAddedAddonName(normalizedAddon.manifest?.name || normalizedAddon.transportUrl);
       await onDispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false, profile: activeProfile ?? null }));
-      await onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language, profile: activeProfile ?? null }));
+      await onDispatch(
+        JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language, profile: activeProfile ?? null }),
+      );
     } catch (error) {
       setAddonInstallStatus({ loading: false, error: error instanceof Error ? error.message : String(error) });
     }
@@ -300,36 +339,48 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
     await saveAddons(updated);
     setInstalledAddons(updated);
     if (activeProfile) {
-      const updatedProfile = (await coreInvoke<UserProfile>('addonProfileMutationPlan', JSON.stringify({ profile: activeProfile, command: 'remove', addonKey: removeKey }))) ?? activeProfile;
+      const updatedProfile =
+        (await coreInvoke<UserProfile>(
+          'addonProfileMutationPlan',
+          JSON.stringify({ profile: activeProfile, command: 'remove', addonKey: removeKey }),
+        )) ?? activeProfile;
       await saveProfile(updatedProfile);
       onProfileUpdated(updatedProfile);
       void syncNuvioAddons(updatedProfile, updated);
       void syncStremioAddonsForProfile(updatedProfile, updated);
     }
     await onDispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false, profile: activeProfile ?? null }));
-    await onDispatch(JSON.stringify({
-      type: 'homeLoadRequested',
-      force: true,
-      language: prefs.language,
-      profile: activeProfile ?? null,
-    }));
+    await onDispatch(
+      JSON.stringify({
+        type: 'homeLoadRequested',
+        force: true,
+        language: prefs.language,
+        profile: activeProfile ?? null,
+      }),
+    );
   };
 
   const handleToggleAddon = async (addon: AddonDescriptor) => {
     if (!activeProfile) return;
     const key = addonKey(addon);
-    const updatedProfile = (await coreInvoke<UserProfile>('addonProfileMutationPlan', JSON.stringify({ profile: activeProfile, command: 'toggle', addonKey: key }))) ?? activeProfile;
+    const updatedProfile =
+      (await coreInvoke<UserProfile>(
+        'addonProfileMutationPlan',
+        JSON.stringify({ profile: activeProfile, command: 'toggle', addonKey: key }),
+      )) ?? activeProfile;
     await saveProfile(updatedProfile);
     onProfileUpdated(updatedProfile);
     void syncNuvioAddons(updatedProfile, installedAddons);
     void syncStremioAddonsForProfile(updatedProfile, installedAddons);
     onDispatch(JSON.stringify({ type: 'addonsRefreshRequested' }));
-    onDispatch(JSON.stringify({
-      type: 'homeLoadRequested',
-      force: true,
-      language: prefs.language,
-      profile: updatedProfile,
-    }));
+    onDispatch(
+      JSON.stringify({
+        type: 'homeLoadRequested',
+        force: true,
+        language: prefs.language,
+        profile: updatedProfile,
+      }),
+    );
   };
 
   const handleReorderAddon = async (addon: AddonDescriptor, direction: 'up' | 'down') => {
@@ -348,9 +399,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
 
   const pluginRepositories = state.plugins?.repositories ?? [];
   const pluginScrapers = state.plugins?.scrapers ?? [];
-  const pluginStateError = typeof state.plugins?.error === 'string'
-    ? state.plugins.error
-    : state.plugins?.error?.message ?? null;
+  const pluginStateError = typeof state.plugins?.error === 'string' ? state.plugins.error : (state.plugins?.error?.message ?? null);
 
   const handleInstallPlugin = async () => {
     const rawUrl = pluginUrl.trim();
@@ -362,7 +411,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
       if (!normalizedUrl) throw new Error(t('plugins.invalid_url'));
       await onDispatch(JSON.stringify({ type: 'pluginRepositoryAddRequested', manifestUrl: normalizedUrl }));
       const key = await pluginRepositoryUrlsKey();
-      const persisted = await storageRead<string[]>(key) ?? [];
+      const persisted = (await storageRead<string[]>(key)) ?? [];
       await storageWrite(key, [...new Set([...persisted, normalizedUrl])]);
       void pushPluginsToNuvio(activeProfile, [...pluginRepositories, { manifestUrl: normalizedUrl }]).catch(() => undefined);
       setPluginUrl('');
@@ -376,9 +425,15 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
   const handleRemovePlugin = async (repository: PluginRepository) => {
     await onDispatch(JSON.stringify({ type: 'pluginRepositoryRemoveRequested', manifestUrl: repository.manifestUrl }));
     const key = await pluginRepositoryUrlsKey();
-    const persisted = await storageRead<string[]>(key) ?? [];
-    await storageWrite(key, persisted.filter((url) => url !== repository.manifestUrl));
-    void pushPluginsToNuvio(activeProfile, pluginRepositories.filter((item) => item.manifestUrl !== repository.manifestUrl)).catch(() => undefined);
+    const persisted = (await storageRead<string[]>(key)) ?? [];
+    await storageWrite(
+      key,
+      persisted.filter((url) => url !== repository.manifestUrl),
+    );
+    void pushPluginsToNuvio(
+      activeProfile,
+      pluginRepositories.filter((item) => item.manifestUrl !== repository.manifestUrl),
+    ).catch(() => undefined);
   };
 
   const handleRefreshPlugin = async (repository: PluginRepository) => {
@@ -389,7 +444,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
     const enabled = !scraper.enabled;
     await onDispatch(JSON.stringify({ type: 'pluginScraperToggled', scraperId: scraper.id, enabled }));
     const key = await pluginScraperEnabledKey();
-    const overrides = await storageRead<Record<string, boolean>>(key) ?? {};
+    const overrides = (await storageRead<Record<string, boolean>>(key)) ?? {};
     await storageWrite(key, { ...overrides, [scraper.id]: enabled });
   };
 
@@ -397,11 +452,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
   const normalizedSettingsQuery = settingsQuery.trim().toLowerCase();
   const searchResults = normalizedSettingsQuery
     ? VISIBLE_TABS.filter((item) => {
-        const haystack = [
-          t(item.labelKey),
-          t(item.subtitleKey),
-          ...SETTINGS_SEARCH_TERMS[item.id],
-        ].join(' ').toLowerCase();
+        const haystack = [t(item.labelKey), t(item.subtitleKey), ...SETTINGS_SEARCH_TERMS[item.id]].join(' ').toLowerCase();
         return haystack.includes(normalizedSettingsQuery);
       })
     : [];
@@ -438,11 +489,19 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
         <SidebarDivider />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
           {inAppUpdatesSupported ? (
-            <SidebarItem label={t('settings.check_for_updates') || 'Check for updates'} subtitle="" icon={<RefreshIcon />} selected={false} onClick={onCheckForUpdates} />
+            <SidebarItem
+              label={t('settings.check_for_updates') || 'Check for updates'}
+              subtitle=""
+              icon={<RefreshIcon />}
+              selected={false}
+              onClick={onCheckForUpdates}
+            />
           ) : (
             <div style={{ padding: '0.5625rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
               <RefreshIcon />
-              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem' }}>{t('settings.updates_managed_by_package_manager')}</span>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem' }}>
+                {t('settings.updates_managed_by_package_manager')}
+              </span>
             </div>
           )}
           <SidebarItem label={t('common.back')} subtitle="" icon={<ArrowBackIcon />} selected={false} onClick={onBack} />
@@ -471,7 +530,9 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
         {tab === 'appearance' && <AppearanceSection prefs={prefs} setPref={setPref} />}
         {tab === 'playback' && <PlaybackSection prefs={prefs} setPref={setPref} />}
         {tab === 'shortcuts' && <ShortcutsSection />}
-        {tab === 'content' && <ContentSection prefs={prefs} setPref={setPref} installedAddons={installedAddons} disabledAddonKeys={disabledAddonKeys} />}
+        {tab === 'content' && (
+          <ContentSection prefs={prefs} setPref={setPref} installedAddons={installedAddons} disabledAddonKeys={disabledAddonKeys} />
+        )}
         {tab === 'addons' && (
           <AddonsSection
             prefs={prefs}
@@ -505,9 +566,7 @@ export function SettingsScreen({ state, onDispatch, activeProfile, onProfileUpda
         )}
         {tab === 'downloads' && !isBrowserTarget() && <DownloadsSection prefs={prefs} setPref={setPref} />}
       </div>
-      {addedAddonName && (
-        <AddonAddedDialog addonName={addedAddonName} onConfirm={() => setAddedAddonName(null)} />
-      )}
+      {addedAddonName && <AddonAddedDialog addonName={addedAddonName} onConfirm={() => setAddedAddonName(null)} />}
       {addonInstallStatus.error && (
         <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 100 }}>
           <Toast

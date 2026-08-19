@@ -23,9 +23,30 @@ function episodeContentRating(episode: Video): string | null {
   return typeof cr === 'string' && cr.trim() ? cr.trim() : null;
 }
 
-export function ModernEpisodeCard({ episode, number, isWatched, progressPct, minutesRemaining, cwBadge, cwScheduledDate, blurUnwatched, spoilerHide, onClick, onToggleWatched }: {
-  episode: Video; number: number; isWatched: boolean; progressPct: number; minutesRemaining: number;
-  cwBadge?: string | null; cwScheduledDate?: string; blurUnwatched?: boolean; spoilerHide?: boolean; onClick: () => void; onToggleWatched?: () => void;
+export function ModernEpisodeCard({
+  episode,
+  number,
+  isWatched,
+  progressPct,
+  minutesRemaining,
+  cwBadge,
+  cwScheduledDate,
+  blurUnwatched,
+  spoilerHide,
+  onClick,
+  onToggleWatched,
+}: {
+  episode: Video;
+  number: number;
+  isWatched: boolean;
+  progressPct: number;
+  minutesRemaining: number;
+  cwBadge?: string | null;
+  cwScheduledDate?: string;
+  blurUnwatched?: boolean;
+  spoilerHide?: boolean;
+  onClick: () => void;
+  onToggleWatched?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const [thumbErr, setThumbErr] = useState(false);
@@ -48,13 +69,32 @@ export function ModernEpisodeCard({ episode, number, isWatched, progressPct, min
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div style={MS.epThumb}>
         {episode.thumbnail && !thumbErr ? (
-          <img src={episode.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: isWatched ? 0.48 : 1, transition: 'opacity 0.2s', filter: hideInfo && !hovered ? 'blur(1rem)' : undefined, transform: hideInfo && !hovered ? 'scale(1.1)' : undefined }} onError={() => setThumbErr(true)} />
+          <img
+            src={episode.thumbnail}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+              opacity: isWatched ? 0.48 : 1,
+              transition: 'opacity 0.2s',
+              filter: hideInfo && !hovered ? 'blur(1rem)' : undefined,
+              transform: hideInfo && !hovered ? 'scale(1.1)' : undefined,
+            }}
+            onError={() => setThumbErr(true)}
+          />
         ) : (
           <div style={MS.epThumbPlaceholder}>
             <svg width="32" height="32" viewBox="0 0 24 24" fill="rgba(255,255,255,0.07)">
@@ -69,20 +109,30 @@ export function ModernEpisodeCard({ episode, number, isWatched, progressPct, min
           </div>
         )}
         {cwBadge && !minutesRemaining && (
-          <div style={{
-            position: 'absolute', top: '0.4375rem', left: '0.4375rem', zIndex: 3,
-            background: cwBadge === 'newEpisode' ? 'var(--primary-accent-color)' : 'rgba(0,0,0,0.68)',
-            color: cwBadge === 'newEpisode' ? 'var(--primary-accent-foreground-color, #fff)' : '#fff',
-            backdropFilter: cwBadge !== 'newEpisode' ? 'blur(0.25rem)' : undefined,
-            fontSize: '0.6875rem', fontWeight: 800,
-            padding: '0.1875rem 0.4375rem', borderRadius: '0.25rem',
-            textShadow: cwBadge === 'newEpisode' ? 'none' : '0 1px 0.25rem rgba(0,0,0,0.8)',
-            letterSpacing: '0.0125rem',
-          }}>
-            {cwBadge === 'newEpisode' ? t('auto.new_episode')
-              : cwBadge === 'upNext' ? t('auto.up_next')
-              : cwBadge === 'scheduledEpisode' ? epReleaseCountdown(cwScheduledDate)
-              : null}
+          <div
+            style={{
+              position: 'absolute',
+              top: '0.4375rem',
+              left: '0.4375rem',
+              zIndex: 3,
+              background: cwBadge === 'newEpisode' ? 'var(--primary-accent-color)' : 'rgba(0,0,0,0.68)',
+              color: cwBadge === 'newEpisode' ? 'var(--primary-accent-foreground-color, #fff)' : '#fff',
+              backdropFilter: cwBadge !== 'newEpisode' ? 'blur(0.25rem)' : undefined,
+              fontSize: '0.6875rem',
+              fontWeight: 800,
+              padding: '0.1875rem 0.4375rem',
+              borderRadius: '0.25rem',
+              textShadow: cwBadge === 'newEpisode' ? 'none' : '0 1px 0.25rem rgba(0,0,0,0.8)',
+              letterSpacing: '0.0125rem',
+            }}
+          >
+            {cwBadge === 'newEpisode'
+              ? t('auto.new_episode')
+              : cwBadge === 'upNext'
+                ? t('auto.up_next')
+                : cwBadge === 'scheduledEpisode'
+                  ? epReleaseCountdown(cwScheduledDate)
+                  : null}
           </div>
         )}
         {isWatched && !hovered && (
@@ -92,28 +142,64 @@ export function ModernEpisodeCard({ episode, number, isWatched, progressPct, min
         )}
         {hovered && (
           <div style={MS.epHoverOverlay}>
-            <div style={{ width: '3.25rem', height: '3.25rem', borderRadius: '50%', background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(0.375rem)', border: '1px solid rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+              style={{
+                width: '3.25rem',
+                height: '3.25rem',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.14)',
+                backdropFilter: 'blur(0.375rem)',
+                border: '1px solid rgba(255,255,255,0.22)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <Play size={22} fill="currentColor" strokeWidth={0} color="white" style={{ marginLeft: '0.125rem' }} />
             </div>
           </div>
         )}
         {onToggleWatched && hovered && (
           <button
-            style={{ position: 'absolute', top: '0.3125rem', right: '0.3125rem', width: '2rem', height: '2rem', borderRadius: '50%', border: 'none', padding: 0, background: 'rgba(0,0,0,0.52)', backdropFilter: 'blur(0.25rem)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 4, flexShrink: 0 }}
-            onClick={(e) => { e.stopPropagation(); onToggleWatched(); }}
-            onMouseEnter={(e) => { e.stopPropagation(); setWatchBtnHovered(true); }}
-            onMouseLeave={(e) => { e.stopPropagation(); setWatchBtnHovered(false); }}
+            style={{
+              position: 'absolute',
+              top: '0.3125rem',
+              right: '0.3125rem',
+              width: '2rem',
+              height: '2rem',
+              borderRadius: '50%',
+              border: 'none',
+              padding: 0,
+              background: 'rgba(0,0,0,0.52)',
+              backdropFilter: 'blur(0.25rem)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 4,
+              flexShrink: 0,
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleWatched();
+            }}
+            onMouseEnter={(e) => {
+              e.stopPropagation();
+              setWatchBtnHovered(true);
+            }}
+            onMouseLeave={(e) => {
+              e.stopPropagation();
+              setWatchBtnHovered(false);
+            }}
             title={isWatched ? t('detail.mark_unwatched') : t('detail.mark_watched')}
           >
-            {isWatched ? (
-              <CheckCircle2 size={18} color="rgba(255,255,255,0.9)" />
-            ) : (
-              <Circle size={18} color="rgba(255,255,255,0.55)" />
-            )}
+            {isWatched ? <CheckCircle2 size={18} color="rgba(255,255,255,0.9)" /> : <Circle size={18} color="rgba(255,255,255,0.55)" />}
           </button>
         )}
       </div>
-      <h3 style={{ ...MS.epTitle, color: hovered ? 'rgba(255,255,255,0.82)' : '#FFFFFF' }}>{number}. {displayTitle}</h3>
+      <h3 style={{ ...MS.epTitle, color: hovered ? 'rgba(255,255,255,0.82)' : '#FFFFFF' }}>
+        {number}. {displayTitle}
+      </h3>
       {desc && !hideInfo && <p style={MS.epDesc}>{desc}</p>}
       <div style={MS.epMetaRow}>
         {contentRating && <span style={MS.epRatingBadge}>{contentRating}</span>}

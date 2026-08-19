@@ -106,9 +106,20 @@ function sidebarClosedTransform(position: NavBarPosition, isOpen: boolean): stri
   return 'translateX(-4.875rem)';
 }
 
-export const NavSidebar = React.memo(function NavSidebar({ activeRoute, onNavigate, position: positionValue = 'left', itemsAlign: alignValue = 'center', topOffset = 0, alwaysOpen = false }: SidebarProps) {
+export const NavSidebar = React.memo(function NavSidebar({
+  activeRoute,
+  onNavigate,
+  position: positionValue = 'left',
+  itemsAlign: alignValue = 'center',
+  topOffset = 0,
+  alwaysOpen = false,
+}: SidebarProps) {
   const [pinned, setPinned] = useState<boolean>(() => {
-    try { return localStorage.getItem(PINNED_KEY) === 'true'; } catch { return false; }
+    try {
+      return localStorage.getItem(PINNED_KEY) === 'true';
+    } catch {
+      return false;
+    }
   });
   const [hovered, setHovered] = useState(false);
 
@@ -121,12 +132,19 @@ export const NavSidebar = React.memo(function NavSidebar({ activeRoute, onNaviga
     e.stopPropagation();
     const next = !pinned;
     setPinned(next);
-    try { localStorage.setItem(PINNED_KEY, String(next)); } catch {}
+    try {
+      localStorage.setItem(PINNED_KEY, String(next));
+    } catch {}
   };
 
   return (
     <div
-      style={{ position: 'fixed', zIndex: 100, ...edgeContainerStyle(position), ...(topOffset && position === 'top' ? { top: 18 + topOffset } : {}) }}
+      style={{
+        position: 'fixed',
+        zIndex: 100,
+        ...edgeContainerStyle(position),
+        ...(topOffset && position === 'top' ? { top: 18 + topOffset } : {}),
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -152,54 +170,72 @@ export const NavSidebar = React.memo(function NavSidebar({ activeRoute, onNaviga
         onDoubleClick={onChromeDoubleClick}
       >
         {ROUTES.map((route) => (
-          <NavItem
-            key={route}
-            route={route}
-            isActive={route === activeRoute}
-            onNavigate={onNavigate}
-            label={t(LABEL_KEYS[route])}
-          />
+          <NavItem key={route} route={route} isActive={route === activeRoute} onNavigate={onNavigate} label={t(LABEL_KEYS[route])} />
         ))}
       </div>
 
-      {!alwaysOpen && <button
-        onClick={togglePin}
-        title={pinned ? t('auto.hide') : t('auto.show')}
-        style={{
-          position: 'absolute',
-          top: position === 'top' ? (isOpen ? 58 : 0) : position === 'bottom' ? undefined : '50%',
-          bottom: position === 'bottom' ? (isOpen ? 58 : 0) : undefined,
-          left: position === 'right' ? undefined : position === 'left' ? (isOpen ? 78 : 0) : '50%',
-          right: position === 'right' ? (isOpen ? 78 : 0) : undefined,
-          transform: position === 'top' || position === 'bottom' ? 'translateX(-50%)' : 'translateY(-50%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: position === 'top' || position === 'bottom' ? 36 : 20,
-          height: position === 'top' || position === 'bottom' ? 20 : 36,
-          borderRadius: position === 'right' ? '0.5rem 0 0 0.5rem' : position === 'top' ? '0 0 0.5rem 0.5rem' : position === 'bottom' ? '0.5rem 0.5rem 0 0' : '0 0.5rem 0.5rem 0',
-          border: '1px solid rgba(255,255,255,0.08)',
-          ...sidebarBorder(position),
-          background: '#141414',
-          color: 'rgba(255,255,255,0.35)',
-          cursor: 'pointer',
-          transition: 'left 0.25s ease, right 0.25s ease, top 0.25s ease, bottom 0.25s ease, color 0.15s',
-          padding: 0,
-          boxShadow: '0.125rem 0 0.5rem rgba(0,0,0,0.3)',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')}
-        onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
-      >
-        {/* → = pinned/always-open  |  ← = hover-only */}
-        {pinned
-          ? (position === 'right' ? <ChevronLeft size={13} /> : <ChevronRight size={13} />)
-          : (position === 'right' ? <ChevronRight size={13} /> : <ChevronLeft size={13} />)}
-      </button>}
+      {!alwaysOpen && (
+        <button
+          onClick={togglePin}
+          title={pinned ? t('auto.hide') : t('auto.show')}
+          style={{
+            position: 'absolute',
+            top: position === 'top' ? (isOpen ? 58 : 0) : position === 'bottom' ? undefined : '50%',
+            bottom: position === 'bottom' ? (isOpen ? 58 : 0) : undefined,
+            left: position === 'right' ? undefined : position === 'left' ? (isOpen ? 78 : 0) : '50%',
+            right: position === 'right' ? (isOpen ? 78 : 0) : undefined,
+            transform: position === 'top' || position === 'bottom' ? 'translateX(-50%)' : 'translateY(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: position === 'top' || position === 'bottom' ? 36 : 20,
+            height: position === 'top' || position === 'bottom' ? 20 : 36,
+            borderRadius:
+              position === 'right'
+                ? '0.5rem 0 0 0.5rem'
+                : position === 'top'
+                  ? '0 0 0.5rem 0.5rem'
+                  : position === 'bottom'
+                    ? '0.5rem 0.5rem 0 0'
+                    : '0 0.5rem 0.5rem 0',
+            border: '1px solid rgba(255,255,255,0.08)',
+            ...sidebarBorder(position),
+            background: '#141414',
+            color: 'rgba(255,255,255,0.35)',
+            cursor: 'pointer',
+            transition: 'left 0.25s ease, right 0.25s ease, top 0.25s ease, bottom 0.25s ease, color 0.15s',
+            padding: 0,
+            boxShadow: '0.125rem 0 0.5rem rgba(0,0,0,0.3)',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
+        >
+          {/* → = pinned/always-open  |  ← = hover-only */}
+          {pinned ? (
+            position === 'right' ? (
+              <ChevronLeft size={13} />
+            ) : (
+              <ChevronRight size={13} />
+            )
+          ) : position === 'right' ? (
+            <ChevronRight size={13} />
+          ) : (
+            <ChevronLeft size={13} />
+          )}
+        </button>
+      )}
     </div>
   );
 });
 
-export const TopBar = React.memo(function TopBar({ activeRoute, onNavigate, transparent = false, position: positionValue = 'top', itemsAlign: alignValue = 'center', topOffset = 0 }: TopBarProps) {
+export const TopBar = React.memo(function TopBar({
+  activeRoute,
+  onNavigate,
+  transparent = false,
+  position: positionValue = 'top',
+  itemsAlign: alignValue = 'center',
+  topOffset = 0,
+}: TopBarProps) {
   const TOP_ROUTES: NavRoute[] = ['home', 'library', 'discover', 'calendar'];
   const position = normalizePosition(positionValue, 'top');
   const itemsAlign = normalizeAlign(alignValue);
@@ -211,8 +247,18 @@ export const TopBar = React.memo(function TopBar({ activeRoute, onNavigate, tran
         position: 'fixed',
         top: position === 'bottom' ? undefined : position === 'top' ? 18 + topOffset : '50%',
         bottom: position === 'bottom' ? 18 : undefined,
-        left: position === 'right' ? undefined : position === 'left' ? 18 : itemsAlign === 'start' ? 24 : itemsAlign === 'end' ? undefined : '50%',
-        right: position === 'right' ? 18 : position === 'bottom' || position === 'top' ? (itemsAlign === 'end' ? 24 : undefined) : undefined,
+        left:
+          position === 'right'
+            ? undefined
+            : position === 'left'
+              ? 18
+              : itemsAlign === 'start'
+                ? 24
+                : itemsAlign === 'end'
+                  ? undefined
+                  : '50%',
+        right:
+          position === 'right' ? 18 : position === 'bottom' || position === 'top' ? (itemsAlign === 'end' ? 24 : undefined) : undefined,
         transform: isVertical ? 'translateY(-50%)' : itemsAlign === 'center' ? 'translateX(-50%)' : undefined,
         zIndex: 100,
         display: 'flex',
@@ -230,13 +276,7 @@ export const TopBar = React.memo(function TopBar({ activeRoute, onNavigate, tran
       onDoubleClick={onChromeDoubleClick}
     >
       {TOP_ROUTES.map((route) => (
-        <TopBarItem
-          key={route}
-          route={route}
-          isActive={route === activeRoute}
-          onNavigate={onNavigate}
-          label={t(LABEL_KEYS[route])}
-        />
+        <TopBarItem key={route} route={route} isActive={route === activeRoute} onNavigate={onNavigate} label={t(LABEL_KEYS[route])} />
       ))}
     </div>
   );
@@ -268,11 +308,7 @@ function NavItem({
         padding: '0.75rem 0.375rem',
         borderRadius: '0.625rem',
         border: 'none',
-        background: isActive
-          ? 'rgba(255,255,255,0.12)'
-          : hovered
-          ? 'rgba(255,255,255,0.07)'
-          : 'transparent',
+        background: isActive ? 'rgba(255,255,255,0.12)' : hovered ? 'rgba(255,255,255,0.07)' : 'transparent',
         color: isActive ? '#FFFFFF' : hovered ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.40)',
         cursor: 'pointer',
         outline: 'none',

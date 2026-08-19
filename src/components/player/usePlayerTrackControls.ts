@@ -10,19 +10,26 @@ export function usePlayerTrackControls(resetActivity: () => void) {
   const [audioTracks, setAudioTracks] = useState<PlayerTrackOption[]>([]);
   const [subTracks, setSubTracks] = useState<PlayerTrackOption[]>([]);
 
-  const openTrackPopover = useCallback(async (type: Exclude<PlayerTrackPopover, null>) => {
-    resetActivity();
-    if (trackPopover === type) {
-      setTrackPopover(null);
-      return;
-    }
-    if (type === 'audio') {
-      try { setAudioTracks(await playerGetTrackOptions('audio')); } catch {}
-    } else if (type === 'sub') {
-      try { setSubTracks(await playerGetTrackOptions('sub')); } catch {}
-    }
-    setTrackPopover(type);
-  }, [resetActivity, trackPopover]);
+  const openTrackPopover = useCallback(
+    async (type: Exclude<PlayerTrackPopover, null>) => {
+      resetActivity();
+      if (trackPopover === type) {
+        setTrackPopover(null);
+        return;
+      }
+      if (type === 'audio') {
+        try {
+          setAudioTracks(await playerGetTrackOptions('audio'));
+        } catch {}
+      } else if (type === 'sub') {
+        try {
+          setSubTracks(await playerGetTrackOptions('sub'));
+        } catch {}
+      }
+      setTrackPopover(type);
+    },
+    [resetActivity, trackPopover],
+  );
 
   const setSpeed = useCallback((speed: number) => {
     sendCmd(`set speed ${speed.toFixed(2)}`);
@@ -44,5 +51,16 @@ export function usePlayerTrackControls(resetActivity: () => void) {
     setTrackPopover(null);
   }, []);
 
-  return { trackPopover, setTrackPopover, playbackSpeed, setPlaybackSpeed, audioTracks, subTracks, openTrackPopover, setSpeed, selectTrack, disableSubs };
+  return {
+    trackPopover,
+    setTrackPopover,
+    playbackSpeed,
+    setPlaybackSpeed,
+    audioTracks,
+    subTracks,
+    openTrackPopover,
+    setSpeed,
+    selectTrack,
+    disableSubs,
+  };
 }

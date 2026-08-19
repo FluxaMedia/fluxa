@@ -1,20 +1,53 @@
 import { useCallback, useRef, type MutableRefObject } from 'react';
 import { sendCmd, type FeedbackFlash } from './PlayerOverlayPrimitives';
 
-export function usePlayerCenterGesture({ playbackSpeed, preSpeedRef, pausedRef, episodePanelOpenRef, showEpisodePanel, setShowEpisodePanel, trackPopover, setTrackPopover, setPaused, resetActivity, flashFeedback, toggleFullscreen, holdTimerRef, holdActiveRef }: { playbackSpeed: number; preSpeedRef: MutableRefObject<number>; pausedRef: MutableRefObject<boolean>; episodePanelOpenRef: MutableRefObject<boolean>; showEpisodePanel: boolean; setShowEpisodePanel: (visible: boolean) => void; trackPopover: string | null; setTrackPopover: (value: null) => void; setPaused: (updater: (paused: boolean) => boolean) => void; resetActivity: () => void; flashFeedback: (icon: FeedbackFlash['icon'], label: string) => void; toggleFullscreen: () => Promise<void>; holdTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>; holdActiveRef: MutableRefObject<boolean> }) {
+export function usePlayerCenterGesture({
+  playbackSpeed,
+  preSpeedRef,
+  pausedRef,
+  episodePanelOpenRef,
+  showEpisodePanel,
+  setShowEpisodePanel,
+  trackPopover,
+  setTrackPopover,
+  setPaused,
+  resetActivity,
+  flashFeedback,
+  toggleFullscreen,
+  holdTimerRef,
+  holdActiveRef,
+}: {
+  playbackSpeed: number;
+  preSpeedRef: MutableRefObject<number>;
+  pausedRef: MutableRefObject<boolean>;
+  episodePanelOpenRef: MutableRefObject<boolean>;
+  showEpisodePanel: boolean;
+  setShowEpisodePanel: (visible: boolean) => void;
+  trackPopover: string | null;
+  setTrackPopover: (value: null) => void;
+  setPaused: (updater: (paused: boolean) => boolean) => void;
+  resetActivity: () => void;
+  flashFeedback: (icon: FeedbackFlash['icon'], label: string) => void;
+  toggleFullscreen: () => Promise<void>;
+  holdTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  holdActiveRef: MutableRefObject<boolean>;
+}) {
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdJustEndedRef = useRef(false);
 
-  const onPointerDown = useCallback((event: React.PointerEvent) => {
-    if (event.button !== 0 && event.pointerType === 'mouse') return;
-    resetActivity();
-    preSpeedRef.current = playbackSpeed;
-    holdTimerRef.current = setTimeout(() => {
-      holdActiveRef.current = true;
-      sendCmd('set speed 2.00');
-      flashFeedback('speed', '2×');
-    }, 300);
-  }, [flashFeedback, playbackSpeed, preSpeedRef, resetActivity]);
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      if (event.button !== 0 && event.pointerType === 'mouse') return;
+      resetActivity();
+      preSpeedRef.current = playbackSpeed;
+      holdTimerRef.current = setTimeout(() => {
+        holdActiveRef.current = true;
+        sendCmd('set speed 2.00');
+        flashFeedback('speed', '2×');
+      }, 300);
+    },
+    [flashFeedback, playbackSpeed, preSpeedRef, resetActivity],
+  );
 
   const releaseHold = useCallback(() => {
     if (holdTimerRef.current) {
@@ -54,7 +87,18 @@ export function usePlayerCenterGesture({ playbackSpeed, preSpeedRef, pausedRef, 
       setPaused((paused) => !paused);
       sendCmd('cycle pause');
     }, 250);
-  }, [episodePanelOpenRef, flashFeedback, pausedRef, resetActivity, setPaused, setShowEpisodePanel, setTrackPopover, showEpisodePanel, toggleFullscreen, trackPopover]);
+  }, [
+    episodePanelOpenRef,
+    flashFeedback,
+    pausedRef,
+    resetActivity,
+    setPaused,
+    setShowEpisodePanel,
+    setTrackPopover,
+    showEpisodePanel,
+    toggleFullscreen,
+    trackPopover,
+  ]);
 
   return { onCenterPointerDown: onPointerDown, releaseCenterHold: releaseHold, onCenterClick: onClick };
 }

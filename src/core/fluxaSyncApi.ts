@@ -16,14 +16,7 @@ export interface FluxaProfile {
   updated_at: string;
 }
 
-export type FluxaEntityType =
-  | 'library'
-  | 'watch_progress'
-  | 'watched_history'
-  | 'collections'
-  | 'addons'
-  | 'plugins'
-  | 'settings';
+export type FluxaEntityType = 'library' | 'watch_progress' | 'watched_history' | 'collections' | 'addons' | 'plugins' | 'settings';
 
 export interface FluxaChange {
   entity_type: FluxaEntityType;
@@ -83,14 +76,7 @@ export class FluxaApiError extends Error {
 }
 
 export type FluxaAuthErrorKind =
-  | 'invalid_credentials'
-  | 'account_exists'
-  | 'email_not_confirmed'
-  | 'rate_limited'
-  | 'no_instance'
-  | 'unreachable'
-  | 'server'
-  | 'unknown';
+  'invalid_credentials' | 'account_exists' | 'email_not_confirmed' | 'rate_limited' | 'no_instance' | 'unreachable' | 'server' | 'unknown';
 
 export function fluxaAuthErrorKind(error: unknown): FluxaAuthErrorKind {
   const status = error instanceof FluxaApiError ? error.status : undefined;
@@ -125,7 +111,13 @@ export function resolveInstanceBase(input: string): string {
   return `${absolute}/api/v1`;
 }
 
-async function request<T>(base: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown, token?: string): Promise<T> {
+async function request<T>(
+  base: string,
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  body?: unknown,
+  token?: string,
+): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (token) headers.authorization = `Bearer ${token}`;
@@ -250,11 +242,6 @@ export async function fluxaPull(base: string, token: string, profileId: string, 
   };
 }
 
-export async function fluxaPush(
-  base: string,
-  token: string,
-  profileId: string,
-  changes: FluxaChange[],
-): Promise<FluxaPushResult> {
+export async function fluxaPush(base: string, token: string, profileId: string, changes: FluxaChange[]): Promise<FluxaPushResult> {
   return request<FluxaPushResult>(base, 'POST', '/sync/push', { profile_id: profileId, changes }, token);
 }

@@ -5,13 +5,7 @@ type UnknownRecord = Record<string, unknown>;
 export function seasonPosterUrl(meta: Meta | null | undefined, season?: number): string | undefined {
   if (!meta || meta.type !== 'series') return undefined;
   const record = meta as unknown as UnknownRecord;
-  const seasonCollections = [
-    record.seasonPosters,
-    record.season_posters,
-    record.seasonImages,
-    record.season_images,
-    record.seasons,
-  ];
+  const seasonCollections = [record.seasonPosters, record.season_posters, record.seasonImages, record.season_images, record.seasons];
 
   for (const collection of seasonCollections) {
     const url = urlFromSeasonCollection(collection, season);
@@ -46,9 +40,10 @@ function urlFromSeasonArray(items: unknown[], season?: number): string | undefin
 }
 
 function urlFromSeasonMap(map: UnknownRecord, season?: number): string | undefined {
-  const seasonKeys = season == null
-    ? ['1', 'S1', 's1', 'season1', 'season_1']
-    : [String(season), `S${season}`, `s${season}`, `season${season}`, `season_${season}`];
+  const seasonKeys =
+    season == null
+      ? ['1', 'S1', 's1', 'season1', 'season_1']
+      : [String(season), `S${season}`, `s${season}`, `season${season}`, `season_${season}`];
 
   for (const key of seasonKeys) {
     const url = imageUrlValue(map[key]);

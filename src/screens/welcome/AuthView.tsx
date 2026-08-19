@@ -69,9 +69,7 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
     setSubmitting(true);
     setGlobalError('');
     try {
-      const session = tab === 'login'
-        ? await fluxaSignIn(instanceUrl, email, password)
-        : await fluxaSignUp(instanceUrl, email, password);
+      const session = tab === 'login' ? await fluxaSignIn(instanceUrl, email, password) : await fluxaSignUp(instanceUrl, email, password);
       onSubmit(session);
     } catch (error) {
       setGlobalError(authErrorMessage(error));
@@ -112,16 +110,10 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
           </div>
 
           <div style={S.tabs}>
-            <button
-              style={{ ...S.tabBtn, ...(tab === 'login' ? S.tabBtnActive : {}) }}
-              onClick={() => handleTabChange('login')}
-            >
+            <button style={{ ...S.tabBtn, ...(tab === 'login' ? S.tabBtnActive : {}) }} onClick={() => handleTabChange('login')}>
               {t('auth.log_in')}
             </button>
-            <button
-              style={{ ...S.tabBtn, ...(tab === 'signup' ? S.tabBtnActive : {}) }}
-              onClick={() => handleTabChange('signup')}
-            >
+            <button style={{ ...S.tabBtn, ...(tab === 'signup' ? S.tabBtnActive : {}) }} onClick={() => handleTabChange('signup')}>
               {t('auth.sign_up')}
             </button>
           </div>
@@ -184,16 +176,8 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
 
             {globalError && <p style={S.globalError}>{globalError}</p>}
 
-            <button
-              type="submit"
-              style={{ ...S.submitBtn, opacity: submitting ? 0.6 : 1 }}
-              disabled={submitting}
-            >
-              {submitting
-                ? t('welcome.loading')
-                : tab === 'login'
-                  ? t('auth.log_in')
-                  : t('auth.create_account')}
+            <button type="submit" style={{ ...S.submitBtn, opacity: submitting ? 0.6 : 1 }} disabled={submitting}>
+              {submitting ? t('welcome.loading') : tab === 'login' ? t('auth.log_in') : t('auth.create_account')}
             </button>
           </form>
 

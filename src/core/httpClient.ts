@@ -2,7 +2,11 @@ import { platformFetch as nativeFetch } from '../platform/http';
 import { platformInvoke } from '../platform/invoke';
 
 export let _appVersion = '1';
-platformInvoke<string>('get_version').then((v) => { _appVersion = v; }).catch(() => {});
+platformInvoke<string>('get_version')
+  .then((v) => {
+    _appVersion = v;
+  })
+  .catch(() => {});
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 

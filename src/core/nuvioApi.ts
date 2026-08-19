@@ -147,34 +147,21 @@ function extractNuvioError(status: number, text: string): { message: string; cod
   if (!text) return { message: `Nuvio API ${status}` };
   try {
     const json = JSON.parse(text) as Record<string, unknown>;
-    const message = [
-      json.error_description,
-      json.msg,
-      json.message,
-      json.error,
-    ].find((value) => typeof value === 'string' && value.trim().length > 0);
-    const code = [
-      json.code,
-      json.error_code,
-      json.error,
-    ].find((value) => typeof value === 'string' && value.trim().length > 0);
+    const message = [json.error_description, json.msg, json.message, json.error].find(
+      (value) => typeof value === 'string' && value.trim().length > 0,
+    );
+    const code = [json.code, json.error_code, json.error].find((value) => typeof value === 'string' && value.trim().length > 0);
     if (message) return { message: String(message), code: code ? String(code) : undefined };
   } catch {}
   return { message: text };
 }
 
 export type NuvioAuthErrorKind =
-  | 'invalid_credentials'
-  | 'account_exists'
-  | 'email_not_confirmed'
-  | 'rate_limited'
-  | 'server'
-  | 'network'
-  | 'unknown';
+  'invalid_credentials' | 'account_exists' | 'email_not_confirmed' | 'rate_limited' | 'server' | 'network' | 'unknown';
 
 export function nuvioAuthErrorKind(error: unknown): NuvioAuthErrorKind {
   const status = error instanceof NuvioApiError ? error.status : undefined;
-  const code = error instanceof NuvioApiError ? error.code ?? '' : '';
+  const code = error instanceof NuvioApiError ? (error.code ?? '') : '';
   const message = error instanceof Error ? error.message : String(error);
   const combined = `${code} ${message}`;
 
@@ -210,12 +197,7 @@ async function rawNuvioRequest(
   });
 }
 
-async function nuvioRequest<T>(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-  path: string,
-  body?: unknown,
-  token?: string,
-): Promise<T> {
+async function nuvioRequest<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown, token?: string): Promise<T> {
   let status: number;
   let text: string;
   try {
@@ -276,35 +258,53 @@ export interface NuvioPinVerifyResult {
 }
 
 export async function nuvioVerifyPin(token: string, profileId: number, pin: string): Promise<NuvioPinVerifyResult> {
-  return post<NuvioPinVerifyResult>('/rest/v1/rpc/verify_profile_pin', {
-    p_profile_id: profileId,
-    p_pin: pin,
-  }, token);
+  return post<NuvioPinVerifyResult>(
+    '/rest/v1/rpc/verify_profile_pin',
+    {
+      p_profile_id: profileId,
+      p_pin: pin,
+    },
+    token,
+  );
 }
 
 export async function nuvioSetPin(token: string, profileId: number, pin: string, currentPin?: string): Promise<void> {
-  await post('/rest/v1/rpc/set_profile_pin', {
-    p_profile_id: profileId,
-    p_pin: pin,
-    ...(currentPin ? { p_current_pin: currentPin } : {}),
-  }, token);
+  await post(
+    '/rest/v1/rpc/set_profile_pin',
+    {
+      p_profile_id: profileId,
+      p_pin: pin,
+      ...(currentPin ? { p_current_pin: currentPin } : {}),
+    },
+    token,
+  );
 }
 
 export async function nuvioClearPin(token: string, profileId: number, currentPin?: string): Promise<void> {
-  await post('/rest/v1/rpc/clear_profile_pin', {
-    p_profile_id: profileId,
-    ...(currentPin ? { p_current_pin: currentPin } : {}),
-  }, token);
+  await post(
+    '/rest/v1/rpc/clear_profile_pin',
+    {
+      p_profile_id: profileId,
+      ...(currentPin ? { p_current_pin: currentPin } : {}),
+    },
+    token,
+  );
 }
 
 export async function nuvioClearPinWithPassword(token: string, profileId: number, accountPassword: string): Promise<void> {
-  await post('/rest/v1/rpc/clear_profile_pin_with_account_password', {
-    p_profile_id: profileId,
-    p_account_password: accountPassword,
-  }, token);
+  await post(
+    '/rest/v1/rpc/clear_profile_pin_with_account_password',
+    {
+      p_profile_id: profileId,
+      p_account_password: accountPassword,
+    },
+    token,
+  );
 }
 
-export async function nuvioPullProfileLocks(token: string): Promise<Array<Pick<NuvioProfile, 'profile_index' | 'pin_enabled' | 'pin_locked_until'>>> {
+export async function nuvioPullProfileLocks(
+  token: string,
+): Promise<Array<Pick<NuvioProfile, 'profile_index' | 'pin_enabled' | 'pin_locked_until'>>> {
   return post('/rest/v1/rpc/sync_pull_profile_locks', {}, token);
 }
 
@@ -320,10 +320,14 @@ export async function nuvioPushProfiles(
     avatar_url?: string | null;
   }>,
 ): Promise<void> {
-  return post('/rest/v1/rpc/sync_push_profiles', {
-    p_client_max_profiles: NUVIO_CLIENT_MAX_PROFILES,
-    p_profiles: profiles,
-  }, token);
+  return post(
+    '/rest/v1/rpc/sync_push_profiles',
+    {
+      p_client_max_profiles: NUVIO_CLIENT_MAX_PROFILES,
+      p_profiles: profiles,
+    },
+    token,
+  );
 }
 
 export async function nuvioDeleteProfileData(token: string, profileId: number): Promise<void> {
@@ -331,10 +335,7 @@ export async function nuvioDeleteProfileData(token: string, profileId: number): 
 }
 
 export async function nuvioPullAddons(token: string, profileId: number): Promise<NuvioAddon[]> {
-  return get<NuvioAddon[]>(
-    `/rest/v1/addons?select=*&profile_id=eq.${profileId}&order=sort_order`,
-    token,
-  );
+  return get<NuvioAddon[]>(`/rest/v1/addons?select=*&profile_id=eq.${profileId}&order=sort_order`, token);
 }
 
 export async function nuvioPushAddons(
@@ -359,25 +360,21 @@ export async function nuvioReplaceAddons(
   }>('nuvioAddonReconciliationPlan', JSON.stringify({ current, desired: addons, userId, profileId }));
   if (!plan) return;
 
-  await Promise.all(plan.deleteIds.map((id) => nuvioRequest<void>(
-      'DELETE',
-      `/rest/v1/addons?id=eq.${encodeURIComponent(id)}&profile_id=eq.${profileId}`,
-      undefined,
-      token,
-    )));
-  await Promise.all(plan.updates.map(({ id, payload }) => patch<void>(
-    `/rest/v1/addons?id=eq.${encodeURIComponent(id)}&profile_id=eq.${profileId}`,
-    payload,
-    token,
-  )));
+  await Promise.all(
+    plan.deleteIds.map((id) =>
+      nuvioRequest<void>('DELETE', `/rest/v1/addons?id=eq.${encodeURIComponent(id)}&profile_id=eq.${profileId}`, undefined, token),
+    ),
+  );
+  await Promise.all(
+    plan.updates.map(({ id, payload }) =>
+      patch<void>(`/rest/v1/addons?id=eq.${encodeURIComponent(id)}&profile_id=eq.${profileId}`, payload, token),
+    ),
+  );
   await Promise.all(plan.creates.map((payload) => post<void>('/rest/v1/addons', payload, token)));
 }
 
 export async function nuvioPullPlugins(token: string, profileId: number): Promise<NuvioPlugin[]> {
-  return get<NuvioPlugin[]>(
-    `/rest/v1/plugins?select=*&profile_id=eq.${profileId}&order=sort_order`,
-    token,
-  );
+  return get<NuvioPlugin[]>(`/rest/v1/plugins?select=*&profile_id=eq.${profileId}&order=sort_order`, token);
 }
 
 export async function nuvioPushPlugins(
@@ -388,17 +385,16 @@ export async function nuvioPushPlugins(
   await post('/rest/v1/rpc/sync_push_plugins', { p_profile_id: profileId, p_plugins: plugins }, token);
 }
 
-export async function nuvioPullLibrary(
-  token: string,
-  profileId: number,
-  limit = 500,
-  offset = 0,
-): Promise<NuvioLibraryItem[]> {
-  return post<NuvioLibraryItem[]>('/rest/v1/rpc/sync_pull_library', {
-    p_profile_id: profileId,
-    p_limit: limit,
-    p_offset: offset,
-  }, token);
+export async function nuvioPullLibrary(token: string, profileId: number, limit = 500, offset = 0): Promise<NuvioLibraryItem[]> {
+  return post<NuvioLibraryItem[]>(
+    '/rest/v1/rpc/sync_pull_library',
+    {
+      p_profile_id: profileId,
+      p_limit: limit,
+      p_offset: offset,
+    },
+    token,
+  );
 }
 
 export async function nuvioPullLibraryDelta(
@@ -407,11 +403,15 @@ export async function nuvioPullLibraryDelta(
   sinceEventId: number,
   limit = 1_000,
 ): Promise<NuvioLibraryDeltaEvent[]> {
-  return post<NuvioLibraryDeltaEvent[]>('/rest/v1/rpc/sync_pull_library_delta', {
-    p_profile_id: profileId,
-    p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
-    p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
-  }, token);
+  return post<NuvioLibraryDeltaEvent[]>(
+    '/rest/v1/rpc/sync_pull_library_delta',
+    {
+      p_profile_id: profileId,
+      p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
+      p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
+    },
+    token,
+  );
 }
 
 export async function nuvioGetLibraryDeltaCursor(token: string, profileId: number): Promise<number> {
@@ -452,9 +452,13 @@ export async function nuvioPullWatchProgress(
   if (typeof sinceLastWatched === 'number' && Number.isFinite(sinceLastWatched) && sinceLastWatched > 0) {
     body.p_since_last_watched = Math.trunc(sinceLastWatched);
   }
-  return post<NuvioWatchProgress[]>('/rest/v1/rpc/sync_pull_watch_progress', {
-    ...body,
-  }, token);
+  return post<NuvioWatchProgress[]>(
+    '/rest/v1/rpc/sync_pull_watch_progress',
+    {
+      ...body,
+    },
+    token,
+  );
 }
 
 export async function nuvioPullWatchProgressDelta(
@@ -463,11 +467,15 @@ export async function nuvioPullWatchProgressDelta(
   sinceEventId: number,
   limit = 1_000,
 ): Promise<NuvioWatchProgressDeltaEvent[]> {
-  return post<NuvioWatchProgressDeltaEvent[]>('/rest/v1/rpc/sync_pull_watch_progress_delta', {
-    p_profile_id: profileId,
-    p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
-    p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
-  }, token);
+  return post<NuvioWatchProgressDeltaEvent[]>(
+    '/rest/v1/rpc/sync_pull_watch_progress_delta',
+    {
+      p_profile_id: profileId,
+      p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
+      p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
+    },
+    token,
+  );
 }
 
 export async function nuvioGetWatchProgressDeltaCursor(token: string, profileId: number): Promise<number> {
@@ -498,23 +506,26 @@ export async function nuvioDeleteWatchProgress(
   season?: number,
   episode?: number,
 ): Promise<void> {
-  return post('/rest/v1/rpc/sync_delete_watch_progress', {
-    p_profile_id: profileId,
-    p_progress_key: nuvioProgressKey(contentId, season, episode),
-  }, token);
+  return post(
+    '/rest/v1/rpc/sync_delete_watch_progress',
+    {
+      p_profile_id: profileId,
+      p_progress_key: nuvioProgressKey(contentId, season, episode),
+    },
+    token,
+  );
 }
 
-export async function nuvioPullWatchHistory(
-  token: string,
-  profileId: number,
-  pageSize = 500,
-  page = 1,
-): Promise<NuvioWatchedItem[]> {
-  return post<NuvioWatchedItem[]>('/rest/v1/rpc/sync_pull_watched_items', {
-    p_profile_id: profileId,
-    p_page: page,
-    p_page_size: pageSize,
-  }, token);
+export async function nuvioPullWatchHistory(token: string, profileId: number, pageSize = 500, page = 1): Promise<NuvioWatchedItem[]> {
+  return post<NuvioWatchedItem[]>(
+    '/rest/v1/rpc/sync_pull_watched_items',
+    {
+      p_profile_id: profileId,
+      p_page: page,
+      p_page_size: pageSize,
+    },
+    token,
+  );
 }
 
 export async function nuvioPullWatchHistoryDelta(
@@ -523,11 +534,15 @@ export async function nuvioPullWatchHistoryDelta(
   sinceEventId: number,
   limit = 1_000,
 ): Promise<NuvioWatchedItemDeltaEvent[]> {
-  return post<NuvioWatchedItemDeltaEvent[]>('/rest/v1/rpc/sync_pull_watched_items_delta', {
-    p_profile_id: profileId,
-    p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
-    p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
-  }, token);
+  return post<NuvioWatchedItemDeltaEvent[]>(
+    '/rest/v1/rpc/sync_pull_watched_items_delta',
+    {
+      p_profile_id: profileId,
+      p_since_event_id: Math.max(0, Math.trunc(sinceEventId)),
+      p_limit: Math.min(1_000, Math.max(1, Math.trunc(limit))),
+    },
+    token,
+  );
 }
 
 export async function nuvioGetWatchHistoryDeltaCursor(token: string, profileId: number): Promise<number> {
@@ -554,30 +569,35 @@ export async function nuvioDeleteWatchHistory(
   profileId: number,
   keys: Array<{ content_id: string; season?: number; episode?: number }>,
 ): Promise<void> {
-  await post('/rest/v1/rpc/sync_delete_watched_items', {
-    p_profile_id: profileId,
-    p_keys: keys,
-  }, token);
+  await post(
+    '/rest/v1/rpc/sync_delete_watched_items',
+    {
+      p_profile_id: profileId,
+      p_keys: keys,
+    },
+    token,
+  );
 }
 
-export async function nuvioPullCollections(
-  token: string,
-  profileId: number,
-): Promise<NuvioCollectionRow[]> {
-  return post<NuvioCollectionRow[]>('/rest/v1/rpc/sync_pull_collections', {
-    p_profile_id: profileId,
-  }, token);
+export async function nuvioPullCollections(token: string, profileId: number): Promise<NuvioCollectionRow[]> {
+  return post<NuvioCollectionRow[]>(
+    '/rest/v1/rpc/sync_pull_collections',
+    {
+      p_profile_id: profileId,
+    },
+    token,
+  );
 }
 
-export async function nuvioPushCollections(
-  token: string,
-  profileId: number,
-  collectionsJson: unknown[],
-): Promise<void> {
-  return post('/rest/v1/rpc/sync_push_collections', {
-    p_profile_id: profileId,
-    p_collections_json: collectionsJson,
-  }, token);
+export async function nuvioPushCollections(token: string, profileId: number, collectionsJson: unknown[]): Promise<void> {
+  return post(
+    '/rest/v1/rpc/sync_push_collections',
+    {
+      p_profile_id: profileId,
+      p_collections_json: collectionsJson,
+    },
+    token,
+  );
 }
 
 export async function nuvioListAvatars(): Promise<NuvioAvatar[]> {

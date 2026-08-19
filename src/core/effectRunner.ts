@@ -1,8 +1,25 @@
 import { withSentrySpan } from './sentryRuntime';
 import { platformInvoke as invoke } from '../platform/invoke';
-import { completeEffect, coreInvoke, dispatchAction, enqueueOfflineDownload, httpExecuteText, libraryContinueWatchingDelete, libraryProgressDelete, registerTrailerProxyUrl } from './engine';
+import {
+  completeEffect,
+  coreInvoke,
+  dispatchAction,
+  enqueueOfflineDownload,
+  httpExecuteText,
+  libraryContinueWatchingDelete,
+  libraryProgressDelete,
+  registerTrailerProxyUrl,
+} from './engine';
 import { startTorrentStream, stopTorrentStream } from './mpvPlayer';
-import { effectRunnerLibraryKey, loadActiveProfile, loadEnabledAddons, loadLibrary, loadPrefs, saveLibrary, persistLastWatchedEpisode } from './libraryOps';
+import {
+  effectRunnerLibraryKey,
+  loadActiveProfile,
+  loadEnabledAddons,
+  loadLibrary,
+  loadPrefs,
+  saveLibrary,
+  persistLastWatchedEpisode,
+} from './libraryOps';
 import { continueWatchingForSelectedSource, readHomeBootstrap } from './homeEffects';
 import { invalidateCalendarCache } from './libraryEffects';
 import {
@@ -62,9 +79,7 @@ export { syncExternalIntegrationNow } from './externalSync';
 export type { IntroSegmentResult } from './introEffects';
 
 async function startTorrentFromEffect(payload: Record<string, unknown>): Promise<unknown> {
-  const stream = payload.stream && typeof payload.stream === 'object'
-    ? { ...(payload.stream as Record<string, unknown>) }
-    : {};
+  const stream = payload.stream && typeof payload.stream === 'object' ? { ...(payload.stream as Record<string, unknown>) } : {};
   if (typeof payload.url === 'string' && !stream.playableUrl && !stream.url) {
     stream.playableUrl = payload.url;
   }
@@ -84,9 +99,14 @@ async function executeYoutubeTrailerRequest(payload: Record<string, unknown>): P
   const url = typeof payload.url === 'string' ? payload.url : '';
   const method = typeof payload.method === 'string' ? payload.method : 'GET';
   if (!url) throw new Error('missing trailer request URL');
-  const headers = payload.headers && typeof payload.headers === 'object' && !Array.isArray(payload.headers)
-    ? Object.fromEntries(Object.entries(payload.headers as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
-    : {};
+  const headers =
+    payload.headers && typeof payload.headers === 'object' && !Array.isArray(payload.headers)
+      ? Object.fromEntries(
+          Object.entries(payload.headers as Record<string, unknown>).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        )
+      : {};
   const response = await httpExecuteText(url, method, headers, payload.body);
   return { statusCode: response.statusCode, body: response.body };
 }
@@ -98,20 +118,21 @@ async function deriveNextProgressFromLastWatched(metaObj: Record<string, unknown
   const currentEpisode = metaObj.lastEpisodeNumber as number | undefined;
   if (currentSeason == null || currentEpisode == null) return undefined;
   const videos = await fetchVideosForSeries(id, await loadEnabledAddons());
-  return (await coreInvoke<WatchProgressInfo>('nextProgressInfoPlan', JSON.stringify({
-    contentId: id,
-    contentType: 'series',
-    videos,
-    watchedEpisodes: [{ season: currentSeason, episode: currentEpisode }],
-    nowMs: Date.now(),
-  }))) ?? undefined;
+  return (
+    (await coreInvoke<WatchProgressInfo>(
+      'nextProgressInfoPlan',
+      JSON.stringify({
+        contentId: id,
+        contentType: 'series',
+        videos,
+        watchedEpisodes: [{ season: currentSeason, episode: currentEpisode }],
+        nowMs: Date.now(),
+      }),
+    )) ?? undefined
+  );
 }
 
-async function runEffect(
-  effect: Effect,
-  onStateUpdate?: (state: Partial<AppState>) => void,
-  signal?: AbortSignal,
-): Promise<unknown> {
+async function runEffect(effect: Effect, onStateUpdate?: (state: Partial<AppState>) => void, signal?: AbortSignal): Promise<unknown> {
   const p = effect.payload;
   let value: unknown;
 
@@ -126,12 +147,10 @@ async function runEffect(
       const prefs = await loadPrefs();
       if (typeof p.source === 'string') prefs.continueWatchingSource = p.source;
       void invoke('debug_log', { msg: `cw-source: refresh requested source=${String(prefs.continueWatchingSource ?? 'local')}` });
-      const continueWatching = await continueWatchingForSelectedSource(
-        lib as Record<string, unknown>,
-        prefs,
-        addons,
-      );
-      void invoke('debug_log', { msg: `cw-source: refresh resolved source=${String(prefs.continueWatchingSource ?? 'local')} count=${continueWatching.length} first=${String(continueWatching[0]?.name ?? '')}` });
+      const continueWatching = await continueWatchingForSelectedSource(lib as Record<string, unknown>, prefs, addons);
+      void invoke('debug_log', {
+        msg: `cw-source: refresh resolved source=${String(prefs.continueWatchingSource ?? 'local')} count=${continueWatching.length} first=${String(continueWatching[0]?.name ?? '')}`,
+      });
       value = { continueWatching };
       break;
     }
@@ -172,13 +191,16 @@ async function runEffect(
         lastWatchedEntry: Record<string, unknown> | null;
         removedExternalContinueWatching: boolean;
         droppedExternalContinueWatching: Record<string, unknown> | null;
-      }>('clearPlaybackProgressPlan', JSON.stringify({
-        library: lib,
-        meta: metaObj,
-        preserveLastWatched,
-        dropContinueWatching,
-        nowIso: new Date().toISOString(),
-      }));
+      }>(
+        'clearPlaybackProgressPlan',
+        JSON.stringify({
+          library: lib,
+          meta: metaObj,
+          preserveLastWatched,
+          dropContinueWatching,
+          nowIso: new Date().toISOString(),
+        }),
+      );
       if (plan) {
         await libraryProgressDelete(await effectRunnerLibraryKey(), plan.contentId);
         if (plan.removedExternalContinueWatching) {
@@ -209,7 +231,7 @@ async function runEffect(
           void dropExternalPlaybackProgress(plan.droppedExternalContinueWatching);
         }
       }
-      value = (plan && !preserveLastWatched) ? { droppedId: plan.contentId } : {};
+      value = plan && !preserveLastWatched ? { droppedId: plan.contentId } : {};
       break;
     }
     case 'writeSettings':
@@ -348,29 +370,26 @@ async function executeEffectUnbounded(
   try {
     const abortController = new AbortController();
     const effectSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
-    const run = withSentrySpan(
-      effect.type,
-      'fluxa.effect',
-      () => runEffect(effect, onStateUpdate, effectSignal),
-    );
-    const value = effect.timeoutMs && effect.timeoutMs > 0
-      ? await new Promise<unknown>((resolve, reject) => {
-          const timeoutId = window.setTimeout(() => {
-            abortController.abort();
-            reject(new Error(`effect timed out after ${effect.timeoutMs}ms`));
-          }, effect.timeoutMs);
-          void run.then(
-            (result) => {
-              window.clearTimeout(timeoutId);
-              resolve(result);
-            },
-            (error) => {
-              window.clearTimeout(timeoutId);
-              reject(error);
-            },
-          );
-        })
-      : await run;
+    const run = withSentrySpan(effect.type, 'fluxa.effect', () => runEffect(effect, onStateUpdate, effectSignal));
+    const value =
+      effect.timeoutMs && effect.timeoutMs > 0
+        ? await new Promise<unknown>((resolve, reject) => {
+            const timeoutId = window.setTimeout(() => {
+              abortController.abort();
+              reject(new Error(`effect timed out after ${effect.timeoutMs}ms`));
+            }, effect.timeoutMs);
+            void run.then(
+              (result) => {
+                window.clearTimeout(timeoutId);
+                resolve(result);
+              },
+              (error) => {
+                window.clearTimeout(timeoutId);
+                reject(error);
+              },
+            );
+          })
+        : await run;
     return { effectId: effect.id, status: 'ok', value };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -392,11 +411,17 @@ const MAX_ACTIVE_EFFECTS = 12;
 async function acquireEffectSlot(): Promise<() => void> {
   if (activeEffects < MAX_ACTIVE_EFFECTS) {
     activeEffects++;
-    return () => { activeEffects--; effectSlots.shift()?.(); };
+    return () => {
+      activeEffects--;
+      effectSlots.shift()?.();
+    };
   }
   await new Promise<void>((resolve) => effectSlots.push(resolve));
   activeEffects++;
-  return () => { activeEffects--; effectSlots.shift()?.(); };
+  return () => {
+    activeEffects--;
+    effectSlots.shift()?.();
+  };
 }
 
 export async function executeEffect(
@@ -447,22 +472,22 @@ export async function pumpEffects(
   }
 
   const complete = async (effect: Effect, result: EffectResult) => {
-      let dispatchResult: Awaited<ReturnType<typeof completeEffect>> = null;
-      try {
-        dispatchResult = await completeEffect({ ...result, effectId: effect.id });
-      } catch (error) {
-        console.error('[fluxa:web:effect:complete-error]', effect.type, effect.id, error);
-        return;
-      }
-      // The request may have belonged to a profile/session that was replaced
-      // while completeEffect was in flight. Never publish that stale result.
-      if (signal?.aborted || !dispatchResult) return;
+    let dispatchResult: Awaited<ReturnType<typeof completeEffect>> = null;
+    try {
+      dispatchResult = await completeEffect({ ...result, effectId: effect.id });
+    } catch (error) {
+      console.error('[fluxa:web:effect:complete-error]', effect.type, effect.id, error);
+      return;
+    }
+    // The request may have belonged to a profile/session that was replaced
+    // while completeEffect was in flight. Never publish that stale result.
+    if (signal?.aborted || !dispatchResult) return;
 
-      lastState = dispatchResult.state;
-      onStateUpdate(dispatchResult.state);
-      if (dispatchResult.effects.length > 0) {
-        await pumpEffects(dispatchResult.effects, onStateUpdate, signal);
-      }
+    lastState = dispatchResult.state;
+    onStateUpdate(dispatchResult.state);
+    if (dispatchResult.effects.length > 0) {
+      await pumpEffects(dispatchResult.effects, onStateUpdate, signal);
+    }
   };
 
   const scheduled = Array.from(groups.values()).sort((left, right) => (left[0].priority ?? 100) - (right[0].priority ?? 100));
@@ -473,14 +498,16 @@ export async function pumpEffects(
     if (group) group.push(duplicates);
     else scheduledByGroup.set(key, [duplicates]);
   }
-  await Promise.all(Array.from(scheduledByGroup.entries()).map(async ([groupId, entries]) => {
-    const limit = groupId === 'addon' ? 6 : groupId === 'plugin' ? 2 : 4;
-    await runWithConcurrency(entries, limit, async (duplicates) => {
-      const primary = duplicates[0];
-      const result = await executeEffect(primary, onStateUpdate, signal);
-      await Promise.all(duplicates.map((effect) => complete(effect, result)));
-    });
-  }));
+  await Promise.all(
+    Array.from(scheduledByGroup.entries()).map(async ([groupId, entries]) => {
+      const limit = groupId === 'addon' ? 6 : groupId === 'plugin' ? 2 : 4;
+      await runWithConcurrency(entries, limit, async (duplicates) => {
+        const primary = duplicates[0];
+        const result = await executeEffect(primary, onStateUpdate, signal);
+        await Promise.all(duplicates.map((effect) => complete(effect, result)));
+      });
+    }),
+  );
 
   return lastState;
 }
@@ -527,10 +554,7 @@ export async function prewarmYoutubeTrailerConfig(): Promise<void> {
   if (dispatch) await runTrailerEffects(dispatch.effects);
 }
 
-export async function fetchStreamsForEpisode(
-  episodeId: string,
-  contentType: string,
-): Promise<{ streams: unknown[] }> {
+export async function fetchStreamsForEpisode(episodeId: string, contentType: string): Promise<{ streams: unknown[] }> {
   const result = await fetchDetailStreams({
     id: episodeId,
     contentType,

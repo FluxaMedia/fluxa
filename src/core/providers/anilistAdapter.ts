@@ -17,11 +17,14 @@ export const anilistAdapter: ProviderAdapter = {
 
   async pushWatched(profile, args: PushWatchedArgs) {
     if (!args.watched) return;
-    await pushAnimeTrackingExternal({
-      meta: args.meta,
-      episode: args.animeEpisode,
-      progressEpisode: args.animeProgressEpisode,
-      watched: args.watched,
-    }, profile);
+    await pushAnimeTrackingExternal(
+      {
+        meta: args.meta,
+        episode: args.animeEpisode,
+        progressEpisode: args.animeProgressEpisode,
+        watched: args.watched,
+      },
+      profile,
+    );
   },
 };

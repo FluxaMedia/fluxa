@@ -39,15 +39,20 @@ async function validNuvioProfile(profile: UserProfile): Promise<UserProfile> {
 
 async function integrationSettings(): Promise<Record<string, unknown>> {
   const prefs = await loadPrefs();
-  return (await coreInvoke<Record<string, unknown>>('integrationSettingsPlan', JSON.stringify({
-    settings: {
-      librarySource: prefs.integrationLibrarySource,
-      watchProgressSource: prefs.watchProgressSource,
-      continueWatchingDays: Number(prefs.continueWatchingDays) || 0,
-      similarTitlesSource: prefs.similarTitlesSource,
-      traktCommentsEnabled: prefs.traktCommentsEnabled,
-    },
-  }))) ?? {};
+  return (
+    (await coreInvoke<Record<string, unknown>>(
+      'integrationSettingsPlan',
+      JSON.stringify({
+        settings: {
+          librarySource: prefs.integrationLibrarySource,
+          watchProgressSource: prefs.watchProgressSource,
+          continueWatchingDays: Number(prefs.continueWatchingDays) || 0,
+          similarTitlesSource: prefs.similarTitlesSource,
+          traktCommentsEnabled: prefs.traktCommentsEnabled,
+        },
+      }),
+    )) ?? {}
+  );
 }
 
 export async function promoteExternalProgress(
@@ -76,11 +81,24 @@ export async function promoteExternalProgress(
     await pushPlaybackProgressExternal(promotion.externalProgress, promotion.item, profile);
     if (promotion.scrobbleTrakt && profile.traktAccessToken) {
       const clientId = await getOAuthClientId('trakt');
-      await pushMarkWatchedTrakt([promotion.externalProgress.videoId], true, profile.traktAccessToken, clientId, promotion.externalProgress.lastWatched).catch(() => undefined);
+      await pushMarkWatchedTrakt(
+        [promotion.externalProgress.videoId],
+        true,
+        profile.traktAccessToken,
+        clientId,
+        promotion.externalProgress.lastWatched,
+      ).catch(() => undefined);
     }
     if (promotion.scrobbleSimkl && profile.simklAccessToken) {
       const clientId = await getOAuthClientId('simkl');
-      await pushMarkWatchedSimkl([promotion.externalProgress.videoId], true, promotion.meta as unknown as Record<string, unknown>, profile.simklAccessToken, clientId, promotion.externalProgress.lastWatched).catch(() => undefined);
+      await pushMarkWatchedSimkl(
+        [promotion.externalProgress.videoId],
+        true,
+        promotion.meta as unknown as Record<string, unknown>,
+        profile.simklAccessToken,
+        clientId,
+        promotion.externalProgress.lastWatched,
+      ).catch(() => undefined);
     }
   }
   if (plan.promotions.length > 0) {
@@ -102,16 +120,37 @@ export async function pushMarkWatchedExternal(
   if (!profile) return;
   const activeProfile = await refreshTraktProfile(profile).catch(() => profile);
   const settings = await integrationSettings();
-  const plan = await coreInvoke<{ trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean } & Omit<PushWatchedArgs, 'videoIds' | 'watched' | 'meta'>>(
+  const plan = await coreInvoke<
+    { trakt: boolean; simkl: boolean; anilist: boolean; stremio: boolean; nuvio: boolean } & Omit<
+      PushWatchedArgs,
+      'videoIds' | 'watched' | 'meta'
+    >
+  >(
     'externalProviderActionPlan',
-    JSON.stringify({ kind: 'markWatched', profile: activeProfile, videoIds, watched, meta, episodeInfo, progressInfo, integrationSettings: settings, nowMs: Date.now() }),
+    JSON.stringify({
+      kind: 'markWatched',
+      profile: activeProfile,
+      videoIds,
+      watched,
+      meta,
+      episodeInfo,
+      progressInfo,
+      integrationSettings: settings,
+      nowMs: Date.now(),
+    }),
   );
   if (!plan) return;
 
   const args: PushWatchedArgs = {
-    videoIds, watched, meta,
-    episodes: plan.episodes, animeEpisode: plan.animeEpisode, animeProgressEpisode: plan.animeProgressEpisode,
-    watchedKeys: plan.watchedKeys, historyItems: plan.historyItems, progressEntry: plan.progressEntry,
+    videoIds,
+    watched,
+    meta,
+    episodes: plan.episodes,
+    animeEpisode: plan.animeEpisode,
+    animeProgressEpisode: plan.animeProgressEpisode,
+    watchedKeys: plan.watchedKeys,
+    historyItems: plan.historyItems,
+    progressEntry: plan.progressEntry,
   };
 
   await Promise.all(
@@ -149,30 +188,69 @@ export async function pushPlaybackProgressExternal(
 ): Promise<void> {
   if (!profile) return;
   const plan = await coreInvoke<{
-    trakt: boolean; simkl: boolean; stremio: boolean; nuvio: boolean;
-    progressEntry?: { content_id: string; content_type: string; video_id: string; position: number; duration: number; last_watched: number; season?: number; episode?: number };
+    trakt: boolean;
+    simkl: boolean;
+    stremio: boolean;
+    nuvio: boolean;
+    progressEntry?: {
+      content_id: string;
+      content_type: string;
+      video_id: string;
+      position: number;
+      duration: number;
+      last_watched: number;
+      season?: number;
+      episode?: number;
+    };
   }>('externalProviderActionPlan', JSON.stringify({ kind: 'progress', profile, progress, nowMs: Date.now() }));
-  debugLog(`pushPlaybackProgressExternal: videoId=${progress.videoId} position=${progress.positionSeconds} duration=${progress.durationSeconds} plan=${plan ? JSON.stringify({ trakt: plan.trakt, simkl: plan.simkl, stremio: plan.stremio, nuvio: plan.nuvio }) : 'null'} refreshContinueWatching=${refreshContinueWatching}`);
+  debugLog(
+    `pushPlaybackProgressExternal: videoId=${progress.videoId} position=${progress.positionSeconds} duration=${progress.durationSeconds} plan=${plan ? JSON.stringify({ trakt: plan.trakt, simkl: plan.simkl, stremio: plan.stremio, nuvio: plan.nuvio }) : 'null'} refreshContinueWatching=${refreshContinueWatching}`,
+  );
   if (!plan) return;
   const tasks: Promise<void>[] = [];
-  const episode = progress.season != null && progress.episode != null
-    ? { id: progress.videoId, season: progress.season, episode: progress.episode, number: progress.episode }
-    : null;
+  const episode =
+    progress.season != null && progress.episode != null
+      ? { id: progress.videoId, season: progress.season, episode: progress.episode, number: progress.episode }
+      : null;
   if (plan.trakt) {
-    tasks.push(traktScrobble(profile, meta as unknown as import('./types').Meta, episode, progress.positionSeconds, progress.durationSeconds, 'pause').then(() => undefined).catch(() => undefined));
+    tasks.push(
+      traktScrobble(
+        profile,
+        meta as unknown as import('./types').Meta,
+        episode,
+        progress.positionSeconds,
+        progress.durationSeconds,
+        'pause',
+      )
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
   }
   if (plan.simkl) {
-    tasks.push(simklScrobble(profile, meta as unknown as import('./types').Meta, episode, progress.positionSeconds, progress.durationSeconds, 'pause').then(() => undefined).catch(() => undefined));
+    tasks.push(
+      simklScrobble(
+        profile,
+        meta as unknown as import('./types').Meta,
+        episode,
+        progress.positionSeconds,
+        progress.durationSeconds,
+        'pause',
+      )
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
   }
   if (plan.stremio) {
     tasks.push(pushStremioPlaybackProgress(meta, progress, profile).catch(() => undefined));
   }
   if (plan.nuvio && plan.progressEntry) {
-    tasks.push((async () => {
-      const fresh = await validNuvioProfile(profile);
-      if (!fresh.nuvioAccessToken) return;
-      await nuvioPushWatchProgress(fresh.nuvioAccessToken, fresh.nuvioProfileIndex ?? 1, [plan.progressEntry!]);
-    })().catch(() => undefined));
+    tasks.push(
+      (async () => {
+        const fresh = await validNuvioProfile(profile);
+        if (!fresh.nuvioAccessToken) return;
+        await nuvioPushWatchProgress(fresh.nuvioAccessToken, fresh.nuvioProfileIndex ?? 1, [plan.progressEntry!]);
+      })().catch(() => undefined),
+    );
   }
   await Promise.all(tasks);
   if (refreshContinueWatching && plan.simkl && profile.simklAccessToken) {
@@ -197,7 +275,10 @@ export async function pushFavoriteExternal(
   profile: UserProfile | null,
 ): Promise<void> {
   if (!profile) return;
-  const plan = await coreInvoke<{ trakt: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'favorite', profile, command, nowMs: Date.now() }));
+  const plan = await coreInvoke<{ trakt: boolean }>(
+    'externalProviderActionPlan',
+    JSON.stringify({ kind: 'favorite', profile, command, nowMs: Date.now() }),
+  );
   if (!plan) return;
 
   await Promise.all(
@@ -214,7 +295,10 @@ export async function pushLibraryStatusExternal(
   profile: UserProfile | null,
 ): Promise<void> {
   if (!profile) return;
-  const plan = await coreInvoke<{ anilist: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'status', profile, item, list, command, nowMs: Date.now() }));
+  const plan = await coreInvoke<{ anilist: boolean }>(
+    'externalProviderActionPlan',
+    JSON.stringify({ kind: 'status', profile, item, list, command, nowMs: Date.now() }),
+  );
   if (!plan?.anilist) return;
   const id = String(item.id ?? '');
   await pushLibraryStatusAniList(id, list, command, profile.anilistAccessToken!).catch(() => undefined);
@@ -223,7 +307,10 @@ export async function pushLibraryStatusExternal(
 export async function dropExternalPlaybackProgress(item: Record<string, unknown>): Promise<void> {
   const id = String(item.id ?? '');
   if (!id) return;
-  const plan = await coreInvoke<{ dropTrakt: boolean; dropSimkl: boolean }>('externalProviderActionPlan', JSON.stringify({ kind: 'dropProgress', profile: {}, item, nowMs: Date.now() }));
+  const plan = await coreInvoke<{ dropTrakt: boolean; dropSimkl: boolean }>(
+    'externalProviderActionPlan',
+    JSON.stringify({ kind: 'dropProgress', profile: {}, item, nowMs: Date.now() }),
+  );
   if (plan?.dropTrakt) {
     await dropTraktPlaybackProgress(id);
   }
@@ -233,7 +320,10 @@ export async function dropExternalPlaybackProgress(item: Record<string, unknown>
 }
 
 export async function syncExternalIntegrationNow(payload: Record<string, unknown>): Promise<unknown> {
-  const plan = await coreInvoke<{ provider: string; supported: boolean; error?: string }>('externalProviderActionPlan', JSON.stringify({ kind: 'sync', provider: payload.provider }));
+  const plan = await coreInvoke<{ provider: string; supported: boolean; error?: string }>(
+    'externalProviderActionPlan',
+    JSON.stringify({ kind: 'sync', provider: payload.provider }),
+  );
   const provider = plan?.provider ?? '';
   if (!plan?.supported) return { synced: false, error: plan?.error };
   if (provider === 'anilist') return syncAniListNow(payload);

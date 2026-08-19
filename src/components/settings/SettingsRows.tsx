@@ -27,11 +27,7 @@ export function ActionTile({
         borderRadius: 0,
         border: 'none',
         borderBottom: '1px solid rgba(255,255,255,0.055)',
-        background: hovered
-          ? accent === '#FFFFFF'
-            ? 'rgba(255,255,255,0.03)'
-            : `${accent}18`
-          : 'transparent',
+        background: hovered ? (accent === '#FFFFFF' ? 'rgba(255,255,255,0.03)' : `${accent}18`) : 'transparent',
         display: 'flex',
         alignItems: 'center',
         padding: '0.75rem 1rem',
@@ -55,16 +51,18 @@ export function ActionTile({
 
 export function InfoTile({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
   return (
-    <div style={{
-      width: '100%',
-      minHeight: '3.75rem',
-      borderBottom: '1px solid rgba(255,255,255,0.055)',
-      display: 'flex',
-      alignItems: 'center',
-      padding: '0.75rem 1rem',
-      boxSizing: 'border-box',
-      gap: '0.75rem',
-    }}>
+    <div
+      style={{
+        width: '100%',
+        minHeight: '3.75rem',
+        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0.75rem 1rem',
+        boxSizing: 'border-box',
+        gap: '0.75rem',
+      }}
+    >
       <span style={styles.rowIcon}>{icon}</span>
       <div>
         <p style={styles.rowTitle}>{title}</p>
@@ -116,18 +114,39 @@ export function SyncServiceRow({
     >
       <div style={{ flexShrink: 0 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ color: destructive ? '#FF5A5A' : 'rgba(255,255,255,0.90)', fontSize: '0.875rem', fontWeight: 600, margin: 0, fontFamily: FONT, lineHeight: 1.25 }}>
+        <p
+          style={{
+            color: destructive ? '#FF5A5A' : 'rgba(255,255,255,0.90)',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            margin: 0,
+            fontFamily: FONT,
+            lineHeight: 1.25,
+          }}
+        >
           {title}
         </p>
         {value && (
-          <p style={{ color: valueColor ?? 'rgba(255,255,255,0.40)', fontSize: '0.75rem', margin: '0.125rem 0 0', fontFamily: FONT, lineHeight: '0.9375rem', fontWeight: 400 }}>
+          <p
+            style={{
+              color: valueColor ?? 'rgba(255,255,255,0.40)',
+              fontSize: '0.75rem',
+              margin: '0.125rem 0 0',
+              fontFamily: FONT,
+              lineHeight: '0.9375rem',
+              fontWeight: 400,
+            }}
+          >
             {value}
           </p>
         )}
       </div>
       {onClick && (
         <svg
-          width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.22)"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="rgba(255,255,255,0.22)"
           style={expanded === undefined ? undefined : { transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.14s' }}
         >
           <path d={expanded === undefined ? 'm9 18 6-6-6-6v12z' : 'M7 10l5 5 5-5z'} />
@@ -163,16 +182,18 @@ export function SyncServicePopover({
   onClose: () => void;
 }) {
   const isOutOfSync = !meta || Date.now() - meta.lastSyncAt > 6 * 60 * 60 * 1000;
-  const effectiveStatus = statusLabel ?? (
-    meta?.error
+  const effectiveStatus =
+    statusLabel ??
+    (meta?.error
       ? `${t('settings.sync_error')} · ${meta.error}`
-      : `${isOutOfSync ? t('settings.out_of_sync') : t('settings.synced')}${meta ? ` · ${timeAgo(meta.lastSyncAt)}` : ''}`
-  );
-  const effectiveStatusColor = statusColor ?? (meta?.error ? '#FF5A5A' : (isOutOfSync ? '#FF9500' : '#54D17A'));
+      : `${isOutOfSync ? t('settings.out_of_sync') : t('settings.synced')}${meta ? ` · ${timeAgo(meta.lastSyncAt)}` : ''}`);
+  const effectiveStatusColor = statusColor ?? (meta?.error ? '#FF5A5A' : isOutOfSync ? '#FF9500' : '#54D17A');
   const counts = [
     meta && meta.continueWatchingCount > 0 ? `${meta.continueWatchingCount} ${t('auto.continue_watching')}` : null,
     meta && meta.watchlistCount > 0 ? `${meta.watchlistCount} ${t('settings.watchlist')}` : null,
-  ].filter(Boolean).join(' · ');
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Popover open={open} onClose={onClose} anchorRef={anchorRef} placement="bottom-start" matchWidth padding="0">
@@ -184,13 +205,19 @@ export function SyncServicePopover({
         {counts && <p style={{ ...styles.rowSubtitle, marginTop: '0.25rem' }}>{counts}</p>}
       </div>
       <PopoverActionButton
-        label={busy ? '…' : syncLabel ?? t('settings.sync_now')}
-        onClick={() => { onSyncNow(); onClose(); }}
+        label={busy ? '…' : (syncLabel ?? t('settings.sync_now'))}
+        onClick={() => {
+          onSyncNow();
+          onClose();
+        }}
         disabled={busy}
       />
       <PopoverActionButton
         label={t('auto.disconnect')}
-        onClick={() => { onDisconnect(); onClose(); }}
+        onClick={() => {
+          onDisconnect();
+          onClose();
+        }}
         color="#FF5A5A"
       />
     </Popover>

@@ -49,10 +49,12 @@ interface ContinueWatchingSourcePlan {
 }
 
 async function selectedContinueWatchingSource(prefs: Record<string, unknown>): Promise<ContinueWatchingSourcePlan> {
-  return (await coreInvoke<ContinueWatchingSourcePlan>(
-    'continueWatchingSourcePlan',
-    JSON.stringify({ source: prefs.continueWatchingSource }),
-  )) ?? { source: 'local', provider: null };
+  return (
+    (await coreInvoke<ContinueWatchingSourcePlan>(
+      'continueWatchingSourcePlan',
+      JSON.stringify({ source: prefs.continueWatchingSource }),
+    )) ?? { source: 'local', provider: null }
+  );
 }
 
 export interface DiscoverCatalogOption {
@@ -71,10 +73,12 @@ export interface DiscoverCatalogOption {
 async function metadataFeedOptions(addons: AddonDescriptor[]): Promise<MetadataFeedOption[]> {
   const options = ((await coreBuildMetadataFeedOptions(addons)) ?? []) as MetadataFeedOption[];
   const addonsJson = JSON.stringify(addons);
-  return Promise.all(options.map(async (option) => {
-    const genre = await coreResolveFeedOptionGenre(JSON.stringify(option), addonsJson);
-    return { ...option, genre };
-  }));
+  return Promise.all(
+    options.map(async (option) => {
+      const genre = await coreResolveFeedOptionGenre(JSON.stringify(option), addonsJson);
+      return { ...option, genre };
+    }),
+  );
 }
 
 export async function discoverCatalogOptions(addons: AddonDescriptor[], selectedType: string): Promise<DiscoverCatalogOption[]> {
@@ -129,15 +133,18 @@ async function continueWatchingFromCompactProgress(
   });
   const watchProgress = Object.entries(progressMap).map(([key, entry]) => ({
     content_id: String(entry.contentId ?? (entry.meta as Record<string, unknown> | undefined)?.id ?? key),
-    content_type: String(entry.contentType ?? (entry.meta as Record<string, unknown> | undefined)?.type ?? (entry.lastEpisodeSeason != null ? 'series' : 'movie')),
+    content_type: String(
+      entry.contentType ??
+        (entry.meta as Record<string, unknown> | undefined)?.type ??
+        (entry.lastEpisodeSeason != null ? 'series' : 'movie'),
+    ),
     video_id: entry.videoId ?? entry.lastVideoId ?? null,
     season: entry.season ?? entry.lastEpisodeSeason ?? null,
     episode: entry.episode ?? entry.lastEpisodeNumber ?? null,
     position: entry.position ?? entry.timeOffset ?? 0,
     duration: entry.duration ?? 0,
-    last_watched: typeof entry.lastWatched === 'number'
-      ? entry.lastWatched
-      : (Date.parse(String(entry.lastWatched ?? entry.savedAt ?? '')) || 0),
+    last_watched:
+      typeof entry.lastWatched === 'number' ? entry.lastWatched : Date.parse(String(entry.lastWatched ?? entry.savedAt ?? '')) || 0,
     progress_key: entry.progressKey ?? key,
   }));
   if (watchProgress.length === 0) return [];
@@ -150,7 +157,8 @@ async function continueWatchingFromCompactProgress(
       contentType: need.contentType,
       id: need.contentId,
     }).catch(() => []);
-    const result = values.find((value) => value && typeof value === 'object' && 'meta' in value) as { meta?: Record<string, unknown> } | undefined;
+    const result = values.find((value) => value && typeof value === 'object' && 'meta' in value) as
+      { meta?: Record<string, unknown> } | undefined;
     return [need.contentId, result?.meta ?? null] as const;
   });
   const addonMetas = Object.fromEntries(fetchedMetadata.filter(([, meta]) => meta));
@@ -173,9 +181,7 @@ export async function continueWatchingForSelectedSource(
   addons: AddonDescriptor[],
 ): Promise<Record<string, unknown>[]> {
   const profile = await loadActiveProfile();
-  const effectivePrefs = profile?.nuvioAccessToken
-    ? { ...prefs, continueWatchingSource: 'nuvio' }
-    : prefs;
+  const effectivePrefs = profile?.nuvioAccessToken ? { ...prefs, continueWatchingSource: 'nuvio' } : prefs;
   const requestedSource = String(effectivePrefs.continueWatchingSource ?? 'local');
   void invoke('debug_log', { msg: `cw-source: resolving plan source=${requestedSource}` });
   const plan = await selectedContinueWatchingSource(effectivePrefs);
@@ -198,7 +204,8 @@ export async function continueWatchingForSelectedSource(
           contentType: need.contentType,
           id: need.contentId,
         }).catch(() => []);
-        const result = values.find((value) => value && typeof value === 'object' && 'meta' in value) as { meta?: Record<string, unknown> } | undefined;
+        const result = values.find((value) => value && typeof value === 'object' && 'meta' in value) as
+          { meta?: Record<string, unknown> } | undefined;
         return [need.contentId, result?.meta ?? null] as const;
       });
       const metadataById = new Map(fetchedMetadata.filter(([, detail]) => detail).map(([id, detail]) => [id, detail!]));
@@ -217,18 +224,19 @@ export async function continueWatchingForSelectedSource(
     void invoke('debug_log', { msg: `cw-source: loading provider library provider=${provider}` });
     const libraries = await loadProviderLibraries();
     const items = libraries[provider as LibraryProvider]?.watching ?? [];
-    void invoke('debug_log', { msg: `cw-source: loaded provider library provider=${provider} count=${items.length} ids=${items.map((item) => item.id ?? item._id).join(',')}` });
-    void invoke('debug_log', { msg: `cw-source: provider library detail=${JSON.stringify(items.map((item) => ({ id: item.id ?? item._id, timeOffset: item.timeOffset, duration: item.duration, badge: item.continueWatchingBadge, poster: item.poster, background: item.background })))}` });
+    void invoke('debug_log', {
+      msg: `cw-source: loaded provider library provider=${provider} count=${items.length} ids=${items.map((item) => item.id ?? item._id).join(',')}`,
+    });
+    void invoke('debug_log', {
+      msg: `cw-source: provider library detail=${JSON.stringify(items.map((item) => ({ id: item.id ?? item._id, timeOffset: item.timeOffset, duration: item.duration, badge: item.continueWatchingBadge, poster: item.poster, background: item.background })))}`,
+    });
     return items;
   }
 
   return continueWatchingFromCompactProgress(library, addons);
 }
 
-export async function readHomeBootstrap(
-  payload: Record<string, unknown>,
-  signal?: AbortSignal,
-): Promise<unknown> {
+export async function readHomeBootstrap(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const language = (payload.language as string | undefined) ?? 'en';
   console.debug('[fluxa:web:home:start]', { force: payload.force === true, language });
   const cacheKey = `${HOME_BOOTSTRAP_CACHE_PREFIX}_${await effectRunnerLibraryKey()}_${language}`;
@@ -255,7 +263,11 @@ export async function readHomeBootstrap(
     ? ((await coreEffectiveMetadataFeedSelection(selectedKeys, availableKeys)) ?? availableKeys)
     : availableKeys;
   const visibleFeeds = metadataFeeds.filter((feed) => effectiveKeys.includes(feed.key));
-  console.debug('[fluxa:web:home:feeds]', { addons: addons.length, metadataFeeds: metadataFeeds.length, visibleFeeds: visibleFeeds.length });
+  console.debug('[fluxa:web:home:feeds]', {
+    addons: addons.length,
+    metadataFeeds: metadataFeeds.length,
+    visibleFeeds: visibleFeeds.length,
+  });
 
   const categoryResults = await runWithConcurrency(visibleFeeds, HOME_FEED_FETCH_CONCURRENCY, async (feed) => {
     const extra = feed.genre ? { genre: feed.genre } : {};
@@ -266,15 +278,20 @@ export async function readHomeBootstrap(
     console.debug('[fluxa:web:home:catalog:start]', { feed: feed.key, url });
     const data = isBuiltinTmdbAddon(feed.transportUrl)
       ? await fetchBuiltinCatalog(feed.type, extra, String(prefs.tmdbApiKey ?? ''), language, signal)
-      : (await tryFetchJson(url!, { signal }) as { metas?: unknown[] } | null);
-    console.debug('[fluxa:web:home:catalog:end]', { feed: feed.key, url, metas: Array.isArray(data?.metas) ? data.metas.length : 0, elapsedMs: Math.round(performance.now() - startedAt) });
+      : ((await tryFetchJson(url!, { signal })) as { metas?: unknown[] } | null);
+    console.debug('[fluxa:web:home:catalog:end]', {
+      feed: feed.key,
+      url,
+      metas: Array.isArray(data?.metas) ? data.metas.length : 0,
+      elapsedMs: Math.round(performance.now() - startedAt),
+    });
     const metas = Array.isArray(data?.metas) ? data.metas : [];
     if (metas.length === 0) return null;
-    const items = metas.map((m) => (
+    const items = metas.map((m) =>
       m && typeof m === 'object'
         ? { ...(m as Record<string, unknown>), sourceAddonTransportUrl: feed.transportUrl, sourceAddonCatalogType: feed.type }
-        : m
-    ));
+        : m,
+    );
     return {
       id: feed.key,
       name: feed.homeTitle ?? feed.label,
@@ -295,20 +312,14 @@ export async function readHomeBootstrap(
     const mappedCollections = await coreNuvioMapCollections(rawCollections);
     collectionProfile = { ...profile, libraryCollections: mappedCollections ?? [] };
   }
-  const collectionShelves = await coreBuildHomeCollectionShelves(
-    JSON.stringify(collectionProfile),
-    JSON.stringify(addons),
-  );
+  const collectionShelves = await coreBuildHomeCollectionShelves(JSON.stringify(collectionProfile), JSON.stringify(addons));
   const pinnedCollections = collectionShelves?.pinnedShelves ?? [];
   const regularCollections = collectionShelves?.regularShelves ?? [];
   const hiddenFolderCategories = collectionShelves?.hiddenFolderCategories ?? [];
 
   const allCategories = [...pinnedCollections, ...categories, ...regularCollections, ...hiddenFolderCategories];
 
-  const billboard =
-    categories.length > 0
-      ? ((categories[0] as { items: unknown[] }).items[0] ?? null)
-      : null;
+  const billboard = categories.length > 0 ? ((categories[0] as { items: unknown[] }).items[0] ?? null) : null;
 
   const bootstrap = { categories: allCategories, continueWatching, metadataFeeds, billboard };
   console.debug('[fluxa:web:home:end]', { categories: allCategories.length, continueWatching: continueWatching.length });
@@ -340,13 +351,13 @@ export async function fetchHeroDescription(item: { id: string; type: string; sou
     return cached.description;
   }
 
-  const detail = await fetchMetaDetail({
+  const detail = (await fetchMetaDetail({
     id: item.id,
     contentType: item.type,
     sourceAddonTransportUrl: item.sourceAddonTransportUrl,
-  }).catch(() => null) as { description?: string } | null;
+  }).catch(() => null)) as { description?: string } | null;
   const shortened = detail?.description
-    ? (await coreInvoke<string>('shortenSynopsis', JSON.stringify({ text: detail.description }))) ?? null
+    ? ((await coreInvoke<string>('shortenSynopsis', JSON.stringify({ text: detail.description }))) ?? null)
     : null;
 
   cache[cacheKey] = { fetchedAt: now, description: shortened };

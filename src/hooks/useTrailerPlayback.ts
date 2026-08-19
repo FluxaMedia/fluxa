@@ -133,13 +133,16 @@ export function useTrailerPlayback({
     activeTrailerSubtitleRef.current = '';
     if (!selectedTrailerSubtitle?.url || !trailerStreamUrl) return;
 
-    normalizeTrailerSubtitleUrl(selectedTrailerSubtitle.url).then(httpFetchText).then(async (response) => {
-      if (cancelled || response.statusCode < 200 || response.statusCode > 299 || !response.body.trim()) return;
-      const cues = await parseTrailerSubtitleCues(response.body);
-      if (cancelled) return;
-      setTrailerSubtitleCues(cues);
-      updateActiveTrailerSubtitle(trailerVideoRef.current?.currentTime ?? 0, cues);
-    }).catch(() => undefined);
+    normalizeTrailerSubtitleUrl(selectedTrailerSubtitle.url)
+      .then(httpFetchText)
+      .then(async (response) => {
+        if (cancelled || response.statusCode < 200 || response.statusCode > 299 || !response.body.trim()) return;
+        const cues = await parseTrailerSubtitleCues(response.body);
+        if (cancelled) return;
+        setTrailerSubtitleCues(cues);
+        updateActiveTrailerSubtitle(trailerVideoRef.current?.currentTime ?? 0, cues);
+      })
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
@@ -187,12 +190,15 @@ export function useTrailerPlayback({
     if (!trailerStreamUrl) return;
     const el = trailerVideoRef.current;
     if (!el) return;
-    const observer = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry?.isIntersecting && el.paused && !el.ended) {
-        el.play().catch(() => {});
-      }
-    }, { threshold: 0.05 });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting && el.paused && !el.ended) {
+          el.play().catch(() => {});
+        }
+      },
+      { threshold: 0.05 },
+    );
     observer.observe(el);
     return () => observer.disconnect();
   }, [trailerStreamUrl]);
@@ -261,8 +267,8 @@ export function useTrailerPlayback({
     const fullscreenTarget = container as HTMLDivElement & {
       webkitRequestFullscreen?: () => Promise<void> | void;
     };
-    const request = fullscreenTarget.requestFullscreen?.bind(fullscreenTarget)
-      ?? fullscreenTarget.webkitRequestFullscreen?.bind(fullscreenTarget);
+    const request =
+      fullscreenTarget.requestFullscreen?.bind(fullscreenTarget) ?? fullscreenTarget.webkitRequestFullscreen?.bind(fullscreenTarget);
     try {
       const result = request?.();
       if (result && typeof result.catch === 'function') result.catch(() => {});
@@ -270,8 +276,21 @@ export function useTrailerPlayback({
   };
 
   return {
-    trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerProgressElRef, trailerMuted, activeTrailerSubtitle,
-    handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
+    trailerContainerRef,
+    trailerVideoRef,
+    trailerAudioRef,
+    trailerStreamUrl,
+    trailerAudioUrl,
+    trailerReady,
+    trailerActive,
+    trailerPending,
+    trailerProgressElRef,
+    trailerMuted,
+    activeTrailerSubtitle,
+    handleTrailerPlaying,
+    handleTrailerTimeUpdate,
+    handleTrailerStopped,
+    toggleTrailerMute,
+    fullscreenTrailer,
   };
 }

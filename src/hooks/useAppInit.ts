@@ -77,7 +77,10 @@ export function useAppInit(
         if (['home', 'search', 'library', 'discover', 'calendar', 'settings'].includes(startPage)) {
           setActiveRoute(startPage);
         }
-        if (snap) { const s = snap as AppState; updateState({ ...s, settings: { ...s.settings, values: prefs } }); }
+        if (snap) {
+          const s = snap as AppState;
+          updateState({ ...s, settings: { ...s.settings, values: prefs } });
+        }
         const welcomeDone = await storageRead<boolean>('welcome_done');
         if (!welcomeDone) setWelcomeCompleted(false);
         void (async () => {
@@ -117,14 +120,16 @@ export function useAppInit(
       void loadHomeOnStartup();
 
       if (prefBool(storedPrefsRef.current, 'automaticUpdates', true)) {
-        void invoke<boolean>('in_app_updates_supported').then((supported) => {
-          if (!supported) return;
-          setTimeout(() => {
-            void startUpdateCheck((s) => {
-              if (s.phase === 'available' || s.phase === 'error') setUpdateModalState(s);
-            });
-          }, 5000);
-        }).catch(() => undefined);
+        void invoke<boolean>('in_app_updates_supported')
+          .then((supported) => {
+            if (!supported) return;
+            setTimeout(() => {
+              void startUpdateCheck((s) => {
+                if (s.phase === 'available' || s.phase === 'error') setUpdateModalState(s);
+              });
+            }, 5000);
+          })
+          .catch(() => undefined);
       }
     })();
   }, []);

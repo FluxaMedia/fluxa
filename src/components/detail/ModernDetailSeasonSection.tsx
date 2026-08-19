@@ -26,7 +26,14 @@ export function ModernDetailSeasonSection({
   return (
     <>
       <div style={MS.seasonRowModern}>
-        <SeasonDropdown seasons={seasonNumbers} selected={selectedSeason} onChange={onSeasonChange} buttonStyle={MS.seasonBtn} seasonWatched={seasonWatchedMap} hideButtonIndicator />
+        <SeasonDropdown
+          seasons={seasonNumbers}
+          selected={selectedSeason}
+          onChange={onSeasonChange}
+          buttonStyle={MS.seasonBtn}
+          seasonWatched={seasonWatchedMap}
+          hideButtonIndicator
+        />
         <button
           onClick={toggleSeasonWatched}
           title={seasonWatchedMap[selectedSeason] ? t('detail.mark_season_unwatched') : t('detail.mark_season_watched')}
@@ -53,10 +60,34 @@ export function ModernDetailSeasonSection({
               {t('detail.prev_seasons_dialog_body', prevSeasonDialog.unwatchedPrev.map((s) => seasonLabel(s)).join(', '))}
             </p>
             <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'flex-end' }}>
-              <button style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '0.5rem', padding: '0.5625rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }} onClick={() => onConfirmPrevSeasonDialog(false)}>
+              <button
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: '0.5rem',
+                  padding: '0.5625rem 1.25rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+                onClick={() => onConfirmPrevSeasonDialog(false)}
+              >
                 {t('detail.prev_seasons_dialog_no')}
               </button>
-              <button style={{ background: 'var(--primary-accent-color)', border: 'none', color: 'var(--primary-accent-foreground-color, #fff)', borderRadius: '0.5rem', padding: '0.5625rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }} onClick={() => onConfirmPrevSeasonDialog(true)}>
+              <button
+                style={{
+                  background: 'var(--primary-accent-color)',
+                  border: 'none',
+                  color: 'var(--primary-accent-foreground-color, #fff)',
+                  borderRadius: '0.5rem',
+                  padding: '0.5625rem 1.25rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+                onClick={() => onConfirmPrevSeasonDialog(true)}
+              >
                 {t('detail.prev_seasons_dialog_yes')}
               </button>
             </div>

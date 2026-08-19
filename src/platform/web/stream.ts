@@ -10,7 +10,12 @@ function isLocalCompanionUrl(sourceUrl: string): boolean {
   }
 }
 
-export function transcodeUrl(sourceUrl: string, startSeconds?: number, headers?: Record<string, string>, target?: BrowserTranscodeTarget): string {
+export function transcodeUrl(
+  sourceUrl: string,
+  startSeconds?: number,
+  headers?: Record<string, string>,
+  target?: BrowserTranscodeTarget,
+): string {
   const input = isLocalCompanionUrl(sourceUrl) ? sourceUrl : proxyUrl(sourceUrl, headers ?? {});
   const params = new URLSearchParams({ url: input });
   if (startSeconds && startSeconds > 0) params.set('start', String(Math.floor(startSeconds)));
@@ -58,7 +63,10 @@ function browserSupportsAudio(codec: string | null | undefined): boolean {
   return Boolean(mime && document.createElement('audio').canPlayType(mime));
 }
 
-export function chooseBrowserTranscodeTarget(videoCodec: string | null | undefined, audioCodec: string | null | undefined): BrowserTranscodeTarget {
+export function chooseBrowserTranscodeTarget(
+  videoCodec: string | null | undefined,
+  audioCodec: string | null | undefined,
+): BrowserTranscodeTarget {
   const normalizedVideo = videoCodec?.toLowerCase() ?? '';
   const normalizedAudio = audioCodec?.toLowerCase() ?? '';
   const targetVideo = browserSupportsVideo(normalizedVideo) ? normalizedVideo : 'h264';
@@ -76,9 +84,7 @@ export function proxyUrl(sourceUrl: string, headers: Record<string, string>): st
 export async function fetchThroughProxyIfNeeded(sourceUrl: string, headers: Record<string, string> = {}): Promise<Response> {
   if (isLocalCompanionUrl(sourceUrl)) return fetch(sourceUrl);
   if (IS_WEBOS) await ensureWebosProxy();
-  const attempts = IS_WEBOS
-    ? [proxyUrl(sourceUrl, headers), sourceUrl]
-    : [sourceUrl, proxyUrl(sourceUrl, headers)];
+  const attempts = IS_WEBOS ? [proxyUrl(sourceUrl, headers), sourceUrl] : [sourceUrl, proxyUrl(sourceUrl, headers)];
   let lastError: unknown;
   for (const candidate of attempts) {
     try {
@@ -101,38 +107,55 @@ function extensionOf(sourceUrl: string): string {
 }
 
 export function codecString(videoCodec: string | null | undefined, audioCodec: string | null | undefined): string {
-  const video = videoCodec?.toLowerCase().includes('h264') || videoCodec?.toLowerCase().includes('avc')
-    ? 'avc1.42E01E'
-    : videoCodec?.toLowerCase().includes('vp9')
-      ? 'vp09.00.10.08'
-      : videoCodec?.toLowerCase().includes('vp8')
-        ? 'vp8'
-        : videoCodec?.toLowerCase().includes('av1')
-          ? 'av01.0.05M.08'
-          : videoCodec ?? '';
-  const audio = audioCodec?.toLowerCase().includes('aac') || audioCodec?.toLowerCase().includes('mp4a')
-    ? 'mp4a.40.2'
-    : audioCodec?.toLowerCase().includes('opus')
-      ? 'opus'
-      : audioCodec?.toLowerCase().includes('vorbis')
-        ? 'vorbis'
-        : audioCodec?.toLowerCase().includes('mp3')
-          ? 'mp3'
-          : audioCodec ?? '';
+  const video =
+    videoCodec?.toLowerCase().includes('h264') || videoCodec?.toLowerCase().includes('avc')
+      ? 'avc1.42E01E'
+      : videoCodec?.toLowerCase().includes('vp9')
+        ? 'vp09.00.10.08'
+        : videoCodec?.toLowerCase().includes('vp8')
+          ? 'vp8'
+          : videoCodec?.toLowerCase().includes('av1')
+            ? 'av01.0.05M.08'
+            : (videoCodec ?? '');
+  const audio =
+    audioCodec?.toLowerCase().includes('aac') || audioCodec?.toLowerCase().includes('mp4a')
+      ? 'mp4a.40.2'
+      : audioCodec?.toLowerCase().includes('opus')
+        ? 'opus'
+        : audioCodec?.toLowerCase().includes('vorbis')
+          ? 'vorbis'
+          : audioCodec?.toLowerCase().includes('mp3')
+            ? 'mp3'
+            : (audioCodec ?? '');
   return [video, audio].filter(Boolean).join(', ');
 }
 
-const WEBOS_NATIVE_CONTAINERS = new Set(['mkv', 'mp4', 'm4v', 'mov', 'webm', 'avi', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'm3u8', 'mpd', 'wmv', 'asf', 'flv', '3gp', 'vob']);
+const WEBOS_NATIVE_CONTAINERS = new Set([
+  'mkv',
+  'mp4',
+  'm4v',
+  'mov',
+  'webm',
+  'avi',
+  'ts',
+  'm2ts',
+  'mts',
+  'mpg',
+  'mpeg',
+  'm3u8',
+  'mpd',
+  'wmv',
+  'asf',
+  'flv',
+  '3gp',
+  'vob',
+]);
 
 // MKV -> WebM in-browser remux only covers codecs the WebM container itself
 // supports (bitstream copy, no re-encode) — VP8/VP9/AV1 + Opus/Vorbis/none.
 // H.264/HEVC+AAC MKVs still fall through to the companion-server transcode
 // path below until an MP4 remux target exists.
-export function canRemuxToWebm(
-  sourceUrl: string,
-  videoCodec: string | null | undefined,
-  audioCodec: string | null | undefined,
-): boolean {
+export function canRemuxToWebm(sourceUrl: string, videoCodec: string | null | undefined, audioCodec: string | null | undefined): boolean {
   if (IS_WEBOS) return false;
   if (extensionOf(sourceUrl) !== 'mkv') return false;
   const video = videoCodec?.toLowerCase() ?? '';
@@ -144,23 +167,20 @@ export function canRemuxToWebm(
   return true;
 }
 
-export function canDirectPlay(
-  sourceUrl: string,
-  videoCodec: string | null | undefined,
-  audioCodec: string | null | undefined,
-): boolean {
+export function canDirectPlay(sourceUrl: string, videoCodec: string | null | undefined, audioCodec: string | null | undefined): boolean {
   const extension = extensionOf(sourceUrl);
   if (IS_WEBOS) return extension === '' || WEBOS_NATIVE_CONTAINERS.has(extension);
   if (['mkv', 'avi', 'wmv', 'flv', 'm2ts', 'ts'].includes(extension)) return false;
   const video = document.createElement('video');
   const codecs = codecString(videoCodec, audioCodec);
-  const mime = extension === 'webm'
-    ? `video/webm${codecs ? `; codecs="${codecs}"` : ''}`
-    : extension === 'm3u8'
-      ? 'application/vnd.apple.mpegurl'
-      : extension === 'ogg' || extension === 'ogv'
-        ? `video/ogg${codecs ? `; codecs="${codecs}"` : ''}`
-        : `video/mp4${codecs ? `; codecs="${codecs}"` : ''}`;
+  const mime =
+    extension === 'webm'
+      ? `video/webm${codecs ? `; codecs="${codecs}"` : ''}`
+      : extension === 'm3u8'
+        ? 'application/vnd.apple.mpegurl'
+        : extension === 'ogg' || extension === 'ogv'
+          ? `video/ogg${codecs ? `; codecs="${codecs}"` : ''}`
+          : `video/mp4${codecs ? `; codecs="${codecs}"` : ''}`;
   const browserSupport = video.canPlayType(mime);
   if (browserSupport === '') return false;
   return true;
@@ -194,7 +214,10 @@ export function choosePlaybackUrl(
   return { url: transcodeUrl(playUrl, resumeAtSeconds, headers, target), mode: 'transcode' };
 }
 
-export async function probeStream(sourceUrl: string, headers?: Record<string, string>): Promise<{ videoCodec: string | null; audioCodec: string | null; duration: number | null } | null> {
+export async function probeStream(
+  sourceUrl: string,
+  headers?: Record<string, string>,
+): Promise<{ videoCodec: string | null; audioCodec: string | null; duration: number | null } | null> {
   if (IS_WEBOS) return null;
   try {
     const input = isLocalCompanionUrl(sourceUrl) ? sourceUrl : proxyUrl(sourceUrl, headers ?? {});

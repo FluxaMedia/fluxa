@@ -16,13 +16,15 @@ export function platformFetch(url: string, init?: RequestInit): Promise<Response
   if (isBrowserTarget()) {
     const startedAt = performance.now();
     console.debug('[fluxa:web:http:start]', init?.method ?? 'GET', redactUrl(url));
-    return fetch(url, init).then((response) => {
-      console.debug('[fluxa:web:http:end]', response.status, Math.round(performance.now() - startedAt), redactUrl(url));
-      return response;
-    }).catch((error) => {
-      console.error('[fluxa:web:http:error]', Math.round(performance.now() - startedAt), redactUrl(url), error);
-      throw error;
-    });
+    return fetch(url, init)
+      .then((response) => {
+        console.debug('[fluxa:web:http:end]', response.status, Math.round(performance.now() - startedAt), redactUrl(url));
+        return response;
+      })
+      .catch((error) => {
+        console.error('[fluxa:web:http:error]', Math.round(performance.now() - startedAt), redactUrl(url), error);
+        throw error;
+      });
   }
   return import('@tauri-apps/plugin-http').then(({ fetch: tauriFetch }) => tauriFetch(url, init));
 }

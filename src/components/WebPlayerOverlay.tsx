@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Captions, ChevronLeft, ExternalLink, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
+import {
+  Captions,
+  ChevronLeft,
+  ExternalLink,
+  Maximize,
+  Pause,
+  PictureInPicture2,
+  Play,
+  RotateCcw,
+  RotateCw,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { t } from '../i18n';
 import { transcodeUrl, type PlaybackUrlChoice } from '../platform/web/stream';
 import { attachMseRemuxSource } from '../platform/web/mseMkvSource';
@@ -9,7 +21,12 @@ import type { PlaybackSnapshot, ScrobbleEvent } from '../core/playbackSession';
 import type { IntroSegmentResult } from '../core/effectRunner';
 import { skipLabelForType } from './player/PlayerOverlayPrimitives';
 import { appPrefs, prefBool } from '../core/appPrefs';
-import { WatchTogetherClient, type WatchTogetherConnection, type WatchTogetherContent, type WatchTogetherState } from '../core/watchTogether';
+import {
+  WatchTogetherClient,
+  type WatchTogetherConnection,
+  type WatchTogetherContent,
+  type WatchTogetherState,
+} from '../core/watchTogether';
 import { useLibassSubtitles } from '../hooks/useLibassSubtitles';
 import { applyWebOSMediaOption, hdrKindFrom, IS_WEBOS } from '../platform/webos';
 import { isTextEntryTarget, tvActionFor } from '../platform/webosKeys';
@@ -56,20 +73,63 @@ function formatTime(value: number) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainder = seconds % 60;
-  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}` : `${minutes}:${String(remainder).padStart(2, '0')}`;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
+    : `${minutes}:${String(remainder).padStart(2, '0')}`;
 }
 
 const S = {
-  skipButton: { padding: '0.6rem 1rem', borderRadius: '0.45rem', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(20,25,34,0.92)', color: '#fff', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', pointerEvents: 'auto' },
+  skipButton: {
+    padding: '0.6rem 1rem',
+    borderRadius: '0.45rem',
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(20,25,34,0.92)',
+    color: '#fff',
+    fontSize: '0.85rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    pointerEvents: 'auto',
+  },
 } as const;
 
-const iconButton = { width: '2.75rem', height: '2.75rem', border: 'none', borderRadius: '0.5rem', background: 'none', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' } as const;
+const iconButton = {
+  width: '2.75rem',
+  height: '2.75rem',
+  border: 'none',
+  borderRadius: '0.5rem',
+  background: 'none',
+  color: '#fff',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+} as const;
 
 const DOUBLE_TAP_MS = 320;
 
 const pipSupported = typeof document !== 'undefined' && document.pictureInPictureEnabled === true;
 
-export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirstFrame, contentId, contentType = 'movie', videoId, codecs, resumeAt, snapshotRef, onPlaybackEvent, skipSegments = [], nextEpisode, onPlayNextEpisode, autoSkip = false, autoPlayNext = false, onHandoff }: Props) {
+export function WebPlayerOverlay({
+  url,
+  mode,
+  title,
+  subtitles,
+  onClose,
+  onFirstFrame,
+  contentId,
+  contentType = 'movie',
+  videoId,
+  codecs,
+  resumeAt,
+  snapshotRef,
+  onPlaybackEvent,
+  skipSegments = [],
+  nextEpisode,
+  onPlayNextEpisode,
+  autoSkip = false,
+  autoPlayNext = false,
+  onHandoff,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
   const isTouch = useIsTouch();
@@ -92,7 +152,14 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
   const [subtitleMenuOpen, setSubtitleMenuOpen] = useState(false);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
   const autoSkippedRef = useRef<Set<string>>(new Set());
-  const [watchTogetherState, setWatchTogetherState] = useState<WatchTogetherState>({ connectionState: 'disconnected', roomCode: null, isHost: false, members: [], content: null, errorMessage: null });
+  const [watchTogetherState, setWatchTogetherState] = useState<WatchTogetherState>({
+    connectionState: 'disconnected',
+    roomCode: null,
+    isHost: false,
+    members: [],
+    content: null,
+    errorMessage: null,
+  });
   const watchTogetherRef = useRef<WatchTogetherClient | null>(null);
   const watchTogetherContent: WatchTogetherContent | null = contentId ? { id: contentId, contentType, videoId, title: title ?? '' } : null;
 
@@ -127,12 +194,14 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
     try {
       let connection: WatchTogetherConnection;
       if (isSupabaseInstance(instanceUrl)) {
-        const anonKey = window.localStorage.getItem('fluxa.watchTogether.supabaseAnonKey') ?? window.prompt(t('player.watch_party_supabase_key_prompt'));
+        const anonKey =
+          window.localStorage.getItem('fluxa.watchTogether.supabaseAnonKey') ?? window.prompt(t('player.watch_party_supabase_key_prompt'));
         if (!anonKey) return;
         window.localStorage.setItem('fluxa.watchTogether.supabaseAnonKey', anonKey);
         connection = { mode: 'supabase', projectUrl: instanceUrl, anonKey };
       } else {
-        const secret = window.prompt(t('player.watch_party_secret_prompt'), window.localStorage.getItem('fluxa.watchTogether.secret') ?? '') ?? '';
+        const secret =
+          window.prompt(t('player.watch_party_secret_prompt'), window.localStorage.getItem('fluxa.watchTogether.secret') ?? '') ?? '';
         window.localStorage.setItem('fluxa.watchTogether.secret', secret);
         connection = { mode: 'websocket', serverUrl: instanceUrl, secret };
       }
@@ -140,7 +209,11 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
       if (roomCode?.trim()) await client.join(connection, roomCode.trim(), displayName, secret);
       else await client.create(connection, displayName, secret);
     } catch (error) {
-      setWatchTogetherState((state) => ({ ...state, connectionState: 'error', errorMessage: error instanceof Error ? error.message : String(error) }));
+      setWatchTogetherState((state) => ({
+        ...state,
+        connectionState: 'error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }));
     }
   };
 
@@ -150,9 +223,7 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
 
   useLibassSubtitles(videoRef, subtitleCanvasRef, subtitles, selectedSubtitle);
 
-  const activeSegment = skipSegments.find(
-    (segment) => currentTime >= segment.startTime && currentTime < segment.endTime,
-  ) ?? null;
+  const activeSegment = skipSegments.find((segment) => currentTime >= segment.startTime && currentTime < segment.endTime) ?? null;
 
   const skipActiveSegment = useCallback(() => {
     const video = videoRef.current;
@@ -168,7 +239,9 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
     skipActiveSegment();
   }, [autoSkip, activeSegment, skipActiveSegment]);
 
-  useEffect(() => { autoSkippedRef.current = new Set(); }, [url]);
+  useEffect(() => {
+    autoSkippedRef.current = new Set();
+  }, [url]);
 
   useEffect(() => {
     if (!autoPlayNext || !nextEpisode || !onPlayNextEpisode) return undefined;
@@ -193,7 +266,9 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
       if (!video) return;
       video.currentTime = Math.max(0, Math.min(video.duration || Infinity, video.currentTime + delta));
     };
-    session.setActionHandler('play', () => { void videoRef.current?.play(); });
+    session.setActionHandler('play', () => {
+      void videoRef.current?.play();
+    });
     session.setActionHandler('pause', () => videoRef.current?.pause());
     session.setActionHandler('seekbackward', nudge(-10));
     session.setActionHandler('seekforward', nudge(10));
@@ -215,10 +290,13 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
     navigator.mediaSession.playbackState = paused ? 'paused' : 'playing';
   }, [paused]);
 
-  const recordSnapshot = useCallback((video: HTMLVideoElement) => {
-    if (!snapshotRef) return;
-    snapshotRef.current = { timePos: video.currentTime, duration: video.duration };
-  }, [snapshotRef]);
+  const recordSnapshot = useCallback(
+    (video: HTMLVideoElement) => {
+      if (!snapshotRef) return;
+      snapshotRef.current = { timePos: video.currentTime, duration: video.duration };
+    },
+    [snapshotRef],
+  );
 
   const resetActivity = useCallback(() => {
     setControlsVisible(true);
@@ -282,18 +360,37 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
         watchTogetherRef.current?.notifyLocalPlayback();
       };
       const action = tvActionFor(event);
-      if (action === 'back' || action === 'stop') { event.preventDefault(); void onClose(); return; }
-      if (action === 'play') { event.preventDefault(); void video?.play(); }
-      else if (action === 'pause') { event.preventDefault(); video?.pause(); }
-      else if (action === 'playPause' || action === 'enter' || event.key === ' ') {
+      if (action === 'back' || action === 'stop') {
         event.preventDefault();
-        if (video?.paused) void video.play(); else video?.pause();
+        void onClose();
+        return;
       }
-      else if (action === 'rewind') { event.preventDefault(); nudge(-30); }
-      else if (action === 'fastForward') { event.preventDefault(); nudge(30); }
-      else if (action === 'left') { event.preventDefault(); nudge(-10); }
-      else if (action === 'right') { event.preventDefault(); nudge(10); }
-      else if (action === 'blue') { event.preventDefault(); setSubtitleMenuOpen((value) => !value); }
+      if (action === 'play') {
+        event.preventDefault();
+        void video?.play();
+      } else if (action === 'pause') {
+        event.preventDefault();
+        video?.pause();
+      } else if (action === 'playPause' || action === 'enter' || event.key === ' ') {
+        event.preventDefault();
+        if (video?.paused) void video.play();
+        else video?.pause();
+      } else if (action === 'rewind') {
+        event.preventDefault();
+        nudge(-30);
+      } else if (action === 'fastForward') {
+        event.preventDefault();
+        nudge(30);
+      } else if (action === 'left') {
+        event.preventDefault();
+        nudge(-10);
+      } else if (action === 'right') {
+        event.preventDefault();
+        nudge(10);
+      } else if (action === 'blue') {
+        event.preventDefault();
+        setSubtitleMenuOpen((value) => !value);
+      }
       resetActivity();
     };
     window.addEventListener('keydown', onKeyDown);
@@ -303,7 +400,8 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
   const togglePause = () => {
     const video = videoRef.current;
     if (!video) return;
-    if (video.paused) void video.play(); else video.pause();
+    if (video.paused) void video.play();
+    else video.pause();
     resetActivity();
   };
 
@@ -332,8 +430,14 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
   };
 
   const handleSurfaceClick = (event: React.MouseEvent) => {
-    if (!isTouch) { resetActivity(); return; }
-    if ((event.target as HTMLElement).closest('button, input')) { resetActivity(); return; }
+    if (!isTouch) {
+      resetActivity();
+      return;
+    }
+    if ((event.target as HTMLElement).closest('button, input')) {
+      resetActivity();
+      return;
+    }
 
     const now = Date.now();
     const side = event.clientX < window.innerWidth / 2 ? 'left' : 'right';
@@ -373,7 +477,11 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
   };
 
   return (
-    <div onMouseMove={resetActivity} onClick={handleSurfaceClick} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: '#000', display: 'flex', flexDirection: 'column' }}>
+    <div
+      onMouseMove={resetActivity}
+      onClick={handleSurfaceClick}
+      style={{ position: 'fixed', inset: 0, zIndex: 9998, background: '#000', display: 'flex', flexDirection: 'column' }}
+    >
       <PlayerOverlayStyles />
       <video
         ref={videoRef}
@@ -392,10 +500,23 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
           setCurrentTime(event.currentTarget.currentTime);
           recordSnapshot(event.currentTarget);
         }}
-        onPlay={() => { setPaused(false); resetActivity(); watchTogetherRef.current?.notifyLocalPlayback(); onPlaybackEvent?.('start'); }}
-        onPause={() => { setPaused(true); setControlsVisible(true); watchTogetherRef.current?.notifyLocalPlayback(); onPlaybackEvent?.('pause'); }}
+        onPlay={() => {
+          setPaused(false);
+          resetActivity();
+          watchTogetherRef.current?.notifyLocalPlayback();
+          onPlaybackEvent?.('start');
+        }}
+        onPause={() => {
+          setPaused(true);
+          setControlsVisible(true);
+          watchTogetherRef.current?.notifyLocalPlayback();
+          onPlaybackEvent?.('pause');
+        }}
         onEnded={() => onPlaybackEvent?.('stop')}
-        onVolumeChange={(event) => { setMuted(event.currentTarget.muted); setVolume(event.currentTarget.volume); }}
+        onVolumeChange={(event) => {
+          setMuted(event.currentTarget.muted);
+          setVolume(event.currentTarget.volume);
+        }}
         onPlaying={onFirstFrame}
         onError={() => {
           const video = videoRef.current;
@@ -433,7 +554,18 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
         </div>
       )}
       {(activeSegment || (nextCountdown !== null && nextEpisode)) && (
-        <div style={{ position: 'absolute', right: '1.25rem', bottom: '5.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', zIndex: 2 }}>
+        <div
+          style={{
+            position: 'absolute',
+            right: '1.25rem',
+            bottom: '5.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '0.5rem',
+            zIndex: 2,
+          }}
+        >
           {activeSegment && (
             <button type="button" onClick={skipActiveSegment} style={S.skipButton}>
               {skipLabelForType(activeSegment.type)}
@@ -446,18 +578,81 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
           )}
         </div>
       )}
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none', opacity: controlsVisible ? 1 : 0, transition: 'opacity 0.25s ease' }}>
-        <div className="web-player-topbar" style={{ display: 'flex', alignItems: 'center', padding: '0.875rem 0.75rem', background: 'linear-gradient(rgba(0,0,0,0.7), transparent)', pointerEvents: 'auto' }}>
-          <button type="button" onClick={() => { void onClose(); }} style={{ ...iconButton, background: 'rgba(255,255,255,0.1)' }} title={t('player.back')}><ChevronLeft size={22} /></button>
-          <div style={{ color: '#fff', fontSize: '0.9375rem', fontWeight: 700, marginLeft: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title ?? ''}</div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          pointerEvents: 'none',
+          opacity: controlsVisible ? 1 : 0,
+          transition: 'opacity 0.25s ease',
+        }}
+      >
+        <div
+          className="web-player-topbar"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0.875rem 0.75rem',
+            background: 'linear-gradient(rgba(0,0,0,0.7), transparent)',
+            pointerEvents: 'auto',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              void onClose();
+            }}
+            style={{ ...iconButton, background: 'rgba(255,255,255,0.1)' }}
+            title={t('player.back')}
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <div
+            style={{
+              color: '#fff',
+              fontSize: '0.9375rem',
+              fontWeight: 700,
+              marginLeft: '0.75rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {title ?? ''}
+          </div>
           <div style={{ flex: 1 }} />
           {onHandoff && externalTargets.length > 0 && (
             <div style={{ position: 'relative' }}>
-              <button type="button" onClick={() => setHandoffOpen((value) => !value)} style={{ ...iconButton, width: 'auto', padding: '0 0.75rem', background: 'rgba(255,255,255,0.1)', fontSize: '0.75rem', fontWeight: 700 }} title={t('external.open_in_app')}>
+              <button
+                type="button"
+                onClick={() => setHandoffOpen((value) => !value)}
+                style={{
+                  ...iconButton,
+                  width: 'auto',
+                  padding: '0 0.75rem',
+                  background: 'rgba(255,255,255,0.1)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                }}
+                title={t('external.open_in_app')}
+              >
                 <ExternalLink size={16} />
               </button>
               {handoffOpen && (
-                <div style={{ position: 'absolute', right: 0, top: '3rem', minWidth: '10rem', padding: '0.35rem', borderRadius: '0.55rem', background: 'rgba(20,20,20,0.98)', boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.45)' }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '3rem',
+                    minWidth: '10rem',
+                    padding: '0.35rem',
+                    borderRadius: '0.55rem',
+                    background: 'rgba(20,20,20,0.98)',
+                    boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.45)',
+                  }}
+                >
                   {externalTargets.map((target) => (
                     <button
                       key={target.id}
@@ -468,7 +663,17 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
                         onHandoff(target.id, Math.floor(videoRef.current?.currentTime ?? 0));
                         window.location.href = target.href;
                       }}
-                      style={{ display: 'block', width: '100%', padding: '0.55rem 0.7rem', border: 0, borderRadius: '0.35rem', textAlign: 'left', color: '#fff', background: 'transparent', cursor: 'pointer' }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '0.55rem 0.7rem',
+                        border: 0,
+                        borderRadius: '0.35rem',
+                        textAlign: 'left',
+                        color: '#fff',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                      }}
                     >
                       {target.label}
                     </button>
@@ -477,43 +682,169 @@ export function WebPlayerOverlay({ url, mode, title, subtitles, onClose, onFirst
               )}
             </div>
           )}
-          {contentId && <button type="button" onClick={() => { void openWatchTogether(); }} style={{ ...iconButton, width: 'auto', padding: '0 0.75rem', background: watchTogetherState.roomCode ? 'var(--primary-accent-color)' : 'rgba(255,255,255,0.1)', fontSize: '0.75rem', fontWeight: 700 }} title={t('player.watch_party')}>
-            {watchTogetherState.roomCode ? `${t('player.watch_party_room')} ${watchTogetherState.roomCode}` : t('player.watch_party')}
-          </button>}
+          {contentId && (
+            <button
+              type="button"
+              onClick={() => {
+                void openWatchTogether();
+              }}
+              style={{
+                ...iconButton,
+                width: 'auto',
+                padding: '0 0.75rem',
+                background: watchTogetherState.roomCode ? 'var(--primary-accent-color)' : 'rgba(255,255,255,0.1)',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+              }}
+              title={t('player.watch_party')}
+            >
+              {watchTogetherState.roomCode ? `${t('player.watch_party_room')} ${watchTogetherState.roomCode}` : t('player.watch_party')}
+            </button>
+          )}
         </div>
         <div style={{ flex: 1 }} />
-        <div className="web-player-controls" style={{ pointerEvents: 'auto', padding: '0 0.75rem 0.875rem', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}>
-          <input className="web-player-seek" aria-label={t('player.seek')} type="range" min={0} max={duration || 0} step={0.1} value={Math.min(currentTime, duration || 0)} onChange={(event) => { if (videoRef.current) { videoRef.current.currentTime = Number(event.target.value); watchTogetherRef.current?.notifyLocalPlayback(); } }} style={{ width: '100%', accentColor: 'var(--primary-accent-color)' }} />
+        <div
+          className="web-player-controls"
+          style={{ pointerEvents: 'auto', padding: '0 0.75rem 0.875rem', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}
+        >
+          <input
+            className="web-player-seek"
+            aria-label={t('player.seek')}
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={Math.min(currentTime, duration || 0)}
+            onChange={(event) => {
+              if (videoRef.current) {
+                videoRef.current.currentTime = Number(event.target.value);
+                watchTogetherRef.current?.notifyLocalPlayback();
+              }
+            }}
+            style={{ width: '100%', accentColor: 'var(--primary-accent-color)' }}
+          />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
-            <button type="button" onClick={togglePause} style={iconButton} title={paused ? t('player.play') : t('player.pause')}>{paused ? <Play size={25} fill="currentColor" strokeWidth={0} /> : <Pause size={25} fill="currentColor" strokeWidth={0} />}</button>
-            <button type="button" onClick={() => seek(-10)} style={iconButton} title={t('player.seek_back')}><RotateCcw size={21} /></button>
-            <button type="button" onClick={() => seek(10)} style={iconButton} title={t('player.seek_forward')}><RotateCw size={21} /></button>
-            <button type="button" className="web-player-volume" onClick={toggleMute} style={iconButton} title={muted ? t('player.unmute') : t('player.mute')}>{muted ? <VolumeX size={21} /> : <Volume2 size={21} />}</button>
-            <input className="web-player-volume" aria-label={t('player.volume')} type="range" min={0} max={1} step={0.01} value={muted ? 0 : volume} onChange={(event) => setVideoVolume(Number(event.target.value))} style={{ width: '5rem', accentColor: 'var(--primary-accent-color)' }} />
-            <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', marginLeft: '0.4rem' }}>{formatTime(currentTime)} / {formatTime(duration)}</span>
+            <button type="button" onClick={togglePause} style={iconButton} title={paused ? t('player.play') : t('player.pause')}>
+              {paused ? <Play size={25} fill="currentColor" strokeWidth={0} /> : <Pause size={25} fill="currentColor" strokeWidth={0} />}
+            </button>
+            <button type="button" onClick={() => seek(-10)} style={iconButton} title={t('player.seek_back')}>
+              <RotateCcw size={21} />
+            </button>
+            <button type="button" onClick={() => seek(10)} style={iconButton} title={t('player.seek_forward')}>
+              <RotateCw size={21} />
+            </button>
+            <button
+              type="button"
+              className="web-player-volume"
+              onClick={toggleMute}
+              style={iconButton}
+              title={muted ? t('player.unmute') : t('player.mute')}
+            >
+              {muted ? <VolumeX size={21} /> : <Volume2 size={21} />}
+            </button>
+            <input
+              className="web-player-volume"
+              aria-label={t('player.volume')}
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={muted ? 0 : volume}
+              onChange={(event) => setVideoVolume(Number(event.target.value))}
+              style={{ width: '5rem', accentColor: 'var(--primary-accent-color)' }}
+            />
+            <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', marginLeft: '0.4rem' }}>
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
             <div style={{ flex: 1 }} />
             {subtitles.length > 0 && (
               <div style={{ position: 'relative' }}>
-                <button type="button" onClick={() => setSubtitleMenuOpen((value) => !value)} style={{ ...iconButton, color: selectedSubtitle >= 0 ? 'var(--primary-accent-color)' : '#fff' }} title={t('player.subtitles')}><Captions size={21} /></button>
+                <button
+                  type="button"
+                  onClick={() => setSubtitleMenuOpen((value) => !value)}
+                  style={{ ...iconButton, color: selectedSubtitle >= 0 ? 'var(--primary-accent-color)' : '#fff' }}
+                  title={t('player.subtitles')}
+                >
+                  <Captions size={21} />
+                </button>
                 {subtitleMenuOpen && (
-                  <div style={{ position: 'absolute', right: 0, bottom: '3rem', minWidth: '11rem', padding: '0.35rem', borderRadius: '0.55rem', background: 'rgba(20,20,20,0.98)', boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.45)' }}>
-                    <button type="button" onClick={() => { setSelectedSubtitle(-1); setSubtitleMenuOpen(false); }} style={{ display: 'block', width: '100%', padding: '0.55rem 0.7rem', border: 0, borderRadius: '0.35rem', textAlign: 'left', color: '#fff', background: selectedSubtitle < 0 ? 'rgba(255,255,255,0.14)' : 'transparent', cursor: 'pointer' }}>{t('player.subtitles_off')}</button>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      bottom: '3rem',
+                      minWidth: '11rem',
+                      padding: '0.35rem',
+                      borderRadius: '0.55rem',
+                      background: 'rgba(20,20,20,0.98)',
+                      boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.45)',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSubtitle(-1);
+                        setSubtitleMenuOpen(false);
+                      }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '0.55rem 0.7rem',
+                        border: 0,
+                        borderRadius: '0.35rem',
+                        textAlign: 'left',
+                        color: '#fff',
+                        background: selectedSubtitle < 0 ? 'rgba(255,255,255,0.14)' : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {t('player.subtitles_off')}
+                    </button>
                     {subtitles.map((subtitle, index) => (
-                      <button key={`${subtitle.url}-menu-${index}`} type="button" onClick={() => { setSelectedSubtitle(index); setSubtitleMenuOpen(false); }} style={{ display: 'block', width: '100%', padding: '0.55rem 0.7rem', border: 0, borderRadius: '0.35rem', textAlign: 'left', color: '#fff', background: selectedSubtitle === index ? 'rgba(255,255,255,0.14)' : 'transparent', cursor: 'pointer' }}>{subtitle.label ?? subtitle.lang ?? t('player.subtitles')}</button>
+                      <button
+                        key={`${subtitle.url}-menu-${index}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSubtitle(index);
+                          setSubtitleMenuOpen(false);
+                        }}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          padding: '0.55rem 0.7rem',
+                          border: 0,
+                          borderRadius: '0.35rem',
+                          textAlign: 'left',
+                          color: '#fff',
+                          background: selectedSubtitle === index ? 'rgba(255,255,255,0.14)' : 'transparent',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {subtitle.label ?? subtitle.lang ?? t('player.subtitles')}
+                      </button>
                     ))}
                   </div>
                 )}
               </div>
             )}
             {nextEpisode && onPlayNextEpisode && (
-              <button type="button" onClick={onPlayNextEpisode} style={{ ...iconButton, width: 'auto', padding: '0 0.7rem', fontSize: '0.75rem', fontWeight: 700 }} title={t('auto.next_episode')}>
+              <button
+                type="button"
+                onClick={onPlayNextEpisode}
+                style={{ ...iconButton, width: 'auto', padding: '0 0.7rem', fontSize: '0.75rem', fontWeight: 700 }}
+                title={t('auto.next_episode')}
+              >
                 {t('auto.next_episode')}
               </button>
             )}
             {pipSupported && (
-              <button type="button" onClick={togglePictureInPicture} style={iconButton} title={t('player.picture_in_picture')}><PictureInPicture2 size={21} /></button>
+              <button type="button" onClick={togglePictureInPicture} style={iconButton} title={t('player.picture_in_picture')}>
+                <PictureInPicture2 size={21} />
+              </button>
             )}
-            <button type="button" onClick={toggleFullscreen} style={iconButton} title={t('player.fullscreen')}><Maximize size={21} /></button>
+            <button type="button" onClick={toggleFullscreen} style={iconButton} title={t('player.fullscreen')}>
+              <Maximize size={21} />
+            </button>
           </div>
         </div>
       </div>

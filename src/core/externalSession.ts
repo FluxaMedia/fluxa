@@ -14,10 +14,7 @@ export type ExternalSession = {
 };
 
 export function runtimeSeconds(meta: Meta | null, episode: Video | null): number {
-  const candidates = [
-    (episode as unknown as { runtime?: unknown })?.runtime,
-    (meta as unknown as { runtime?: unknown })?.runtime,
-  ];
+  const candidates = [(episode as unknown as { runtime?: unknown })?.runtime, (meta as unknown as { runtime?: unknown })?.runtime];
   for (const candidate of candidates) {
     if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) {
       return candidate > 600 ? candidate : candidate * 60;

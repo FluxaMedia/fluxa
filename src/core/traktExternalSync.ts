@@ -108,15 +108,18 @@ async function fetchAllPages(url: string, headers: HeadersInit, limit: number): 
     const data = res.ok ? await res.json().catch(() => []) : [];
     const pageItems = Array.isArray(data) ? data : [];
     const pageCount = Number(res.headers.get('x-pagination-page-count'));
-    plan = await coreInvoke<PaginationPlan>('providerPaginationPlan', JSON.stringify({
-      baseUrl: url,
-      limit,
-      page: plan.page,
-      items: plan.items,
-      pageItems,
-      pageCount: Number.isFinite(pageCount) ? pageCount : null,
-      responseOk: res.ok,
-    }));
+    plan = await coreInvoke<PaginationPlan>(
+      'providerPaginationPlan',
+      JSON.stringify({
+        baseUrl: url,
+        limit,
+        page: plan.page,
+        items: plan.items,
+        pageItems,
+        pageCount: Number.isFinite(pageCount) ? pageCount : null,
+        responseOk: res.ok,
+      }),
+    );
   }
   return plan?.items ?? [];
 }
@@ -159,21 +162,16 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
     if (response.ok) activities = (await response.json().catch(() => undefined)) as Record<string, unknown> | undefined;
   } catch {}
 
-  const {
-    playbackChanged,
-    watchlistMoviesChanged,
-    watchlistShowsChanged,
-    watchedMoviesChanged,
-    watchedShowsChanged,
-  } = await coreTraktActivityDiff({
-    previous: cache.activities ?? null,
-    current: activities ?? null,
-    hasPlayback: !force && Boolean(cache.playbackItems),
-    hasWatchlistMovies: !force && Boolean(cache.watchlistMovies),
-    hasWatchlistShows: !force && Boolean(cache.watchlistShows),
-    hasWatchedMovies: !force && Boolean(cache.watchedMovies),
-    hasWatchedShows: !force && Boolean(cache.watchedShows),
-  });
+  const { playbackChanged, watchlistMoviesChanged, watchlistShowsChanged, watchedMoviesChanged, watchedShowsChanged } =
+    await coreTraktActivityDiff({
+      previous: cache.activities ?? null,
+      current: activities ?? null,
+      hasPlayback: !force && Boolean(cache.playbackItems),
+      hasWatchlistMovies: !force && Boolean(cache.watchlistMovies),
+      hasWatchlistShows: !force && Boolean(cache.watchlistShows),
+      hasWatchedMovies: !force && Boolean(cache.watchedMovies),
+      hasWatchedShows: !force && Boolean(cache.watchedShows),
+    });
 
   let playbackItems: Record<string, unknown>[];
   if (playbackChanged) {
@@ -186,7 +184,7 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
       return { synced: false, error: `Trakt sync failed: HTTP ${failedResponse.status}` };
     }
     const playbackPages = await Promise.all(responses.map((response) => response.json().catch(() => [])));
-    playbackItems = playbackPages.flatMap((page) => Array.isArray(page) ? page : []);
+    playbackItems = playbackPages.flatMap((page) => (Array.isArray(page) ? page : []));
   } else {
     playbackItems = cache.playbackItems ?? [];
   }
@@ -199,23 +197,45 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
 
   let watchlistCount = 0;
   let watchedCount = 0;
-  let providerSnapshot = { watchlist: [] as Record<string, unknown>[], watching: items, completed: [] as Record<string, unknown>[], dropped: [] as Record<string, unknown>[], favorites: [] as Record<string, unknown>[] };
+  let providerSnapshot = {
+    watchlist: [] as Record<string, unknown>[],
+    watching: items,
+    completed: [] as Record<string, unknown>[],
+    dropped: [] as Record<string, unknown>[],
+    favorites: [] as Record<string, unknown>[],
+  };
   try {
     const [watchlistMovies, watchlistShows, watchedMovies, watchedShows] = await Promise.all([
-      watchlistMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies/rank?extended=full,images', headers, 250) : Promise.resolve(cache.watchlistMovies ?? []),
-      watchlistShowsChanged ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/shows/rank?extended=full,images', headers, 250) : Promise.resolve(cache.watchlistShows ?? []),
-      watchedMoviesChanged ? fetchAllPages('https://api.trakt.tv/users/me/watched/movies?extended=full,images', headers, 250) : Promise.resolve(cache.watchedMovies ?? []),
-      watchedShowsChanged ? fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=full,images', headers, 100) : Promise.resolve(cache.watchedShows ?? []),
+      watchlistMoviesChanged
+        ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/movies/rank?extended=full,images', headers, 250)
+        : Promise.resolve(cache.watchlistMovies ?? []),
+      watchlistShowsChanged
+        ? fetchAllPages('https://api.trakt.tv/users/me/watchlist/shows/rank?extended=full,images', headers, 250)
+        : Promise.resolve(cache.watchlistShows ?? []),
+      watchedMoviesChanged
+        ? fetchAllPages('https://api.trakt.tv/users/me/watched/movies?extended=full,images', headers, 250)
+        : Promise.resolve(cache.watchedMovies ?? []),
+      watchedShowsChanged
+        ? fetchAllPages('https://api.trakt.tv/users/me/watched/shows?extended=full,images', headers, 100)
+        : Promise.resolve(cache.watchedShows ?? []),
     ]);
 
     const upNext = await fetchAllPages('https://api.trakt.tv/sync/progress/up_next?extended=full,images', headers, 100);
     const upNextItems = ((await coreTraktUpNextToItems(JSON.stringify(upNext))) ?? []) as Record<string, unknown>[];
-    const rawItems = ((await coreTraktPlaybackItemsDedup(JSON.stringify([...allItems, ...upNextItems]))) ?? []) as Record<string, unknown>[];
+    const rawItems = ((await coreTraktPlaybackItemsDedup(JSON.stringify([...allItems, ...upNextItems]))) ?? []) as Record<
+      string,
+      unknown
+    >[];
     items = await resolveTraktShowArtwork(rawItems, headers);
 
-    const watchlistItemsRaw = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ?? []) as Record<string, unknown>[];
-    const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<string, boolean>;
-    const completedItemsRaw = ((await coreTraktWatchlistToItems(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? []) as Record<string, unknown>[];
+    const watchlistItemsRaw = ((await coreTraktWatchlistToItems(JSON.stringify(watchlistMovies), JSON.stringify(watchlistShows))) ??
+      []) as Record<string, unknown>[];
+    const watchedIds = ((await coreTraktWatchedToIds(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ?? {}) as Record<
+      string,
+      boolean
+    >;
+    const completedItemsRaw = ((await coreTraktWatchlistToItems(JSON.stringify(watchedMovies), JSON.stringify(watchedShows))) ??
+      []) as Record<string, unknown>[];
     const favoriteItemsRaw = isSelectedLibrarySource ? await fetchTraktFavorites(token, clientId).catch(() => []) : [];
     const [watchlistItems, completedItems, favoriteItems] = await Promise.all([
       resolveTraktShowArtwork(watchlistItemsRaw, headers),
@@ -223,19 +243,35 @@ export async function syncTraktNow(payload: Record<string, unknown>): Promise<un
       resolveTraktShowArtwork(favoriteItemsRaw, headers),
     ]);
     providerSnapshot = { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: favoriteItems };
-    debugLog(`syncTraktNow: completedItems=${JSON.stringify(completedItems.map((item) => ({ id: item.id, name: item.name, poster: item.poster, background: item.background })))}`);
+    debugLog(
+      `syncTraktNow: completedItems=${JSON.stringify(completedItems.map((item) => ({ id: item.id, name: item.name, poster: item.poster, background: item.background })))}`,
+    );
     watchlistCount = watchlistItems.length;
     watchedCount = Object.values(watchedIds).filter(Boolean).length;
 
     if (!dryRun && !readOnly) {
-      await saveProviderLibrary('trakt', { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: favoriteItems }, profileKey);
+      await saveProviderLibrary(
+        'trakt',
+        { watchlist: watchlistItems, watching: items, completed: completedItems, dropped: [], favorites: favoriteItems },
+        profileKey,
+      );
     }
 
     if (activities) {
-      await storageWrite(cacheKey, { version: TRAKT_CACHE_VERSION, activities, playbackItems, watchlistMovies, watchlistShows, watchedMovies, watchedShows } satisfies TraktDeltaCache);
+      await storageWrite(cacheKey, {
+        version: TRAKT_CACHE_VERSION,
+        activities,
+        playbackItems,
+        watchlistMovies,
+        watchlistShows,
+        watchedMovies,
+        watchedShows,
+      } satisfies TraktDeltaCache);
     }
   } catch (error) {
-    debugLog(`syncTraktNow: watchlist/completed block threw ${error instanceof Error ? `${error.message}\n${error.stack}` : String(error)}`);
+    debugLog(
+      `syncTraktNow: watchlist/completed block threw ${error instanceof Error ? `${error.message}\n${error.stack}` : String(error)}`,
+    );
   }
 
   if (wants('continueWatching') && !dryRun && !readOnly) {
@@ -260,21 +296,13 @@ export async function fetchTraktCalendarItems(
   calendarMonth?: { year: number; month: number },
 ): Promise<Record<string, unknown>[]> {
   const headers = traktHeaders(token, clientId) as Record<string, string>;
-  const start = calendarMonth
-    ? new Date(calendarMonth.year, calendarMonth.month - 1, 1)
-    : new Date();
+  const start = calendarMonth ? new Date(calendarMonth.year, calendarMonth.month - 1, 1) : new Date();
   if (!calendarMonth) start.setDate(start.getDate() - 14);
   const startIso = start.toISOString().slice(0, 10);
-  const days = calendarMonth
-    ? new Date(calendarMonth.year, calendarMonth.month, 0).getDate()
-    : 90;
+  const days = calendarMonth ? new Date(calendarMonth.year, calendarMonth.month, 0).getDate() : 90;
 
   const readCalendar = async (kind: 'shows' | 'movies'): Promise<unknown[]> => {
-    const response = await httpExecuteText(
-      `https://api.trakt.tv/calendars/my/${kind}/${startIso}/${days}?extended=full`,
-      'GET',
-      headers,
-    );
+    const response = await httpExecuteText(`https://api.trakt.tv/calendars/my/${kind}/${startIso}/${days}?extended=full`, 'GET', headers);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw new Error(`Trakt calendar ${kind}: HTTP ${response.statusCode}`);
     }

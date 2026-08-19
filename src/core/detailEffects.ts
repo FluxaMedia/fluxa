@@ -83,10 +83,7 @@ async function fetchTmdbSimilarItems({
   similarEnabled,
 }: TmdbRequest & { recommendationsEnabled: boolean; similarEnabled: boolean }): Promise<unknown[]> {
   if (!apiKey || (!recommendationsEnabled && !similarEnabled)) return [];
-  const calls = [
-    recommendationsEnabled ? `recommendations` : null,
-    similarEnabled ? `similar` : null,
-  ].filter(Boolean) as string[];
+  const calls = [recommendationsEnabled ? `recommendations` : null, similarEnabled ? `similar` : null].filter(Boolean) as string[];
   const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, calls);
   if (!plan) return [];
 
@@ -119,7 +116,7 @@ export async function fetchTmdbPosterFallback({
   if (!apiKey) return null;
   const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, ['details']);
   if (!plan) return null;
-  const response = await tryFetchJson(plan.urls.details) as TmdbMetaResult | null;
+  const response = (await tryFetchJson(plan.urls.details)) as TmdbMetaResult | null;
   if (!response) return null;
   const poster = await coreTmdbImageUrl(response.poster_path ?? null, 'w500');
   const background = await coreTmdbImageUrl(response.backdrop_path ?? null, 'w1280');
@@ -133,7 +130,7 @@ async function resolveImdbId({ contentType, id, language, apiKey }: TmdbRequest)
   if (!apiKey) return undefined;
   const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, ['external_ids']);
   if (!plan) return undefined;
-  const response = await tryFetchJson(plan.urls.external_ids) as { imdb_id?: string | null } | null;
+  const response = (await tryFetchJson(plan.urls.external_ids)) as { imdb_id?: string | null } | null;
   return response?.imdb_id ?? undefined;
 }
 
@@ -165,11 +162,7 @@ async function enrichMetaWithTmdb(meta: unknown, contentType: string, id: string
   const tmdbResult = await fetchBuiltinMeta(contentType, id, apiKey, language);
   if (!tmdbResult?.meta) return meta;
 
-  const merged = await coreTmdbMergeEnrichment(
-    JSON.stringify(meta),
-    JSON.stringify(tmdbResult.meta),
-    JSON.stringify(flags),
-  );
+  const merged = await coreTmdbMergeEnrichment(JSON.stringify(meta), JSON.stringify(tmdbResult.meta), JSON.stringify(flags));
   return merged ?? meta;
 }
 
@@ -179,9 +172,7 @@ export async function fetchMetaDetail(payload: Record<string, unknown>): Promise
   const transportUrl = typeof payload.sourceAddonTransportUrl === 'string' ? payload.sourceAddonTransportUrl : undefined;
   const addons = await loadEnabledAddons();
   const values = await fetchPlannedResources({ kind: 'metaDetail', addons, contentType, id, transportUrl });
-  const winner = values.find((value) => (value as { meta?: unknown }).meta) as
-    | { meta?: unknown; __tmdbSourced?: boolean }
-    | undefined;
+  const winner = values.find((value) => (value as { meta?: unknown }).meta) as { meta?: unknown; __tmdbSourced?: boolean } | undefined;
   if (!winner?.meta) return null;
   if (winner.__tmdbSourced) return winner.meta;
   return enrichMetaWithTmdb(winner.meta, contentType, id);
@@ -189,7 +180,7 @@ export async function fetchMetaDetail(payload: Record<string, unknown>): Promise
 
 export async function fetchMetaVideos(id: string, contentType: string): Promise<Video[]> {
   try {
-    const meta = await fetchMetaDetail({ id, contentType }) as { videos?: Video[] } | null;
+    const meta = (await fetchMetaDetail({ id, contentType })) as { videos?: Video[] } | null;
     return meta?.videos ?? [];
   } catch {
     return [];
@@ -207,14 +198,10 @@ async function fetchPluginStreamsForDetail(
     const prefs = { ...DEFAULT_APP_PREFS, ...(await loadPrefs()) };
     const apiKey = prefString(prefs, 'tmdbApiKey');
     const language = prefString(prefs, 'language', 'en');
-    const detailRecord = detail && typeof detail === 'object' && !Array.isArray(detail)
-      ? detail as Record<string, unknown>
-      : {};
-    const detailIds = detailRecord.ids && typeof detailRecord.ids === 'object'
-      ? detailRecord.ids as Record<string, unknown>
-      : {};
+    const detailRecord = detail && typeof detail === 'object' && !Array.isArray(detail) ? (detail as Record<string, unknown>) : {};
+    const detailIds = detailRecord.ids && typeof detailRecord.ids === 'object' ? (detailRecord.ids as Record<string, unknown>) : {};
     const embeddedTmdbId = [detailRecord.tmdbId, detailRecord.tmdb_id, detailIds.tmdb]
-      .map((value) => typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '')
+      .map((value) => (typeof value === 'number' || typeof value === 'string' ? String(value).trim() : ''))
       .find((value) => /^\d+$/.test(value));
     const [parsed, tmdbPlan] = await Promise.all([
       coreParseVideoId(id),
@@ -247,22 +234,24 @@ export async function fetchDetailStreams(
     { kind: 'streams', addons, contentType, requestIds },
     onStateUpdate
       ? (partialValue) => {
-          const partialStreams = ((partialValue as { streams?: unknown[] })?.streams ?? []);
+          const partialStreams = (partialValue as { streams?: unknown[] })?.streams ?? [];
           if (partialStreams.length === 0) return;
-          const partialAddons = [...new Set(
-            (partialStreams as Array<{ addonName?: string }>)
-              .map((s) => s.addonName)
-              .filter(Boolean),
-          )] as string[];
+          const partialAddons = [
+            ...new Set((partialStreams as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean)),
+          ] as string[];
           partialDispatches.push(
-            dispatchAction(JSON.stringify({
-              type: 'detailStreamsAppended',
-              streams: partialStreams,
-              availableAddons: partialAddons,
-              generation,
-            })).then((result) => {
-              if (result?.state) onStateUpdate(result.state);
-            }).catch(() => {}),
+            dispatchAction(
+              JSON.stringify({
+                type: 'detailStreamsAppended',
+                streams: partialStreams,
+                availableAddons: partialAddons,
+                generation,
+              }),
+            )
+              .then((result) => {
+                if (result?.state) onStateUpdate(result.state);
+              })
+              .catch(() => {}),
           );
         }
       : undefined,
@@ -273,14 +262,12 @@ export async function fetchDetailStreams(
   // Ensure all partial dispatches complete before completeEffect runs
   await Promise.allSettled(partialDispatches);
 
-  const streams = values.flatMap((value) => ((value as { streams?: unknown[] })?.streams ?? []));
+  const streams = values.flatMap((value) => (value as { streams?: unknown[] })?.streams ?? []);
 
   const pluginStreams = await pluginStreamsPromise;
   if (pluginStreams.length > 0) streams.push(...pluginStreams);
 
-  const availableAddons = [...new Set(
-    (streams as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean),
-  )] as string[];
+  const availableAddons = [...new Set((streams as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean))] as string[];
 
   for (const addonName of availableAddons) failedAddonNames.delete(addonName);
 
@@ -309,7 +296,7 @@ async function fetchOmdbRatings(id: string, apiKey: string): Promise<OmdbRatings
   if (!apiKey) return null;
   const imdbId = id.split(':')[0];
   if (!/^tt\d+$/i.test(imdbId)) return null;
-  const response = await tryFetchJson(`https://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&apikey=${apiKey}`) as {
+  const response = (await tryFetchJson(`https://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&apikey=${apiKey}`)) as {
     Ratings?: { Source?: string; Value?: string }[];
     Metascore?: string;
   } | null;
@@ -320,11 +307,7 @@ async function fetchOmdbRatings(id: string, apiKey: string): Promise<OmdbRatings
   return { rottenTomatoes, metascore };
 }
 
-async function fetchMdblistRatings(
-  contentType: string,
-  id: string,
-  apiKey: string,
-): Promise<Record<string, number> | null> {
+async function fetchMdblistRatings(contentType: string, id: string, apiKey: string): Promise<Record<string, number> | null> {
   if (!apiKey) return null;
   try {
     const tmdbBaseId = id.replace(/^tmdb:/i, '').split(':')[0] ?? '';
@@ -360,18 +343,21 @@ interface FanartArtwork {
 }
 
 async function resolveTvdbId(tmdbId: string, apiKey: string, language: string): Promise<string | null> {
-  const plan = await tmdbDetailRequests({
-    contentType: 'series', id: `tmdb:${tmdbId}`, apiKey, language,
-  }, ['external_ids']);
+  const plan = await tmdbDetailRequests(
+    {
+      contentType: 'series',
+      id: `tmdb:${tmdbId}`,
+      apiKey,
+      language,
+    },
+    ['external_ids'],
+  );
   if (!plan) return null;
-  const response = await tryFetchJson(plan.urls.external_ids) as { tvdb_id?: number | null } | null;
+  const response = (await tryFetchJson(plan.urls.external_ids)) as { tvdb_id?: number | null } | null;
   return response?.tvdb_id != null ? String(response.tvdb_id) : null;
 }
 
-async function fetchFanartArtwork(
-  { contentType, id, language, apiKey }: TmdbRequest,
-  fanartApiKey: string,
-): Promise<FanartArtwork | null> {
+async function fetchFanartArtwork({ contentType, id, language, apiKey }: TmdbRequest, fanartApiKey: string): Promise<FanartArtwork | null> {
   if (!fanartApiKey || !apiKey) return null;
   const plan = await tmdbDetailRequests({ contentType, id, language, apiKey }, []);
   if (!plan) return null;
@@ -380,7 +366,7 @@ async function fetchFanartArtwork(
   if (contentType === 'series') {
     const tvdbId = await resolveTvdbId(tmdbId, apiKey, language);
     if (!tvdbId) return null;
-    const response = await tryFetchJson(`https://webservice.fanart.tv/v3/tv/${tvdbId}?api_key=${fanartApiKey}`) as {
+    const response = (await tryFetchJson(`https://webservice.fanart.tv/v3/tv/${tvdbId}?api_key=${fanartApiKey}`)) as {
       hdtvlogo?: { url?: string }[];
       showbackground?: { url?: string }[];
     } | null;
@@ -391,7 +377,7 @@ async function fetchFanartArtwork(
     return { hdLogo, hdBackdrop };
   }
 
-  const response = await tryFetchJson(`https://webservice.fanart.tv/v3/movies/${tmdbId}?api_key=${fanartApiKey}`) as {
+  const response = (await tryFetchJson(`https://webservice.fanart.tv/v3/movies/${tmdbId}?api_key=${fanartApiKey}`)) as {
     hdmovielogo?: { url?: string }[];
     moviebackground?: { url?: string }[];
   } | null;
@@ -431,8 +417,9 @@ export function fetchContentLogo(
   const inFlight = contentLogoInFlight.get(cacheKey);
   if (inFlight) return inFlight;
 
-  const promise = fetchContentLogoUncached(cacheKey, id, contentType, language, apiKey, fanartApiKey)
-    .finally(() => contentLogoInFlight.delete(cacheKey));
+  const promise = fetchContentLogoUncached(cacheKey, id, contentType, language, apiKey, fanartApiKey).finally(() =>
+    contentLogoInFlight.delete(cacheKey),
+  );
   contentLogoInFlight.set(cacheKey, promise);
   return promise;
 }
@@ -455,9 +442,9 @@ async function fetchContentLogoUncached(
 
   let logo: string | undefined;
   try {
-    const meta = await fetchMetaDetail({ id, contentType }) as Record<string, unknown> | null;
+    const meta = (await fetchMetaDetail({ id, contentType })) as Record<string, unknown> | null;
     const addonLogo = meta
-      ? stringValue(meta.logo) ?? stringValue(meta.logoUrl) ?? stringValue(meta.titleLogo) ?? stringValue(meta.titleLogoUrl)
+      ? (stringValue(meta.logo) ?? stringValue(meta.logoUrl) ?? stringValue(meta.titleLogo) ?? stringValue(meta.titleLogoUrl))
       : undefined;
     if (addonLogo) logo = addonLogo;
   } catch {}
@@ -489,14 +476,15 @@ async function fetchSimilarItems({
   recommendationsEnabled,
   similarEnabled,
 }: TmdbRequest & { source: string; recommendationsEnabled: boolean; similarEnabled: boolean }): Promise<unknown[]> {
-  const tmdbFallback = () => fetchTmdbSimilarItems({
-    contentType,
-    id,
-    language,
-    apiKey,
-    recommendationsEnabled,
-    similarEnabled,
-  });
+  const tmdbFallback = () =>
+    fetchTmdbSimilarItems({
+      contentType,
+      id,
+      language,
+      apiKey,
+      recommendationsEnabled,
+      similarEnabled,
+    });
 
   if (source === 'tmdb') return tmdbFallback();
 
@@ -550,9 +538,7 @@ export async function fetchDetailSecondary(payload: Record<string, unknown>): Pr
           similarEnabled,
         })
       : Promise.resolve([]),
-    prefBool(prefs, 'tmdbTrailersEnabled', true)
-      ? fetchTmdbTrailers({ contentType, id, language, apiKey })
-      : Promise.resolve([]),
+    prefBool(prefs, 'tmdbTrailersEnabled', true) ? fetchTmdbTrailers({ contentType, id, language, apiKey }) : Promise.resolve([]),
     fetchOmdbRatings(id, omdbApiKey),
     fetchFanartArtwork({ contentType, id, language, apiKey }, fanartApiKey),
   ]);

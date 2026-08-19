@@ -22,26 +22,8 @@ export {
   isFeedEnabled,
 } from './settingsOptions';
 
-export {
-  SidebarItem,
-  SettingsDetailHeader,
-  SidebarDivider,
-  SettingsSection,
-  SettingsPanel,
-  VersionFooter,
-} from './SettingsLayout';
+export { SidebarItem, SettingsDetailHeader, SidebarDivider, SettingsSection, SettingsPanel, VersionFooter } from './SettingsLayout';
 
-export {
-  SliderTile,
-  ToggleTile,
-  ChoiceTile,
-  Dropdown,
-  InputTile,
-} from './SettingsControls';
+export { SliderTile, ToggleTile, ChoiceTile, Dropdown, InputTile } from './SettingsControls';
 
-export {
-  ActionTile,
-  InfoTile,
-  SyncServiceRow,
-  SyncServicePopover,
-} from './SettingsRows';
+export { ActionTile, InfoTile, SyncServiceRow, SyncServicePopover } from './SettingsRows';

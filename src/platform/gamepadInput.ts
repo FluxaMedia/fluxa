@@ -61,7 +61,10 @@ function poll(now: number) {
     }
   }
   for (const action of Array.from(heldSince.keys())) {
-    if (!active.has(action)) { heldSince.delete(action); lastFired.delete(action); }
+    if (!active.has(action)) {
+      heldSince.delete(action);
+      lastFired.delete(action);
+    }
   }
 
   rafId = requestAnimationFrame(poll);

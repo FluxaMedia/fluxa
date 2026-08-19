@@ -26,13 +26,9 @@ vi.mock('../core/engine', () => ({
   },
 }));
 
-const MOVIE_CATALOGS: DiscoverCatalog[] = [
-  { key: 'cinemeta-movie-top', label: 'Cinemeta: Popular', type: 'movie', extras: [] },
-];
+const MOVIE_CATALOGS: DiscoverCatalog[] = [{ key: 'cinemeta-movie-top', label: 'Cinemeta: Popular', type: 'movie', extras: [] }];
 
-const SERIES_CATALOGS: DiscoverCatalog[] = [
-  { key: 'cinemeta-series-top', label: 'Cinemeta: Popular', type: 'series', extras: [] },
-];
+const SERIES_CATALOGS: DiscoverCatalog[] = [{ key: 'cinemeta-series-top', label: 'Cinemeta: Popular', type: 'series', extras: [] }];
 
 function baseState(): AppState {
   return {
@@ -44,9 +40,11 @@ function baseState(): AppState {
     library: {} as AppState['library'],
     discover: { catalogs: MOVIE_CATALOGS, results: [], isLoading: false, catalogsLoading: false },
     addons: {
-      installed: [{
-        manifest: { catalogs: [{ type: 'movie' }, { type: 'series' }] },
-      }] as unknown as AppState['addons']['installed'],
+      installed: [
+        {
+          manifest: { catalogs: [{ type: 'movie' }, { type: 'series' }] },
+        },
+      ] as unknown as AppState['addons']['installed'],
     },
     settings: {},
   } as unknown as AppState;
@@ -71,14 +69,7 @@ function Harness({ catalogFetchDelayMs }: { catalogFetchDelayMs: number }) {
     }
   };
 
-  return (
-    <DiscoverScreen
-      state={state}
-      onDispatch={onDispatch}
-      onNavigateDetail={() => {}}
-      onBack={() => {}}
-    />
-  );
+  return <DiscoverScreen state={state} onDispatch={onDispatch} onNavigateDetail={() => {}} onBack={() => {}} />;
 }
 
 function openPopoverMenu() {

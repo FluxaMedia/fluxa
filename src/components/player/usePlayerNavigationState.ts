@@ -31,7 +31,20 @@ type Action =
   | { type: 'auto-skip'; value: SetStateAction<boolean> }
   | { type: 'show-next-card'; value: SetStateAction<boolean> };
 
-const initialState: State = { chapters: [], skipSegments: [], nextEpSubtitle: '', nextEpThreshold: 85, autoPlayNextEpisode: false, autoPlayCountdownSecs: 7, countdown: null, nextEpDismissed: false, episodes: [], activeSkip: null, autoSkipSegments: false, showNextEpCard: false };
+const initialState: State = {
+  chapters: [],
+  skipSegments: [],
+  nextEpSubtitle: '',
+  nextEpThreshold: 85,
+  autoPlayNextEpisode: false,
+  autoPlayCountdownSecs: 7,
+  countdown: null,
+  nextEpDismissed: false,
+  episodes: [],
+  activeSkip: null,
+  autoSkipSegments: false,
+  showNextEpCard: false,
+};
 
 function resolve<T>(value: SetStateAction<T>, current: T) {
   return typeof value === 'function' ? (value as (previous: T) => T)(current) : value;
@@ -39,18 +52,30 @@ function resolve<T>(value: SetStateAction<T>, current: T) {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'chapters': return { ...state, chapters: resolve(action.value, state.chapters) };
-    case 'skip-segments': return { ...state, skipSegments: resolve(action.value, state.skipSegments) };
-    case 'next-subtitle': return { ...state, nextEpSubtitle: resolve(action.value, state.nextEpSubtitle) };
-    case 'next-threshold': return { ...state, nextEpThreshold: resolve(action.value, state.nextEpThreshold) };
-    case 'autoplay': return { ...state, autoPlayNextEpisode: resolve(action.value, state.autoPlayNextEpisode) };
-    case 'autoplay-countdown': return { ...state, autoPlayCountdownSecs: resolve(action.value, state.autoPlayCountdownSecs) };
-    case 'countdown': return { ...state, countdown: resolve(action.value, state.countdown) };
-    case 'next-dismissed': return { ...state, nextEpDismissed: resolve(action.value, state.nextEpDismissed) };
-    case 'episodes': return { ...state, episodes: resolve(action.value, state.episodes) };
-    case 'active-skip': return { ...state, activeSkip: resolve(action.value, state.activeSkip) };
-    case 'auto-skip': return { ...state, autoSkipSegments: resolve(action.value, state.autoSkipSegments) };
-    case 'show-next-card': return { ...state, showNextEpCard: resolve(action.value, state.showNextEpCard) };
+    case 'chapters':
+      return { ...state, chapters: resolve(action.value, state.chapters) };
+    case 'skip-segments':
+      return { ...state, skipSegments: resolve(action.value, state.skipSegments) };
+    case 'next-subtitle':
+      return { ...state, nextEpSubtitle: resolve(action.value, state.nextEpSubtitle) };
+    case 'next-threshold':
+      return { ...state, nextEpThreshold: resolve(action.value, state.nextEpThreshold) };
+    case 'autoplay':
+      return { ...state, autoPlayNextEpisode: resolve(action.value, state.autoPlayNextEpisode) };
+    case 'autoplay-countdown':
+      return { ...state, autoPlayCountdownSecs: resolve(action.value, state.autoPlayCountdownSecs) };
+    case 'countdown':
+      return { ...state, countdown: resolve(action.value, state.countdown) };
+    case 'next-dismissed':
+      return { ...state, nextEpDismissed: resolve(action.value, state.nextEpDismissed) };
+    case 'episodes':
+      return { ...state, episodes: resolve(action.value, state.episodes) };
+    case 'active-skip':
+      return { ...state, activeSkip: resolve(action.value, state.activeSkip) };
+    case 'auto-skip':
+      return { ...state, autoSkipSegments: resolve(action.value, state.autoSkipSegments) };
+    case 'show-next-card':
+      return { ...state, showNextEpCard: resolve(action.value, state.showNextEpCard) };
   }
 }
 

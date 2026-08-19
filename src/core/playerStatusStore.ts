@@ -43,11 +43,15 @@ function ensureListening(): void {
       positionStatus = event.payload;
       publish();
     }),
-  ]).then((stops) => {
-    unlistens = stops;
-    listening = null;
-    if (listeners.size === 0) stopListening();
-  }).catch(() => { listening = null; });
+  ])
+    .then((stops) => {
+      unlistens = stops;
+      listening = null;
+      if (listeners.size === 0) stopListening();
+    })
+    .catch(() => {
+      listening = null;
+    });
 }
 
 export function setPlayerStatusPositionInterval(controlsVisible: boolean): void {

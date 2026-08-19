@@ -26,7 +26,16 @@ function Row({ label, value }: { label: string; value: string }) {
 export function TorrentStatsPopover({ stats, anchorRef, onClose }: TorrentStatsPopoverProps) {
   return (
     <Popover open onClose={onClose} anchorRef={anchorRef} placement="top" width="15rem" padding="0.75rem 1rem">
-      <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05rem', marginBottom: '0.625rem', textTransform: 'uppercase' }}>
+      <div
+        style={{
+          color: 'rgba(255,255,255,0.45)',
+          fontSize: '0.6875rem',
+          fontWeight: 700,
+          letterSpacing: '0.05rem',
+          marginBottom: '0.625rem',
+          textTransform: 'uppercase',
+        }}
+      >
         {t('player.torrent_stats_title')}
       </div>
       {!stats ? (

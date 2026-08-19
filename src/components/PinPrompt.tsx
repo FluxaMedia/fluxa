@@ -4,7 +4,12 @@ import { nuvioVerifyProfilePin } from '../core/nuvioPin';
 import type { UserProfile } from '../core/types';
 import { t } from '../i18n';
 
-export function PinPrompt({ profile, overridePin, onSuccess, onCancel }: {
+export function PinPrompt({
+  profile,
+  overridePin,
+  onSuccess,
+  onCancel,
+}: {
   profile: UserProfile;
   overridePin?: UserProfile;
   onSuccess: () => void;
@@ -14,16 +19,22 @@ export function PinPrompt({ profile, overridePin, onSuccess, onCancel }: {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 30); }, []);
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 30);
+  }, []);
 
   const submit = async (value: string) => {
     const remoteResult = profile.nuvioPinEnabled ? await nuvioVerifyProfilePin(profile, value) : null;
     const local = !profile.nuvioPinEnabled && profile.pinHash ? await verifyPin(profile, value) : false;
     const remote = remoteResult?.unlocked ?? false;
     const overrideResult = overridePin?.nuvioPinEnabled ? await nuvioVerifyProfilePin(overridePin, value) : null;
-    const override = overridePin && (overridePin.nuvioPinEnabled
-      ? overrideResult?.unlocked ?? false
-      : overridePin.pinHash ? await verifyPin(overridePin, value) : false);
+    const override =
+      overridePin &&
+      (overridePin.nuvioPinEnabled
+        ? (overrideResult?.unlocked ?? false)
+        : overridePin.pinHash
+          ? await verifyPin(overridePin, value)
+          : false);
     if (local || remote || override) {
       onSuccess();
     } else {
@@ -50,7 +61,9 @@ export function PinPrompt({ profile, overridePin, onSuccess, onCancel }: {
             setError(null);
             if (next.length === 4) void submit(next);
           }}
-          onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onCancel();
+          }}
           style={S.input}
         />
         {error && <p style={S.error}>{error}</p>}
@@ -62,10 +75,38 @@ export function PinPrompt({ profile, overridePin, onSuccess, onCancel }: {
 const FONT = "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
 const S: Record<string, React.CSSProperties> = {
-  overlay: { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  dialog: { width: '17.5rem', borderRadius: '0.75rem', background: '#141414', border: '1px solid rgba(255,255,255,0.10)', padding: '1.75rem 1.5rem', textAlign: 'center', fontFamily: FONT },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 10000,
+    background: 'rgba(0,0,0,0.7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialog: {
+    width: '17.5rem',
+    borderRadius: '0.75rem',
+    background: '#141414',
+    border: '1px solid rgba(255,255,255,0.10)',
+    padding: '1.75rem 1.5rem',
+    textAlign: 'center',
+    fontFamily: FONT,
+  },
   title: { margin: 0, color: '#FFFFFF', fontSize: '1rem', fontWeight: 700 },
   subtitle: { margin: '0.25rem 0 1.125rem', color: 'rgba(255,255,255,0.45)', fontSize: '0.8125rem' },
-  input: { width: '100%', height: '3rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.75rem', outline: 'none', boxSizing: 'border-box' },
+  input: {
+    width: '100%',
+    height: '3rem',
+    borderRadius: '0.5rem',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontSize: '1.5rem',
+    letterSpacing: '0.75rem',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
   error: { margin: '0.625rem 0 0', color: '#FF8A8A', fontSize: '0.75rem' },
 };

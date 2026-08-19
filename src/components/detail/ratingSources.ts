@@ -38,8 +38,20 @@ export const RATING_SOURCES: Record<string, RatingSourceInfo> = {
   letterboxd: { icon: assetUrl('letterboxd.svg'), label: 'Letterboxd', format: outOfTen },
   tomatoes: { icon: assetUrl('rt-tomato-fresh.svg'), label: 'Rotten Tomatoes (Critics)', format: percent, iconForValue: tomatoIcon },
   popcorn: { icon: assetUrl('rt-popcorn-full.svg'), label: 'Rotten Tomatoes (Audience)', format: percent, iconForValue: popcornIcon },
-  metacritic: { icon: assetUrl('metacritic.svg'), label: 'Metacritic', format: bareScore, maskColor: METACRITIC_GREEN, colorForValue: metacriticCriticColor },
-  metacriticuser: { icon: assetUrl('metacritic.svg'), label: 'Metacritic Users', format: outOfTen, maskColor: METACRITIC_GREEN, colorForValue: metacriticUserColor },
+  metacritic: {
+    icon: assetUrl('metacritic.svg'),
+    label: 'Metacritic',
+    format: bareScore,
+    maskColor: METACRITIC_GREEN,
+    colorForValue: metacriticCriticColor,
+  },
+  metacriticuser: {
+    icon: assetUrl('metacritic.svg'),
+    label: 'Metacritic Users',
+    format: outOfTen,
+    maskColor: METACRITIC_GREEN,
+    colorForValue: metacriticUserColor,
+  },
   myanimelist: { icon: assetUrl('mal.svg'), label: 'MyAnimeList', format: outOfTen },
 };
 
@@ -55,11 +67,10 @@ export const RATING_DISPLAY_ORDER = [
   'myanimelist',
 ];
 
-export function orderedRatingEntries(
-  ratings: Record<string, number> | null | undefined,
-): { source: string; value: number }[] {
+export function orderedRatingEntries(ratings: Record<string, number> | null | undefined): { source: string; value: number }[] {
   if (!ratings) return [];
-  return RATING_DISPLAY_ORDER
-    .filter((source) => source in RATING_SOURCES && typeof ratings[source] === 'number')
-    .map((source) => ({ source, value: ratings[source] }));
+  return RATING_DISPLAY_ORDER.filter((source) => source in RATING_SOURCES && typeof ratings[source] === 'number').map((source) => ({
+    source,
+    value: ratings[source],
+  }));
 }

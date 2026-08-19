@@ -38,14 +38,36 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ background: '#0a0a0a', color: '#ff4444', padding: '1.5rem', fontFamily: 'monospace', fontSize: '0.8125rem', whiteSpace: 'pre-wrap', overflow: 'auto', height: '100%', minHeight: '100vh' }}>
+        <div
+          style={{
+            background: '#0a0a0a',
+            color: '#ff4444',
+            padding: '1.5rem',
+            fontFamily: 'monospace',
+            fontSize: '0.8125rem',
+            whiteSpace: 'pre-wrap',
+            overflow: 'auto',
+            height: '100%',
+            minHeight: '100vh',
+          }}
+        >
           {this.props.onReset && (
             <button
               onClick={() => {
                 this.props.onReset?.();
                 this.setState({ error: null });
               }}
-              style={{ marginBottom: '1rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '0.25rem', fontFamily: 'inherit', fontSize: 'inherit', cursor: 'pointer' }}
+              style={{
+                marginBottom: '1rem',
+                padding: '0.5rem 1rem',
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff',
+                borderRadius: '0.25rem',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                cursor: 'pointer',
+              }}
             >
               Go back
             </button>

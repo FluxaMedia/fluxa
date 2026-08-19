@@ -40,7 +40,9 @@ export function AppShell({
     >
       {navigation}
       {globalControls}
-      <div className="app-content" style={contentStyle}>{content}</div>
+      <div className="app-content" style={contentStyle}>
+        {content}
+      </div>
       {notices}
       {dialogs}
       {playback}

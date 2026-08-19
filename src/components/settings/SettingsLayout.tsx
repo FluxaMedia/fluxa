@@ -21,11 +21,7 @@ export function SidebarItem({
       style={{
         width: '100%',
         minHeight: '2.875rem',
-        background: selected
-          ? 'rgba(255,255,255,0.08)'
-          : hovered
-          ? 'rgba(255,255,255,0.04)'
-          : 'transparent',
+        background: selected ? 'rgba(255,255,255,0.08)' : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
         color: '#FFFFFF',
         border: 'none',
         borderRadius: '0.5625rem',
@@ -46,52 +42,60 @@ export function SidebarItem({
       onMouseLeave={() => setHovered(false)}
     >
       {selected && (
-        <div style={{
-          position: 'absolute',
-          left: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '0.1875rem',
-          height: '1.125rem',
-          borderRadius: '0 0.125rem 0.125rem 0',
-          background: '#FFFFFF',
-        }} />
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '0.1875rem',
+            height: '1.125rem',
+            borderRadius: '0 0.125rem 0.125rem 0',
+            background: '#FFFFFF',
+          }}
+        />
       )}
-      <span style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        width: '1.375rem',
-        height: '1.375rem',
-        color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.40)',
-        transition: 'color 0.12s',
-      }}>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          width: '1.375rem',
+          height: '1.375rem',
+          color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.40)',
+          transition: 'color 0.12s',
+        }}
+      >
         {icon}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{
-          display: 'block',
-          fontSize: '0.875rem',
-          fontWeight: selected ? 600 : 500,
-          color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          transition: 'color 0.12s',
-        }}>
-          {label}
-        </span>
-        {subtitle && (
-          <span style={{
+        <span
+          style={{
             display: 'block',
-            fontSize: '0.6875rem',
-            color: 'rgba(255,255,255,0.30)',
-            marginTop: 1,
+            fontSize: '0.875rem',
+            fontWeight: selected ? 600 : 500,
+            color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-          }}>
+            transition: 'color 0.12s',
+          }}
+        >
+          {label}
+        </span>
+        {subtitle && (
+          <span
+            style={{
+              display: 'block',
+              fontSize: '0.6875rem',
+              color: 'rgba(255,255,255,0.30)',
+              marginTop: 1,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {subtitle}
           </span>
         )}
@@ -112,15 +116,7 @@ export function SidebarDivider() {
   return <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0.625rem 0' }} />;
 }
 
-export function SettingsSection({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
+export function SettingsSection({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
     <div style={styles.settingsGroup}>
       <div style={styles.groupHeading}>
@@ -151,6 +147,10 @@ export function SettingsPanel({ children }: { children: React.ReactNode }) {
 
 export function VersionFooter() {
   const [version, setVersion] = useState('');
-  useEffect(() => { platformInvoke<string>('get_version').then((v) => setVersion(v)).catch(() => {}); }, []);
+  useEffect(() => {
+    platformInvoke<string>('get_version')
+      .then((v) => setVersion(v))
+      .catch(() => {});
+  }, []);
   return <p style={styles.versionFooter}>{version ? `v${version}` : ''}</p>;
 }

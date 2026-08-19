@@ -8,11 +8,79 @@ type TrackPopover = 'audio' | 'sub' | 'speed' | null;
 type Point = { x: number; y: number } | null;
 
 type Bindings = {
-  closePlayer: () => Promise<void>; contextMenu: Point; setContextMenu: Dispatch<SetStateAction<Point>>; flashFeedback: (icon: FeedbackFlash['icon'], label: string) => void; nextEpSubtitle: string; playbackSpeed: number; setPlaybackSpeed: Dispatch<SetStateAction<number>>; setPlayerFullscreen: (next: boolean) => Promise<void>; toggleFullscreen: () => Promise<void>; toggleMiniPlayer: () => Promise<void>; shortcutOverrides: ShortcutOverrides; showEpisodePanel: boolean; setShowEpisodePanel: Dispatch<SetStateAction<boolean>>; showShortcutsHelp: boolean; setShowShortcutsHelp: Dispatch<SetStateAction<boolean>>; startSeekOverlay: () => void; trackPopover: TrackPopover; setTrackPopover: Dispatch<SetStateAction<TrackPopover>>; triggerActiveSkip: () => boolean; episodePanelOpenRef: MutableRefObject<boolean>; isFullscreenRef: MutableRefObject<boolean>; holdTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>; holdActiveRef: MutableRefObject<boolean>; preSpeedRef: MutableRefObject<number>; pausedRef: MutableRefObject<boolean>; posRef: MutableRefObject<number>; durRef: MutableRefObject<number>; chaptersRef: MutableRefObject<Chapter[]>; cycleAbLoopRef: MutableRefObject<() => void>; openCastPopoverRef: MutableRefObject<() => Promise<void>>; takeScreenshotRef: MutableRefObject<() => Promise<void>>; cycleAnime4kModeRef: MutableRefObject<(direction: 1 | -1) => void>; setPaused: Dispatch<SetStateAction<boolean>>; setShowStats: Dispatch<SetStateAction<boolean>>;
+  closePlayer: () => Promise<void>;
+  contextMenu: Point;
+  setContextMenu: Dispatch<SetStateAction<Point>>;
+  flashFeedback: (icon: FeedbackFlash['icon'], label: string) => void;
+  nextEpSubtitle: string;
+  playbackSpeed: number;
+  setPlaybackSpeed: Dispatch<SetStateAction<number>>;
+  setPlayerFullscreen: (next: boolean) => Promise<void>;
+  toggleFullscreen: () => Promise<void>;
+  toggleMiniPlayer: () => Promise<void>;
+  shortcutOverrides: ShortcutOverrides;
+  showEpisodePanel: boolean;
+  setShowEpisodePanel: Dispatch<SetStateAction<boolean>>;
+  showShortcutsHelp: boolean;
+  setShowShortcutsHelp: Dispatch<SetStateAction<boolean>>;
+  startSeekOverlay: () => void;
+  trackPopover: TrackPopover;
+  setTrackPopover: Dispatch<SetStateAction<TrackPopover>>;
+  triggerActiveSkip: () => boolean;
+  episodePanelOpenRef: MutableRefObject<boolean>;
+  isFullscreenRef: MutableRefObject<boolean>;
+  holdTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  holdActiveRef: MutableRefObject<boolean>;
+  preSpeedRef: MutableRefObject<number>;
+  pausedRef: MutableRefObject<boolean>;
+  posRef: MutableRefObject<number>;
+  durRef: MutableRefObject<number>;
+  chaptersRef: MutableRefObject<Chapter[]>;
+  cycleAbLoopRef: MutableRefObject<() => void>;
+  openCastPopoverRef: MutableRefObject<() => Promise<void>>;
+  takeScreenshotRef: MutableRefObject<() => Promise<void>>;
+  cycleAnime4kModeRef: MutableRefObject<(direction: 1 | -1) => void>;
+  setPaused: Dispatch<SetStateAction<boolean>>;
+  setShowStats: Dispatch<SetStateAction<boolean>>;
 };
 
 export function usePlayerKeyboardShortcuts(bindings: Bindings) {
-  const { closePlayer, contextMenu, setContextMenu, flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, setPlayerFullscreen, toggleFullscreen, toggleMiniPlayer, shortcutOverrides, showEpisodePanel, setShowEpisodePanel, showShortcutsHelp, setShowShortcutsHelp, startSeekOverlay, trackPopover, setTrackPopover, triggerActiveSkip, episodePanelOpenRef, isFullscreenRef, holdTimerRef, holdActiveRef, preSpeedRef, pausedRef, posRef, durRef, chaptersRef, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, setPaused, setShowStats } = bindings;
+  const {
+    closePlayer,
+    contextMenu,
+    setContextMenu,
+    flashFeedback,
+    nextEpSubtitle,
+    playbackSpeed,
+    setPlaybackSpeed,
+    setPlayerFullscreen,
+    toggleFullscreen,
+    toggleMiniPlayer,
+    shortcutOverrides,
+    showEpisodePanel,
+    setShowEpisodePanel,
+    showShortcutsHelp,
+    setShowShortcutsHelp,
+    startSeekOverlay,
+    trackPopover,
+    setTrackPopover,
+    triggerActiveSkip,
+    episodePanelOpenRef,
+    isFullscreenRef,
+    holdTimerRef,
+    holdActiveRef,
+    preSpeedRef,
+    pausedRef,
+    posRef,
+    durRef,
+    chaptersRef,
+    cycleAbLoopRef,
+    openCastPopoverRef,
+    takeScreenshotRef,
+    cycleAnime4kModeRef,
+    setPaused,
+    setShowStats,
+  } = bindings;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
@@ -40,7 +108,7 @@ export function usePlayerKeyboardShortcuts(bindings: Bindings) {
         e.preventDefault();
         const pct = parseInt(e.code.replace('Digit', ''), 10) * 10;
         startSeekOverlay();
-        flashFeedback(pct < (posRef.current / Math.max(1, durRef.current) * 100) ? 'seekBack' : 'seekFwd', `${pct}%`);
+        flashFeedback(pct < (posRef.current / Math.max(1, durRef.current)) * 100 ? 'seekBack' : 'seekFwd', `${pct}%`);
         sendCmd(`seek ${pct} absolute-percent`);
         return;
       }
@@ -62,11 +130,26 @@ export function usePlayerKeyboardShortcuts(bindings: Bindings) {
       }
       if (e.code === 'Escape') {
         e.preventDefault();
-        if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
-        if (contextMenu) { setContextMenu(null); return; }
-        if (showEpisodePanel) { setShowEpisodePanel(false); episodePanelOpenRef.current = false; return; }
-        if (trackPopover) { setTrackPopover(null); return; }
-        if (isFullscreenRef.current) { void setPlayerFullscreen(false); }
+        if (showShortcutsHelp) {
+          setShowShortcutsHelp(false);
+          return;
+        }
+        if (contextMenu) {
+          setContextMenu(null);
+          return;
+        }
+        if (showEpisodePanel) {
+          setShowEpisodePanel(false);
+          episodePanelOpenRef.current = false;
+          return;
+        }
+        if (trackPopover) {
+          setTrackPopover(null);
+          return;
+        }
+        if (isFullscreenRef.current) {
+          void setPlayerFullscreen(false);
+        }
         return;
       }
       if (e.code === 'Backspace') {
@@ -77,14 +160,37 @@ export function usePlayerKeyboardShortcuts(bindings: Bindings) {
       }
 
       const action = findActionForCombo(comboFromEvent(e), 'player', shortcutOverrides);
-      if (action && runPlayerAction(action, { flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, toggleFullscreen, toggleMiniPlayer, setShowShortcutsHelp, startSeekOverlay, triggerActiveSkip, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, pausedRef, setPaused, setShowStats })) {
+      if (
+        action &&
+        runPlayerAction(action, {
+          flashFeedback,
+          nextEpSubtitle,
+          playbackSpeed,
+          setPlaybackSpeed,
+          toggleFullscreen,
+          toggleMiniPlayer,
+          setShowShortcutsHelp,
+          startSeekOverlay,
+          triggerActiveSkip,
+          cycleAbLoopRef,
+          openCastPopoverRef,
+          takeScreenshotRef,
+          cycleAnime4kModeRef,
+          pausedRef,
+          setPaused,
+          setShowStats,
+        })
+      ) {
         e.preventDefault();
       }
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
-        if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
+        if (holdTimerRef.current) {
+          clearTimeout(holdTimerRef.current);
+          holdTimerRef.current = null;
+        }
         if (holdActiveRef.current) {
           holdActiveRef.current = false;
           sendCmd(`set speed ${preSpeedRef.current.toFixed(2)}`);
@@ -104,5 +210,4 @@ export function usePlayerKeyboardShortcuts(bindings: Bindings) {
       window.removeEventListener('keyup', onKeyUp);
     };
   }, [bindings]);
-
 }

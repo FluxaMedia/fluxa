@@ -1,16 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Bell,
-} from "lucide-react";
-import type { AppState, LibraryItem } from "../core/types";
-import {
-  refreshExternalCalendarItems,
-  refreshCalendarMonth,
-  refreshWatchlistAirDates,
-} from "../core/libraryEffects";
-import { coreInvoke } from "../core/engine";
-import { t } from "../i18n";
-import { Toast } from "../components/Toast";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Bell } from 'lucide-react';
+import type { AppState, LibraryItem } from '../core/types';
+import { refreshExternalCalendarItems, refreshCalendarMonth, refreshWatchlistAirDates } from '../core/libraryEffects';
+import { coreInvoke } from '../core/engine';
+import { t } from '../i18n';
+import { Toast } from '../components/Toast';
 import { CalendarDayDialog } from './calendar/CalendarDayDialog';
 import { CalendarGrid } from './calendar/CalendarGrid';
 import { CalendarHeader } from './calendar/CalendarHeader';
@@ -42,9 +36,7 @@ interface Props {
 
 export const CalendarScreen = React.memo(
   function CalendarScreen({ state, onDispatch }: Props) {
-    const [monthStart, setMonthStart] = useState(() =>
-      firstDayOfMonth(new Date())
-    );
+    const [monthStart, setMonthStart] = useState(() => firstDayOfMonth(new Date()));
     const [showCompleted, setShowCompleted] = useState(false);
     const [selectedDateIso, setSelectedDateIso] = useState<string | null>(null);
     const [isRefreshingAirDates, setIsRefreshingAirDates] = useState(false);
@@ -53,18 +45,15 @@ export const CalendarScreen = React.memo(
     const month = monthStart.getMonth() + 1;
 
     useEffect(() => {
-      const calendar = state.calendar as {
-        year?: number;
-        month?: number;
-        items?: unknown[];
-      } | undefined;
-      if (
-        calendar?.year === year && calendar?.month === month &&
-        Array.isArray(calendar.items)
-      ) return;
-      onDispatch(
-        JSON.stringify({ type: "calendarMonthRequested", year, month }),
-      );
+      const calendar = state.calendar as
+        | {
+            year?: number;
+            month?: number;
+            items?: unknown[];
+          }
+        | undefined;
+      if (calendar?.year === year && calendar?.month === month && Array.isArray(calendar.items)) return;
+      onDispatch(JSON.stringify({ type: 'calendarMonthRequested', year, month }));
     }, [year, month]);
 
     useEffect(() => {
@@ -72,9 +61,7 @@ export const CalendarScreen = React.memo(
       refreshCalendarMonth(year, month)
         .then(() => {
           if (!cancelled) {
-            onDispatch(
-              JSON.stringify({ type: "calendarMonthRequested", year, month }),
-            );
+            onDispatch(JSON.stringify({ type: 'calendarMonthRequested', year, month }));
           }
         })
         .catch(() => {});
@@ -84,9 +71,7 @@ export const CalendarScreen = React.memo(
     }, [year, month]);
 
     useEffect(() => {
-      if (
-        Date.now() - lastAirDatesRefreshAt < AIR_DATES_REFRESH_THROTTLE_MS
-      ) return;
+      if (Date.now() - lastAirDatesRefreshAt < AIR_DATES_REFRESH_THROTTLE_MS) return;
       lastAirDatesRefreshAt = Date.now();
       let cancelled = false;
       setIsRefreshingAirDates(true);
@@ -95,9 +80,7 @@ export const CalendarScreen = React.memo(
         .then((result) => {
           if (!cancelled) {
             setTraktCalendarError(result.traktError ?? null);
-            onDispatch(
-              JSON.stringify({ type: "calendarMonthRequested", year, month }),
-            );
+            onDispatch(JSON.stringify({ type: 'calendarMonthRequested', year, month }));
           }
         })
         .catch(() => {})
@@ -111,10 +94,10 @@ export const CalendarScreen = React.memo(
 
     useEffect(() => {
       const onKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") setSelectedDateIso(null);
+        if (event.key === 'Escape') setSelectedDateIso(null);
       };
-      window.addEventListener("keydown", onKeyDown);
-      return () => window.removeEventListener("keydown", onKeyDown);
+      window.addEventListener('keydown', onKeyDown);
+      return () => window.removeEventListener('keydown', onKeyDown);
     }, []);
 
     const calendar = (state.calendar ?? {}) as {
@@ -123,25 +106,20 @@ export const CalendarScreen = React.memo(
       externalItems?: CalendarItem[];
     };
     const items = useMemo(
-      () => [
-        ...(calendar.items ?? []),
-        ...(calendar.localItems ?? []),
-        ...(calendar.externalItems ?? []),
-      ].map((item) => ({
-        ...item,
-        contentId: item.contentId ?? item.seriesId ?? item.metaId,
-        seriesId: item.seriesId ?? item.contentId ?? item.metaId,
-      })),
+      () =>
+        [...(calendar.items ?? []), ...(calendar.localItems ?? []), ...(calendar.externalItems ?? [])].map((item) => ({
+          ...item,
+          contentId: item.contentId ?? item.seriesId ?? item.metaId,
+          seriesId: item.seriesId ?? item.contentId ?? item.metaId,
+        })),
       [calendar.items, calendar.localItems, calendar.externalItems],
     );
-    const completedItems =
-      (state.library.lastWrite?.completed ?? state.library.completed ??
-        []) as LibraryItem[];
+    const completedItems = (state.library.lastWrite?.completed ?? state.library.completed ?? []) as LibraryItem[];
     const [visibleItems, setVisibleItems] = useState<CalendarItem[]>([]);
     useEffect(() => {
       let active = true;
       void coreInvoke<CalendarItem[]>(
-        "calendarVisibilityPlan",
+        'calendarVisibilityPlan',
         JSON.stringify({
           items,
           completedItems,
@@ -178,54 +156,77 @@ export const CalendarScreen = React.memo(
       }
       return artwork;
     }, [displayItems, resolvedArtwork]);
-    const itemsByDate = useMemo(() => groupItemsByDate(displayItems), [
-      displayItems,
-    ]);
-    const selectedItems = selectedDateIso
-      ? itemsByDate[selectedDateIso] ?? []
-      : [];
+    const itemsByDate = useMemo(() => groupItemsByDate(displayItems), [displayItems]);
+    const selectedItems = selectedDateIso ? (itemsByDate[selectedDateIso] ?? []) : [];
 
     return (
       <div className="calendar-screen" style={styles.screen}>
         {traktCalendarError && (
-          <div style={{ position: "fixed", top: "1rem", right: "1rem", zIndex: 100 }}>
+          <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 100 }}>
             <Toast
               variant="error"
-              title={t("calendar.trakt_error_title")}
-              message={t("calendar.trakt_error_message")}
+              title={t('calendar.trakt_error_title')}
+              message={t('calendar.trakt_error_message')}
               details={traktCalendarError}
-              detailsLabel={t("player.error_show_details")}
-              detailsHideLabel={t("player.error_hide_details")}
+              detailsLabel={t('player.error_show_details')}
+              detailsHideLabel={t('player.error_hide_details')}
               onClose={() => setTraktCalendarError(null)}
             />
           </div>
         )}
-        <CalendarHeader monthStart={monthStart} isRefreshing={isRefreshingAirDates} showCompleted={showCompleted} onMonthChange={(nextMonth) => { setMonthStart(nextMonth); setSelectedDateIso(null); }} onToggleCompleted={() => { const next = !showCompleted; setShowCompleted(next); if (next) setVisibleItems(items); }} styles={styles} />
+        <CalendarHeader
+          monthStart={monthStart}
+          isRefreshing={isRefreshingAirDates}
+          showCompleted={showCompleted}
+          onMonthChange={(nextMonth) => {
+            setMonthStart(nextMonth);
+            setSelectedDateIso(null);
+          }}
+          onToggleCompleted={() => {
+            const next = !showCompleted;
+            setShowCompleted(next);
+            if (next) setVisibleItems(items);
+          }}
+          styles={styles}
+        />
 
         <div style={styles.weekRow}>
           {weekdays().map((day) => (
-            <div key={day} style={styles.weekday}>{day}</div>
+            <div key={day} style={styles.weekday}>
+              {day}
+            </div>
           ))}
         </div>
-        <CalendarGrid cells={cells} itemsByDate={itemsByDate} selectedDateIso={selectedDateIso} onSelectDate={setSelectedDateIso} resolvedArtwork={resolvedArtwork} seriesArtwork={seriesArtwork} styles={styles} />
+        <CalendarGrid
+          cells={cells}
+          itemsByDate={itemsByDate}
+          selectedDateIso={selectedDateIso}
+          onSelectDate={setSelectedDateIso}
+          resolvedArtwork={resolvedArtwork}
+          seriesArtwork={seriesArtwork}
+          styles={styles}
+        />
 
         {visibleItems.length === 0 && (
           <div style={styles.empty}>
             <Bell size={18} />
-            <span>
-              {items.length === 0
-                ? t("calendar.empty")
-                : t("calendar.empty_filtered")}
-            </span>
+            <span>{items.length === 0 ? t('calendar.empty') : t('calendar.empty_filtered')}</span>
           </div>
         )}
 
-        {selectedDateIso && <CalendarDayDialog dateIso={selectedDateIso} items={selectedItems} onClose={() => setSelectedDateIso(null)} resolvedArtwork={resolvedArtwork} seriesArtwork={seriesArtwork} styles={styles} />}
+        {selectedDateIso && (
+          <CalendarDayDialog
+            dateIso={selectedDateIso}
+            items={selectedItems}
+            onClose={() => setSelectedDateIso(null)}
+            resolvedArtwork={resolvedArtwork}
+            seriesArtwork={seriesArtwork}
+            styles={styles}
+          />
+        )}
       </div>
     );
   },
   (prev, next) =>
-    prev.state.calendar === next.state.calendar &&
-    prev.state.library === next.state.library &&
-    prev.onDispatch === next.onDispatch,
+    prev.state.calendar === next.state.calendar && prev.state.library === next.state.library && prev.onDispatch === next.onDispatch,
 );

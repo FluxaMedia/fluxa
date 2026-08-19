@@ -6,7 +6,10 @@ import type { EpisodeInfo } from './EpisodePanel';
 export type Chapter = { title: string; startMs: number };
 export type SkipSegment = { type: string; startTime: number; endTime: number };
 export type ActiveSkip = { label: string; startMs: number; endMs: number; type: string };
-export type FeedbackFlash = { icon: 'play' | 'pause' | 'seekBack' | 'seekFwd' | 'speed' | 'abLoop' | 'screenshot' | 'subDelay' | 'volume' | 'anime4k'; label: string };
+export type FeedbackFlash = {
+  icon: 'play' | 'pause' | 'seekBack' | 'seekFwd' | 'speed' | 'abLoop' | 'screenshot' | 'subDelay' | 'volume' | 'anime4k';
+  label: string;
+};
 
 export const ANIME4K_MODES = ['a', 'b', 'c', 'aa', 'bb', 'ca'] as const;
 
@@ -53,11 +56,16 @@ export function parseEpisodes(json: string | null | undefined): EpisodeInfo[] {
 
 export function skipLabelForType(type: string): string {
   switch (type) {
-    case 'intro': return t('player.skip_intro');
-    case 'outro': return t('player.skip_outro');
-    case 'recap': return t('player.skip_recap');
-    case 'preview': return t('player.skip_preview');
-    default: return t('player.skip');
+    case 'intro':
+      return t('player.skip_intro');
+    case 'outro':
+      return t('player.skip_outro');
+    case 'recap':
+      return t('player.skip_recap');
+    case 'preview':
+      return t('player.skip_preview');
+    default:
+      return t('player.skip');
   }
 }
 
@@ -77,10 +85,7 @@ export function Sparkline({ data, w = 64, h = 16, gradId }: { data: number[]; w?
   if (data.length < 2) return <span style={{ display: 'inline-block', width: w, height: h, verticalAlign: 'middle' }} />;
   const max = Math.max(...data, 0.001);
   const pad = 1;
-  const points = data.map((value, index) => [
-    pad + (index / (data.length - 1)) * (w - pad * 2),
-    h - pad - (value / max) * (h - pad * 2),
-  ]);
+  const points = data.map((value, index) => [pad + (index / (data.length - 1)) * (w - pad * 2), h - pad - (value / max) * (h - pad * 2)]);
   const line = points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
   const area = `${line} L${(w - pad).toFixed(1)},${h} L${pad},${h} Z`;
   return (

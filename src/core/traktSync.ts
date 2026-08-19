@@ -55,19 +55,21 @@ export async function dropTraktPlaybackProgress(showId: string): Promise<void> {
     ]);
     if (responses.some((response) => !response.ok)) return;
     const pages = await Promise.all(responses.map((response) => response.json().catch(() => [])));
-    const playbackItems = pages.flatMap((page) => Array.isArray(page) ? page : []);
+    const playbackItems = pages.flatMap((page) => (Array.isArray(page) ? page : []));
 
-    const deleteIds = await coreInvoke<number[]>('traktPlaybackDeleteIds', JSON.stringify({ contentId: showId, items: playbackItems })) ?? [];
+    const deleteIds =
+      (await coreInvoke<number[]>('traktPlaybackDeleteIds', JSON.stringify({ contentId: showId, items: playbackItems }))) ?? [];
     const deletePromises = deleteIds.map((id) =>
       platformFetch(`https://api.trakt.tv/sync/playback/${id}`, {
         method: 'DELETE',
         headers,
-      }).then(() => undefined).catch(() => undefined),
+      })
+        .then(() => undefined)
+        .catch(() => undefined),
     );
 
     await Promise.all(deletePromises);
-  } catch {
-  }
+  } catch {}
 }
 
 export async function enqueueTraktScrobble(payload: Record<string, unknown>): Promise<unknown> {
@@ -87,7 +89,6 @@ export async function enqueueTraktScrobble(payload: Record<string, unknown>): Pr
       },
       body: JSON.stringify(body),
     });
-  } catch {
-  }
+  } catch {}
   return {};
 }

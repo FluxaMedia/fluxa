@@ -38,10 +38,13 @@ export async function fetchContentWarnings(meta?: Meta, episode?: Video | null):
     if (!url) return [];
     const response = await tryFetchJson(url);
     if (!response) return [];
-    const result = await coreInvoke<{ warnings: ContentWarning[] }>('buildContentWarnings', JSON.stringify({
-      responseJson: JSON.stringify(response),
-      labels: contentWarningLabels(),
-    }));
+    const result = await coreInvoke<{ warnings: ContentWarning[] }>(
+      'buildContentWarnings',
+      JSON.stringify({
+        responseJson: JSON.stringify(response),
+        labels: contentWarningLabels(),
+      }),
+    );
     return result?.warnings ?? [];
   } catch {
     return [];

@@ -63,9 +63,8 @@ function FeedToggleList({
     if (maxEnabled) {
       next = await coreToggleMetadataFeedLimited(toggleBase, availableKeys, key, maxEnabled);
     } else {
-      const effectiveSelection = selected.length === 0
-        ? effective
-        : ((await coreEffectiveMetadataFeedSelection(selected, availableKeys)) ?? effective);
+      const effectiveSelection =
+        selected.length === 0 ? effective : ((await coreEffectiveMetadataFeedSelection(selected, availableKeys)) ?? effective);
       next = enabled
         ? [...new Set([...effectiveSelection, key])].filter((value) => availableKeys.includes(value))
         : effectiveSelection.filter((value) => value !== key);
@@ -98,18 +97,36 @@ function FeedToggleList({
                 <button
                   disabled={idx === 0}
                   onClick={() => onOrderChange(moveFeedInOrder(feeds, order ?? [], feed.key, -1))}
-                  style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer', color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)', padding: '0.125rem 0.25rem', lineHeight: 1 }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: idx === 0 ? 'default' : 'pointer',
+                    color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)',
+                    padding: '0.125rem 0.25rem',
+                    lineHeight: 1,
+                  }}
                   title={t('common.move_up')}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7 14l5-5 5 5z" />
+                  </svg>
                 </button>
                 <button
                   disabled={idx === orderedFeeds.length - 1}
                   onClick={() => onOrderChange(moveFeedInOrder(feeds, order ?? [], feed.key, 1))}
-                  style={{ background: 'none', border: 'none', cursor: idx === orderedFeeds.length - 1 ? 'default' : 'pointer', color: idx === orderedFeeds.length - 1 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)', padding: '0.125rem 0.25rem', lineHeight: 1 }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: idx === orderedFeeds.length - 1 ? 'default' : 'pointer',
+                    color: idx === orderedFeeds.length - 1 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)',
+                    padding: '0.125rem 0.25rem',
+                    lineHeight: 1,
+                  }}
                   title={t('common.move_down')}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7 10l5 5 5-5z" />
+                  </svg>
                 </button>
               </div>
             )}
@@ -146,13 +163,20 @@ export function ContentSection({
         .filter((item) => item.key && item.label);
       setFeeds(next);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [installedAddons, disabledAddonKeys]);
 
   return (
     <>
       <SettingsSection title={t('settings.hero_catalogs')} subtitle={t('settings.show_hero_section_desc')}>
-        <ToggleTile title={t('settings.show_hero_section')} subtitle={t('settings.show_hero_section_desc')} checked={prefs.showHeroSection} onToggle={(v) => setPref('showHeroSection', v)} />
+        <ToggleTile
+          title={t('settings.show_hero_section')}
+          subtitle={t('settings.show_hero_section_desc')}
+          checked={prefs.showHeroSection}
+          onToggle={(v) => setPref('showHeroSection', v)}
+        />
       </SettingsSection>
       <FeedToggleList
         title={t('settings.hero_catalogs')}

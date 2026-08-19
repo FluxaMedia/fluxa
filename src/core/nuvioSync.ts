@@ -196,9 +196,13 @@ export async function refreshNuvioProfiles(profile: UserProfile): Promise<UserPr
   ]);
   const importedProfiles = await buildLocalNuvioProfiles(freshProfile, nuvioProfiles, avatarCatalog, existingProfiles);
   await saveProfiles(importedProfiles);
-  return importedProfiles.find((candidate) => candidate.id === freshProfile.id)
-    ?? importedProfiles.find((candidate) => candidate.nuvioUserId === freshProfile.nuvioUserId && candidate.nuvioProfileIndex === freshProfile.nuvioProfileIndex)
-    ?? freshProfile;
+  return (
+    importedProfiles.find((candidate) => candidate.id === freshProfile.id) ??
+    importedProfiles.find(
+      (candidate) => candidate.nuvioUserId === freshProfile.nuvioUserId && candidate.nuvioProfileIndex === freshProfile.nuvioProfileIndex,
+    ) ??
+    freshProfile
+  );
 }
 
 async function fetchAddonManifests(
@@ -219,12 +223,12 @@ async function fetchAddonManifests(
         const res = await platformFetch(a.url);
         if (!res.ok) return null;
         const manifest = await (res.json() as Promise<Record<string, unknown>>);
-        onItemProgress?.(++completed, enabled.length, typeof manifest.name === 'string' ? manifest.name : a.name ?? a.url);
+        onItemProgress?.(++completed, enabled.length, typeof manifest.name === 'string' ? manifest.name : (a.name ?? a.url));
         return manifest;
       } catch {
         return null;
       }
-    })
+    }),
   );
 
   const manifestByUrl = new Map<string, Record<string, unknown> | null>();
@@ -269,7 +273,7 @@ async function fetchAddonMetas(
           onItemProgress?.(++completed, needs.length, meta.name);
         }
       } catch {}
-    })
+    }),
   );
   return metas;
 }
@@ -289,7 +293,9 @@ async function importNuvioProfileDataInner(
 
   const suffix = profileStorageSuffix(profile);
   const profileKey = `library_${suffix}`;
-  void platformInvoke('debug_log', { msg: `nuvio-import-debug: importNuvioProfileData start profile.id=${profile.id} profileIdx=${profileIdx} profileKey=${profileKey}` });
+  void platformInvoke('debug_log', {
+    msg: `nuvio-import-debug: importNuvioProfileData start profile.id=${profile.id} profileIdx=${profileIdx} profileKey=${profileKey}`,
+  });
   const progressBefore: Record<string, unknown> = {};
   const watchedBefore: Record<string, boolean> = {};
   let mappedWatchlist: unknown[] = [];
@@ -321,7 +327,10 @@ async function importNuvioProfileDataInner(
       const cursor = await storageRead<number>(deltaCursorKey(profile, 'library'));
       const cached = await storageRead<NuvioLibraryItem[]>(deltaCacheKey(profile, 'library'));
       const state = { initialized: typeof cursor === 'number' && Array.isArray(cached), cursor: cursor ?? 0, items: cached ?? [] };
-      const request = await coreInvoke<{ mode: 'delta' | 'bootstrap'; cursor: number }>('nuvioDeltaSyncRequestPlan', JSON.stringify({ state }));
+      const request = await coreInvoke<{ mode: 'delta' | 'bootstrap'; cursor: number }>(
+        'nuvioDeltaSyncRequestPlan',
+        JSON.stringify({ state }),
+      );
       let snapshot: NuvioLibraryItem[] = [];
       let snapshotCursor: number | undefined;
       let events: NuvioLibraryDeltaEvent[] = [];
@@ -332,9 +341,12 @@ async function importNuvioProfileDataInner(
         snapshot = await pullAllNuvioLibrary(token, profileIdx, onItemProgress);
         events = await pullAllLibraryDelta(token, profileIdx, snapshotCursor);
       }
-      const applied = await coreInvoke<{ cursor: number; items: NuvioLibraryItem[] }>('nuvioApplyDeltaSync', JSON.stringify({ resource: 'library', state, snapshot, snapshotCursor, events }));
-      library = applied?.items ?? await pullAllNuvioLibrary(token, profileIdx, onItemProgress);
-      libraryCursor = applied?.cursor ?? await nuvioGetLibraryDeltaCursor(token, profileIdx);
+      const applied = await coreInvoke<{ cursor: number; items: NuvioLibraryItem[] }>(
+        'nuvioApplyDeltaSync',
+        JSON.stringify({ resource: 'library', state, snapshot, snapshotCursor, events }),
+      );
+      library = applied?.items ?? (await pullAllNuvioLibrary(token, profileIdx, onItemProgress));
+      libraryCursor = applied?.cursor ?? (await nuvioGetLibraryDeltaCursor(token, profileIdx));
       mappedWatchlist = ((await coreNuvioLibraryToWatchlist(library)) ?? []) as unknown[];
       watchlistCount = mappedWatchlist.length;
       onStep?.('library', true);
@@ -452,13 +464,17 @@ async function importNuvioProfileDataInner(
     }
     if (wants('watchlist') || wants('continueWatching')) {
       const existing = (await loadProviderLibraries(profileKey)).nuvio;
-      await saveProviderLibrary('nuvio', {
-        watchlist: wants('watchlist') ? mappedWatchlist as Record<string, unknown>[] : existing?.watchlist ?? [],
-        watching: wants('continueWatching') ? nuvioContinueWatching : existing?.watching ?? [],
-        completed: existing?.completed ?? [],
-        dropped: existing?.dropped ?? [],
-        favorites: existing?.favorites ?? [],
-      }, profileKey);
+      await saveProviderLibrary(
+        'nuvio',
+        {
+          watchlist: wants('watchlist') ? (mappedWatchlist as Record<string, unknown>[]) : (existing?.watchlist ?? []),
+          watching: wants('continueWatching') ? nuvioContinueWatching : (existing?.watching ?? []),
+          completed: existing?.completed ?? [],
+          dropped: existing?.dropped ?? [],
+          favorites: existing?.favorites ?? [],
+        },
+        profileKey,
+      );
     }
     if (watchProgress) {
       await storageWrite(deltaCacheKey(profile, 'progress'), watchProgress);
@@ -486,7 +502,10 @@ async function importNuvioProfileDataInner(
         collectionsCount = mapped.length;
         if (!dryRun) {
           const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
-          await storageWrite('profiles', profiles.map((p) => p.id === profile.id ? { ...p, libraryCollections: mapped as UserProfile['libraryCollections'] } : p));
+          await storageWrite(
+            'profiles',
+            profiles.map((p) => (p.id === profile.id ? { ...p, libraryCollections: mapped as UserProfile['libraryCollections'] } : p)),
+          );
         }
       }
       onStep?.('collections', true);
@@ -504,8 +523,7 @@ async function importNuvioProfileDataInner(
     addons: addonCount,
   };
 
-  const changed = wants('watchlist') || wants('continueWatching')
-    || Boolean(plan?.watched && Object.keys(plan.watched).length > 0);
+  const changed = wants('watchlist') || wants('continueWatching') || Boolean(plan?.watched && Object.keys(plan.watched).length > 0);
 
   return { errors, changed, counts };
 }

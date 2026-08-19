@@ -167,24 +167,29 @@ async function writeLocalState(profile: UserProfile, local: LocalState): Promise
   });
   if (Array.isArray(local.addons)) {
     const cached = await loadAddons();
-    const hydrated = await Promise.all(local.addons.map(async (entry) => {
-      const candidate = entry as AddonDescriptor & { url?: string; name?: string };
-      if (candidate.manifest?.id) return candidate;
-      const url = candidate.transportUrl || candidate.url;
-      if (!url) return null;
-      const previous = cached.find((addon) => addon.transportUrl === url);
-      try {
-        const result = await platformFetch(url);
-        if (!result.ok) throw new Error(`manifest ${result.status}`);
-        const manifest = await result.json();
-        return normalizeAddonDescriptor({ transportUrl: url, manifest } as AddonDescriptor);
-      } catch {
-        return previous ?? normalizeAddonDescriptor({
-          transportUrl: url,
-          manifest: { id: url, name: candidate.name || url, version: '0.0.1', resources: [], types: [], catalogs: [] },
-        } as AddonDescriptor);
-      }
-    }));
+    const hydrated = await Promise.all(
+      local.addons.map(async (entry) => {
+        const candidate = entry as AddonDescriptor & { url?: string; name?: string };
+        if (candidate.manifest?.id) return candidate;
+        const url = candidate.transportUrl || candidate.url;
+        if (!url) return null;
+        const previous = cached.find((addon) => addon.transportUrl === url);
+        try {
+          const result = await platformFetch(url);
+          if (!result.ok) throw new Error(`manifest ${result.status}`);
+          const manifest = await result.json();
+          return normalizeAddonDescriptor({ transportUrl: url, manifest } as AddonDescriptor);
+        } catch {
+          return (
+            previous ??
+            normalizeAddonDescriptor({
+              transportUrl: url,
+              manifest: { id: url, name: candidate.name || url, version: '0.0.1', resources: [], types: [], catalogs: [] },
+            } as AddonDescriptor)
+          );
+        }
+      }),
+    );
     await saveAddons(hydrated.filter((addon): addon is AddonDescriptor => addon !== null));
   }
   if (local.settings) await savePrefs(local.settings);
@@ -196,9 +201,7 @@ async function writeLocalState(profile: UserProfile, local: LocalState): Promise
   const profiles = await loadProfiles();
   await saveProfiles(
     profiles.map((entry) =>
-      entry.id === profile.id
-        ? { ...entry, ...identity, id: entry.id, libraryCollections: local.collections }
-        : entry,
+      entry.id === profile.id ? { ...entry, ...identity, id: entry.id, libraryCollections: local.collections } : entry,
     ),
   );
 }
@@ -206,10 +209,7 @@ async function writeLocalState(profile: UserProfile, local: LocalState): Promise
 export async function syncFluxaProfiles(): Promise<UserProfile[]> {
   const session = await authorized();
   if (!session) return loadProfiles();
-  const [local, remote] = await Promise.all([
-    loadProfiles(),
-    fluxaProfiles(session.instanceUrl, session.accessToken),
-  ]);
+  const [local, remote] = await Promise.all([loadProfiles(), fluxaProfiles(session.instanceUrl, session.accessToken)]);
   const plan = await coreInvoke<{
     creates: Array<{ localId: string; body: Record<string, unknown> }>;
     updates: Array<{ id: string; body: Record<string, unknown> }>;
@@ -240,9 +240,7 @@ export async function syncFluxaProfileData(profile: UserProfile): Promise<void> 
     state.cursor > 0
       ? await fluxaPull(session.instanceUrl, session.accessToken, remoteId, state.cursor)
       : await fluxaSnapshot(session.instanceUrl, session.accessToken, remoteId);
-  const incoming = pulled.resetRequired
-    ? await fluxaSnapshot(session.instanceUrl, session.accessToken, remoteId)
-    : pulled;
+  const incoming = pulled.resetRequired ? await fluxaSnapshot(session.instanceUrl, session.accessToken, remoteId) : pulled;
 
   let local = await readLocalState(profile);
   let known = state.known;

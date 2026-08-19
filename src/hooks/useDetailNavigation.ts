@@ -38,8 +38,14 @@ export function useDetailNavigation() {
   const prefetchArtworkFor = (meta: Meta, episode: Video | null) => {
     const art = playerArtwork(meta, episode);
     artworkPrefetchRef.current = prefetchPlayerArtwork(art.background, art.logo).catch(() => undefined);
-    if (art.background) { const i = new Image(); i.src = art.background; }
-    if (art.logo) { const i = new Image(); i.src = art.logo; }
+    if (art.background) {
+      const i = new Image();
+      i.src = art.background;
+    }
+    if (art.logo) {
+      const i = new Image();
+      i.src = art.logo;
+    }
   };
 
   const handleNavigateDetail = useCallback((meta: Meta) => {
@@ -52,14 +58,16 @@ export function useDetailNavigation() {
   const handleResumeFromContinueWatching = useCallback((meta: Meta, resumeAtOverride?: number) => {
     const item = meta as LibraryItem;
     const matchedVideo = item.lastVideoId ? meta.videos?.find((v) => v.id === item.lastVideoId) : undefined;
-    const episode: Video | null = item.lastVideoId ? {
-      id: item.lastVideoId,
-      name: matchedVideo?.name ?? matchedVideo?.title ?? item.lastEpisodeName,
-      season: matchedVideo?.season ?? item.lastEpisodeSeason,
-      episode: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
-      number: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
-      thumbnail: matchedVideo?.thumbnail ?? item.lastEpisodeThumbnail,
-    } : null;
+    const episode: Video | null = item.lastVideoId
+      ? {
+          id: item.lastVideoId,
+          name: matchedVideo?.name ?? matchedVideo?.title ?? item.lastEpisodeName,
+          season: matchedVideo?.season ?? item.lastEpisodeSeason,
+          episode: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
+          number: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
+          thumbnail: matchedVideo?.thumbnail ?? item.lastEpisodeThumbnail,
+        }
+      : null;
     const resumePercent = resumeAtOverride === undefined ? resolveResumePercent(item) : undefined;
     const resumeAt = resumeAtOverride ?? (resumePercent === undefined ? item.timeOffset : undefined);
 
@@ -72,11 +80,9 @@ export function useDetailNavigation() {
 
     void (async () => {
       try {
-        const stream = item.lastStream ?? await readStoredPlaybackSource(meta.id);
+        const stream = item.lastStream ?? (await readStoredPlaybackSource(meta.id));
         const url = item.lastStreamUrl?.trim();
-        const resumeStream: Stream | null = stream ?? (url
-          ? { url, title: item.lastStreamTitle, name: item.lastStreamTitle }
-          : null);
+        const resumeStream: Stream | null = stream ?? (url ? { url, title: item.lastStreamTitle, name: item.lastStreamTitle } : null);
         if (resumeStream) {
           await guardedPlayRef.current(resumeStream, meta, episode, resumeAt, item.duration, undefined, resumePercent);
         }
@@ -86,24 +92,29 @@ export function useDetailNavigation() {
     })();
   }, []);
 
-  const handleStartOverContinueWatching = useCallback((meta: Meta) => {
-    handleResumeFromContinueWatching(meta, 0);
-  }, [handleResumeFromContinueWatching]);
+  const handleStartOverContinueWatching = useCallback(
+    (meta: Meta) => {
+      handleResumeFromContinueWatching(meta, 0);
+    },
+    [handleResumeFromContinueWatching],
+  );
 
   const handlePlayManually = useCallback((meta: Meta) => {
     const item = meta as LibraryItem;
-    const episode: Video | null = item.lastVideoId ? {
-      id: item.lastVideoId,
-      name: item.lastEpisodeName,
-      season: item.lastEpisodeSeason,
-      episode: item.lastEpisodeNumber,
-      number: item.lastEpisodeNumber,
-      thumbnail: item.lastEpisodeThumbnail,
-    } : null;
+    const episode: Video | null = item.lastVideoId
+      ? {
+          id: item.lastVideoId,
+          name: item.lastEpisodeName,
+          season: item.lastEpisodeSeason,
+          episode: item.lastEpisodeNumber,
+          number: item.lastEpisodeNumber,
+          thumbnail: item.lastEpisodeThumbnail,
+        }
+      : null;
     const resumePercent = resolveResumePercent(item);
     setDetailInitialEpisode(episode);
     setDetailAutoShowStreams(true);
-    setDetailResumeAt(resumePercent === undefined ? item.timeOffset ?? undefined : undefined);
+    setDetailResumeAt(resumePercent === undefined ? (item.timeOffset ?? undefined) : undefined);
     setDetailResumePercent(resumePercent);
     setDetailMeta(meta);
   }, []);
@@ -117,13 +128,20 @@ export function useDetailNavigation() {
   }, []);
 
   return {
-    detailMeta, setDetailMeta,
-    detailInitialEpisode, setDetailInitialEpisode,
-    detailAutoShowStreams, setDetailAutoShowStreams,
-    detailResumeAt, setDetailResumeAt,
-    detailResumePercent, setDetailResumePercent,
-    detailPlaybackError, setDetailPlaybackError,
-    discoverInitialGenre, setDiscoverInitialGenre,
+    detailMeta,
+    setDetailMeta,
+    detailInitialEpisode,
+    setDetailInitialEpisode,
+    detailAutoShowStreams,
+    setDetailAutoShowStreams,
+    detailResumeAt,
+    setDetailResumeAt,
+    detailResumePercent,
+    setDetailResumePercent,
+    detailPlaybackError,
+    setDetailPlaybackError,
+    discoverInitialGenre,
+    setDiscoverInitialGenre,
     guardedPlayRef,
     handleNavigateDetail,
     handleResumeFromContinueWatching,

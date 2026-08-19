@@ -97,16 +97,10 @@ function fontName(font: string): string {
 export function buildStyleLine(prefs: SubtitleStylePrefs, name = 'Default'): string {
   const boxed = prefs.backgroundOpacity > 0;
   const edge = prefs.characterEdge;
-  const outline = boxed
-    ? clamp(prefs.outlineSize, 0, 20)
-    : edge === 'none'
-      ? 0
-      : clamp(prefs.outlineSize, 0, 20);
+  const outline = boxed ? clamp(prefs.outlineSize, 0, 20) : edge === 'none' ? 0 : clamp(prefs.outlineSize, 0, 20);
   const shadowDepth = prefs.shadow || edge === 'dropshadow' || edge === 'raised' || edge === 'depressed' ? 2 : 0;
   const primary = assColor(prefs.color, prefs.textOpacity);
-  const border = boxed
-    ? assColor(prefs.backgroundColor, prefs.backgroundOpacity)
-    : assColor(prefs.outlineColor, prefs.outlineOpacity);
+  const border = boxed ? assColor(prefs.backgroundColor, prefs.backgroundOpacity) : assColor(prefs.outlineColor, prefs.outlineOpacity);
   const back = assColor(prefs.outlineColor, prefs.outlineOpacity);
   const size = Math.round(BASE_FONT_SIZE * (clamp(prefs.size, 25, 400) / 100));
   const marginV = Math.round(BASE_MARGIN_V + ((100 - clamp(prefs.position, 0, 100)) / 100) * (PLAY_RES_Y * 0.75));
@@ -118,13 +112,21 @@ export function buildStyleLine(prefs: SubtitleStylePrefs, name = 'Default'): str
     primary,
     border,
     back,
-    prefs.bold ? '-1' : '0', '0', '0', '0',
-    '100', '100', '0', '0',
+    prefs.bold ? '-1' : '0',
+    '0',
+    '0',
+    '0',
+    '100',
+    '100',
+    '0',
+    '0',
     boxed ? '3' : '1',
     String(outline),
     String(shadowDepth),
     '2',
-    '60', '60', String(marginV),
+    '60',
+    '60',
+    String(marginV),
     '1',
   ].join(',');
 }
@@ -167,10 +169,7 @@ function parseTimestamp(raw: string): number | null {
   const match = /^(?:(\d+):)?(\d{1,2}):(\d{1,2})[.,](\d{1,3})$/.exec(raw.trim());
   if (!match) return null;
   const [, hours, minutes, seconds, fraction] = match;
-  return Number(hours ?? 0) * 3600
-    + Number(minutes) * 60
-    + Number(seconds)
-    + Number(fraction.padEnd(3, '0')) / 1000;
+  return Number(hours ?? 0) * 3600 + Number(minutes) * 60 + Number(seconds) + Number(fraction.padEnd(3, '0')) / 1000;
 }
 
 function inlineToAss(text: string): string {

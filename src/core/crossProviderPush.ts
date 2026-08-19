@@ -54,10 +54,14 @@ export async function pushImportedCategoriesToDestination(params: {
       if (plan.watchlistItems) {
         if (destination === 'trakt') {
           const token = profile.traktAccessToken;
-          if (token) for (const { id, contentType } of plan.watchlistItems) await pushWatchlistTrakt(id, contentType, 'add', token, traktClientId ?? '');
+          if (token)
+            for (const { id, contentType } of plan.watchlistItems)
+              await pushWatchlistTrakt(id, contentType, 'add', token, traktClientId ?? '');
         } else if (destination === 'simkl') {
           const token = profile.simklAccessToken;
-          if (token) for (const { id, contentType } of plan.watchlistItems) await pushWatchlistSimkl(id, contentType, 'add', token, simklClientId ?? '');
+          if (token)
+            for (const { id, contentType } of plan.watchlistItems)
+              await pushWatchlistSimkl(id, contentType, 'add', token, simklClientId ?? '');
         } else if (destination === 'anilist') {
           const token = profile.anilistAccessToken;
           if (token) for (const { id } of plan.watchlistItems) await pushWatchlistAniList(id, 'add', token);
@@ -69,9 +73,18 @@ export async function pushImportedCategoriesToDestination(params: {
         }
       } else if (plan.watchlistNuvioItems && destination === 'nuvio') {
         const token = profile.nuvioAccessToken;
-        if (token) await nuvioPushLibrary(token, profile.nuvioProfileIndex ?? 1, plan.watchlistNuvioItems.map((item) => ({
-          content_id: item.contentId, content_type: item.contentType, name: item.name ?? undefined, poster: item.poster ?? null, background: item.background ?? null,
-        })));
+        if (token)
+          await nuvioPushLibrary(
+            token,
+            profile.nuvioProfileIndex ?? 1,
+            plan.watchlistNuvioItems.map((item) => ({
+              content_id: item.contentId,
+              content_type: item.contentType,
+              name: item.name ?? undefined,
+              poster: item.poster ?? null,
+              background: item.background ?? null,
+            })),
+          );
       }
     } catch (err) {
       errors.watchlist = err instanceof Error ? err.message : String(err);
@@ -86,7 +99,8 @@ export async function pushImportedCategoriesToDestination(params: {
           if (token && plan.watchedVideoIds.length > 0) await pushMarkWatchedTrakt(plan.watchedVideoIds, true, token, traktClientId ?? '');
         } else if (destination === 'simkl') {
           const token = profile.simklAccessToken;
-          if (token && plan.watchedVideoIds.length > 0) await pushMarkWatchedSimkl(plan.watchedVideoIds, true, undefined, token, simklClientId ?? '');
+          if (token && plan.watchedVideoIds.length > 0)
+            await pushMarkWatchedSimkl(plan.watchedVideoIds, true, undefined, token, simklClientId ?? '');
         }
       } else if (plan.watchedStatusItems && destination === 'anilist') {
         const token = profile.anilistAccessToken;
@@ -96,18 +110,35 @@ export async function pushImportedCategoriesToDestination(params: {
           const item = byId.get(id);
           if (!item) continue;
           const episode = episodeVideoFor(item);
-          const episodes = episode ? [{
-            contentId: item.id, contentType: item.type, videoId: episode.id,
-            season: item.lastEpisodeSeason, episode: item.lastEpisodeNumber, title: item.lastEpisodeName,
-          }] : [];
+          const episodes = episode
+            ? [
+                {
+                  contentId: item.id,
+                  contentType: item.type,
+                  videoId: episode.id,
+                  season: item.lastEpisodeSeason,
+                  episode: item.lastEpisodeNumber,
+                  title: item.lastEpisodeName,
+                },
+              ]
+            : [];
           await pushStremioWatched(item as unknown as Record<string, unknown>, true, episodes, profile);
         }
       } else if (plan.watchedNuvioItems && destination === 'nuvio') {
         const token = profile.nuvioAccessToken;
-        if (token) await nuvioPushWatchHistory(token, profile.nuvioProfileIndex ?? 1, plan.watchedNuvioItems.map((item) => ({
-          content_id: item.contentId, content_type: item.contentType, title: item.title ?? undefined,
-          season: item.season ?? undefined, episode: item.episode ?? undefined, watched_at: item.watchedAt,
-        })));
+        if (token)
+          await nuvioPushWatchHistory(
+            token,
+            profile.nuvioProfileIndex ?? 1,
+            plan.watchedNuvioItems.map((item) => ({
+              content_id: item.contentId,
+              content_type: item.contentType,
+              title: item.title ?? undefined,
+              season: item.season ?? undefined,
+              episode: item.episode ?? undefined,
+              watched_at: item.watchedAt,
+            })),
+          );
       }
     } catch (err) {
       errors.watched = err instanceof Error ? err.message : String(err);
@@ -126,29 +157,50 @@ export async function pushImportedCategoriesToDestination(params: {
             await simklScrobble(profile, item as unknown as Meta, episodeVideoFor(item), item.timeOffset ?? 0, item.duration, 'pause');
           } else if (destination === 'anilist') {
             if (!profile.anilistAccessToken) continue;
-            await pushAnimeTrackingExternal({
-              meta: item as unknown as Record<string, unknown>,
-              episode: episodeVideoFor(item) ?? undefined,
-              progressEpisode: item.lastEpisodeNumber,
-              watched: true,
-            }, profile);
+            await pushAnimeTrackingExternal(
+              {
+                meta: item as unknown as Record<string, unknown>,
+                episode: episodeVideoFor(item) ?? undefined,
+                progressEpisode: item.lastEpisodeNumber,
+                watched: true,
+              },
+              profile,
+            );
           } else if (destination === 'stremio') {
             if (!item.lastVideoId) continue;
-            await pushStremioPlaybackProgress(item as unknown as Record<string, unknown>, {
-              contentId: item.id, contentType: item.type, videoId: item.lastVideoId,
-              positionSeconds: item.timeOffset ?? 0, durationSeconds: item.duration,
-              lastWatched: Date.now(), season: item.lastEpisodeSeason, episode: item.lastEpisodeNumber,
-            }, profile);
+            await pushStremioPlaybackProgress(
+              item as unknown as Record<string, unknown>,
+              {
+                contentId: item.id,
+                contentType: item.type,
+                videoId: item.lastVideoId,
+                positionSeconds: item.timeOffset ?? 0,
+                durationSeconds: item.duration,
+                lastWatched: Date.now(),
+                season: item.lastEpisodeSeason,
+                episode: item.lastEpisodeNumber,
+              },
+              profile,
+            );
           }
         }
       } else if (plan.progressNuvioEntries && destination === 'nuvio') {
         const token = profile.nuvioAccessToken;
         if (token && plan.progressNuvioEntries.length > 0) {
-          await nuvioPushWatchProgress(token, profile.nuvioProfileIndex ?? 1, plan.progressNuvioEntries.map((entry) => ({
-            content_id: entry.contentId, content_type: entry.contentType, video_id: entry.videoId,
-            position: entry.position, duration: entry.duration, last_watched: entry.lastWatched,
-            season: entry.season ?? undefined, episode: entry.episode ?? undefined,
-          })));
+          await nuvioPushWatchProgress(
+            token,
+            profile.nuvioProfileIndex ?? 1,
+            plan.progressNuvioEntries.map((entry) => ({
+              content_id: entry.contentId,
+              content_type: entry.contentType,
+              video_id: entry.videoId,
+              position: entry.position,
+              duration: entry.duration,
+              last_watched: entry.lastWatched,
+              season: entry.season ?? undefined,
+              episode: entry.episode ?? undefined,
+            })),
+          );
         }
       }
     } catch (err) {

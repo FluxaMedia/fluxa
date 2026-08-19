@@ -68,31 +68,45 @@ export function useExternalHandoff({ stateRef, activeProfile, updateState, onPro
     setPrompt(null);
   }, []);
 
-  const commit = useCallback(async (timePos: number, duration: number) => {
-    const current = prompt;
-    setPrompt(null);
-    clearExternalSession();
-    if (!current || !(duration > 0)) return;
-    const snapshot = { timePos, duration };
-    await persistPlaybackProgress({
-      meta: current.session.meta,
-      episode: current.session.episode,
-      stream: current.session.stream,
-      nextEpisode: null,
-      snapshot,
-      streamIndex: null,
-      prefs: appPrefs(stateRef.current),
-      updateState,
-    }).catch(() => undefined);
-    const flags = { hasStarted: false, hasPaused: false, hasStopped: false };
-    await runScrobbleLifecycle({
-      event: 'start', profile: activeProfile, meta: current.session.meta, episode: current.session.episode, snapshot, flags, onProfileUpdated,
-    }).catch(() => undefined);
-    await runScrobbleLifecycle({
-      event: 'stop', profile: activeProfile, meta: current.session.meta, episode: current.session.episode, snapshot,
-      flags: { ...flags, hasStarted: true }, onProfileUpdated,
-    }).catch(() => undefined);
-  }, [prompt, stateRef, updateState, activeProfile, onProfileUpdated]);
+  const commit = useCallback(
+    async (timePos: number, duration: number) => {
+      const current = prompt;
+      setPrompt(null);
+      clearExternalSession();
+      if (!current || !(duration > 0)) return;
+      const snapshot = { timePos, duration };
+      await persistPlaybackProgress({
+        meta: current.session.meta,
+        episode: current.session.episode,
+        stream: current.session.stream,
+        nextEpisode: null,
+        snapshot,
+        streamIndex: null,
+        prefs: appPrefs(stateRef.current),
+        updateState,
+      }).catch(() => undefined);
+      const flags = { hasStarted: false, hasPaused: false, hasStopped: false };
+      await runScrobbleLifecycle({
+        event: 'start',
+        profile: activeProfile,
+        meta: current.session.meta,
+        episode: current.session.episode,
+        snapshot,
+        flags,
+        onProfileUpdated,
+      }).catch(() => undefined);
+      await runScrobbleLifecycle({
+        event: 'stop',
+        profile: activeProfile,
+        meta: current.session.meta,
+        episode: current.session.episode,
+        snapshot,
+        flags: { ...flags, hasStarted: true },
+        onProfileUpdated,
+      }).catch(() => undefined);
+    },
+    [prompt, stateRef, updateState, activeProfile, onProfileUpdated],
+  );
 
   return { prompt, start, dismiss, commit };
 }

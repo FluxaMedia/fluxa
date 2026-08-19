@@ -44,9 +44,22 @@ export function NextEpCard({ subtitle, thumbnail, countdown, countdownTotal, bot
     >
       {thumbnail && !thumbErr && (
         <button
-          onClick={(e) => { e.stopPropagation(); onPlay(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay();
+          }}
           aria-label={t('player.next_label', epTitle)}
-          style={{ display: 'block', width: '100%', height: '11.875rem', border: 'none', borderBottom: `1px solid ${borderColor}`, padding: 0, cursor: 'pointer', background: '#0d0f16', transition: 'border-color 0.15s' }}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: '11.875rem',
+            border: 'none',
+            borderBottom: `1px solid ${borderColor}`,
+            padding: 0,
+            cursor: 'pointer',
+            background: '#0d0f16',
+            transition: 'border-color 0.15s',
+          }}
         >
           <img
             src={thumbnail}
@@ -58,20 +71,64 @@ export function NextEpCard({ subtitle, thumbnail, countdown, countdownTotal, bot
       )}
 
       <button
-        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-        style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.48)', border: 'none', borderRadius: '50%', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', padding: '0.3125rem', display: 'flex' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDismiss();
+        }}
+        style={{
+          position: 'absolute',
+          top: '0.5rem',
+          right: '0.5rem',
+          background: 'rgba(0,0,0,0.48)',
+          border: 'none',
+          borderRadius: '50%',
+          color: 'rgba(255,255,255,0.8)',
+          cursor: 'pointer',
+          padding: '0.3125rem',
+          display: 'flex',
+        }}
         aria-label={t('player.dismiss')}
       >
         <X size={15} />
       </button>
       <button
-        onClick={(e) => { e.stopPropagation(); onPlay(); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onPlay();
+        }}
         aria-label={t('player.next_label', epTitle)}
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: '2.75rem', border: 'none', borderTop: '1px solid rgba(0,0,0,0.12)', padding: '0.625rem 1rem', overflow: 'hidden', background: '#d8d8d8', color: '#090909', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 700 }}
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem',
+          minHeight: '2.75rem',
+          border: 'none',
+          borderTop: '1px solid rgba(0,0,0,0.12)',
+          padding: '0.625rem 1rem',
+          overflow: 'hidden',
+          background: '#d8d8d8',
+          color: '#090909',
+          cursor: 'pointer',
+          fontSize: '0.875rem',
+          fontWeight: 700,
+        }}
       >
-        <span aria-hidden="true" style={{ position: 'absolute', inset: 0, width: `${(progress * 100).toFixed(2)}%`, background: '#fff', transition: 'width 1s linear' }} />
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: `${(progress * 100).toFixed(2)}%`,
+            background: '#fff',
+            transition: 'width 1s linear',
+          }}
+        />
         <Play size={16} fill="currentColor" strokeWidth={0} style={{ position: 'relative', zIndex: 1 }} />
-        <span style={{ position: 'relative', zIndex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{epCode ? `${epCode} · ${epTitle}` : epTitle}</span>
+        <span style={{ position: 'relative', zIndex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {epCode ? `${epCode} · ${epTitle}` : epTitle}
+        </span>
       </button>
     </div>
   );

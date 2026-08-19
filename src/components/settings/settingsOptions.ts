@@ -64,9 +64,7 @@ function connectedSourceOptions(connected: ConnectedSourceState = {}) {
     ...(connected.anilist ? [{ value: 'anilist', label: t('settings.cw_source_of_truth_anilist') }] : []),
     ...(connected.stremio ? [{ value: 'stremio', label: t('settings.cw_source_of_truth_stremio') }] : []),
   ];
-  return remote.length > 0
-    ? remote
-    : [{ value: 'local', label: t('settings.cw_source_of_truth_local') }];
+  return remote.length > 0 ? remote : [{ value: 'local', label: t('settings.cw_source_of_truth_local') }];
 }
 
 export function cwSourceOfTruthOptions(connected: ConnectedSourceState = {}) {

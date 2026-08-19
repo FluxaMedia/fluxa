@@ -80,32 +80,34 @@ export function PlaybackHost({
       )}
       {active && (
         <ErrorBoundary>
-          <React.Suspense fallback={null}><ReactPlayerOverlay
-            closePlayer={closePlayer}
-            onFirstFrame={notifyFirstFrame}
-            isLoadingOverlayActive={!!loading}
-            initialTitle={title}
-            initialEpisodeTitle={episodeTitle}
-            currentEpisode={episode}
-            isTorrentStream={usesTorrent}
-            initialPosterUrl={posterUrl}
-            initialLogoUrl={logoUrl}
-            metaId={metaId}
-            initialSubtitleUrl={subtitleUrl}
-            initialStreamHeaders={streamHeaders}
-            streamRef={streamRef}
-            metaRef={metaRef}
-            playbackUrl={playbackUrl}
-            torrentTelemetryContext={torrentTelemetryContext}
-            prefs={prefs}
-            onDispatch={dispatch}
-            playbackError={playbackError}
-            subtitleWarning={subtitleWarning}
-            onDismissSubtitleWarning={dismissSubtitleWarning}
-            softwareVideoActive={softwareVideoActive}
-            bannerOffset={bannerOffset}
-            skipSegmentCoverage={skipSegmentCoverage}
-          /></React.Suspense>
+          <React.Suspense fallback={null}>
+            <ReactPlayerOverlay
+              closePlayer={closePlayer}
+              onFirstFrame={notifyFirstFrame}
+              isLoadingOverlayActive={!!loading}
+              initialTitle={title}
+              initialEpisodeTitle={episodeTitle}
+              currentEpisode={episode}
+              isTorrentStream={usesTorrent}
+              initialPosterUrl={posterUrl}
+              initialLogoUrl={logoUrl}
+              metaId={metaId}
+              initialSubtitleUrl={subtitleUrl}
+              initialStreamHeaders={streamHeaders}
+              streamRef={streamRef}
+              metaRef={metaRef}
+              playbackUrl={playbackUrl}
+              torrentTelemetryContext={torrentTelemetryContext}
+              prefs={prefs}
+              onDispatch={dispatch}
+              playbackError={playbackError}
+              subtitleWarning={subtitleWarning}
+              onDismissSubtitleWarning={dismissSubtitleWarning}
+              softwareVideoActive={softwareVideoActive}
+              bannerOffset={bannerOffset}
+              skipSegmentCoverage={skipSegmentCoverage}
+            />
+          </React.Suspense>
         </ErrorBoundary>
       )}
     </>

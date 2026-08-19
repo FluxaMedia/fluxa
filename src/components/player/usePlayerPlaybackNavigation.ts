@@ -30,7 +30,28 @@ type Bindings = {
 };
 
 export function usePlayerPlaybackNavigation(options: Bindings) {
-  const { chaptersRef, setChapters, setSkipSegments, setNextEpSubtitle, setNextEpDismissed, setNextEpThreshold, setAutoPlayNextEpisode, setAutoPlayCountdownSecs, setAutoSkipSegments, setEpisodes, showNextEpCard, autoPlayNextEpisode, nextEpDismissed, autoPlayCountdownSecs, setCountdown, activeSkip, setActiveSkip, countdown, pausedRef, resetActivity } = options;
+  const {
+    chaptersRef,
+    setChapters,
+    setSkipSegments,
+    setNextEpSubtitle,
+    setNextEpDismissed,
+    setNextEpThreshold,
+    setAutoPlayNextEpisode,
+    setAutoPlayCountdownSecs,
+    setAutoSkipSegments,
+    setEpisodes,
+    showNextEpCard,
+    autoPlayNextEpisode,
+    nextEpDismissed,
+    autoPlayCountdownSecs,
+    setCountdown,
+    activeSkip,
+    setActiveSkip,
+    countdown,
+    pausedRef,
+    resetActivity,
+  } = options;
   useEffect(() => {
     const poll = async () => {
       try {
@@ -52,20 +73,41 @@ export function usePlayerPlaybackNavigation(options: Bindings) {
       } catch {}
     };
     void poll();
-    const interval = setInterval(() => { void poll(); }, 2000);
+    const interval = setInterval(() => {
+      void poll();
+    }, 2000);
     let unlisten: (() => void) | undefined;
-    void listen('player-skip-info-updated', () => { void poll(); }).then((stop) => { unlisten = stop; });
-    return () => { clearInterval(interval); unlisten?.(); };
+    void listen('player-skip-info-updated', () => {
+      void poll();
+    }).then((stop) => {
+      unlisten = stop;
+    });
+    return () => {
+      clearInterval(interval);
+      unlisten?.();
+    };
   }, []);
   useEffect(() => {
-    if (!showNextEpCard || !autoPlayNextEpisode || nextEpDismissed) { setCountdown(null); return; }
+    if (!showNextEpCard || !autoPlayNextEpisode || nextEpDismissed) {
+      setCountdown(null);
+      return;
+    }
     setCountdown(autoPlayCountdownSecs);
   }, [showNextEpCard, autoPlayNextEpisode, nextEpDismissed, autoPlayCountdownSecs]);
-  useEffect(() => { if (showNextEpCard && activeSkip?.type === 'outro') setActiveSkip(null); }, [showNextEpCard, activeSkip]);
+  useEffect(() => {
+    if (showNextEpCard && activeSkip?.type === 'outro') setActiveSkip(null);
+  }, [showNextEpCard, activeSkip]);
   useEffect(() => {
     if (countdown === null) return;
-    const id = setInterval(() => { if (!pausedRef.current) setCountdown((value: number | null) => value !== null && value > 0 ? value - 1 : value); }, 1000);
+    const id = setInterval(() => {
+      if (!pausedRef.current) setCountdown((value: number | null) => (value !== null && value > 0 ? value - 1 : value));
+    }, 1000);
     return () => clearInterval(id);
   }, [countdown === null]);
-  useEffect(() => { if (countdown === 0) { resetActivity(); void emit('native-player-next-episode', null); } }, [countdown]);
+  useEffect(() => {
+    if (countdown === 0) {
+      resetActivity();
+      void emit('native-player-next-episode', null);
+    }
+  }, [countdown]);
 }

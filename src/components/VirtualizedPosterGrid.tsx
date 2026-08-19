@@ -48,12 +48,18 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
     };
     const onResize = () => {
       if (raf != null) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => { raf = null; update(); });
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        update();
+      });
     };
     update();
     const observer = new ResizeObserver(onResize);
     observer.observe(node);
-    return () => { observer.disconnect(); if (raf != null) cancelAnimationFrame(raf); };
+    return () => {
+      observer.disconnect();
+      if (raf != null) cancelAnimationFrame(raf);
+    };
   }, []);
 
   useEffect(() => {
@@ -77,13 +83,10 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
     ? Math.min(GRID_MIN_COLUMN_WIDTH, Math.max(96, Math.floor((availableWidth - gapX) / 2)))
     : GRID_MIN_COLUMN_WIDTH;
   const columns = Math.max(1, Math.floor((availableWidth + gapX) / (minColumnWidth + gapX)));
-  const columnWidth = columns > 0
-    ? Math.max(minColumnWidth, (availableWidth - gapX * (columns - 1)) / columns)
-    : minColumnWidth;
+  const columnWidth = columns > 0 ? Math.max(minColumnWidth, (availableWidth - gapX * (columns - 1)) / columns) : minColumnWidth;
   const cardWidth = narrow ? Math.min(posterPrefs.width, Math.floor(columnWidth)) : posterPrefs.width;
-  const cardHeight = cardWidth === posterPrefs.width
-    ? posterPrefs.height
-    : Math.round(posterPrefs.height * (cardWidth / posterPrefs.width));
+  const cardHeight =
+    cardWidth === posterPrefs.width ? posterPrefs.height : Math.round(posterPrefs.height * (cardWidth / posterPrefs.width));
   const cardPrefs = cardWidth === posterPrefs.width ? posterPrefs : { ...posterPrefs, width: cardWidth, height: cardHeight };
   const cardExtraHeight = posterPrefs.hideTitles ? 0 : 40;
   const itemHeight = cardHeight + cardExtraHeight;
@@ -93,10 +96,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
   const rowCount = Math.ceil(slotCount / columns);
   const totalHeight = GRID_PADDING_TOP + GRID_PADDING_BOTTOM + Math.max(0, rowCount * itemHeight + Math.max(0, rowCount - 1) * GRID_GAP_Y);
   const startRow = Math.max(0, Math.floor((viewport.scrollTop - GRID_PADDING_TOP) / rowStep) - GRID_OVERSCAN_ROWS);
-  const endRow = Math.min(
-    rowCount,
-    Math.ceil((viewport.scrollTop + viewport.height - GRID_PADDING_TOP) / rowStep) + GRID_OVERSCAN_ROWS,
-  );
+  const endRow = Math.min(rowCount, Math.ceil((viewport.scrollTop + viewport.height - GRID_PADDING_TOP) / rowStep) + GRID_OVERSCAN_ROWS);
 
   const visible: Array<{ item: Meta; index: number; row: number; col: number }> = [];
   const placeholders: Array<{ row: number; col: number }> = [];
@@ -116,9 +116,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
     rafRef.current = window.requestAnimationFrame(() => {
       rafRef.current = null;
       setViewport((current) =>
-        current.scrollTop === node.scrollTop
-          ? current
-          : { width: node.clientWidth, height: node.clientHeight, scrollTop: node.scrollTop },
+        current.scrollTop === node.scrollTop ? current : { width: node.clientWidth, height: node.clientHeight, scrollTop: node.scrollTop },
       );
       if (node.scrollTop + node.clientHeight >= node.scrollHeight - NEAR_END_THRESHOLD_PX) {
         onNearEnd?.();
@@ -208,9 +206,10 @@ const PosterCard = React.memo(function PosterCard({
   const [imgErr, setImgErr] = useState(false);
   const dpr = window.devicePixelRatio;
   const displayWidth = posterPrefs.width;
-  const imgSrc = posterPrefs.layout === 'horizontal'
-    ? cardImageUrl(meta.background, { kind: 'backdrop', displayWidth, dpr }) || cardImageUrl(meta.poster, { displayWidth, dpr })
-    : cardImageUrl(meta.poster, { displayWidth, dpr }) || cardImageUrl(meta.background, { kind: 'backdrop', displayWidth, dpr });
+  const imgSrc =
+    posterPrefs.layout === 'horizontal'
+      ? cardImageUrl(meta.background, { kind: 'backdrop', displayWidth, dpr }) || cardImageUrl(meta.poster, { displayWidth, dpr })
+      : cardImageUrl(meta.poster, { displayWidth, dpr }) || cardImageUrl(meta.background, { kind: 'backdrop', displayWidth, dpr });
 
   return (
     <div
@@ -248,7 +247,16 @@ const PosterCard = React.memo(function PosterCard({
             onError={() => setImgErr(true)}
           />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1B212B' }}>
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#1B212B',
+            }}
+          >
             <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '1.5rem', fontWeight: 900 }}>
               {(meta.name ?? '').slice(0, 2).toUpperCase()}
             </span>
@@ -257,26 +265,30 @@ const PosterCard = React.memo(function PosterCard({
       </div>
       {!posterPrefs.hideTitles && (
         <>
-          <p style={{
-            color: '#fff',
-            fontSize: '0.875rem',
-            fontWeight: 700,
-            margin: '0.375rem 0 0',
-            textAlign: 'center',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
+          <p
+            style={{
+              color: '#fff',
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              margin: '0.375rem 0 0',
+              textAlign: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {meta.name}
           </p>
           {(meta.year ?? meta.releaseInfo) && (
-            <p style={{
-              color: 'rgba(255,255,255,0.45)',
-              fontSize: '0.75rem',
-              fontWeight: 400,
-              margin: '0.125rem 0 0',
-              textAlign: 'center',
-            }}>
+            <p
+              style={{
+                color: 'rgba(255,255,255,0.45)',
+                fontSize: '0.75rem',
+                fontWeight: 400,
+                margin: '0.125rem 0 0',
+                textAlign: 'center',
+              }}
+            >
               {meta.year ?? meta.releaseInfo}
             </p>
           )}

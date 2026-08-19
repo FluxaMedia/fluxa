@@ -1,10 +1,6 @@
 import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex } from './engine';
 import { platformInvoke as invoke } from '../platform/invoke';
-import {
-  coreResourceFetchPlan,
-  coreResourceParsePlan,
-  coreParseAddonResourceResult,
-} from './addonManifest';
+import { coreResourceFetchPlan, coreResourceParsePlan, coreParseAddonResourceResult } from './addonManifest';
 import { loadPrefs } from './libraryOps';
 import type { Stream, Meta, Video, AddonDescriptor } from './types';
 import { stringValue } from './playerUtils';
@@ -17,7 +13,6 @@ export type ResolvedSubtitles = {
 function subtitleTrace(message: string): void {
   void invoke('debug_log', { msg: `subtitles: ${message}` }).catch(() => undefined);
 }
-
 
 export async function resolvePlaybackSubtitles(
   stream: Stream,
@@ -58,26 +53,28 @@ export async function resolvePlaybackSubtitles(
     extraRaw: subtitleExtraArgs ?? '',
   });
   subtitleTrace(`plan contentType=${contentType}, id=${id}, addons=${addons.length}, requests=${plan?.requests?.length ?? 0}`);
-  await Promise.all((plan?.requests ?? []).map(async (request) => {
-    const addonName = String(request.addonName ?? 'Subtitle');
-    try {
-      const resourceUrl = typeof request.url === 'string' ? request.url : '';
-      if (!resourceUrl) return;
-      const data = await tryFetchSubtitleResource(resourceUrl);
-      const parsed = await coreResourceParsePlan({
-        kind: 'subtitles',
-        response: { subtitles: data },
-        addonName: request.addonName,
-      });
-      const rawSubtitles = ((parsed?.subtitles as unknown[] | undefined) ?? data);
-      const normalized = await coreNormalizeAddonSubtitles(rawSubtitles, resourceUrl);
-      for (const raw of normalized) {
-        pushSubtitle(normalizeSubtitle(raw, addonName));
+  await Promise.all(
+    (plan?.requests ?? []).map(async (request) => {
+      const addonName = String(request.addonName ?? 'Subtitle');
+      try {
+        const resourceUrl = typeof request.url === 'string' ? request.url : '';
+        if (!resourceUrl) return;
+        const data = await tryFetchSubtitleResource(resourceUrl);
+        const parsed = await coreResourceParsePlan({
+          kind: 'subtitles',
+          response: { subtitles: data },
+          addonName: request.addonName,
+        });
+        const rawSubtitles = (parsed?.subtitles as unknown[] | undefined) ?? data;
+        const normalized = await coreNormalizeAddonSubtitles(rawSubtitles, resourceUrl);
+        for (const raw of normalized) {
+          pushSubtitle(normalizeSubtitle(raw, addonName));
+        }
+      } catch {
+        failedAddons.push(addonName);
       }
-    } catch {
-      failedAddons.push(addonName);
-    }
-  }));
+    }),
+  );
 
   const prefs = await loadPrefs();
   const preferredIndex = await coreFindPreferredSubtitleIndex(
@@ -142,15 +139,8 @@ function normalizeSubtitle(raw: unknown, addonName: string): PlayerSubtitleSourc
   };
   const url = stringValue(object.url) ?? stringValue(object.attributes?.url) ?? null;
   if (!url) return null;
-  const lang =
-    stringValue(object.lang) ??
-    stringValue(object.attributes?.language) ??
-    stringValue(object.attributes?.lang);
+  const lang = stringValue(object.lang) ?? stringValue(object.attributes?.language) ?? stringValue(object.attributes?.lang);
   const fallbackLabel = lang ?? (addonName || 'Subtitle');
-  const label =
-    stringValue(object.label) ??
-    stringValue(object.name) ??
-    stringValue(object.attributes?.name) ??
-    fallbackLabel;
+  const label = stringValue(object.label) ?? stringValue(object.name) ?? stringValue(object.attributes?.name) ?? fallbackLabel;
   return { url, lang, label, addonName: addonName || undefined };
 }

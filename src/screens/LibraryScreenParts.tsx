@@ -4,12 +4,13 @@ import { t } from '../i18n';
 import { styles } from './libraryScreenStyles';
 
 function itemActivityTime(item: LibraryItem): number {
-  const raw = (item as LibraryItem & { savedAt?: string; updatedAt?: string; lastWatchedAt?: string }).savedAt
-    ?? (item as LibraryItem & { savedAt?: string; updatedAt?: string; lastWatchedAt?: string }).lastWatchedAt
-    ?? item.statusChangedAt
-    ?? item.newEpisodeReleasedAt
-    ?? item.lastAirDateCheckedAt
-    ?? (item as LibraryItem & { updatedAt?: string }).updatedAt;
+  const raw =
+    (item as LibraryItem & { savedAt?: string; updatedAt?: string; lastWatchedAt?: string }).savedAt ??
+    (item as LibraryItem & { savedAt?: string; updatedAt?: string; lastWatchedAt?: string }).lastWatchedAt ??
+    item.statusChangedAt ??
+    item.newEpisodeReleasedAt ??
+    item.lastAirDateCheckedAt ??
+    (item as LibraryItem & { updatedAt?: string }).updatedAt;
   const parsed = raw ? Date.parse(raw) : 0;
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -19,9 +20,10 @@ export function HistoryTimeline({ items, onNavigateDetail }: { items: LibraryIte
     <div className="library-history" style={styles.historyScroll}>
       {items.map((item) => {
         const at = itemActivityTime(item);
-        const progress = (item.timeOffset ?? 0) > 0 && (item.duration ?? 0) > 0
-          ? Math.min(100, Math.round(((item.timeOffset ?? 0) / (item.duration ?? 1)) * 100))
-          : null;
+        const progress =
+          (item.timeOffset ?? 0) > 0 && (item.duration ?? 0) > 0
+            ? Math.min(100, Math.round(((item.timeOffset ?? 0) / (item.duration ?? 1)) * 100))
+            : null;
         const label = item.statusChangedAt
           ? t('library.history_status_changed')
           : item.lastVideoId
@@ -43,7 +45,9 @@ export function HistoryTimeline({ items, onNavigateDetail }: { items: LibraryIte
                 </div>
               )}
             </div>
-            <span style={styles.historyTime}>{at ? new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+            <span style={styles.historyTime}>
+              {at ? new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
+            </span>
           </button>
         );
       })}
@@ -56,10 +60,18 @@ export function CircleBtn({ onClick, size, children }: { onClick: () => void; si
   return (
     <button
       style={{
-        width: size, height: size, minWidth: size, borderRadius: '50%',
+        width: size,
+        height: size,
+        minWidth: size,
+        borderRadius: '50%',
         background: hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)',
-        border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', flexShrink: 0, transition: 'background 0.15s',
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        transition: 'background 0.15s',
       }}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
@@ -77,8 +89,12 @@ export function TabChip({ active, onClick, children }: { active: boolean; onClic
       style={{
         background: active ? '#FFFFFF' : hovered ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
         color: active ? '#000000' : '#FFFFFF',
-        border: 'none', borderRadius: '1.25rem', padding: '0.5rem 1.25rem',
-        fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
+        border: 'none',
+        borderRadius: '1.25rem',
+        padding: '0.5rem 1.25rem',
+        fontSize: '0.875rem',
+        fontWeight: 700,
+        cursor: 'pointer',
         transition: 'background 0.15s, color 0.15s',
       }}
       onClick={onClick}

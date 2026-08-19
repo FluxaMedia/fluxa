@@ -45,8 +45,17 @@ export function DetailsTabContent({
         <div style={MS.detailsSection}>
           <h3 style={MS.detailsSectionTitle}>{t('detail.cast_crew')}</h3>
           <div style={S.castRow}>
-            {directorLinks.map((l) => <CastAvatar key={`dir-${l.name}`} name={l.name} role={t('detail.director')} imageUrl={peopleImages[l.name]} />)}
-            {castMembers.map((member) => <CastAvatar key={`cast-${member.name}:${member.role ?? ''}`} name={member.name} role={member.role || t('detail.actor')} imageUrl={member.imageUrl ?? peopleImages[member.name]} />)}
+            {directorLinks.map((l) => (
+              <CastAvatar key={`dir-${l.name}`} name={l.name} role={t('detail.director')} imageUrl={peopleImages[l.name]} />
+            ))}
+            {castMembers.map((member) => (
+              <CastAvatar
+                key={`cast-${member.name}:${member.role ?? ''}`}
+                name={member.name}
+                role={member.role || t('detail.actor')}
+                imageUrl={member.imageUrl ?? peopleImages[member.name]}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -103,7 +112,9 @@ export function EpisodesTabContent({
   return (
     <div style={{ ...MS.episodeSection, minHeight: '12.5rem' }}>
       {detail.isLoading && filteredEps.length === 0 ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '2.5rem' }}><div style={spinnerStyle} /></div>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '2.5rem' }}>
+          <div style={spinnerStyle} />
+        </div>
       ) : (
         <>
           <p style={MS.episodeCount}>{t('format.episode_count', filteredEps.length)}</p>
@@ -112,11 +123,18 @@ export function EpisodesTabContent({
               const isWatched = watchedMap[ep.id] === true;
               const metaProgress = progressMap[metaId];
               const showProg = !isWatched && metaProgress?.lastVideoId === ep.id && (metaProgress.duration ?? 0) > 0;
-              const progressPct = isWatched ? 100 : (showProg ? Math.min(99, Math.round((metaProgress!.timeOffset / metaProgress!.duration) * 100)) : 0);
+              const progressPct = isWatched
+                ? 100
+                : showProg
+                  ? Math.min(99, Math.round((metaProgress!.timeOffset / metaProgress!.duration) * 100))
+                  : 0;
               const minutesRemaining = showProg ? Math.max(0, Math.round((metaProgress!.duration - metaProgress!.timeOffset) / 60)) : 0;
               const isCwEp = continueWatchingEntry?.lastVideoId === ep.id;
               const cwBadge = isCwEp ? (continueWatchingEntry?.continueWatchingBadge ?? null) : null;
-              const cwScheduledDate = cwBadge === 'scheduledEpisode' ? (continueWatchingEntry as LibraryItem & { newEpisodeReleasedAt?: string })?.newEpisodeReleasedAt : undefined;
+              const cwScheduledDate =
+                cwBadge === 'scheduledEpisode'
+                  ? (continueWatchingEntry as LibraryItem & { newEpisodeReleasedAt?: string })?.newEpisodeReleasedAt
+                  : undefined;
               return (
                 <ModernEpisodeCard
                   key={ep.id}
@@ -162,7 +180,16 @@ export function RelatedTabContent({
       ) : (
         <div className="detail-related-grid" style={MS.relatedGrid}>
           {similarItems.slice(0, 24).map((item) => (
-            <MovieCard key={`${item.type}:${item.id}`} meta={item} width={poster.width} height={poster.height} radius={poster.radius} hideTitle={poster.hideTitles} layout={poster.layout} onClick={onNavigateDetail} />
+            <MovieCard
+              key={`${item.type}:${item.id}`}
+              meta={item}
+              width={poster.width}
+              height={poster.height}
+              radius={poster.radius}
+              hideTitle={poster.hideTitles}
+              layout={poster.layout}
+              onClick={onNavigateDetail}
+            />
           ))}
         </div>
       )}

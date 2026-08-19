@@ -9,7 +9,9 @@ const LEGACY_SCRAPER_ENABLED_KEY = 'plugin_scraper_enabled';
 export async function pluginsOwnerId(): Promise<string> {
   const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
   const activeId = (await storageRead<string>('active_profile_id'))?.trim() ?? '';
-  const ownerId = await coreInvoke<string>('effectivePluginsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId })).catch(() => null);
+  const ownerId = await coreInvoke<string>('effectivePluginsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId })).catch(
+    () => null,
+  );
   return (ownerId || activeId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
@@ -40,9 +42,7 @@ async function readPluginHydrationSource(): Promise<{ repositoryUrls: string[]; 
   return result ?? { repositoryUrls: [], scraperOverrides: {} };
 }
 
-export async function hydratePluginsFromStorage(
-  updateState: (s: Partial<AppState>) => void,
-): Promise<void> {
+export async function hydratePluginsFromStorage(updateState: (s: Partial<AppState>) => void): Promise<void> {
   const { repositoryUrls, scraperOverrides } = await readPluginHydrationSource();
   for (const manifestUrl of repositoryUrls ?? []) {
     if (!manifestUrl.trim()) continue;
@@ -58,32 +58,28 @@ export async function hydratePluginsFromStorage(
 }
 
 function remotePluginUrls(rows: Array<{ url?: unknown }>): string[] {
-  return Array.from(new Set(rows
-    .map((row) => typeof row.url === 'string' ? row.url.trim() : '')
-    .filter(Boolean)));
+  return Array.from(new Set(rows.map((row) => (typeof row.url === 'string' ? row.url.trim() : '')).filter(Boolean)));
 }
 
-export async function hydratePluginsFromNuvio(
-  profile: UserProfile | null | undefined,
-): Promise<void> {
+export async function hydratePluginsFromNuvio(profile: UserProfile | null | undefined): Promise<void> {
   if (!profile?.nuvioAccessToken) return;
   const rows = await nuvioPullPlugins(profile.nuvioAccessToken, profile.nuvioProfileIndex ?? 1);
   const urls = remotePluginUrls(rows);
   const key = await pluginRepositoryUrlsKey();
   if (urls.length === 0) {
-    const localUrls = await storageRead<string[]>(key) ?? [];
+    const localUrls = (await storageRead<string[]>(key)) ?? [];
     if (localUrls.length > 0) {
-      await pushPluginsToNuvio(profile, localUrls.map((manifestUrl) => ({ manifestUrl })));
+      await pushPluginsToNuvio(
+        profile,
+        localUrls.map((manifestUrl) => ({ manifestUrl })),
+      );
       return;
     }
   }
   await storageWrite(key, urls);
 }
 
-export async function pushPluginsToNuvio(
-  profile: UserProfile | null | undefined,
-  repositories: PluginRepository[],
-): Promise<void> {
+export async function pushPluginsToNuvio(profile: UserProfile | null | undefined, repositories: PluginRepository[]): Promise<void> {
   if (!profile?.nuvioAccessToken) return;
   await nuvioPushPlugins(
     profile.nuvioAccessToken,

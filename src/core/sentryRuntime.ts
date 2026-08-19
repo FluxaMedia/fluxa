@@ -30,11 +30,7 @@ export function initDiagnosticsSentry(): Promise<void> {
   return initPromise;
 }
 
-export async function withSentrySpan<T>(
-  name: string,
-  op: string,
-  callback: () => Promise<T>,
-): Promise<T> {
+export async function withSentrySpan<T>(name: string, op: string, callback: () => Promise<T>): Promise<T> {
   const sentry = getSentryModule();
   if (!sentry) return callback();
   return sentry.startSpan({ name, op }, callback);

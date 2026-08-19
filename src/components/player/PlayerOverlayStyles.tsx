@@ -1,5 +1,6 @@
 export function PlayerOverlayStyles() {
-  return <style>{`
+  return (
+    <style>{`
     @keyframes fluxa-seek-spin { to { transform: rotate(360deg); } }
     @keyframes fluxa-skip-in { from { opacity: 0; transform: translateX(0.75rem); } to { opacity: 1; transform: translateX(0); } }
     @keyframes fluxa-nextep-in { from { opacity: 0; transform: translateX(0.75rem); } to { opacity: 1; transform: translateX(0); } }
@@ -12,5 +13,6 @@ export function PlayerOverlayStyles() {
     .fluxa-cursor-hidden, .fluxa-cursor-hidden * { cursor: none !important; }
     .fluxa-seek-track { transition: height 0.15s ease; }
     .fluxa-seek-dot { transition: width 0.15s, height 0.15s; }
-  `}</style>;
+  `}</style>
+  );
 }

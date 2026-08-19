@@ -18,7 +18,17 @@ type Options = {
 };
 
 export function usePlayerProgressPersistence(options: Options) {
-  const { playerUrl, stateRef, closingPlayerRef, inNativePlayerRef, playingMetaRef, playingEpisodeRef, playingStreamRef, lastPlaybackStatusRef, updateState } = options;
+  const {
+    playerUrl,
+    stateRef,
+    closingPlayerRef,
+    inNativePlayerRef,
+    playingMetaRef,
+    playingEpisodeRef,
+    playingStreamRef,
+    lastPlaybackStatusRef,
+    updateState,
+  } = options;
   const saveProgressTick = useCallback(async () => {
     if (closingPlayerRef.current || !inNativePlayerRef.current || !playingMetaRef.current) return;
     await persistLastPlaybackSource(playingMetaRef.current, playingStreamRef.current).catch(() => undefined);
@@ -40,10 +50,21 @@ export function usePlayerProgressPersistence(options: Options) {
         updateState,
       });
     } catch {}
-  }, [closingPlayerRef, inNativePlayerRef, lastPlaybackStatusRef, playingEpisodeRef, playingMetaRef, playingStreamRef, stateRef, updateState]);
+  }, [
+    closingPlayerRef,
+    inNativePlayerRef,
+    lastPlaybackStatusRef,
+    playingEpisodeRef,
+    playingMetaRef,
+    playingStreamRef,
+    stateRef,
+    updateState,
+  ]);
   useEffect(() => {
     if (!playerUrl) return;
-    const interval = setInterval(() => { void saveProgressTick(); }, 30000);
+    const interval = setInterval(() => {
+      void saveProgressTick();
+    }, 30000);
     return () => clearInterval(interval);
   }, [playerUrl, saveProgressTick]);
   return saveProgressTick;

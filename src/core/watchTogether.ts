@@ -25,8 +25,7 @@ export interface WatchTogetherState {
 }
 
 export type WatchTogetherConnection =
-  | { mode: 'websocket'; serverUrl: string; secret?: string }
-  | { mode: 'supabase'; projectUrl: string; anonKey: string };
+  { mode: 'websocket'; serverUrl: string; secret?: string } | { mode: 'supabase'; projectUrl: string; anonKey: string };
 
 type SupabaseConnection = Extract<WatchTogetherConnection, { mode: 'supabase' }>;
 type WebSocketConnection = Extract<WatchTogetherConnection, { mode: 'websocket' }>;
@@ -81,7 +80,12 @@ class WebSocketTransport implements Transport {
   private onMessage: (message: string) => void;
   private onClose: () => void;
 
-  constructor(private readonly endpoint: string, private readonly secret: string, onMessage: (message: string) => void, onClose: () => void) {
+  constructor(
+    private readonly endpoint: string,
+    private readonly secret: string,
+    onMessage: (message: string) => void,
+    onClose: () => void,
+  ) {
     this.onMessage = onMessage;
     this.onClose = onClose;
   }
@@ -155,10 +159,13 @@ class SupabaseRealtimeTransport implements Transport {
     await new Promise<void>((resolve, reject) => {
       channel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          void channel.track({ name: this.displayName, buffering: false }).then(() => {
-            updateMembers();
-            resolve();
-          }).catch(reject);
+          void channel
+            .track({ name: this.displayName, buffering: false })
+            .then(() => {
+              updateMembers();
+              resolve();
+            })
+            .catch(reject);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           reject(new Error(`Supabase Realtime channel ${status.toLowerCase()}`));
         }
@@ -239,7 +246,11 @@ export class WatchTogetherClient {
     if (this.mode === 'supabase') {
       const client = this.supabase;
       const code = this.state.roomCode;
-      if (client && code) void client.rpc('leave_watch_room', { code }).then(() => this.stop(), () => this.stop());
+      if (client && code)
+        void client.rpc('leave_watch_room', { code }).then(
+          () => this.stop(),
+          () => this.stop(),
+        );
       else this.stop();
       return;
     }
@@ -285,10 +296,19 @@ export class WatchTogetherClient {
     this.mode = 'websocket';
     this.minSendIntervalMs = websocketHeartbeatMs;
     this.setState({ connectionState: 'connecting', errorMessage: null });
-    const input = connection.serverUrl.trim().replace(/^http:/, 'ws:').replace(/^https:/, 'wss:').replace(/\/$/, '');
+    const input = connection.serverUrl
+      .trim()
+      .replace(/^http:/, 'ws:')
+      .replace(/^https:/, 'wss:')
+      .replace(/\/$/, '');
     const endpoint = input.endsWith('/ws') ? input : `${input}/ws`;
     if (!/^wss?:\/\//.test(endpoint)) throw new Error('Invalid Watch Together server URL');
-    this.transport = new WebSocketTransport(endpoint, secret, (message) => void this.handleMessage(message, null), () => this.handleClose());
+    this.transport = new WebSocketTransport(
+      endpoint,
+      secret,
+      (message) => void this.handleMessage(message, null),
+      () => this.handleClose(),
+    );
     await this.startTransport(websocketHeartbeatMs);
   }
 
@@ -343,7 +363,13 @@ export class WatchTogetherClient {
       this.clientId = message.clientId ?? '';
       this.hostId = message.hostId;
       const isHost = Boolean(message.hostId) && this.clientId === message.hostId;
-      this.setState({ connectionState: 'connected', roomCode: message.roomCode ?? '', isHost, members: message.members, errorMessage: null });
+      this.setState({
+        connectionState: 'connected',
+        roomCode: message.roomCode ?? '',
+        isHost,
+        members: message.members,
+        errorMessage: null,
+      });
       if (isHost) await this.sendState(true);
     } else if (message.kind === 'members') {
       this.hostId = message.hostId;
@@ -373,7 +399,15 @@ export class WatchTogetherClient {
     const positionMs = message.positionMs ?? 0;
     const serverTimeMs = message.serverTimeMs ?? Date.now();
     const expectedPositionMs = playing ? positionMs + Math.max(0, Date.now() + this.clockOffsetMs - serverTimeMs) : positionMs;
-    const correction = await coreInvoke<{ type: string; positionMs?: number; value?: number }>('watchTogetherDriftCorrection', JSON.stringify({ localPositionMs: this.video.currentTime * 1000, expectedPositionMs, hostPlaying: playing, speedCorrectionActive: this.video.playbackRate !== 1 }));
+    const correction = await coreInvoke<{ type: string; positionMs?: number; value?: number }>(
+      'watchTogetherDriftCorrection',
+      JSON.stringify({
+        localPositionMs: this.video.currentTime * 1000,
+        expectedPositionMs,
+        hostPlaying: playing,
+        speedCorrectionActive: this.video.playbackRate !== 1,
+      }),
+    );
     if (this.video.paused === playing) {
       if (playing) void this.video.play();
       else this.video.pause();
@@ -386,7 +420,15 @@ export class WatchTogetherClient {
   private async sendState(force: boolean) {
     if (!this.video || !this.state.isHost || (!force && Date.now() - this.lastSentAt < this.minSendIntervalMs)) return;
     this.lastSentAt = Date.now();
-    await this.sendCoreMessage('watchTogetherPlaybackState', { snapshot: { positionMs: Math.round(this.video.currentTime * 1000), durationMs: Number.isFinite(this.video.duration) ? Math.round(this.video.duration * 1000) : 0, isPlaying: !this.video.paused, isBuffering: this.video.readyState < 3 }, content: this.content });
+    await this.sendCoreMessage('watchTogetherPlaybackState', {
+      snapshot: {
+        positionMs: Math.round(this.video.currentTime * 1000),
+        durationMs: Number.isFinite(this.video.duration) ? Math.round(this.video.duration * 1000) : 0,
+        isPlaying: !this.video.paused,
+        isBuffering: this.video.readyState < 3,
+      },
+      content: this.content,
+    });
   }
 
   private async sendHeartbeat() {

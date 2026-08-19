@@ -57,14 +57,18 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
     return () => clearTimeout(debounceRef.current);
   }, [inputValue, onDispatch]);
 
-  useEffect(() => addSearchPartialHandler((q, _source, items) => {
-    if (q !== partialQueryRef.current) return;
-    setPartialResults((current) => {
-      const seen = new Set(current.map((meta) => meta.id));
-      const added = (items as Meta[]).filter((meta) => !seen.has(meta.id));
-      return added.length > 0 ? [...current, ...added] : current;
-    });
-  }), []);
+  useEffect(
+    () =>
+      addSearchPartialHandler((q, _source, items) => {
+        if (q !== partialQueryRef.current) return;
+        setPartialResults((current) => {
+          const seen = new Set(current.map((meta) => meta.id));
+          const added = (items as Meta[]).filter((meta) => !seen.has(meta.id));
+          return added.length > 0 ? [...current, ...added] : current;
+        });
+      }),
+    [],
+  );
 
   const [debouncedInputValue, setDebouncedInputValue] = useState(inputValue);
   useEffect(() => {
@@ -76,9 +80,15 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
   useEffect(() => {
     let active = true;
     const needle = debouncedInputValue.trim().toLowerCase();
-    void coreInvoke<Meta[]>('searchSuggestionsPlan', JSON.stringify({ categories: state.home.categories, needle, limit: MAX_SUGGESTIONS }))
-      .then((items) => { if (active) setLocalSuggestions(items ?? []); });
-    return () => { active = false; };
+    void coreInvoke<Meta[]>(
+      'searchSuggestionsPlan',
+      JSON.stringify({ categories: state.home.categories, needle, limit: MAX_SUGGESTIONS }),
+    ).then((items) => {
+      if (active) setLocalSuggestions(items ?? []);
+    });
+    return () => {
+      active = false;
+    };
   }, [state.home.categories, debouncedInputValue]);
 
   const [networkSuggestions, setNetworkSuggestions] = useState<Meta[]>([]);
@@ -88,7 +98,9 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
     const needle = trimmed.toLowerCase();
     if (needle.length < 2) {
       setNetworkSuggestions([]);
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }
     let request: Record<string, unknown> | null = null;
     if (partialQueryRef.current === trimmed && partialResults.length > 0) {
@@ -98,17 +110,22 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
     }
     if (!request) {
       setNetworkSuggestions([]);
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }
-    void coreInvoke<Meta[]>('searchSuggestionsPlan', JSON.stringify(request))
-      .then((items) => { if (active) setNetworkSuggestions(items ?? []); });
-    return () => { active = false; };
+    void coreInvoke<Meta[]>('searchSuggestionsPlan', JSON.stringify(request)).then((items) => {
+      if (active) setNetworkSuggestions(items ?? []);
+    });
+    return () => {
+      active = false;
+    };
   }, [partialResults, state.search.categories, state.search.query, inputValue]);
 
   const suggestions = networkSuggestions.length > 0 ? networkSuggestions : localSuggestions;
   const showDropdown = focused && (recentSearches.length > 0 || suggestions.length > 0);
   const showingRecent = !inputValue.trim();
-  const listItems = showingRecent ? recentSearches : (inputValue.trim().length >= 2 ? suggestions : []);
+  const listItems = showingRecent ? recentSearches : inputValue.trim().length >= 2 ? suggestions : [];
 
   useEffect(() => {
     setActiveIndex(-1);
@@ -270,7 +287,10 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKey}
           onFocus={() => setFocused(true)}
-          onBlur={() => { setFocused(false); if (!inputValue) close(); }}
+          onBlur={() => {
+            setFocused(false);
+            if (!inputValue) close();
+          }}
           style={{
             flex: 1,
             background: 'transparent',
@@ -282,8 +302,20 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
           }}
         />
         <button
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}
-          onMouseDown={(e) => { e.preventDefault(); clearOrClose(); }}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            color: 'rgba(255,255,255,0.4)',
+            flexShrink: 0,
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            clearOrClose();
+          }}
         >
           <X size={17} />
         </button>
@@ -309,20 +341,38 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem 0.5rem' }}>
                 <span style={dropdownStyles.sectionLabel}>{t('search.recent_searches')}</span>
-                <button style={dropdownStyles.clearBtn} onMouseDown={(e) => { e.preventDefault(); handleClearHistory(); }}>
+                <button
+                  style={dropdownStyles.clearBtn}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleClearHistory();
+                  }}
+                >
                   {t('search.clear_history')}
                 </button>
               </div>
               {recentSearches.map((item, index) => (
                 <div
                   key={item.query}
-                  style={{ ...dropdownStyles.row, padding: '0 0.25rem 0 0.5rem', background: activeIndex === index ? 'rgba(255,255,255,0.06)' : 'transparent' }}
-                  onMouseEnter={(e) => { setActiveIndex(index); (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                  style={{
+                    ...dropdownStyles.row,
+                    padding: '0 0.25rem 0 0.5rem',
+                    background: activeIndex === index ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    setActiveIndex(index);
+                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+                  }}
                 >
                   <button
                     style={dropdownStyles.rowMain}
-                    onMouseDown={(e) => { e.preventDefault(); handleRecentClick(item); }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleRecentClick(item);
+                    }}
                   >
                     <Clock size={15} color="rgba(255,255,255,0.4)" style={{ flexShrink: 0 }} />
                     <span style={dropdownStyles.rowText}>{item.query}</span>
@@ -330,7 +380,11 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
                   <button
                     title={t('common.remove')}
                     style={dropdownStyles.rowRemove}
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); handleRemoveRecent(item.query); }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRemoveRecent(item.query);
+                    }}
                   >
                     <X size={13} />
                   </button>
@@ -348,9 +402,17 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
                 <button
                   key={meta.id}
                   style={{ ...dropdownStyles.row, background: activeIndex === index ? 'rgba(255,255,255,0.06)' : 'transparent' }}
-                  onMouseDown={(e) => { e.preventDefault(); handleSuggestionClick(meta); }}
-                  onMouseEnter={(e) => { setActiveIndex(index); (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSuggestionClick(meta);
+                  }}
+                  onMouseEnter={(e) => {
+                    setActiveIndex(index);
+                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                  }}
                 >
                   <SearchIcon size={15} color="rgba(255,255,255,0.4)" style={{ flexShrink: 0 }} />
                   <span style={dropdownStyles.rowText}>{meta.name}</span>

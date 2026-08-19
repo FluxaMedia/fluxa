@@ -36,11 +36,14 @@ export async function scanLocalMedia(root: string): Promise<LocalMediaFile[]> {
 }
 
 function parsedFor(file: LocalMediaFile, kind: 'movies' | 'tvShows'): Promise<ParsedName | null> {
-  return coreInvoke<ParsedName>('localMediaParseFilename', JSON.stringify({
-    fileName: file.fileName,
-    parentHints: file.relativePath.split(/[\\/]/).slice(0, -1),
-    kind,
-  }));
+  return coreInvoke<ParsedName>(
+    'localMediaParseFilename',
+    JSON.stringify({
+      fileName: file.fileName,
+      parentHints: file.relativePath.split(/[\\/]/).slice(0, -1),
+      kind,
+    }),
+  );
 }
 
 function streamFor(file: LocalMediaFile): Stream {
@@ -87,7 +90,7 @@ export async function resolveLocalMedia(root: string): Promise<LocalMediaItem[]>
       : Promise.resolve(null);
     const search = searchCache.get(cacheKey) ?? runSearch({ query, language: 'en' });
     searchCache.set(cacheKey, search);
-    const result = await search as { results?: unknown[] } | null;
+    const result = (await search) as { results?: unknown[] } | null;
     const directMeta = toMeta(await direct);
     const candidates = directMeta ? [directMeta, ...(result?.results ?? [])] : (result?.results ?? []);
     let winner: Meta | null = null;
@@ -96,7 +99,10 @@ export async function resolveLocalMedia(root: string): Promise<LocalMediaItem[]>
       const meta = toMeta(candidate);
       if (!meta) continue;
       const score = await coreInvoke<number>('localMediaScoreCandidate', JSON.stringify({ parsed: first.parsed, meta, kind: first.kind }));
-      if (score != null && score > winnerScore) { winner = meta; winnerScore = score; }
+      if (score != null && score > winnerScore) {
+        winner = meta;
+        winnerScore = score;
+      }
     }
     if (!winner) continue;
     const detailed = await fetchMetaDetail({
@@ -108,10 +114,12 @@ export async function resolveLocalMedia(root: string): Promise<LocalMediaItem[]>
     const localFiles = group.map(({ file }) => file);
     const videos = (meta.videos ?? []) as Video[];
     const localEpisodes: Record<string, Video> = {};
-    await Promise.all(group.map(async ({ file, parsed }) => {
-      const video = await coreInvoke<Video>('localMediaResolveVideo', JSON.stringify({ parsed, videos })).catch(() => null);
-      if (video) localEpisodes[file.path] = video;
-    }));
+    await Promise.all(
+      group.map(async ({ file, parsed }) => {
+        const video = await coreInvoke<Video>('localMediaResolveVideo', JSON.stringify({ parsed, videos })).catch(() => null);
+        if (video) localEpisodes[file.path] = video;
+      }),
+    );
     items.push({ ...meta, localFiles, localEpisodes, videos });
   }
   return items.sort((a, b) => a.name.localeCompare(b.name));

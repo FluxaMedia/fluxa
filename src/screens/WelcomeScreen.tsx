@@ -59,12 +59,7 @@ export function WelcomeScreen({ onProfileCreated, onContinueLocal, onNuvioLogin 
   }
 
   if (view === 'profile-setup') {
-    return (
-      <ProfileSetupView
-        onBack={() => setView('auth')}
-        onDone={onProfileCreated}
-      />
-    );
+    return <ProfileSetupView onBack={() => setView('auth')} onDone={onProfileCreated} />;
   }
 
   return (
@@ -86,11 +81,7 @@ export function WelcomeScreen({ onProfileCreated, onContinueLocal, onNuvioLogin 
           <button style={S.primaryBtn} onClick={() => setView('auth')}>
             {t('welcome.get_started')}
           </button>
-          <button
-            style={{ ...S.secondaryBtn, opacity: localLoading ? 0.4 : 1 }}
-            onClick={handleContinueLocal}
-            disabled={localLoading}
-          >
+          <button style={{ ...S.secondaryBtn, opacity: localLoading ? 0.4 : 1 }} onClick={handleContinueLocal} disabled={localLoading}>
             {localLoading ? t('welcome.loading') : t('welcome.continue_local')}
           </button>
         </div>

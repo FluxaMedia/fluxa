@@ -65,11 +65,7 @@ export function playerArtwork(meta?: Meta, episode?: Video | null): PlayerArtwor
       stringValue(record.backdropUrl) ??
       episode?.thumbnail ??
       meta?.poster,
-    logo:
-      stringValue(record.logo) ??
-      stringValue(record.logoUrl) ??
-      stringValue(record.titleLogo) ??
-      stringValue(record.titleLogoUrl),
+    logo: stringValue(record.logo) ?? stringValue(record.logoUrl) ?? stringValue(record.titleLogo) ?? stringValue(record.titleLogoUrl),
   };
 }
 
@@ -83,4 +79,3 @@ export function formatNextEpisodeSubtitle(ep: Video): string {
   }
   return name || t('auto.next_episode');
 }
-

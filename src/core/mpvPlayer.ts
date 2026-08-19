@@ -16,7 +16,12 @@ export async function startTorrentStream(
   preferences?: Record<string, unknown>,
   durationMs?: number,
 ): Promise<TorrentStreamStart> {
-  return invoke<TorrentStreamStart>('start_torrent_stream', { streamJson, title: title ?? null, preferences: preferences ?? null, durationMs: durationMs ?? null });
+  return invoke<TorrentStreamStart>('start_torrent_stream', {
+    streamJson,
+    title: title ?? null,
+    preferences: preferences ?? null,
+    durationMs: durationMs ?? null,
+  });
 }
 
 export async function stopTorrentStream(): Promise<boolean> {
@@ -112,7 +117,12 @@ export async function playerTorrentStats(): Promise<TorrentStats | null> {
   return invoke<TorrentStats | null>('player_torrent_stats');
 }
 
-export async function playerTorrentTelemetry(event: 'firstFrame' | 'stallStarted' | 'stallEnded', elapsedMs: number | undefined, sessionId: string, context: TorrentTelemetryContext): Promise<boolean> {
+export async function playerTorrentTelemetry(
+  event: 'firstFrame' | 'stallStarted' | 'stallEnded',
+  elapsedMs: number | undefined,
+  sessionId: string,
+  context: TorrentTelemetryContext,
+): Promise<boolean> {
   return invoke<boolean>('player_torrent_telemetry', { event, elapsedMs: elapsedMs ?? null, sessionId, context }).catch(() => false);
 }
 
@@ -137,7 +147,9 @@ export async function embeddedMpvSetHttpHeaders(headers: Record<string, string> 
 }
 
 export async function playerLastStreamError(): Promise<string | undefined> {
-  return invoke<string | null>('player_last_stream_error').then((value) => value ?? undefined).catch(() => undefined);
+  return invoke<string | null>('player_last_stream_error')
+    .then((value) => value ?? undefined)
+    .catch(() => undefined);
 }
 
 export async function embeddedMpvSetTitle(title?: string, episodeTitle?: string): Promise<void> {
@@ -173,11 +185,7 @@ function normalizeAssetUrl(url?: string | null): string | null {
   return trimmed;
 }
 
-export async function embeddedMpvAddSubtitle(
-  url: string,
-  title?: string,
-  language?: string,
-): Promise<void> {
+export async function embeddedMpvAddSubtitle(url: string, title?: string, language?: string): Promise<void> {
   await invoke('player_add_subtitle', {
     url,
     title: title ?? null,

@@ -43,10 +43,7 @@ export async function saveProfilePickerSettings(settings: ProfilePickerSettings)
 }
 
 async function discoverDirectManifestPack(repositoryUrl: string): Promise<ProfileAvatarPack | null> {
-  const manifestPlan = await coreInvoke<{ manifestUrl: string } | null>(
-    'profileAvatarPackManifestPlan',
-    JSON.stringify({ repositoryUrl }),
-  );
+  const manifestPlan = await coreInvoke<{ manifestUrl: string } | null>('profileAvatarPackManifestPlan', JSON.stringify({ repositoryUrl }));
   if (!manifestPlan) return null;
   const pack = await fetchJson(manifestPlan.manifestUrl);
   const parsed = await coreInvoke<{ title: string; manifestUrl: string; avatars: ProfileAvatar[] } | null>(
@@ -78,16 +75,16 @@ export async function discoverProfileAvatarPacks(repositoryUrl: string): Promise
     JSON.stringify({ repositoryUrl, reference: discoveryPlan.reference, tree }),
   );
   if (!catalog?.categories.length) throw new AvatarPackDiscoveryError('no_packs_found');
-  const packs = await Promise.all(catalog.categories.map(async ({ manifestUrl }) => {
-    const pack = await fetchJson(manifestUrl);
-    const parsed = await coreInvoke<{ title: string; manifestUrl: string; avatars: ProfileAvatar[] } | null>(
-      'profileAvatarPackParse',
-      JSON.stringify({ manifestUrl, pack }),
-    );
-    return parsed && parsed.avatars.length
-      ? { ...parsed, id: parsed.manifestUrl, repositoryUrl }
-      : null;
-  }));
+  const packs = await Promise.all(
+    catalog.categories.map(async ({ manifestUrl }) => {
+      const pack = await fetchJson(manifestUrl);
+      const parsed = await coreInvoke<{ title: string; manifestUrl: string; avatars: ProfileAvatar[] } | null>(
+        'profileAvatarPackParse',
+        JSON.stringify({ manifestUrl, pack }),
+      );
+      return parsed && parsed.avatars.length ? { ...parsed, id: parsed.manifestUrl, repositoryUrl } : null;
+    }),
+  );
   const found = packs.filter((pack): pack is ProfileAvatarPack => pack !== null);
   if (!found.length) throw new AvatarPackDiscoveryError('no_valid_avatars');
   return found;

@@ -37,13 +37,42 @@ export function SliderTile({
           <p style={styles.rowTitle}>{title}</p>
           <p style={styles.rowSubtitle}>{subtitle}</p>
         </div>
-        <span style={{ color: 'var(--primary-accent-color)', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT, flexShrink: 0, minWidth: '2.375rem', textAlign: 'right' }}>
+        <span
+          style={{
+            color: 'var(--primary-accent-color)',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            fontFamily: FONT,
+            flexShrink: 0,
+            minWidth: '2.375rem',
+            textAlign: 'right',
+          }}
+        >
           {label}
         </span>
       </div>
       <div style={{ position: 'relative', height: '1.25rem', display: 'flex', alignItems: 'center' }}>
-        <div style={{ position: 'absolute', left: 0, right: 0, height: '0.1875rem', borderRadius: '0.125rem', background: 'rgba(255,255,255,0.10)' }} />
-        <div style={{ position: 'absolute', left: 0, width: `${pct}%`, height: '0.1875rem', borderRadius: '0.125rem', background: 'var(--primary-accent-color)', transition: 'width 0.05s' }} />
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            height: '0.1875rem',
+            borderRadius: '0.125rem',
+            background: 'rgba(255,255,255,0.10)',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            width: `${pct}%`,
+            height: '0.1875rem',
+            borderRadius: '0.125rem',
+            background: 'var(--primary-accent-color)',
+            transition: 'width 0.05s',
+          }}
+        />
         <input
           type="range"
           min={min}
@@ -109,10 +138,35 @@ export function ToggleTile({
         <p style={styles.rowSubtitle}>{subtitle}</p>
       </div>
       <div
-        onClick={(e) => { e.stopPropagation(); onToggle(!checked); }}
-        style={{ flexShrink: 0, width: '2.75rem', height: '1.625rem', borderRadius: '62.4375rem', background: checked ? 'var(--primary-accent-color)' : 'rgba(255,255,255,0.14)', position: 'relative', transition: 'background 0.18s', cursor: 'pointer', boxSizing: 'border-box' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(!checked);
+        }}
+        style={{
+          flexShrink: 0,
+          width: '2.75rem',
+          height: '1.625rem',
+          borderRadius: '62.4375rem',
+          background: checked ? 'var(--primary-accent-color)' : 'rgba(255,255,255,0.14)',
+          position: 'relative',
+          transition: 'background 0.18s',
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+        }}
       >
-        <div style={{ position: 'absolute', top: '0.1875rem', left: checked ? 21 : 3, width: '1.25rem', height: '1.25rem', borderRadius: '50%', background: checked ? '#000000' : 'rgba(255,255,255,0.80)', transition: 'left 0.18s', boxShadow: '0 1px 0.1875rem rgba(0,0,0,0.4)' }} />
+        <div
+          style={{
+            position: 'absolute',
+            top: '0.1875rem',
+            left: checked ? 21 : 3,
+            width: '1.25rem',
+            height: '1.25rem',
+            borderRadius: '50%',
+            background: checked ? '#000000' : 'rgba(255,255,255,0.80)',
+            transition: 'left 0.18s',
+            boxShadow: '0 1px 0.1875rem rgba(0,0,0,0.4)',
+          }}
+        />
       </div>
     </div>
   );
@@ -135,16 +189,18 @@ export function ChoiceTile({
 }) {
   const selectedLabel = options.find((opt) => opt.value === selected)?.label ?? selected;
   return (
-    <div style={{
-      width: '100%',
-      minHeight: '3.75rem',
-      borderBottom: '1px solid rgba(255,255,255,0.055)',
-      display: 'flex',
-      alignItems: 'center',
-      padding: '0.75rem 1rem',
-      boxSizing: 'border-box',
-      gap: '1rem',
-    }}>
+    <div
+      style={{
+        width: '100%',
+        minHeight: '3.75rem',
+        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0.75rem 1rem',
+        boxSizing: 'border-box',
+        gap: '1rem',
+      }}
+    >
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={styles.rowTitle}>{title}</p>
         <p style={styles.rowSubtitle}>{subtitle}</p>
@@ -197,7 +253,15 @@ export function Dropdown({
           </svg>
         </span>
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} anchorRef={btnRef} placement="bottom-start" matchWidth maxHeight="15rem" padding="0.25rem">
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={btnRef}
+        placement="bottom-start"
+        matchWidth
+        maxHeight="15rem"
+        padding="0.25rem"
+      >
         {options.map((option) => {
           const active = option.value === selected;
           return (
@@ -210,7 +274,10 @@ export function Dropdown({
                 background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
                 color: active ? '#FFFFFF' : 'rgba(255,255,255,0.72)',
               }}
-              onClick={() => { onSelect(option.value); setOpen(false); }}
+              onClick={() => {
+                onSelect(option.value);
+                setOpen(false);
+              }}
             >
               <span style={styles.dropdownItemLabel}>{option.label}</span>
               {active && (
@@ -258,12 +325,14 @@ export function InputTile({
     lineHeight: '1.5',
   };
   return (
-    <div style={{
-      width: '100%',
-      borderBottom: '1px solid rgba(255,255,255,0.055)',
-      padding: '0.875rem 1rem',
-      boxSizing: 'border-box',
-    }}>
+    <div
+      style={{
+        width: '100%',
+        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        padding: '0.875rem 1rem',
+        boxSizing: 'border-box',
+      }}
+    >
       <p style={styles.rowTitle}>{title}</p>
       <p style={{ ...styles.rowSubtitle, marginBottom: '0.625rem' }}>{subtitle}</p>
       {multiline ? (

@@ -50,7 +50,10 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
         <ChoiceTile
           title={t('appearance.sidebar_layout')}
           subtitle={t('appearance.sidebar_layout_desc')}
-          options={[{ value: 'sidebar', label: 'Sidebar' }, { value: 'topbar', label: 'Top Bar' }]}
+          options={[
+            { value: 'sidebar', label: 'Sidebar' },
+            { value: 'topbar', label: 'Top Bar' },
+          ]}
           selected={prefs.navLayout}
           onSelect={(v) => setPref('navLayout', v)}
         />
@@ -69,14 +72,23 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
         <ChoiceTile
           title={t('appearance.bar_rotation')}
           subtitle={t('appearance.bar_rotation_desc')}
-          options={[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }, { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' }]}
+          options={[
+            { value: 'left', label: 'Left' },
+            { value: 'right', label: 'Right' },
+            { value: 'top', label: 'Top' },
+            { value: 'bottom', label: 'Bottom' },
+          ]}
           selected={prefs.navBarPosition}
           onSelect={(v) => setPref('navBarPosition', v)}
         />
         <ChoiceTile
           title={t('appearance.items_rotation')}
           subtitle={t('appearance.items_rotation_desc')}
-          options={[{ value: 'start', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'end', label: 'Right' }]}
+          options={[
+            { value: 'start', label: 'Left' },
+            { value: 'center', label: 'Center' },
+            { value: 'end', label: 'Right' },
+          ]}
           selected={prefs.navItemsAlign}
           onSelect={(v) => setPref('navItemsAlign', v)}
         />
@@ -85,69 +97,135 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
         <ChoiceTile
           title={t('auto.card_corners')}
           subtitle={t('auto.card_corners')}
-          options={[{ value: 'sharp', label: t('auto.sharp') }, { value: 'classic', label: t('auto.classic') }, { value: 'soft', label: t('auto.soft') }, { value: 'rounded', label: t('auto.rounded') }, { value: 'pill', label: t('auto.extra_rounded') }]}
+          options={[
+            { value: 'sharp', label: t('auto.sharp') },
+            { value: 'classic', label: t('auto.classic') },
+            { value: 'soft', label: t('auto.soft') },
+            { value: 'rounded', label: t('auto.rounded') },
+            { value: 'pill', label: t('auto.extra_rounded') },
+          ]}
           selected={prefs.cardCornerPreset}
           onSelect={(v) => setPref('cardCornerPreset', v)}
         />
         <ChoiceTile
           title={t('auto.interface_density')}
           subtitle={t('auto.interface_density')}
-          options={[{ value: 'small', label: t('auto.small') }, { value: 'medium', label: t('auto.medium') }, { value: 'large', label: t('auto.large') }]}
+          options={[
+            { value: 'small', label: t('auto.small') },
+            { value: 'medium', label: t('auto.medium') },
+            { value: 'large', label: t('auto.large') },
+          ]}
           selected={prefs.interfaceDensity}
           onSelect={(v) => setPref('interfaceDensity', v)}
         />
         <ChoiceTile
           title={t('auto.poster_width')}
           subtitle={t('auto.poster_width')}
-          options={[{ value: 'xsmall', label: t('auto.very_small') }, { value: 'small', label: t('auto.small') }, { value: 'medium', label: t('auto.medium') }, { value: 'large', label: t('auto.large') }, { value: 'xlarge', label: t('auto.very_large') }]}
+          options={[
+            { value: 'xsmall', label: t('auto.very_small') },
+            { value: 'small', label: t('auto.small') },
+            { value: 'medium', label: t('auto.medium') },
+            { value: 'large', label: t('auto.large') },
+            { value: 'xlarge', label: t('auto.very_large') },
+          ]}
           selected={prefs.posterWidthPreset}
           onSelect={(v) => setPref('posterWidthPreset', v)}
         />
-        <ToggleTile title={t('auto.horizontal')} subtitle={t('auto.poster')} checked={prefs.posterLandscapeMode} onToggle={(v) => setPref('posterLandscapeMode', v)} />
-        <ToggleTile title={t('auto.hide_titles')} subtitle={t('auto.hide_titles')} checked={prefs.posterHideTitles} onToggle={(v) => setPref('posterHideTitles', v)} />
+        <ToggleTile
+          title={t('auto.horizontal')}
+          subtitle={t('auto.poster')}
+          checked={prefs.posterLandscapeMode}
+          onToggle={(v) => setPref('posterLandscapeMode', v)}
+        />
+        <ToggleTile
+          title={t('auto.hide_titles')}
+          subtitle={t('auto.hide_titles')}
+          checked={prefs.posterHideTitles}
+          onToggle={(v) => setPref('posterHideTitles', v)}
+        />
         <ChoiceTile
           title={t('auto.card_layout')}
           subtitle={t('auto.tune_language_and_visual_layout')}
-          options={[{ value: 'vertical', label: t('auto.vertical_layout') }, { value: 'horizontal', label: t('auto.horizontal') }]}
+          options={[
+            { value: 'vertical', label: t('auto.vertical_layout') },
+            { value: 'horizontal', label: t('auto.horizontal') },
+          ]}
           selected={prefs.cardLayout}
           onSelect={(v) => setPref('cardLayout', v)}
         />
         <ChoiceTile
           title={t('auto.continue_watching_layout')}
           subtitle={t('auto.show_that_shelf_as_posters_or_episode_cards')}
-          options={[{ value: 'vertical', label: t('auto.vertical_layout') }, { value: 'horizontal', label: t('auto.horizontal') }, { value: 'inherit', label: t('auto.match_global') }]}
+          options={[
+            { value: 'vertical', label: t('auto.vertical_layout') },
+            { value: 'horizontal', label: t('auto.horizontal') },
+            { value: 'inherit', label: t('auto.match_global') },
+          ]}
           selected={prefs.continueWatchingLayout}
           onSelect={(v) => setPref('continueWatchingLayout', v)}
         />
         <ChoiceTile
           title={t('auto.series_artwork')}
           subtitle={t('auto.show_that_shelf_as_posters_or_episode_cards')}
-          options={[{ value: 'episode', label: t('auto.episode_cover') }, { value: 'poster', label: t('auto.poster') }, { value: 'background', label: t('auto.backdrop') }]}
+          options={[
+            { value: 'episode', label: t('auto.episode_cover') },
+            { value: 'poster', label: t('auto.poster') },
+            { value: 'background', label: t('auto.backdrop') },
+          ]}
           selected={prefs.continueWatchingArtwork}
           onSelect={(v) => setPref('continueWatchingArtwork', v)}
         />
         <ChoiceTile
           title={t('settings.remaining_format')}
           subtitle={t('settings.remaining_format_desc')}
-          options={[{ value: 'time', label: t('settings.remaining_format_time') }, { value: 'percent', label: t('settings.remaining_format_percent') }]}
+          options={[
+            { value: 'time', label: t('settings.remaining_format_time') },
+            { value: 'percent', label: t('settings.remaining_format_percent') },
+          ]}
           selected={prefs.continueWatchingRemainingFormat}
           onSelect={(v) => setPref('continueWatchingRemainingFormat', v)}
         />
         <ChoiceTile
           title={t('settings.progress_direction')}
           subtitle={t('settings.progress_direction_desc')}
-          options={[{ value: 'remaining', label: t('settings.progress_direction_remaining') }, { value: 'watched', label: t('settings.progress_direction_watched') }]}
+          options={[
+            { value: 'remaining', label: t('settings.progress_direction_remaining') },
+            { value: 'watched', label: t('settings.progress_direction_watched') },
+          ]}
           selected={prefs.continueWatchingProgressDirection}
           onSelect={(v) => setPref('continueWatchingProgressDirection', v)}
         />
       </SettingsSection>
       <SettingsSection title={t('auto.continue_watching')} subtitle={t('auto.continue_watching')}>
-        <ToggleTile title={t('auto.continue_watching')} subtitle={t('auto.continue_watching')} checked={prefs.continueWatchingEnabled} onToggle={(v) => setPref('continueWatchingEnabled', v)} />
-        <ToggleTile title={t('settings.continue_watching_hide_titles')} subtitle={t('auto.hide_titles')} checked={prefs.continueWatchingHideTitles} onToggle={(v) => setPref('continueWatchingHideTitles', v)} />
-        <ToggleTile title={t('settings.cw_keep_scheduled')} subtitle={t('settings.cw_keep_scheduled_desc')} checked={prefs.continueWatchingKeepScheduled} onToggle={(v) => setPref('continueWatchingKeepScheduled', v)} />
-        <ToggleTile title={t('settings.cw_show_this_week')} subtitle={t('settings.cw_show_this_week_desc')} checked={prefs.continueWatchingShowThisWeek} onToggle={(v) => setPref('continueWatchingShowThisWeek', v)} />
+        <ToggleTile
+          title={t('auto.continue_watching')}
+          subtitle={t('auto.continue_watching')}
+          checked={prefs.continueWatchingEnabled}
+          onToggle={(v) => setPref('continueWatchingEnabled', v)}
+        />
+        <ToggleTile
+          title={t('settings.continue_watching_hide_titles')}
+          subtitle={t('auto.hide_titles')}
+          checked={prefs.continueWatchingHideTitles}
+          onToggle={(v) => setPref('continueWatchingHideTitles', v)}
+        />
+        <ToggleTile
+          title={t('settings.cw_keep_scheduled')}
+          subtitle={t('settings.cw_keep_scheduled_desc')}
+          checked={prefs.continueWatchingKeepScheduled}
+          onToggle={(v) => setPref('continueWatchingKeepScheduled', v)}
+        />
+        <ToggleTile
+          title={t('settings.cw_show_this_week')}
+          subtitle={t('settings.cw_show_this_week_desc')}
+          checked={prefs.continueWatchingShowThisWeek}
+          onToggle={(v) => setPref('continueWatchingShowThisWeek', v)}
+        />
       </SettingsSection>
-      <SettingsSection title={t('settings.appearance_home_screen') || 'Ana Ekran'} subtitle={t('settings.appearance_home_screen_desc') || 'Ana ekrana özel görünüm ayarları'}>
+      <SettingsSection
+        title={t('settings.appearance_home_screen') || 'Ana Ekran'}
+        subtitle={t('settings.appearance_home_screen_desc') || 'Ana ekrana özel görünüm ayarları'}
+      >
         <ToggleTile
           title={t('settings.season_posters_on_hero') || "Hero'da Sezon Posterleri"}
           subtitle={t('settings.home_season_posters_on_hero_desc') || 'Serilerin hero bölümünde sezon posterlerini göster'}
@@ -164,14 +242,24 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           <ChoiceTile
             title={t('settings.home_hero_autoplay_trailer_delay')}
             subtitle={t('settings.home_hero_autoplay_trailer_delay_desc')}
-            options={[{ value: '2', label: '2s' }, { value: '4', label: '4s' }, { value: '6', label: '6s' }, { value: '10', label: '10s' }]}
+            options={[
+              { value: '2', label: '2s' },
+              { value: '4', label: '4s' },
+              { value: '6', label: '6s' },
+              { value: '10', label: '10s' },
+            ]}
             selected={prefs.homeHeroAutoplayTrailerDelaySecs}
             onSelect={(v) => setPref('homeHeroAutoplayTrailerDelaySecs', v)}
           />
         )}
       </SettingsSection>
       <SettingsSection title={t('settings.appearance_detail_screen')} subtitle={t('settings.appearance_detail_screen_desc')}>
-        <ToggleTile title={t('settings.trailer_on_hero')} subtitle={t('settings.trailer_on_hero_desc')} checked={prefs.trailerOnHero} onToggle={(v) => setPref('trailerOnHero', v)} />
+        <ToggleTile
+          title={t('settings.trailer_on_hero')}
+          subtitle={t('settings.trailer_on_hero_desc')}
+          checked={prefs.trailerOnHero}
+          onToggle={(v) => setPref('trailerOnHero', v)}
+        />
         <ToggleTile
           title={t('settings.detail_hero_autoplay_trailer')}
           subtitle={t('settings.detail_hero_autoplay_trailer_desc')}
@@ -182,13 +270,28 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           <ChoiceTile
             title={t('settings.detail_hero_autoplay_trailer_delay')}
             subtitle={t('settings.detail_hero_autoplay_trailer_delay_desc')}
-            options={[{ value: '2', label: '2s' }, { value: '4', label: '4s' }, { value: '6', label: '6s' }, { value: '10', label: '10s' }]}
+            options={[
+              { value: '2', label: '2s' },
+              { value: '4', label: '4s' },
+              { value: '6', label: '6s' },
+              { value: '10', label: '10s' },
+            ]}
             selected={prefs.detailHeroAutoplayTrailerDelaySecs}
             onSelect={(v) => setPref('detailHeroAutoplayTrailerDelaySecs', v)}
           />
         )}
-        <ToggleTile title={t('settings.blur_unwatched_episodes')} subtitle={t('settings.blur_unwatched_episodes_desc')} checked={prefs.blurUnwatchedEpisodes} onToggle={(v) => setPref('blurUnwatchedEpisodes', v)} />
-        <ToggleTile title={t('settings.spoiler_hide_episode_info')} subtitle={t('settings.spoiler_hide_episode_info_desc')} checked={prefs.spoilerHideEpisodeInfo} onToggle={(v) => setPref('spoilerHideEpisodeInfo', v)} />
+        <ToggleTile
+          title={t('settings.blur_unwatched_episodes')}
+          subtitle={t('settings.blur_unwatched_episodes_desc')}
+          checked={prefs.blurUnwatchedEpisodes}
+          onToggle={(v) => setPref('blurUnwatchedEpisodes', v)}
+        />
+        <ToggleTile
+          title={t('settings.spoiler_hide_episode_info')}
+          subtitle={t('settings.spoiler_hide_episode_info_desc')}
+          checked={prefs.spoilerHideEpisodeInfo}
+          onToggle={(v) => setPref('spoilerHideEpisodeInfo', v)}
+        />
         <ToggleTile
           title={t('settings.season_posters_on_hero') || "Hero'da Sezon Posterleri"}
           subtitle={t('settings.detail_season_posters_on_hero_desc') || 'Detay ekranındaki hero bölümünde sezon posterlerini göster'}

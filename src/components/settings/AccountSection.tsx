@@ -3,7 +3,15 @@ import type { UserProfile } from '../../core/types';
 import { t } from '../../i18n';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { AvatarPreview } from '../../screens/ProfileForm';
-import { ChoiceTile, SettingsSection, SyncServicePopover, SyncServiceRow, cwSourceOfTruthOptions, librarySourceOfTruthOptions, similarTitlesSourceOptions } from './SettingsUI';
+import {
+  ChoiceTile,
+  SettingsSection,
+  SyncServicePopover,
+  SyncServiceRow,
+  cwSourceOfTruthOptions,
+  librarySourceOfTruthOptions,
+  similarTitlesSourceOptions,
+} from './SettingsUI';
 import type { Prefs } from './settingsTypes';
 
 import { AuthKeyLoginForm, CredentialLoginForm, type IntegrationService } from './accountPresentation';
@@ -33,38 +41,107 @@ export function AccountSection({
 
   const accounts = useIntegrationAccounts({ prefs, activeProfile, onProfileUpdated, onDispatch, onNuvioSyncComplete });
   const {
-    traktBusy, traktError, traktPopoverOpen, setTraktPopoverOpen, traktRowRef, traktSyncMeta, traktConnected,
-    anilistBusy, anilistError, anilistPopoverOpen, setAnilistPopoverOpen, anilistRowRef, anilistSyncMeta, anilistConnected,
-    simklBusy, simklError, simklPopoverOpen, setSimklPopoverOpen, simklRowRef, simklSyncMeta, simklConnected,
-    nuvioBusy, nuvioError, setNuvioError, nuvioPopoverOpen, setNuvioPopoverOpen, nuvioRowRef, nuvioSyncMeta, nuvioConnected, nuvioFormOpen, setNuvioFormOpen,
-    stremioBusy, stremioError, setStremioError, stremioPopoverOpen, setStremioPopoverOpen, stremioRowRef, stremioSyncMeta, stremioConnected,
-    stremioFormOpen, setStremioFormOpen, stremioAuthKeyMode, setStremioAuthKeyMode,
-    confirmDisconnect, setConfirmDisconnect,
+    traktBusy,
+    traktError,
+    traktPopoverOpen,
+    setTraktPopoverOpen,
+    traktRowRef,
+    traktSyncMeta,
+    traktConnected,
+    anilistBusy,
+    anilistError,
+    anilistPopoverOpen,
+    setAnilistPopoverOpen,
+    anilistRowRef,
+    anilistSyncMeta,
+    anilistConnected,
+    simklBusy,
+    simklError,
+    simklPopoverOpen,
+    setSimklPopoverOpen,
+    simklRowRef,
+    simklSyncMeta,
+    simklConnected,
+    nuvioBusy,
+    nuvioError,
+    setNuvioError,
+    nuvioPopoverOpen,
+    setNuvioPopoverOpen,
+    nuvioRowRef,
+    nuvioSyncMeta,
+    nuvioConnected,
+    nuvioFormOpen,
+    setNuvioFormOpen,
+    stremioBusy,
+    stremioError,
+    setStremioError,
+    stremioPopoverOpen,
+    setStremioPopoverOpen,
+    stremioRowRef,
+    stremioSyncMeta,
+    stremioConnected,
+    stremioFormOpen,
+    setStremioFormOpen,
+    stremioAuthKeyMode,
+    setStremioAuthKeyMode,
+    confirmDisconnect,
+    setConfirmDisconnect,
     renderOAuthFallback,
-    handleTraktConnect, handleTraktDisconnect, handleTraktSyncNow,
-    handleAnilistConnect, handleAnilistDisconnect, handleAnilistSyncNow,
-    handleSimklConnect, handleSimklDisconnect, handleSimklSyncNow,
-    handleNuvioConnect, handleNuvioDisconnect, handleNuvioSyncNow,
-    handleStremioConnect, handleStremioConnectWithAuthKey, handleStremioDisconnect, handleStremioSyncNow,
+    handleTraktConnect,
+    handleTraktDisconnect,
+    handleTraktSyncNow,
+    handleAnilistConnect,
+    handleAnilistDisconnect,
+    handleAnilistSyncNow,
+    handleSimklConnect,
+    handleSimklDisconnect,
+    handleSimklSyncNow,
+    handleNuvioConnect,
+    handleNuvioDisconnect,
+    handleNuvioSyncNow,
+    handleStremioConnect,
+    handleStremioConnectWithAuthKey,
+    handleStremioDisconnect,
+    handleStremioSyncNow,
   } = accounts;
 
-  const connectedSources = { nuvio: nuvioConnected, trakt: traktConnected, simkl: simklConnected, anilist: anilistConnected, stremio: stremioConnected };
+  const connectedSources = {
+    nuvio: nuvioConnected,
+    trakt: traktConnected,
+    simkl: simklConnected,
+    anilist: anilistConnected,
+    stremio: stremioConnected,
+  };
   const cwOptions = cwSourceOfTruthOptions(connectedSources);
   const libraryOptions = librarySourceOfTruthOptions(connectedSources);
-  const preferredConnectedSource = nuvioConnected ? 'nuvio'
-    : traktConnected ? 'trakt'
-      : simklConnected ? 'simkl'
-        : anilistConnected ? 'anilist'
-          : stremioConnected ? 'stremio' : 'local';
-  const isConnectedSource = (source: string) => source === 'local'
-    ? preferredConnectedSource === 'local'
-    : Boolean(connectedSources[source as keyof typeof connectedSources]);
-  const validSource = (source: string) => isConnectedSource(source) ? source : preferredConnectedSource;
+  const preferredConnectedSource = nuvioConnected
+    ? 'nuvio'
+    : traktConnected
+      ? 'trakt'
+      : simklConnected
+        ? 'simkl'
+        : anilistConnected
+          ? 'anilist'
+          : stremioConnected
+            ? 'stremio'
+            : 'local';
+  const isConnectedSource = (source: string) =>
+    source === 'local' ? preferredConnectedSource === 'local' : Boolean(connectedSources[source as keyof typeof connectedSources]);
+  const validSource = (source: string) => (isConnectedSource(source) ? source : preferredConnectedSource);
 
   useEffect(() => {
     if (!isConnectedSource(prefs.continueWatchingSource)) void setPref('continueWatchingSource', preferredConnectedSource);
     if (!isConnectedSource(prefs.integrationLibrarySource)) void setPref('integrationLibrarySource', preferredConnectedSource);
-  }, [prefs.continueWatchingSource, prefs.integrationLibrarySource, nuvioConnected, traktConnected, simklConnected, anilistConnected, stremioConnected, setPref]);
+  }, [
+    prefs.continueWatchingSource,
+    prefs.integrationLibrarySource,
+    nuvioConnected,
+    traktConnected,
+    simklConnected,
+    anilistConnected,
+    stremioConnected,
+    setPref,
+  ]);
 
   if (selectedIntegration) {
     return (
@@ -98,7 +175,22 @@ export function AccountSection({
         {/* Trakt */}
         {!traktConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('trakt.svg')} alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
+            icon={
+              <div
+                style={{
+                  width: '2.75rem',
+                  height: '2.75rem',
+                  borderRadius: '0.75rem',
+                  background: 'rgba(237,28,36,0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                <img src={assetUrl('trakt.svg')} alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
+              </div>
+            }
             title="Trakt.tv"
             value={traktBusy ? t('trakt.device.waiting') : t('auto.connect_trakt_tv_account')}
             onClick={() => setSelectedIntegration('trakt')}
@@ -108,15 +200,45 @@ export function AccountSection({
         {!traktConnected && renderOAuthFallback('trakt')}
         {traktError && (
           <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
-            <p style={{ color: '#FF5D5D', fontSize: '0.75rem', margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif' }}>{t('common.error')}: {traktError}</p>
+            <p
+              style={{
+                color: '#FF5D5D',
+                fontSize: '0.75rem',
+                margin: 0,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
+              }}
+            >
+              {t('common.error')}: {traktError}
+            </p>
           </div>
         )}
         {traktConnected && (
           <div ref={traktRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(237,28,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('trakt.svg')} alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
+              icon={
+                <div
+                  style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    borderRadius: '0.75rem',
+                    background: 'rgba(237,28,36,0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img src={assetUrl('trakt.svg')} alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
+                </div>
+              }
               title="Trakt.tv"
-              value={traktBusy ? t('sync.device.syncing') : (activeProfile?.traktUsername ? t('settings.connected_as', activeProfile.traktUsername) : t('sync.device.connected'))}
+              value={
+                traktBusy
+                  ? t('sync.device.syncing')
+                  : activeProfile?.traktUsername
+                    ? t('settings.connected_as', activeProfile.traktUsername)
+                    : t('sync.device.connected')
+              }
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('trakt')}
               busy={traktBusy}
@@ -138,7 +260,22 @@ export function AccountSection({
         {/* AniList */}
         {!anilistConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(2,169,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('anilist.svg')} alt="AniList" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
+            icon={
+              <div
+                style={{
+                  width: '2.75rem',
+                  height: '2.75rem',
+                  borderRadius: '0.75rem',
+                  background: 'rgba(2,169,255,0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                <img src={assetUrl('anilist.svg')} alt="AniList" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
+              </div>
+            }
             title="AniList"
             value={anilistBusy ? t('trakt.device.waiting') : t('auto.connect_anilist_account')}
             onClick={() => setSelectedIntegration('anilist')}
@@ -148,15 +285,49 @@ export function AccountSection({
         {!anilistConnected && renderOAuthFallback('anilist')}
         {anilistError && (
           <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
-            <p style={{ color: '#FF5D5D', fontSize: '0.75rem', margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif' }}>{t('common.error')}: {anilistError}</p>
+            <p
+              style={{
+                color: '#FF5D5D',
+                fontSize: '0.75rem',
+                margin: 0,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
+              }}
+            >
+              {t('common.error')}: {anilistError}
+            </p>
           </div>
         )}
         {anilistConnected && (
           <div ref={anilistRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(2,169,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('anilist.svg')} alt="AniList" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
+              icon={
+                <div
+                  style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    borderRadius: '0.75rem',
+                    background: 'rgba(2,169,255,0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img
+                    src={assetUrl('anilist.svg')}
+                    alt="AniList"
+                    style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }}
+                  />
+                </div>
+              }
               title="AniList"
-              value={anilistBusy ? t('sync.device.syncing') : (activeProfile?.anilistUsername ? t('settings.connected_as', activeProfile.anilistUsername) : t('settings.anime_tracking_enabled'))}
+              value={
+                anilistBusy
+                  ? t('sync.device.syncing')
+                  : activeProfile?.anilistUsername
+                    ? t('settings.connected_as', activeProfile.anilistUsername)
+                    : t('settings.anime_tracking_enabled')
+              }
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('anilist')}
               busy={anilistBusy}
@@ -168,7 +339,11 @@ export function AccountSection({
               serviceName="AniList"
               meta={anilistSyncMeta}
               busy={anilistBusy}
-              statusLabel={anilistSyncMeta ? `${t('settings.anime_tracking_enabled')} · ${new Date(anilistSyncMeta.lastSyncAt).toLocaleString()}` : t('settings.anime_tracking_enabled')}
+              statusLabel={
+                anilistSyncMeta
+                  ? `${t('settings.anime_tracking_enabled')} · ${new Date(anilistSyncMeta.lastSyncAt).toLocaleString()}`
+                  : t('settings.anime_tracking_enabled')
+              }
               statusColor="#54D17A"
               syncLabel={t('settings.sync_now')}
               onSyncNow={() => void handleAnilistSyncNow()}
@@ -181,7 +356,22 @@ export function AccountSection({
         {/* Simkl */}
         {!simklConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('simkl.svg')} alt="Simkl" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
+            icon={
+              <div
+                style={{
+                  width: '2.75rem',
+                  height: '2.75rem',
+                  borderRadius: '0.75rem',
+                  background: 'rgba(255,255,255,0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                <img src={assetUrl('simkl.svg')} alt="Simkl" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
+              </div>
+            }
             title="Simkl"
             value={simklBusy ? t('trakt.device.waiting') : t('auto.connect_simkl_account')}
             onClick={() => setSelectedIntegration('simkl')}
@@ -191,15 +381,45 @@ export function AccountSection({
         {!simklConnected && renderOAuthFallback('simkl')}
         {simklError && (
           <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
-            <p style={{ color: '#FF5D5D', fontSize: '0.75rem', margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif' }}>{t('common.error')}: {simklError}</p>
+            <p
+              style={{
+                color: '#FF5D5D',
+                fontSize: '0.75rem',
+                margin: 0,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
+              }}
+            >
+              {t('common.error')}: {simklError}
+            </p>
           </div>
         )}
         {simklConnected && (
           <div ref={simklRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('simkl.svg')} alt="Simkl" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} /></div>}
+              icon={
+                <div
+                  style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    borderRadius: '0.75rem',
+                    background: 'rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img src={assetUrl('simkl.svg')} alt="Simkl" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
+                </div>
+              }
               title="Simkl"
-              value={simklBusy ? t('sync.device.syncing') : (activeProfile?.simklUsername ? t('settings.connected_as', activeProfile.simklUsername) : t('sync.device.connected'))}
+              value={
+                simklBusy
+                  ? t('sync.device.syncing')
+                  : activeProfile?.simklUsername
+                    ? t('settings.connected_as', activeProfile.simklUsername)
+                    : t('sync.device.connected')
+              }
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('simkl')}
               busy={simklBusy}
@@ -221,7 +441,22 @@ export function AccountSection({
         {/* Nuvio */}
         {!nuvioConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /></div>}
+            icon={
+              <div
+                style={{
+                  width: '2.75rem',
+                  height: '2.75rem',
+                  borderRadius: '0.75rem',
+                  background: 'rgba(255,255,255,0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+              </div>
+            }
             title="Nuvio"
             value={nuvioBusy ? t('auth.signing_in') : t('settings.connect_nuvio_account')}
             onClick={() => setSelectedIntegration('nuvio')}
@@ -233,20 +468,53 @@ export function AccountSection({
           <CredentialLoginForm
             busy={nuvioBusy}
             onSubmit={(email, password) => void handleNuvioConnect(email, password)}
-            onCancel={() => { setNuvioFormOpen(false); setNuvioError(null); }}
+            onCancel={() => {
+              setNuvioFormOpen(false);
+              setNuvioError(null);
+            }}
           />
         )}
         {nuvioError && (
           <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
-            <p style={{ color: '#FF5D5D', fontSize: '0.75rem', margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif' }}>{t('common.error')}: {nuvioError}</p>
+            <p
+              style={{
+                color: '#FF5D5D',
+                fontSize: '0.75rem',
+                margin: 0,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
+              }}
+            >
+              {t('common.error')}: {nuvioError}
+            </p>
           </div>
         )}
         {nuvioConnected && (
           <div ref={nuvioRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /></div>}
+              icon={
+                <div
+                  style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    borderRadius: '0.75rem',
+                    background: 'rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+                </div>
+              }
               title="Nuvio"
-              value={nuvioBusy ? t('sync.device.syncing') : (activeProfile?.nuvioEmail ? t('settings.connected_as', activeProfile.nuvioEmail) : t('sync.device.connected'))}
+              value={
+                nuvioBusy
+                  ? t('sync.device.syncing')
+                  : activeProfile?.nuvioEmail
+                    ? t('settings.connected_as', activeProfile.nuvioEmail)
+                    : t('sync.device.connected')
+              }
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('nuvio')}
               busy={nuvioBusy}
@@ -268,7 +536,22 @@ export function AccountSection({
         {/* Stremio */}
         {!stremioConnected && (
           <SyncServiceRow
-            icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(123,91,245,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /></div>}
+            icon={
+              <div
+                style={{
+                  width: '2.75rem',
+                  height: '2.75rem',
+                  borderRadius: '0.75rem',
+                  background: 'rgba(123,91,245,0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                <img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+              </div>
+            }
             title="Stremio"
             value={stremioBusy ? t('auth.signing_in') : t('settings.connect_stremio_account')}
             onClick={() => setSelectedIntegration('stremio')}
@@ -280,15 +563,34 @@ export function AccountSection({
           <CredentialLoginForm
             busy={stremioBusy}
             onSubmit={(email, password) => void handleStremioConnect(email, password)}
-            onCancel={() => { setStremioFormOpen(false); setStremioError(null); }}
+            onCancel={() => {
+              setStremioFormOpen(false);
+              setStremioError(null);
+            }}
           />
         )}
         {!stremioConnected && stremioFormOpen && (
-          <div style={{ padding: stremioAuthKeyMode ? '0 1.125rem' : '0.5rem 1.125rem 0', borderBottom: stremioAuthKeyMode ? undefined : '1px solid rgba(255,255,255,0.055)' }}>
+          <div
+            style={{
+              padding: stremioAuthKeyMode ? '0 1.125rem' : '0.5rem 1.125rem 0',
+              borderBottom: stremioAuthKeyMode ? undefined : '1px solid rgba(255,255,255,0.055)',
+            }}
+          >
             <button
-              onClick={() => { setStremioAuthKeyMode((m) => !m); setStremioError(null); }}
+              onClick={() => {
+                setStremioAuthKeyMode((m) => !m);
+                setStremioError(null);
+              }}
               disabled={stremioBusy}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: '0.6875rem', cursor: 'pointer', padding: 0, marginBottom: stremioAuthKeyMode ? 0 : '0.5rem' }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: '0.6875rem',
+                cursor: 'pointer',
+                padding: 0,
+                marginBottom: stremioAuthKeyMode ? 0 : '0.5rem',
+              }}
             >
               {stremioAuthKeyMode ? t('auth.stremio.use_password_instead') : t('auth.stremio.use_authkey_instead')}
             </button>
@@ -298,20 +600,54 @@ export function AccountSection({
           <AuthKeyLoginForm
             busy={stremioBusy}
             onSubmit={(authKey) => void handleStremioConnectWithAuthKey(authKey)}
-            onCancel={() => { setStremioFormOpen(false); setStremioAuthKeyMode(false); setStremioError(null); }}
+            onCancel={() => {
+              setStremioFormOpen(false);
+              setStremioAuthKeyMode(false);
+              setStremioError(null);
+            }}
           />
         )}
         {stremioError && (
           <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
-            <p style={{ color: '#FF5D5D', fontSize: '0.75rem', margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif' }}>{t('common.error')}: {stremioError}</p>
+            <p
+              style={{
+                color: '#FF5D5D',
+                fontSize: '0.75rem',
+                margin: 0,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
+              }}
+            >
+              {t('common.error')}: {stremioError}
+            </p>
           </div>
         )}
         {stremioConnected && (
           <div ref={stremioRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={<div style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', background: 'rgba(123,91,245,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /></div>}
+              icon={
+                <div
+                  style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    borderRadius: '0.75rem',
+                    background: 'rgba(123,91,245,0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+                </div>
+              }
               title="Stremio"
-              value={stremioBusy ? t('sync.device.syncing') : (activeProfile?.stremioEmail ? t('settings.connected_as', activeProfile.stremioEmail) : t('sync.device.connected'))}
+              value={
+                stremioBusy
+                  ? t('sync.device.syncing')
+                  : activeProfile?.stremioEmail
+                    ? t('settings.connected_as', activeProfile.stremioEmail)
+                    : t('sync.device.connected')
+              }
               valueColor="#54D17A"
               onClick={() => setSelectedIntegration('stremio')}
               busy={stremioBusy}
@@ -332,9 +668,27 @@ export function AccountSection({
       </SettingsSection>
 
       <SettingsSection title={t('settings.cw_conflict_resolution')} subtitle={t('settings.cw_conflict_resolution_desc')}>
-        <ChoiceTile title={t('settings.cw_source_of_truth')} subtitle={t('settings.cw_source_of_truth_desc')} options={cwOptions} selected={validSource(prefs.continueWatchingSource)} onSelect={(value) => setPref('continueWatchingSource', value)} />
-        <ChoiceTile title={t('settings.library_source_of_truth')} subtitle={t('settings.library_source_of_truth_desc')} options={libraryOptions} selected={validSource(prefs.integrationLibrarySource)} onSelect={(value) => setPref('integrationLibrarySource', value)} />
-        <ChoiceTile title={t('settings.similar_titles_source')} subtitle={t('settings.similar_titles_source_desc')} options={similarTitlesSourceOptions()} selected={prefs.similarTitlesSource} onSelect={(value) => setPref('similarTitlesSource', value)} />
+        <ChoiceTile
+          title={t('settings.cw_source_of_truth')}
+          subtitle={t('settings.cw_source_of_truth_desc')}
+          options={cwOptions}
+          selected={validSource(prefs.continueWatchingSource)}
+          onSelect={(value) => setPref('continueWatchingSource', value)}
+        />
+        <ChoiceTile
+          title={t('settings.library_source_of_truth')}
+          subtitle={t('settings.library_source_of_truth_desc')}
+          options={libraryOptions}
+          selected={validSource(prefs.integrationLibrarySource)}
+          onSelect={(value) => setPref('integrationLibrarySource', value)}
+        />
+        <ChoiceTile
+          title={t('settings.similar_titles_source')}
+          subtitle={t('settings.similar_titles_source_desc')}
+          options={similarTitlesSourceOptions()}
+          selected={prefs.similarTitlesSource}
+          onSelect={(value) => setPref('similarTitlesSource', value)}
+        />
       </SettingsSection>
 
       {confirmDisconnect && (
@@ -345,7 +699,11 @@ export function AccountSection({
           cancelLabel={t('common.cancel')}
           destructive
           onCancel={() => setConfirmDisconnect(null)}
-          onConfirm={() => { const { onConfirm } = confirmDisconnect; setConfirmDisconnect(null); onConfirm(); }}
+          onConfirm={() => {
+            const { onConfirm } = confirmDisconnect;
+            setConfirmDisconnect(null);
+            onConfirm();
+          }}
         />
       )}
     </>

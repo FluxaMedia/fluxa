@@ -42,11 +42,7 @@ export function ProfileSetupView({ onBack, onDone }: ProfileSetupViewProps) {
               placeholder={t('auth.profile.name_placeholder')}
               autoFocus
             />
-            <button
-              type="submit"
-              style={{ ...S.submitBtn, marginTop: '0.5rem', opacity: submitting ? 0.6 : 1 }}
-              disabled={submitting}
-            >
+            <button type="submit" style={{ ...S.submitBtn, marginTop: '0.5rem', opacity: submitting ? 0.6 : 1 }} disabled={submitting}>
               {submitting ? t('welcome.loading') : t('auth.profile.continue')}
             </button>
           </form>

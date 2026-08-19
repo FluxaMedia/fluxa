@@ -6,7 +6,10 @@ const DRAG_THRESHOLD = 4;
 /** Enables mouse drag panning for a native horizontal scroll container. */
 export function useDragScroll(
   scrollRef: React.RefObject<HTMLDivElement | null>,
-): Pick<React.HTMLAttributes<HTMLDivElement>, 'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onClickCapture' | 'onDragStart'> {
+): Pick<
+  React.HTMLAttributes<HTMLDivElement>,
+  'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onClickCapture' | 'onDragStart'
+> {
   const dragRef = useRef<{ pointerId: number; startX: number; startScrollLeft: number; moved: boolean; captured: boolean } | null>(null);
   const suppressClickRef = useRef(false);
 

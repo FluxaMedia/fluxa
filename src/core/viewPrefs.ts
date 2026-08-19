@@ -11,7 +11,9 @@ export interface ViewPrefs {
 let cache: ViewPrefs = {};
 
 const ready = storageRead<ViewPrefs>('viewPrefs')
-  .then((stored) => { if (stored) cache = stored; })
+  .then((stored) => {
+    if (stored) cache = stored;
+  })
   .catch(() => {});
 
 export function whenViewPrefsReady(): Promise<void> {

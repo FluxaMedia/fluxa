@@ -13,7 +13,7 @@ const SCROLL_GAP = 12;
 const BUFFER = 3;
 
 function cardWidth(folder: Meta): number {
-  const shape = ((folder as unknown as Record<string, unknown>).reason as string | undefined ?? 'poster').toLowerCase();
+  const shape = (((folder as unknown as Record<string, unknown>).reason as string | undefined) ?? 'poster').toLowerCase();
   if (shape === 'wide' || shape === 'landscape') return 280;
   if (shape === 'square') return 150;
   return 156;
@@ -40,10 +40,7 @@ export const CollectionShelfRow = React.memo(function CollectionShelfRow({
   const [containerWidth, setContainerWidth] = React.useState(() => window.innerWidth);
   const scrollRafRef = React.useRef<number | null>(null);
 
-  const slotWidth = useMemo(
-    () => (folders.length > 0 ? cardWidth(folders[0]) + SCROLL_GAP : 168),
-    [folders],
-  );
+  const slotWidth = useMemo(() => (folders.length > 0 ? cardWidth(folders[0]) + SCROLL_GAP : 168), [folders]);
 
   const updateArrows = React.useCallback(() => {
     const el = scrollRef.current;
@@ -90,10 +87,7 @@ export const CollectionShelfRow = React.memo(function CollectionShelfRow({
   const startIdx = Math.max(0, Math.floor(scrollLeft / slotWidth) - BUFFER);
   const endIdx = Math.min(folders.length - 1, Math.ceil((scrollLeft + containerWidth) / slotWidth) + BUFFER);
 
-  const visibleFolders = useMemo(
-    () => folders.slice(startIdx, endIdx + 1),
-    [folders, startIdx, endIdx],
-  );
+  const visibleFolders = useMemo(() => folders.slice(startIdx, endIdx + 1), [folders, startIdx, endIdx]);
 
   const beforeWidth = startIdx > 0 ? startIdx * slotWidth - SCROLL_GAP : 0;
   const afterCount = folders.length - endIdx - 1;
@@ -109,14 +103,18 @@ export const CollectionShelfRow = React.memo(function CollectionShelfRow({
             onClick={() => canScrollLeft && scroll('left')}
             aria-label={t('common.scroll_left')}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15 18l-6-6 6-6v12z"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15 18l-6-6 6-6v12z" />
+            </svg>
           </button>
           <button
             style={{ ...headerStyles.arrowBtn, opacity: canScrollRight ? 1 : 0.28, cursor: canScrollRight ? 'pointer' : 'default' }}
             onClick={() => canScrollRight && scroll('right')}
             aria-label={t('common.scroll_right')}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18l6-6-6-6v12z"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 18l6-6-6-6v12z" />
+            </svg>
           </button>
         </div>
       </div>
@@ -153,7 +151,7 @@ const FolderTileCard = React.memo(function FolderTileCard({
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const inViewport = useInViewport(wrapperRef, '150px');
 
-  const shape = ((folder as unknown as Record<string, unknown>).reason as string | undefined ?? 'poster').toLowerCase();
+  const shape = (((folder as unknown as Record<string, unknown>).reason as string | undefined) ?? 'poster').toLowerCase();
   const isWide = shape === 'wide' || shape === 'landscape';
   const isSquare = shape === 'square';
   const w = cardWidth(folder);
@@ -161,11 +159,12 @@ const FolderTileCard = React.memo(function FolderTileCard({
   const imgStyle: React.CSSProperties = isWide
     ? { width: w, minWidth: w, height: '9.875rem' }
     : isSquare
-    ? { width: w, minWidth: w, height: '9.375rem' }
-    : { width: w, minWidth: w, height: '14.625rem' };
+      ? { width: w, minWidth: w, height: '9.375rem' }
+      : { width: w, minWidth: w, height: '14.625rem' };
 
-  const staticUrl = cardImageUrl(folder.poster, { displayWidth: w, dpr: window.devicePixelRatio })
-    ?? cardImageUrl(folder.background, { kind: 'backdrop', displayWidth: w, dpr: window.devicePixelRatio });
+  const staticUrl =
+    cardImageUrl(folder.poster, { displayWidth: w, dpr: window.devicePixelRatio }) ??
+    cardImageUrl(folder.background, { kind: 'backdrop', displayWidth: w, dpr: window.devicePixelRatio });
   const { src: staticSrc } = usePosterSrc(staticUrl);
   const hasStatic = !!staticSrc;
   const gifEligible = !!folder.focusGifUrl && inViewport && (gifAutoplayEnabled || hovered) && !gifError;
@@ -185,25 +184,17 @@ const FolderTileCard = React.memo(function FolderTileCard({
       className="folder-tile"
       style={{ ...collStyles.tileWrapper, width: imgStyle.width, minWidth: imgStyle.minWidth }}
       onClick={() => onClick(folder)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(folder); } }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(folder);
+        }
+      }}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
     >
-      <div
-        className="folder-card"
-        data-motion-url={folder.focusGifUrl ?? undefined}
-        style={{ ...collStyles.card, ...imgStyle }}
-      >
-        {hasStatic && (
-          <img
-            src={staticSrc}
-            alt={folder.name}
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-            style={collStyles.img}
-          />
-        )}
+      <div className="folder-card" data-motion-url={folder.focusGifUrl ?? undefined} style={{ ...collStyles.card, ...imgStyle }}>
+        {hasStatic && <img src={staticSrc} alt={folder.name} loading="lazy" decoding="async" draggable={false} style={collStyles.img} />}
         {wantsMotion && (
           <img
             src={folder.focusGifUrl}

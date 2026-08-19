@@ -26,12 +26,7 @@ export function updateDiscordPresence(opts: {
   }).catch(() => undefined);
 }
 
-export function setViewingDiscordPresence(opts: {
-  title: string;
-  posterUrl?: string;
-  buttonLabel?: string;
-  buttonUrl?: string;
-}): void {
+export function setViewingDiscordPresence(opts: { title: string; posterUrl?: string; buttonLabel?: string; buttonUrl?: string }): void {
   void invoke('discord_presence_set_viewing', {
     title: opts.title,
     posterUrl: opts.posterUrl ?? null,

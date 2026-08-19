@@ -28,10 +28,7 @@ type AnimeIdCache = Record<string, AnimeIds>;
 
 const ANIME_ID_CACHE_KEY = 'anime_id_map';
 
-export async function pushAnimeTrackingExternal(
-  update: AnimeTrackingUpdate,
-  profile: UserProfile,
-): Promise<void> {
+export async function pushAnimeTrackingExternal(update: AnimeTrackingUpdate, profile: UserProfile): Promise<void> {
   if (!update.watched || !update.meta) return;
   if (!profile.anilistAccessToken) return;
   const validProfile = await refreshAnimeTrackingProfile(profile).catch(() => profile);
@@ -39,10 +36,7 @@ export async function pushAnimeTrackingExternal(
   const meta = update.meta as unknown as Meta;
   if (!(await coreShouldAttemptAnimeTracking(meta))) return;
 
-  const progressEpisode = update.progressEpisode
-    ?? update.episode?.episode
-    ?? firstEpisodeNumberFromMeta(meta)
-    ?? 1;
+  const progressEpisode = update.progressEpisode ?? update.episode?.episode ?? firstEpisodeNumberFromMeta(meta) ?? 1;
   if (!Number.isFinite(progressEpisode) || progressEpisode < 1) return;
 
   const ids = await resolveAnimeIds(meta);
@@ -120,10 +114,9 @@ async function searchAniList(meta: Meta): Promise<AnimeIds | null> {
     }
   `;
   const year = typeof meta.year === 'number' ? meta.year : undefined;
-  const data = await anilistGraphql<{ Page?: { media?: Array<{ id?: number; seasonYear?: number | null; title?: Record<string, string | null> }> } }>(
-    query,
-    { search, year },
-  );
+  const data = await anilistGraphql<{
+    Page?: { media?: Array<{ id?: number; seasonYear?: number | null; title?: Record<string, string | null> }> };
+  }>(query, { search, year });
   const candidates = data?.Page?.media ?? [];
   return coreAnilistSearchBestMatch(meta, candidates);
 }
@@ -140,27 +133,39 @@ async function anilistGraphql<T>(query: string, variables: Record<string, unknow
   });
   if (res.status === 429 && attempt === 0) {
     const retryAfter = Number(res.headers.get('Retry-After'));
-    await new Promise((resolve) => setTimeout(resolve, Math.min(60_000, Math.max(1_000, (Number.isFinite(retryAfter) ? retryAfter : 1) * 1_000))));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(60_000, Math.max(1_000, (Number.isFinite(retryAfter) ? retryAfter : 1) * 1_000))),
+    );
     return anilistGraphql(query, variables, token, 1);
   }
-  const json = await res.json() as { data?: T; errors?: Array<{ message?: string }> };
+  const json = (await res.json()) as { data?: T; errors?: Array<{ message?: string }> };
   if (!res.ok || json.errors?.length) {
-    throw new Error(json.errors?.map((e) => e.message).filter(Boolean).join('; ') || `AniList request failed: HTTP ${res.status}`);
+    throw new Error(
+      json.errors
+        ?.map((e) => e.message)
+        .filter(Boolean)
+        .join('; ') || `AniList request failed: HTTP ${res.status}`,
+    );
   }
   return json.data ?? null;
 }
 
 async function pushAniListProgress(anilistId: number, progressEpisode: number, meta: Meta, token: string): Promise<void> {
   const queries = await coreAnilistGraphqlQueries();
-  const query = queries?.saveMediaListEntry ?? `
+  const query =
+    queries?.saveMediaListEntry ??
+    `
     mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int) {
       SaveMediaListEntry(mediaId: $mediaId, status: $status, progress: $progress) { id }
     }
   `;
   const totalEpisodes = Array.isArray(meta.videos) ? meta.videos.length : 0;
   const status = await coreAnilistMediaListStatus(totalEpisodes, progressEpisode);
-  const variables = (await coreAnilistSaveMediaListEntryVariables(`anilist:${anilistId}`, status, Math.max(0, Math.floor(progressEpisode))))
-    ?? { mediaId: anilistId, progress: Math.max(0, Math.floor(progressEpisode)), status };
+  const variables = (await coreAnilistSaveMediaListEntryVariables(
+    `anilist:${anilistId}`,
+    status,
+    Math.max(0, Math.floor(progressEpisode)),
+  )) ?? { mediaId: anilistId, progress: Math.max(0, Math.floor(progressEpisode)), status };
   await anilistGraphql(query, variables, token);
 }
 
@@ -179,5 +184,9 @@ function parseYear(value?: string): number | undefined {
 }
 
 function normalizeTitle(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

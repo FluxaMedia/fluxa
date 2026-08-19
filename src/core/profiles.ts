@@ -1,16 +1,7 @@
 import { coreInvoke, storageRead, storageWrite } from './engine';
 import type { UserProfile } from './types';
 
-export const PROFILE_COLORS = [
-  '#E85D3F',
-  '#3F7CFF',
-  '#54D17A',
-  '#FF8A3D',
-  '#C084FC',
-  '#FFE45C',
-  '#FF5D5D',
-  '#38BDF8',
-];
+export const PROFILE_COLORS = ['#E85D3F', '#3F7CFF', '#54D17A', '#FF8A3D', '#C084FC', '#FFE45C', '#FF5D5D', '#38BDF8'];
 
 export async function loadProfiles(): Promise<UserProfile[]> {
   return (await storageRead<UserProfile[]>('profiles')) ?? [];
@@ -38,7 +29,8 @@ export async function createProfileObject(name: string, color: string): Promise<
 
 export async function saveProfile(profile: UserProfile): Promise<UserProfile[]> {
   const profiles = await loadProfiles();
-  const next = (await coreInvoke<UserProfile[]>('profileMutationPlan', JSON.stringify({ operation: 'save', profiles, profile }))) ?? profiles;
+  const next =
+    (await coreInvoke<UserProfile[]>('profileMutationPlan', JSON.stringify({ operation: 'save', profiles, profile }))) ?? profiles;
   await saveProfiles(next);
   return next;
 }
@@ -73,8 +65,13 @@ export function profileColor(profile: UserProfile): string {
 }
 
 export async function profileConnectionState(profile: UserProfile | null | undefined): Promise<{ trakt: boolean; simkl: boolean }> {
-  return (await coreInvoke<{ trakt: boolean; simkl: boolean }>('profileConnectionState', JSON.stringify({
-    profileJson: JSON.stringify(profile ?? null),
-    nowEpochSeconds: Math.floor(Date.now() / 1000),
-  }))) ?? { trakt: false, simkl: false };
+  return (
+    (await coreInvoke<{ trakt: boolean; simkl: boolean }>(
+      'profileConnectionState',
+      JSON.stringify({
+        profileJson: JSON.stringify(profile ?? null),
+        nowEpochSeconds: Math.floor(Date.now() / 1000),
+      }),
+    )) ?? { trakt: false, simkl: false }
+  );
 }

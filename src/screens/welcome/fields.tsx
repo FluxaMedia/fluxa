@@ -17,9 +17,22 @@ export function TopBar({ onBack }: { onBack: () => void }) {
   );
 }
 
-export function Field({ label, type, value, onChange, placeholder, error, autoFocus }: {
-  label: string; type: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; error?: string; autoFocus?: boolean;
+export function Field({
+  label,
+  type,
+  value,
+  onChange,
+  placeholder,
+  error,
+  autoFocus,
+}: {
+  label: string;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  error?: string;
+  autoFocus?: boolean;
 }) {
   return (
     <div style={S.fieldWrap}>
@@ -38,9 +51,22 @@ export function Field({ label, type, value, onChange, placeholder, error, autoFo
   );
 }
 
-export function PasswordField({ label, value, onChange, placeholder, show, onToggleShow, error }: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; show: boolean; onToggleShow: () => void; error?: string;
+export function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  show,
+  onToggleShow,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  show: boolean;
+  onToggleShow: () => void;
+  error?: string;
 }) {
   return (
     <div style={S.fieldWrap}>

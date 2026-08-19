@@ -16,18 +16,20 @@ export function P2PDialog({ mode, onConfirm, onCancel, onEnableP2P }: Props) {
   return (
     <div style={S.backdrop} onClick={onCancel}>
       <div style={S.dialog} onClick={(e) => e.stopPropagation()}>
-        <p style={S.title}>
-          {mode === 'disabled' ? t('p2p.dialog.disabled_title') : t('p2p.dialog.first_time_title')}
-        </p>
-        <p style={S.body}>
-          {mode === 'disabled' ? t('p2p.dialog.disabled_body') : t('p2p.dialog.first_time_body')}
-        </p>
+        <p style={S.title}>{mode === 'disabled' ? t('p2p.dialog.disabled_title') : t('p2p.dialog.first_time_title')}</p>
+        <p style={S.body}>{mode === 'disabled' ? t('p2p.dialog.disabled_body') : t('p2p.dialog.first_time_body')}</p>
         <div style={S.actions}>
           <button style={S.cancelBtn} onClick={onCancel}>
             {t('common.cancel')}
           </button>
           {mode === 'disabled' ? (
-            <button style={S.confirmBtn} onClick={() => { onEnableP2P?.(); onConfirm(); }}>
+            <button
+              style={S.confirmBtn}
+              onClick={() => {
+                onEnableP2P?.();
+                onConfirm();
+              }}
+            >
               {t('p2p.dialog.enable_and_play')}
             </button>
           ) : (
@@ -43,34 +45,60 @@ export function P2PDialog({ mode, onConfirm, onCancel, onEnableP2P }: Props) {
 
 const S: Record<string, React.CSSProperties> = {
   backdrop: {
-    position: 'fixed', inset: 0, zIndex: 99998,
-    background: 'rgba(0,0,0,0.72)', display: 'flex',
-    alignItems: 'center', justifyContent: 'center',
+    position: 'fixed',
+    inset: 0,
+    zIndex: 99998,
+    background: 'rgba(0,0,0,0.72)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     backdropFilter: 'blur(0.25rem)',
   },
   dialog: {
-    background: '#18191f', border: '1px solid rgba(255,255,255,0.10)',
-    borderRadius: '0.75rem', padding: '1.75rem 1.75rem 1.5rem', maxWidth: '25rem', width: '90%',
+    background: '#18191f',
+    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: '0.75rem',
+    padding: '1.75rem 1.75rem 1.5rem',
+    maxWidth: '25rem',
+    width: '90%',
     fontFamily: FONT,
   },
   title: {
-    margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 600, color: '#fff',
+    margin: '0 0 0.75rem',
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#fff',
   },
   body: {
-    margin: '0 0 1.5rem', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.55)',
+    margin: '0 0 1.5rem',
+    fontSize: '0.8125rem',
+    color: 'rgba(255,255,255,0.55)',
     lineHeight: 1.6,
   },
   actions: {
-    display: 'flex', gap: '0.625rem', justifyContent: 'flex-end',
+    display: 'flex',
+    gap: '0.625rem',
+    justifyContent: 'flex-end',
   },
   cancelBtn: {
-    padding: '0.5625rem 1.125rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.12)',
-    background: 'transparent', color: 'rgba(255,255,255,0.60)',
-    fontSize: '0.8125rem', fontFamily: FONT, cursor: 'pointer',
+    padding: '0.5625rem 1.125rem',
+    borderRadius: '0.5rem',
+    border: '1px solid rgba(255,255,255,0.12)',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.60)',
+    fontSize: '0.8125rem',
+    fontFamily: FONT,
+    cursor: 'pointer',
   },
   confirmBtn: {
-    padding: '0.5625rem 1.125rem', borderRadius: '0.5rem', border: 'none',
-    background: '#fff', color: '#000',
-    fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT, cursor: 'pointer',
+    padding: '0.5625rem 1.125rem',
+    borderRadius: '0.5rem',
+    border: 'none',
+    background: '#fff',
+    color: '#000',
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    fontFamily: FONT,
+    cursor: 'pointer',
   },
 };

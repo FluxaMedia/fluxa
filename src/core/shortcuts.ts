@@ -93,7 +93,10 @@ export function isModifierCode(code: string): boolean {
 
 export function formatCombo(combo: string): string {
   if (!combo) return '';
-  return combo.split('+').map((part) => (['Ctrl', 'Shift', 'Alt'].includes(part) ? part : codeLabel(part))).join(' + ');
+  return combo
+    .split('+')
+    .map((part) => (['Ctrl', 'Shift', 'Alt'].includes(part) ? part : codeLabel(part)))
+    .join(' + ');
 }
 
 export function resolveCombo(id: string, overrides: ShortcutOverrides): string {

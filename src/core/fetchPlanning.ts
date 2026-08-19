@@ -1,7 +1,4 @@
-import {
-  coreParseAndPlanAddonResource,
-  coreResourceFetchExecutionPolicy,
-} from './addonManifest';
+import { coreParseAndPlanAddonResource, coreResourceFetchExecutionPolicy } from './addonManifest';
 import { coreResourceKindToResource } from './engine';
 import { _appVersion, platformFetch } from './httpClient';
 import { loadPrefs } from './libraryOps';
@@ -98,7 +95,11 @@ async function fetchAddonResourceOutcome(
     try {
       const response = await platformFetch(url, {
         headers: { 'User-Agent': `Fluxa/${_appVersion}` },
-        signal: signal ?? (resource === 'stream' ? AbortSignal.timeout(attempt === 0 ? streamRetry.fetchTimeoutMs : streamRetry.retryTimeoutMs) : undefined),
+        signal:
+          signal ??
+          (resource === 'stream'
+            ? AbortSignal.timeout(attempt === 0 ? streamRetry.fetchTimeoutMs : streamRetry.retryTimeoutMs)
+            : undefined),
       });
       statusCode = response.status;
       body = await response.text();
@@ -190,9 +191,7 @@ export async function fetchPlannedResources(
         return parsed;
       }),
     );
-    const winner = settled.find(
-      (outcome): outcome is PromiseFulfilledResult<Record<string, unknown>> => outcome.status === 'fulfilled',
-    );
+    const winner = settled.find((outcome): outcome is PromiseFulfilledResult<Record<string, unknown>> => outcome.status === 'fulfilled');
     return winner ? [winner.value] : [];
   }
 
@@ -249,11 +248,7 @@ export async function fetchVideosForSeries(id: string, addons: AddonDescriptor[]
   }
 }
 
-export async function runWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  task: (item: T) => Promise<R>,
-): Promise<R[]> {
+export async function runWithConcurrency<T, R>(items: T[], limit: number, task: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let cursor = 0;
   async function worker() {

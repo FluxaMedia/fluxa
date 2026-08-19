@@ -17,7 +17,10 @@ export function useGamepadNav({
       if (nativePlayerActive) return;
       if (isTextEntryTarget(document.activeElement)) return;
 
-      if (action === 'back') { goBack(); return; }
+      if (action === 'back') {
+        goBack();
+        return;
+      }
       if (action === 'enter') {
         const active = document.activeElement;
         if (active instanceof HTMLElement) active.click();

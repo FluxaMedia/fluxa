@@ -65,13 +65,16 @@ export async function fetchPluginStreams(
     season?: number;
     episode?: number;
     scrapers: PluginScraperState[];
-  }>('pluginExecutionPlan', JSON.stringify({
-    contentId: tmdbId,
-    mediaType: contentType,
-    season,
-    episode,
-    scrapers: snapshot?.plugins?.scrapers ?? [],
-  }));
+  }>(
+    'pluginExecutionPlan',
+    JSON.stringify({
+      contentId: tmdbId,
+      mediaType: contentType,
+      season,
+      episode,
+      scrapers: snapshot?.plugins?.scrapers ?? [],
+    }),
+  );
   if (!plan?.scrapers.length) {
     pluginDebug(`no compatible scraper type=${contentType} content=${tmdbId} installed=${snapshot?.plugins?.scrapers?.length ?? 0}`);
     return [];

@@ -43,7 +43,9 @@ export function useNuvioConnectivity(activeProfile: UserProfile | null, onSynced
         setServerDown(false);
         setJustRecovered(true);
         setDismissed(false);
-        setTimeout(() => { if (!cancelled) setJustRecovered(false); }, 2000);
+        setTimeout(() => {
+          if (!cancelled) setJustRecovered(false);
+        }, 2000);
         void onSynced?.(false);
       } else if (!down && !pulledRemote) {
         pulledRemote = true;

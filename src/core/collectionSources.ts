@@ -7,20 +7,22 @@ import { coreInvoke } from './engine';
 
 export async function loadNuvioCollectionSource(source: NuvioRemoteCollectionSource, page = 1): Promise<Meta[]> {
   const prefs = await loadPrefs();
-  const clientId = source.provider === 'trakt'
-    ? await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '')
-    : '';
+  const clientId =
+    source.provider === 'trakt' ? await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' }).catch(() => '') : '';
   const plan = await coreInvoke<{
     url: string;
     params: Record<string, string | number>;
     headers: Record<string, string>;
-  }>('remoteCollectionRequestPlan', JSON.stringify({
-    source,
-    page,
-    clientId,
-    apiKey: prefString(prefs, 'tmdbApiKey'),
-    language: prefString(prefs, 'language', 'en'),
-  }));
+  }>(
+    'remoteCollectionRequestPlan',
+    JSON.stringify({
+      source,
+      page,
+      clientId,
+      apiKey: prefString(prefs, 'tmdbApiKey'),
+      language: prefString(prefs, 'language', 'en'),
+    }),
+  );
   if (!plan) return [];
   try {
     const url = new URL(plan.url);

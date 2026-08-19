@@ -12,12 +12,15 @@ export async function selectTrailerSubtitle(
   preferred?: string,
   secondary?: string,
 ): Promise<YoutubeTrailerSubtitleTrack | null> {
-  return coreInvoke<YoutubeTrailerSubtitleTrack>('trailerSubtitleSelectionPlan', JSON.stringify({
-    tracks,
-    preferred,
-    secondary,
-    systemLanguage: typeof navigator !== 'undefined' ? navigator.language : undefined,
-  }));
+  return coreInvoke<YoutubeTrailerSubtitleTrack>(
+    'trailerSubtitleSelectionPlan',
+    JSON.stringify({
+      tracks,
+      preferred,
+      secondary,
+      systemLanguage: typeof navigator !== 'undefined' ? navigator.language : undefined,
+    }),
+  );
 }
 
 export async function normalizeTrailerSubtitleUrl(rawUrl: string): Promise<string> {

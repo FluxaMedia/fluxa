@@ -9,13 +9,17 @@ export function usePlayerIntroDb(metaId: string | undefined, enabled: boolean) {
       return;
     }
     let cancelled = false;
-    void corePlaybackIntroLookupContentId(metaId).then((id) => {
-      if (cancelled || !id) return;
-      if (id.startsWith('tt')) setIds({ imdbId: id, tmdbId: null });
-      else if (/^\d+$/.test(id)) setIds({ imdbId: null, tmdbId: Number(id) });
-      else setIds({ imdbId: null, tmdbId: null });
-    }).catch(() => undefined);
-    return () => { cancelled = true; };
+    void corePlaybackIntroLookupContentId(metaId)
+      .then((id) => {
+        if (cancelled || !id) return;
+        if (id.startsWith('tt')) setIds({ imdbId: id, tmdbId: null });
+        else if (/^\d+$/.test(id)) setIds({ imdbId: null, tmdbId: Number(id) });
+        else setIds({ imdbId: null, tmdbId: null });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [enabled, metaId]);
   return ids;
 }

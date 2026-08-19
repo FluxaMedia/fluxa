@@ -33,17 +33,14 @@ function mergeHomeState(prev: HomeState, next: HomeState): HomeState {
   return { ...next, categories, continueWatching, billboard };
 }
 
-function mergeCategories(
-  prev: HomeCategory[] | undefined,
-  next: HomeCategory[] | undefined,
-): HomeCategory[] | undefined {
+function mergeCategories(prev: HomeCategory[] | undefined, next: HomeCategory[] | undefined): HomeCategory[] | undefined {
   if (next === undefined) return undefined;
   if (!prev) return next;
 
-  const prevById = new Map<string, HomeCategory>(prev.map(c => [c.id, c]));
+  const prevById = new Map<string, HomeCategory>(prev.map((c) => [c.id, c]));
 
   let allSame = prev.length === next.length;
-  const merged = next.map(nextCat => {
+  const merged = next.map((nextCat) => {
     const prevCat = prevById.get(nextCat.id);
     if (!prevCat) {
       allSame = false;
@@ -73,10 +70,10 @@ function mergeMetaArray(prev: Meta[], next: Meta[]): Meta[] {
   if (prev === next) return prev;
   if (prev.length === 0) return next;
 
-  const prevById = new Map<string, Meta>(prev.map(m => [m.id, m]));
+  const prevById = new Map<string, Meta>(prev.map((m) => [m.id, m]));
 
   let allSame = prev.length === next.length;
-  const merged = next.map(nextMeta => {
+  const merged = next.map((nextMeta) => {
     const prevMeta = prevById.get(nextMeta.id);
     if (!prevMeta || !metaRenderEqual(prevMeta, nextMeta)) {
       allSame = false;
@@ -94,17 +91,14 @@ function mergeBillboard(prev: Meta | null | undefined, next: Meta | null | undef
   return next;
 }
 
-function mergeContinueWatching(
-  prev: LibraryItem[] | undefined,
-  next: LibraryItem[] | undefined,
-): LibraryItem[] | undefined {
+function mergeContinueWatching(prev: LibraryItem[] | undefined, next: LibraryItem[] | undefined): LibraryItem[] | undefined {
   if (next === undefined) return undefined;
   if (!prev || prev.length === 0) return next;
 
-  const prevById = new Map<string, LibraryItem>(prev.map(i => [i.id, i]));
+  const prevById = new Map<string, LibraryItem>(prev.map((i) => [i.id, i]));
 
   let allSame = prev.length === next.length;
-  const merged = next.map(nextItem => {
+  const merged = next.map((nextItem) => {
     const prevItem = prevById.get(nextItem.id);
     if (!prevItem) {
       allSame = false;

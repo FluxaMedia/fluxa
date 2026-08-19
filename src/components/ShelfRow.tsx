@@ -28,118 +28,110 @@ interface Props {
   onDispatch?: (actionJson: string) => void | Promise<void>;
 }
 
-export const ShelfRow = React.memo(function ShelfRow({
-  title,
-  items,
-  onItemClick,
-  onViewAll,
-  isLoading,
-  cardWidth,
-  cardHeight,
-  posterPrefs,
-  topTenEnabled = false,
-  addonIcon,
-  onNearEnd,
-  isLoadingMore,
-  onDispatch,
-}: Props) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const dragScroll = useDragScroll(scrollRef);
-  const isMobile = useIsMobile();
-  const [hovered, setHovered] = useState(false);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const baseWidth = cardWidth ?? posterPrefs?.width ?? 156;
-  const baseHeight = cardHeight ?? posterPrefs?.height ?? 234;
-  const width = isMobile ? Math.min(baseWidth, Math.round((window.innerWidth - 48) / 2.4)) : baseWidth;
-  const height = width === baseWidth ? baseHeight : Math.round(baseHeight * (width / baseWidth));
-  const radius = posterPrefs?.radius ?? 12;
-  const layout = posterPrefs?.layout ?? 'vertical';
-  const hideTitle = posterPrefs?.hideTitles ?? false;
+export const ShelfRow = React.memo(
+  function ShelfRow({
+    title,
+    items,
+    onItemClick,
+    onViewAll,
+    isLoading,
+    cardWidth,
+    cardHeight,
+    posterPrefs,
+    topTenEnabled = false,
+    addonIcon,
+    onNearEnd,
+    isLoadingMore,
+    onDispatch,
+  }: Props) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const dragScroll = useDragScroll(scrollRef);
+    const isMobile = useIsMobile();
+    const [hovered, setHovered] = useState(false);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+    const baseWidth = cardWidth ?? posterPrefs?.width ?? 156;
+    const baseHeight = cardHeight ?? posterPrefs?.height ?? 234;
+    const width = isMobile ? Math.min(baseWidth, Math.round((window.innerWidth - 48) / 2.4)) : baseWidth;
+    const height = width === baseWidth ? baseHeight : Math.round(baseHeight * (width / baseWidth));
+    const radius = posterPrefs?.radius ?? 12;
+    const layout = posterPrefs?.layout ?? 'vertical';
+    const hideTitle = posterPrefs?.hideTitles ?? false;
 
-  const [viewport, setViewport] = useState({ clientWidth: 0, scrollLeft: 0 });
-  const rafRef = useRef<number | null>(null);
+    const [viewport, setViewport] = useState({ clientWidth: 0, scrollLeft: 0 });
+    const rafRef = useRef<number | null>(null);
 
-  const checkScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-    if (onNearEnd && el.scrollWidth - (el.scrollLeft + el.clientWidth) < NEAR_END_THRESHOLD_PX) {
-      onNearEnd();
-    }
-  }, [onNearEnd]);
+    const checkScroll = useCallback(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      setCanScrollLeft(el.scrollLeft > 4);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+      if (onNearEnd && el.scrollWidth - (el.scrollLeft + el.clientWidth) < NEAR_END_THRESHOLD_PX) {
+        onNearEnd();
+      }
+    }, [onNearEnd]);
 
-  const updateViewport = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setViewport({ clientWidth: el.clientWidth, scrollLeft: el.scrollLeft });
-  }, []);
+    const updateViewport = useCallback(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      setViewport({ clientWidth: el.clientWidth, scrollLeft: el.scrollLeft });
+    }, []);
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    checkScroll();
-    updateViewport();
-    const handleScroll = () => {
+    useEffect(() => {
+      const el = scrollRef.current;
+      if (!el) return;
       checkScroll();
-      if (rafRef.current != null) return;
-      rafRef.current = window.requestAnimationFrame(() => {
-        rafRef.current = null;
-        updateViewport();
-      });
-    };
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    const ro = new ResizeObserver(updateViewport);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener('scroll', handleScroll);
-      ro.disconnect();
-      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
-    };
-  }, [checkScroll, updateViewport, items.length]);
+      updateViewport();
+      const handleScroll = () => {
+        checkScroll();
+        if (rafRef.current != null) return;
+        rafRef.current = window.requestAnimationFrame(() => {
+          rafRef.current = null;
+          updateViewport();
+        });
+      };
+      el.addEventListener('scroll', handleScroll, { passive: true });
+      const ro = new ResizeObserver(updateViewport);
+      ro.observe(el);
+      return () => {
+        el.removeEventListener('scroll', handleScroll);
+        ro.disconnect();
+        if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
+      };
+    }, [checkScroll, updateViewport, items.length]);
 
-  const canVirtualize = !topTenEnabled && !isLoading;
-  const step = width + CARD_GAP_PX;
-  const startIndex = canVirtualize
-    ? Math.max(0, Math.floor(viewport.scrollLeft / step) - OVERSCAN_CARDS)
-    : 0;
-  const endIndex = canVirtualize
-    ? Math.min(items.length, Math.ceil((viewport.scrollLeft + viewport.clientWidth) / step) + OVERSCAN_CARDS)
-    : items.length;
-  const visibleItems = canVirtualize ? items.slice(startIndex, endIndex) : items;
-  const leadSpacerWidth = canVirtualize ? startIndex * step : 0;
-  const tailSpacerWidth = canVirtualize ? Math.max(0, (items.length - endIndex) * step - CARD_GAP_PX) : 0;
+    const canVirtualize = !topTenEnabled && !isLoading;
+    const step = width + CARD_GAP_PX;
+    const startIndex = canVirtualize ? Math.max(0, Math.floor(viewport.scrollLeft / step) - OVERSCAN_CARDS) : 0;
+    const endIndex = canVirtualize
+      ? Math.min(items.length, Math.ceil((viewport.scrollLeft + viewport.clientWidth) / step) + OVERSCAN_CARDS)
+      : items.length;
+    const visibleItems = canVirtualize ? items.slice(startIndex, endIndex) : items;
+    const leadSpacerWidth = canVirtualize ? startIndex * step : 0;
+    const tailSpacerWidth = canVirtualize ? Math.max(0, (items.length - endIndex) * step - CARD_GAP_PX) : 0;
 
-  if (!isLoading && items.length === 0) return null;
+    if (!isLoading && items.length === 0) return null;
 
-  return (
-    <div
-      className="shelf-row"
-      style={styles.row}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div className="shelf-header" style={styles.header}>
-        <p className="shelf-title" style={styles.title}>{title}</p>
-        <button style={styles.viewAll} onClick={() => onViewAll?.(title, items)}>
-          View All
-          <ChevronRight size={14} />
-        </button>
-      </div>
-      <div style={{ position: 'relative', overflow: 'visible' }}>
-        {hovered && !isMobile && canScrollLeft && (
-          <ScrollArrow
-            direction="left"
-            onClick={() => scrollRef.current?.scrollBy({ left: -520, behavior: 'smooth' })}
-          />
-        )}
-        <div ref={scrollRef} className="shelf-scroll" style={styles.scroll} {...dragScroll}>
-          {isLoading
-            ? SKELETON_INDICES.map((i) => (
-                <SkeletonCard key={i} width={width} height={height} radius={radius} delay={i * 0.06} />
-              ))
-            : <>
+    return (
+      <div className="shelf-row" style={styles.row} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+        <div className="shelf-header" style={styles.header}>
+          <p className="shelf-title" style={styles.title}>
+            {title}
+          </p>
+          <button style={styles.viewAll} onClick={() => onViewAll?.(title, items)}>
+            View All
+            <ChevronRight size={14} />
+          </button>
+        </div>
+        <div style={{ position: 'relative', overflow: 'visible' }}>
+          {hovered && !isMobile && canScrollLeft && (
+            <ScrollArrow direction="left" onClick={() => scrollRef.current?.scrollBy({ left: -520, behavior: 'smooth' })} />
+          )}
+          <div ref={scrollRef} className="shelf-scroll" style={styles.scroll} {...dragScroll}>
+            {isLoading ? (
+              SKELETON_INDICES.map((i) => <SkeletonCard key={i} width={width} height={height} radius={radius} delay={i * 0.06} />)
+            ) : (
+              <>
                 {leadSpacerWidth > 0 && <div style={{ width: leadSpacerWidth, flexShrink: 0 }} />}
                 {visibleItems.map((meta, relIdx) => {
                   const idx = startIndex + relIdx;
@@ -160,34 +152,32 @@ export const ShelfRow = React.memo(function ShelfRow({
                   );
                 })}
                 {tailSpacerWidth > 0 && <div style={{ width: tailSpacerWidth, flexShrink: 0 }} />}
-              </>}
-          {!isLoading && isLoadingMore && (
-            <SkeletonCard key="loading-more" width={width} height={height} radius={radius} delay={0} />
+              </>
+            )}
+            {!isLoading && isLoadingMore && <SkeletonCard key="loading-more" width={width} height={height} radius={radius} delay={0} />}
+          </div>
+          {hovered && !isMobile && canScrollRight && (
+            <ScrollArrow direction="right" onClick={() => scrollRef.current?.scrollBy({ left: 520, behavior: 'smooth' })} />
           )}
         </div>
-        {hovered && !isMobile && canScrollRight && (
-          <ScrollArrow
-            direction="right"
-            onClick={() => scrollRef.current?.scrollBy({ left: 520, behavior: 'smooth' })}
-          />
-        )}
       </div>
-    </div>
-  );
-}, (prev, next) => {
-  if (prev.title !== next.title) return false;
-  if (prev.isLoading !== next.isLoading) return false;
-  if (prev.topTenEnabled !== next.topTenEnabled) return false;
-  if (prev.addonIcon !== next.addonIcon) return false;
-  if (prev.posterPrefs !== next.posterPrefs) return false;
-  if (prev.cardWidth !== next.cardWidth || prev.cardHeight !== next.cardHeight) return false;
-  if (prev.onItemClick !== next.onItemClick || prev.onViewAll !== next.onViewAll) return false;
-  if (prev.onNearEnd !== next.onNearEnd || prev.isLoadingMore !== next.isLoadingMore) return false;
-  if (prev.onDispatch !== next.onDispatch) return false;
-  if (prev.items === next.items) return true;
-  if (prev.items.length !== next.items.length) return false;
-  return prev.items.every((item, i) => item.id === next.items[i]?.id);
-});
+    );
+  },
+  (prev, next) => {
+    if (prev.title !== next.title) return false;
+    if (prev.isLoading !== next.isLoading) return false;
+    if (prev.topTenEnabled !== next.topTenEnabled) return false;
+    if (prev.addonIcon !== next.addonIcon) return false;
+    if (prev.posterPrefs !== next.posterPrefs) return false;
+    if (prev.cardWidth !== next.cardWidth || prev.cardHeight !== next.cardHeight) return false;
+    if (prev.onItemClick !== next.onItemClick || prev.onViewAll !== next.onViewAll) return false;
+    if (prev.onNearEnd !== next.onNearEnd || prev.isLoadingMore !== next.isLoadingMore) return false;
+    if (prev.onDispatch !== next.onDispatch) return false;
+    if (prev.items === next.items) return true;
+    if (prev.items.length !== next.items.length) return false;
+    return prev.items.every((item, i) => item.id === next.items[i]?.id);
+  },
+);
 
 function ScrollArrow({ direction, onClick }: { direction: 'left' | 'right'; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);

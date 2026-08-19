@@ -1,6 +1,14 @@
 import { platformInvoke as invoke } from '../platform/invoke';
 import { platformFetch as tauriFetch } from '../platform/http';
-import { coreInvoke, coreParseVideoId, coreScrobbleCloseAction, coreSimklLookupIdForType, coreSimklMatchEpisode, coreSimklScrobbleBody, coreTraktScrobblePlan } from './engine';
+import {
+  coreInvoke,
+  coreParseVideoId,
+  coreScrobbleCloseAction,
+  coreSimklLookupIdForType,
+  coreSimklMatchEpisode,
+  coreSimklScrobbleBody,
+  coreTraktScrobblePlan,
+} from './engine';
 import { _appVersion } from './httpClient';
 import type { UserProfile, Meta, Video } from './types';
 
@@ -13,7 +21,10 @@ export async function traktScrobble(
   action: 'start' | 'pause' | 'stop',
 ): Promise<void> {
   if (!profile?.traktAccessToken || !meta) return;
-  const context = await coreInvoke<{ videoId: string; isEpisode: boolean; season: number; episode: number; traktEnabled: boolean }>('scrobbleMediaContext', JSON.stringify({ meta, episode, profile, nowSeconds: Math.floor(Date.now() / 1000) }));
+  const context = await coreInvoke<{ videoId: string; isEpisode: boolean; season: number; episode: number; traktEnabled: boolean }>(
+    'scrobbleMediaContext',
+    JSON.stringify({ meta, episode, profile, nowSeconds: Math.floor(Date.now() / 1000) }),
+  );
   if (!context?.traktEnabled) return;
   const plan = await coreTraktScrobblePlan(
     context.videoId,
@@ -52,67 +63,64 @@ export async function simklScrobble(
 
   const token = profile.simklAccessToken;
 
-    const context = await coreInvoke<{ videoId: string; isEpisode: boolean; simklType: string; season: number; episode: number; releaseDate?: string; episodeTitle: string }>('scrobbleMediaContext', JSON.stringify({ meta, episode, profile, nowSeconds: Math.floor(Date.now() / 1000) }));
-    if (!context) return;
-    const parsed = await coreParseVideoId(context.videoId);
-    const baseId = parsed.imdb;
-    if (!baseId) return;
+  const context = await coreInvoke<{
+    videoId: string;
+    isEpisode: boolean;
+    simklType: string;
+    season: number;
+    episode: number;
+    releaseDate?: string;
+    episodeTitle: string;
+  }>('scrobbleMediaContext', JSON.stringify({ meta, episode, profile, nowSeconds: Math.floor(Date.now() / 1000) }));
+  if (!context) return;
+  const parsed = await coreParseVideoId(context.videoId);
+  const baseId = parsed.imdb;
+  if (!baseId) return;
 
-    const clientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' });
-    const simklQuery = `client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`;
-    const authHeaders = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      'User-Agent': `Fluxa Desktop/${_appVersion}`,
-    };
+  const clientId = await invoke<string>('get_oauth_client_id', { service: 'simkl' });
+  const simklQuery = `client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`;
+  const authHeaders = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    'User-Agent': `Fluxa Desktop/${_appVersion}`,
+  };
 
-    const lookupRes = await tauriFetch(
-      `https://api.simkl.com/search/id?imdb=${encodeURIComponent(baseId)}&${simklQuery}`,
-      { headers: authHeaders },
-    );
-    const lookupJson = lookupRes.ok ? await lookupRes.json() : [];
-    const simklId = await coreSimklLookupIdForType(JSON.stringify(lookupJson), context.simklType);
-    const ids: Record<string, unknown> = simklId != null ? { simkl: simklId } : { imdb: baseId };
+  const lookupRes = await tauriFetch(`https://api.simkl.com/search/id?imdb=${encodeURIComponent(baseId)}&${simklQuery}`, {
+    headers: authHeaders,
+  });
+  const lookupJson = lookupRes.ok ? await lookupRes.json() : [];
+  const simklId = await coreSimklLookupIdForType(JSON.stringify(lookupJson), context.simklType);
+  const ids: Record<string, unknown> = simklId != null ? { simkl: simklId } : { imdb: baseId };
 
-    let scrobbleSeason = context.season;
-    let scrobbleNumber = context.episode;
+  let scrobbleSeason = context.season;
+  let scrobbleNumber = context.episode;
 
-    if (context.isEpisode && simklId != null) {
-      const epRes = await tauriFetch(
-        `https://api.simkl.com/tv/episodes/${simklId}?${simklQuery}`,
-        { headers: authHeaders },
+  if (context.isEpisode && simklId != null) {
+    const epRes = await tauriFetch(`https://api.simkl.com/tv/episodes/${simklId}?${simklQuery}`, { headers: authHeaders });
+    if (epRes.ok) {
+      const epList = (await epRes.json()) as Array<{ season?: number; episode?: number; date?: string; title?: string }>;
+      const matched = await coreSimklMatchEpisode(
+        JSON.stringify(Array.isArray(epList) ? epList : []),
+        JSON.stringify({ releaseDate: context.releaseDate ?? '', title: context.episodeTitle }),
       );
-      if (epRes.ok) {
-        const epList = await epRes.json() as Array<{ season?: number; episode?: number; date?: string; title?: string }>;
-        const matched = await coreSimklMatchEpisode(
-          JSON.stringify(Array.isArray(epList) ? epList : []),
-          JSON.stringify({ releaseDate: context.releaseDate ?? '', title: context.episodeTitle }),
-        );
-        if (matched) {
-          scrobbleSeason = matched.season;
-          scrobbleNumber = matched.episode;
-        }
+      if (matched) {
+        scrobbleSeason = matched.season;
+        scrobbleNumber = matched.episode;
       }
     }
+  }
 
-    const body = await coreSimklScrobbleBody(
-      JSON.stringify(ids),
-      context.isEpisode,
-      scrobbleSeason,
-      scrobbleNumber,
-      timePosSec,
-      durationSec,
-    );
-    if (!body) return;
+  const body = await coreSimklScrobbleBody(JSON.stringify(ids), context.isEpisode, scrobbleSeason, scrobbleNumber, timePosSec, durationSec);
+  if (!body) return;
 
-    const res = await tauriFetch(`https://api.simkl.com/scrobble/${action}?${simklQuery}`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401 && onTokenRevoked) {
-      onTokenRevoked({ ...profile, simklAccessToken: undefined, simklRefreshToken: undefined });
-    }
+  const res = await tauriFetch(`https://api.simkl.com/scrobble/${action}?${simklQuery}`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401 && onTokenRevoked) {
+    onTokenRevoked({ ...profile, simklAccessToken: undefined, simklRefreshToken: undefined });
+  }
 }
 
 export function scrobblePlaybackAction(

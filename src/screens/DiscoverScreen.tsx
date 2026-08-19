@@ -69,31 +69,41 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
 
   useEffect(() => {
     let active = true;
-    void coreInvoke<typeof selectionPlan>('discoverSelectionPlan', JSON.stringify({
-      catalogs: discover.catalogs ?? [], contentType, selectedCatalogKey, extraValue,
-    })).then((plan) => {
+    void coreInvoke<typeof selectionPlan>(
+      'discoverSelectionPlan',
+      JSON.stringify({
+        catalogs: discover.catalogs ?? [],
+        contentType,
+        selectedCatalogKey,
+        extraValue,
+      }),
+    ).then((plan) => {
       if (!active || !plan) return;
       setSelectionPlan(plan);
       if (plan.selectedCatalogKey !== selectedCatalogKey) setSelectedCatalogKey(plan.selectedCatalogKey);
       if (plan.extraValue !== extraValue) setExtraValue(plan.extraValue);
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [discover.catalogs, contentType, selectedCatalogKey, extraValue]);
 
   useEffect(() => {
     if (!selectedCatalog || discoverResultsCache.has(key)) return;
     const timer = window.setTimeout(() => {
       lastDispatchedKeyRef.current = key;
-      onDispatch(JSON.stringify({
-        type: 'discoverRequested',
-        contentType,
-        filters: {
-          catalogKey: selectedCatalog.key,
-          transportUrl: selectedCatalog.transportUrl,
-          extra: selectedExtra && extraValue ? { [selectedExtra.name]: extraValue } : {},
-        },
-        language: getLanguage(),
-      }));
+      onDispatch(
+        JSON.stringify({
+          type: 'discoverRequested',
+          contentType,
+          filters: {
+            catalogKey: selectedCatalog.key,
+            transportUrl: selectedCatalog.transportUrl,
+            extra: selectedExtra && extraValue ? { [selectedExtra.name]: extraValue } : {},
+          },
+          language: getLanguage(),
+        }),
+      );
     }, 200);
     return () => window.clearTimeout(timer);
   }, [contentType, selectedCatalog, selectedExtra, extraValue, key]);
@@ -120,27 +130,39 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
   const [displayResults, setDisplayResults] = useState<Meta[]>([]);
   useEffect(() => {
     let active = true;
-    void coreInvoke<{ items: Meta[] }>('mergeDiscoverPages', JSON.stringify({
-      baseItems: baseResults,
-      existingItems: pagingExtra[key] ?? [],
-      incomingItems: [],
-    })).then((plan) => { if (active) setDisplayResults(plan?.items ?? []); })
-      .catch(() => { if (active) setDisplayResults(baseResults); });
-    return () => { active = false; };
+    void coreInvoke<{ items: Meta[] }>(
+      'mergeDiscoverPages',
+      JSON.stringify({
+        baseItems: baseResults,
+        existingItems: pagingExtra[key] ?? [],
+        incomingItems: [],
+      }),
+    )
+      .then((plan) => {
+        if (active) setDisplayResults(plan?.items ?? []);
+      })
+      .catch(() => {
+        if (active) setDisplayResults(baseResults);
+      });
+    return () => {
+      active = false;
+    };
   }, [baseResults, pagingExtra, key]);
 
   const handleLoadMore = useCallback(() => {
     if (!selectedCatalog?.transportUrl || !selectedCatalog.id) return;
     if (isLoading || pagingNoMoreRef.current.has(key) || pendingPagingKeyRef.current) return;
     pendingPagingKeyRef.current = key;
-    onDispatch(JSON.stringify({
-      type: 'discoverPageRequested',
-      transportUrl: selectedCatalog.transportUrl,
-      contentType: selectedCatalog.type,
-      catalogId: selectedCatalog.id,
-      skip: displayResults.length,
-      genre: extraValue,
-    }));
+    onDispatch(
+      JSON.stringify({
+        type: 'discoverPageRequested',
+        transportUrl: selectedCatalog.transportUrl,
+        contentType: selectedCatalog.type,
+        catalogId: selectedCatalog.id,
+        skip: displayResults.length,
+        genre: extraValue,
+      }),
+    );
   }, [selectedCatalog, key, extraValue, displayResults.length, isLoading, onDispatch]);
 
   useEffect(() => {
@@ -155,11 +177,14 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
     }
     void (async () => {
       const existing = pagingExtra[pendingKey] ?? [];
-      const plan = await coreInvoke<{ appendedItems: Meta[]; exhausted: boolean }>('mergeDiscoverPages', JSON.stringify({
-        baseItems: baseResults,
-        existingItems: existing,
-        incomingItems: items,
-      }));
+      const plan = await coreInvoke<{ appendedItems: Meta[]; exhausted: boolean }>(
+        'mergeDiscoverPages',
+        JSON.stringify({
+          baseItems: baseResults,
+          existingItems: existing,
+          incomingItems: items,
+        }),
+      );
       if (!plan || plan.exhausted) pagingNoMoreRef.current.add(pendingKey);
       if (!plan?.appendedItems.length) return;
       setPagingExtra((prev) => ({
@@ -171,8 +196,9 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
 
   const [contentTypes, setContentTypes] = useState<string[]>(['movie', 'series']);
   useEffect(() => {
-    void coreInvoke<string[]>('discoverContentTypes', JSON.stringify(state.addons?.installed ?? []))
-      .then((types) => { if (types) setContentTypes(types); });
+    void coreInvoke<string[]>('discoverContentTypes', JSON.stringify(state.addons?.installed ?? [])).then((types) => {
+      if (types) setContentTypes(types);
+    });
   }, [state.addons?.installed]);
   const typeOptions = useMemo(() => {
     return contentTypes.map((ty) => ({
@@ -195,7 +221,9 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
   }, []);
 
   useEffect(() => {
-    return () => { if (scrollIdleTimerRef.current != null) window.clearTimeout(scrollIdleTimerRef.current); };
+    return () => {
+      if (scrollIdleTimerRef.current != null) window.clearTimeout(scrollIdleTimerRef.current);
+    };
   }, []);
 
   const handlePosterHover = useCallback((meta: Meta | null): boolean => {
@@ -205,15 +233,18 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
     return true;
   }, []);
 
-  const handlePosterClick = useCallback((meta: Meta) => {
-    setSelectedMeta((prev) => {
-      if (prev?.id === meta.id) {
-        onNavigateDetail(meta);
-        return prev;
-      }
-      return meta;
-    });
-  }, [onNavigateDetail]);
+  const handlePosterClick = useCallback(
+    (meta: Meta) => {
+      setSelectedMeta((prev) => {
+        if (prev?.id === meta.id) {
+          onNavigateDetail(meta);
+          return prev;
+        }
+        return meta;
+      });
+    },
+    [onNavigateDetail],
+  );
 
   return (
     <div className="discover-screen" style={S.screen}>
@@ -227,7 +258,10 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
           <FilterDropdown
             value={selectedCatalog?.label ?? t('discover.catalog')}
             options={catalogs.map((catalog) => ({ value: catalog.key, label: catalog.label }))}
-            onSelect={(v) => { setSelectedCatalogKey(v); setExtraValue(null); }}
+            onSelect={(v) => {
+              setSelectedCatalogKey(v);
+              setExtraValue(null);
+            }}
           />
           {selectedExtra && (
             <FilterDropdown
@@ -245,7 +279,16 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
         {isLoading && displayResults.length === 0 ? (
           <div className="discover-loading-grid" style={S.loadingGrid}>
             {Array.from({ length: 24 }).map((_, i) => (
-              <div key={i} style={{ borderRadius: '0.625rem', background: '#1B212B', aspectRatio: '2/3', animation: 'pulse 1.6s ease-in-out infinite', animationDelay: `${(i % 8) * 0.07}s` }} />
+              <div
+                key={i}
+                style={{
+                  borderRadius: '0.625rem',
+                  background: '#1B212B',
+                  aspectRatio: '2/3',
+                  animation: 'pulse 1.6s ease-in-out infinite',
+                  animationDelay: `${(i % 8) * 0.07}s`,
+                }}
+              />
             ))}
           </div>
         ) : displayResults.length === 0 ? (
@@ -282,24 +325,77 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
 }
 
 const S: Record<string, React.CSSProperties> = {
-  screen: { display: 'flex', width: 'calc(100% - 6.5rem)', height: 'calc(100% - 3.25rem)', marginLeft: '6.5rem', marginTop: '3.25rem', background: '#09091280', overflow: 'hidden' },
+  screen: {
+    display: 'flex',
+    width: 'calc(100% - 6.5rem)',
+    height: 'calc(100% - 3.25rem)',
+    marginLeft: '6.5rem',
+    marginTop: '3.25rem',
+    background: '#09091280',
+    overflow: 'hidden',
+  },
   left: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  filterBar: { display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.625rem 1.5rem', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.05)' },
-  loadingDot: { marginLeft: 'auto', width: '0.375rem', height: '0.375rem', borderRadius: '50%', background: 'rgba(255,255,255,0.25)', animation: 'pulse 1.2s ease-in-out infinite', flexShrink: 0 },
-  loadingGrid: { flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(9.375rem, 1fr))', gap: '1.75rem 1.125rem', padding: '1.25rem 1.5rem 3.75rem', alignContent: 'start', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent', contain: 'layout paint style' },
+  filterBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.625rem',
+    padding: '0.625rem 1.5rem',
+    flexShrink: 0,
+    borderBottom: '1px solid rgba(255,255,255,0.05)',
+  },
+  loadingDot: {
+    marginLeft: 'auto',
+    width: '0.375rem',
+    height: '0.375rem',
+    borderRadius: '50%',
+    background: 'rgba(255,255,255,0.25)',
+    animation: 'pulse 1.2s ease-in-out infinite',
+    flexShrink: 0,
+  },
+  loadingGrid: {
+    flex: 1,
+    overflowY: 'auto',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(9.375rem, 1fr))',
+    gap: '1.75rem 1.125rem',
+    padding: '1.25rem 1.5rem 3.75rem',
+    alignContent: 'start',
+    scrollbarWidth: 'thin',
+    scrollbarColor: 'rgba(255,255,255,0.1) transparent',
+    contain: 'layout paint style',
+  },
   empty: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.625rem' },
   emptyTitle: { color: '#FFFFFF', fontSize: '1.25rem', fontWeight: 700, margin: 0 },
   emptyHint: { color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem', margin: 0, textAlign: 'center' },
-  right: { width: '18.75rem', flexShrink: 0, background: '#0C0D18', borderLeft: '1px solid rgba(255,255,255,0.06)', overflowY: 'auto', scrollbarWidth: 'none', display: 'flex', flexDirection: 'column' },
-  panelEmpty: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '1.5rem' },
+  right: {
+    width: '18.75rem',
+    flexShrink: 0,
+    background: '#0C0D18',
+    borderLeft: '1px solid rgba(255,255,255,0.06)',
+    overflowY: 'auto',
+    scrollbarWidth: 'none',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  panelEmpty: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.75rem',
+    padding: '1.5rem',
+  },
   panelEmptyText: { color: 'rgba(255,255,255,0.28)', fontSize: '0.8125rem', textAlign: 'center', margin: 0 },
 };
 
-export const DiscoverScreen = memo(DiscoverScreenInner, (prev, next) =>
-  prev.state.discover === next.state.discover
-  && prev.state.settings === next.state.settings
-  && prev.state.addons === next.state.addons
-  && prev.onDispatch === next.onDispatch
-  && prev.onNavigateDetail === next.onNavigateDetail
-  && prev.initialGenre === next.initialGenre,
+export const DiscoverScreen = memo(
+  DiscoverScreenInner,
+  (prev, next) =>
+    prev.state.discover === next.state.discover &&
+    prev.state.settings === next.state.settings &&
+    prev.state.addons === next.state.addons &&
+    prev.onDispatch === next.onDispatch &&
+    prev.onNavigateDetail === next.onNavigateDetail &&
+    prev.initialGenre === next.initialGenre,
 );

@@ -27,9 +27,21 @@ export function ModernDetailHero({
   displayMetaName: string;
 }) {
   const {
-    trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerProgressElRef, trailerMuted, activeTrailerSubtitle,
-    handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute, fullscreenTrailer,
+    trailerContainerRef,
+    trailerVideoRef,
+    trailerAudioRef,
+    trailerStreamUrl,
+    trailerAudioUrl,
+    trailerReady,
+    trailerActive,
+    trailerProgressElRef,
+    trailerMuted,
+    activeTrailerSubtitle,
+    handleTrailerPlaying,
+    handleTrailerTimeUpdate,
+    handleTrailerStopped,
+    toggleTrailerMute,
+    fullscreenTrailer,
   } = trailer;
 
   return (
@@ -67,9 +79,7 @@ export function ModernDetailHero({
                 onError={handleTrailerStopped}
               />
             )}
-            {trailerAudioUrl && (
-              <audio ref={trailerAudioRef} key={trailerAudioUrl} src={trailerAudioUrl} preload="auto" />
-            )}
+            {trailerAudioUrl && <audio ref={trailerAudioRef} key={trailerAudioUrl} src={trailerAudioUrl} preload="auto" />}
           </div>
 
           <div style={MS.pageBgGradLeft} />
@@ -81,9 +91,7 @@ export function ModernDetailHero({
 
       {trailerActive && heroInView && (
         <div style={MS.trailerOverlayWrap}>
-          {activeTrailerSubtitle && (
-            <div style={MS.heroTrailerSubtitleOverlay}>{activeTrailerSubtitle}</div>
-          )}
+          {activeTrailerSubtitle && <div style={MS.heroTrailerSubtitleOverlay}>{activeTrailerSubtitle}</div>}
 
           <button
             style={{ ...MS.heroTrailerFullscreenButton, pointerEvents: 'auto' }}
@@ -114,7 +122,14 @@ export function ModernDetailHero({
 
         <div className="detail-logo" style={{ ...MS.logoWrap, opacity: trailerActive ? 0 : 1, transition: 'opacity 0.4s ease' }}>
           {heroLogo ? (
-            <img src={heroLogo} alt={displayMetaName} style={MS.logo} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            <img
+              src={heroLogo}
+              alt={displayMetaName}
+              style={MS.logo}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
           ) : (
             <h1 style={MS.titleHero}>{displayMetaName}</h1>
           )}

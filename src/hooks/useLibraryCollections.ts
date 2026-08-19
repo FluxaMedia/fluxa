@@ -17,7 +17,11 @@ export function useLibraryCollections({
   homeCategories: HomeCategory[];
 }) {
   const collections: UserCollection[] = activeProfile?.libraryCollections ?? [];
-  const [viewAllFolder, setViewAllFolder] = useState<{ title: string; items: Meta[]; groups: Array<{ type: string; items: Meta[] }> } | null>(null);
+  const [viewAllFolder, setViewAllFolder] = useState<{
+    title: string;
+    items: Meta[];
+    groups: Array<{ type: string; items: Meta[] }>;
+  } | null>(null);
   const [editingCollection, setEditingCollection] = useState<UserCollection | 'new' | null>(null);
   const collectionsScrollRef = useRef<HTMLDivElement>(null);
   const savedScrollRef = useRef(0);
@@ -26,8 +30,16 @@ export function useLibraryCollections({
     if (!viewAllFolder && collectionsScrollRef.current) collectionsScrollRef.current.scrollTop = savedScrollRef.current;
   }, [viewAllFolder]);
 
-  async function getItemsForFolder(folder: UserCollectionFolder): Promise<{ items: Meta[]; groups: Array<{ type: string; items: Meta[] }>; remoteSources: NuvioRemoteCollectionSource[] }> {
-    return ((await coreInvoke('collectionFolderItemsPlan', JSON.stringify({ folder, categories: homeCategories }))) as { items: Meta[]; groups: Array<{ type: string; items: Meta[] }>; remoteSources: NuvioRemoteCollectionSource[] } | null) ?? { items: [], groups: [], remoteSources: [] };
+  async function getItemsForFolder(
+    folder: UserCollectionFolder,
+  ): Promise<{ items: Meta[]; groups: Array<{ type: string; items: Meta[] }>; remoteSources: NuvioRemoteCollectionSource[] }> {
+    return (
+      ((await coreInvoke('collectionFolderItemsPlan', JSON.stringify({ folder, categories: homeCategories }))) as {
+        items: Meta[];
+        groups: Array<{ type: string; items: Meta[] }>;
+        remoteSources: NuvioRemoteCollectionSource[];
+      } | null) ?? { items: [], groups: [], remoteSources: [] }
+    );
   }
 
   async function openFolder(folder: UserCollectionFolder, title: string) {
@@ -37,7 +49,11 @@ export function useLibraryCollections({
     const specialSources = local.remoteSources;
     if (!specialSources.length) return;
     const batches = await Promise.all(specialSources.map((source) => loadNuvioCollectionSource(source)));
-    const merged = (await coreInvoke<{ items: Meta[]; groups: Array<{ type: string; items: Meta[] }> }>('mergeFolderSources', JSON.stringify([local.items, ...batches]))) ?? local;
+    const merged =
+      (await coreInvoke<{ items: Meta[]; groups: Array<{ type: string; items: Meta[] }> }>(
+        'mergeFolderSources',
+        JSON.stringify([local.items, ...batches]),
+      )) ?? local;
     setViewAllFolder({ title, ...merged });
   }
 
@@ -54,15 +70,12 @@ export function useLibraryCollections({
       if (!token) return;
       await nuvioPushCollections(token, freshProfile.nuvioProfileIndex ?? 1, next);
       if (freshProfile !== updated) onProfileUpdated?.(freshProfile);
-    } catch {
-    }
+    } catch {}
   }
 
   async function handleSaveCollection(col: UserCollection) {
     const existing = collections.findIndex((c) => c.id === col.id);
-    const next = existing >= 0
-      ? collections.map((c) => (c.id === col.id ? col : c))
-      : [...collections, col];
+    const next = existing >= 0 ? collections.map((c) => (c.id === col.id ? col : c)) : [...collections, col];
     await saveCollections(next);
     setEditingCollection(null);
   }
@@ -74,7 +87,9 @@ export function useLibraryCollections({
   async function handleImportJson(json: string) {
     const imported = await importCollectionsJson(json);
     if (!imported.length) return;
-    const merged = (await coreInvoke<UserCollection[]>('collectionMergePlan', JSON.stringify({ existing: collections, incoming: imported }))) ?? collections;
+    const merged =
+      (await coreInvoke<UserCollection[]>('collectionMergePlan', JSON.stringify({ existing: collections, incoming: imported }))) ??
+      collections;
     await saveCollections(merged);
     setEditingCollection(null);
   }
@@ -86,8 +101,10 @@ export function useLibraryCollections({
 
   return {
     collections,
-    viewAllFolder, setViewAllFolder,
-    editingCollection, setEditingCollection,
+    viewAllFolder,
+    setViewAllFolder,
+    editingCollection,
+    setEditingCollection,
     collectionsScrollRef,
     openFolder,
     saveCollections,

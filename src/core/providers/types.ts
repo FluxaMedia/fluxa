@@ -30,7 +30,16 @@ export type PushWatchedArgs = {
   animeProgressEpisode?: number;
   watchedKeys: Array<{ content_id: string; season?: number; episode?: number }>;
   historyItems: Array<{ content_id: string; content_type: string; title?: string; season?: number; episode?: number; watched_at: number }>;
-  progressEntry?: { content_id: string; content_type: string; video_id: string; position: number; duration: number; last_watched: number; season?: number; episode?: number };
+  progressEntry?: {
+    content_id: string;
+    content_type: string;
+    video_id: string;
+    position: number;
+    duration: number;
+    last_watched: number;
+    season?: number;
+    episode?: number;
+  };
 };
 
 export interface ProviderAdapter {

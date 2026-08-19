@@ -22,13 +22,15 @@ export async function loadRecentSearches(): Promise<RecentSearch[]> {
 }
 
 export async function addRecentSearch(query: string, current: RecentSearch[], meta?: Meta): Promise<RecentSearch[]> {
-  const next = (await coreInvoke<RecentSearch[]>('recentSearchesPlan', JSON.stringify({ operation: 'add', items: current, query, meta }))) ?? current;
+  const next =
+    (await coreInvoke<RecentSearch[]>('recentSearchesPlan', JSON.stringify({ operation: 'add', items: current, query, meta }))) ?? current;
   void storageWrite(RECENT_SEARCHES_KEY, next);
   return next;
 }
 
 export async function removeRecentSearch(query: string, current: RecentSearch[]): Promise<RecentSearch[]> {
-  const next = (await coreInvoke<RecentSearch[]>('recentSearchesPlan', JSON.stringify({ operation: 'remove', items: current, query }))) ?? current;
+  const next =
+    (await coreInvoke<RecentSearch[]>('recentSearchesPlan', JSON.stringify({ operation: 'remove', items: current, query }))) ?? current;
   void storageWrite(RECENT_SEARCHES_KEY, next);
   return next;
 }

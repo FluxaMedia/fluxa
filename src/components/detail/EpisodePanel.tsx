@@ -85,14 +85,14 @@ export function SeasonDropdown({
         <span>{seasonLabel(selected)}</span>
         {seasonWatched && !hideButtonIndicator && (
           <span style={{ display: 'flex', alignItems: 'center', marginLeft: '0.125rem' }}>
-            {selectedIsWatched ? (
-              <Check size={14} color="rgba(255,255,255,0.85)" />
-            ) : (
-              <Circle size={14} color="rgba(255,255,255,0.35)" />
-            )}
+            {selectedIsWatched ? <Check size={14} color="rgba(255,255,255,0.85)" /> : <Circle size={14} color="rgba(255,255,255,0.35)" />}
           </span>
         )}
-        <ChevronDown size={14} color="currentColor" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+        <ChevronDown
+          size={14}
+          color="currentColor"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
+        />
       </button>
       {open && (
         <div style={EP.seasonMenu}>
@@ -101,8 +101,18 @@ export function SeasonDropdown({
             return (
               <button
                 key={s}
-                style={{ ...EP.seasonMenuItem, background: s === selected ? 'rgba(255,255,255,0.14)' : 'transparent', fontWeight: s === selected ? 700 : 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                onClick={() => { onChange(s); setOpen(false); }}
+                style={{
+                  ...EP.seasonMenuItem,
+                  background: s === selected ? 'rgba(255,255,255,0.14)' : 'transparent',
+                  fontWeight: s === selected ? 700 : 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+                onClick={() => {
+                  onChange(s);
+                  setOpen(false);
+                }}
               >
                 <span style={{ flex: 1 }}>{seasonLabel(s)}</span>
                 {isWatched ? (
@@ -145,17 +155,31 @@ export function EpisodeRow({
 
   return (
     <div
-      style={{ ...EP.row, background: selected ? 'rgba(255,255,255,0.1)' : hovered ? 'rgba(255,255,255,0.05)' : 'transparent', contentVisibility: 'auto', containIntrinsicSize: '5.75rem' }}
+      style={{
+        ...EP.row,
+        background: selected ? 'rgba(255,255,255,0.1)' : hovered ? 'rgba(255,255,255,0.05)' : 'transparent',
+        contentVisibility: 'auto',
+        containIntrinsicSize: '5.75rem',
+      }}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div style={EP.thumb}>
         {episode.thumbnail && !thumbErr ? (
-          <img src={episode.thumbnail} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setThumbErr(true)} />
+          <img
+            src={episode.thumbnail}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={() => setThumbErr(true)}
+          />
         ) : (
           <div style={EP.thumbPlaceholder}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.1)"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.1)">
+              <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z" />
+            </svg>
           </div>
         )}
         {progressPct > 0 && (
@@ -165,26 +189,46 @@ export function EpisodeRow({
         )}
         {(hovered || selected) && (
           <div style={EP.thumbOverlay}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </div>
         )}
       </div>
       <div style={{ flex: 1, minWidth: 0, paddingRight: '0.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
-          <p style={EP.epTitle}>{number}. {title}</p>
+          <p style={EP.epTitle}>
+            {number}. {title}
+          </p>
           <div style={{ ...EP.epMetaRight, alignItems: 'center' }}>
             {rating && <ImdbBadge rating={rating} compact />}
             {dateStr && <span style={EP.epDate}>{dateStr}</span>}
             {onToggleWatched && (
               <button
-                style={{ background: 'none', border: 'none', padding: '0.125rem 0.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '0.125rem 0.25rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexShrink: 0,
+                }}
                 title={isWatched ? t('detail.mark_unwatched') : t('detail.mark_watched')}
-                onClick={(e) => { e.stopPropagation(); onToggleWatched(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleWatched();
+                }}
               >
-                {isWatched
-                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.3)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
-                }
+                {isWatched ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.3)">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
+                  </svg>
+                )}
               </button>
             )}
           </div>
@@ -259,9 +303,7 @@ export function EpisodePanel({
     () =>
       epSearch
         ? episodes.filter((ep) =>
-            (ep.title ?? ep.name ?? `Episode ${ep.episode ?? ep.number ?? ''}`)
-              .toLowerCase()
-              .includes(epSearch.toLowerCase()),
+            (ep.title ?? ep.name ?? `Episode ${ep.episode ?? ep.number ?? ''}`).toLowerCase().includes(epSearch.toLowerCase()),
           )
         : episodes,
     [epSearch, episodes],
@@ -277,7 +319,9 @@ export function EpisodePanel({
           onClick={() => hasPrev && onSeasonChange(seasons[seasonIndex - 1])}
           disabled={!hasPrev}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+          </svg>
           <span>{t('common.prev')}</span>
         </button>
         <SeasonDropdown seasons={seasons} selected={selectedSeason} onChange={onSeasonChange} seasonWatched={seasonWatchedMap} />
@@ -287,7 +331,9 @@ export function EpisodePanel({
           disabled={!hasNext}
         >
           <span>{t('common.next')}</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+          </svg>
         </button>
         {onMarkSeason && (
           <button
@@ -295,10 +341,15 @@ export function EpisodePanel({
             title={seasonWatchedMap?.[selectedSeason] ? t('detail.mark_season_unwatched') : t('detail.mark_season_watched')}
             onClick={() => onMarkSeason([selectedSeason], !seasonWatchedMap?.[selectedSeason])}
           >
-            {seasonWatchedMap?.[selectedSeason]
-              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-              : <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.35)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
-            }
+            {seasonWatchedMap?.[selectedSeason] ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.35)">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
+              </svg>
+            )}
             <span>{seasonWatchedMap?.[selectedSeason] ? t('detail.mark_season_unwatched') : t('detail.mark_season_watched')}</span>
           </button>
         )}
@@ -321,7 +372,7 @@ export function EpisodePanel({
         <>
           <div style={EP.searchRow}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,0.3)" style={{ flexShrink: 0 }}>
-              <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
             </svg>
             <input
               type="text"
@@ -333,16 +384,18 @@ export function EpisodePanel({
           </div>
           <div style={EP.list}>
             {filtered.length === 0 ? (
-              isLoadingEpisodes
-                ? <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}><div style={spinnerStyle} /></div>
-                : <div style={EP.empty}>{t('detail.no_episodes_found')}</div>
+              isLoadingEpisodes ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                  <div style={spinnerStyle} />
+                </div>
+              ) : (
+                <div style={EP.empty}>{t('detail.no_episodes_found')}</div>
+              )
             ) : (
               filtered.map((ep, i) => {
                 const isWatched = watchedMap[ep.id] === true;
                 const showProgress = !isWatched && metaProgress?.lastVideoId === ep.id && (metaProgress.duration ?? 0) > 0;
-                const progressPct = showProgress
-                  ? Math.min(100, Math.round((metaProgress!.timeOffset / metaProgress!.duration) * 100))
-                  : 0;
+                const progressPct = showProgress ? Math.min(100, Math.round((metaProgress!.timeOffset / metaProgress!.duration) * 100)) : 0;
                 return (
                   <EpisodeRow
                     key={ep.id}

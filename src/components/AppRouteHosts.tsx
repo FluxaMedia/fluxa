@@ -16,7 +16,11 @@ export function HomeRoute({ store, ...props }: StoreProp & Omit<ComponentProps<t
 }
 
 export function DetailRoute({ store, ...props }: StoreProp & Omit<ComponentProps<typeof DetailScreen>, 'state'>) {
-  const state = useAppStateSelector(store, (value) => ({ detail: value.detail, home: value.home, library: value.library, settings: value.settings }), shallowEqual);
+  const state = useAppStateSelector(
+    store,
+    (value) => ({ detail: value.detail, home: value.home, library: value.library, settings: value.settings }),
+    shallowEqual,
+  );
   return <DetailScreen state={state} {...props} />;
 }
 
@@ -26,12 +30,20 @@ export function CalendarRoute({ store, ...props }: StoreProp & Omit<ComponentPro
 }
 
 export function DiscoverRoute({ store, ...props }: StoreProp & Omit<ComponentProps<typeof DiscoverScreen>, 'state'>) {
-  const state = useAppStateSelector(store, (value) => ({ discover: value.discover, settings: value.settings, addons: value.addons }), shallowEqual);
+  const state = useAppStateSelector(
+    store,
+    (value) => ({ discover: value.discover, settings: value.settings, addons: value.addons }),
+    shallowEqual,
+  );
   return <DiscoverScreen state={state} {...props} />;
 }
 
 export function LibraryRoute({ store, ...props }: StoreProp & Omit<ComponentProps<typeof LibraryScreen>, 'state'>) {
-  const state = useAppStateSelector(store, (value) => ({ library: value.library, settings: value.settings, home: value.home }), shallowEqual);
+  const state = useAppStateSelector(
+    store,
+    (value) => ({ library: value.library, settings: value.settings, home: value.home }),
+    shallowEqual,
+  );
   return <LibraryScreen state={state} {...props} />;
 }
 

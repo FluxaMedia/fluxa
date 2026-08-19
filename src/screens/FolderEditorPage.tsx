@@ -15,7 +15,7 @@ interface Props {
 
 export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, onSave }: Props) {
   const [title, setTitle] = useState(initial.title ?? '');
-  const [imageUrl, setImageUrl] = useState((initial.imageUrl ?? initial.coverImageUrl) ?? '');
+  const [imageUrl, setImageUrl] = useState(initial.imageUrl ?? initial.coverImageUrl ?? '');
   const [focusGifUrl, setFocusGifUrl] = useState(initial.focusGifUrl ?? '');
   const [titleLogoUrl, setTitleLogoUrl] = useState(initial.titleLogoUrl ?? '');
   const [heroBackdropUrl, setHeroBackdropUrl] = useState(initial.heroBackdropUrl ?? '');
@@ -23,16 +23,12 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
   const [catalogId, setCatalogId] = useState(effectiveCatalogId(initial) ?? '');
   const [genre, setGenre] = useState(initial.genre ?? '');
 
-  const browsableCatalogs = catalogOptions.filter(
-    (c) => !c.id.startsWith('cw_') && c.type !== 'collection',
-  );
+  const browsableCatalogs = catalogOptions.filter((c) => !c.id.startsWith('cw_') && c.type !== 'collection');
   const selectedCatalog = browsableCatalogs.find((c) => c.id === catalogId);
 
   const genreOptions = useMemo(() => {
     if (!selectedCatalog) return [];
-    return [...new Set(selectedCatalog.items.flatMap((m) => m.genres ?? []))].sort((a, b) =>
-      a.localeCompare(b),
-    );
+    return [...new Set(selectedCatalog.items.flatMap((m) => m.genres ?? []))].sort((a, b) => a.localeCompare(b));
   }, [selectedCatalog]);
 
   const canSave = title.trim().length > 0 && catalogId.trim().length > 0;
@@ -40,9 +36,7 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
   function handleSave() {
     if (!canSave) return;
     const genreSuffix = genre ? ` - ${genre}` : '';
-    const catalogTitle = selectedCatalog
-      ? `${selectedCatalog.name}${genreSuffix}`
-      : (initial.catalogTitle ?? title.trim()) + genreSuffix;
+    const catalogTitle = selectedCatalog ? `${selectedCatalog.name}${genreSuffix}` : (initial.catalogTitle ?? title.trim()) + genreSuffix;
     const sources: CatalogSource[] = catalogId
       ? [
           {
@@ -82,7 +76,15 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
       }}
     >
       <div style={{ width: '100%', maxWidth: '40rem', display: 'flex', flexDirection: 'column', gap: '1.375rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '1.125rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            paddingBottom: '1.125rem',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
           <button
             onClick={onDismiss}
             style={{
@@ -101,9 +103,7 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
           >
             <ArrowBack size={20} />
           </button>
-          <span style={{ color: '#fff', fontSize: '1.375rem', fontWeight: 700, letterSpacing: '-0.025em' }}>
-            {t('library.folder')}
-          </span>
+          <span style={{ color: '#fff', fontSize: '1.375rem', fontWeight: 700, letterSpacing: '-0.025em' }}>{t('library.folder')}</span>
         </div>
 
         <div>
@@ -145,7 +145,10 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
                   label={catalog.name}
                   accent={accent}
                   selected={catalogId === catalog.id}
-                  onClick={() => { setCatalogId(catalog.id); setGenre(''); }}
+                  onClick={() => {
+                    setCatalogId(catalog.id);
+                    setGenre('');
+                  }}
                 />
               ))}
             </div>
@@ -154,13 +157,7 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
                 <SectionLabel>{t('auto.genre')}</SectionLabel>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {genreOptions.map((g) => (
-                    <Chip
-                      key={g}
-                      label={g}
-                      accent={accent}
-                      selected={genre === g}
-                      onClick={() => setGenre(genre === g ? '' : g)}
-                    />
+                    <Chip key={g} label={g} accent={accent} selected={genre === g} onClick={() => setGenre(genre === g ? '' : g)} />
                   ))}
                 </div>
               </>
@@ -174,7 +171,12 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
             <ImagePreviewField label={t('library.folder_image')} value={imageUrl} onChange={setImageUrl} accent={accent} />
             <ImagePreviewField label={t('library.folder_focus_gif')} value={focusGifUrl} onChange={setFocusGifUrl} accent={accent} />
             <ImagePreviewField label={t('library.folder_title_logo')} value={titleLogoUrl} onChange={setTitleLogoUrl} accent={accent} />
-            <ImagePreviewField label={t('library.folder_hero_backdrop')} value={heroBackdropUrl} onChange={setHeroBackdropUrl} accent={accent} />
+            <ImagePreviewField
+              label={t('library.folder_hero_backdrop')}
+              value={heroBackdropUrl}
+              onChange={setHeroBackdropUrl}
+              accent={accent}
+            />
           </Card>
         </div>
 

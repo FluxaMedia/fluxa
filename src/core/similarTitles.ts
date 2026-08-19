@@ -47,37 +47,39 @@ export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: 
   };
 
   const wantType = contentType === 'series' ? 'show' : 'movie';
-  const lookup = await tryFetchJsonWithHeaders(
-    `https://api.trakt.tv/search/imdb/${encodeURIComponent(imdbId)}?type=${wantType}`,
-    headers,
+  const lookup = await tryFetchJsonWithHeaders(`https://api.trakt.tv/search/imdb/${encodeURIComponent(imdbId)}?type=${wantType}`, headers);
+  const lookupItems = Array.isArray(lookup) ? (lookup as TraktLookupItem[]) : [];
+  const slugFromCore = await tryCoreMapper<string>(
+    'traktRelatedLookupSlug',
+    JSON.stringify({
+      lookupJson: JSON.stringify(lookup ?? []),
+      wantType,
+    }),
   );
-  const lookupItems = Array.isArray(lookup) ? lookup as TraktLookupItem[] : [];
-  const slugFromCore = await tryCoreMapper<string>('traktRelatedLookupSlug', JSON.stringify({
-    lookupJson: JSON.stringify(lookup ?? []),
-    wantType,
-  }));
   const slug = slugFromCore ?? lookupItems.find((item) => item[wantType]?.ids?.slug)?.[wantType]?.ids?.slug;
   if (!slug) return [];
 
   const resource = wantType === 'show' ? 'shows' : 'movies';
-  const data = await tryFetchJsonWithHeaders(
-    `https://api.trakt.tv/${resource}/${encodeURIComponent(slug)}/related?limit=20`,
-    headers,
+  const data = await tryFetchJsonWithHeaders(`https://api.trakt.tv/${resource}/${encodeURIComponent(slug)}/related?limit=20`, headers);
+  const relatedItems = Array.isArray(data) ? (data as TraktRelatedItem[]) : [];
+  const partialFromCore = await tryCoreMapper<Record<string, unknown>[]>(
+    'traktRelatedItemsToMetas',
+    JSON.stringify({
+      relatedJson: JSON.stringify(Array.isArray(data) ? data : []),
+      contentType,
+    }),
   );
-  const relatedItems = Array.isArray(data) ? data as TraktRelatedItem[] : [];
-  const partialFromCore = await tryCoreMapper<Record<string, unknown>[]>('traktRelatedItemsToMetas', JSON.stringify({
-    relatedJson: JSON.stringify(Array.isArray(data) ? data : []),
-    contentType,
-  }));
   const fallbackPartial = relatedItems.flatMap((item) => {
     const id = item.ids?.imdb || (typeof item.ids?.tmdb === 'number' ? `tmdb:${item.ids.tmdb}` : '');
     if (!id || !item.title) return [];
-    return [{
-      id,
-      type: contentType,
-      name: item.title,
-      ...(typeof item.year === 'number' ? { releaseInfo: String(item.year) } : {}),
-    }];
+    return [
+      {
+        id,
+        type: contentType,
+        name: item.title,
+        ...(typeof item.year === 'number' ? { releaseInfo: String(item.year) } : {}),
+      },
+    ];
   });
   const partial = partialFromCore?.length ? partialFromCore : fallbackPartial;
   if (!partial?.length) return [];
@@ -99,14 +101,14 @@ export async function fetchSimklSimilarItems({ imdbId, contentType }: { imdbId: 
   const wantType = contentType === 'series' ? 'tv' : 'movie';
 
   const headers = { 'Content-Type': 'application/json', 'User-Agent': `Fluxa Desktop/${_appVersion}` };
-  const lookup = await tryFetchJson(
-    `https://api.simkl.com/search/id?imdb=${encodeURIComponent(imdbId)}&${simklQuery}`,
-    { headers },
+  const lookup = await tryFetchJson(`https://api.simkl.com/search/id?imdb=${encodeURIComponent(imdbId)}&${simklQuery}`, { headers });
+  const simklId = await coreInvoke<number | null>(
+    'simklLookupIdForType',
+    JSON.stringify({
+      lookupJson: JSON.stringify(Array.isArray(lookup) ? lookup : []),
+      wantType,
+    }),
   );
-  const simklId = await coreInvoke<number | null>('simklLookupIdForType', JSON.stringify({
-    lookupJson: JSON.stringify(Array.isArray(lookup) ? lookup : []),
-    wantType,
-  }));
   if (simklId == null) return [];
 
   const resource = wantType === 'tv' ? 'tv' : 'movies';
@@ -128,15 +130,18 @@ export async function fetchSimklSimilarItems({ imdbId, contentType }: { imdbId: 
       const recSimklId = rec.ids?.simkl;
       if (recSimklId == null) continue;
       const recResource = rec.type === 'tv' ? 'tv' : 'movies';
-      const recDetail = await tryFetchJson(`https://api.simkl.com/${recResource}/${recSimklId}?${simklQuery}`, { headers }) as {
+      const recDetail = (await tryFetchJson(`https://api.simkl.com/${recResource}/${recSimklId}?${simklQuery}`, { headers })) as {
         ids?: { imdb?: string };
       } | null;
       const imdb = recDetail?.ids?.imdb;
       if (!imdb) continue;
-      results[i] = await coreInvoke<Meta | null>('simklRecommendationToMeta', JSON.stringify({
-        recJson: JSON.stringify(rec),
-        resolvedImdb: imdb,
-      }));
+      results[i] = await coreInvoke<Meta | null>(
+        'simklRecommendationToMeta',
+        JSON.stringify({
+          recJson: JSON.stringify(rec),
+          resolvedImdb: imdb,
+        }),
+      );
     }
   }
 

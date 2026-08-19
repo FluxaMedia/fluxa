@@ -44,7 +44,9 @@ export async function effectRunnerLibraryKey(): Promise<string> {
 export async function effectiveAddonsOwnerId(): Promise<string> {
   const activeId = (await storageRead<string>('active_profile_id'))?.trim() ?? '';
   const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
-  const ownerId = await coreInvoke<string>('effectiveAddonsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId })).catch(() => null);
+  const ownerId = await coreInvoke<string>('effectiveAddonsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId })).catch(
+    () => null,
+  );
   return (ownerId || activeId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
@@ -82,7 +84,7 @@ async function readStructuredLibraryDomains(key: string): Promise<{
 }
 
 export async function loadLibrary(profileKey?: string): Promise<Record<string, unknown>> {
-  const key = profileKey ?? await effectRunnerLibraryKey();
+  const key = profileKey ?? (await effectRunnerLibraryKey());
   const profileLibrary = await storageRead<Record<string, unknown>>(key);
   if (profileLibrary) {
     const { progress, statuses, watched, lastWatchedEpisodes, externalContinueWatching } = await readStructuredLibraryDomains(key);
@@ -100,7 +102,7 @@ export async function loadLibrary(profileKey?: string): Promise<Record<string, u
 }
 
 export async function saveLibrary(lib: Record<string, unknown>, profileKey?: string): Promise<void> {
-  await storageWrite(profileKey ?? await effectRunnerLibraryKey(), await normalizeLibraryDoc(lib));
+  await storageWrite(profileKey ?? (await effectRunnerLibraryKey()), await normalizeLibraryDoc(lib));
 }
 
 export async function prefsOwnerId(): Promise<string> {
@@ -136,16 +138,20 @@ export async function loadEnabledAddons(profileOverride?: UserProfile | null): P
   const profile = profileOverride === undefined ? await loadActiveProfile() : profileOverride;
   if (profile?.nuvioAccessToken) {
     const remoteAddons = await nuvioPullAddons(profile.nuvioAccessToken, profile.nuvioProfileIndex ?? 1).catch(() => []);
-    const remoteDescriptors = await Promise.all(remoteAddons.filter((addon) => addon.enabled).map(async (addon) => {
-      try {
-        const response = await platformFetch(addon.url);
-        if (!response.ok) return null;
-        const manifest = await response.json() as Record<string, unknown>;
-        return normalizeAddonDescriptor({ transportUrl: addon.url, manifest } as unknown as AddonDescriptor);
-      } catch {
-        return null;
-      }
-    }));
+    const remoteDescriptors = await Promise.all(
+      remoteAddons
+        .filter((addon) => addon.enabled)
+        .map(async (addon) => {
+          try {
+            const response = await platformFetch(addon.url);
+            if (!response.ok) return null;
+            const manifest = (await response.json()) as Record<string, unknown>;
+            return normalizeAddonDescriptor({ transportUrl: addon.url, manifest } as unknown as AddonDescriptor);
+          } catch {
+            return null;
+          }
+        }),
+    );
     return remoteDescriptors.filter((descriptor): descriptor is AddonDescriptor => descriptor !== null);
   }
   const disabledAddonKeys = profile?.addonSettings?.disabledLocalAddons ?? profile?.disabledLocalAddons ?? [];
@@ -157,11 +163,18 @@ export async function buildContinueWatching(progressMap: Record<string, unknown>
   return (await coreBuildContinueWatchingFromProgress(JSON.stringify(progressMap))) ?? [];
 }
 
-async function diffPlan<T>(method: 'watchedMapDiff' | 'valueMapDiff' | 'itemListDiff' | 'itemListNewEntries', before: unknown, after: unknown): Promise<T | null> {
-  return coreInvoke<T>(method, JSON.stringify({
-    beforeJson: JSON.stringify(before),
-    afterJson: JSON.stringify(after),
-  }));
+async function diffPlan<T>(
+  method: 'watchedMapDiff' | 'valueMapDiff' | 'itemListDiff' | 'itemListNewEntries',
+  before: unknown,
+  after: unknown,
+): Promise<T | null> {
+  return coreInvoke<T>(
+    method,
+    JSON.stringify({
+      beforeJson: JSON.stringify(before),
+      afterJson: JSON.stringify(after),
+    }),
+  );
 }
 
 export async function persistStatusListMerge(
@@ -170,7 +183,7 @@ export async function persistStatusListMerge(
   list: 'watchlist' | 'completed' | 'dropped',
   profileKey?: string,
 ): Promise<void> {
-  const key = profileKey ?? await effectRunnerLibraryKey();
+  const key = profileKey ?? (await effectRunnerLibraryKey());
   const newEntries = (await diffPlan<Record<string, unknown>[]>('itemListNewEntries', before, after)) ?? [];
   for (const item of newEntries) {
     const id = item.id as string | undefined;
@@ -183,7 +196,7 @@ export async function persistWatchedMerge(
   after: Record<string, boolean>,
   profileKey?: string,
 ): Promise<void> {
-  const key = profileKey ?? await effectRunnerLibraryKey();
+  const key = profileKey ?? (await effectRunnerLibraryKey());
   const changed = (await diffPlan<Array<{ id: string; value: boolean }>>('watchedMapDiff', before, after)) ?? [];
   for (const { id, value } of changed) {
     await libraryWatchedSet(key, id, value);
@@ -201,7 +214,7 @@ export async function persistContinueWatchingMerge(
   after: Record<string, unknown>[],
   profileKey?: string,
 ): Promise<void> {
-  const key = profileKey ?? await effectRunnerLibraryKey();
+  const key = profileKey ?? (await effectRunnerLibraryKey());
   const plan = await diffPlan<{ upserts: Record<string, unknown>[]; deletes: string[] }>('itemListDiff', before, after);
   for (const item of plan?.upserts ?? []) {
     await libraryContinueWatchingUpsert(key, item.id as string, item);
@@ -216,10 +229,13 @@ export async function persistProgressMerge(
   after: Record<string, unknown>,
   profileKey?: string,
 ): Promise<void> {
-  const key = profileKey ?? await effectRunnerLibraryKey();
+  const key = profileKey ?? (await effectRunnerLibraryKey());
   const plan = await diffPlan<{ upserts: Array<{ id: string; value: unknown }>; deletes: string[] }>('valueMapDiff', before, after);
   if (plan?.upserts?.length) {
-    await libraryProgressUpsertMany(key, plan.upserts.map(({ id, value }) => ({ mediaId: id, value })));
+    await libraryProgressUpsertMany(
+      key,
+      plan.upserts.map(({ id, value }) => ({ mediaId: id, value })),
+    );
   }
   for (const id of plan?.deletes ?? []) {
     await libraryProgressDelete(key, id);

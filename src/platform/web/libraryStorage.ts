@@ -35,15 +35,21 @@ function migrateLegacyBlob(profileKey: string): void {
       });
     }
     writeTable(profileKey, 'items', items);
-    writeTable(profileKey, 'lastWatched', Object.fromEntries(
-      Object.entries(blob.lastWatchedEpisodes ?? {}).map(([id, value]) => [id, { value, updatedAt: now }]),
-    ));
-    writeTable(profileKey, 'continueWatching', Object.fromEntries(
-      (blob.externalContinueWatching ?? []).map((value, index) => {
-        const id = (value as { id?: string })?.id ?? String(index);
-        return [id, { value, updatedAt: now - index }];
-      }),
-    ));
+    writeTable(
+      profileKey,
+      'lastWatched',
+      Object.fromEntries(Object.entries(blob.lastWatchedEpisodes ?? {}).map(([id, value]) => [id, { value, updatedAt: now }])),
+    );
+    writeTable(
+      profileKey,
+      'continueWatching',
+      Object.fromEntries(
+        (blob.externalContinueWatching ?? []).map((value, index) => {
+          const id = (value as { id?: string })?.id ?? String(index);
+          return [id, { value, updatedAt: now - index }];
+        }),
+      ),
+    );
   } catch {}
 }
 
@@ -53,7 +59,7 @@ function readTable<T>(profileKey: string, table: Table): Record<string, T> {
     const raw = localStorage.getItem(tableKey(profileKey, table));
     if (!raw) return {};
     const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, T> : {};
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, T>) : {};
   } catch {
     return {};
   }

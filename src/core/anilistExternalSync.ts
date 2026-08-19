@@ -73,13 +73,17 @@ export async function syncAniListNow(payload: Record<string, unknown>): Promise<
     await replaceExternalContinueWatching({ provider: 'anilist', items: plan.watching, profileKey });
   }
   if (!dryRun && !readOnly) {
-    await saveProviderLibrary('anilist', {
-      watchlist: plan.watchlist ?? [],
-      watching: plan.watching ?? [],
-      completed: plan.completed ?? [],
-      dropped: plan.dropped ?? [],
-      favorites: [],
-    }, profileKey);
+    await saveProviderLibrary(
+      'anilist',
+      {
+        watchlist: plan.watchlist ?? [],
+        watching: plan.watching ?? [],
+        completed: plan.completed ?? [],
+        dropped: plan.dropped ?? [],
+        favorites: [],
+      },
+      profileKey,
+    );
   }
 
   return {
@@ -110,11 +114,7 @@ export async function fetchAniListCalendarItems(token: string): Promise<Record<s
   return (await coreInvoke<Record<string, unknown>[]>('providerCalendarItems', JSON.stringify({ provider: 'anilist', entries }))) ?? [];
 }
 
-export async function pushWatchlistAniList(
-  id: string,
-  command: 'add' | 'remove',
-  token: string,
-): Promise<void> {
+export async function pushWatchlistAniList(id: string, command: 'add' | 'remove', token: string): Promise<void> {
   const anilistId = parseAniListId(id);
   if (!anilistId) return;
   if (command === 'remove') {
@@ -124,12 +124,7 @@ export async function pushWatchlistAniList(
   await setAniListStatus(anilistId, 'PLANNING', token);
 }
 
-export async function pushLibraryStatusAniList(
-  id: string,
-  list: string,
-  command: 'add' | 'remove',
-  token: string,
-): Promise<void> {
+export async function pushLibraryStatusAniList(id: string, list: string, command: 'add' | 'remove', token: string): Promise<void> {
   const anilistId = parseAniListId(id);
   if (!anilistId) return;
   if (command === 'remove') {
@@ -145,10 +140,13 @@ export async function pushLibraryStatusAniList(
 
 async function setAniListStatus(anilistId: number, status: string, token: string): Promise<void> {
   const queries = await coreAnilistGraphqlQueries();
-  const variables = (await coreAnilistSaveMediaListEntryVariables(`anilist:${anilistId}`, status as 'COMPLETED' | 'CURRENT'))
-    ?? { mediaId: anilistId, status };
+  const variables = (await coreAnilistSaveMediaListEntryVariables(`anilist:${anilistId}`, status as 'COMPLETED' | 'CURRENT')) ?? {
+    mediaId: anilistId,
+    status,
+  };
   await anilistGraphql(
-    queries?.saveMediaListEntry ?? `mutation ($mediaId: Int, $status: MediaListStatus) { SaveMediaListEntry(mediaId: $mediaId, status: $status) { id } }`,
+    queries?.saveMediaListEntry ??
+      `mutation ($mediaId: Int, $status: MediaListStatus) { SaveMediaListEntry(mediaId: $mediaId, status: $status) { id } }`,
     variables,
     token,
   );
@@ -172,12 +170,19 @@ async function anilistGraphql<T>(query: string, variables: Record<string, unknow
   });
   if (res.status === 429 && attempt === 0) {
     const retryAfter = Number(res.headers.get('Retry-After'));
-    await new Promise((resolve) => setTimeout(resolve, Math.min(60_000, Math.max(1_000, (Number.isFinite(retryAfter) ? retryAfter : 1) * 1_000))));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(60_000, Math.max(1_000, (Number.isFinite(retryAfter) ? retryAfter : 1) * 1_000))),
+    );
     return anilistGraphql(query, variables, token, 1);
   }
-  const json = await res.json() as { data?: T; errors?: Array<{ message?: string }> };
+  const json = (await res.json()) as { data?: T; errors?: Array<{ message?: string }> };
   if (!res.ok || json.errors?.length) {
-    throw new Error(json.errors?.map((e) => e.message).filter(Boolean).join('; ') || `AniList request failed: HTTP ${res.status}`);
+    throw new Error(
+      json.errors
+        ?.map((e) => e.message)
+        .filter(Boolean)
+        .join('; ') || `AniList request failed: HTTP ${res.status}`,
+    );
   }
   return json.data ?? null;
 }

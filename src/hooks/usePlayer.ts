@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { platformInvoke as invoke } from '../platform/invoke';
-import { dispatchAction, coreDetectAnimePlayback, coreInvoke, corePlaybackIntroLookupContentId, corePlaybackPreparePlan, coreResolveNextEpisode, coreCanPrefetchNextEpisode, coreSelectNextEpisodeStream, coreStreamShellPlan, coreTorrentStatusInfo, coreTorrentReadyBudget } from '../core/engine';
+import {
+  dispatchAction,
+  coreDetectAnimePlayback,
+  coreInvoke,
+  corePlaybackIntroLookupContentId,
+  corePlaybackPreparePlan,
+  coreResolveNextEpisode,
+  coreCanPrefetchNextEpisode,
+  coreSelectNextEpisodeStream,
+  coreStreamShellPlan,
+  coreTorrentStatusInfo,
+  coreTorrentReadyBudget,
+} from '../core/engine';
 import { subscribePlayerStatus } from '../core/playerStatusStore';
 
 function debugLog(msg: string) {
@@ -29,12 +41,7 @@ import { fetchContentLogo } from '../core/detailEffects';
 import { loadAddons } from '../core/libraryOps';
 import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { getLanguage, t } from '../i18n';
-import {
-  playerDisplayTitle,
-  playerArtwork,
-  formatNextEpisodeSubtitle,
-  withCloseTimeout,
-} from '../core/playerUtils';
+import { playerDisplayTitle, playerArtwork, formatNextEpisodeSubtitle, withCloseTimeout } from '../core/playerUtils';
 import type { PlayerDisplayTitle, PlayerArtwork, PlaybackPreparePlan } from '../core/playerUtils';
 import { resolvePlaybackSubtitles } from '../core/subtitles';
 import type { ResolvedSubtitles } from '../core/subtitles';
@@ -114,16 +121,33 @@ interface UsePlayerResult {
   playerPlaybackError: string | null;
   playerSubtitleWarning: string[] | null;
   dismissSubtitleWarning: () => void;
-  handlePlay: (stream: Stream, meta?: Meta, episode?: Video | null, resumeAtSeconds?: number, totalDurationSeconds?: number, sourceCandidates?: Stream[], openSourcePickerOnFailure?: boolean, resumePercent?: number) => Promise<void>;
+  handlePlay: (
+    stream: Stream,
+    meta?: Meta,
+    episode?: Video | null,
+    resumeAtSeconds?: number,
+    totalDurationSeconds?: number,
+    sourceCandidates?: Stream[],
+    openSourcePickerOnFailure?: boolean,
+    resumePercent?: number,
+  ) => Promise<void>;
   closePlayer: () => Promise<void>;
   notifyFirstFrame: () => void;
   flushProgressOnQuit: () => Promise<void>;
   skipSegmentCoverage: Record<string, string[]>;
 }
 
-function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdated, onEpisodePlaybackFailed }: UsePlayerOptions): UsePlayerResult {
+function useDesktopPlayer({
+  stateRef,
+  activeProfile,
+  updateState,
+  onProfileUpdated,
+  onEpisodePlaybackFailed,
+}: UsePlayerOptions): UsePlayerResult {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
-  const [playerTorrentTelemetryContext, setPlayerTorrentTelemetryContext] = useState<import('../core/mpvPlayer').TorrentTelemetryContext | null>(null);
+  const [playerTorrentTelemetryContext, setPlayerTorrentTelemetryContext] = useState<
+    import('../core/mpvPlayer').TorrentTelemetryContext | null
+  >(null);
   const [playerTitle, setPlayerTitle] = useState<string | undefined>();
   const [playerEpisodeTitle, setPlayerEpisodeTitle] = useState<string | undefined>();
   const [playerEpisode, setPlayerEpisode] = useState<Video | null>(null);
@@ -169,9 +193,15 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
 
   const playerLoadingOverlayRef = useRef<PlayerLoadingOverlayState | null>(null);
 
-  useEffect(() => { activeProfileRef.current = activeProfile; }, [activeProfile]);
-  useEffect(() => { playerUsesTorrentRef.current = playerUsesTorrent; }, [playerUsesTorrent]);
-  useEffect(() => { playerLoadingOverlayRef.current = playerLoadingOverlay; }, [playerLoadingOverlay]);
+  useEffect(() => {
+    activeProfileRef.current = activeProfile;
+  }, [activeProfile]);
+  useEffect(() => {
+    playerUsesTorrentRef.current = playerUsesTorrent;
+  }, [playerUsesTorrent]);
+  useEffect(() => {
+    playerLoadingOverlayRef.current = playerLoadingOverlay;
+  }, [playerLoadingOverlay]);
 
   useEffect(() => {
     if (!playerUrl) return;
@@ -231,14 +261,16 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
         title: title.contentTitle,
         episodeLine: title.episodeLine,
         error: message,
-        source: stream ? {
-          title: stream.name ?? stream.title ?? stream.description,
-          addon: stream.addonName,
-          filename: stream.behaviorHints?.filename,
-          fileIdx: stream.fileIdx,
-          infoHash: stream.infoHash,
-          sources: stream.sources,
-        } : undefined,
+        source: stream
+          ? {
+              title: stream.name ?? stream.title ?? stream.description,
+              addon: stream.addonName,
+              filename: stream.behaviorHints?.filename,
+              fileIdx: stream.fileIdx,
+              infoHash: stream.infoHash,
+              sources: stream.sources,
+            }
+          : undefined,
       };
     });
     await embeddedMpvHide().catch(() => undefined);
@@ -248,50 +280,45 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
 
   const nextRetrySource = usePlayerRetry({ stateRef, sourceCandidatesRef: playingSourceCandidatesRef, attemptedSourceKeysRef });
 
-  const showPlayerLoading = useCallback((
-    generation: number,
-    title: PlayerDisplayTitle,
-    artwork: PlayerArtwork,
-    stream: Stream,
-  ): Promise<unknown> => {
-    const isCancelled = () => !playbackScopeRef.current.isCurrent(generation);
-    setPlayerTitle(title.contentTitle);
-    setPlayerEpisodeTitle(title.episodeLine ?? undefined);
-    pendingArtworkRef.current = artwork;
-    setPlayerLoadingOverlay((prev) => ({
-      background: artwork.background,
-      logo: artwork.logo ?? (prev?.title === title.contentTitle ? prev.logo : undefined),
-      title: title.contentTitle,
-      episodeLine: title.episodeLine,
-      status: t('player.status_preparing'),
-      source: {
-        title: stream.name ?? stream.title ?? stream.description,
-        addon: stream.addonName,
-        filename: stream.behaviorHints?.filename,
-        fileIdx: stream.fileIdx,
-        infoHash: stream.infoHash,
-        sources: stream.sources,
-      },
-    }));
+  const showPlayerLoading = useCallback(
+    (generation: number, title: PlayerDisplayTitle, artwork: PlayerArtwork, stream: Stream): Promise<unknown> => {
+      const isCancelled = () => !playbackScopeRef.current.isCurrent(generation);
+      setPlayerTitle(title.contentTitle);
+      setPlayerEpisodeTitle(title.episodeLine ?? undefined);
+      pendingArtworkRef.current = artwork;
+      setPlayerLoadingOverlay((prev) => ({
+        background: artwork.background,
+        logo: artwork.logo ?? (prev?.title === title.contentTitle ? prev.logo : undefined),
+        title: title.contentTitle,
+        episodeLine: title.episodeLine,
+        status: t('player.status_preparing'),
+        source: {
+          title: stream.name ?? stream.title ?? stream.description,
+          addon: stream.addonName,
+          filename: stream.behaviorHints?.filename,
+          fileIdx: stream.fileIdx,
+          infoHash: stream.infoHash,
+          sources: stream.sources,
+        },
+      }));
 
-    if (!inNativePlayerRef.current) {
-      return Promise.resolve();
-    }
+      if (!inNativePlayerRef.current) {
+        return Promise.resolve();
+      }
 
-    if (!isCancelled()) {
-      void embeddedMpvSetLoadingArtwork(
-        title.contentTitle ?? 'Fluxa',
-        title.episodeLine,
-        artwork.background,
-        artwork.logo,
-      ).catch(() => undefined);
-    }
-    const ready = (async () => {
-      if (isCancelled()) return;
-      await embeddedMpvShowLoading(title.contentTitle, title.episodeLine);
-    })();
-    return ready;
-  }, []);
+      if (!isCancelled()) {
+        void embeddedMpvSetLoadingArtwork(title.contentTitle ?? 'Fluxa', title.episodeLine, artwork.background, artwork.logo).catch(
+          () => undefined,
+        );
+      }
+      const ready = (async () => {
+        if (isCancelled()) return;
+        await embeddedMpvShowLoading(title.contentTitle, title.episodeLine);
+      })();
+      return ready;
+    },
+    [],
+  );
 
   const dispatchScrobbleLifecycle = usePlayerScrobbling({
     playerUrl,
@@ -306,118 +333,147 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     scrobbleWasPausedRef,
     onProfileUpdated,
   });
-  const finalizeExternalPlayback = useCallback(async (status: EmbeddedMpvStatus | null) => {
-    if (externalPlaybackFinalizedRef.current) {
-      debugLog('finalizeExternalPlayback: already finalized, skipping');
-      return;
-    }
-    externalPlaybackFinalizedRef.current = true;
-    debugLog(`finalizeExternalPlayback: status=${status ? JSON.stringify(status) : 'null'} scrobbleStarted=${scrobbleStartedRef.current}`);
-    const meta = playingMetaRef.current;
-    const stream = playingStreamRef.current;
-    if (meta && stream && status) {
-      const timePos = Number.parseFloat(status.timePos ?? '0');
-      const duration = Number.parseFloat(status.duration ?? '0');
-      if (Number.isFinite(timePos) && Number.isFinite(duration) && duration > 0) {
-        const closePlan = await coreInvoke<{
-          progressAction: Record<string, unknown>;
-          markWatchedAction: Record<string, unknown> | null;
-          upNextAction: Record<string, unknown> | null;
-          reloadHome: boolean;
-        }>('playbackClosePlan', JSON.stringify({
-          meta,
-          episode: playingEpisodeRef.current,
-          stream,
-          nextEpisode: playingNextEpisodeRef.current,
-          timePos,
-          duration,
-          streamIndex: stateRef.current.player.currentStreamIndex ?? null,
-          prefs: appPrefs(stateRef.current),
-        }));
-        debugLog(`finalizeExternalPlayback: closePlan=${JSON.stringify({ progressAction: closePlan?.progressAction, markWatchedAction: closePlan?.markWatchedAction, upNextAction: closePlan?.upNextAction, reloadHome: closePlan?.reloadHome })}`);
-        if (scrobbleStartedRef.current) {
-          debugLog(`finalizeExternalPlayback: dispatching scrobble stop timePos=${timePos} duration=${duration}`);
-          await dispatchScrobbleLifecycle('stop', status);
+  const finalizeExternalPlayback = useCallback(
+    async (status: EmbeddedMpvStatus | null) => {
+      if (externalPlaybackFinalizedRef.current) {
+        debugLog('finalizeExternalPlayback: already finalized, skipping');
+        return;
+      }
+      externalPlaybackFinalizedRef.current = true;
+      debugLog(
+        `finalizeExternalPlayback: status=${status ? JSON.stringify(status) : 'null'} scrobbleStarted=${scrobbleStartedRef.current}`,
+      );
+      const meta = playingMetaRef.current;
+      const stream = playingStreamRef.current;
+      if (meta && stream && status) {
+        const timePos = Number.parseFloat(status.timePos ?? '0');
+        const duration = Number.parseFloat(status.duration ?? '0');
+        if (Number.isFinite(timePos) && Number.isFinite(duration) && duration > 0) {
+          const closePlan = await coreInvoke<{
+            progressAction: Record<string, unknown>;
+            markWatchedAction: Record<string, unknown> | null;
+            upNextAction: Record<string, unknown> | null;
+            reloadHome: boolean;
+          }>(
+            'playbackClosePlan',
+            JSON.stringify({
+              meta,
+              episode: playingEpisodeRef.current,
+              stream,
+              nextEpisode: playingNextEpisodeRef.current,
+              timePos,
+              duration,
+              streamIndex: stateRef.current.player.currentStreamIndex ?? null,
+              prefs: appPrefs(stateRef.current),
+            }),
+          );
+          debugLog(
+            `finalizeExternalPlayback: closePlan=${JSON.stringify({ progressAction: closePlan?.progressAction, markWatchedAction: closePlan?.markWatchedAction, upNextAction: closePlan?.upNextAction, reloadHome: closePlan?.reloadHome })}`,
+          );
+          if (scrobbleStartedRef.current) {
+            debugLog(`finalizeExternalPlayback: dispatching scrobble stop timePos=${timePos} duration=${duration}`);
+            await dispatchScrobbleLifecycle('stop', status);
+          } else {
+            debugLog('finalizeExternalPlayback: scrobble was never started, skipping stop scrobble');
+          }
+          await applyPlayerCloseActions([closePlan?.progressAction, closePlan?.markWatchedAction, closePlan?.upNextAction], updateState);
+          debugLog('finalizeExternalPlayback: close actions applied');
+          if (closePlan?.reloadHome) {
+            debugLog('finalizeExternalPlayback: refreshing continue watching');
+            void dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }))
+              .then((result) => {
+                if (!result) return;
+                updateState(result.state);
+                if (result.effects.length > 0) void pumpEffects(result.effects, updateState);
+              })
+              .catch(() => undefined);
+          }
         } else {
-          debugLog('finalizeExternalPlayback: scrobble was never started, skipping stop scrobble');
-        }
-        await applyPlayerCloseActions([closePlan?.progressAction, closePlan?.markWatchedAction, closePlan?.upNextAction], updateState);
-        debugLog('finalizeExternalPlayback: close actions applied');
-        if (closePlan?.reloadHome) {
-          debugLog('finalizeExternalPlayback: refreshing continue watching');
-          void dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() })).then((result) => {
-            if (!result) return;
-            updateState(result.state);
-            if (result.effects.length > 0) void pumpEffects(result.effects, updateState);
-          }).catch(() => undefined);
+          debugLog(`finalizeExternalPlayback: skipping close plan, invalid timePos/duration timePos=${timePos} duration=${duration}`);
         }
       } else {
-        debugLog(`finalizeExternalPlayback: skipping close plan, invalid timePos/duration timePos=${timePos} duration=${duration}`);
+        debugLog(
+          `finalizeExternalPlayback: skipping close plan, missing meta/stream/status meta=${!!meta} stream=${!!stream} status=${!!status}`,
+        );
       }
-    } else {
-      debugLog(`finalizeExternalPlayback: skipping close plan, missing meta/stream/status meta=${!!meta} stream=${!!stream} status=${!!status}`);
-    }
-    if (playerUsesTorrentRef.current) {
-      await stopTorrentStream().catch(() => false);
-      setPlayerUsesTorrent(false);
-    }
-    setExternalPlayerSession(null);
-  }, [dispatchScrobbleLifecycle, stateRef, updateState]);
-  const handleExternalPlayerStatus = useCallback((status: ExternalPlayerStatus) => {
-    const previousStatus = lastPlaybackStatusRef.current;
-    const previousDuration = Number.parseFloat(previousStatus?.duration ?? '0');
-    const previousTimePos = Number.parseFloat(previousStatus?.timePos ?? '0');
-    const duration = status.duration ?? (previousDuration > 0 ? previousDuration : lastTotalDurationSecondsRef.current ?? 0);
-    const timePos = status.timePos ?? (previousTimePos > 0 ? previousTimePos : 0);
-    const playbackStatus = {
-      pause: status.paused ? 'yes' : 'no',
-      timePos: String(timePos),
-      duration: String(duration),
-    } as EmbeddedMpvStatus;
-    lastPlaybackStatusRef.current = playbackStatus;
-    if (!status.active) {
-      debugLog(`handleExternalPlayerStatus: player reported inactive, finalizing timePos=${timePos} duration=${duration}`);
-      void finalizeExternalPlayback(duration > 0 ? playbackStatus : null);
-      return;
-    }
-    if (duration <= 0 || timePos < 0) {
-      debugLog(`handleExternalPlayerStatus: skipping tick, invalid timePos/duration timePos=${timePos} duration=${duration}`);
-      return;
-    }
-    if (status.paused) void dispatchScrobbleLifecycle('pause', playbackStatus);
-    else void dispatchScrobbleLifecycle('start', playbackStatus);
-    if (Date.now() - lastExternalProgressWriteRef.current < 30_000) return;
-    debugLog(`handleExternalPlayerStatus: writing periodic progress timePos=${timePos} duration=${duration}`);
-    lastExternalProgressWriteRef.current = Date.now();
-    void coreInvoke<{ shouldScrobble: boolean; progressAction: Record<string, unknown> }>('playbackClosePlan', JSON.stringify({
-      meta: playingMetaRef.current,
-      episode: playingEpisodeRef.current,
-      stream: playingStreamRef.current,
-      nextEpisode: null,
-      timePos,
-      duration: Math.floor(duration),
-      streamIndex: stateRef.current.player.currentStreamIndex ?? null,
-      prefs: appPrefs(stateRef.current),
-      scrobbleTraktPause: false,
-    })).then(async (plan) => {
-      if (!plan?.shouldScrobble || !plan.progressAction) return;
-      await applyPlayerCloseActions([plan.progressAction], updateState);
-    }).catch(() => undefined);
-  }, [dispatchScrobbleLifecycle, finalizeExternalPlayback, stateRef, updateState]);
-  const handleExternalPlayerCallback = useCallback((position: number | null, failed: boolean) => {
-    debugLog(`handleExternalPlayerCallback: position=${position} failed=${failed}`);
-    if (failed) {
-      setPlayerPlaybackError(t('player.external_player_failed'));
-      void finalizeExternalPlayback(null);
-      return;
-    }
-    const duration = lastTotalDurationSecondsRef.current ?? 0;
-    const timePos = position ?? 0;
-    const status = { pause: 'no', timePos: String(timePos), duration: String(duration) } as EmbeddedMpvStatus;
-    lastPlaybackStatusRef.current = status;
-    void finalizeExternalPlayback(duration > 0 ? status : null);
-  }, [finalizeExternalPlayback]);
-  useExternalPlayerTracking({ session: externalPlayerSession, onStatus: handleExternalPlayerStatus, onCallback: handleExternalPlayerCallback });
+      if (playerUsesTorrentRef.current) {
+        await stopTorrentStream().catch(() => false);
+        setPlayerUsesTorrent(false);
+      }
+      setExternalPlayerSession(null);
+    },
+    [dispatchScrobbleLifecycle, stateRef, updateState],
+  );
+  const handleExternalPlayerStatus = useCallback(
+    (status: ExternalPlayerStatus) => {
+      const previousStatus = lastPlaybackStatusRef.current;
+      const previousDuration = Number.parseFloat(previousStatus?.duration ?? '0');
+      const previousTimePos = Number.parseFloat(previousStatus?.timePos ?? '0');
+      const duration = status.duration ?? (previousDuration > 0 ? previousDuration : (lastTotalDurationSecondsRef.current ?? 0));
+      const timePos = status.timePos ?? (previousTimePos > 0 ? previousTimePos : 0);
+      const playbackStatus = {
+        pause: status.paused ? 'yes' : 'no',
+        timePos: String(timePos),
+        duration: String(duration),
+      } as EmbeddedMpvStatus;
+      lastPlaybackStatusRef.current = playbackStatus;
+      if (!status.active) {
+        debugLog(`handleExternalPlayerStatus: player reported inactive, finalizing timePos=${timePos} duration=${duration}`);
+        void finalizeExternalPlayback(duration > 0 ? playbackStatus : null);
+        return;
+      }
+      if (duration <= 0 || timePos < 0) {
+        debugLog(`handleExternalPlayerStatus: skipping tick, invalid timePos/duration timePos=${timePos} duration=${duration}`);
+        return;
+      }
+      if (status.paused) void dispatchScrobbleLifecycle('pause', playbackStatus);
+      else void dispatchScrobbleLifecycle('start', playbackStatus);
+      if (Date.now() - lastExternalProgressWriteRef.current < 30_000) return;
+      debugLog(`handleExternalPlayerStatus: writing periodic progress timePos=${timePos} duration=${duration}`);
+      lastExternalProgressWriteRef.current = Date.now();
+      void coreInvoke<{ shouldScrobble: boolean; progressAction: Record<string, unknown> }>(
+        'playbackClosePlan',
+        JSON.stringify({
+          meta: playingMetaRef.current,
+          episode: playingEpisodeRef.current,
+          stream: playingStreamRef.current,
+          nextEpisode: null,
+          timePos,
+          duration: Math.floor(duration),
+          streamIndex: stateRef.current.player.currentStreamIndex ?? null,
+          prefs: appPrefs(stateRef.current),
+          scrobbleTraktPause: false,
+        }),
+      )
+        .then(async (plan) => {
+          if (!plan?.shouldScrobble || !plan.progressAction) return;
+          await applyPlayerCloseActions([plan.progressAction], updateState);
+        })
+        .catch(() => undefined);
+    },
+    [dispatchScrobbleLifecycle, finalizeExternalPlayback, stateRef, updateState],
+  );
+  const handleExternalPlayerCallback = useCallback(
+    (position: number | null, failed: boolean) => {
+      debugLog(`handleExternalPlayerCallback: position=${position} failed=${failed}`);
+      if (failed) {
+        setPlayerPlaybackError(t('player.external_player_failed'));
+        void finalizeExternalPlayback(null);
+        return;
+      }
+      const duration = lastTotalDurationSecondsRef.current ?? 0;
+      const timePos = position ?? 0;
+      const status = { pause: 'no', timePos: String(timePos), duration: String(duration) } as EmbeddedMpvStatus;
+      lastPlaybackStatusRef.current = status;
+      void finalizeExternalPlayback(duration > 0 ? status : null);
+    },
+    [finalizeExternalPlayback],
+  );
+  useExternalPlayerTracking({
+    session: externalPlayerSession,
+    onStatus: handleExternalPlayerStatus,
+    onCallback: handleExternalPlayerCallback,
+  });
   const closePlayer = useCallback(async () => {
     if (closingPlayerRef.current) return;
     closingPlayerRef.current = true;
@@ -444,7 +500,7 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     void playerClearChapters();
     void playerClearEpisodes();
     try {
-      const status = await withCloseTimeout(embeddedMpvStatus(), 700).catch(() => null) ?? lastPlaybackStatusRef.current;
+      const status = (await withCloseTimeout(embeddedMpvStatus(), 700).catch(() => null)) ?? lastPlaybackStatusRef.current;
       if (!status && captureMeta) {
         debugLog('closePlayer: embeddedMpvStatus timed out and no cached playback status is available');
       }
@@ -466,25 +522,30 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
           markWatchedAction: Record<string, unknown> | null;
           upNextAction: Record<string, unknown> | null;
           reloadHome: boolean;
-        }>('playbackClosePlan', JSON.stringify({
-          meta: captureMeta,
-          episode: captureEpisode,
-          stream: captureStream,
-          nextEpisode: playingNextEpisodeRef.current,
-          timePos,
-          duration,
-          playbackStarted: status.firstFramePresented,
-          streamIndex: stateRef.current.player.currentStreamIndex ?? null,
-          prefs: closePrefs,
-        }));
+        }>(
+          'playbackClosePlan',
+          JSON.stringify({
+            meta: captureMeta,
+            episode: captureEpisode,
+            stream: captureStream,
+            nextEpisode: playingNextEpisodeRef.current,
+            timePos,
+            duration,
+            playbackStarted: status.firstFramePresented,
+            streamIndex: stateRef.current.player.currentStreamIndex ?? null,
+            prefs: closePrefs,
+          }),
+        );
         if (scrobbleStartedRef.current) await dispatchScrobbleLifecycle('stop', status);
         await applyPlayerCloseActions([closePlan?.progressAction, closePlan?.markWatchedAction, closePlan?.upNextAction], updateState);
         if (closePlan?.reloadHome) {
-          void dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() })).then((result) => {
-            if (!result) return;
-            updateState(result.state);
-            if (result.effects.length > 0) void pumpEffects(result.effects, updateState);
-          }).catch(() => undefined);
+          void dispatchAction(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }))
+            .then((result) => {
+              if (!result) return;
+              updateState(result.state);
+              if (result.effects.length > 0) void pumpEffects(result.effects, updateState);
+            })
+            .catch(() => undefined);
         }
       }
     } finally {
@@ -527,7 +588,50 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
   }, [saveProgressTick, externalPlayerSession, finalizeExternalPlayback]);
 
   const handlePlay = usePlayerPlaybackStart({
-    stateRef, onEpisodePlaybackFailed, playbackScope: playbackScopeRef.current, scrobbleStartedRef, scrobbleStoppedRef, scrobbleWasPausedRef, setPlayerPlaybackError, setPlayerSubtitleWarning, openSourcePickerOnFailureRef, setPlayerUrl, setPlayerTorrentTelemetryContext, playingSourceCandidatesRef, attemptedSourceKeysRef, setPlayerUsesTorrent, prefetchedNextEpRef, playingMetaRef, playingEpisodeRef, playingNextEpisodeRef, playingStreamRef, lastResumeAtSecondsRef, lastTotalDurationSecondsRef, pendingResumePercentRef, setPlayerEpisode, playerDisplayTitle, playerArtwork, setPlayerPosterUrl, setPlayerLogoUrl, setPlayerMetaId, setPlayerStreamHeaders, artworkPrefetchRef, prefetchPlayerArtwork, showPlayerLoading, pendingArtworkRef, inNativePlayerRef, setPlayerLoadingOverlay, setLoadingStatus, playerLoadingOverlayRef, playInEmbeddedMpv, nextRetrySource, failPlayerLoading, debugLog, playbackErrorMessage, setSkipSegmentCoverage, onExternalPlayerLaunched: (session: ExternalPlayerSession) => {
+    stateRef,
+    onEpisodePlaybackFailed,
+    playbackScope: playbackScopeRef.current,
+    scrobbleStartedRef,
+    scrobbleStoppedRef,
+    scrobbleWasPausedRef,
+    setPlayerPlaybackError,
+    setPlayerSubtitleWarning,
+    openSourcePickerOnFailureRef,
+    setPlayerUrl,
+    setPlayerTorrentTelemetryContext,
+    playingSourceCandidatesRef,
+    attemptedSourceKeysRef,
+    setPlayerUsesTorrent,
+    prefetchedNextEpRef,
+    playingMetaRef,
+    playingEpisodeRef,
+    playingNextEpisodeRef,
+    playingStreamRef,
+    lastResumeAtSecondsRef,
+    lastTotalDurationSecondsRef,
+    pendingResumePercentRef,
+    setPlayerEpisode,
+    playerDisplayTitle,
+    playerArtwork,
+    setPlayerPosterUrl,
+    setPlayerLogoUrl,
+    setPlayerMetaId,
+    setPlayerStreamHeaders,
+    artworkPrefetchRef,
+    prefetchPlayerArtwork,
+    showPlayerLoading,
+    pendingArtworkRef,
+    inNativePlayerRef,
+    setPlayerLoadingOverlay,
+    setLoadingStatus,
+    playerLoadingOverlayRef,
+    playInEmbeddedMpv,
+    nextRetrySource,
+    failPlayerLoading,
+    debugLog,
+    playbackErrorMessage,
+    setSkipSegmentCoverage,
+    onExternalPlayerLaunched: (session: ExternalPlayerSession) => {
       if (externalPlayerSession && externalPlayerSession.sessionId !== session.sessionId) {
         debugLog(`onExternalPlayerLaunched: stopping orphaned previous session=${externalPlayerSession.sessionId}`);
         void invoke('external_player_stop', { sessionId: externalPlayerSession.sessionId }).catch(() => undefined);
@@ -537,26 +641,29 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
       setExternalPlayerSession(session);
     },
   });
-  const handleNativePlayerError = useCallback(async (message: string) => {
-    const nextSource = await nextRetrySource(playingStreamRef.current);
-    if (nextSource && playingMetaRef.current) {
-      const status = await embeddedMpvStatus().catch(() => null);
-      const timePos = Number.parseFloat(status?.timePos ?? '');
-      await handlePlay(
-        nextSource,
-        playingMetaRef.current,
-        playingEpisodeRef.current,
-        Number.isFinite(timePos) && timePos > 0 ? Math.floor(timePos) : lastResumeAtSecondsRef.current,
-        lastTotalDurationSecondsRef.current,
-      );
-      return;
-    }
-    if (openSourcePickerOnFailureRef.current && playingMetaRef.current && playingEpisodeRef.current && onEpisodePlaybackFailed) {
-      await onEpisodePlaybackFailed(playingMetaRef.current, playingEpisodeRef.current, message);
-      return;
-    }
-    if (!playerLoadingOverlayRef.current?.error) await failPlayerLoading(message);
-  }, [failPlayerLoading, handlePlay, nextRetrySource, onEpisodePlaybackFailed]);
+  const handleNativePlayerError = useCallback(
+    async (message: string) => {
+      const nextSource = await nextRetrySource(playingStreamRef.current);
+      if (nextSource && playingMetaRef.current) {
+        const status = await embeddedMpvStatus().catch(() => null);
+        const timePos = Number.parseFloat(status?.timePos ?? '');
+        await handlePlay(
+          nextSource,
+          playingMetaRef.current,
+          playingEpisodeRef.current,
+          Number.isFinite(timePos) && timePos > 0 ? Math.floor(timePos) : lastResumeAtSecondsRef.current,
+          lastTotalDurationSecondsRef.current,
+        );
+        return;
+      }
+      if (openSourcePickerOnFailureRef.current && playingMetaRef.current && playingEpisodeRef.current && onEpisodePlaybackFailed) {
+        await onEpisodePlaybackFailed(playingMetaRef.current, playingEpisodeRef.current, message);
+        return;
+      }
+      if (!playerLoadingOverlayRef.current?.error) await failPlayerLoading(message);
+    },
+    [failPlayerLoading, handlePlay, nextRetrySource, onEpisodePlaybackFailed],
+  );
 
   const showEpisodeTransitionLoading = useCallback((meta: Meta, episode: Video, stream: Stream) => {
     const title = playerDisplayTitle(meta, episode, stream);
@@ -618,7 +725,39 @@ function useDesktopPlayer({ stateRef, activeProfile, updateState, onProfileUpdat
     setPlayerSubtitleWarning(null);
   }, []);
 
-  return { playerLoadingOverlay, playerUrl, playerMode: null, playerTorrentTelemetryContext, playerPlaybackError, playerSubtitleWarning, dismissSubtitleWarning, playerTitle, playerEpisodeTitle, playerEpisode, playerUsesTorrent, playerPosterUrl, playerLogoUrl, playerMetaId, playerSubtitleUrl, playerSubtitles: [], playerCodecs: null, playerResumeAt: undefined, playerSkipSegments: [], playerNextEpisode: null, playNextEpisode: async () => {}, playbackSnapshotRef: nativeSnapshotRef, reportPlaybackEvent: () => {}, playerStreamHeaders, playingStreamRef, playingMetaRef, handlePlay, closePlayer, notifyFirstFrame, flushProgressOnQuit: flushOnQuit, skipSegmentCoverage };
+  return {
+    playerLoadingOverlay,
+    playerUrl,
+    playerMode: null,
+    playerTorrentTelemetryContext,
+    playerPlaybackError,
+    playerSubtitleWarning,
+    dismissSubtitleWarning,
+    playerTitle,
+    playerEpisodeTitle,
+    playerEpisode,
+    playerUsesTorrent,
+    playerPosterUrl,
+    playerLogoUrl,
+    playerMetaId,
+    playerSubtitleUrl,
+    playerSubtitles: [],
+    playerCodecs: null,
+    playerResumeAt: undefined,
+    playerSkipSegments: [],
+    playerNextEpisode: null,
+    playNextEpisode: async () => {},
+    playbackSnapshotRef: nativeSnapshotRef,
+    reportPlaybackEvent: () => {},
+    playerStreamHeaders,
+    playingStreamRef,
+    playingMetaRef,
+    handlePlay,
+    closePlayer,
+    notifyFirstFrame,
+    flushProgressOnQuit: flushOnQuit,
+    skipSegmentCoverage,
+  };
 }
 
 export function usePlayer(options: UsePlayerOptions): UsePlayerResult | WebPlayerResult {

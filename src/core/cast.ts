@@ -40,7 +40,13 @@ export async function proxyMediaUrl(url: string, headers: Record<string, string>
   }
 }
 
-export async function startCasting(device: CastDevice, mediaUrl: string, title: string, subtitleUrl?: string, positionSecs?: number): Promise<void> {
+export async function startCasting(
+  device: CastDevice,
+  mediaUrl: string,
+  title: string,
+  subtitleUrl?: string,
+  positionSecs?: number,
+): Promise<void> {
   if (device.kind === 'fcast') {
     await invoke('fcast_connect', { host: device.host, port: device.port, mediaUrl, resumePositionSecs: positionSecs ?? 0 });
   } else if (device.kind === 'dlna') {
@@ -56,30 +62,49 @@ export async function startCasting(device: CastDevice, mediaUrl: string, title: 
 }
 
 export function castPlay(): void {
-  if (activeKind === 'roku') { void invoke('roku_play_pause').catch(() => undefined); return; }
-  if (activeKind === 'fcast') { void invoke('fcast_play').catch(() => undefined); return; }
+  if (activeKind === 'roku') {
+    void invoke('roku_play_pause').catch(() => undefined);
+    return;
+  }
+  if (activeKind === 'fcast') {
+    void invoke('fcast_play').catch(() => undefined);
+    return;
+  }
   const command = activeKind === 'chromecast' ? 'chromecast_play' : activeKind === 'airplay' ? 'airplay_play' : 'cast_play';
   void invoke(command).catch(() => undefined);
 }
 
 export function castPause(): void {
-  if (activeKind === 'roku') { void invoke('roku_play_pause').catch(() => undefined); return; }
-  if (activeKind === 'fcast') { void invoke('fcast_pause').catch(() => undefined); return; }
+  if (activeKind === 'roku') {
+    void invoke('roku_play_pause').catch(() => undefined);
+    return;
+  }
+  if (activeKind === 'fcast') {
+    void invoke('fcast_pause').catch(() => undefined);
+    return;
+  }
   const command = activeKind === 'chromecast' ? 'chromecast_pause' : activeKind === 'airplay' ? 'airplay_pause' : 'cast_pause';
   void invoke(command).catch(() => undefined);
 }
 
 export function castSeek(positionSecs: number): void {
   if (activeKind === 'roku') return;
-  if (activeKind === 'fcast') { void invoke('fcast_seek', { positionSecs }).catch(() => undefined); return; }
+  if (activeKind === 'fcast') {
+    void invoke('fcast_seek', { positionSecs }).catch(() => undefined);
+    return;
+  }
   const command = activeKind === 'chromecast' ? 'chromecast_seek' : activeKind === 'airplay' ? 'airplay_seek' : 'cast_seek';
   void invoke(command, { positionSecs }).catch(() => undefined);
 }
 
 export function castSetVolume(level: number): void {
   if (activeKind === 'roku') return;
-  if (activeKind === 'fcast') { void invoke('fcast_set_volume', { level }).catch(() => undefined); return; }
-  const command = activeKind === 'chromecast' ? 'chromecast_set_volume' : activeKind === 'airplay' ? 'airplay_set_volume' : 'cast_set_volume';
+  if (activeKind === 'fcast') {
+    void invoke('fcast_set_volume', { level }).catch(() => undefined);
+    return;
+  }
+  const command =
+    activeKind === 'chromecast' ? 'chromecast_set_volume' : activeKind === 'airplay' ? 'airplay_set_volume' : 'cast_set_volume';
   void invoke(command, { level }).catch(() => undefined);
 }
 
@@ -89,7 +114,14 @@ export function castDisconnect(): void {
     activeKind = null;
     return;
   }
-  const command = activeKind === 'chromecast' ? 'chromecast_disconnect' : activeKind === 'airplay' ? 'airplay_disconnect' : activeKind === 'roku' ? 'roku_disconnect' : 'cast_disconnect';
+  const command =
+    activeKind === 'chromecast'
+      ? 'chromecast_disconnect'
+      : activeKind === 'airplay'
+        ? 'airplay_disconnect'
+        : activeKind === 'roku'
+          ? 'roku_disconnect'
+          : 'cast_disconnect';
   void invoke(command).catch(() => undefined);
   activeKind = null;
 }

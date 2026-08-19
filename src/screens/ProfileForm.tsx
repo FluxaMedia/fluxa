@@ -1,12 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, ImagePlus, RefreshCw } from 'lucide-react';
-import {
-  PROFILE_COLORS,
-  createProfileObject,
-  hashPin,
-  saveProfile,
-  setActiveProfileId,
-} from '../core/profiles';
+import { PROFILE_COLORS, createProfileObject, hashPin, saveProfile, setActiveProfileId } from '../core/profiles';
 import { saveAddons } from '../core/libraryOps';
 import { coreInvoke } from '../core/engine';
 import { nuvioClearPin, nuvioPushProfiles, nuvioSetPin } from '../core/nuvioApi';
@@ -57,12 +51,7 @@ function SmileFace({ size }: { size: number }) {
     >
       <circle cx="30" cy="37" r="8.5" fill="white" />
       <circle cx="67" cy="34" r="7.5" fill="white" />
-      <path
-        d="M 22 62 C 20 54 26 57 30 65 C 42 75 66 68 74 57"
-        stroke="white"
-        strokeWidth="7.5"
-        strokeLinecap="round"
-      />
+      <path d="M 22 62 C 20 54 26 57 30 65 C 42 75 66 68 74 57" stroke="white" strokeWidth="7.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -144,33 +133,38 @@ export function ProfileForm({
     setBusy(true);
     try {
       const color = existing?.color ?? PROFILE_COLORS[0];
-      const remoteAccounts = Array.from(new Map(
-        allProfiles
-          .filter((candidate) => candidate.nuvioAccessToken && candidate.nuvioUserId)
-          .map((candidate) => [candidate.nuvioUserId!, candidate]),
-      ).values());
-      const inheritedNuvio = !existing && remoteAccounts.length === 1
-        ? remoteAccounts[0]
-        : undefined;
+      const remoteAccounts = Array.from(
+        new Map(
+          allProfiles
+            .filter((candidate) => candidate.nuvioAccessToken && candidate.nuvioUserId)
+            .map((candidate) => [candidate.nuvioUserId!, candidate]),
+        ).values(),
+      );
+      const inheritedNuvio = !existing && remoteAccounts.length === 1 ? remoteAccounts[0] : undefined;
       const nextRemoteIndex = inheritedNuvio
-        ? Math.max(0, ...allProfiles
-          .filter((candidate) => candidate.nuvioUserId === inheritedNuvio.nuvioUserId)
-          .map((candidate) => candidate.nuvioProfileIndex ?? 0)) + 1
+        ? Math.max(
+            0,
+            ...allProfiles
+              .filter((candidate) => candidate.nuvioUserId === inheritedNuvio.nuvioUserId)
+              .map((candidate) => candidate.nuvioProfileIndex ?? 0),
+          ) + 1
         : undefined;
       const base: UserProfile = existing
         ? { ...existing, name: name.trim(), color, avatarUrl }
         : {
-          ...await createProfileObject(name, color),
-          ...(inheritedNuvio && nextRemoteIndex != null && nextRemoteIndex <= 6 ? {
-            email: inheritedNuvio.email,
-            nuvioAccessToken: inheritedNuvio.nuvioAccessToken,
-            nuvioRefreshToken: inheritedNuvio.nuvioRefreshToken,
-            nuvioTokenExpiresAt: inheritedNuvio.nuvioTokenExpiresAt,
-            nuvioUserId: inheritedNuvio.nuvioUserId,
-            nuvioEmail: inheritedNuvio.nuvioEmail,
-            nuvioProfileIndex: nextRemoteIndex,
-          } : {}),
-        };
+            ...(await createProfileObject(name, color)),
+            ...(inheritedNuvio && nextRemoteIndex != null && nextRemoteIndex <= 6
+              ? {
+                  email: inheritedNuvio.email,
+                  nuvioAccessToken: inheritedNuvio.nuvioAccessToken,
+                  nuvioRefreshToken: inheritedNuvio.nuvioRefreshToken,
+                  nuvioTokenExpiresAt: inheritedNuvio.nuvioTokenExpiresAt,
+                  nuvioUserId: inheritedNuvio.nuvioUserId,
+                  nuvioEmail: inheritedNuvio.nuvioEmail,
+                  nuvioProfileIndex: nextRemoteIndex,
+                }
+              : {}),
+          };
       const pinHash = removePin ? undefined : pin.trim().length === 4 ? await hashPin(pin.trim()) : base.pinHash;
       const profile: UserProfile = {
         ...base,
@@ -184,7 +178,9 @@ export function ProfileForm({
       const updated = await saveProfile(profile);
       if (!existing) {
         await setActiveProfileId(profile.id);
-        try { await saveAddons([CINEMETA_DEFAULT]); } catch {}
+        try {
+          await saveAddons([CINEMETA_DEFAULT]);
+        } catch {}
       }
       if (profile.nuvioAccessToken && profile.nuvioUserId && profile.nuvioProfileIndex != null) {
         try {
@@ -194,17 +190,24 @@ export function ProfileForm({
           } else if (pin.trim().length === 4) {
             await nuvioSetPin(freshProfile.nuvioAccessToken!, freshProfile.nuvioProfileIndex!, pin.trim(), currentPin || undefined);
           }
-          const remoteProfiles = [...allProfiles.filter((candidate) =>
-            candidate.id !== profile.id && candidate.nuvioUserId === freshProfile.nuvioUserId && candidate.nuvioProfileIndex != null,
-          ), freshProfile];
-          await nuvioPushProfiles(freshProfile.nuvioAccessToken!, remoteProfiles.map((candidate) => ({
-            profile_index: candidate.nuvioProfileIndex!,
-            name: candidate.name ?? `Profile ${candidate.nuvioProfileIndex}`,
-            avatar_color_hex: candidate.color ?? null,
-            avatar_url: candidate.avatarUrl ?? null,
-            uses_primary_addons: candidate.usesPrimaryAddons ?? false,
-            uses_primary_plugins: candidate.usesPrimaryPlugins ?? false,
-          })));
+          const remoteProfiles = [
+            ...allProfiles.filter(
+              (candidate) =>
+                candidate.id !== profile.id && candidate.nuvioUserId === freshProfile.nuvioUserId && candidate.nuvioProfileIndex != null,
+            ),
+            freshProfile,
+          ];
+          await nuvioPushProfiles(
+            freshProfile.nuvioAccessToken!,
+            remoteProfiles.map((candidate) => ({
+              profile_index: candidate.nuvioProfileIndex!,
+              name: candidate.name ?? `Profile ${candidate.nuvioProfileIndex}`,
+              avatar_color_hex: candidate.color ?? null,
+              avatar_url: candidate.avatarUrl ?? null,
+              uses_primary_addons: candidate.usesPrimaryAddons ?? false,
+              uses_primary_plugins: candidate.usesPrimaryPlugins ?? false,
+            })),
+          );
         } catch {}
       }
       onSaved(updated);
@@ -226,8 +229,7 @@ export function ProfileForm({
   };
 
   const duplicateName = Boolean(
-    name.trim() &&
-    allProfiles.some((p) => p.id !== existing?.id && p.name?.trim().toLowerCase() === name.trim().toLowerCase()),
+    name.trim() && allProfiles.some((p) => p.id !== existing?.id && p.name?.trim().toLowerCase() === name.trim().toLowerCase()),
   );
 
   const previewProfile: UserProfile = {
@@ -244,7 +246,9 @@ export function ProfileForm({
       <div style={S.previewPanel}>
         <button style={S.avatarEditButton} onClick={() => fileInputRef.current?.click()} title={t('profiles.choose_image')}>
           <AvatarPreview profile={previewProfile} size={128} />
-          <span style={S.cameraBadge}><Camera size={15} /></span>
+          <span style={S.cameraBadge}>
+            <Camera size={15} />
+          </span>
         </button>
         <p style={S.previewName}>
           {name.trim() || t('auto.profile')}
@@ -257,24 +261,34 @@ export function ProfileForm({
         )}
         <div style={S.profileControls}>
           <div>
-            <label style={S.fieldLabel} htmlFor="profile-name">{t('profiles.name')}</label>
+            <label style={S.fieldLabel} htmlFor="profile-name">
+              {t('profiles.name')}
+            </label>
             <input
               id="profile-name"
               ref={nameInputRef}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void handleSave(); if (e.key === 'Escape') onCancel(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleSave();
+                if (e.key === 'Escape') onCancel();
+              }}
               placeholder={t('profiles.name_placeholder')}
               style={S.input}
             />
             {duplicateName && <p style={S.fieldNote}>{t('profiles.duplicate_name')}</p>}
           </div>
           <div>
-            <label style={S.fieldLabel} htmlFor="profile-pin">{t('profiles.pin_lock')}</label>
+            <label style={S.fieldLabel} htmlFor="profile-pin">
+              {t('profiles.pin_lock')}
+            </label>
             <input
               id="profile-pin"
               value={pin}
-              onChange={(e) => { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setRemovePin(false); }}
+              onChange={(e) => {
+                setPin(e.target.value.replace(/\D/g, '').slice(0, 4));
+                setRemovePin(false);
+              }}
               placeholder={existing?.pinHash && !removePin ? t('profiles.pin_set_placeholder') : t('profiles.pin_placeholder')}
               inputMode="numeric"
               maxLength={4}
@@ -282,7 +296,13 @@ export function ProfileForm({
             />
             {!pinValid && <p style={S.fieldNote}>{t('profiles.pin_invalid')}</p>}
             {existing?.pinHash && !removePin && (
-              <button style={S.clearImageBtn} onClick={() => { setRemovePin(true); setPin(''); }}>
+              <button
+                style={S.clearImageBtn}
+                onClick={() => {
+                  setRemovePin(true);
+                  setPin('');
+                }}
+              >
                 {t('profiles.remove_pin')}
               </button>
             )}
@@ -315,7 +335,9 @@ export function ProfileForm({
             </div>
           )}
           <div style={S.actions}>
-            <button onClick={onCancel} style={S.btnSecondary}>{t('common.cancel')}</button>
+            <button onClick={onCancel} style={S.btnSecondary}>
+              {t('common.cancel')}
+            </button>
             <button
               onClick={() => void handleSave()}
               disabled={!canSave}
@@ -357,7 +379,12 @@ export function ProfileForm({
                   <p style={S.packTitle}>{pack.title}</p>
                   <div style={S.avatarPackGrid}>
                     {pack.avatars.map((avatar) => (
-                      <button key={avatar.url} onClick={() => setAvatarUrl(avatar.url)} style={{ ...S.packAvatarButton, outline: avatarUrl === avatar.url ? '2px solid #FFFFFF' : 'none' }} title={avatar.name}>
+                      <button
+                        key={avatar.url}
+                        onClick={() => setAvatarUrl(avatar.url)}
+                        style={{ ...S.packAvatarButton, outline: avatarUrl === avatar.url ? '2px solid #FFFFFF' : 'none' }}
+                        title={avatar.name}
+                      >
                         <img src={avatar.url} alt={avatar.name} style={S.packAvatarImage} />
                         <span style={S.packAvatarName}>{avatar.name}</span>
                       </button>
@@ -368,7 +395,6 @@ export function ProfileForm({
             </div>
           </div>
         )}
-
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
@@ -377,30 +403,200 @@ export function ProfileForm({
 }
 
 const S: Record<string, React.CSSProperties> = {
-  formShell: { display: 'grid', gridTemplateColumns: 'minmax(13.75rem, 0.75fr) minmax(20rem, 1.25fr)', gap: '0.875rem', alignItems: 'stretch' },
-  previewPanel: { position: 'sticky', top: '1rem', alignSelf: 'start', height: 'fit-content', boxSizing: 'border-box', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.08)', background: '#141414', padding: '2rem 1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 0 },
-  avatarEditButton: { position: 'relative', border: 'none', background: 'transparent', padding: 0, color: '#FFFFFF', cursor: 'pointer', outline: 'none' },
-  cameraBadge: { position: 'absolute', right: '-0.5rem', bottom: '-0.5rem', width: '2rem', height: '2rem', borderRadius: '0.5rem', background: '#2C2C2C', border: '0.125rem solid #141414', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.65)' },
-  previewName: { margin: '1.25rem 0 0', fontSize: '1.125rem', fontWeight: 600, fontFamily: FONT, letterSpacing: '-0.02em', color: '#FFFFFF' },
-  primaryBadge: { marginLeft: '0.5rem', verticalAlign: 'middle', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.65)', fontSize: '0.625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' },
+  formShell: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(13.75rem, 0.75fr) minmax(20rem, 1.25fr)',
+    gap: '0.875rem',
+    alignItems: 'stretch',
+  },
+  previewPanel: {
+    position: 'sticky',
+    top: '1rem',
+    alignSelf: 'start',
+    height: 'fit-content',
+    boxSizing: 'border-box',
+    borderRadius: '0.75rem',
+    border: '1px solid rgba(255,255,255,0.08)',
+    background: '#141414',
+    padding: '2rem 1.25rem',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    gap: 0,
+  },
+  avatarEditButton: {
+    position: 'relative',
+    border: 'none',
+    background: 'transparent',
+    padding: 0,
+    color: '#FFFFFF',
+    cursor: 'pointer',
+    outline: 'none',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    right: '-0.5rem',
+    bottom: '-0.5rem',
+    width: '2rem',
+    height: '2rem',
+    borderRadius: '0.5rem',
+    background: '#2C2C2C',
+    border: '0.125rem solid #141414',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'rgba(255,255,255,0.65)',
+  },
+  previewName: {
+    margin: '1.25rem 0 0',
+    fontSize: '1.125rem',
+    fontWeight: 600,
+    fontFamily: FONT,
+    letterSpacing: '-0.02em',
+    color: '#FFFFFF',
+  },
+  primaryBadge: {
+    marginLeft: '0.5rem',
+    verticalAlign: 'middle',
+    padding: '0.125rem 0.5rem',
+    borderRadius: '0.25rem',
+    background: 'rgba(255,255,255,0.10)',
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: '0.625rem',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+  },
   checkboxRow: { display: 'grid', gap: '0.5rem' },
-  checkboxLabel: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.75)', fontSize: '0.8125rem', fontFamily: FONT, cursor: 'pointer' },
-  clearImageBtn: { marginTop: '0.625rem', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.38)', fontSize: '0.75rem', fontWeight: 400, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: '0.8125rem',
+    fontFamily: FONT,
+    cursor: 'pointer',
+  },
+  clearImageBtn: {
+    marginTop: '0.625rem',
+    border: 'none',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.38)',
+    fontSize: '0.75rem',
+    fontWeight: 400,
+    fontFamily: FONT,
+    cursor: 'pointer',
+    outline: 'none',
+  },
   profileControls: { width: '100%', display: 'grid', gap: '0.875rem', marginTop: '1.5rem' },
-  formPanel: { borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.08)', background: '#141414', padding: '1.375rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' },
-  fieldLabel: { display: 'block', color: 'rgba(255,255,255,0.38)', fontSize: '0.625rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: FONT, marginBottom: '0.5rem' },
+  formPanel: {
+    borderRadius: '0.75rem',
+    border: '1px solid rgba(255,255,255,0.08)',
+    background: '#141414',
+    padding: '1.375rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.875rem',
+  },
+  fieldLabel: {
+    display: 'block',
+    color: 'rgba(255,255,255,0.38)',
+    fontSize: '0.625rem',
+    fontWeight: 500,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    fontFamily: FONT,
+    marginBottom: '0.5rem',
+  },
   avatarPacksHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  refreshPacksButton: { border: 0, background: 'transparent', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', display: 'flex', padding: '0 0 0.5rem' },
-  input: { width: '100%', height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: '#FFFFFF', padding: '0 0.8125rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' },
+  refreshPacksButton: {
+    border: 0,
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.45)',
+    cursor: 'pointer',
+    display: 'flex',
+    padding: '0 0 0.5rem',
+  },
+  input: {
+    width: '100%',
+    height: '2.75rem',
+    borderRadius: '0.5rem',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    color: '#FFFFFF',
+    padding: '0 0.8125rem',
+    fontSize: '0.875rem',
+    fontWeight: 500,
+    fontFamily: FONT,
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
   fieldNote: { margin: '0.375rem 0 0', color: '#FFD280', fontSize: '0.75rem', fontWeight: 400, fontFamily: FONT },
-  imageButton: { width: '100%', height: '2.625rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.60)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
+  imageButton: {
+    width: '100%',
+    height: '2.625rem',
+    borderRadius: '0.5rem',
+    border: '1px solid rgba(255,255,255,0.10)',
+    background: 'rgba(255,255,255,0.05)',
+    color: 'rgba(255,255,255,0.60)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    fontSize: '0.8125rem',
+    fontWeight: 500,
+    fontFamily: FONT,
+    cursor: 'pointer',
+    outline: 'none',
+  },
   avatarPackGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(4rem, 1fr))', gap: '0.625rem', marginTop: '0.5rem' },
   avatarPackGroups: { display: 'grid', gap: '1rem' },
   packTitle: { margin: '0.875rem 0 0', color: 'rgba(255,255,255,0.82)', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT },
-  packAvatarButton: { minWidth: 0, padding: 0, border: 0, background: 'transparent', color: 'rgba(255,255,255,0.78)', overflow: 'hidden', cursor: 'pointer', textAlign: 'center', fontFamily: FONT },
+  packAvatarButton: {
+    minWidth: 0,
+    padding: 0,
+    border: 0,
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.78)',
+    overflow: 'hidden',
+    cursor: 'pointer',
+    textAlign: 'center',
+    fontFamily: FONT,
+  },
   packAvatarImage: { width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block', borderRadius: '0.625rem', background: '#111' },
-  packAvatarName: { display: 'block', marginTop: '0.375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.6875rem', lineHeight: 1.2 },
+  packAvatarName: {
+    display: 'block',
+    marginTop: '0.375rem',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: '0.6875rem',
+    lineHeight: 1.2,
+  },
   actions: { marginTop: 'auto', display: 'flex', gap: '0.5rem' },
-  btnSecondary: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: FONT, cursor: 'pointer', outline: 'none' },
-  btnPrimary: { flex: 1, height: '2.75rem', borderRadius: '0.5rem', border: 'none', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT, transition: 'background 0.15s, color 0.15s' },
+  btnSecondary: {
+    flex: 1,
+    height: '2.75rem',
+    borderRadius: '0.5rem',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: '0.8125rem',
+    fontWeight: 500,
+    fontFamily: FONT,
+    cursor: 'pointer',
+    outline: 'none',
+  },
+  btnPrimary: {
+    flex: 1,
+    height: '2.75rem',
+    borderRadius: '0.5rem',
+    border: 'none',
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    fontFamily: FONT,
+    transition: 'background 0.15s, color 0.15s',
+  },
 };

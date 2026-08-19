@@ -27,10 +27,7 @@ export function useLibraryBulkSelection({
     });
   }, [items]);
 
-  const selectedItems = useMemo(
-    () => items.filter((item) => selectedIds.has(item.id)),
-    [items, selectedIds],
-  );
+  const selectedItems = useMemo(() => items.filter((item) => selectedIds.has(item.id)), [items, selectedIds]);
   const canRemoveFromCurrentList = tab === 'watchlist' || tab === 'completed' || tab === 'dropped';
 
   const toggleSelected = (id: string) => {
@@ -60,38 +57,53 @@ export function useLibraryBulkSelection({
       videoIds: [item.lastVideoId ?? item.id],
       watched,
       meta: item,
-      episodes: item.lastVideoId ? [{
-        id: item.lastVideoId,
-        name: item.lastEpisodeName,
-        season: item.lastEpisodeSeason,
-        number: item.lastEpisodeNumber,
-        thumbnail: item.lastEpisodeThumbnail,
-      }] : [],
+      episodes: item.lastVideoId
+        ? [
+            {
+              id: item.lastVideoId,
+              name: item.lastEpisodeName,
+              season: item.lastEpisodeSeason,
+              number: item.lastEpisodeNumber,
+              thumbnail: item.lastEpisodeThumbnail,
+            },
+          ]
+        : [],
     }));
   };
 
   const moveSelectedToStatus = (list: 'completed' | 'dropped') => {
     const existingIds = new Set((list === 'completed' ? completed : dropped).map((item) => item.id));
-    void runForSelected((item) => existingIds.has(item.id) ? null : ({
-      type: 'toggleLibraryStatusRequested',
-      list,
-      item,
-    }));
+    void runForSelected((item) =>
+      existingIds.has(item.id)
+        ? null
+        : {
+            type: 'toggleLibraryStatusRequested',
+            list,
+            item,
+          },
+    );
   };
 
   const removeSelectedFromCurrentList = () => {
     if (!canRemoveFromCurrentList) return;
-    void runForSelected((item) => tab === 'watchlist'
-      ? { type: 'toggleWatchlistRequested', item }
-      : { type: 'toggleLibraryStatusRequested', list: tab, item });
+    void runForSelected((item) =>
+      tab === 'watchlist' ? { type: 'toggleWatchlistRequested', item } : { type: 'toggleLibraryStatusRequested', list: tab, item },
+    );
   };
 
   return {
-    bulkMode, setBulkMode,
-    selectedIds, setSelectedIds,
-    confirmBulkRemove, setConfirmBulkRemove,
-    selectedItems, canRemoveFromCurrentList,
-    toggleSelected, clearSelection,
-    markSelectedWatched, moveSelectedToStatus, removeSelectedFromCurrentList,
+    bulkMode,
+    setBulkMode,
+    selectedIds,
+    setSelectedIds,
+    confirmBulkRemove,
+    setConfirmBulkRemove,
+    selectedItems,
+    canRemoveFromCurrentList,
+    toggleSelected,
+    clearSelection,
+    markSelectedWatched,
+    moveSelectedToStatus,
+    removeSelectedFromCurrentList,
   };
 }

@@ -6,14 +6,9 @@ export async function coreMdblistMediaInfoUrl(
   mediaId: string,
   appendToResponse?: string,
 ): Promise<string | null> {
-  return coreInvoke(
-    'mdblistMediaInfoUrl',
-    JSON.stringify({ provider, mediaType, mediaId, appendToResponse }),
-  );
+  return coreInvoke('mdblistMediaInfoUrl', JSON.stringify({ provider, mediaType, mediaId, appendToResponse }));
 }
 
-export async function coreMdblistMediaRatingsFromResponse(
-  responseJson: string,
-): Promise<Record<string, number> | null> {
+export async function coreMdblistMediaRatingsFromResponse(responseJson: string): Promise<Record<string, number> | null> {
   return coreInvoke('mdblistMediaRatingsFromResponse', responseJson);
 }

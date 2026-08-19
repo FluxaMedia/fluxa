@@ -3,7 +3,17 @@ import { platformInvoke as invoke } from '../../platform/invoke';
 import { t } from '../../i18n';
 import { fmtTime, sendCmd, type FeedbackFlash } from './PlayerOverlayPrimitives';
 
-export function usePlayerUtilityActions({ title, posRef, resetActivity, flashFeedback }: { title: string; posRef: MutableRefObject<number>; resetActivity: () => void; flashFeedback: (icon: FeedbackFlash['icon'], label: string) => void }) {
+export function usePlayerUtilityActions({
+  title,
+  posRef,
+  resetActivity,
+  flashFeedback,
+}: {
+  title: string;
+  posRef: MutableRefObject<number>;
+  resetActivity: () => void;
+  flashFeedback: (icon: FeedbackFlash['icon'], label: string) => void;
+}) {
   const [abLoopStage, setAbLoopStage] = useState<'none' | 'a' | 'ab'>('none');
   const cycleAbLoopRef = useRef<() => void>(() => {});
   const takeScreenshotRef = useRef<() => Promise<void>>(async () => {});
@@ -38,12 +48,18 @@ export function usePlayerUtilityActions({ title, posRef, resetActivity, flashFee
 
   const copyTimestamp = useCallback(async () => {
     const timestamp = fmtTime(posRef.current);
-    try { await navigator.clipboard.writeText(timestamp); } catch {}
+    try {
+      await navigator.clipboard.writeText(timestamp);
+    } catch {}
     flashFeedback('subDelay', timestamp);
   }, [flashFeedback, posRef]);
 
-  useEffect(() => { cycleAbLoopRef.current = cycleAbLoop; }, [cycleAbLoop]);
-  useEffect(() => { takeScreenshotRef.current = takeScreenshot; }, [takeScreenshot]);
+  useEffect(() => {
+    cycleAbLoopRef.current = cycleAbLoop;
+  }, [cycleAbLoop]);
+  useEffect(() => {
+    takeScreenshotRef.current = takeScreenshot;
+  }, [takeScreenshot]);
 
   return { abLoopStage, setAbLoopStage, cycleAbLoop, cycleAbLoopRef, takeScreenshot, takeScreenshotRef, copyTimestamp };
 }

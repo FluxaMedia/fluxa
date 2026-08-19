@@ -45,9 +45,7 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
           boxSizing: 'border-box',
         }}
       >
-        <span style={{ color: '#fff', fontSize: '1.125rem', fontWeight: 900 }}>
-          {t('library.import_collections')}
-        </span>
+        <span style={{ color: '#fff', fontSize: '1.125rem', fontWeight: 900 }}>{t('library.import_collections')}</span>
         <textarea
           value={json}
           onChange={(e) => setJson(e.target.value)}
@@ -68,12 +66,7 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
             boxSizing: 'border-box',
           }}
         />
-        <UtilButton
-          label={t('library.paste_from_clipboard')}
-          accent={accent}
-          onClick={() => void handlePasteFromClipboard()}
-          fullWidth
-        />
+        <UtilButton label={t('library.paste_from_clipboard')} accent={accent} onClick={() => void handlePasteFromClipboard()} fullWidth />
         <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'flex-end' }}>
           <button
             onClick={onDismiss}
@@ -90,7 +83,9 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
           </button>
           <button
             disabled={!json.trim()}
-            onClick={() => { if (json.trim()) onImport(json.trim()); }}
+            onClick={() => {
+              if (json.trim()) onImport(json.trim());
+            }}
             style={{
               background: json.trim() ? accent : 'rgba(255,255,255,0.12)',
               border: 'none',

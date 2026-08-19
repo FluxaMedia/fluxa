@@ -32,7 +32,10 @@ export function isTouchInput(): boolean {
 function subscribe(listener: () => void): () => void {
   const stopMobile = watch(mobile, listener);
   const stopTouch = watch(touch, listener);
-  return () => { stopMobile(); stopTouch(); };
+  return () => {
+    stopMobile();
+    stopTouch();
+  };
 }
 
 export function useIsMobile(): boolean {

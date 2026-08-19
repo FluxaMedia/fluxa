@@ -30,15 +30,15 @@ export function formatRemaining(offset: number, duration: number): string {
   return m === 0 ? t('format.remaining_hours', h) : t('format.remaining_hours_minutes', h, m);
 }
 
-export async function partitionThisWeek(
-  items: Meta[],
-  keepScheduled: boolean,
-): Promise<{ thisWeek: Meta[]; continueWatching: Meta[] }> {
-  const result = await coreInvoke<{ thisWeek: Meta[]; continueWatching: Meta[] }>('partitionThisWeek', JSON.stringify({
-    itemsJson: JSON.stringify(items),
-    nowMs: Date.now(),
-    keepScheduled,
-  }));
+export async function partitionThisWeek(items: Meta[], keepScheduled: boolean): Promise<{ thisWeek: Meta[]; continueWatching: Meta[] }> {
+  const result = await coreInvoke<{ thisWeek: Meta[]; continueWatching: Meta[] }>(
+    'partitionThisWeek',
+    JSON.stringify({
+      itemsJson: JSON.stringify(items),
+      nowMs: Date.now(),
+      keepScheduled,
+    }),
+  );
   return result ?? { thisWeek: [], continueWatching: items };
 }
 
@@ -62,10 +62,7 @@ export function formatReleaseCountdown(date?: string): string {
   return t('format.countdown_minutes', mins);
 }
 
-export async function markContinueWatchingItemWatched(
-  meta: Meta,
-  onDispatch: (actionJson: string) => void | Promise<void>,
-): Promise<void> {
+export async function markContinueWatchingItemWatched(meta: Meta, onDispatch: (actionJson: string) => void | Promise<void>): Promise<void> {
   const item = meta as unknown as LibraryItem & {
     lastVideoId?: string;
     lastEpisodeName?: string;
@@ -74,34 +71,46 @@ export async function markContinueWatchingItemWatched(
     lastEpisodeThumbnail?: string;
   };
   const videoId = meta.type === 'series' ? item.lastVideoId : meta.id;
-  await Promise.resolve(onDispatch(JSON.stringify({
-    type: 'markWatchedRequested',
-    seriesId: meta.id,
-    videoIds: videoId ? [videoId] : [meta.id],
-    watched: true,
-    meta,
-    episodes: meta.type === 'series' && videoId ? [{
-      id: videoId,
-      name: item.lastEpisodeName ?? undefined,
-      season: item.lastEpisodeSeason ?? undefined,
-      number: item.lastEpisodeNumber ?? undefined,
-      thumbnail: item.lastEpisodeThumbnail ?? meta.background ?? meta.poster,
-    }] : [],
-  })));
+  await Promise.resolve(
+    onDispatch(
+      JSON.stringify({
+        type: 'markWatchedRequested',
+        seriesId: meta.id,
+        videoIds: videoId ? [videoId] : [meta.id],
+        watched: true,
+        meta,
+        episodes:
+          meta.type === 'series' && videoId
+            ? [
+                {
+                  id: videoId,
+                  name: item.lastEpisodeName ?? undefined,
+                  season: item.lastEpisodeSeason ?? undefined,
+                  number: item.lastEpisodeNumber ?? undefined,
+                  thumbnail: item.lastEpisodeThumbnail ?? meta.background ?? meta.poster,
+                },
+              ]
+            : [],
+      }),
+    ),
+  );
   if (meta.type === 'series') {
-    await Promise.resolve(onDispatch(JSON.stringify({
-      type: 'clearPlaybackProgressRequested',
-      meta: { ...meta, _preserveLastWatched: true },
-    })));
+    await Promise.resolve(
+      onDispatch(
+        JSON.stringify({
+          type: 'clearPlaybackProgressRequested',
+          meta: { ...meta, _preserveLastWatched: true },
+        }),
+      ),
+    );
     void onDispatch(JSON.stringify({ type: 'refreshContinueWatchingRequested', language: getLanguage() }));
   } else {
     await dropContinueWatchingItem(meta, onDispatch);
   }
 }
 
-export async function dropContinueWatchingItem(
-  meta: Meta,
-  onDispatch: (actionJson: string) => void | Promise<void>,
-): Promise<void> {
-  await Promise.resolve(onDispatch(JSON.stringify({ type: 'clearPlaybackProgressRequested', meta: { ...meta, _dropContinueWatching: true } })));
+export async function dropContinueWatchingItem(meta: Meta, onDispatch: (actionJson: string) => void | Promise<void>): Promise<void> {
+  await Promise.resolve(
+    onDispatch(JSON.stringify({ type: 'clearPlaybackProgressRequested', meta: { ...meta, _dropContinueWatching: true } })),
+  );
 }

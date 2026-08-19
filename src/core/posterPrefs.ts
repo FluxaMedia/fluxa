@@ -17,8 +17,7 @@ export function posterPrefsFromState(state: Pick<AppState, 'settings'>, scale = 
   const cardLayout = stringValue(values.cardLayout, 'vertical');
   const density = stringValue(values.interfaceDensity, 'medium');
   const densityScale = density === 'small' ? 0.92 : density === 'large' ? 1.08 : 1;
-  const landscape =
-    values.posterLandscapeMode === true || cardLayout === 'horizontal' || cardLayout === 'episode';
+  const landscape = values.posterLandscapeMode === true || cardLayout === 'horizontal' || cardLayout === 'episode';
   const uiScale = (Number(values.uiScale) || 100) / 100;
 
   const width = landscape ? horizontalPosterWidth(widthPreset) : verticalPosterWidth(widthPreset);

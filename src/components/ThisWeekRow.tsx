@@ -27,7 +27,9 @@ export const ThisWeekRow = React.memo(function ThisWeekRow({
     void continueWatchingCardFields(items, artworkPreference, true).then((fields) => {
       if (!cancelled) setCardFields(fields);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [items, artworkPreference]);
 
   const updateArrows = React.useCallback(() => {
@@ -58,12 +60,16 @@ export const ThisWeekRow = React.memo(function ThisWeekRow({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
           {canScrollLeft && (
             <button style={twStyles.arrowBtn} onClick={() => scroll('left')} aria-label={t('common.scroll_left')}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15 18l-6-6 6-6v12z" /></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15 18l-6-6 6-6v12z" />
+              </svg>
             </button>
           )}
           {canScrollRight && (
             <button style={twStyles.arrowBtn} onClick={() => scroll('right')} aria-label={t('common.scroll_right')}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18l6-6-6-6v12z" /></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 18l6-6-6-6v12z" />
+              </svg>
             </button>
           )}
         </div>
@@ -96,8 +102,36 @@ export const ThisWeekRow = React.memo(function ThisWeekRow({
 
 const twStyles: Record<string, React.CSSProperties> = {
   section: { position: 'relative', zIndex: 1, paddingTop: '0.5rem', marginBottom: 0 },
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: ROW_PADDING_LEFT, paddingRight: '2rem', marginBottom: '0.75rem' },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: ROW_PADDING_LEFT,
+    paddingRight: '2rem',
+    marginBottom: '0.75rem',
+  },
   title: { color: '#FFFFFF', fontSize: '1.125rem', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' },
-  arrowBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '1.75rem', height: '1.75rem', borderRadius: '62.4375rem', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.76)', transition: 'opacity 0.15s', padding: 0 },
-  scroll: { display: 'flex', gap: '1.125rem', overflowX: 'auto', paddingLeft: ROW_PADDING_LEFT, paddingRight: '2.5rem', paddingBottom: '1rem', paddingTop: '0.25rem', scrollbarWidth: 'none' },
+  arrowBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '1.75rem',
+    height: '1.75rem',
+    borderRadius: '62.4375rem',
+    border: '1px solid rgba(255,255,255,0.10)',
+    background: 'rgba(255,255,255,0.06)',
+    color: 'rgba(255,255,255,0.76)',
+    transition: 'opacity 0.15s',
+    padding: 0,
+  },
+  scroll: {
+    display: 'flex',
+    gap: '1.125rem',
+    overflowX: 'auto',
+    paddingLeft: ROW_PADDING_LEFT,
+    paddingRight: '2.5rem',
+    paddingBottom: '1rem',
+    paddingTop: '0.25rem',
+    scrollbarWidth: 'none',
+  },
 };

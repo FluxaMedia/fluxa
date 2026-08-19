@@ -59,21 +59,14 @@ export function AppWelcomeGate({
           let visibleProfiles = savedProfiles;
           let visibleActiveProfile = profile;
           if (profile.nuvioAccessToken) {
-            const [remoteProfiles, avatarCatalog] = await Promise.all([
-              nuvioPullProfiles(profile.nuvioAccessToken),
-              nuvioListAvatars(),
-            ]);
+            const [remoteProfiles, avatarCatalog] = await Promise.all([nuvioPullProfiles(profile.nuvioAccessToken), nuvioListAvatars()]);
             const builtRemoteProfiles = await buildLocalNuvioProfiles(profile, remoteProfiles, avatarCatalog, []);
             const remoteVisibleProfiles = builtRemoteProfiles.map((candidate) =>
-              candidate.nuvioProfileIndex === profile.nuvioProfileIndex
-                ? { ...candidate, id: profile.id }
-                : candidate,
+              candidate.nuvioProfileIndex === profile.nuvioProfileIndex ? { ...candidate, id: profile.id } : candidate,
             );
-            visibleProfiles = [
-              ...savedProfiles.filter((candidate) => !candidate.nuvioAccessToken),
-              ...remoteVisibleProfiles,
-            ];
-            visibleActiveProfile = remoteVisibleProfiles.find((candidate) => candidate.nuvioProfileIndex === profile.nuvioProfileIndex) ?? profile;
+            visibleProfiles = [...savedProfiles.filter((candidate) => !candidate.nuvioAccessToken), ...remoteVisibleProfiles];
+            visibleActiveProfile =
+              remoteVisibleProfiles.find((candidate) => candidate.nuvioProfileIndex === profile.nuvioProfileIndex) ?? profile;
           }
           await saveProfiles(visibleProfiles);
           setAllProfiles(visibleProfiles);

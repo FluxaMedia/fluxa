@@ -82,9 +82,20 @@ export const HeroSection = React.memo(function HeroSection({
   }, [activeMeta.trailers]);
 
   const {
-    trailerContainerRef, trailerVideoRef, trailerAudioRef,
-    trailerStreamUrl, trailerAudioUrl, trailerReady, trailerActive, trailerPending, trailerMuted, activeTrailerSubtitle,
-    handleTrailerPlaying, handleTrailerTimeUpdate, handleTrailerStopped, toggleTrailerMute,
+    trailerContainerRef,
+    trailerVideoRef,
+    trailerAudioRef,
+    trailerStreamUrl,
+    trailerAudioUrl,
+    trailerReady,
+    trailerActive,
+    trailerPending,
+    trailerMuted,
+    activeTrailerSubtitle,
+    handleTrailerPlaying,
+    handleTrailerTimeUpdate,
+    handleTrailerStopped,
+    toggleTrailerMute,
   } = useTrailerPlayback({
     metaId: activeMeta.id,
     trailerVideoIds,
@@ -95,7 +106,9 @@ export const HeroSection = React.memo(function HeroSection({
     isActive,
   });
 
-  const slideIntervalMs = autoplayTrailer ? Math.max(DEFAULT_SLIDE_INTERVAL_MS, autoplayTrailerDelaySecs * 1000 + 3000) : DEFAULT_SLIDE_INTERVAL_MS;
+  const slideIntervalMs = autoplayTrailer
+    ? Math.max(DEFAULT_SLIDE_INTERVAL_MS, autoplayTrailerDelaySecs * 1000 + 3000)
+    : DEFAULT_SLIDE_INTERVAL_MS;
   const imageUrl = (preferSeasonPosters ? seasonPosterUrl(activeMeta) : undefined) ?? activeMeta.background ?? activeMeta.poster;
   const bgUrl = !bgError ? imageUrl : null;
   const logoUrl = !logoError ? activeMeta.logo : null;
@@ -145,8 +158,14 @@ export const HeroSection = React.memo(function HeroSection({
     const next = items[(activeIndex + 1) % items.length];
     if (!next) return;
     const nextBg = (preferSeasonPosters ? seasonPosterUrl(next) : undefined) ?? next.background ?? next.poster;
-    if (nextBg) { const img = new Image(); img.src = nextBg; }
-    if (next.logo) { const img = new Image(); img.src = next.logo; }
+    if (nextBg) {
+      const img = new Image();
+      img.src = nextBg;
+    }
+    if (next.logo) {
+      const img = new Image();
+      img.src = next.logo;
+    }
   }, [canSlide, items, activeIndex, preferSeasonPosters]);
 
   const goTo = (index: number) => {
@@ -161,8 +180,13 @@ export const HeroSection = React.memo(function HeroSection({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!canSlide) return;
-    if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(activeIndex - 1); }
-    else if (e.key === 'ArrowRight') { e.preventDefault(); goTo(activeIndex + 1); }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      goTo(activeIndex - 1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      goTo(activeIndex + 1);
+    }
   };
 
   const dragRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -191,7 +215,9 @@ export const HeroSection = React.memo(function HeroSection({
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      onPointerCancel={() => { dragRef.current = null; }}
+      onPointerCancel={() => {
+        dragRef.current = null;
+      }}
     >
       <style>{heroKeyframes}</style>
       {bgUrl && (
@@ -213,49 +239,42 @@ export const HeroSection = React.memo(function HeroSection({
       )}
 
       <div ref={trailerContainerRef} style={styles.trailerContainer}>
-      {trailerStreamUrl && (
-        <video
-          ref={trailerVideoRef}
-          key={trailerStreamUrl}
-          style={{ ...styles.trailerFrame, opacity: trailerReady ? 1 : 0, transition: 'opacity 0.6s ease' }}
-          src={trailerStreamUrl}
-          autoPlay
-          muted={trailerMuted}
-          playsInline
-          onPlaying={handleTrailerPlaying}
-          onTimeUpdate={(e) => handleTrailerTimeUpdate(e.currentTarget)}
-          onEnded={handleTrailerStopped}
-          onError={handleTrailerStopped}
-        />
-      )}
-      {trailerAudioUrl && (
-        <audio ref={trailerAudioRef} key={trailerAudioUrl} src={trailerAudioUrl} preload="auto" />
-      )}
+        {trailerStreamUrl && (
+          <video
+            ref={trailerVideoRef}
+            key={trailerStreamUrl}
+            style={{ ...styles.trailerFrame, opacity: trailerReady ? 1 : 0, transition: 'opacity 0.6s ease' }}
+            src={trailerStreamUrl}
+            autoPlay
+            muted={trailerMuted}
+            playsInline
+            onPlaying={handleTrailerPlaying}
+            onTimeUpdate={(e) => handleTrailerTimeUpdate(e.currentTarget)}
+            onEnded={handleTrailerStopped}
+            onError={handleTrailerStopped}
+          />
+        )}
+        {trailerAudioUrl && <audio ref={trailerAudioRef} key={trailerAudioUrl} src={trailerAudioUrl} preload="auto" />}
 
-      {trailerActive && activeTrailerSubtitle && (
-        <div style={styles.trailerSubtitleOverlay}>
-          {activeTrailerSubtitle}
-        </div>
-      )}
+        {trailerActive && activeTrailerSubtitle && <div style={styles.trailerSubtitleOverlay}>{activeTrailerSubtitle}</div>}
 
-      {trailerActive && (
-        <button
-          onClick={toggleTrailerMute}
-          style={styles.trailerMuteButton}
-          aria-label={trailerMuted ? 'Unmute' : 'Mute'}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(0,0,0,0.6)';
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(0,0,0,0.4)';
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-          }}
-        >
-          {trailerMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-        </button>
-      )}
-
+        {trailerActive && (
+          <button
+            onClick={toggleTrailerMute}
+            style={styles.trailerMuteButton}
+            aria-label={trailerMuted ? 'Unmute' : 'Mute'}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(0,0,0,0.6)';
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(0,0,0,0.4)';
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+            }}
+          >
+            {trailerMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          </button>
+        )}
       </div>
 
       <div style={styles.gradientTop} />
@@ -269,7 +288,9 @@ export const HeroSection = React.memo(function HeroSection({
             src={logoUrl}
             alt={activeMeta.name}
             decoding="async"
-            ref={(el) => { if (el?.complete) setLogoLoaded(true); }}
+            ref={(el) => {
+              if (el?.complete) setLogoLoaded(true);
+            }}
             style={{
               ...styles.logo,
               ...(trailerActive ? styles.logoTrailerActive : null),
@@ -296,7 +317,9 @@ export const HeroSection = React.memo(function HeroSection({
           {tagline && <p style={styles.tagline}>{tagline}</p>}
 
           {activeMeta.description && (
-            <p className="hero-desc" style={{ ...styles.description, animation: 'heroFadeIn 0.4s ease' }}>{activeMeta.description}</p>
+            <p className="hero-desc" style={{ ...styles.description, animation: 'heroFadeIn 0.4s ease' }}>
+              {activeMeta.description}
+            </p>
           )}
 
           {(!isNaN(imdbNum) || certification || genreLine.length > 0) && (
@@ -307,12 +330,8 @@ export const HeroSection = React.memo(function HeroSection({
                   <span style={styles.imdbScore}>{imdbNum.toFixed(1)}</span>
                 </span>
               )}
-              {certification && (
-                <span style={styles.certBadge}>{certification}</span>
-              )}
-              {genreLine.length > 0 && (
-                <span style={styles.genreText}>{genreLine.join('  ·  ')}</span>
-              )}
+              {certification && <span style={styles.certBadge}>{certification}</span>}
+              {genreLine.length > 0 && <span style={styles.genreText}>{genreLine.join('  ·  ')}</span>}
             </div>
           )}
 

@@ -8,9 +8,7 @@ function isVisible(el: HTMLElement): boolean {
 }
 
 export function focusNearestCard(current: HTMLElement, direction: Direction): boolean {
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>(NAV_SELECTOR)).filter(
-    (el) => el !== current && isVisible(el),
-  );
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(NAV_SELECTOR)).filter((el) => el !== current && isVisible(el));
   const cr = current.getBoundingClientRect();
   const cx = cr.left + cr.width / 2;
   const cy = cr.top + cr.height / 2;
@@ -27,13 +25,29 @@ export function focusNearestCard(current: HTMLElement, direction: Direction): bo
     let primary: number;
     let secondary: number;
 
-    if (direction === 'left') { if (dx >= -1) continue; primary = -dx; secondary = Math.abs(dy); }
-    else if (direction === 'right') { if (dx <= 1) continue; primary = dx; secondary = Math.abs(dy); }
-    else if (direction === 'up') { if (dy >= -1) continue; primary = -dy; secondary = Math.abs(dx); }
-    else { if (dy <= 1) continue; primary = dy; secondary = Math.abs(dx); }
+    if (direction === 'left') {
+      if (dx >= -1) continue;
+      primary = -dx;
+      secondary = Math.abs(dy);
+    } else if (direction === 'right') {
+      if (dx <= 1) continue;
+      primary = dx;
+      secondary = Math.abs(dy);
+    } else if (direction === 'up') {
+      if (dy >= -1) continue;
+      primary = -dy;
+      secondary = Math.abs(dx);
+    } else {
+      if (dy <= 1) continue;
+      primary = dy;
+      secondary = Math.abs(dx);
+    }
 
     const score = primary + secondary * 2;
-    if (score < bestScore) { bestScore = score; best = el; }
+    if (score < bestScore) {
+      bestScore = score;
+      best = el;
+    }
   }
 
   if (!best) return false;

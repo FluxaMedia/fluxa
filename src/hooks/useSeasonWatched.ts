@@ -20,30 +20,49 @@ export function useSeasonWatched({
   const [seasonWatchedMap, setSeasonWatchedMap] = useState<Record<number, boolean>>({});
   useEffect(() => {
     let active = true;
-    void coreInvoke<Record<number, boolean>>('seasonWatchedPlan', JSON.stringify({ episodes, seasonNumbers, watchedMap }))
-      .then((plan) => { if (active) setSeasonWatchedMap(plan ?? {}); });
-    return () => { active = false; };
+    void coreInvoke<Record<number, boolean>>('seasonWatchedPlan', JSON.stringify({ episodes, seasonNumbers, watchedMap })).then((plan) => {
+      if (active) setSeasonWatchedMap(plan ?? {});
+    });
+    return () => {
+      active = false;
+    };
   }, [seasonNumbers, episodes, watchedMap]);
 
-  const dispatchMarkSeason = useCallback((seasons: number[], watched: boolean) => {
-    void coreInvoke<Record<string, unknown>>('markSeasonsActionPlan', JSON.stringify({
-      episodes,
-      seasons,
-      watched,
-      meta: { id: meta.id, name: displayMeta.name, type: meta.type },
-      nowMs: Date.now(),
-    })).then((action) => { if (action) onDispatch(JSON.stringify(action)); });
-  }, [episodes, meta.id, displayMeta.name, meta.type, onDispatch]);
+  const dispatchMarkSeason = useCallback(
+    (seasons: number[], watched: boolean) => {
+      void coreInvoke<Record<string, unknown>>(
+        'markSeasonsActionPlan',
+        JSON.stringify({
+          episodes,
+          seasons,
+          watched,
+          meta: { id: meta.id, name: displayMeta.name, type: meta.type },
+          nowMs: Date.now(),
+        }),
+      ).then((action) => {
+        if (action) onDispatch(JSON.stringify(action));
+      });
+    },
+    [episodes, meta.id, displayMeta.name, meta.type, onDispatch],
+  );
 
-  const toggleEpisodeWatched = useCallback((ep: Video, currentlyWatched: boolean) => {
-    void coreInvoke<Record<string, unknown>>('markSeasonsActionPlan', JSON.stringify({
-      episodes: [ep],
-      seasons: [ep.season ?? 1],
-      watched: !currentlyWatched,
-      meta: { id: meta.id, name: displayMeta.name, type: meta.type },
-      nowMs: Date.now(),
-    })).then((action) => { if (action) onDispatch(JSON.stringify(action)); });
-  }, [meta.id, displayMeta.name, meta.type, onDispatch]);
+  const toggleEpisodeWatched = useCallback(
+    (ep: Video, currentlyWatched: boolean) => {
+      void coreInvoke<Record<string, unknown>>(
+        'markSeasonsActionPlan',
+        JSON.stringify({
+          episodes: [ep],
+          seasons: [ep.season ?? 1],
+          watched: !currentlyWatched,
+          meta: { id: meta.id, name: displayMeta.name, type: meta.type },
+          nowMs: Date.now(),
+        }),
+      ).then((action) => {
+        if (action) onDispatch(JSON.stringify(action));
+      });
+    },
+    [meta.id, displayMeta.name, meta.type, onDispatch],
+  );
 
   return { seasonWatchedMap, dispatchMarkSeason, toggleEpisodeWatched };
 }

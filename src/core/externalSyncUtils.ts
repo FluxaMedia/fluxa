@@ -18,14 +18,21 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
       const item = items[i];
       const id = typeof item.id === 'string' ? item.id : '';
       const contentType = typeof item.type === 'string' ? item.type : 'movie';
-      const needsEpisodeMeta = contentType === 'series' &&
+      const needsEpisodeMeta =
+        contentType === 'series' &&
         typeof item.lastEpisodeSeason === 'number' &&
         typeof item.lastEpisodeNumber === 'number' &&
         (!item.lastEpisodeName || !item.lastEpisodeThumbnail);
-      if ((item.poster || item.background) && !needsEpisodeMeta) { results[i] = item; continue; }
-      if (!id) { results[i] = item; continue; }
+      if ((item.poster || item.background) && !needsEpisodeMeta) {
+        results[i] = item;
+        continue;
+      }
+      if (!id) {
+        results[i] = item;
+        continue;
+      }
       try {
-        const meta = await fetchMetaDetail({ id, contentType }) as Record<string, unknown> | null;
+        const meta = (await fetchMetaDetail({ id, contentType })) as Record<string, unknown> | null;
         let poster = meta && typeof meta.poster === 'string' ? meta.poster : undefined;
         let background = meta && typeof meta.background === 'string' ? meta.background : undefined;
         const logo = meta && typeof meta.logo === 'string' ? meta.logo : undefined;
@@ -41,7 +48,7 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
           const epNum = typeof item.lastEpisodeNumber === 'number' ? item.lastEpisodeNumber : undefined;
           if (season != null && epNum != null) {
             const ep = (meta.videos as Record<string, unknown>[]).find(
-              (v) => Number(v.season) === season && (Number(v.episode ?? v.number) === epNum),
+              (v) => Number(v.season) === season && Number(v.episode ?? v.number) === epNum,
             );
             const thumb = ep?.thumbnail;
             if (!lastEpisodeThumbnail && typeof thumb === 'string') lastEpisodeThumbnail = thumb;

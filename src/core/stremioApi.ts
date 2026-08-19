@@ -27,7 +27,7 @@ async function stremioPost<T>(path: string, body: Record<string, unknown>): Prom
   if (!res.ok) {
     throw new StremioApiError(`Stremio API ${res.status}`, res.status);
   }
-  const data = await res.json() as { result?: T; error?: { message?: string; code?: number } };
+  const data = (await res.json()) as { result?: T; error?: { message?: string; code?: number } };
   if (data.error) {
     throw new StremioApiError(data.error.message ?? 'Stremio request failed', data.error.code);
   }
@@ -38,10 +38,10 @@ async function stremioPost<T>(path: string, body: Record<string, unknown>): Prom
 }
 
 export async function stremioLogin(email: string, password: string): Promise<StremioAuth> {
-  const result = await stremioPost<{ authKey?: string; user?: { _id?: string; email?: string; authKey?: string } }>(
-    '/api/login',
-    { email, password },
-  );
+  const result = await stremioPost<{ authKey?: string; user?: { _id?: string; email?: string; authKey?: string } }>('/api/login', {
+    email,
+    password,
+  });
   const authKey = result.authKey ?? result.user?.authKey;
   if (!authKey) throw new StremioApiError('Stremio login returned no auth key');
   return { authKey, user: { _id: result.user?._id, email: result.user?.email ?? email } };
@@ -67,10 +67,7 @@ export async function stremioPullLibrary(authKey: string): Promise<Record<string
   return Array.isArray(result) ? result : [];
 }
 
-export async function stremioPushLibrary(
-  authKey: string,
-  changes: Record<string, unknown>[],
-): Promise<void> {
+export async function stremioPushLibrary(authKey: string, changes: Record<string, unknown>[]): Promise<void> {
   if (changes.length === 0) return;
   await stremioPost('/api/datastorePut', {
     authKey,

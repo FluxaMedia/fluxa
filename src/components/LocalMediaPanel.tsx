@@ -20,7 +20,8 @@ export function LocalMediaPanel({
 
   const scan = async (directory = root) => {
     if (!directory) return;
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const result = await resolveLocalMedia(directory);
       setItems(result);
@@ -28,10 +29,14 @@ export function LocalMediaPanel({
       localStorage.setItem('fluxa.localMedia.root', directory);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Local media scan failed');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { if (root) void scan(); }, []);
+  useEffect(() => {
+    if (root) void scan();
+  }, []);
 
   const chooseFolder = async () => {
     const selected = await platformOpenDialog({ directory: true, multiple: false, title: 'Select local media folder' });
@@ -42,13 +47,27 @@ export function LocalMediaPanel({
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 24px 14px' }}>
-        <button style={buttonStyle} onClick={() => void chooseFolder()}><FolderOpen size={16} /> Select folder</button>
-        {root && <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{root}</span>}
-        {root && <button style={iconButtonStyle} onClick={() => void scan()} title="Refresh"><RefreshCw size={15} /></button>}
+        <button style={buttonStyle} onClick={() => void chooseFolder()}>
+          <FolderOpen size={16} /> Select folder
+        </button>
+        {root && (
+          <span
+            style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {root}
+          </span>
+        )}
+        {root && (
+          <button style={iconButtonStyle} onClick={() => void scan()} title="Refresh">
+            <RefreshCw size={15} />
+          </button>
+        )}
         {loading && <Loader2 size={16} color="#aaa" className="spin" />}
       </div>
       {error && <p style={{ color: '#ff8e8e', padding: '0 24px' }}>{error}</p>}
-      {!loading && !error && !items.length && <p style={{ color: 'rgba(255,255,255,0.55)', padding: '24px' }}>Choose a folder to scan local movies and shows.</p>}
+      {!loading && !error && !items.length && (
+        <p style={{ color: 'rgba(255,255,255,0.55)', padding: '24px' }}>Choose a folder to scan local movies and shows.</p>
+      )}
       {!!metas.length && (
         <VirtualizedPosterGrid
           items={metas}
@@ -58,7 +77,10 @@ export function LocalMediaPanel({
           onClick={(meta) => {
             const item = items.find((candidate) => candidate.id === meta.id);
             const file = item?.localFiles[0];
-            if (item && file) { const playback = localStream(item, file); onPlay(playback.stream, item, playback.episode); }
+            if (item && file) {
+              const playback = localStream(item, file);
+              onPlay(playback.stream, item, playback.episode);
+            }
           }}
           onScrollActivity={() => {}}
         />
@@ -67,5 +89,15 @@ export function LocalMediaPanel({
   );
 }
 
-const buttonStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid rgba(255,255,255,0.15)', borderRadius: 7, background: 'rgba(255,255,255,0.08)', color: '#fff', padding: '8px 12px', cursor: 'pointer' };
+const buttonStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 7,
+  border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: 7,
+  background: 'rgba(255,255,255,0.08)',
+  color: '#fff',
+  padding: '8px 12px',
+  cursor: 'pointer',
+};
 const iconButtonStyle: React.CSSProperties = { ...buttonStyle, padding: 8 };

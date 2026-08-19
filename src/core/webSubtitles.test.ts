@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  assColor,
-  defaultSubtitleStylePrefs,
-  detectSubtitleFormat,
-  toAssDocument,
-  type SubtitleStylePrefs,
-} from './webSubtitles';
+import { assColor, defaultSubtitleStylePrefs, detectSubtitleFormat, toAssDocument, type SubtitleStylePrefs } from './webSubtitles';
 
 const SRT = `1
 00:00:01,000 --> 00:00:03,500
@@ -103,8 +97,7 @@ describe('toAssDocument', () => {
   it('switches to an opaque box only when a background is asked for', () => {
     const plain = toAssDocument(SRT, prefs()) ?? '';
     const boxed = toAssDocument(SRT, prefs({ backgroundOpacity: 0.5 })) ?? '';
-    const borderStyle = (doc: string) =>
-      (doc.split('\n').find((line) => line.startsWith('Style: Default')) ?? '').split(',')[15];
+    const borderStyle = (doc: string) => (doc.split('\n').find((line) => line.startsWith('Style: Default')) ?? '').split(',')[15];
     expect(borderStyle(plain)).toBe('1');
     expect(borderStyle(boxed)).toBe('3');
   });

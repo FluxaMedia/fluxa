@@ -79,18 +79,67 @@ export type ModernDetailProps = {
 };
 
 export function ModernDetailLayout({
-  displayMeta, bgUrl, isSeries, detail, meta, episodes, filteredEps, seasonNumbers,
-  selectedSeason, selectedEpisode, showSources, playbackFailure, streams, episodePlan, similarItems,
-  displayTrailers, trailerMetadata, castMembers, directorLinks, peopleImages,
-  watchedMap, progressMap, continueWatchingEntry, isInWatchlist, isDropped, isCompleted, isFavorite,
-  omdbRatings, mdblistRatings, fanartArtwork, availableAddons, streamAddonCount, poster,
-  trailerOnHero, detailHeroAutoplayTrailer, detailHeroAutoplayTrailerDelaySecs, preferredSubtitleLanguage, secondarySubtitleLanguage,
-  blurUnwatchedEpisodes, spoilerHideEpisodeInfo, detailSeasonSelectorMode: _detailSeasonSelectorMode, episodeCardsLayout,
-  onBack, onDispatch, onNavigateDetail, onNavigateGenre, onSeasonChange, onEpisodeClick,
-  onMovieSources, onRetryFailed, onBackToEpisodes, onPlaySource, onPlay,
-  onToggleWatchlist, onToggleCompleted, onToggleDropped, onToggleFavorite, onOpenComments, onBgError,
+  displayMeta,
+  bgUrl,
+  isSeries,
+  detail,
+  meta,
+  episodes,
+  filteredEps,
+  seasonNumbers,
+  selectedSeason,
+  selectedEpisode,
+  showSources,
+  playbackFailure,
+  streams,
+  episodePlan,
+  similarItems,
+  displayTrailers,
+  trailerMetadata,
+  castMembers,
+  directorLinks,
+  peopleImages,
+  watchedMap,
+  progressMap,
+  continueWatchingEntry,
+  isInWatchlist,
+  isDropped,
+  isCompleted,
+  isFavorite,
+  omdbRatings,
+  mdblistRatings,
+  fanartArtwork,
+  availableAddons,
+  streamAddonCount,
+  poster,
+  trailerOnHero,
+  detailHeroAutoplayTrailer,
+  detailHeroAutoplayTrailerDelaySecs,
+  preferredSubtitleLanguage,
+  secondarySubtitleLanguage,
+  blurUnwatchedEpisodes,
+  spoilerHideEpisodeInfo,
+  detailSeasonSelectorMode: _detailSeasonSelectorMode,
+  episodeCardsLayout,
+  onBack,
+  onDispatch,
+  onNavigateDetail,
+  onNavigateGenre,
+  onSeasonChange,
+  onEpisodeClick,
+  onMovieSources,
+  onRetryFailed,
+  onBackToEpisodes,
+  onPlaySource,
+  onPlay,
+  onToggleWatchlist,
+  onToggleCompleted,
+  onToggleDropped,
+  onToggleFavorite,
+  onOpenComments,
+  onBgError,
 }: ModernDetailProps) {
-  const [activeTab, setActiveTab] = useState<'episodes' | 'related' | 'details'>(() => isSeries ? 'episodes' : 'details');
+  const [activeTab, setActiveTab] = useState<'episodes' | 'related' | 'details'>(() => (isSeries ? 'episodes' : 'details'));
   const [similarSource, setSimilarSource] = useState('auto');
   const [prevSeasonDialog, setPrevSeasonDialog] = useState<{ season: number; unwatchedPrev: number[] } | null>(null);
 
@@ -105,7 +154,7 @@ export function ModernDetailLayout({
   }, []);
 
   const bgLayerKeyRef = useRef(0);
-  const [bgLayers, setBgLayers] = useState<{ url: string; key: number }[]>(() => bgUrl ? [{ url: bgUrl, key: 0 }] : []);
+  const [bgLayers, setBgLayers] = useState<{ url: string; key: number }[]>(() => (bgUrl ? [{ url: bgUrl, key: 0 }] : []));
   const [bgLoadedKeys, setBgLoadedKeys] = useState<Set<number>>(() => new Set());
   useEffect(() => {
     setBgLayers((layers) => {
@@ -126,11 +175,24 @@ export function ModernDetailLayout({
 
   const changeSimilarSource = (source: string) => {
     setSimilarSource(source);
-    onDispatch(JSON.stringify({ type: 'detailSecondaryRequested', contentType: meta.type, id: meta.id, language: getLanguage(), similarTitlesSource: source }));
+    onDispatch(
+      JSON.stringify({
+        type: 'detailSecondaryRequested',
+        contentType: meta.type,
+        id: meta.id,
+        language: getLanguage(),
+        similarTitlesSource: source,
+      }),
+    );
   };
 
   const { seasonWatchedMap, dispatchMarkSeason, toggleEpisodeWatched } = useSeasonWatched({
-    meta, displayMeta, episodes, seasonNumbers, watchedMap, onDispatch,
+    meta,
+    displayMeta,
+    episodes,
+    seasonNumbers,
+    watchedMap,
+    onDispatch,
   });
 
   const trailerVideoIdsRef = useRef<string[]>([]);
@@ -160,8 +222,13 @@ export function ModernDetailLayout({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (prevSeasonDialog) { setPrevSeasonDialog(null); return; }
-      if (showSources) { onBackToEpisodes(); }
+      if (prevSeasonDialog) {
+        setPrevSeasonDialog(null);
+        return;
+      }
+      if (showSources) {
+        onBackToEpisodes();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -169,7 +236,10 @@ export function ModernDetailLayout({
 
   const toggleSeasonWatched = useCallback(() => {
     const isWatched = seasonWatchedMap[selectedSeason] === true;
-    if (isWatched) { dispatchMarkSeason([selectedSeason], false); return; }
+    if (isWatched) {
+      dispatchMarkSeason([selectedSeason], false);
+      return;
+    }
     const unwatchedPrev = seasonNumbers.filter((s) => s > 0 && s < selectedSeason && !seasonWatchedMap[s]);
     if (unwatchedPrev.length > 0) {
       setPrevSeasonDialog({ season: selectedSeason, unwatchedPrev });
@@ -198,9 +268,7 @@ export function ModernDetailLayout({
 
   const heroLogo = fanartArtwork?.hdLogo || displayMeta.logo;
 
-  const episodeGridStyle = episodeCardsLayout === 'list'
-    ? { ...MS.episodeGrid, gridTemplateColumns: '1fr' }
-    : MS.episodeGrid;
+  const episodeGridStyle = episodeCardsLayout === 'list' ? { ...MS.episodeGrid, gridTemplateColumns: '1fr' } : MS.episodeGrid;
 
   const seriesTabs = [
     { id: 'episodes', label: t('auto.episodes') },
@@ -234,8 +302,9 @@ export function ModernDetailLayout({
             continueLabel={isSeries ? continueLabel : null}
             hasProgress={isSeries ? hasProgress : false}
             onPlayClick={() => {
-              if (isSeries) { if (continueEp) onEpisodeClick(continueEp); }
-              else onMovieSources();
+              if (isSeries) {
+                if (continueEp) onEpisodeClick(continueEp);
+              } else onMovieSources();
             }}
             trailerUrl={trailerOnHero && displayTrailers.length > 0 ? displayTrailers[0].url : undefined}
             isInWatchlist={isInWatchlist}
@@ -275,11 +344,7 @@ export function ModernDetailLayout({
                 }}
               />
 
-              <ModernTabBar
-                tabs={seriesTabs}
-                active={activeTab}
-                onChange={(id) => setActiveTab(id as typeof activeTab)}
-              />
+              <ModernTabBar tabs={seriesTabs} active={activeTab} onChange={(id) => setActiveTab(id as typeof activeTab)} />
 
               {activeTab === 'episodes' && (
                 <EpisodesTabContent
@@ -356,7 +421,20 @@ export function ModernDetailLayout({
       {showSources && selectedEpisode && isSeries && (
         <div className="detail-overlay-backdrop" style={MS.overlayBackdrop} onClick={onBackToEpisodes}>
           <div className="detail-overlay-sheet" style={MS.overlaySheet} onClick={(e) => e.stopPropagation()}>
-            <InlineSourceList episode={selectedEpisode} meta={displayMeta} streams={streams} isLoading={!!detail.isLoadingStreams} availableAddons={availableAddons} failedAddons={detail.failedAddons ?? []} playbackFailure={playbackFailure} streamAddonCount={streamAddonCount} onBack={onBackToEpisodes} onPlay={onPlaySource} onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))} onRetryFailed={onRetryFailed} />
+            <InlineSourceList
+              episode={selectedEpisode}
+              meta={displayMeta}
+              streams={streams}
+              isLoading={!!detail.isLoadingStreams}
+              availableAddons={availableAddons}
+              failedAddons={detail.failedAddons ?? []}
+              playbackFailure={playbackFailure}
+              streamAddonCount={streamAddonCount}
+              onBack={onBackToEpisodes}
+              onPlay={onPlaySource}
+              onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))}
+              onRetryFailed={onRetryFailed}
+            />
           </div>
         </div>
       )}
@@ -364,7 +442,19 @@ export function ModernDetailLayout({
       {showSources && !isSeries && (
         <div className="detail-overlay-backdrop" style={MS.overlayBackdrop} onClick={onBackToEpisodes}>
           <div className="detail-overlay-sheet" style={MS.overlaySheet} onClick={(e) => e.stopPropagation()}>
-            <MovieSourcePanel meta={displayMeta} streams={streams} isLoading={!!detail.isLoadingStreams} availableAddons={availableAddons} failedAddons={detail.failedAddons ?? []} playbackFailure={playbackFailure} streamAddonCount={streamAddonCount} onPlay={(stream) => onPlay(stream, displayMeta, null, undefined, streams)} onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))} onClose={onBackToEpisodes} onRetryFailed={onRetryFailed} />
+            <MovieSourcePanel
+              meta={displayMeta}
+              streams={streams}
+              isLoading={!!detail.isLoadingStreams}
+              availableAddons={availableAddons}
+              failedAddons={detail.failedAddons ?? []}
+              playbackFailure={playbackFailure}
+              streamAddonCount={streamAddonCount}
+              onPlay={(stream) => onPlay(stream, displayMeta, null, undefined, streams)}
+              onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))}
+              onClose={onBackToEpisodes}
+              onRetryFailed={onRetryFailed}
+            />
           </div>
         </div>
       )}

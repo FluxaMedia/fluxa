@@ -16,9 +16,15 @@ export async function coreImportApplyPlan(request: {
   categories?: string[];
   dryRun?: boolean;
 }): Promise<CoreImportApplyPlan> {
-  return (await coreInvoke<CoreImportApplyPlan>("importApplyPlan", JSON.stringify(request))) ?? {
-    watchlist: null, watchlistCount: 0, watched: null, watchedCount: 0, continueWatchingApply: false,
-  };
+  return (
+    (await coreInvoke<CoreImportApplyPlan>('importApplyPlan', JSON.stringify(request))) ?? {
+      watchlist: null,
+      watchlistCount: 0,
+      watched: null,
+      watchedCount: 0,
+      continueWatchingApply: false,
+    }
+  );
 }
 
 export async function coreTraktScrobblePlan(
@@ -31,7 +37,7 @@ export async function coreTraktScrobblePlan(
   action?: 'start' | 'pause' | 'stop',
 ): Promise<{ action: string; body: unknown } | null> {
   return coreInvoke(
-    "traktScrobblePlan",
+    'traktScrobblePlan',
     JSON.stringify({
       videoId,
       isEpisode,
@@ -53,7 +59,7 @@ export async function coreSimklScrobbleBody(
   durationSec: number,
 ): Promise<unknown | null> {
   return coreInvoke(
-    "simklScrobbleBody",
+    'simklScrobbleBody',
     JSON.stringify({
       idsJson,
       isEpisode,
@@ -65,61 +71,61 @@ export async function coreSimklScrobbleBody(
   );
 }
 
-export async function coreSimklLookupIdForType(
-  lookupJson: string,
-  wantType: string,
-): Promise<number | null> {
-  return coreInvoke(
-    "simklLookupIdForType",
-    JSON.stringify({ lookupJson, wantType }),
-  );
+export async function coreSimklLookupIdForType(lookupJson: string, wantType: string): Promise<number | null> {
+  return coreInvoke('simklLookupIdForType', JSON.stringify({ lookupJson, wantType }));
 }
 
-export async function coreTraktPlaybackItemsToLibrary(
-  itemsJson: string,
-): Promise<unknown[] | null> {
-  return coreInvoke("traktPlaybackItemsToLibrary", itemsJson);
+export async function coreTraktPlaybackItemsToLibrary(itemsJson: string): Promise<unknown[] | null> {
+  return coreInvoke('traktPlaybackItemsToLibrary', itemsJson);
 }
 
 export async function coreTraktUpNextToItems(itemsJson: string): Promise<unknown[] | null> {
   return coreInvoke('traktUpNextToItems', itemsJson);
 }
 
-export async function coreTraktWatchedShowsToItems(
-  showsJson: string,
-): Promise<unknown[] | null> {
-  return coreInvoke("traktWatchedShowsToItems", showsJson);
+export async function coreTraktWatchedShowsToItems(showsJson: string): Promise<unknown[] | null> {
+  return coreInvoke('traktWatchedShowsToItems', showsJson);
 }
 
-export async function coreTraktWatchlistToItems(
-  moviesJson: string,
-  showsJson: string,
-): Promise<unknown[] | null> {
-  return coreInvoke(
-    "traktWatchlistToItems",
-    JSON.stringify({ moviesJson, showsJson }),
-  );
+export async function coreTraktWatchlistToItems(moviesJson: string, showsJson: string): Promise<unknown[] | null> {
+  return coreInvoke('traktWatchlistToItems', JSON.stringify({ moviesJson, showsJson }));
 }
 
-export async function coreTraktWatchedToIds(
-  moviesJson: string,
-  showsJson: string,
-): Promise<unknown[] | null> {
-  return coreInvoke(
-    "traktWatchedToIds",
-    JSON.stringify({ moviesJson, showsJson }),
-  );
+export async function coreTraktWatchedToIds(moviesJson: string, showsJson: string): Promise<unknown[] | null> {
+  return coreInvoke('traktWatchedToIds', JSON.stringify({ moviesJson, showsJson }));
 }
 
 export interface CorePushPlan {
   watchlistItems?: { id: string; contentType: string }[];
-  watchlistNuvioItems?: { contentId: string; contentType: string; name?: string | null; poster?: string | null; background?: string | null }[];
+  watchlistNuvioItems?: {
+    contentId: string;
+    contentType: string;
+    name?: string | null;
+    poster?: string | null;
+    background?: string | null;
+  }[];
   watchedVideoIds?: string[];
   watchedStatusItems?: { id: string; status: 'completed' | 'dropped' }[];
   watchedItemIds?: string[];
-  watchedNuvioItems?: { contentId: string; contentType: string; title?: string | null; season?: number | null; episode?: number | null; watchedAt: number }[];
+  watchedNuvioItems?: {
+    contentId: string;
+    contentType: string;
+    title?: string | null;
+    season?: number | null;
+    episode?: number | null;
+    watchedAt: number;
+  }[];
   progressItemIds?: string[];
-  progressNuvioEntries?: { contentId: string; contentType: string; videoId: string; position: number; duration: number; lastWatched: number; season?: number | null; episode?: number | null }[];
+  progressNuvioEntries?: {
+    contentId: string;
+    contentType: string;
+    videoId: string;
+    position: number;
+    duration: number;
+    lastWatched: number;
+    season?: number | null;
+    episode?: number | null;
+  }[];
 }
 
 export async function corePushPlan(request: {
@@ -131,27 +137,15 @@ export async function corePushPlan(request: {
   continueWatching: unknown[];
   nowSec: number;
 }): Promise<CorePushPlan> {
-  return (await coreInvoke<CorePushPlan>("pushPlan", JSON.stringify(request))) ?? {};
+  return (await coreInvoke<CorePushPlan>('pushPlan', JSON.stringify(request))) ?? {};
 }
 
-export async function coreMergeExternalWatchlist(
-  localJson: string,
-  externalJson: string,
-): Promise<Record<string, unknown>[]> {
-  return (await coreInvoke<Record<string, unknown>[]>(
-    "mergeExternalWatchlist",
-    JSON.stringify({ localJson, externalJson }),
-  )) ?? [];
+export async function coreMergeExternalWatchlist(localJson: string, externalJson: string): Promise<Record<string, unknown>[]> {
+  return (await coreInvoke<Record<string, unknown>[]>('mergeExternalWatchlist', JSON.stringify({ localJson, externalJson }))) ?? [];
 }
 
-export async function coreMergeExternalWatched(
-  localJson: string,
-  externalJson: string,
-): Promise<Record<string, boolean>> {
-  return (await coreInvoke<Record<string, boolean>>(
-    "mergeExternalWatched",
-    JSON.stringify({ localJson, externalJson }),
-  )) ?? {};
+export async function coreMergeExternalWatched(localJson: string, externalJson: string): Promise<Record<string, boolean>> {
+  return (await coreInvoke<Record<string, boolean>>('mergeExternalWatched', JSON.stringify({ localJson, externalJson }))) ?? {};
 }
 
 export async function coreMergeContinueWatchingLists(
@@ -162,7 +156,7 @@ export async function coreMergeContinueWatchingLists(
   rankingMode?: string,
 ): Promise<unknown[] | null> {
   return coreInvoke(
-    "mergeContinueWatchingLists",
+    'mergeContinueWatchingLists',
     JSON.stringify({
       localJson,
       externalJson,
@@ -173,44 +167,20 @@ export async function coreMergeContinueWatchingLists(
   );
 }
 
-export async function coreSimklWatchingToItems(
-  showsJson: string,
-  moviesJson: string,
-): Promise<unknown[] | null> {
-  return coreInvoke(
-    "simklWatchingToItems",
-    JSON.stringify({ showsJson, moviesJson }),
-  );
+export async function coreSimklWatchingToItems(showsJson: string, moviesJson: string): Promise<unknown[] | null> {
+  return coreInvoke('simklWatchingToItems', JSON.stringify({ showsJson, moviesJson }));
 }
 
-export async function coreSimklMergePlaybackProgress(
-  itemsJson: string,
-  playbackJson: string,
-): Promise<unknown[] | null> {
-  return coreInvoke(
-    "simklMergePlaybackProgress",
-    JSON.stringify({ itemsJson, playbackJson }),
-  );
+export async function coreSimklMergePlaybackProgress(itemsJson: string, playbackJson: string): Promise<unknown[] | null> {
+  return coreInvoke('simklMergePlaybackProgress', JSON.stringify({ itemsJson, playbackJson }));
 }
 
-export async function coreSimklWatchlistToItems(
-  showsJson: string,
-  moviesJson: string,
-): Promise<unknown[] | null> {
-  return coreInvoke(
-    "simklWatchlistToItems",
-    JSON.stringify({ showsJson, moviesJson }),
-  );
+export async function coreSimklWatchlistToItems(showsJson: string, moviesJson: string): Promise<unknown[] | null> {
+  return coreInvoke('simklWatchlistToItems', JSON.stringify({ showsJson, moviesJson }));
 }
 
-export async function coreSimklWatchedToIds(
-  showsJson: string,
-  moviesJson: string,
-): Promise<Record<string, boolean> | null> {
-  return coreInvoke(
-    "simklWatchedToIds",
-    JSON.stringify({ showsJson, moviesJson }),
-  );
+export async function coreSimklWatchedToIds(showsJson: string, moviesJson: string): Promise<Record<string, boolean> | null> {
+  return coreInvoke('simklWatchedToIds', JSON.stringify({ showsJson, moviesJson }));
 }
 
 export async function coreTraktActivityDiff(request: {
@@ -228,13 +198,15 @@ export async function coreTraktActivityDiff(request: {
   watchedMoviesChanged: boolean;
   watchedShowsChanged: boolean;
 }> {
-  return (await coreInvoke("traktActivityDiff", JSON.stringify(request))) ?? {
-    playbackChanged: true,
-    watchlistMoviesChanged: true,
-    watchlistShowsChanged: true,
-    watchedMoviesChanged: true,
-    watchedShowsChanged: true,
-  };
+  return (
+    (await coreInvoke('traktActivityDiff', JSON.stringify(request))) ?? {
+      playbackChanged: true,
+      watchlistMoviesChanged: true,
+      watchlistShowsChanged: true,
+      watchedMoviesChanged: true,
+      watchedShowsChanged: true,
+    }
+  );
 }
 
 export async function coreSimklResourceSyncPlan(request: {
@@ -242,24 +214,20 @@ export async function coreSimklResourceSyncPlan(request: {
   current?: unknown;
   resources: Array<{ key: string; type: string; status: string; hasCached: boolean }>;
 }): Promise<Array<{ key: string; action: 'unchanged' | 'full' | 'delta'; dateFrom: string | null }>> {
-  return (await coreInvoke(
-    "simklResourceSyncPlan",
-    JSON.stringify(request),
-  )) ?? request.resources.map((resource) => ({ key: resource.key, action: 'full' as const, dateFrom: null }));
+  return (
+    (await coreInvoke('simklResourceSyncPlan', JSON.stringify(request))) ??
+    request.resources.map((resource) => ({ key: resource.key, action: 'full' as const, dateFrom: null }))
+  );
 }
 
 export async function coreSimklMergeDelta(previousJson: string, changesJson: string): Promise<unknown> {
-  return coreInvoke("simklMergeDelta", JSON.stringify({ previousJson, changesJson }));
+  return coreInvoke('simklMergeDelta', JSON.stringify({ previousJson, changesJson }));
 }
 
-export async function coreStremioWatchlistToItems(
-  items: unknown[],
-): Promise<unknown[] | null> {
-  return coreInvoke("stremioWatchlistToItems", JSON.stringify(items));
+export async function coreStremioWatchlistToItems(items: unknown[]): Promise<unknown[] | null> {
+  return coreInvoke('stremioWatchlistToItems', JSON.stringify(items));
 }
 
-export async function coreStremioWatchedToIds(
-  items: unknown[],
-): Promise<Record<string, boolean> | null> {
-  return coreInvoke("stremioWatchedToIds", JSON.stringify(items));
+export async function coreStremioWatchedToIds(items: unknown[]): Promise<Record<string, boolean> | null> {
+  return coreInvoke('stremioWatchedToIds', JSON.stringify(items));
 }

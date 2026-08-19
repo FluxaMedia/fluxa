@@ -7,9 +7,10 @@ import { TopBar, Field, PasswordField } from './fields';
 import { assetUrl } from '../../platform/assets';
 
 function buildNuvioProfile(session: NuvioSession, email: string): UserProfile {
-  const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+  const id =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
   const expiresAt = Math.floor(Date.now() / 1000) + (session.expires_in ?? 3600);
   return {
     id,
@@ -87,14 +88,12 @@ export function NuvioLoginView({ onBack, onImporting, onContinueLocal, localLoad
       <main style={S.authMain}>
         <div style={S.card}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
-            <img
-              src={assetUrl('nuvio.png')}
-              alt="Nuvio"
-              style={{ width: '2.25rem', height: '2.25rem', objectFit: 'contain' }}
-            />
+            <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2.25rem', height: '2.25rem', objectFit: 'contain' }} />
             <div>
               <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, fontFamily: FONT }}>{t('auth.nuvio.title')}</p>
-              <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: 'rgba(255,255,255,0.40)', fontFamily: FONT }}>{t('auth.nuvio.subtitle')}</p>
+              <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: 'rgba(255,255,255,0.40)', fontFamily: FONT }}>
+                {t('auth.nuvio.subtitle')}
+              </p>
             </div>
           </div>
 
@@ -117,11 +116,7 @@ export function NuvioLoginView({ onBack, onImporting, onContinueLocal, localLoad
               show={showPassword}
               onToggleShow={() => setShowPassword((v) => !v)}
             />
-            <button
-              type="submit"
-              style={{ ...S.submitBtn, marginTop: '0.5rem', opacity: submitting ? 0.6 : 1 }}
-              disabled={submitting}
-            >
+            <button type="submit" style={{ ...S.submitBtn, marginTop: '0.5rem', opacity: submitting ? 0.6 : 1 }} disabled={submitting}>
               {submitting ? t('auth.nuvio.signing_in') : t('auth.nuvio.sign_in')}
             </button>
           </form>

@@ -33,7 +33,9 @@ export function useGlobalShortcuts({
     }
     void import('@tauri-apps/api/window')
       .then(({ getCurrentWindow }) => getCurrentWindow().isFullscreen())
-      .then((isFullscreen) => { windowFullscreenRef.current = isFullscreen; })
+      .then((isFullscreen) => {
+        windowFullscreenRef.current = isFullscreen;
+      })
       .catch(() => undefined);
   }, [isWebTarget]);
 
@@ -49,14 +51,23 @@ export function useGlobalShortcuts({
     refreshWindowFullscreen();
     void import('@tauri-apps/api/window')
       .then(({ getCurrentWindow }) => getCurrentWindow().listen('tauri://resize', refreshWindowFullscreen))
-      .then((fn) => { if (disposed) fn(); else unlisten = fn; })
+      .then((fn) => {
+        if (disposed) fn();
+        else unlisten = fn;
+      })
       .catch(() => undefined);
-    return () => { disposed = true; unlisten?.(); };
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
   }, [isWebTarget, refreshWindowFullscreen]);
 
   useEffect(() => {
     const directions: Record<string, 'up' | 'down' | 'left' | 'right'> = {
-      ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (nativePlayerActive) return;
@@ -70,7 +81,11 @@ export function useGlobalShortcuts({
 
   useEffect(() => {
     const navRoutes: Record<string, NavRoute> = {
-      nav_home: 'home', nav_library: 'library', nav_discover: 'discover', nav_calendar: 'calendar', nav_settings: 'settings',
+      nav_home: 'home',
+      nav_library: 'library',
+      nav_discover: 'discover',
+      nav_calendar: 'calendar',
+      nav_settings: 'settings',
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (nativePlayerActive) return;
@@ -89,8 +104,16 @@ export function useGlobalShortcuts({
       if (e.key === 'Escape' && windowFullscreenRef.current) {
         e.preventDefault();
         windowFullscreenRef.current = false;
-        if (isWebTarget) void document.exitFullscreen().catch(() => undefined).finally(refreshWindowFullscreen);
-        else void import('@tauri-apps/api/window').then(({ getCurrentWindow }) => getCurrentWindow().setFullscreen(false)).catch(() => undefined).finally(refreshWindowFullscreen);
+        if (isWebTarget)
+          void document
+            .exitFullscreen()
+            .catch(() => undefined)
+            .finally(refreshWindowFullscreen);
+        else
+          void import('@tauri-apps/api/window')
+            .then(({ getCurrentWindow }) => getCurrentWindow().setFullscreen(false))
+            .catch(() => undefined)
+            .finally(refreshWindowFullscreen);
         return;
       }
       const target = e.target as HTMLElement | null;
@@ -112,7 +135,10 @@ export function useGlobalShortcuts({
         return;
       }
       const route = globalAction ? navRoutes[globalAction] : undefined;
-      if (route) { navigateRoute(route); return; }
+      if (route) {
+        navigateRoute(route);
+        return;
+      }
       if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         setSearchFocusSignal((n) => n + 1);

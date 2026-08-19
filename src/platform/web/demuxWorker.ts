@@ -12,9 +12,7 @@ function loadCore() {
 
 type StartMessage = { id: number; type: 'start'; url: string };
 type OutMessage =
-  | { id: number; type: 'segment'; webmBytes: ArrayBuffer }
-  | { id: number; type: 'done' }
-  | { id: number; type: 'error'; error: string };
+  { id: number; type: 'segment'; webmBytes: ArrayBuffer } | { id: number; type: 'done' } | { id: number; type: 'error'; error: string };
 
 function post(message: OutMessage, transfer: Transferable[] = []) {
   (self as unknown as Worker).postMessage(message, transfer);

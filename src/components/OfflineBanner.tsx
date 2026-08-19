@@ -16,24 +16,24 @@ export function OfflineBanner({ online }: Props) {
   if (online || dismissed) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 99999,
-      height: '2.25rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '0.5rem',
-      background: 'rgba(64, 64, 64, 0.94)',
-      backdropFilter: 'blur(0.5rem)',
-      padding: '0 1rem',
-    }}>
-      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#fff', letterSpacing: '0.01em' }}>
-        {t('app.status.noInternet')}
-      </span>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 99999,
+        height: '2.25rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.5rem',
+        background: 'rgba(64, 64, 64, 0.94)',
+        backdropFilter: 'blur(0.5rem)',
+        padding: '0 1rem',
+      }}
+    >
+      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#fff', letterSpacing: '0.01em' }}>{t('app.status.noInternet')}</span>
       <button
         onClick={() => setDismissed(true)}
         style={{

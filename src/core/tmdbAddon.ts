@@ -25,10 +25,7 @@ export async function builtinTmdbDescriptor(apiKey: string): Promise<AddonDescri
   return { transportUrl: BUILTIN_TMDB_TRANSPORT_URL, manifest };
 }
 
-export async function withBuiltinTmdbAddon(
-  addons: AddonDescriptor[],
-  prefs: Record<string, unknown>,
-): Promise<AddonDescriptor[]> {
+export async function withBuiltinTmdbAddon(addons: AddonDescriptor[], prefs: Record<string, unknown>): Promise<AddonDescriptor[]> {
   const apiKey = String(prefs.tmdbApiKey ?? '');
   const descriptor = await builtinTmdbDescriptor(apiKey);
   if (!descriptor) return addons;
@@ -85,10 +82,7 @@ async function fetchBuiltinMetaUrls(
   if (!plan.findUrl) return null;
   const find = await tryFetchJson(plan.findUrl, { signal });
   if (!find) return null;
-  return coreInvoke<TmdbMetaUrls>(
-    'tmdbBuiltinMetaUrlsFromFind',
-    JSON.stringify({ find, contentType: type, apiKey, language }),
-  );
+  return coreInvoke<TmdbMetaUrls>('tmdbBuiltinMetaUrlsFromFind', JSON.stringify({ find, contentType: type, apiKey, language }));
 }
 
 export async function fetchBuiltinMeta(
@@ -114,10 +108,15 @@ export async function fetchBuiltinMeta(
   if (!details) return null;
 
   const extras = { keywords, alternativeTitles, contentRatings, watchProviders };
-  const meta = await coreTmdbFullMetaToMeta(
-    JSON.stringify(details), JSON.stringify(credits ?? {}), JSON.stringify(images ?? {}),
-    JSON.stringify(externalIds ?? {}), JSON.stringify(extras), type, language,
-  ) as Record<string, unknown> | null;
+  const meta = (await coreTmdbFullMetaToMeta(
+    JSON.stringify(details),
+    JSON.stringify(credits ?? {}),
+    JSON.stringify(images ?? {}),
+    JSON.stringify(externalIds ?? {}),
+    JSON.stringify(extras),
+    type,
+    language,
+  )) as Record<string, unknown> | null;
   if (!meta) return null;
 
   if (type === 'series') {
@@ -126,7 +125,8 @@ export async function fetchBuiltinMeta(
       .filter((n): n is number => typeof n === 'number' && n > 0);
     const seriesId = String(meta.id ?? id);
     const videoLists = await runWithConcurrency(seasons, 4, (seasonNumber) =>
-      fetchBuiltinSeasonVideos(urls.tmdbId, seasonNumber, seriesId, apiKey, language, signal));
+      fetchBuiltinSeasonVideos(urls.tmdbId, seasonNumber, seriesId, apiKey, language, signal),
+    );
     meta.videos = videoLists.flat();
   }
 
@@ -149,15 +149,22 @@ export async function fetchTmdbLogo(
 }
 
 async function fetchBuiltinSeasonVideos(
-  tmdbId: string, season: number, seriesId: string, apiKey: string, language: string,
+  tmdbId: string,
+  season: number,
+  seriesId: string,
+  apiKey: string,
+  language: string,
   signal?: AbortSignal,
 ): Promise<unknown[]> {
-  const url = await coreInvoke<string>('tmdbSeasonRequestUrl', JSON.stringify({
-    contentId: `tmdb:${tmdbId}`,
-    season,
-    apiKey,
-    language,
-  }));
+  const url = await coreInvoke<string>(
+    'tmdbSeasonRequestUrl',
+    JSON.stringify({
+      contentId: `tmdb:${tmdbId}`,
+      season,
+      apiKey,
+      language,
+    }),
+  );
   if (!url) return [];
   const seasonData = await tryFetchJson(url, { signal });
   if (!seasonData) return [];
@@ -165,7 +172,10 @@ async function fetchBuiltinSeasonVideos(
 }
 
 export async function fetchBuiltinSeasonEpisodes(
-  seriesId: string, season: number, apiKey: string, language: string,
+  seriesId: string,
+  season: number,
+  apiKey: string,
+  language: string,
   signal?: AbortSignal,
 ): Promise<{ episodes: unknown[] }> {
   const urls = await fetchBuiltinMetaUrls('series', seriesId, apiKey, language, signal);

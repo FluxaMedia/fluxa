@@ -35,7 +35,7 @@ export const DEFAULT_STATE: AppState = {
 export function computeAutoUiScale(): number {
   if (isMobileLayout()) return 100;
   const width = window.screen.width || 1920;
-  const raw = Math.round((width / 1920) * 100 / 5) * 5;
+  const raw = Math.round(((width / 1920) * 100) / 5) * 5;
   return Math.min(150, Math.max(75, raw));
 }
 

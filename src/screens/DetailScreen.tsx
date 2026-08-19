@@ -18,7 +18,8 @@ import { TraktCommentsDialog } from '../components/detail/TraktCommentsDialog';
 import { useSeasonWatched } from '../hooks/useSeasonWatched';
 import { imdbButtonFor, setViewingDiscordPresence } from '../core/discordPresence';
 
-void NAV_RAIL_WIDTH; void TOP_BAR_H;
+void NAV_RAIL_WIDTH;
+void TOP_BAR_H;
 
 function useOptimisticToggle(authoritative: boolean): [boolean, () => void] {
   const [override, setOverride] = useState<boolean | null>(null);
@@ -51,7 +52,18 @@ interface Props {
   playbackFailure?: string | null;
 }
 
-export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail, onNavigateGenre, onBack, initialEpisode, autoShowStreams, playbackFailure }: Props) {
+export function DetailScreen({
+  meta,
+  state,
+  onDispatch,
+  onPlay,
+  onNavigateDetail,
+  onNavigateGenre,
+  onBack,
+  initialEpisode,
+  autoShowStreams,
+  playbackFailure,
+}: Props) {
   const detail = state.detail;
   const [bgError, setBgError] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(initialEpisode?.season ?? 1);
@@ -89,22 +101,28 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   const episodeCardsLayout = prefString(prefs, 'episodeCardsLayout', 'standard');
   const traktCommentsEnabled = prefBool(prefs, 'traktCommentsEnabled', false);
   const seasonHeroUrl = prefBool(prefs, 'detailSeasonPostersOnHero', true)
-    ? seasonPosterUrl(displayMeta, selectedSeason) ?? seasonPosterUrl(meta, selectedSeason)
+    ? (seasonPosterUrl(displayMeta, selectedSeason) ?? seasonPosterUrl(meta, selectedSeason))
     : undefined;
-  const bgUrl = !bgError
-    ? (seasonHeroUrl ?? displayMeta.background ?? displayMeta.poster ?? meta.background ?? meta.poster)
-    : null;
+  const bgUrl = !bgError ? (seasonHeroUrl ?? displayMeta.background ?? displayMeta.poster ?? meta.background ?? meta.poster) : null;
 
   const libRaw = state.library.lastWrite as Record<string, unknown> | undefined;
   const watchlist = (libRaw?.watchlist as LibraryItem[] | undefined) ?? [];
   const [isInWatchlist, flipWatchlistOverride] = useOptimisticToggle(watchlist.some((item) => item.id === displayMeta.id));
-  const [isDropped, flipDroppedOverride] = useOptimisticToggle(((libRaw?.dropped as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id));
-  const [isCompleted, flipCompletedOverride] = useOptimisticToggle(((libRaw?.completed as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id));
-  const [isFavorite, flipFavoriteOverride] = useOptimisticToggle(((libRaw?.favorites as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id));
+  const [isDropped, flipDroppedOverride] = useOptimisticToggle(
+    ((libRaw?.dropped as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id),
+  );
+  const [isCompleted, flipCompletedOverride] = useOptimisticToggle(
+    ((libRaw?.completed as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id),
+  );
+  const [isFavorite, flipFavoriteOverride] = useOptimisticToggle(
+    ((libRaw?.favorites as LibraryItem[] | undefined) ?? []).some((item) => item.id === displayMeta.id),
+  );
   const watchedMap = (libRaw?.watched as Record<string, boolean> | undefined) ?? {};
   const progressMap = (libRaw?.progress as Record<string, ProgressEntry> | undefined) ?? {};
 
-  useEffect(() => { setBgError(false); }, [displayMeta.id, seasonHeroUrl, displayMeta.background, displayMeta.poster, meta.background, meta.poster]);
+  useEffect(() => {
+    setBgError(false);
+  }, [displayMeta.id, seasonHeroUrl, displayMeta.background, displayMeta.poster, meta.background, meta.poster]);
 
   useEffect(() => {
     setViewingDiscordPresence({
@@ -119,37 +137,43 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     setSelectedEpisode(initialEpisodeRef.current);
     setShowSources(autoShowStreamsRef.current);
     userChangedSeasonRef.current = false;
-    onDispatch(JSON.stringify({
-      type: 'detailLoadRequested',
-      contentType: meta.type,
-      id: meta.id,
-      language: getLanguage(),
-      sourceAddonTransportUrl: meta.sourceAddonTransportUrl,
-      sourceAddonCatalogType: meta.sourceAddonCatalogType,
-    }));
+    onDispatch(
+      JSON.stringify({
+        type: 'detailLoadRequested',
+        contentType: meta.type,
+        id: meta.id,
+        language: getLanguage(),
+        sourceAddonTransportUrl: meta.sourceAddonTransportUrl,
+        sourceAddonCatalogType: meta.sourceAddonCatalogType,
+      }),
+    );
   }, [meta.id]);
 
   useEffect(() => {
-    onDispatch(JSON.stringify({
-      type: 'detailSecondaryRequested',
-      contentType: meta.type,
-      id: meta.id,
-      language: getLanguage(),
-      similarTitlesSource: prefString(prefs, 'similarTitlesSource', 'auto'),
-    }));
+    onDispatch(
+      JSON.stringify({
+        type: 'detailSecondaryRequested',
+        contentType: meta.type,
+        id: meta.id,
+        language: getLanguage(),
+        similarTitlesSource: prefString(prefs, 'similarTitlesSource', 'auto'),
+      }),
+    );
   }, [meta.id]);
 
   useEffect(() => {
     if (!detail.isLoading || detail.meta) return;
     const timer = setTimeout(() => {
-      onDispatch(JSON.stringify({
-      type: 'detailLoadRequested',
-      contentType: meta.type,
-      id: meta.id,
-      language: getLanguage(),
-      sourceAddonTransportUrl: meta.sourceAddonTransportUrl,
-      sourceAddonCatalogType: meta.sourceAddonCatalogType,
-    }));
+      onDispatch(
+        JSON.stringify({
+          type: 'detailLoadRequested',
+          contentType: meta.type,
+          id: meta.id,
+          language: getLanguage(),
+          sourceAddonTransportUrl: meta.sourceAddonTransportUrl,
+          sourceAddonCatalogType: meta.sourceAddonCatalogType,
+        }),
+      );
     }, 7000);
     return () => clearTimeout(timer);
   }, [detail.isLoading, detail.meta, meta.id, meta.type, onDispatch]);
@@ -158,7 +182,14 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     if (!detail.meta || detail.isLoadingStreams || detail.streams?.length) return;
     if (meta.type === 'series') {
       if (autoShowStreamsRef.current && initialEpisodeRef.current?.id) {
-        onDispatch(JSON.stringify({ type: 'detailStreamsRequested', contentType: meta.type, requestIds: [initialEpisodeRef.current.id], language: getLanguage() }));
+        onDispatch(
+          JSON.stringify({
+            type: 'detailStreamsRequested',
+            contentType: meta.type,
+            requestIds: [initialEpisodeRef.current.id],
+            language: getLanguage(),
+          }),
+        );
       }
       return;
     }
@@ -168,9 +199,12 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   const [streams, setStreams] = useState<Stream[]>([]);
   useEffect(() => {
     let active = true;
-    void coreInvoke<Stream[]>('orderStreamsPlan', JSON.stringify({ streams: detail.streams ?? [], prefs }))
-      .then((plan) => { if (active) setStreams(plan ?? (detail.streams ?? []) as Stream[]); });
-    return () => { active = false; };
+    void coreInvoke<Stream[]>('orderStreamsPlan', JSON.stringify({ streams: detail.streams ?? [], prefs })).then((plan) => {
+      if (active) setStreams(plan ?? ((detail.streams ?? []) as Stream[]));
+    });
+    return () => {
+      active = false;
+    };
   }, [detail.streams, prefs]);
   const poster = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);
 
@@ -181,11 +215,15 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
         const supported = await Promise.all(addons.map((addon) => coreSupportsResource(addon.manifest, 'stream', meta.type, meta.id)));
         if (active) setStreamAddonCount(supported.filter(Boolean).length);
       })
-      .catch(() => { if (active) setStreamAddonCount(0); });
-    return () => { active = false; };
+      .catch(() => {
+        if (active) setStreamAddonCount(0);
+      });
+    return () => {
+      active = false;
+    };
   }, [meta.id, meta.type]);
   const displayTrailers = useMemo(
-    () => detail.trailers?.length ? detail.trailers : (displayMeta.trailers ?? []),
+    () => (detail.trailers?.length ? detail.trailers : (displayMeta.trailers ?? [])),
     [detail.trailers, displayMeta.trailers],
   );
   const similarItems = detail.similarItems ?? [];
@@ -228,16 +266,22 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     setTrailerMetadata({});
     const youtubeTrailers = displayTrailers.filter((trailer) => youtubeVideoId(trailer.url));
     if (youtubeTrailers.length === 0) return;
-    Promise.all(youtubeTrailers.map(async (trailer) => {
-      const metadata = await fetchYoutubeTrailerMetadata(trailer.url);
-      return [trailer.url, metadata] as const;
-    })).then((entries) => {
+    Promise.all(
+      youtubeTrailers.map(async (trailer) => {
+        const metadata = await fetchYoutubeTrailerMetadata(trailer.url);
+        return [trailer.url, metadata] as const;
+      }),
+    ).then((entries) => {
       if (cancelled) return;
       const next: TrailerMetadata = {};
-      for (const [url, metadata] of entries) { if (metadata) next[url] = metadata; }
+      for (const [url, metadata] of entries) {
+        if (metadata) next[url] = metadata;
+      }
       setTrailerMetadata(next);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [displayTrailers]);
 
   useEffect(() => {
@@ -250,7 +294,10 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
   const lastVideoId = continueWatchingEntry?.lastVideoId ?? libProgress[meta.id]?.lastVideoId ?? null;
 
   useEffect(() => {
-    if (!isSeries) { setEpisodePlan(null); return; }
+    if (!isSeries) {
+      setEpisodePlan(null);
+      return;
+    }
     let cancelled = false;
     coreDetailEpisodePlan({
       episodes,
@@ -263,31 +310,50 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
       const planSeason = (plan as { selectedSeason?: number } | null)?.selectedSeason;
       if (planSeason != null && !selectedEpisode && !userChangedSeasonRef.current) setSelectedSeason(planSeason);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isSeries, episodes, selectedSeason, selectedEpisode?.id, lastVideoId, meta.id]);
 
-  const openEpisodeSources = useCallback((episode: Video) => {
-    setSelectedEpisode(episode);
-    setShowSources(true);
-    onDispatch(JSON.stringify({ type: 'detailStreamsRequested', contentType: meta.type, requestIds: [episode.id], detail: displayMeta, seasonEpisodes: filteredEps, language: getLanguage() }));
-  }, [meta.type, displayMeta, filteredEps, onDispatch]);
+  const openEpisodeSources = useCallback(
+    (episode: Video) => {
+      setSelectedEpisode(episode);
+      setShowSources(true);
+      onDispatch(
+        JSON.stringify({
+          type: 'detailStreamsRequested',
+          contentType: meta.type,
+          requestIds: [episode.id],
+          detail: displayMeta,
+          seasonEpisodes: filteredEps,
+          language: getLanguage(),
+        }),
+      );
+    },
+    [meta.type, displayMeta, filteredEps, onDispatch],
+  );
 
-  const handleEpisodeClick = useCallback((episode: Video) => {
-    const seriesProgress = progressMap[meta.id] ?? continueWatchingEntry;
-    const timeOffset = seriesProgress?.timeOffset ?? 0;
-    const hasProgress = seriesProgress?.lastVideoId === episode.id && timeOffset > 30;
-    if (hasProgress) {
-      setResumeDialog({ episode, timeOffset });
-    } else {
-      setEpisodeResumeAt(undefined);
-      openEpisodeSources(episode);
-    }
-  }, [progressMap, meta.id, continueWatchingEntry, openEpisodeSources]);
+  const handleEpisodeClick = useCallback(
+    (episode: Video) => {
+      const seriesProgress = progressMap[meta.id] ?? continueWatchingEntry;
+      const timeOffset = seriesProgress?.timeOffset ?? 0;
+      const hasProgress = seriesProgress?.lastVideoId === episode.id && timeOffset > 30;
+      if (hasProgress) {
+        setResumeDialog({ episode, timeOffset });
+      } else {
+        setEpisodeResumeAt(undefined);
+        openEpisodeSources(episode);
+      }
+    },
+    [progressMap, meta.id, continueWatchingEntry, openEpisodeSources],
+  );
 
   const openMovieSources = useCallback(() => {
     setShowSources(true);
     if (!streams.length && !detail.isLoadingStreams) {
-      onDispatch(JSON.stringify({ type: 'detailStreamsRequested', contentType: meta.type, requestIds: [meta.id], language: getLanguage() }));
+      onDispatch(
+        JSON.stringify({ type: 'detailStreamsRequested', contentType: meta.type, requestIds: [meta.id], language: getLanguage() }),
+      );
     }
   }, [streams.length, detail.isLoadingStreams, meta.type, meta.id, onDispatch]);
 
@@ -295,7 +361,9 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     if (isSeries) {
       if (selectedEpisode) openEpisodeSources(selectedEpisode);
     } else {
-      onDispatch(JSON.stringify({ type: 'detailStreamsRequested', contentType: meta.type, requestIds: [meta.id], language: getLanguage() }));
+      onDispatch(
+        JSON.stringify({ type: 'detailStreamsRequested', contentType: meta.type, requestIds: [meta.id], language: getLanguage() }),
+      );
     }
   }, [isSeries, selectedEpisode, openEpisodeSources, onDispatch, meta.type, meta.id]);
 
@@ -309,7 +377,8 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       const target = e.target as HTMLElement | null;
-      if (target && target !== document.body && target.closest('input, textarea, button, [role="button"], [contenteditable="true"]')) return;
+      if (target && target !== document.body && target.closest('input, textarea, button, [role="button"], [contenteditable="true"]'))
+        return;
       e.preventDefault();
       if (isSeries) {
         const ep = selectedEpisode ?? filteredEps[0] ?? episodes[0];
@@ -336,7 +405,9 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     coreInvoke<{ directors: MetaLink[] }>('classifyMetaLinks', JSON.stringify(displayMeta.links ?? [])).then((result) => {
       if (!cancelled) setDirectorLinks((result?.directors ?? []).slice(0, 2));
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [displayMeta]);
 
   useEffect(() => {
@@ -350,9 +421,14 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
     setPeopleImages({});
     if (!enabled || !apiKey || peopleLinks.length === 0) return;
     let cancelled = false;
-    fetchTmdbPeopleImages({ meta: displayMeta, links: peopleLinks, apiKey, language: prefString(prefs, 'language', getLanguage()) })
-      .then((images) => { if (!cancelled) setPeopleImages(images); });
-    return () => { cancelled = true; };
+    fetchTmdbPeopleImages({ meta: displayMeta, links: peopleLinks, apiKey, language: prefString(prefs, 'language', getLanguage()) }).then(
+      (images) => {
+        if (!cancelled) setPeopleImages(images);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
   }, [displayMeta.id, displayMeta.type, state.settings?.values, castMembers, directorLinks]);
 
   const metaParts: string[] = [];
@@ -433,10 +509,22 @@ export function DetailScreen({ meta, state, onDispatch, onPlay, onNavigateDetail
         onBackToEpisodes={() => setShowSources(false)}
         onPlaySource={(stream) => onPlay(stream, displayMeta, selectedEpisodeEnriched, episodeResumeAt, streams)}
         onPlay={onPlay}
-        onToggleWatchlist={() => { flipWatchlistOverride(); onDispatch(JSON.stringify({ type: 'toggleWatchlistRequested', item: displayMeta })); }}
-        onToggleCompleted={() => { flipCompletedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'completed', item: displayMeta })); }}
-        onToggleDropped={() => { flipDroppedOverride(); onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'dropped', item: displayMeta })); }}
-        onToggleFavorite={() => { flipFavoriteOverride(); onDispatch(JSON.stringify({ type: 'setFeedbackRequested', id: displayMeta.id, value: !isFavorite, meta: displayMeta })); }}
+        onToggleWatchlist={() => {
+          flipWatchlistOverride();
+          onDispatch(JSON.stringify({ type: 'toggleWatchlistRequested', item: displayMeta }));
+        }}
+        onToggleCompleted={() => {
+          flipCompletedOverride();
+          onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'completed', item: displayMeta }));
+        }}
+        onToggleDropped={() => {
+          flipDroppedOverride();
+          onDispatch(JSON.stringify({ type: 'toggleLibraryStatusRequested', list: 'dropped', item: displayMeta }));
+        }}
+        onToggleFavorite={() => {
+          flipFavoriteOverride();
+          onDispatch(JSON.stringify({ type: 'setFeedbackRequested', id: displayMeta.id, value: !isFavorite, meta: displayMeta }));
+        }}
         onOpenComments={traktCommentsEnabled ? () => setCommentsOpen(true) : undefined}
         onBgError={() => setBgError(true)}
       />
@@ -454,12 +542,29 @@ function DescriptionBlock({ description }: { description: string }) {
   return (
     <div style={{ marginBottom: '1.5rem' }}>
       <p style={S.sectionLabel}>{t('detail.summary')}</p>
-      <p style={{ ...S.descText, display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: expanded ? undefined : CLAMP, overflow: expanded ? 'visible' : 'hidden' }}>
+      <p
+        style={{
+          ...S.descText,
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: expanded ? undefined : CLAMP,
+          overflow: expanded ? 'visible' : 'hidden',
+        }}
+      >
         {description}
       </p>
       {needsClamp && (
         <button
-          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', padding: '0.25rem 0 0', display: 'block' }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'rgba(255,255,255,0.45)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            padding: '0.25rem 0 0',
+            display: 'block',
+          }}
           onClick={() => setExpanded((e) => !e)}
         >
           {expanded ? t('auto.read_less') : t('auto.read_more')}
@@ -480,7 +585,12 @@ function formatTimestamp(seconds: number): string {
   return `${m}:${String(sec).padStart(2, '0')}`;
 }
 
-function ResumeDialog({ timeOffset, onContinue, onStartOver, onClose }: {
+function ResumeDialog({
+  timeOffset,
+  onContinue,
+  onStartOver,
+  onClose,
+}: {
   timeOffset: number;
   onContinue: () => void;
   onStartOver: () => void;
@@ -488,23 +598,61 @@ function ResumeDialog({ timeOffset, onContinue, onStartOver, onClose }: {
 }) {
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 99998, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(0.25rem)' }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99998,
+        background: 'rgba(0,0,0,0.72)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backdropFilter: 'blur(0.25rem)',
+      }}
       onClick={onClose}
     >
       <div
-        style={{ background: '#18191f', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '0.75rem', padding: '1.75rem 1.75rem 1.5rem', maxWidth: '22.5rem', width: '90%', fontFamily: FONT }}
+        style={{
+          background: '#18191f',
+          border: '1px solid rgba(255,255,255,0.10)',
+          borderRadius: '0.75rem',
+          padding: '1.75rem 1.75rem 1.5rem',
+          maxWidth: '22.5rem',
+          width: '90%',
+          fontFamily: FONT,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <p style={{ margin: '0 0 1.5rem', fontSize: '1rem', fontWeight: 600, color: '#fff' }}>{t('detail.resume_dialog_title')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
           <button
-            style={{ padding: '0.6875rem 1.125rem', borderRadius: '0.5rem', border: 'none', background: '#fff', color: '#000', fontSize: '0.8125rem', fontWeight: 600, fontFamily: FONT, cursor: 'pointer', textAlign: 'left' }}
+            style={{
+              padding: '0.6875rem 1.125rem',
+              borderRadius: '0.5rem',
+              border: 'none',
+              background: '#fff',
+              color: '#000',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              fontFamily: FONT,
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
             onClick={onContinue}
           >
             {t('detail.resume_dialog_continue', formatTimestamp(timeOffset))}
           </button>
           <button
-            style={{ padding: '0.6875rem 1.125rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(255,255,255,0.70)', fontSize: '0.8125rem', fontFamily: FONT, cursor: 'pointer', textAlign: 'left' }}
+            style={{
+              padding: '0.6875rem 1.125rem',
+              borderRadius: '0.5rem',
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'transparent',
+              color: 'rgba(255,255,255,0.70)',
+              fontSize: '0.8125rem',
+              fontFamily: FONT,
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
             onClick={onStartOver}
           >
             {t('detail.resume_dialog_start_over')}

@@ -63,25 +63,29 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
     case 'engine_dispatch': {
       const actionJson = args?.actionJson as string;
       console.debug('[fluxa:web:engine:dispatch:start]', JSON.parse(actionJson).type);
-      return engineDispatch(actionJson).then((result) => {
-        console.debug('[fluxa:web:engine:dispatch:end]', JSON.parse(actionJson).type, Boolean(result));
-        return result as T;
-      }).catch((error) => {
-        console.error('[fluxa:web:engine:dispatch:error]', JSON.parse(actionJson).type, error);
-        throw error;
-      });
+      return engineDispatch(actionJson)
+        .then((result) => {
+          console.debug('[fluxa:web:engine:dispatch:end]', JSON.parse(actionJson).type, Boolean(result));
+          return result as T;
+        })
+        .catch((error) => {
+          console.error('[fluxa:web:engine:dispatch:error]', JSON.parse(actionJson).type, error);
+          throw error;
+        });
     }
     case 'engine_complete_effect': {
       const resultJson = args?.resultJson as string;
       const effect = JSON.parse(resultJson) as { effectId?: string; status?: string; error?: string };
       console.debug('[fluxa:web:engine:effect:start]', effect.effectId, effect.status, effect.error);
-      return engineCompleteEffect(resultJson).then((result) => {
-        console.debug('[fluxa:web:engine:effect:end]', effect.effectId, Boolean(result));
-        return result as T;
-      }).catch((error) => {
-        console.error('[fluxa:web:engine:effect:error]', effect.effectId, error);
-        throw error;
-      });
+      return engineCompleteEffect(resultJson)
+        .then((result) => {
+          console.debug('[fluxa:web:engine:effect:end]', effect.effectId, Boolean(result));
+          return result as T;
+        })
+        .catch((error) => {
+          console.error('[fluxa:web:engine:effect:error]', effect.effectId, error);
+          throw error;
+        });
     }
     case 'engine_snapshot':
       return engineSnapshot() as Promise<T>;
@@ -104,7 +108,12 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
     case 'library_progress_delete':
       return library.progressDelete(args?.profileKey as string, args?.mediaId as string) as T;
     case 'library_status_set':
-      return library.statusSet(args?.profileKey as string, args?.mediaId as string, (args?.status as string | null) ?? null, (args?.itemJson as string | null) ?? null) as T;
+      return library.statusSet(
+        args?.profileKey as string,
+        args?.mediaId as string,
+        (args?.status as string | null) ?? null,
+        (args?.itemJson as string | null) ?? null,
+      ) as T;
     case 'library_status_list':
       return library.statusList(args?.profileKey as string) as T;
     case 'library_watched_set':
@@ -154,7 +163,13 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
       return fetch('https://api.simkl.com/oauth/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: args?.code, client_id: oauthClientIds.simkl, code_verifier: args?.codeVerifier, redirect_uri: `${window.location.origin}${window.location.pathname}?oauth=simkl`, grant_type: 'authorization_code' }),
+        body: JSON.stringify({
+          code: args?.code,
+          client_id: oauthClientIds.simkl,
+          code_verifier: args?.codeVerifier,
+          redirect_uri: `${window.location.origin}${window.location.pathname}?oauth=simkl`,
+          grant_type: 'authorization_code',
+        }),
       }).then(async (response) => {
         if (!response.ok) throw new Error(`Simkl OAuth exchange failed (${response.status})`);
         return response.text();
@@ -189,7 +204,7 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
         body: JSON.stringify(args),
       });
       if (!response.ok) throw new Error(`torrent start failed (${response.status})`);
-      return (await response.json() as { url: string }).url as T;
+      return ((await response.json()) as { url: string }).url as T;
     }
     case 'stop_torrent_stream': {
       const response = await companion('/torrent/stop', { method: 'POST' });

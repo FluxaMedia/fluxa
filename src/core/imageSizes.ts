@@ -26,7 +26,10 @@ function pickTier(kind: 'poster' | 'backdrop', displayWidth?: number, dpr = 1): 
   return fit ? fit[0] : 'w1280';
 }
 
-export function cardImageUrl(url: string | undefined, kindOrOptions: 'poster' | 'backdrop' | CardImageOptions = 'poster'): string | undefined {
+export function cardImageUrl(
+  url: string | undefined,
+  kindOrOptions: 'poster' | 'backdrop' | CardImageOptions = 'poster',
+): string | undefined {
   if (!url) return url;
   const options: CardImageOptions = typeof kindOrOptions === 'string' ? { kind: kindOrOptions } : kindOrOptions;
   const kind = options.kind ?? 'poster';

@@ -37,7 +37,7 @@ export async function fetchSubtitles(payload: Record<string, unknown>): Promise<
     id: payload.id,
     extraRaw: payload.extraArgs,
   });
-  const subtitles = values.flatMap((value) => ((value as { subtitles?: unknown[] })?.subtitles ?? []));
+  const subtitles = values.flatMap((value) => (value as { subtitles?: unknown[] })?.subtitles ?? []);
   return { subtitles };
 }
 
@@ -49,7 +49,9 @@ export async function resolveIntroImdbId(payload: Record<string, unknown>): Prom
   return corePlaybackIntroLookupContentId(id);
 }
 
-export async function fetchIntroSegments(payload: Record<string, unknown>): Promise<{ segments: unknown[]; coverage: Record<string, string[]> }> {
+export async function fetchIntroSegments(
+  payload: Record<string, unknown>,
+): Promise<{ segments: unknown[]; coverage: Record<string, string[]> }> {
   const imdbId = typeof payload.imdbId === 'string' ? payload.imdbId : '';
   const season = Number(payload.season ?? 0);
   const episode = Number(payload.episode ?? 0);
@@ -88,9 +90,7 @@ export async function fetchIntroSegments(payload: Record<string, unknown>): Prom
 
 function segmentTypes(segments: unknown): string[] {
   if (!Array.isArray(segments)) return [];
-  return segments
-    .map((s) => (s as { type?: string })?.type)
-    .filter((t): t is string => typeof t === 'string');
+  return segments.map((s) => (s as { type?: string })?.type).filter((t): t is string => typeof t === 'string');
 }
 
 async function fetchIntroDbSegments(imdbId: string, season: number, episode: number): Promise<unknown[] | null> {
@@ -134,12 +134,7 @@ async function fetchAniSkipSegments(title: string, episode: number): Promise<unk
   return coreParseAniskipResults(JSON.stringify(data));
 }
 
-async function fetchAnimeSkipSegments(
-  clientId: string,
-  title: string,
-  season: number,
-  episode: number,
-): Promise<unknown[] | null> {
+async function fetchAnimeSkipSegments(clientId: string, title: string, season: number, episode: number): Promise<unknown[] | null> {
   const anilistId = await resolveAnilistId(title);
   if (!anilistId) return null;
 
@@ -188,15 +183,19 @@ export async function submitIntroDbSegments(payload: {
   if (!apiKey || !imdbId || season <= 0 || episode <= 0 || segments.length === 0) {
     throw new Error('invalid_submission');
   }
-  const plans = await Promise.all(segments.map((segment) => coreIntroDbSubmitPlan({
-    apiKey,
-    imdbId,
-    season,
-    episode,
-    segmentType: segment.type,
-    startSec: segment.startTime / 1000,
-    endSec: segment.endTime / 1000,
-  })));
+  const plans = await Promise.all(
+    segments.map((segment) =>
+      coreIntroDbSubmitPlan({
+        apiKey,
+        imdbId,
+        season,
+        episode,
+        segmentType: segment.type,
+        startSec: segment.startTime / 1000,
+        endSec: segment.endTime / 1000,
+      }),
+    ),
+  );
   await Promise.all(plans.filter((plan): plan is RequestPlan => !!plan).map((plan) => executeRequestPlan(plan)));
 }
 
@@ -211,15 +210,19 @@ export async function submitSkipDbSegments(payload: {
   if (!apiKey || !imdbId || season <= 0 || episode <= 0 || segments.length === 0) {
     throw new Error('invalid_submission');
   }
-  const plans = await Promise.all(segments.map((segment) => coreSkipdbSubmitPlan({
-    apiKey,
-    imdbId,
-    season,
-    episode,
-    segmentType: segment.type,
-    startMs: segment.startTime,
-    endMs: segment.endTime,
-  })));
+  const plans = await Promise.all(
+    segments.map((segment) =>
+      coreSkipdbSubmitPlan({
+        apiKey,
+        imdbId,
+        season,
+        episode,
+        segmentType: segment.type,
+        startMs: segment.startTime,
+        endMs: segment.endTime,
+      }),
+    ),
+  );
   await Promise.all(plans.filter((plan): plan is RequestPlan => !!plan).map((plan) => executeRequestPlan(plan)));
 }
 
@@ -236,16 +239,20 @@ export async function submitTheIntroDbSegments(payload: {
   if (!apiKey || !tmdbId || (mediaType === 'tv' && (season <= 0 || episode <= 0)) || segments.length === 0) {
     throw new Error('invalid_submission');
   }
-  const plans = await Promise.all(segments.map((segment) => coreTheIntroDbSubmitPlan({
-    apiKey,
-    tmdbId,
-    mediaType,
-    imdbId,
-    season: mediaType === 'tv' ? season : undefined,
-    episode: mediaType === 'tv' ? episode : undefined,
-    segment: segment.type,
-    startSec: segment.startTime / 1000,
-    endSec: segment.endTime / 1000,
-  })));
+  const plans = await Promise.all(
+    segments.map((segment) =>
+      coreTheIntroDbSubmitPlan({
+        apiKey,
+        tmdbId,
+        mediaType,
+        imdbId,
+        season: mediaType === 'tv' ? season : undefined,
+        episode: mediaType === 'tv' ? episode : undefined,
+        segment: segment.type,
+        startSec: segment.startTime / 1000,
+        endSec: segment.endTime / 1000,
+      }),
+    ),
+  );
   await Promise.all(plans.filter((plan): plan is RequestPlan => !!plan).map((plan) => executeRequestPlan(plan)));
 }

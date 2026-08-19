@@ -43,7 +43,17 @@ export function ModernDetailMetaBlock({
           {description.length > 180 && (
             <button
               onClick={() => setExpanded((value) => !value)}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', padding: 0, marginTop: '-0.375rem', marginBottom: '0.75rem' }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: 0,
+                marginTop: '-0.375rem',
+                marginBottom: '0.75rem',
+              }}
             >
               {expanded ? t('detail.read_less') : t('detail.read_more')}
             </button>

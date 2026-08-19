@@ -21,9 +21,15 @@ export function useLibassSubtitles(
   useEffect(() => {
     let cancelled = false;
     void loadPrefs()
-      .then((prefs) => { if (!cancelled) setStylePrefs(subtitleStylePrefsFrom(prefs)); })
-      .catch(() => { if (!cancelled) setStylePrefs(subtitleStylePrefsFrom(null)); });
-    return () => { cancelled = true; };
+      .then((prefs) => {
+        if (!cancelled) setStylePrefs(subtitleStylePrefsFrom(prefs));
+      })
+      .catch(() => {
+        if (!cancelled) setStylePrefs(subtitleStylePrefsFrom(null));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -78,11 +84,14 @@ export function useLibassSubtitles(
     };
   }, [videoRef, canvasRef, subtitles, selectedIndex, stylePrefs]);
 
-  useEffect(() => () => {
-    const instance = instanceRef.current;
-    instanceRef.current = null;
-    if (instance) void instance.destroy().catch(() => undefined);
-  }, []);
+  useEffect(
+    () => () => {
+      const instance = instanceRef.current;
+      instanceRef.current = null;
+      if (instance) void instance.destroy().catch(() => undefined);
+    },
+    [],
+  );
 
   return { status };
 }

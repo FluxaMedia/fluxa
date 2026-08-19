@@ -26,7 +26,17 @@ type Action =
   | { type: 'torrent-speed'; speed: number }
   | { type: 'reset-torrent-history' };
 
-const initialState: State = { paused: false, muted: false, volumeLevel: 100, isBuffering: false, bufferingProgress: 0, hdrLabel: null, statsSnap: null, torrentStatsSnap: null, torrentSpeedHistory: [] };
+const initialState: State = {
+  paused: false,
+  muted: false,
+  volumeLevel: 100,
+  isBuffering: false,
+  bufferingProgress: 0,
+  hdrLabel: null,
+  statsSnap: null,
+  torrentStatsSnap: null,
+  torrentSpeedHistory: [],
+};
 
 function resolve<T>(value: SetStateAction<T>, previous: T) {
   return typeof value === 'function' ? (value as (current: T) => T)(previous) : value;
@@ -34,16 +44,38 @@ function resolve<T>(value: SetStateAction<T>, previous: T) {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'playback': return state.paused === action.paused && state.muted === action.muted && state.volumeLevel === action.volumeLevel ? state : { ...state, paused: action.paused, muted: action.muted, volumeLevel: action.volumeLevel };
-    case 'paused': { const paused = resolve(action.value, state.paused); return paused === state.paused ? state : { ...state, paused }; }
-    case 'muted': { const muted = resolve(action.value, state.muted); return muted === state.muted ? state : { ...state, muted }; }
-    case 'volume': { const volumeLevel = resolve(action.value, state.volumeLevel); return volumeLevel === state.volumeLevel ? state : { ...state, volumeLevel }; }
-    case 'buffering': { const bufferingProgress = action.progress ?? state.bufferingProgress; return state.isBuffering === action.active && state.bufferingProgress === bufferingProgress ? state : { ...state, isBuffering: action.active, bufferingProgress }; }
-    case 'hdr': return state.hdrLabel === action.label ? state : { ...state, hdrLabel: action.label };
-    case 'stats': return { ...state, statsSnap: action.stats };
-    case 'torrent': return { ...state, torrentStatsSnap: action.stats };
-    case 'torrent-speed': return { ...state, torrentSpeedHistory: addSparklineSample(state.torrentSpeedHistory, action.speed) };
-    case 'reset-torrent-history': return state.torrentSpeedHistory.length === 0 ? state : { ...state, torrentSpeedHistory: [] };
+    case 'playback':
+      return state.paused === action.paused && state.muted === action.muted && state.volumeLevel === action.volumeLevel
+        ? state
+        : { ...state, paused: action.paused, muted: action.muted, volumeLevel: action.volumeLevel };
+    case 'paused': {
+      const paused = resolve(action.value, state.paused);
+      return paused === state.paused ? state : { ...state, paused };
+    }
+    case 'muted': {
+      const muted = resolve(action.value, state.muted);
+      return muted === state.muted ? state : { ...state, muted };
+    }
+    case 'volume': {
+      const volumeLevel = resolve(action.value, state.volumeLevel);
+      return volumeLevel === state.volumeLevel ? state : { ...state, volumeLevel };
+    }
+    case 'buffering': {
+      const bufferingProgress = action.progress ?? state.bufferingProgress;
+      return state.isBuffering === action.active && state.bufferingProgress === bufferingProgress
+        ? state
+        : { ...state, isBuffering: action.active, bufferingProgress };
+    }
+    case 'hdr':
+      return state.hdrLabel === action.label ? state : { ...state, hdrLabel: action.label };
+    case 'stats':
+      return { ...state, statsSnap: action.stats };
+    case 'torrent':
+      return { ...state, torrentStatsSnap: action.stats };
+    case 'torrent-speed':
+      return { ...state, torrentSpeedHistory: addSparklineSample(state.torrentSpeedHistory, action.speed) };
+    case 'reset-torrent-history':
+      return state.torrentSpeedHistory.length === 0 ? state : { ...state, torrentSpeedHistory: [] };
   }
 }
 

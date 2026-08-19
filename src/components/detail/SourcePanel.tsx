@@ -9,24 +9,41 @@ import { buildOfflineDownloadRequest, streamShellPlan } from '../../core/streamL
 import { ContextMenu } from '../ui/ContextMenu';
 
 export function streamDisplayText(value: string | undefined): string | undefined {
-  const text = value?.replace(/\\r\\n|\\n|\\r/g, '\n').replace(/\r\n|\r/g, '\n').trim();
+  const text = value
+    ?.replace(/\\r\\n|\\n|\\r/g, '\n')
+    .replace(/\r\n|\r/g, '\n')
+    .trim();
   return text || undefined;
 }
 
-export function SourceRow({ stream, onClick, meta, episode }: { stream: Stream; onClick: () => void; meta?: Meta; episode?: Video | null }) {
+export function SourceRow({
+  stream,
+  onClick,
+  meta,
+  episode,
+}: {
+  stream: Stream;
+  onClick: () => void;
+  meta?: Meta;
+  episode?: Video | null;
+}) {
   const [hovered, setHovered] = useState(false);
   const [menuPoint, setMenuPoint] = useState<{ x: number; y: number } | null>(null);
   const [linkPlan, setLinkPlan] = useState<{ isTorrent: boolean; sourceLink?: string; downloadLink?: string } | null>(null);
   useEffect(() => {
     let active = true;
-    void streamShellPlan(stream).then((plan) => { if (active) setLinkPlan(plan); });
-    return () => { active = false; };
+    void streamShellPlan(stream).then((plan) => {
+      if (active) setLinkPlan(plan);
+    });
+    return () => {
+      active = false;
+    };
   }, [stream]);
   const pluginUnavailable = stream.extra?.pluginUnavailable === true;
-  const unavailableReason = typeof stream.extra?.pluginUnavailableReason === 'string'
-    && stream.extra.pluginUnavailableReason !== 'no_playable_stream'
-    ? stream.extra.pluginUnavailableReason
-    : t('sources.plugin_no_playable_stream');
+  const unavailableReason =
+    typeof stream.extra?.pluginUnavailableReason === 'string' && stream.extra.pluginUnavailableReason !== 'no_playable_stream'
+      ? stream.extra.pluginUnavailableReason
+      : t('sources.plugin_no_playable_stream');
   const heading = pluginUnavailable
     ? t('sources.plugin_unavailable')
     : streamDisplayText(stream.name) || streamDisplayText(stream.title) || streamDisplayText(stream.description) || t('player.source');
@@ -46,18 +63,28 @@ export function SourceRow({ stream, onClick, meta, episode }: { stream: Stream; 
   return (
     <>
       <button
-        style={{ ...SS.streamRow, background: hovered ? '#181818' : '#101010', color: '#FFF', boxShadow: hovered ? '0 0 0 0.125rem rgba(255,255,255,0.22)' : 'none' }}
+        style={{
+          ...SS.streamRow,
+          background: hovered ? '#181818' : '#101010',
+          color: '#FFF',
+          boxShadow: hovered ? '0 0 0 0.125rem rgba(255,255,255,0.22)' : 'none',
+        }}
         onClick={onClick}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onContextMenu={(e) => { e.preventDefault(); setMenuPoint({ x: e.clientX, y: e.clientY }); }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenuPoint({ x: e.clientX, y: e.clientY });
+        }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
           <span style={SS.streamName}>{heading}</span>
           {stream.addonName && <span style={{ ...SS.streamAddon, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>{stream.addonName}</span>}
         </div>
         {lines.map((line, index) => (
-          <span key={`${line}:${index}`} style={SS.streamDesc}>{line}</span>
+          <span key={`${line}:${index}`} style={SS.streamDesc}>
+            {line}
+          </span>
         ))}
       </button>
       <ContextMenu
@@ -65,17 +92,64 @@ export function SourceRow({ stream, onClick, meta, episode }: { stream: Stream; 
         onClose={() => setMenuPoint(null)}
         items={[
           { icon: <Play size={15} />, label: t('player.play'), onSelect: onClick },
-          ...(sourceLink ? [{ icon: <Link2 size={15} />, label: t('sources.copy_stream_link'), onSelect: () => { void navigator.clipboard.writeText(sourceLink); } }] : []),
-          ...(isTorrent ? [{ icon: <Magnet size={15} />, label: t('sources.copy_magnet_link'), onSelect: () => { void streamMagnetLink(stream).then((link) => { if (link) void navigator.clipboard.writeText(link); }); } }] : []),
-          ...(meta ? [{ icon: <Download size={15} />, label: t('sources.download_this_video'), onSelect: () => { void enqueueOfflineDownload(buildOfflineDownloadRequest(meta, stream, episode)); } }] : []),
-          ...(downloadLink ? [{ icon: <Link2 size={15} />, label: t('sources.copy_video_download_link'), onSelect: () => { void navigator.clipboard.writeText(downloadLink); } }] : []),
+          ...(sourceLink
+            ? [
+                {
+                  icon: <Link2 size={15} />,
+                  label: t('sources.copy_stream_link'),
+                  onSelect: () => {
+                    void navigator.clipboard.writeText(sourceLink);
+                  },
+                },
+              ]
+            : []),
+          ...(isTorrent
+            ? [
+                {
+                  icon: <Magnet size={15} />,
+                  label: t('sources.copy_magnet_link'),
+                  onSelect: () => {
+                    void streamMagnetLink(stream).then((link) => {
+                      if (link) void navigator.clipboard.writeText(link);
+                    });
+                  },
+                },
+              ]
+            : []),
+          ...(meta
+            ? [
+                {
+                  icon: <Download size={15} />,
+                  label: t('sources.download_this_video'),
+                  onSelect: () => {
+                    void enqueueOfflineDownload(buildOfflineDownloadRequest(meta, stream, episode));
+                  },
+                },
+              ]
+            : []),
+          ...(downloadLink
+            ? [
+                {
+                  icon: <Link2 size={15} />,
+                  label: t('sources.copy_video_download_link'),
+                  onSelect: () => {
+                    void navigator.clipboard.writeText(downloadLink);
+                  },
+                },
+              ]
+            : []),
         ]}
       />
     </>
   );
 }
 
-function AddonFilterPills({ addonNames, selectedAddon, onSelect, style }: {
+function AddonFilterPills({
+  addonNames,
+  selectedAddon,
+  onSelect,
+  style,
+}: {
   addonNames: string[];
   selectedAddon: string | null;
   onSelect: (addon: string | null) => void;
@@ -120,13 +194,20 @@ function AddonFilterPills({ addonNames, selectedAddon, onSelect, style }: {
         <PillScrollArrow direction="left" onClick={() => scrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })} />
       )}
       <div ref={scrollRef} style={EP.sourcePills} onWheel={handleWheel} {...dragProps}>
-        <button style={{ ...(selectedAddon === null ? SS.pill : SS.pillMuted), cursor: 'pointer', border: 'none', flexShrink: 0 }} onClick={() => onSelect(null)}>{t('auto.all')}</button>
+        <button
+          style={{ ...(selectedAddon === null ? SS.pill : SS.pillMuted), cursor: 'pointer', border: 'none', flexShrink: 0 }}
+          onClick={() => onSelect(null)}
+        >
+          {t('auto.all')}
+        </button>
         {addonNames.map((addon) => (
           <button
             key={addon}
             style={{ ...(selectedAddon === addon ? SS.pill : SS.pillMuted), cursor: 'pointer', border: 'none', flexShrink: 0 }}
             onClick={() => onSelect(selectedAddon === addon ? null : addon)}
-          >{addon}</button>
+          >
+            {addon}
+          </button>
         ))}
       </div>
       {canScrollRight && (
@@ -145,9 +226,18 @@ function PillScrollArrow({ direction, onClick }: { direction: 'left' | 'right'; 
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: 'absolute', top: 0, bottom: '0.75rem', [direction]: 0, zIndex: 2,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: '1.625rem', border: 'none', cursor: 'pointer', padding: 0,
+        position: 'absolute',
+        top: 0,
+        bottom: '0.75rem',
+        [direction]: 0,
+        zIndex: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1.625rem',
+        border: 'none',
+        cursor: 'pointer',
+        padding: 0,
         background: hovered ? 'rgba(20,22,32,0.95)' : 'rgba(12,13,24,0.85)',
         color: '#FFF',
       }}
@@ -189,32 +279,56 @@ export function MovieSourcePanel({
   }, [meta.id]);
 
   const addonNames = useMemo(
-    () => availableAddons.length > 0
-      ? availableAddons
-      : [...new Set(streams.map((s) => s.addonName).filter((n): n is string => !!n))],
+    () => (availableAddons.length > 0 ? availableAddons : [...new Set(streams.map((s) => s.addonName).filter((n): n is string => !!n))]),
     [availableAddons, streams],
   );
 
   const visibleStreams = selectedAddon ? streams.filter((stream) => stream.addonName === selectedAddon) : streams;
-  const selectAddon = useCallback((addon: string | null) => {
-    const next = addon && selectedAddon === addon ? null : addon;
-    setSelectedAddon(next);
-    onAddonChange?.(next);
-  }, [onAddonChange, selectedAddon]);
+  const selectAddon = useCallback(
+    (addon: string | null) => {
+      const next = addon && selectedAddon === addon ? null : addon;
+      setSelectedAddon(next);
+      onAddonChange?.(next);
+    },
+    [onAddonChange, selectedAddon],
+  );
   const rootStyle: React.CSSProperties = onClose ? { display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 } : EP.panel;
 
   return (
     <div style={rootStyle}>
-      <div style={{ padding: '0.875rem 1rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
+      <div
+        style={{
+          padding: '0.875rem 1rem 0.75rem',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+        }}
+      >
         <div>
-          {meta.logo
-            ? <img src={meta.logo} alt="" style={{ display: 'block', maxWidth: '8.75rem', maxHeight: '2.75rem', objectFit: 'contain', objectPosition: 'left', marginBottom: '0.125rem' }} />
-            : <h3 style={{ ...EP.sourceTitle, margin: '0 0 0.125rem' }}>{meta.name ?? meta.id}</h3>
-          }
+          {meta.logo ? (
+            <img
+              src={meta.logo}
+              alt=""
+              style={{
+                display: 'block',
+                maxWidth: '8.75rem',
+                maxHeight: '2.75rem',
+                objectFit: 'contain',
+                objectPosition: 'left',
+                marginBottom: '0.125rem',
+              }}
+            />
+          ) : (
+            <h3 style={{ ...EP.sourceTitle, margin: '0 0 0.125rem' }}>{meta.name ?? meta.id}</h3>
+          )}
         </div>
         {onClose && (
           <button style={MS.overlayCloseBtn} onClick={onClose}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
           </button>
         )}
       </div>
@@ -234,13 +348,15 @@ export function MovieSourcePanel({
         </div>
       )}
 
-      {!isLoading && !!failedAddons?.length && (
-        <FailedAddonsNotice count={failedAddons.length} onRetry={onRetryFailed} />
-      )}
+      {!isLoading && !!failedAddons?.length && <FailedAddonsNotice count={failedAddons.length} onRetry={onRetryFailed} />}
       {playbackFailure && <PlaybackFailureNotice message={playbackFailure} />}
 
       <div key={selectedAddon ?? 'all'} style={EP.inlineSources}>
-        {isLoading && visibleStreams.length === 0 && <div style={SS.center}><div style={spinnerStyle} /></div>}
+        {isLoading && visibleStreams.length === 0 && (
+          <div style={SS.center}>
+            <div style={spinnerStyle} />
+          </div>
+        )}
         {!isLoading && visibleStreams.length === 0 && (
           <div style={SS.center}>
             <p style={SS.emptyText}>{availableAddons.length === 0 ? t('sources.no_stream_addons') : t('auto.no_sources_found_3019f12c')}</p>
@@ -249,9 +365,18 @@ export function MovieSourcePanel({
         {visibleStreams.length > 0 && (
           <div style={EP.inlineStreamList}>
             {visibleStreams.map((stream, i) => (
-              <SourceRow key={`${stream.addonName ?? ''}:${stream.url ?? stream.infoHash ?? i}`} stream={stream} onClick={() => onPlay(stream)} meta={meta} />
+              <SourceRow
+                key={`${stream.addonName ?? ''}:${stream.url ?? stream.infoHash ?? i}`}
+                stream={stream}
+                onClick={() => onPlay(stream)}
+                meta={meta}
+              />
             ))}
-            {isLoading && <div style={{ ...SS.center, padding: '1rem 0' }}><div style={{ ...spinnerStyle, width: '1.25rem', height: '1.25rem' }} /></div>}
+            {isLoading && (
+              <div style={{ ...SS.center, padding: '1rem 0' }}>
+                <div style={{ ...spinnerStyle, width: '1.25rem', height: '1.25rem' }} />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -261,12 +386,33 @@ export function MovieSourcePanel({
 
 function FailedAddonsNotice({ count, onRetry }: { count: number; onRetry?: () => void }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.5rem 1rem', margin: '0.375rem 1rem 0', background: 'rgba(255,255,255,0.06)', borderRadius: '0.375rem' }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '0.75rem',
+        padding: '0.5rem 1rem',
+        margin: '0.375rem 1rem 0',
+        background: 'rgba(255,255,255,0.06)',
+        borderRadius: '0.375rem',
+      }}
+    >
       <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', fontWeight: 600 }}>{t('sources.addons_failed', count)}</span>
       {onRetry && (
         <button
           onClick={onRetry}
-          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '0.25rem', color: '#FFF', fontSize: '0.75rem', fontWeight: 600, padding: '0.25rem 0.625rem', cursor: 'pointer', flexShrink: 0 }}
+          style={{
+            background: 'none',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '0.25rem',
+            color: '#FFF',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            padding: '0.25rem 0.625rem',
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
         >
           {t('sources.retry')}
         </button>
@@ -277,9 +423,21 @@ function FailedAddonsNotice({ count, onRetry }: { count: number; onRetry?: () =>
 
 function PlaybackFailureNotice({ message }: { message: string }) {
   return (
-    <div style={{ padding: '0.625rem 1rem', margin: '0.375rem 1rem 0', background: 'rgba(255,94,94,0.12)', border: '1px solid rgba(255,94,94,0.32)', borderRadius: '0.375rem' }}>
+    <div
+      style={{
+        padding: '0.625rem 1rem',
+        margin: '0.375rem 1rem 0',
+        background: 'rgba(255,94,94,0.12)',
+        border: '1px solid rgba(255,94,94,0.32)',
+        borderRadius: '0.375rem',
+      }}
+    >
       <div style={{ color: '#FF9A9A', fontSize: '0.75rem', fontWeight: 700 }}>{t('player.playback_error_title')}</div>
-      <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.75rem', lineHeight: 1.4, marginTop: '0.1875rem', whiteSpace: 'pre-wrap' }}>{message}</div>
+      <div
+        style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.75rem', lineHeight: 1.4, marginTop: '0.1875rem', whiteSpace: 'pre-wrap' }}
+      >
+        {message}
+      </div>
     </div>
   );
 }
@@ -318,18 +476,19 @@ export function InlineSourceList({
   }, [episode.id]);
 
   const addonNames = useMemo(
-    () => availableAddons.length > 0
-      ? availableAddons
-      : [...new Set(streams.map((s) => s.addonName).filter((n): n is string => !!n))],
+    () => (availableAddons.length > 0 ? availableAddons : [...new Set(streams.map((s) => s.addonName).filter((n): n is string => !!n))]),
     [availableAddons, streams],
   );
 
   const visibleStreams = selectedAddon ? streams.filter((stream) => stream.addonName === selectedAddon) : streams;
-  const selectAddon = useCallback((addon: string | null) => {
-    const next = addon && selectedAddon === addon ? null : addon;
-    setSelectedAddon(next);
-    onAddonChange?.(next);
-  }, [onAddonChange, selectedAddon]);
+  const selectAddon = useCallback(
+    (addon: string | null) => {
+      const next = addon && selectedAddon === addon ? null : addon;
+      setSelectedAddon(next);
+      onAddonChange?.(next);
+    },
+    [onAddonChange, selectedAddon],
+  );
   const epNum = episode.episode ?? episode.number ?? '';
   const seasonNum = episode.season ?? 1;
   const epTitle = episode.title?.trim() || episode.name?.trim() || t('format.episode_number', epNum);
@@ -340,18 +499,44 @@ export function InlineSourceList({
       <div style={{ padding: '0.8125rem 1rem 0', flexShrink: 0 }}>
         <button style={EP.backToEpisodesBtn} onClick={onBack}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
           </svg>
           <span>{t('auto.episodes')}</span>
         </button>
         <div style={{ ...EP.sourceHeader, padding: '0.625rem 0 0.875rem' }}>
-          {meta.logo
-            ? <img src={meta.logo} alt="" style={{ display: 'block', maxWidth: '8.75rem', maxHeight: '2.75rem', objectFit: 'contain', objectPosition: 'left', marginBottom: '0.375rem' }} />
-            : <h3 style={{ ...EP.sourceTitle, margin: '0 0 0.375rem' }}>{meta.name ?? meta.id}</h3>
-          }
+          {meta.logo ? (
+            <img
+              src={meta.logo}
+              alt=""
+              style={{
+                display: 'block',
+                maxWidth: '8.75rem',
+                maxHeight: '2.75rem',
+                objectFit: 'contain',
+                objectPosition: 'left',
+                marginBottom: '0.375rem',
+              }}
+            />
+          ) : (
+            <h3 style={{ ...EP.sourceTitle, margin: '0 0 0.375rem' }}>{meta.name ?? meta.id}</h3>
+          )}
           <p style={EP.sourceSubtitle}>{episodeLabel}</p>
           {episode.overview && (
-            <p style={{ color: 'rgba(255,255,255,0.42)', fontSize: '0.75rem', fontWeight: 400, margin: '0.3125rem 0 0', lineHeight: '1.0625rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{episode.overview}</p>
+            <p
+              style={{
+                color: 'rgba(255,255,255,0.42)',
+                fontSize: '0.75rem',
+                fontWeight: 400,
+                margin: '0.3125rem 0 0',
+                lineHeight: '1.0625rem',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {episode.overview}
+            </p>
           )}
         </div>
       </div>
@@ -371,13 +556,15 @@ export function InlineSourceList({
         </div>
       )}
 
-      {!isLoading && !!failedAddons?.length && (
-        <FailedAddonsNotice count={failedAddons.length} onRetry={onRetryFailed} />
-      )}
+      {!isLoading && !!failedAddons?.length && <FailedAddonsNotice count={failedAddons.length} onRetry={onRetryFailed} />}
       {playbackFailure && <PlaybackFailureNotice message={playbackFailure} />}
 
       <div key={selectedAddon ?? 'all'} style={EP.inlineSources}>
-        {isLoading && visibleStreams.length === 0 && <div style={SS.center}><div style={spinnerStyle} /></div>}
+        {isLoading && visibleStreams.length === 0 && (
+          <div style={SS.center}>
+            <div style={spinnerStyle} />
+          </div>
+        )}
         {!isLoading && visibleStreams.length === 0 && (
           <div style={SS.center}>
             <p style={SS.emptyText}>{availableAddons.length === 0 ? t('sources.no_stream_addons') : t('auto.no_sources_found_3019f12c')}</p>
@@ -386,9 +573,19 @@ export function InlineSourceList({
         {visibleStreams.length > 0 && (
           <div style={EP.inlineStreamList}>
             {visibleStreams.map((stream, i) => (
-              <SourceRow key={`${stream.addonName ?? ''}:${stream.url ?? stream.infoHash ?? i}`} stream={stream} onClick={() => onPlay(stream)} meta={meta} episode={episode} />
+              <SourceRow
+                key={`${stream.addonName ?? ''}:${stream.url ?? stream.infoHash ?? i}`}
+                stream={stream}
+                onClick={() => onPlay(stream)}
+                meta={meta}
+                episode={episode}
+              />
             ))}
-            {isLoading && <div style={{ ...SS.center, padding: '1rem 0' }}><div style={{ ...spinnerStyle, width: '1.25rem', height: '1.25rem' }} /></div>}
+            {isLoading && (
+              <div style={{ ...SS.center, padding: '1rem 0' }}>
+                <div style={{ ...spinnerStyle, width: '1.25rem', height: '1.25rem' }} />
+              </div>
+            )}
           </div>
         )}
       </div>

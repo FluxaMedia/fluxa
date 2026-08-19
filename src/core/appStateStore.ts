@@ -32,23 +32,23 @@ export class AppStateStore {
   };
 }
 
-export function useAppStateSelector<T>(
-  store: AppStateStore,
-  selector: (state: AppState) => T,
-  isEqual: Equality<T> = Object.is,
-): T {
+export function useAppStateSelector<T>(store: AppStateStore, selector: (state: AppState) => T, isEqual: Equality<T> = Object.is): T {
   const selectorRef = useRef(selector);
   const equalityRef = useRef(isEqual);
   const selectedRef = useRef(selector(store.getState()));
   selectorRef.current = selector;
   equalityRef.current = isEqual;
 
-  const subscribe = useCallback((notify: Listener) => store.subscribe(() => {
-    const next = selectorRef.current(store.getState());
-    if (equalityRef.current(selectedRef.current, next)) return;
-    selectedRef.current = next;
-    notify();
-  }), [store]);
+  const subscribe = useCallback(
+    (notify: Listener) =>
+      store.subscribe(() => {
+        const next = selectorRef.current(store.getState());
+        if (equalityRef.current(selectedRef.current, next)) return;
+        selectedRef.current = next;
+        notify();
+      }),
+    [store],
+  );
 
   const getSnapshot = useCallback(() => selectedRef.current, []);
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);

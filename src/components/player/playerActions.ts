@@ -23,7 +23,24 @@ export type PlayerActionContext = {
 };
 
 export function runPlayerAction(action: string, ctx: PlayerActionContext): boolean {
-  const { flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, toggleFullscreen, toggleMiniPlayer, setShowShortcutsHelp, startSeekOverlay, triggerActiveSkip, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, pausedRef, setPaused, setShowStats } = ctx;
+  const {
+    flashFeedback,
+    nextEpSubtitle,
+    playbackSpeed,
+    setPlaybackSpeed,
+    toggleFullscreen,
+    toggleMiniPlayer,
+    setShowShortcutsHelp,
+    startSeekOverlay,
+    triggerActiveSkip,
+    cycleAbLoopRef,
+    openCastPopoverRef,
+    takeScreenshotRef,
+    cycleAnime4kModeRef,
+    pausedRef,
+    setPaused,
+    setShowStats,
+  } = ctx;
 
   switch (action) {
     case 'player_seek_back':

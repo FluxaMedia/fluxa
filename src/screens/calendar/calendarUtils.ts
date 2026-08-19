@@ -40,10 +40,7 @@ export function monthTitle(date: Date): string {
 }
 
 export function weekdays(): string[] {
-  return Array.from(
-    { length: 7 },
-    (_, index) => new Date(2024, 0, 1 + index).toLocaleDateString(undefined, { weekday: 'short' }),
-  );
+  return Array.from({ length: 7 }, (_, index) => new Date(2024, 0, 1 + index).toLocaleDateString(undefined, { weekday: 'short' }));
 }
 
 export function localDateKey(date: Date): string {
@@ -142,9 +139,20 @@ function calendarDisplayDetailScore(item: CalendarItem): number {
   return [item.episodeTitle, item.episodePoster, item.poster, item.seriesPoster].filter(Boolean).length - (subtitleRepeatsEpisode ? 1 : 0);
 }
 
-export function calendarPoster(item: CalendarItem | undefined, resolved: Record<string, string>, seriesArtwork: Record<string, string> = {}): string | undefined {
+export function calendarPoster(
+  item: CalendarItem | undefined,
+  resolved: Record<string, string>,
+  seriesArtwork: Record<string, string> = {},
+): string | undefined {
   if (!item) return undefined;
-  return [resolved[calendarArtworkKey(item)], item.resolvedArtworkUrl, item.episodePoster, item.poster, item.seriesPoster, seriesArtwork[calendarSeriesArtworkKey(item)]].find((value) => typeof value === 'string' && value.trim().length > 0);
+  return [
+    resolved[calendarArtworkKey(item)],
+    item.resolvedArtworkUrl,
+    item.episodePoster,
+    item.poster,
+    item.seriesPoster,
+    seriesArtwork[calendarSeriesArtworkKey(item)],
+  ].find((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
 export function calendarArtworkKey(item: CalendarItem): string {

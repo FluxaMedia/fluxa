@@ -18,9 +18,7 @@ export function contrastOn(hex: string): string {
 }
 
 export function uid(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
+  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
 }
 
 export function cleanUrl(s: string): string | undefined {
@@ -138,15 +136,7 @@ export function FieldInput({
   );
 }
 
-export function Toggle({
-  checked,
-  onChange,
-  accent,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  accent: string;
-}) {
+export function Toggle({ checked, onChange, accent }: { checked: boolean; onChange: (v: boolean) => void; accent: string }) {
   return (
     <div
       onClick={() => onChange(!checked)}
@@ -177,15 +167,7 @@ export function Toggle({
   );
 }
 
-export function FolderRow({
-  folder,
-  accent,
-  onClick,
-}: {
-  folder: UserCollectionFolder;
-  accent: string;
-  onClick: () => void;
-}) {
+export function FolderRow({ folder, accent, onClick }: { folder: UserCollectionFolder; accent: string; onClick: () => void }) {
   const imgUrl = effectiveFolderImageUrl(folder);
   const shape = effectiveFolderShape(folder).toUpperCase();
   return (
@@ -211,13 +193,7 @@ export function FolderRow({
           overflow: 'hidden',
         }}
       >
-        {imgUrl && (
-          <img
-            src={imgUrl}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        )}
+        {imgUrl && <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
         {!imgUrl && folder.coverEmoji && (
           <div
             style={{
@@ -309,17 +285,7 @@ export function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Chip({
-  label,
-  selected,
-  accent,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  accent: string;
-  onClick: () => void;
-}) {
+export function Chip({ label, selected, accent, onClick }: { label: string; selected: boolean; accent: string; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
   return (
     <button

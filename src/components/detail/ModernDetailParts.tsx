@@ -13,7 +13,9 @@ export function GenreTag({ label, onClick }: { label: string; onClick?: () => vo
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick?.();
+      }}
     >
       {label}
     </span>
@@ -53,7 +55,11 @@ export function SimilarSourcePicker({ value, onChange }: { value: string; onChan
         style={MS.similarSourceButton}
       >
         <span>{labelFor(value)}</span>
-        <ChevronDown size={15} strokeWidth={2.5} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.16s ease' }} />
+        <ChevronDown
+          size={15}
+          strokeWidth={2.5}
+          style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.16s ease' }}
+        />
       </button>
       {open && (
         <div role="menu" style={MS.similarSourceMenu}>

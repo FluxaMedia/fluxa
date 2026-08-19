@@ -62,18 +62,11 @@ export function SearchCategoryRow({
   }, [checkScroll, items.length]);
 
   return (
-    <div
-      style={styles.category}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
+    <div style={styles.category} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       <p style={styles.categoryTitle}>{title}</p>
       <div style={{ position: 'relative' }}>
         {hovered && canScrollLeft && (
-          <SearchScrollArrow
-            direction="left"
-            onClick={() => scrollRef.current?.scrollBy({ left: -520, behavior: 'smooth' })}
-          />
+          <SearchScrollArrow direction="left" onClick={() => scrollRef.current?.scrollBy({ left: -520, behavior: 'smooth' })} />
         )}
         <div ref={scrollRef} style={styles.categoryScroll}>
           {items.map((meta) => (
@@ -91,10 +84,7 @@ export function SearchCategoryRow({
           ))}
         </div>
         {hovered && canScrollRight && (
-          <SearchScrollArrow
-            direction="right"
-            onClick={() => scrollRef.current?.scrollBy({ left: 520, behavior: 'smooth' })}
-          />
+          <SearchScrollArrow direction="right" onClick={() => scrollRef.current?.scrollBy({ left: 520, behavior: 'smooth' })} />
         )}
       </div>
     </div>

@@ -1,14 +1,4 @@
-import {
-  ArrowLeft,
-  Download,
-  HardDrive,
-  Palette,
-  PlayCircle,
-  Puzzle,
-  RefreshCw,
-  Settings,
-  User,
-} from 'lucide-react';
+import { ArrowLeft, Download, HardDrive, Palette, PlayCircle, Puzzle, RefreshCw, Settings, User } from 'lucide-react';
 
 export function AccountIcon() {
   return <User size={22} />;

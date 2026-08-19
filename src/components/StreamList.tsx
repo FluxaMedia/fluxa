@@ -59,7 +59,7 @@ function StreamRow({ stream, onPlay }: { stream: Stream; onPlay?: (s: Stream) =>
     >
       <div style={styles.playIcon}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.8)">
-          <path d="M8 5v14l11-7z"/>
+          <path d="M8 5v14l11-7z" />
         </svg>
       </div>
       <div style={styles.rowInfo}>

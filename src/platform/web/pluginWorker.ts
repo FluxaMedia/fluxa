@@ -66,7 +66,9 @@ const domDocuments = new Map<string, ReturnType<typeof parseHTML>['document']>()
 const domElements = new Map<string, Element>();
 let domCounter = 0;
 
-function domId(): string { return `dom_${domCounter++}`; }
+function domId(): string {
+  return `dom_${domCounter++}`;
+}
 
 function registerDom(context: Awaited<ReturnType<typeof newAsyncContext>>) {
   const sync = (name: string, fn: (...args: any[]) => string) => {
@@ -74,15 +76,52 @@ function registerDom(context: Awaited<ReturnType<typeof newAsyncContext>>) {
     context.setProp(context.global, name, handle);
     handle.dispose();
   };
-  sync('__cheerio_load', (html) => { const id = domId(); domDocuments.set(id, parseHTML(html).document); return id; });
-  sync('__cheerio_select', (id, selector) => JSON.stringify([...((domDocuments.get(id)?.querySelectorAll(selector)) || [])].map((element) => { const key = `${id}:${domCounter++}`; domElements.set(key, element); return key; })));
-  sync('__cheerio_find', (id, elementId, selector) => JSON.stringify([...(domElements.get(elementId)?.querySelectorAll(selector) || [])].map((element) => { const key = `${id}:${domCounter++}`; domElements.set(key, element); return key; })));
-  sync('__cheerio_text', (_id, ids) => ids.split(',').map((id: string) => domElements.get(id)?.textContent || '').join(' '));
-  sync('__cheerio_html', (_id, elementId) => elementId ? (domElements.get(elementId)?.outerHTML || '') : '');
+  sync('__cheerio_load', (html) => {
+    const id = domId();
+    domDocuments.set(id, parseHTML(html).document);
+    return id;
+  });
+  sync('__cheerio_select', (id, selector) =>
+    JSON.stringify(
+      [...(domDocuments.get(id)?.querySelectorAll(selector) || [])].map((element) => {
+        const key = `${id}:${domCounter++}`;
+        domElements.set(key, element);
+        return key;
+      }),
+    ),
+  );
+  sync('__cheerio_find', (id, elementId, selector) =>
+    JSON.stringify(
+      [...(domElements.get(elementId)?.querySelectorAll(selector) || [])].map((element) => {
+        const key = `${id}:${domCounter++}`;
+        domElements.set(key, element);
+        return key;
+      }),
+    ),
+  );
+  sync('__cheerio_text', (_id, ids) =>
+    ids
+      .split(',')
+      .map((id: string) => domElements.get(id)?.textContent || '')
+      .join(' '),
+  );
+  sync('__cheerio_html', (_id, elementId) => (elementId ? domElements.get(elementId)?.outerHTML || '' : ''));
   sync('__cheerio_inner_html', (elementId) => domElements.get(elementId)?.innerHTML || '');
   sync('__cheerio_attr', (elementId, name) => domElements.get(elementId)?.getAttribute(name) ?? '__UNDEFINED__');
-  sync('__cheerio_next', (id, elementId) => { const element = domElements.get(elementId)?.nextElementSibling; if (!element) return '__NONE__'; const key = `${id}:${domCounter++}`; domElements.set(key, element); return key; });
-  sync('__cheerio_prev', (id, elementId) => { const element = domElements.get(elementId)?.previousElementSibling; if (!element) return '__NONE__'; const key = `${id}:${domCounter++}`; domElements.set(key, element); return key; });
+  sync('__cheerio_next', (id, elementId) => {
+    const element = domElements.get(elementId)?.nextElementSibling;
+    if (!element) return '__NONE__';
+    const key = `${id}:${domCounter++}`;
+    domElements.set(key, element);
+    return key;
+  });
+  sync('__cheerio_prev', (id, elementId) => {
+    const element = domElements.get(elementId)?.previousElementSibling;
+    if (!element) return '__NONE__';
+    const key = `${id}:${domCounter++}`;
+    domElements.set(key, element);
+    return key;
+  });
 }
 
 async function execute(request: PluginRequest): Promise<string> {
@@ -104,19 +143,31 @@ async function execute(request: PluginRequest): Promise<string> {
           response = await fetch(url, { method, headers, body: body || undefined, signal: AbortSignal.timeout(8000) });
         } catch {
           try {
-            response = await fetch(`${companionUrl}/proxy?url=${encodeURIComponent(url)}&h=${encodeURIComponent(JSON.stringify(headers))}`, { method, body: body || undefined, signal: AbortSignal.timeout(4000) });
+            response = await fetch(
+              `${companionUrl}/proxy?url=${encodeURIComponent(url)}&h=${encodeURIComponent(JSON.stringify(headers))}`,
+              { method, body: body || undefined, signal: AbortSignal.timeout(4000) },
+            );
           } catch {
             response = null;
           }
         }
         const payload = response
-          ? { ok: response.ok, status: response.status, statusText: response.statusText, url: response.url || url, headers: {}, body: await response.text() }
+          ? {
+              ok: response.ok,
+              status: response.status,
+              statusText: response.statusText,
+              url: response.url || url,
+              headers: {},
+              body: await response.text(),
+            }
           : { ok: false, status: 0, statusText: 'NetworkError', url, headers: {}, body: '' };
         promise.resolve(context!.newString(JSON.stringify(payload)));
         context!.runtime.executePendingJobs();
       };
       void request().catch(() => {
-        promise.resolve(context!.newString(JSON.stringify({ ok: false, status: 0, statusText: 'NetworkError', url, headers: {}, body: '' })));
+        promise.resolve(
+          context!.newString(JSON.stringify({ ok: false, status: 0, statusText: 'NetworkError', url, headers: {}, body: '' })),
+        );
         context!.runtime.executePendingJobs();
       });
       return promise.handle;
@@ -125,16 +176,34 @@ async function execute(request: PluginRequest): Promise<string> {
     fetchHandle.dispose();
     const setup = `${compatPolyfill}${cheerioPolyfill}globalThis.fetch = function(url, options) { options = options || {}; return Promise.resolve(__native_fetch(String(url), String(options.method || 'GET'), JSON.stringify(options.headers || {}), options.body == null ? '' : String(options.body))).then(function(raw) { var data = JSON.parse(raw); return { ok: data.ok, status: data.status, statusText: data.statusText || '', url: data.url, headers: data.headers || {}, text: function() { return Promise.resolve(data.body); }, json: function() { try { return Promise.resolve(JSON.parse(data.body)); } catch (_) { return Promise.resolve(null); } }, clone: function() { return this; } }; }); }; globalThis.require = function(name) { if (String(name).indexOf('cheerio') !== -1) return cheerio; throw new Error('module not available: ' + name); };`;
     const setupResult = await context.evalCodeAsync(setup, 'plugin-setup.js');
-    if ('error' in setupResult) { const errorHandle = setupResult.error; if (!errorHandle) throw new Error('plugin setup failed'); const error = context.dump(errorHandle); errorHandle.dispose(); throw new Error(String(error)); }
+    if ('error' in setupResult) {
+      const errorHandle = setupResult.error;
+      if (!errorHandle) throw new Error('plugin setup failed');
+      const error = context.dump(errorHandle);
+      errorHandle.dispose();
+      throw new Error(String(error));
+    }
     setupResult.value.dispose();
   }
   const script = `(async function() { try { globalThis.SCRAPER_ID = ${JSON.stringify(request.scraperId)}; globalThis.SCRAPER_SETTINGS = JSON.parse(${JSON.stringify(request.settingsJson || '{}')}); var module = { exports: {} }; var exports = module.exports; (function() { ${request.code}\n })(); var getStreams = module.exports.getStreams || globalThis.getStreams; if (!getStreams) return '[]'; return JSON.stringify(await getStreams(${JSON.stringify(request.tmdbId)}, ${JSON.stringify(request.mediaType)}, ${request.season == null ? 'null' : request.season}, ${request.episode == null ? 'null' : request.episode}) || []); } catch (_) { return '[]'; } })()`;
   const result = await context.evalCodeAsync(script, `${request.scraperId}.js`);
-  if ('error' in result) { const errorHandle = result.error; if (!errorHandle) throw new Error('plugin execution failed'); const error = context.dump(errorHandle); errorHandle.dispose(); throw new Error(String(error)); }
+  if ('error' in result) {
+    const errorHandle = result.error;
+    if (!errorHandle) throw new Error('plugin execution failed');
+    const error = context.dump(errorHandle);
+    errorHandle.dispose();
+    throw new Error(String(error));
+  }
   const promise = context.unwrapResult(result);
   const settled = await context.resolvePromise(promise);
   promise.dispose();
-  if ('error' in settled) { const errorHandle = settled.error; if (!errorHandle) throw new Error('plugin promise failed'); const error = context.dump(errorHandle); errorHandle.dispose(); throw new Error(String(error)); }
+  if ('error' in settled) {
+    const errorHandle = settled.error;
+    if (!errorHandle) throw new Error('plugin promise failed');
+    const error = context.dump(errorHandle);
+    errorHandle.dispose();
+    throw new Error(String(error));
+  }
   const value = context.unwrapResult(settled);
   const output = context.getString(value);
   value.dispose();
@@ -142,5 +211,7 @@ async function execute(request: PluginRequest): Promise<string> {
 }
 
 self.onmessage = (event: MessageEvent<PluginRequest>) => {
-  void execute(event.data).then((result) => self.postMessage({ id: event.data.id, result })).catch((error) => self.postMessage({ id: event.data.id, error: error instanceof Error ? error.message : String(error) }));
+  void execute(event.data)
+    .then((result) => self.postMessage({ id: event.data.id, result }))
+    .catch((error) => self.postMessage({ id: event.data.id, error: error instanceof Error ? error.message : String(error) }));
 };

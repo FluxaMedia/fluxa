@@ -1,9 +1,4 @@
-import {
-  coreLibraryContinueWatchingItems,
-  coreInvoke,
-  coreStremioWatchedToIds,
-  coreStremioWatchlistToItems,
-} from './engine';
+import { coreLibraryContinueWatchingItems, coreInvoke, coreStremioWatchedToIds, coreStremioWatchlistToItems } from './engine';
 import { saveAddons, profileStorageKey } from './libraryOps';
 import { stremioPullAddons, stremioPullLibrary, stremioPushLibrary, stremioReplaceAddons } from './stremioApi';
 import { normalizeAddonDescriptor } from './addons';
@@ -39,7 +34,10 @@ export async function pushStremioWatchlist(
 ): Promise<void> {
   const authKey = profile?.stremioAuthKey;
   if (!authKey) return;
-  const changes = await coreInvoke<Record<string, unknown>[]>('stremioLibraryMutationPlan', JSON.stringify({ kind: 'watchlist', item, command }));
+  const changes = await coreInvoke<Record<string, unknown>[]>(
+    'stremioLibraryMutationPlan',
+    JSON.stringify({ kind: 'watchlist', item, command }),
+  );
   if (changes?.length) await stremioPushLibrary(authKey, changes);
 }
 
@@ -50,7 +48,10 @@ export async function pushStremioPlaybackProgress(
 ): Promise<void> {
   const authKey = profile?.stremioAuthKey;
   if (!authKey || progress.durationSeconds <= 0) return;
-  const changes = await coreInvoke<Record<string, unknown>[]>('stremioLibraryMutationPlan', JSON.stringify({ kind: 'progress', meta, progress }));
+  const changes = await coreInvoke<Record<string, unknown>[]>(
+    'stremioLibraryMutationPlan',
+    JSON.stringify({ kind: 'progress', meta, progress }),
+  );
   if (changes?.length) await stremioPushLibrary(authKey, changes);
 }
 
@@ -62,7 +63,10 @@ export async function pushStremioWatched(
 ): Promise<void> {
   const authKey = profile?.stremioAuthKey;
   if (!authKey) return;
-  const changes = await coreInvoke<Record<string, unknown>[]>('stremioLibraryMutationPlan', JSON.stringify({ kind: 'watched', meta, watched, episodes, nowMs: Date.now() }));
+  const changes = await coreInvoke<Record<string, unknown>[]>(
+    'stremioLibraryMutationPlan',
+    JSON.stringify({ kind: 'watched', meta, watched, episodes, nowMs: Date.now() }),
+  );
   if (changes?.length) await stremioPushLibrary(authKey, changes);
 }
 
@@ -94,7 +98,13 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
 
   let watchlistCount = 0;
   let watchedCount = 0;
-  let providerSnapshot = { watchlist: [] as Record<string, unknown>[], watching: items, completed: [] as Record<string, unknown>[], dropped: [] as Record<string, unknown>[], favorites: [] as Record<string, unknown>[] };
+  let providerSnapshot = {
+    watchlist: [] as Record<string, unknown>[],
+    watching: items,
+    completed: [] as Record<string, unknown>[],
+    dropped: [] as Record<string, unknown>[],
+    favorites: [] as Record<string, unknown>[],
+  };
   try {
     const watchlistItems = ((await coreStremioWatchlistToItems(libraryItems)) ?? []) as Record<string, unknown>[];
     const watchedIds = ((await coreStremioWatchedToIds(libraryItems)) ?? {}) as Record<string, boolean>;
@@ -103,7 +113,11 @@ export async function syncStremioNow(payload: Record<string, unknown>): Promise<
     providerSnapshot = { watchlist: watchlistItems, watching: items, completed: [], dropped: [], favorites: [] };
 
     if (!dryRun && !readOnly) {
-      await saveProviderLibrary('stremio', { watchlist: watchlistItems, watching: items, completed: [], dropped: [], favorites: [] }, profileKey);
+      await saveProviderLibrary(
+        'stremio',
+        { watchlist: watchlistItems, watching: items, completed: [], dropped: [], favorites: [] },
+        profileKey,
+      );
     }
   } catch {}
 

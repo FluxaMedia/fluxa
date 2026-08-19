@@ -34,16 +34,22 @@ export function PlayerLoadingOverlay({ background, logo, title, episodeLine, sta
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const failed = !!error;
 
-  const errorLines = (error ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const errorLines = (error ?? '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
   const errorSummary = errorLines[0] ? errorLines[0].charAt(0).toUpperCase() + errorLines[0].slice(1) : '';
   const errorDetails = errorLines.slice(1).join('\n');
 
   const copyErrorDetails = () => {
     const sourceDetails = source ? JSON.stringify(source, null, 2) : '';
-    void navigator.clipboard.writeText([error, sourceDetails].filter(Boolean).join('\n\n')).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => undefined);
+    void navigator.clipboard
+      .writeText([error, sourceDetails].filter(Boolean).join('\n\n'))
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => undefined);
   };
 
   useEffect(() => {
@@ -81,8 +87,13 @@ export function PlayerLoadingOverlay({ background, logo, title, episodeLine, sta
       }
     };
     void poll();
-    const id = setInterval(() => { void poll(); }, 500);
-    return () => { cancelled = true; clearInterval(id); };
+    const id = setInterval(() => {
+      void poll();
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [failed, isTorrentStream]);
 
   return (
@@ -152,7 +163,11 @@ export function PlayerLoadingOverlay({ background, logo, title, episodeLine, sta
               src={logo}
               alt={title ?? ''}
               onError={() => setLogoLoadFailed(true)}
-              className={failed || hasMeasuredProgress ? 'fluxa-loading-logo-dim fluxa-loading-motion' : 'fluxa-loading-logo-breathe fluxa-loading-motion'}
+              className={
+                failed || hasMeasuredProgress
+                  ? 'fluxa-loading-logo-dim fluxa-loading-motion'
+                  : 'fluxa-loading-logo-breathe fluxa-loading-motion'
+              }
               style={{
                 position: 'absolute',
                 inset: 0,
@@ -160,9 +175,10 @@ export function PlayerLoadingOverlay({ background, logo, title, episodeLine, sta
                 height: '100%',
                 objectFit: 'contain',
                 opacity: failed ? 0.55 : hasMeasuredProgress ? 0.35 : undefined,
-                filter: failed || hasMeasuredProgress
-                  ? 'drop-shadow(0 0.25rem 1.5rem rgba(0,0,0,0.8)) brightness(0.72)'
-                  : 'drop-shadow(0 0.25rem 1.5rem rgba(0,0,0,0.8))',
+                filter:
+                  failed || hasMeasuredProgress
+                    ? 'drop-shadow(0 0.25rem 1.5rem rgba(0,0,0,0.8)) brightness(0.72)'
+                    : 'drop-shadow(0 0.25rem 1.5rem rgba(0,0,0,0.8))',
               }}
             />
             {!failed && hasMeasuredProgress && (

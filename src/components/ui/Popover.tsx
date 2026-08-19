@@ -33,8 +33,20 @@ interface PopoverProps {
 const VIEWPORT_MARGIN = 8;
 
 export function Popover({
-  open, onClose, anchorRef, point, placement = 'bottom-end', gap = 8,
-  matchWidth, width, minWidth, maxWidth, maxHeight, padding = '0.375rem 0', zIndex = 10000, children,
+  open,
+  onClose,
+  anchorRef,
+  point,
+  placement = 'bottom-end',
+  gap = 8,
+  matchWidth,
+  width,
+  minWidth,
+  maxWidth,
+  maxHeight,
+  padding = '0.375rem 0',
+  zIndex = 10000,
+  children,
 }: PopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number; anchorWidth?: number } | null>(null);
@@ -110,7 +122,9 @@ export function Popover({
     return createPortal(
       <div
         className="ui-sheet-backdrop"
-        onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex, display: 'flex', alignItems: 'flex-end' }}
       >
         <div
