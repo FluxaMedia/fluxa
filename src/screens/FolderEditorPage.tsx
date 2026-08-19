@@ -3,7 +3,17 @@ import { ChevronLeft as ArrowBack } from 'lucide-react';
 import { effectiveCatalogId, effectiveCatalogType } from '../core/collections';
 import type { CatalogSource, HomeCategory, UserCollectionFolder } from '../core/types';
 import { t } from '../i18n';
-import { contrastOn, cleanUrl, FieldInput, ImagePreviewField, SaveButton, SectionLabel, Card, Chip } from './CollectionEditorPrimitives';
+import {
+  contrastOn,
+  cleanUrl,
+  FieldInput,
+  ImagePreviewField,
+  SaveButton,
+  SectionLabel,
+  Card,
+  Chip,
+  Toggle,
+} from './CollectionEditorPrimitives';
 
 interface Props {
   initial: UserCollectionFolder;
@@ -17,8 +27,12 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
   const [title, setTitle] = useState(initial.title ?? '');
   const [imageUrl, setImageUrl] = useState(initial.imageUrl ?? initial.coverImageUrl ?? '');
   const [focusGifUrl, setFocusGifUrl] = useState(initial.focusGifUrl ?? '');
+  const [focusGifEnabled, setFocusGifEnabled] = useState(initial.focusGifEnabled ?? true);
   const [titleLogoUrl, setTitleLogoUrl] = useState(initial.titleLogoUrl ?? '');
   const [heroBackdropUrl, setHeroBackdropUrl] = useState(initial.heroBackdropUrl ?? '');
+  const [heroVideoUrl, setHeroVideoUrl] = useState(initial.heroVideoUrl ?? '');
+  const [hideTitle, setHideTitle] = useState(initial.hideTitle ?? false);
+  const [coverEmoji, setCoverEmoji] = useState(initial.coverEmoji ?? '');
   const [shape, setShape] = useState(initial.shape ?? 'poster');
   const [catalogId, setCatalogId] = useState(effectiveCatalogId(initial) ?? '');
   const [genre, setGenre] = useState(initial.genre ?? '');
@@ -55,10 +69,24 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
       catalogSources: sources.length ? sources : undefined,
       coverImageUrl: cleanUrl(imageUrl) ?? initial.coverImageUrl,
       imageUrl: cleanUrl(imageUrl),
+      coverEmoji: coverEmoji.trim() || undefined,
+      hideTitle,
       focusGifUrl: cleanUrl(focusGifUrl),
+      focusGifEnabled,
       titleLogoUrl: cleanUrl(titleLogoUrl),
       heroBackdropUrl: cleanUrl(heroBackdropUrl),
+      heroVideoUrl: cleanUrl(heroVideoUrl),
     });
+  }
+
+  function handleImageChange(next: string) {
+    setImageUrl(next);
+    if (next.trim()) setCoverEmoji('');
+  }
+
+  function handleEmojiChange(next: string) {
+    setCoverEmoji(next);
+    if (next.trim()) setImageUrl('');
   }
 
   return (
@@ -132,6 +160,10 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
                 </button>
               ))}
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ flex: 1, color: '#fff', fontWeight: 600, fontSize: '0.8125rem' }}>{t('library.folder_hide_title')}</span>
+              <Toggle checked={hideTitle} onChange={setHideTitle} accent={accent} />
+            </div>
           </Card>
         </div>
 
@@ -168,7 +200,14 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
         <div>
           <SectionLabel>{t('settings.advanced')}</SectionLabel>
           <Card>
-            <ImagePreviewField label={t('library.folder_image')} value={imageUrl} onChange={setImageUrl} accent={accent} />
+            <ImagePreviewField label={t('library.folder_image')} value={imageUrl} onChange={handleImageChange} accent={accent} />
+            <FieldInput value={coverEmoji} placeholder={t('library.folder_cover_emoji')} onChange={handleEmojiChange} accent={accent} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ flex: 1, color: '#fff', fontWeight: 600, fontSize: '0.8125rem' }}>
+                {t('library.folder_focus_gif_enabled')}
+              </span>
+              <Toggle checked={focusGifEnabled} onChange={setFocusGifEnabled} accent={accent} />
+            </div>
             <ImagePreviewField label={t('library.folder_focus_gif')} value={focusGifUrl} onChange={setFocusGifUrl} accent={accent} />
             <ImagePreviewField label={t('library.folder_title_logo')} value={titleLogoUrl} onChange={setTitleLogoUrl} accent={accent} />
             <ImagePreviewField
@@ -177,6 +216,7 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
               onChange={setHeroBackdropUrl}
               accent={accent}
             />
+            <ImagePreviewField label={t('library.folder_hero_video')} value={heroVideoUrl} onChange={setHeroVideoUrl} accent={accent} />
           </Card>
         </div>
 

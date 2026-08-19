@@ -59,6 +59,7 @@ export const CORE_METHODS = [
   'clearPlaybackProgressItem',
   'clearPlaybackProgressPlan',
   'collectionFolderItemsPlan',
+  'collectionFolderTabsPlan',
   'collectionMergePlan',
   'computeContinueWatchingBadges',
   'contentBaseId',

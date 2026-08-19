@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import {
   uid,
   cleanUrl,
+  contrastOn,
   UtilButton,
   SaveButton,
   FieldInput,
@@ -42,6 +43,10 @@ function CollectionEditorPage({
   const [title, setTitle] = useState(initial.title ?? '');
   const [imageUrl, setImageUrl] = useState(initial.imageUrl ?? '');
   const [showOnHome, setShowOnHome] = useState(initial.showOnHome ?? false);
+  const [viewMode, setViewMode] = useState(initial.viewMode ?? 'FOLLOW_LAYOUT');
+  const [showAllTab, setShowAllTab] = useState(initial.showAllTab ?? true);
+  const [pinToTop, setPinToTop] = useState(initial.pinToTop ?? false);
+  const [focusGlowEnabled, setFocusGlowEnabled] = useState(initial.focusGlowEnabled ?? true);
   const [folders, setFolders] = useState<UserCollectionFolder[]>(initial.folders ?? []);
   const [editingFolder, setEditingFolder] = useState<UserCollectionFolder | null>(null);
 
@@ -51,6 +56,10 @@ function CollectionEditorPage({
       title: title.trim(),
       imageUrl: cleanUrl(nextImageUrl),
       showOnHome: nextShowOnHome,
+      viewMode,
+      showAllTab,
+      pinToTop,
+      focusGlowEnabled,
       folders: nextFolders,
     };
   }
@@ -121,6 +130,55 @@ function CollectionEditorPage({
               </span>
               <Toggle checked={showOnHome} onChange={setShowOnHome} accent={accent} />
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ flex: 1, color: '#fff', fontWeight: 600, fontSize: '0.8125rem' }}>{t('library.collection_pin_to_top')}</span>
+              <Toggle checked={pinToTop} onChange={setPinToTop} accent={accent} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ flex: 1, color: '#fff', fontWeight: 600, fontSize: '0.8125rem' }}>{t('library.collection_focus_glow')}</span>
+              <Toggle checked={focusGlowEnabled} onChange={setFocusGlowEnabled} accent={accent} />
+            </div>
+          </Card>
+        </div>
+
+        <div>
+          <SectionLabel>{t('library.collection_view_mode')}</SectionLabel>
+          <Card>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {(
+                [
+                  ['TABBED_GRID', t('library.collection_view_mode_tabs')],
+                  ['ROWS', t('library.collection_view_mode_rows')],
+                  ['FOLLOW_LAYOUT', t('library.collection_view_mode_follow')],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    flex: 1,
+                    height: '2.25rem',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    background: viewMode === mode ? accent : 'rgba(255,255,255,0.08)',
+                    color: viewMode === mode ? contrastOn(accent) : '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {viewMode === 'TABBED_GRID' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ flex: 1, color: '#fff', fontWeight: 600, fontSize: '0.8125rem' }}>
+                  {t('library.collection_show_all_tab')}
+                </span>
+                <Toggle checked={showAllTab} onChange={setShowAllTab} accent={accent} />
+              </div>
+            )}
           </Card>
         </div>
 

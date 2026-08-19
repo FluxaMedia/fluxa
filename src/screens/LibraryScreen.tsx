@@ -7,7 +7,7 @@ import { appPrefs, prefString } from '../core/appPrefs';
 import { getViewPrefs, setViewPref, whenViewPrefsReady } from '../core/viewPrefs';
 import type { AppState, HomeCategory, LibraryItem, Meta, Stream, UserProfile, Video } from '../core/types';
 import { t } from '../i18n';
-import { CategoryGridScreen } from './CategoryGridScreen';
+import { FolderDetailScreen } from './FolderDetailScreen';
 import { CollectionEditorScreen } from './CollectionEditorScreen';
 import { CollectionsTab } from '../components/library/CollectionsTab';
 import { coreInvoke } from '../core/engine';
@@ -248,14 +248,13 @@ export const LibraryScreen = React.memo(
 
     if (viewAllFolder) {
       return (
-        <CategoryGridScreen
+        <FolderDetailScreen
           title={viewAllFolder.title}
-          items={viewAllFolder.items}
-          groups={viewAllFolder.groups}
+          viewMode={viewAllFolder.viewMode}
+          tabs={viewAllFolder.tabs}
           posterPrefs={posterPrefs}
           onNavigateDetail={onNavigateDetail}
           onBack={() => setViewAllFolder(null)}
-          onDispatch={onDispatch}
         />
       );
     }
@@ -456,8 +455,8 @@ export const LibraryScreen = React.memo(
             <CollectionsTab
               collections={collections}
               accent={accent}
-              onFolderClick={(folder, folderTitle) => {
-                void openFolder(folder, folderTitle);
+              onFolderClick={(folder, folderTitle, collection) => {
+                void openFolder(folder, folderTitle, collection);
               }}
               onEditCollection={(col) => setEditingCollection(col)}
               onDeleteCollection={(id) => void handleDeleteCollection(id)}

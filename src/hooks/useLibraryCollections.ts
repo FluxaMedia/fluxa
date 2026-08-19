@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { exportCollectionsJson, importCollectionsJson } from '../core/collections';
+import { exportCollectionsJson, importCollectionsJson, remoteSourceKey } from '../core/collections';
 import { saveProfile } from '../core/profiles';
 import { nuvioPushCollections } from '../core/nuvioApi';
 import { freshNuvioProfile } from '../core/nuvioSync';
 import { loadNuvioCollectionSource } from '../core/collectionSources';
 import { coreInvoke } from '../core/engine';
 import type { HomeCategory, Meta, NuvioRemoteCollectionSource, UserCollection, UserCollectionFolder, UserProfile } from '../core/types';
+import type { FolderTab } from '../screens/FolderDetailScreen';
 
 export function useLibraryCollections({
   activeProfile,
@@ -19,8 +20,8 @@ export function useLibraryCollections({
   const collections: UserCollection[] = activeProfile?.libraryCollections ?? [];
   const [viewAllFolder, setViewAllFolder] = useState<{
     title: string;
-    items: Meta[];
-    groups: Array<{ type: string; items: Meta[] }>;
+    viewMode?: string;
+    tabs: FolderTab[];
   } | null>(null);
   const [editingCollection, setEditingCollection] = useState<UserCollection | 'new' | null>(null);
   const collectionsScrollRef = useRef<HTMLDivElement>(null);
@@ -42,19 +43,27 @@ export function useLibraryCollections({
     );
   }
 
-  async function openFolder(folder: UserCollectionFolder, title: string) {
-    savedScrollRef.current = collectionsScrollRef.current?.scrollTop ?? 0;
+  async function getFolderTabs(folder: UserCollectionFolder, showAllTab: boolean): Promise<FolderTab[]> {
     const local = await getItemsForFolder(folder);
-    setViewAllFolder({ title, ...local });
-    const specialSources = local.remoteSources;
-    if (!specialSources.length) return;
-    const batches = await Promise.all(specialSources.map((source) => loadNuvioCollectionSource(source)));
-    const merged =
-      (await coreInvoke<{ items: Meta[]; groups: Array<{ type: string; items: Meta[] }> }>(
-        'mergeFolderSources',
-        JSON.stringify([local.items, ...batches]),
-      )) ?? local;
-    setViewAllFolder({ title, ...merged });
+    const remoteSources = local.remoteSources;
+    const remoteItems: Record<string, Meta[]> = {};
+    if (remoteSources.length) {
+      const batches = await Promise.all(remoteSources.map((source) => loadNuvioCollectionSource(source)));
+      remoteSources.forEach((source, index) => {
+        remoteItems[remoteSourceKey(source)] = batches[index] ?? [];
+      });
+    }
+    const result = await coreInvoke<{ tabs: FolderTab[] }>(
+      'collectionFolderTabsPlan',
+      JSON.stringify({ folder, categories: homeCategories, remoteItems, showAllTab }),
+    );
+    return result?.tabs ?? [];
+  }
+
+  async function openFolder(folder: UserCollectionFolder, title: string, collection: UserCollection) {
+    savedScrollRef.current = collectionsScrollRef.current?.scrollTop ?? 0;
+    const tabs = await getFolderTabs(folder, collection.showAllTab ?? true);
+    setViewAllFolder({ title, viewMode: collection.viewMode, tabs });
   }
 
   async function saveCollections(next: UserCollection[]) {

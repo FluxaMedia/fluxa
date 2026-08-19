@@ -1,4 +1,4 @@
-import type { UserCollection, UserCollectionFolder } from './types';
+import type { NuvioRemoteCollectionSource, UserCollection, UserCollectionFolder } from './types';
 import { coreExportCollections, coreImportCollections } from './engine';
 
 function cleanedUrl(raw: string | null | undefined): string | null {
@@ -38,6 +38,11 @@ export function effectiveCatalogId(folder: UserCollectionFolder): string | null 
 
 export function effectiveCatalogType(folder: UserCollectionFolder): string | null {
   return folder.sources?.find((source) => source.provider === 'addon')?.type ?? folder.catalogSources?.[0]?.type ?? null;
+}
+
+export function remoteSourceKey(source: NuvioRemoteCollectionSource): string {
+  if (source.provider === 'trakt') return String(source.traktListId ?? '');
+  return source.tmdbId != null ? String(source.tmdbId) : (source.tmdbSourceType ?? '');
 }
 
 export async function importCollectionsJson(rawJson: string): Promise<UserCollection[]> {

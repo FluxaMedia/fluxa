@@ -22,7 +22,7 @@ export function CollectionsTab({
 }: {
   collections: UserCollection[];
   accent: string;
-  onFolderClick: (folder: UserCollectionFolder, title: string) => void;
+  onFolderClick: (folder: UserCollectionFolder, title: string, collection: UserCollection) => void;
   onEditCollection: (col: UserCollection) => void;
   onDeleteCollection: (id: string) => void;
   onNewCollection: () => void;
@@ -122,7 +122,7 @@ function CollectionSection({
 }: {
   collection: UserCollection;
   accent: string;
-  onFolderClick: (folder: UserCollectionFolder, title: string) => void;
+  onFolderClick: (folder: UserCollectionFolder, title: string, collection: UserCollection) => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -167,7 +167,7 @@ function CollectionSection({
               key={folder.id}
               folder={folder}
               accent={accent}
-              onClick={() => onFolderClick(folder, `${collection.title} · ${folder.title}`)}
+              onClick={() => onFolderClick(folder, `${collection.title} · ${folder.title}`, collection)}
             />
           ))}
         </div>
