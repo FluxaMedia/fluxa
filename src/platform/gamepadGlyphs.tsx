@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { assetUrl } from './assets';
 
 export type GamepadBrand = 'xbox' | 'playstation' | 'nintendo' | 'generic';
 
@@ -17,51 +17,96 @@ export function detectGamepadBrand(id: string): GamepadBrand {
   return 'generic';
 }
 
-const XBOX_FACE: Record<number, { label: string; color: string }> = {
-  0: { label: 'A', color: '#5FA341' },
-  1: { label: 'B', color: '#C74440' },
-  2: { label: 'X', color: '#3A7DC9' },
-  3: { label: 'Y', color: '#D8A928' },
-};
-
-const NINTENDO_FACE: Record<number, string> = {
-  0: 'B',
-  1: 'A',
-  2: 'Y',
-  3: 'X',
-};
+const XBOX_LABELS: Record<number, string> = { 0: 'A', 1: 'B', 2: 'X', 3: 'Y' };
+const PLAYSTATION_LABELS: Record<number, string> = { 0: 'Cross', 1: 'Circle', 2: 'Square', 3: 'Triangle' };
+const NINTENDO_LABELS: Record<number, string> = { 0: 'B', 1: 'A', 2: 'Y', 3: 'X' };
+const DPAD_LABELS: Record<number, string> = { 12: '↑', 13: '↓', 14: '←', 15: '→' };
 
 const TEXT_LABELS: Record<GamepadBrand, Record<number, string>> = {
   xbox: { 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'View', 9: 'Menu', 10: 'LS', 11: 'RS', 16: 'Guide' },
   playstation: { 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Share', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
-  generic: {},
+  generic: { 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'Select', 9: 'Start', 10: 'L3', 11: 'R3', 16: 'Guide' },
 };
-
-const PLAYSTATION_FACE_LABELS: Record<number, string> = { 0: 'Cross', 1: 'Circle', 2: 'Square', 3: 'Triangle' };
-const DPAD_LABELS: Record<number, string> = { 12: '↑', 13: '↓', 14: '←', 15: '→' };
 
 export function gamepadButtonLabel(brand: GamepadBrand, index: number): string {
   if (DPAD_LABELS[index]) return DPAD_LABELS[index];
-  if (brand === 'xbox' && XBOX_FACE[index]) return XBOX_FACE[index].label;
-  if (brand === 'playstation' && PLAYSTATION_FACE_LABELS[index]) return PLAYSTATION_FACE_LABELS[index];
-  if (brand === 'nintendo' && NINTENDO_FACE[index]) return NINTENDO_FACE[index];
+  if (brand === 'xbox' && XBOX_LABELS[index]) return XBOX_LABELS[index];
+  if (brand === 'playstation' && PLAYSTATION_LABELS[index]) return PLAYSTATION_LABELS[index];
+  if (brand === 'nintendo' && NINTENDO_LABELS[index]) return NINTENDO_LABELS[index];
+  if (brand === 'generic' && XBOX_LABELS[index]) return XBOX_LABELS[index];
   return TEXT_LABELS[brand][index] ?? `Btn ${index}`;
 }
 
-function Pill({
-  size,
-  children,
-  background = 'rgba(255,255,255,0.12)',
-  color = '#fff',
-  border = 'rgba(255,255,255,0.2)',
-}: {
-  size: number;
-  children: ReactNode;
-  background?: string;
-  color?: string;
-  border?: string;
-}) {
+// Real Kenney "Input Prompts" glyphs (CC0, kenney.nl), mirrored at
+// github.com/Maaack/Kenney-Input-Prompts. `generic`/unrecognized pads use the
+// Xbox set since that matches the W3C Standard Gamepad button layout browsers
+// report for any controller.
+const XBOX_ASSETS: Record<number, string> = {
+  0: 'xbox/xbox_button_color_a.png',
+  1: 'xbox/xbox_button_color_b.png',
+  2: 'xbox/xbox_button_color_x.png',
+  3: 'xbox/xbox_button_color_y.png',
+  4: 'xbox/xbox_lb.png',
+  5: 'xbox/xbox_rb.png',
+  6: 'xbox/xbox_lt.png',
+  7: 'xbox/xbox_rt.png',
+  8: 'xbox/xbox_button_view.png',
+  9: 'xbox/xbox_button_menu.png',
+  10: 'xbox/xbox_ls.png',
+  11: 'xbox/xbox_rs.png',
+  12: 'xbox/xbox_dpad_up.png',
+  13: 'xbox/xbox_dpad_down.png',
+  14: 'xbox/xbox_dpad_left.png',
+  15: 'xbox/xbox_dpad_right.png',
+  16: 'xbox/xbox_guide.png',
+};
+
+const PLAYSTATION_ASSETS: Record<number, string> = {
+  0: 'playstation/playstation_button_color_cross.png',
+  1: 'playstation/playstation_button_color_circle.png',
+  2: 'playstation/playstation_button_color_square.png',
+  3: 'playstation/playstation_button_color_triangle.png',
+  4: 'playstation/playstation_trigger_l1.png',
+  5: 'playstation/playstation_trigger_r1.png',
+  6: 'playstation/playstation_trigger_l2.png',
+  7: 'playstation/playstation_trigger_r2.png',
+  8: 'playstation/playstation4_button_share.png',
+  9: 'playstation/playstation4_button_options.png',
+  12: 'playstation/playstation_dpad_up.png',
+  13: 'playstation/playstation_dpad_down.png',
+  14: 'playstation/playstation_dpad_left.png',
+  15: 'playstation/playstation_dpad_right.png',
+};
+
+const NINTENDO_ASSETS: Record<number, string> = {
+  0: 'nintendo/switch_button_b.png',
+  1: 'nintendo/switch_button_a.png',
+  2: 'nintendo/switch_button_y.png',
+  3: 'nintendo/switch_button_x.png',
+  4: 'nintendo/switch_button_l.png',
+  5: 'nintendo/switch_button_r.png',
+  6: 'nintendo/switch_button_zl.png',
+  7: 'nintendo/switch_button_zr.png',
+  8: 'nintendo/switch_button_minus.png',
+  9: 'nintendo/switch_button_plus.png',
+  10: 'nintendo/switch_stick_l_press.png',
+  11: 'nintendo/switch_stick_r_press.png',
+  12: 'nintendo/switch_dpad_up.png',
+  13: 'nintendo/switch_dpad_down.png',
+  14: 'nintendo/switch_dpad_left.png',
+  15: 'nintendo/switch_dpad_right.png',
+  16: 'nintendo/switch_button_home.png',
+};
+
+const BRAND_ASSETS: Record<GamepadBrand, Record<number, string>> = {
+  xbox: XBOX_ASSETS,
+  generic: XBOX_ASSETS,
+  playstation: PLAYSTATION_ASSETS,
+  nintendo: NINTENDO_ASSETS,
+};
+
+function TextBadge({ size, label }: { size: number; label: string }) {
   return (
     <span
       style={{
@@ -72,96 +117,30 @@ function Pill({
         height: size,
         padding: '0 0.375rem',
         borderRadius: size / 2,
-        background,
-        border: `1px solid ${border}`,
-        color,
+        background: 'rgba(255,255,255,0.12)',
+        border: '1.5px solid rgba(255,255,255,0.2)',
+        color: '#fff',
         fontSize: size * 0.42,
         fontWeight: 700,
         lineHeight: 1,
         boxSizing: 'border-box',
       }}
     >
-      {children}
+      {label}
     </span>
   );
 }
 
-function DpadArrow({ size, direction }: { size: number; direction: 'up' | 'down' | 'left' | 'right' }) {
-  const rotation = { up: 0, right: 90, down: 180, left: 270 }[direction];
-  return (
-    <Pill size={size}>
-      <svg width={size * 0.4} height={size * 0.4} viewBox="0 0 24 24" style={{ transform: `rotate(${rotation}deg)` }}>
-        <path d="M12 3 L21 18 L3 18 Z" fill="currentColor" />
-      </svg>
-    </Pill>
-  );
-}
-
-function PlayStationShape({ size, index }: { size: number; index: number }) {
-  const strokeWidth = size * 0.09;
-  const inner = size * 0.42;
-  const common = { width: inner, height: inner, viewBox: '0 0 24 24' };
-  if (index === 0) {
-    return (
-      <Pill size={size} color="#F16FA8">
-        <svg {...common}>
-          <path d="M5 5 L19 19 M19 5 L5 19" stroke="currentColor" strokeWidth={strokeWidth * 2.4} fill="none" strokeLinecap="round" />
-        </svg>
-      </Pill>
-    );
-  }
-  if (index === 1) {
-    return (
-      <Pill size={size} color="#EF4A4A">
-        <svg {...common}>
-          <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth={strokeWidth * 2.4} fill="none" />
-        </svg>
-      </Pill>
-    );
-  }
-  if (index === 2) {
-    return (
-      <Pill size={size} color="#F0A6D0">
-        <svg {...common}>
-          <rect x="5" y="5" width="14" height="14" stroke="currentColor" strokeWidth={strokeWidth * 2.4} fill="none" />
-        </svg>
-      </Pill>
-    );
-  }
-  return (
-    <Pill size={size} color="#4FBF8B">
-      <svg {...common}>
-        <path d="M12 4 L20 19 L4 19 Z" stroke="currentColor" strokeWidth={strokeWidth * 2.4} fill="none" strokeLinejoin="round" />
-      </svg>
-    </Pill>
-  );
-}
-
 export function GamepadButtonGlyph({ brand, index, size = 24 }: { brand: GamepadBrand; index: number; size?: number }) {
-  if (index >= 12 && index <= 15) {
-    const direction = ({ 12: 'up', 13: 'down', 14: 'left', 15: 'right' } as const)[index as 12 | 13 | 14 | 15];
-    return <DpadArrow size={size} direction={direction} />;
-  }
-
-  if (brand === 'xbox' && XBOX_FACE[index]) {
-    const face = XBOX_FACE[index];
+  const asset = BRAND_ASSETS[brand][index];
+  if (asset) {
     return (
-      <Pill size={size} background={face.color} color="#fff" border={face.color}>
-        {face.label}
-      </Pill>
+      <img
+        src={assetUrl(`gamepad/${asset}`)}
+        alt={gamepadButtonLabel(brand, index)}
+        style={{ height: size * 1.35, width: 'auto', maxWidth: size * 2.2, objectFit: 'contain', flexShrink: 0 }}
+      />
     );
   }
-
-  if (brand === 'playstation' && index >= 0 && index <= 3) {
-    return <PlayStationShape size={size} index={index} />;
-  }
-
-  if (brand === 'nintendo' && NINTENDO_FACE[index]) {
-    return <Pill size={size}>{NINTENDO_FACE[index]}</Pill>;
-  }
-
-  const textLabel = TEXT_LABELS[brand][index];
-  if (textLabel) return <Pill size={size}>{textLabel}</Pill>;
-
-  return <Pill size={size}>{index}</Pill>;
+  return <TextBadge size={size} label={gamepadButtonLabel(brand, index)} />;
 }
