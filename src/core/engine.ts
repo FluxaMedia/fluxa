@@ -6,3 +6,4 @@ export * from './engineStorage';
 export * from './engineExternalSync';
 export * from './engineTmdb';
 export * from './engineMdblist';
+export * from './engineStreamBadges';

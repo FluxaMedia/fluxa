@@ -17,6 +17,7 @@ import {
 import { styles, FONT } from './settingsStyles';
 import type { Prefs } from './settingsTypes';
 import { listCustomFonts, pickAndAddCustomFont, removeCustomFont, type CustomFont } from '../../core/customFonts';
+import { StreamBadgesSection } from './StreamBadgesSection';
 
 const isWindows = navigator.userAgent.includes('Windows');
 
@@ -352,6 +353,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
           onChange={(v) => setPref('watchedThresholdPercent', String(v))}
         />
       </SettingsSection>
+      <StreamBadgesSection />
       <SettingsSection title={t('settings.advanced')} subtitle={t('settings.buffer_cache_desc')}>
         <ChoiceTile
           title={t('settings.buffer_cache')}

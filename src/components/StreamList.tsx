@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import type { Stream } from '../core/types';
+import React, { useEffect, useState } from 'react';
+import type { Stream, StreamBadge, StreamBadgeRules } from '../core/types';
 import { t } from '../i18n';
+import { coreMatchStreamBadges } from '../core/engine';
+import { useStreamBadgeRules, type StreamBadgePosition } from '../hooks/useStreamBadgeRules';
+import { StreamBadgeChips } from './StreamBadgeChips';
 
 interface Props {
   streams: Stream[];
@@ -9,6 +12,8 @@ interface Props {
 }
 
 export function StreamList({ streams, isLoading, onPlay }: Props) {
+  const { rules, loaded, badgePosition } = useStreamBadgeRules();
+
   if (isLoading) {
     return (
       <div style={styles.container}>
@@ -34,17 +39,48 @@ export function StreamList({ streams, isLoading, onPlay }: Props) {
       <p style={styles.sectionTitle}>{t('auto.sources')}</p>
       <div style={styles.list}>
         {streams.map((stream, idx) => (
-          <StreamRow key={stream.url ?? stream.infoHash ?? idx} stream={stream} onPlay={onPlay} />
+          <StreamRow
+            key={stream.url ?? stream.infoHash ?? idx}
+            stream={stream}
+            onPlay={onPlay}
+            badgeRules={loaded ? rules : null}
+            badgePosition={badgePosition}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function StreamRow({ stream, onPlay }: { stream: Stream; onPlay?: (s: Stream) => void }) {
+function StreamRow({
+  stream,
+  onPlay,
+  badgeRules,
+  badgePosition,
+}: {
+  stream: Stream;
+  onPlay?: (s: Stream) => void;
+  badgeRules: StreamBadgeRules | null;
+  badgePosition: StreamBadgePosition;
+}) {
   const [hovered, setHovered] = useState(false);
+  const [badges, setBadges] = useState<StreamBadge[]>([]);
   const title = stream.title ?? stream.name ?? stream.description ?? t('auto.stream');
   const isTorrent = !!stream.infoHash;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!badgeRules || badgeRules.imports.length === 0) {
+      setBadges([]);
+      return;
+    }
+    void coreMatchStreamBadges(stream, badgeRules).then((matched) => {
+      if (!cancelled) setBadges(matched);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stream, badgeRules]);
 
   return (
     <div
@@ -63,8 +99,10 @@ function StreamRow({ stream, onPlay }: { stream: Stream; onPlay?: (s: Stream) =>
         </svg>
       </div>
       <div style={styles.rowInfo}>
+        {badgePosition === 'top' && <StreamBadgeChips badges={badges} />}
         <p style={styles.rowTitle}>{title}</p>
         {stream.addonName && <p style={styles.addonName}>{stream.addonName}</p>}
+        {badgePosition === 'bottom' && <StreamBadgeChips badges={badges} />}
       </div>
       {isTorrent && <span style={styles.torrentTag}>{t('auto.torrent')}</span>}
     </div>

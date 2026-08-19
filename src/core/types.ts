@@ -126,6 +126,46 @@ export interface Stream {
   extra?: Record<string, unknown>;
 }
 
+export interface StreamBadge {
+  name: string;
+  imageUrl?: string;
+  tagColor?: string;
+  tagStyle?: string;
+  textColor?: string;
+  borderColor?: string;
+}
+
+export interface StreamBadgeFilter {
+  id?: string;
+  groupId?: string;
+  name: string;
+  pattern: string;
+  imageUrl?: string;
+  isEnabled?: boolean;
+  tagColor?: string;
+  tagStyle?: string;
+  textColor?: string;
+  borderColor?: string;
+}
+
+export interface StreamBadgeGroup {
+  id?: string;
+  name?: string;
+  color?: string;
+  isExpanded?: boolean;
+}
+
+export interface StreamBadgeImport {
+  sourceUrl: string;
+  filters: StreamBadgeFilter[];
+  groups: StreamBadgeGroup[];
+  isActive?: boolean;
+}
+
+export interface StreamBadgeRules {
+  imports: StreamBadgeImport[];
+}
+
 export interface BehaviorHints {
   notWebReady?: boolean;
   bingeGroup?: string;
