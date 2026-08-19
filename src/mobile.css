@@ -332,6 +332,15 @@ html[data-mobile="true"] .web-player-seek {
   height: 1.75rem;
 }
 
+html[data-mobile="true"] .fluxa-player-controls .fluxa-ibtn {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+html[data-mobile="true"] .fluxa-seekbar {
+  min-height: 2.75rem;
+}
+
 html[data-mobile="true"] .calendar-screen {
   padding: calc(3.5rem + var(--mobile-safe-top)) 0.75rem 2rem !important;
 }

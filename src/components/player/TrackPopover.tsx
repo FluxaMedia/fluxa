@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { Check, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { t } from '../../i18n';
 import type { PlayerTrackOption } from '../../core/mpvPlayer';
@@ -197,8 +197,22 @@ export function TrackPopover({
   const [stylePage, setStylePage] = useState<SubtitleStylePage | null>(null);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [customFontFamilies, setCustomFontFamilies] = useState<string[]>([]);
+  const contentRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setShowStyle(false); setStylePage(null); setOpenGroup(null); }, [type]);
   useEffect(() => { void listCustomFonts().then((fonts) => setCustomFontFamilies(fonts.map((f) => f.family))); }, []);
+  useEffect(() => {
+    contentRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+  }, [type, showStyle, stylePage, openGroup]);
+
+  const onListKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const buttons = Array.from(contentRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []);
+    if (buttons.length === 0) return;
+    const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const nextIndex = ((currentIndex < 0 ? 0 : currentIndex + (e.key === 'ArrowDown' ? 1 : -1)) + buttons.length) % buttons.length;
+    e.preventDefault();
+    buttons[nextIndex]?.focus();
+  };
   const fontOptions = [...BUILTIN_SUBTITLE_FONTS, ...customFontFamilies];
 
   const tracks = type === 'audio' ? audioTracks : subTracks;
@@ -227,6 +241,7 @@ export function TrackPopover({
       width={type === 'speed' ? 150 : 260}
       maxHeight="34rem"
     >
+      <div ref={contentRef} onKeyDown={onListKeyDown}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', justifyContent: 'space-between', padding: '0.25rem 0.875rem 0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', minWidth: 0 }}>
           {(activeGroup && !showStyle) || stylePage ? (
@@ -386,6 +401,7 @@ export function TrackPopover({
           )}
         </>
       )}
+      </div>
     </Popover>
   );
 }

@@ -48,12 +48,12 @@ export function VolumeBar({ value, max, onChange, forceTooltip }: { value: numbe
       if (pendingValue.current !== null) { onChange(pendingValue.current); pendingValue.current = null; }
       if (!hovering.current) setTooltipVisible(false);
     };
-    const move = (e: MouseEvent) => { if (dragging.current) applyX(e.clientX); };
-    window.addEventListener('mouseup', up);
-    window.addEventListener('mousemove', move);
+    const move = (e: PointerEvent) => { if (dragging.current) applyX(e.clientX); };
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointermove', move);
     return () => {
-      window.removeEventListener('mouseup', up);
-      window.removeEventListener('mousemove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointermove', move);
       if (throttleTimer.current) clearTimeout(throttleTimer.current);
     };
   }, [applyX, onChange, setTooltipVisible]);
@@ -75,8 +75,8 @@ export function VolumeBar({ value, max, onChange, forceTooltip }: { value: numbe
   return (
     <div
       ref={trackRef}
-      style={{ position: 'relative', width: '5rem', height: '1.25rem', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center' }}
-      onMouseDown={(e) => { e.stopPropagation(); dragging.current = true; applyX(e.clientX); }}
+      style={{ position: 'relative', width: '5rem', height: '1.25rem', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', touchAction: 'none' }}
+      onPointerDown={(e) => { e.stopPropagation(); dragging.current = true; applyX(e.clientX); }}
       onMouseEnter={() => { hovering.current = true; setTooltipVisible(true); }}
       onMouseLeave={() => { hovering.current = false; if (!dragging.current) setTooltipVisible(false); }}
       onClick={(e) => e.stopPropagation()}

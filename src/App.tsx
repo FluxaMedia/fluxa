@@ -14,6 +14,7 @@ import { setBrowsingDiscordPresence } from './core/discordPresence';
 import { appStyles, BROWSING_LABELS, DEFAULT_STATE } from './appConstants';
 import { useNativePlayerEvents } from './hooks/useNativePlayerEvents';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
+import { useGamepadNav } from './hooks/useGamepadNav';
 import { useEdgeSwipeBack } from './hooks/useEdgeSwipeBack';
 import { useDetailNavigation } from './hooks/useDetailNavigation';
 import { useAppLayoutPrefs } from './hooks/useAppLayoutPrefs';
@@ -260,6 +261,7 @@ export default function App() {
   }, [detailMeta, activeRoute, navigateRoute, closePlayer, resetDetail]);
 
   const { searchFocusSignal, setSearchFocusSignal } = useGlobalShortcuts({ nativePlayerActive, navigateRoute, goBack });
+  useGamepadNav({ nativePlayerActive, navigateRoute, goBack });
 
   const swipeBack = useCallback(() => {
     if (detailMeta || activeRoute === 'settings' || activeRoute === 'search') { goBack(); return; }

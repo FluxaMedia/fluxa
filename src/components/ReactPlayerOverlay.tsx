@@ -12,6 +12,7 @@ import { PlayerStatusToasts } from './player/PlayerStatusToasts';
 import { PlayerContextMenu } from './player/PlayerContextMenu';
 import { PlayerHeader } from './player/PlayerHeader';
 import { usePlayerKeyboardShortcuts } from './player/usePlayerKeyboardShortcuts';
+import { usePlayerGamepadShortcuts } from './player/usePlayerGamepadShortcuts';
 import { usePlayerPlaybackNavigation } from './player/usePlayerPlaybackNavigation';
 import { usePlayerLiveTelemetry } from './player/usePlayerLiveTelemetry';
 import { usePlayerSubtitleControls } from './player/usePlayerSubtitleControls';
@@ -213,7 +214,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
 
   usePlayerMediaSession({ title, episodeTitle, posterUrl: initialPosterUrl, setPaused, startSeekOverlay, flashFeedback });
 
-  const { applyFills, onSeekMouseDown } = usePlayerSeekInteractions({ durRef, lastSeekAtRef, activeCastDeviceIdRef, seekbarRef, seekFillRef, seekBufferRef, seekDotRef, chapterSegmentsRef, segmentFillRefs: segFillRefs, segmentBufferRefs: segBufRefs, isDraggingRef, dragPosRef, startSeekOverlay, resetActivity });
+  const { applyFills, onSeekPointerDown } = usePlayerSeekInteractions({ durRef, lastSeekAtRef, activeCastDeviceIdRef, seekbarRef, seekFillRef, seekBufferRef, seekDotRef, chapterSegmentsRef, segmentFillRefs: segFillRefs, segmentBufferRefs: segBufRefs, isDraggingRef, dragPosRef, startSeekOverlay, resetActivity });
 
   usePlayerLiveTelemetry({
     skipSegments, nextEpSubtitle, nextEpThreshold, nextEpDismissed, trackPopover, title, episodeTitle, initialPosterUrl, metaId, autoSkipSegments, isTorrentStream, playbackUrl, torrentTelemetryContext, showStats, showTorrentPopover, controlsVisible, onFirstFrame, applyFills, flashFeedback,
@@ -232,6 +233,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
   }, [activeSkip, flashFeedback]);
 
   usePlayerKeyboardShortcuts({ closePlayer, contextMenu, setContextMenu, flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, setPlayerFullscreen, toggleFullscreen, toggleMiniPlayer, shortcutOverrides, showEpisodePanel, setShowEpisodePanel, showShortcutsHelp, setShowShortcutsHelp, startSeekOverlay, trackPopover, setTrackPopover, triggerActiveSkip, episodePanelOpenRef, isFullscreenRef, holdTimerRef, holdActiveRef, preSpeedRef, pausedRef, posRef, durRef, chaptersRef, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, setPaused, setShowStats });
+  usePlayerGamepadShortcuts({ closePlayer, flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, toggleFullscreen, toggleMiniPlayer, setShowShortcutsHelp, showShortcutsHelp, startSeekOverlay, triggerActiveSkip, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, pausedRef, setPaused, setShowStats, showEpisodePanel, setShowEpisodePanel, episodePanelOpenRef, trackPopover, setTrackPopover });
   useEffect(() => {
     return () => {
       platformSetCursorVisible(true).catch(() => {});
@@ -258,7 +260,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
   const subtitleControls = usePlayerSubtitleControls({ prefs, persistPreference: setSubtitlePref, flashFeedback });
   useEffect(() => { cycleAnime4kModeRef.current = cycleAnime4kMode; }, [cycleAnime4kMode]);
 
-  const { onCenterMouseDown, releaseCenterHold, onCenterClick } = usePlayerCenterGesture({ playbackSpeed, preSpeedRef, pausedRef, episodePanelOpenRef, showEpisodePanel, setShowEpisodePanel, trackPopover, setTrackPopover, setPaused, resetActivity, flashFeedback, toggleFullscreen, holdTimerRef, holdActiveRef });
+  const { onCenterPointerDown, releaseCenterHold, onCenterClick } = usePlayerCenterGesture({ playbackSpeed, preSpeedRef, pausedRef, episodePanelOpenRef, showEpisodePanel, setShowEpisodePanel, trackPopover, setTrackPopover, setPaused, resetActivity, flashFeedback, toggleFullscreen, holdTimerRef, holdActiveRef });
 
   const opacityStyle: React.CSSProperties = {
     opacity: controlsVisible ? 1 : 0,
@@ -334,7 +336,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
         onToggleSettings={() => setShowPlayerSettings((value) => !value)}
         onToggleSegmentMarker={() => setShowSegmentMarker((value) => !value)}
       />
-      <div style={{ flex: 1, cursor: 'default' }} onMouseDown={onCenterMouseDown} onMouseUp={releaseCenterHold} onMouseLeave={releaseCenterHold} onClick={onCenterClick} />
+      <div style={{ flex: 1, cursor: 'default' }} onPointerDown={onCenterPointerDown} onPointerUp={releaseCenterHold} onPointerLeave={releaseCenterHold} onClick={onCenterClick} />
 
       {trackPopover && <PlayerTrackPanel type={trackPopover} audioTracks={audioTracks} subTracks={subTracks} playbackSpeed={playbackSpeed} refs={{ audio: audioTrackBtnRef, sub: subTrackBtnRef, speed: speedBtnRef }} onClose={() => setTrackPopover(null)} onSetSpeed={setSpeed} onSelectTrack={selectTrack} onDisableSubs={disableSubs} subtitleControls={subtitleControls} />}
 
@@ -364,7 +366,7 @@ export function ReactPlayerOverlay({ closePlayer, onFirstFrame, isLoadingOverlay
         chaptersRef={chaptersRef}
         chapterSegments={chapterSegments}
         skipMarkers={skipMarkers}
-        onSeekStart={onSeekMouseDown}
+        onSeekStart={onSeekPointerDown}
         paused={paused}
         muted={muted}
         volumeLevel={volumeLevel}

@@ -13,7 +13,7 @@ interface PlayerSeekBarProps {
   chaptersRef: MutableRefObject<Chapter[]>;
   chapterSegments: Array<{ start: number; end: number }> | null;
   skipMarkers: Array<{ start: number; end: number }>;
-  onSeekStart: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onSeekStart: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
 export function PlayerSeekBar({ barRef, fillRef, bufferRef, dotRef, segmentFillRefs, segmentBufferRefs, durationRef, chaptersRef, chapterSegments, skipMarkers, onSeekStart }: PlayerSeekBarProps) {
@@ -21,7 +21,7 @@ export function PlayerSeekBar({ barRef, fillRef, bufferRef, dotRef, segmentFillR
   const trackHeight = hovered ? '0.3125rem' : '0.1875rem';
 
   return (
-    <div ref={barRef} className="fluxa-seekbar" style={{ position: 'relative', width: '100%', height: '2.25rem', cursor: 'pointer', overflow: 'visible', display: 'flex', alignItems: 'center' }} onMouseDown={onSeekStart} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+    <div ref={barRef} className="fluxa-seekbar" style={{ position: 'relative', width: '100%', height: '2.25rem', cursor: 'pointer', overflow: 'visible', display: 'flex', alignItems: 'center', touchAction: 'none' }} onPointerDown={onSeekStart} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       <div className="fluxa-seek-track" style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: trackHeight, transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.22)', borderRadius: '0.1875rem' }} />
       {!chapterSegments && skipMarkers.map((segment, index) => (
         <div key={`${segment.start}-${segment.end}-${index}`} className="fluxa-seek-track" style={{ position: 'absolute', left: `${segment.start * 100}%`, width: `${(segment.end - segment.start) * 100}%`, top: '50%', height: trackHeight, transform: 'translateY(-50%)', background: 'color-mix(in srgb, var(--primary-accent-color) 20%, transparent)', borderRadius: '0.1875rem', pointerEvents: 'none' }} />

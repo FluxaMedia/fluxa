@@ -1,8 +1,8 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { platformEmit as emit } from '../../platform/browser';
 import { t } from '../../i18n';
 import { comboFromEvent, findActionForCombo, type ShortcutOverrides } from '../../core/shortcuts';
 import { sendCmd, type Chapter, type FeedbackFlash } from './PlayerOverlayPrimitives';
+import { runPlayerAction } from './playerActions';
 
 type TrackPopover = 'audio' | 'sub' | 'speed' | null;
 type Point = { x: number; y: number } | null;
@@ -77,157 +77,8 @@ export function usePlayerKeyboardShortcuts(bindings: Bindings) {
       }
 
       const action = findActionForCombo(comboFromEvent(e), 'player', shortcutOverrides);
-      switch (action) {
-        case 'player_seek_back':
-          e.preventDefault();
-          startSeekOverlay();
-          flashFeedback('seekBack', '-10s');
-          sendCmd('seek -10 relative');
-          break;
-        case 'player_seek_forward':
-          e.preventDefault();
-          startSeekOverlay();
-          flashFeedback('seekFwd', '+10s');
-          sendCmd('seek 10 relative');
-          break;
-        case 'player_volume_up':
-          e.preventDefault();
-          flashFeedback('volume', '');
-          sendCmd('add volume 5');
-          break;
-        case 'player_volume_down':
-          e.preventDefault();
-          flashFeedback('volume', '');
-          sendCmd('add volume -5');
-          break;
-        case 'player_seek_big_back':
-          e.preventDefault();
-          startSeekOverlay();
-          flashFeedback('seekBack', t('player.seek_big_back'));
-          sendCmd('seek -60 relative');
-          break;
-        case 'player_seek_big_forward':
-          e.preventDefault();
-          startSeekOverlay();
-          flashFeedback('seekFwd', t('player.seek_big_forward'));
-          sendCmd('seek 60 relative');
-          break;
-        case 'player_play_pause':
-          e.preventDefault();
-          {
-            const icon = pausedRef.current ? 'play' : 'pause';
-            flashFeedback(icon, '');
-            setPaused((prev) => !prev);
-            sendCmd('cycle pause');
-          }
-          break;
-        case 'player_speed_decrease': {
-          e.preventDefault();
-          const next = Math.max(0.25, parseFloat((playbackSpeed - 0.25).toFixed(2)));
-          sendCmd(`set speed ${next}`);
-          setPlaybackSpeed(next);
-          flashFeedback('speed', t('player.speed_decrease'));
-          break;
-        }
-        case 'player_speed_increase': {
-          e.preventDefault();
-          const next = Math.min(4, parseFloat((playbackSpeed + 0.25).toFixed(2)));
-          sendCmd(`set speed ${next}`);
-          setPlaybackSpeed(next);
-          flashFeedback('speed', t('player.speed_increase'));
-          break;
-        }
-        case 'player_cycle_subtitle':
-          e.preventDefault();
-          sendCmd('cycle sub');
-          break;
-        case 'player_cycle_audio':
-          e.preventDefault();
-          sendCmd('cycle audio');
-          break;
-        case 'player_toggle_stats':
-          e.preventDefault();
-          setShowStats((s) => !s);
-          break;
-        case 'player_frame_step_forward':
-          e.preventDefault();
-          sendCmd('frame-step');
-          flashFeedback('seekFwd', t('player.frame_step'));
-          break;
-        case 'player_frame_step_back':
-          e.preventDefault();
-          sendCmd('frame-back-step');
-          flashFeedback('seekBack', t('player.frame_back_step'));
-          break;
-        case 'player_skip_active':
-          if (triggerActiveSkip()) e.preventDefault();
-          break;
-        case 'player_next_episode':
-          if (nextEpSubtitle) {
-            e.preventDefault();
-            void emit('native-player-next-episode', null);
-          }
-          break;
-        case 'player_mute':
-          e.preventDefault();
-          sendCmd('cycle mute');
-          break;
-        case 'player_sub_delay_earlier':
-          e.preventDefault();
-          flashFeedback('subDelay', t('player.subtitle_delay_earlier'));
-          sendCmd('add sub-delay -0.100');
-          break;
-        case 'player_sub_delay_later':
-          e.preventDefault();
-          flashFeedback('subDelay', t('player.subtitle_delay_later'));
-          sendCmd('add sub-delay 0.100');
-          break;
-        case 'player_fullscreen':
-          e.preventDefault();
-          void toggleFullscreen();
-          break;
-        case 'player_toggle_shortcuts_help':
-          e.preventDefault();
-          setShowShortcutsHelp((s) => !s);
-          break;
-        case 'player_toggle_pip':
-          e.preventDefault();
-          void toggleMiniPlayer();
-          break;
-        case 'player_open_cast':
-          e.preventDefault();
-          void openCastPopoverRef.current();
-          break;
-        case 'player_ab_loop':
-          e.preventDefault();
-          cycleAbLoopRef.current();
-          break;
-        case 'player_screenshot':
-          e.preventDefault();
-          void takeScreenshotRef.current();
-          break;
-        case 'player_seek_start':
-          e.preventDefault();
-          startSeekOverlay();
-          flashFeedback('seekBack', '0%');
-          sendCmd('seek 0 absolute');
-          break;
-        case 'player_seek_end':
-          e.preventDefault();
-          startSeekOverlay();
-          flashFeedback('seekFwd', '100%');
-          sendCmd('seek 100 absolute-percent');
-          break;
-        case 'player_anime4k_mode_next':
-          e.preventDefault();
-          cycleAnime4kModeRef.current(1);
-          break;
-        case 'player_anime4k_mode_prev':
-          e.preventDefault();
-          cycleAnime4kModeRef.current(-1);
-          break;
-        default:
-          break;
+      if (action && runPlayerAction(action, { flashFeedback, nextEpSubtitle, playbackSpeed, setPlaybackSpeed, toggleFullscreen, toggleMiniPlayer, setShowShortcutsHelp, startSeekOverlay, triggerActiveSkip, cycleAbLoopRef, openCastPopoverRef, takeScreenshotRef, cycleAnime4kModeRef, pausedRef, setPaused, setShowStats })) {
+        e.preventDefault();
       }
     };
 

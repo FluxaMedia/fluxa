@@ -29,8 +29,8 @@ export function usePlayerSeekInteractions({ durRef, lastSeekAtRef, activeCastDev
     else sendCmd(`set time-pos ${Math.floor(time)}`);
   }, [startSeekOverlay]);
 
-  const onSeekMouseDown = useCallback((event: React.MouseEvent) => {
-    if (event.button !== 0) return;
+  const onSeekPointerDown = useCallback((event: React.PointerEvent) => {
+    if (event.button !== 0 && event.pointerType === 'mouse') return;
     event.preventDefault();
     resetActivity();
     isDraggingRef.current = true;
@@ -43,12 +43,12 @@ export function usePlayerSeekInteractions({ durRef, lastSeekAtRef, activeCastDev
   }, [applyFills, resetActivity]);
 
   useEffect(() => {
-    const onMouseUp = () => {
+    const onPointerUp = () => {
       if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
       seekToFraction(dragPosRef.current);
     };
-    const onMouseMove = (event: MouseEvent) => {
+    const onPointerMove = (event: PointerEvent) => {
       if (!isDraggingRef.current) return;
       const bar = seekbarRef.current;
       if (!bar) return;
@@ -57,13 +57,13 @@ export function usePlayerSeekInteractions({ durRef, lastSeekAtRef, activeCastDev
       dragPosRef.current = fraction;
       applyFills(fraction);
     };
-    window.addEventListener('mouseup', onMouseUp);
-    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointermove', onPointerMove);
     return () => {
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointermove', onPointerMove);
     };
   }, [applyFills, seekToFraction]);
 
-  return { applyFills, onSeekMouseDown };
+  return { applyFills, onSeekPointerDown };
 }

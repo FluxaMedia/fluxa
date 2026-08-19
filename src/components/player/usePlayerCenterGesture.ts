@@ -5,8 +5,8 @@ export function usePlayerCenterGesture({ playbackSpeed, preSpeedRef, pausedRef, 
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdJustEndedRef = useRef(false);
 
-  const onMouseDown = useCallback((event: React.MouseEvent) => {
-    if (event.button !== 0) return;
+  const onPointerDown = useCallback((event: React.PointerEvent) => {
+    if (event.button !== 0 && event.pointerType === 'mouse') return;
     resetActivity();
     preSpeedRef.current = playbackSpeed;
     holdTimerRef.current = setTimeout(() => {
@@ -56,5 +56,5 @@ export function usePlayerCenterGesture({ playbackSpeed, preSpeedRef, pausedRef, 
     }, 250);
   }, [episodePanelOpenRef, flashFeedback, pausedRef, resetActivity, setPaused, setShowEpisodePanel, setTrackPopover, showEpisodePanel, toggleFullscreen, trackPopover]);
 
-  return { onCenterMouseDown: onMouseDown, releaseCenterHold: releaseHold, onCenterClick: onClick };
+  return { onCenterPointerDown: onPointerDown, releaseCenterHold: releaseHold, onCenterClick: onClick };
 }

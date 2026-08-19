@@ -4,7 +4,11 @@ import { sendCmd, type FeedbackFlash } from './PlayerOverlayPrimitives';
 export function usePlayerOverlayInput({ resetActivity, startSeekOverlay, flashFeedback }: { resetActivity: () => void; startSeekOverlay: () => void; flashFeedback: (icon: FeedbackFlash['icon'], label: string) => void }) {
   useEffect(() => {
     window.addEventListener('mousemove', resetActivity);
-    return () => window.removeEventListener('mousemove', resetActivity);
+    window.addEventListener('pointerdown', resetActivity);
+    return () => {
+      window.removeEventListener('mousemove', resetActivity);
+      window.removeEventListener('pointerdown', resetActivity);
+    };
   }, [resetActivity]);
 
   return useCallback((event: WheelEvent) => {
