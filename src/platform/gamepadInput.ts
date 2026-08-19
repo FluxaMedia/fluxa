@@ -1,21 +1,31 @@
 import type { TvAction } from './webosKeys';
+import {
+  GAMEPAD_ACTION_DEFS,
+  loadGamepadBindingOverrides,
+  onGamepadBindingsChanged,
+  type GamepadBindingOverrides,
+} from '../core/gamepadBindings';
 
 const DEADZONE = 0.5;
 const REPEAT_INITIAL_MS = 250;
 const REPEAT_MS = 130;
 
-const BUTTON_ACTIONS: Record<number, TvAction> = {
-  0: 'enter',
-  1: 'back',
-  4: 'previous',
-  5: 'next',
-  6: 'rewind',
-  7: 'fastForward',
-  12: 'up',
-  13: 'down',
-  14: 'left',
-  15: 'right',
-};
+let bindingOverrides: GamepadBindingOverrides = {};
+void loadGamepadBindingOverrides().then((overrides) => {
+  bindingOverrides = overrides;
+});
+onGamepadBindingsChanged((overrides) => {
+  bindingOverrides = overrides;
+});
+
+function buttonActions(): Record<number, TvAction> {
+  const map: Record<number, TvAction> = {};
+  for (const def of GAMEPAD_ACTION_DEFS) {
+    const index = bindingOverrides[def.id] ?? def.default;
+    map[index] = def.id;
+  }
+  return map;
+}
 
 function axisDirection(x: number, y: number): TvAction | null {
   if (Math.abs(x) < DEADZONE && Math.abs(y) < DEADZONE) return null;
@@ -24,25 +34,36 @@ function axisDirection(x: number, y: number): TvAction | null {
 }
 
 type Listener = (action: TvAction) => void;
+type RawListener = (index: number) => void;
 
 const listeners = new Set<Listener>();
+const rawListeners = new Set<RawListener>();
 const heldSince = new Map<TvAction, number>();
 const lastFired = new Map<TvAction, number>();
+const rawPressed = new Set<number>();
 let rafId: number | null = null;
 let padCount = 0;
 
 function poll(now: number) {
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
   const active = new Set<TvAction>();
+  const actions = buttonActions();
+  const nowPressed = new Set<number>();
 
   for (const pad of pads) {
     if (!pad || !pad.connected) continue;
-    for (const [index, action] of Object.entries(BUTTON_ACTIONS)) {
-      if (pad.buttons[Number(index)]?.pressed) active.add(action);
-    }
+    pad.buttons.forEach((button, index) => {
+      if (!button.pressed) return;
+      nowPressed.add(index);
+      const action = actions[index];
+      if (action) active.add(action);
+      if (!rawPressed.has(index)) emitRaw(index);
+    });
     const stick = axisDirection(pad.axes[0] ?? 0, pad.axes[1] ?? 0);
     if (stick) active.add(stick);
   }
+  rawPressed.clear();
+  for (const index of nowPressed) rawPressed.add(index);
 
   for (const action of active) {
     const since = heldSince.get(action);
@@ -74,6 +95,10 @@ function emit(action: TvAction) {
   for (const listener of listeners) listener(action);
 }
 
+function emitRaw(index: number) {
+  for (const listener of rawListeners) listener(index);
+}
+
 function startPolling() {
   if (rafId !== null) return;
   rafId = requestAnimationFrame(poll);
@@ -85,6 +110,7 @@ function stopPolling() {
   rafId = null;
   heldSince.clear();
   lastFired.clear();
+  rawPressed.clear();
 }
 
 function onGamepadConnected() {
@@ -112,4 +138,15 @@ export function onGamepadAction(listener: Listener): () => void {
   ensureInitialized();
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+export function onRawGamepadButton(listener: RawListener): () => void {
+  ensureInitialized();
+  rawListeners.add(listener);
+  return () => rawListeners.delete(listener);
+}
+
+export function getConnectedGamepads(): Gamepad[] {
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  return pads.filter((pad): pad is Gamepad => !!pad && pad.connected);
 }

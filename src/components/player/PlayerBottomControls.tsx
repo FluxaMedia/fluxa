@@ -15,12 +15,19 @@ import { useRef, useState, type CSSProperties, type PointerEvent, type MutableRe
 import { platformEmit as emit } from '../../platform/browser';
 import { t } from '../../i18n';
 import { useIsTouch } from '../../platform/viewport';
+import { useLastInputMethod } from '../../core/inputMethod';
+import { getConnectedGamepads } from '../../platform/gamepadInput';
+import { actionHintText, resolveActionHint } from '../ActionHint';
+import type { ShortcutOverrides } from '../../core/shortcuts';
+import type { GamepadBindingOverrides } from '../../core/gamepadBindings';
 import { VolumeBar } from './VolumeBar';
 import { PlayerSeekBar } from './PlayerSeekBar';
 import { IconVolume, type Chapter } from './PlayerOverlayPrimitives';
 
 export function PlayerBottomControls(props: {
   style: CSSProperties;
+  shortcutOverrides: ShortcutOverrides;
+  gamepadOverrides: GamepadBindingOverrides;
   showEpisodePanel: boolean;
   onControlsHover: (hovering: boolean) => void;
   seekbarRef: RefObject<HTMLDivElement | null>;
@@ -63,8 +70,12 @@ export function PlayerBottomControls(props: {
   const volumeHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const volumeScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTouch = useIsTouch();
+  const lastInput = useLastInputMethod();
+  const pads = getConnectedGamepads();
   const {
     style,
+    shortcutOverrides,
+    gamepadOverrides,
     showEpisodePanel,
     onControlsHover,
     seekbarRef,
@@ -102,6 +113,7 @@ export function PlayerBottomControls(props: {
     playbackSpeed,
     onToggleFullscreen,
   } = props;
+  const hint = (id: string) => actionHintText(resolveActionHint(id, lastInput, pads, shortcutOverrides, gamepadOverrides));
   return (
     <div
       className="fluxa-player-controls"
@@ -137,7 +149,7 @@ export function PlayerBottomControls(props: {
           }}
           className="fluxa-ibtn"
           style={{ ...iconBtn, width: '3rem', height: '3rem' }}
-          title={paused ? t('player.play') : t('player.pause')}
+          title={`${paused ? t('player.play') : t('player.pause')} (${hint('player_play_pause')})`}
         >
           {paused ? <Play size={26} fill="currentColor" strokeWidth={0} /> : <Pause size={26} fill="currentColor" strokeWidth={0} />}
         </button>
@@ -148,7 +160,7 @@ export function PlayerBottomControls(props: {
           }}
           className="fluxa-ibtn"
           style={iconBtn}
-          title={t('player.seek_back')}
+          title={`${t('player.seek_back')} (${hint('player_seek_back')})`}
         >
           <RotateCcw size={22} />
         </button>
@@ -159,7 +171,7 @@ export function PlayerBottomControls(props: {
           }}
           className="fluxa-ibtn"
           style={iconBtn}
-          title={t('player.seek_forward')}
+          title={`${t('player.seek_forward')} (${hint('player_seek_forward')})`}
         >
           <RotateCw size={22} />
         </button>
@@ -194,7 +206,7 @@ export function PlayerBottomControls(props: {
             }}
             className="fluxa-ibtn"
             style={iconBtn}
-            title={muted ? t('player.unmute') : t('player.mute')}
+            title={`${muted ? t('player.unmute') : t('player.mute')} (${hint('player_mute')})`}
           >
             <IconVolume muted={muted} level={volumeLevel} />
           </button>
@@ -316,7 +328,7 @@ export function PlayerBottomControls(props: {
           }}
           className="fluxa-ibtn"
           style={iconBtn}
-          title={t('player.fullscreen')}
+          title={`${t('player.fullscreen')} (${hint('player_fullscreen')})`}
         >
           <Fullscreen size={22} />
         </button>

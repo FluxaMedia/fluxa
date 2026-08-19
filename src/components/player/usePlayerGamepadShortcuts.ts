@@ -1,5 +1,6 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { onGamepadAction } from '../../platform/gamepadInput';
+import { PLAYER_ACTION_FOR_GAMEPAD } from '../../core/gamepadBindings';
 import { runPlayerAction, type PlayerActionContext } from './playerActions';
 import type { FeedbackFlash } from './PlayerOverlayPrimitives';
 
@@ -47,42 +48,12 @@ export function usePlayerGamepadShortcuts(bindings: Bindings) {
         void closePlayer();
         return;
       }
-      if (action === 'left') {
-        runPlayerAction('player_seek_back', bindings);
-        return;
-      }
-      if (action === 'right') {
-        runPlayerAction('player_seek_forward', bindings);
-        return;
-      }
-      if (action === 'up') {
-        runPlayerAction('player_volume_up', bindings);
-        return;
-      }
-      if (action === 'down') {
-        runPlayerAction('player_volume_down', bindings);
-        return;
-      }
-      if (action === 'enter') {
-        runPlayerAction('player_play_pause', bindings);
-        return;
-      }
-      if (action === 'previous') {
-        runPlayerAction('player_seek_big_back', bindings);
-        return;
-      }
       if (action === 'next') {
         runPlayerAction('player_next_episode', bindings) || runPlayerAction('player_seek_big_forward', bindings);
         return;
       }
-      if (action === 'rewind') {
-        runPlayerAction('player_frame_step_back', bindings);
-        return;
-      }
-      if (action === 'fastForward') {
-        runPlayerAction('player_frame_step_forward', bindings);
-        return;
-      }
+      const mapped = PLAYER_ACTION_FOR_GAMEPAD[action];
+      if (mapped) runPlayerAction(mapped, bindings);
     });
   }, [bindings]);
 }

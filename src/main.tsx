@@ -6,6 +6,7 @@ import { initDiagnosticsSentry } from './core/sentryRuntime';
 import { loadPrefs } from './core/libraryOps';
 import { prefBool } from './core/appPrefs';
 import { startViewportFlags } from './platform/viewport';
+import { startInputMethodTracking } from './core/inputMethod';
 import { startPwa } from './platform/pwa';
 import './index.css';
 import './mobile.css';
@@ -20,6 +21,7 @@ window.addEventListener('unhandledrejection', (event) => {
 
 async function bootstrap() {
   startViewportFlags();
+  startInputMethodTracking();
   startPwa();
 
   if (import.meta.env.PROD) {

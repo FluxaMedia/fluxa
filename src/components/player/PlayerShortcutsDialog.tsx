@@ -1,13 +1,20 @@
 import { t } from '../../i18n';
-import { formatCombo, resolveCombo, type ShortcutOverrides } from '../../core/shortcuts';
+import { type ShortcutOverrides } from '../../core/shortcuts';
+import type { GamepadBindingOverrides } from '../../core/gamepadBindings';
+import { actionHintText, resolveActionHint } from '../ActionHint';
+import { useLastInputMethod } from '../../core/inputMethod';
+import { getConnectedGamepads } from '../../platform/gamepadInput';
 
 interface Props {
   overrides: ShortcutOverrides;
+  gamepadOverrides: GamepadBindingOverrides;
   onClose: () => void;
 }
 
-export function PlayerShortcutsDialog({ overrides, onClose }: Props) {
-  const combo = (action: string) => formatCombo(resolveCombo(action, overrides));
+export function PlayerShortcutsDialog({ overrides, gamepadOverrides, onClose }: Props) {
+  const lastInput = useLastInputMethod();
+  const pads = getConnectedGamepads();
+  const combo = (action: string) => actionHintText(resolveActionHint(action, lastInput, pads, overrides, gamepadOverrides));
   const groups: { heading: string; rows: [string, string][] }[] = [
     {
       heading: t('player.shortcut_group_playback'),

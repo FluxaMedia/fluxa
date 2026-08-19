@@ -44,6 +44,7 @@ import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
 import { coreResolveNextEpisode } from '../core/engine';
 import { castSetVolume } from '../core/cast';
 import { loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from '../core/shortcuts';
+import { loadGamepadBindingOverrides, onGamepadBindingsChanged, type GamepadBindingOverrides } from '../core/gamepadBindings';
 
 import { sendCmd, type Chapter, type FeedbackFlash } from './player/PlayerOverlayPrimitives';
 
@@ -197,6 +198,11 @@ export function ReactPlayerOverlay({
   useEffect(() => {
     loadShortcutOverrides().then(setShortcutOverrides);
     return onShortcutsChanged(setShortcutOverrides);
+  }, []);
+  const [gamepadOverrides, setGamepadOverrides] = useState<GamepadBindingOverrides>({});
+  useEffect(() => {
+    loadGamepadBindingOverrides().then(setGamepadOverrides);
+    return onGamepadBindingsChanged(setGamepadOverrides);
   }, []);
   const cycleAnime4kModeRef = useRef<(direction: 1 | -1) => void>(() => {});
   const [showStats, setShowStats] = useState(false);
@@ -656,6 +662,8 @@ export function ReactPlayerOverlay({
 
       <PlayerHeader
         style={opacityStyle}
+        shortcutOverrides={shortcutOverrides}
+        gamepadOverrides={gamepadOverrides}
         bannerOffset={bannerOffset}
         title={title}
         episodeTitle={episodeTitle}
@@ -775,7 +783,9 @@ export function ReactPlayerOverlay({
               }
             : undefined
         }
-        shortcuts={showShortcutsHelp ? { overrides: shortcutOverrides, onClose: () => setShowShortcutsHelp(false) } : undefined}
+        shortcuts={
+          showShortcutsHelp ? { overrides: shortcutOverrides, gamepadOverrides, onClose: () => setShowShortcutsHelp(false) } : undefined
+        }
         stats={
           showStats
             ? {
@@ -812,6 +822,8 @@ export function ReactPlayerOverlay({
 
       <PlayerBottomControls
         style={opacityStyle}
+        shortcutOverrides={shortcutOverrides}
+        gamepadOverrides={gamepadOverrides}
         showEpisodePanel={showEpisodePanel}
         onControlsHover={(hovering) => {
           isOverControlsRef.current = hovering;

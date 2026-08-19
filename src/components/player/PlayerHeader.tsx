@@ -1,9 +1,16 @@
 import type { CSSProperties, RefObject } from 'react';
 import { Cast, ChevronLeft, Link2, ListPlus, Pause, PictureInPicture2, Play, Settings } from 'lucide-react';
 import { t } from '../../i18n';
+import { useLastInputMethod } from '../../core/inputMethod';
+import { getConnectedGamepads } from '../../platform/gamepadInput';
+import { actionHintText, resolveActionHint } from '../ActionHint';
+import type { ShortcutOverrides } from '../../core/shortcuts';
+import type { GamepadBindingOverrides } from '../../core/gamepadBindings';
 
 interface PlayerHeaderProps {
   style: CSSProperties;
+  shortcutOverrides: ShortcutOverrides;
+  gamepadOverrides: GamepadBindingOverrides;
   bannerOffset: number;
   title: string;
   episodeTitle: string;
@@ -55,6 +62,8 @@ const hdrBadgeStyle: CSSProperties = {
 
 export function PlayerHeader({
   style,
+  shortcutOverrides,
+  gamepadOverrides,
   bannerOffset,
   title,
   episodeTitle,
@@ -81,6 +90,9 @@ export function PlayerHeader({
     onResetActivity();
     action();
   };
+  const lastInput = useLastInputMethod();
+  const pads = getConnectedGamepads();
+  const hint = (id: string) => actionHintText(resolveActionHint(id, lastInput, pads, shortcutOverrides, gamepadOverrides));
 
   return (
     <div
@@ -162,7 +174,7 @@ export function PlayerHeader({
         }}
         className="fluxa-ibtn"
         style={iconButtonStyle}
-        title={t('player.cast')}
+        title={`${t('player.cast')} (${hint('player_open_cast')})`}
       >
         <Cast size={20} />
       </button>
@@ -170,7 +182,7 @@ export function PlayerHeader({
         onClick={(event) => stopAndRun(event, onToggleMiniPlayer)}
         className="fluxa-ibtn"
         style={iconButtonStyle}
-        title={t('player.picture_in_picture')}
+        title={`${t('player.picture_in_picture')} (${hint('player_toggle_pip')})`}
       >
         <PictureInPicture2 size={20} />
       </button>

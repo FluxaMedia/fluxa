@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { platformInvoke as invoke } from '../platform/invoke';
 import { coreApplyPreferenceUpdate, coreInvoke, httpFetchText, storageRead, storageWrite } from '../core/engine';
-import { Keyboard, Search } from 'lucide-react';
+import { Gamepad2, Keyboard, Search } from 'lucide-react';
 import {
   coreAddonCollectionMutationPlan,
   manifestFetchPlan,
@@ -41,6 +41,7 @@ import { GeneralSection } from '../components/settings/GeneralSection';
 import { AppearanceSection } from '../components/settings/AppearanceSection';
 import { PlaybackSection } from '../components/settings/PlaybackSection';
 import { ShortcutsSection } from '../components/settings/ShortcutsSection';
+import { ControllerSection } from '../components/settings/ControllerSection';
 import { ContentSection } from '../components/settings/ContentSection';
 import { AddonsSection } from '../components/settings/AddonsSection';
 import { PluginsSection } from '../components/settings/PluginsSection';
@@ -83,6 +84,7 @@ const TABS: { id: Tab; labelKey: string; subtitleKey: string; icon: React.ReactN
   { id: 'appearance', labelKey: 'auto.appearance', subtitleKey: 'auto.color_and_layout', icon: <PaletteIcon /> },
   { id: 'playback', labelKey: 'auto.playback', subtitleKey: 'auto.player_behavior_and_defaults', icon: <PlayCircleIcon /> },
   { id: 'shortcuts', labelKey: 'settings.shortcuts_tab', subtitleKey: 'settings.shortcuts_tab_desc', icon: <Keyboard size={22} /> },
+  { id: 'controller', labelKey: 'settings.controller_tab', subtitleKey: 'settings.controller_tab_desc', icon: <Gamepad2 size={22} /> },
   { id: 'content', labelKey: 'auto.catalogs', subtitleKey: 'auto.categories_sources_and_ranking', icon: <StorageIcon /> },
   { id: 'addons', labelKey: 'auto.add_ons', subtitleKey: 'auto.installed_add_ons_and_settings', icon: <ExtensionIcon /> },
   { id: 'plugins', labelKey: 'plugins.title', subtitleKey: 'plugins.subtitle', icon: <ExtensionIcon /> },
@@ -114,6 +116,7 @@ const SETTINGS_SEARCH_TERMS: Record<Tab, string[]> = {
     'decoder',
   ],
   shortcuts: ['keyboard', 'shortcuts', 'keybindings', 'hotkeys', 'rebind'],
+  controller: ['controller', 'gamepad', 'joystick', 'xbox', 'playstation', 'nintendo', 'rebind'],
   content: ['catalog', 'home', 'ranking', 'top 10', 'tmdb', 'rpdb', 'omdb', 'fanart', 'episodes'],
   addons: ['addons', 'manifest', 'install', 'remove', 'reorder', 'source'],
   plugins: ['plugins', 'scrapers', 'repository', 'manifest', 'install', 'remove', 'source'],
@@ -530,6 +533,7 @@ export function SettingsScreen({
         {tab === 'appearance' && <AppearanceSection prefs={prefs} setPref={setPref} />}
         {tab === 'playback' && <PlaybackSection prefs={prefs} setPref={setPref} />}
         {tab === 'shortcuts' && <ShortcutsSection />}
+        {tab === 'controller' && <ControllerSection />}
         {tab === 'content' && (
           <ContentSection prefs={prefs} setPref={setPref} installedAddons={installedAddons} disabledAddonKeys={disabledAddonKeys} />
         )}
