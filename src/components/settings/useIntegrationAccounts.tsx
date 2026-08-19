@@ -586,8 +586,11 @@ export function useIntegrationAccounts({
     setNuvioError(null);
     try {
       const session = await nuvioSignIn(email, password);
+      if (activeProfile.stremioAuthKey) void stremioLogout(activeProfile.stremioAuthKey);
       const updated: UserProfile = {
         ...activeProfile,
+        stremioAuthKey: undefined,
+        stremioEmail: undefined,
         nuvioAccessToken: session.access_token,
         nuvioRefreshToken: session.refresh_token,
         nuvioTokenExpiresAt: Math.floor(Date.now() / 1000) + (session.expires_in ?? 3600),
@@ -628,6 +631,11 @@ export function useIntegrationAccounts({
       const auth = await stremioLogin(email, password);
       const updated: UserProfile = {
         ...activeProfile,
+        nuvioAccessToken: undefined,
+        nuvioRefreshToken: undefined,
+        nuvioTokenExpiresAt: undefined,
+        nuvioUserId: undefined,
+        nuvioEmail: undefined,
         stremioAuthKey: auth.authKey,
         stremioEmail: auth.user.email ?? email,
       };
@@ -649,6 +657,11 @@ export function useIntegrationAccounts({
       const auth = await stremioLoginWithAuthKey(authKey);
       const updated: UserProfile = {
         ...activeProfile,
+        nuvioAccessToken: undefined,
+        nuvioRefreshToken: undefined,
+        nuvioTokenExpiresAt: undefined,
+        nuvioUserId: undefined,
+        nuvioEmail: undefined,
         stremioAuthKey: auth.authKey,
         stremioEmail: auth.user.email,
       };
@@ -745,11 +758,31 @@ export function useIntegrationAccounts({
     setNuvioBusy(true);
     setNuvioError(null);
     try {
-      const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: 0, watchlistCount: 0 };
-      setNuvioSyncMeta(meta);
-      await storageWrite('nuvio_sync_meta', meta);
-      await onNuvioSyncComplete?.();
-      await onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
+      const result = (await syncExternalIntegrationNow({
+        provider: 'nuvio',
+        profile: activeProfile,
+        token: activeProfile.nuvioAccessToken,
+        ...(categories ? { categories } : {}),
+      })) as {
+        synced?: boolean;
+        error?: string;
+        continueWatchingCount?: number;
+        watchlistCount?: number;
+        profile?: UserProfile;
+      };
+      if (!result.synced) {
+        setNuvioError(result.error ?? 'Nuvio sync failed');
+      } else {
+        if (result.profile) onProfileUpdated(result.profile);
+        const meta: SyncMeta = {
+          lastSyncAt: Date.now(),
+          continueWatchingCount: result.continueWatchingCount ?? 0,
+          watchlistCount: result.watchlistCount ?? 0,
+        };
+        setNuvioSyncMeta(meta);
+        await storageWrite('nuvio_sync_meta', meta);
+        await onNuvioSyncComplete?.();
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setNuvioError(message);

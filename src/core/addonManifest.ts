@@ -1,4 +1,6 @@
-import { coreInvoke } from './engine';
+import { coreInvoke, httpFetchText } from './engine';
+import { normalizeAddonDescriptor } from './addons';
+import type { AddonDescriptor } from './types';
 
 export async function normalizeManifestUrl(rawUrl: string): Promise<string> {
   return (await coreInvoke<string>('normalizeManifestUrl', JSON.stringify({ url: rawUrl }))) ?? rawUrl;
@@ -16,6 +18,34 @@ export async function parseManifest(body: string, transportUrl: string, unknownN
 
 export async function resolveManifestAssets(descriptor: unknown): Promise<unknown | null> {
   return coreInvoke('resolveManifestAssets', JSON.stringify(descriptor));
+}
+
+async function fetchManifestJson(url: string): Promise<unknown> {
+  const response = await httpFetchText(url);
+  if (response.statusCode < 200 || response.statusCode > 299) {
+    throw new Error(`Request failed (${response.statusCode})`);
+  }
+  return JSON.parse(response.body);
+}
+
+export async function loadAddonManifestFromUrl(rawUrl: string): Promise<AddonDescriptor> {
+  const plan = await manifestFetchPlan(rawUrl);
+  const candidateUrls = plan?.candidateUrls?.length ? plan.candidateUrls : [rawUrl];
+  let lastError: unknown = null;
+
+  for (const candidateUrl of candidateUrls) {
+    try {
+      const manifest = await fetchManifestJson(candidateUrl);
+      const parsed = await parseManifest(JSON.stringify(manifest), candidateUrl);
+      if (!parsed) throw new Error('Manifest parse returned empty result');
+      const resolved = await resolveManifestAssets(parsed);
+      return await normalizeAddonDescriptor((resolved ?? parsed) as AddonDescriptor);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(`Unable to fetch addon manifest: ${rawUrl}`);
 }
 
 export async function mergeLiveManifest(descriptor: unknown, live: unknown | null, unknownName = 'Unknown Addon'): Promise<unknown | null> {

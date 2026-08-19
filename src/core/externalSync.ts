@@ -6,10 +6,12 @@ import { pushStremioPlaybackProgress, syncStremioNow } from './stremioExternalSy
 import { pushLibraryStatusAniList, syncAniListNow } from './anilistExternalSync';
 import { nuvioPushWatchProgress } from './nuvioApi';
 import { simklScrobble, traktScrobble } from './scrobble';
-import { loadLibrary, loadPrefs, saveLibrary, buildContinueWatching, persistProgressMerge, profileStorageKey } from './libraryOps';
+import { loadLibrary, loadPrefs, saveLibrary, saveAddons, buildContinueWatching, persistProgressMerge, profileStorageKey } from './libraryOps';
+import { loadAddonManifestFromUrl } from './addonManifest';
 import { providerAdapters } from './providers';
 import type { PushWatchedArgs, WatchedEpisodeInfo, WatchProgressInfo } from './providers';
-import type { UserProfile } from './types';
+import type { AddonDescriptor, UserProfile } from './types';
+import type { ImportCategory } from './importCategories';
 import { platformInvoke as invoke } from '../platform/invoke';
 
 function debugLog(msg: string) {
@@ -335,8 +337,12 @@ export async function syncExternalIntegrationNow(payload: Record<string, unknown
 }
 
 async function syncNuvioNow(payload: Record<string, unknown>): Promise<unknown> {
-  const profile = payload.profile as UserProfile | undefined;
-  if (!profile?.nuvioAccessToken) return { synced: false, error: 'Nuvio is not connected' };
+  const rawProfile = payload.profile as UserProfile | undefined;
+  if (!rawProfile?.nuvioAccessToken) return { synced: false, error: 'Nuvio is not connected' };
+  const profile = await validNuvioProfile(rawProfile);
+  if (!profile.nuvioAccessToken) return { synced: false, error: 'Nuvio session expired' };
+  const categories = payload.categories as ImportCategory[] | undefined;
+  const wants = (category: ImportCategory) => !categories || categories.includes(category);
   const { nuvioPullAddons, nuvioPullLibrary, nuvioPullWatchProgress } = await import('./nuvioApi');
   const profileId = profile.nuvioProfileIndex ?? 1;
   const [addons, library, progress] = await Promise.all([
@@ -344,6 +350,19 @@ async function syncNuvioNow(payload: Record<string, unknown>): Promise<unknown> 
     nuvioPullLibrary(profile.nuvioAccessToken, profileId),
     nuvioPullWatchProgress(profile.nuvioAccessToken, profileId),
   ]);
+
+  let addonCount = 0;
+  if (wants('addons')) {
+    try {
+      const resolved = await Promise.all(
+        addons.filter((addon) => addon.enabled).map((addon) => loadAddonManifestFromUrl(addon.url).catch(() => null)),
+      );
+      const installed = resolved.filter((addon): addon is AddonDescriptor => addon !== null);
+      addonCount = installed.length;
+      await saveAddons(installed);
+    } catch {}
+  }
+
   return {
     synced: true,
     provider: 'nuvio',
@@ -351,6 +370,7 @@ async function syncNuvioNow(payload: Record<string, unknown>): Promise<unknown> 
     continueWatchingCount: progress.length,
     watchedCount: 0,
     collectionsCount: 0,
-    addonCount: addons.length,
+    addonCount,
+    profile: profile !== rawProfile ? profile : undefined,
   };
 }

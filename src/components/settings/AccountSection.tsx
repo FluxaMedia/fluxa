@@ -22,6 +22,7 @@ import { assetUrl } from '../../platform/assets';
 export function AccountSection({
   prefs,
   setPref,
+  prefsLoaded,
   activeProfile,
   onProfileUpdated,
   onSwitchProfile,
@@ -30,6 +31,7 @@ export function AccountSection({
 }: {
   prefs: Prefs;
   setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
+  prefsLoaded: boolean;
   activeProfile: UserProfile | null;
   onProfileUpdated: (profile: UserProfile) => void;
   onSwitchProfile: () => void;
@@ -130,9 +132,11 @@ export function AccountSection({
   const validSource = (source: string) => (isConnectedSource(source) ? source : preferredConnectedSource);
 
   useEffect(() => {
+    if (!prefsLoaded) return;
     if (!isConnectedSource(prefs.continueWatchingSource)) void setPref('continueWatchingSource', preferredConnectedSource);
     if (!isConnectedSource(prefs.integrationLibrarySource)) void setPref('integrationLibrarySource', preferredConnectedSource);
   }, [
+    prefsLoaded,
     prefs.continueWatchingSource,
     prefs.integrationLibrarySource,
     nuvioConnected,
@@ -168,6 +172,234 @@ export function AccountSection({
             value={t('settings.switch_profiles_desc')}
             onClick={onSwitchProfile}
           />
+
+          {/* Nuvio */}
+          {!nuvioConnected && !stremioConnected && (
+            <SyncServiceRow
+              icon={
+                <div
+                  style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    borderRadius: '0.75rem',
+                    background: 'rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+                </div>
+              }
+              title="Nuvio"
+              value={nuvioBusy ? t('auth.signing_in') : t('settings.connect_nuvio_account')}
+              onClick={() => setSelectedIntegration('nuvio')}
+              busy={nuvioBusy}
+              expanded={nuvioFormOpen}
+            />
+          )}
+          {!nuvioConnected && nuvioFormOpen && (
+            <CredentialLoginForm
+              busy={nuvioBusy}
+              onSubmit={(email, password) => void handleNuvioConnect(email, password)}
+              onCancel={() => {
+                setNuvioFormOpen(false);
+                setNuvioError(null);
+              }}
+            />
+          )}
+          {nuvioError && (
+            <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
+              <p
+                style={{
+                  color: '#FF5D5D',
+                  fontSize: '0.75rem',
+                  margin: 0,
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
+                }}
+              >
+                {t('common.error')}: {nuvioError}
+              </p>
+            </div>
+          )}
+          {nuvioConnected && (
+            <div ref={nuvioRowRef} style={{ position: 'relative' }}>
+              <SyncServiceRow
+                icon={
+                  <div
+                    style={{
+                      width: '2.75rem',
+                      height: '2.75rem',
+                      borderRadius: '0.75rem',
+                      background: 'rgba(255,255,255,0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+                  </div>
+                }
+                title={t('settings.signed_in_as', 'Nuvio')}
+                value={
+                  nuvioBusy
+                    ? t('sync.device.syncing')
+                    : activeProfile?.nuvioEmail
+                      ? activeProfile.nuvioEmail
+                      : t('sync.device.connected')
+                }
+                valueColor="#54D17A"
+                onClick={() => setSelectedIntegration('nuvio')}
+                busy={nuvioBusy}
+                expanded={nuvioPopoverOpen}
+              />
+              <SyncServicePopover
+                open={nuvioPopoverOpen}
+                anchorRef={nuvioRowRef}
+                serviceName="Nuvio"
+                meta={nuvioSyncMeta}
+                busy={nuvioBusy}
+                onSyncNow={() => void handleNuvioSyncNow()}
+                onDisconnect={() => setConfirmDisconnect({ title: 'Nuvio', onConfirm: () => void handleNuvioDisconnect() })}
+                onClose={() => setNuvioPopoverOpen(false)}
+              />
+            </div>
+          )}
+
+          {/* Stremio */}
+          {!stremioConnected && !nuvioConnected && (
+            <SyncServiceRow
+              icon={
+                <div
+                  style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    borderRadius: '0.75rem',
+                    background: 'rgba(123,91,245,0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+                </div>
+              }
+              title="Stremio"
+              value={stremioBusy ? t('auth.signing_in') : t('settings.connect_stremio_account')}
+              onClick={() => setSelectedIntegration('stremio')}
+              busy={stremioBusy}
+              expanded={stremioFormOpen}
+            />
+          )}
+          {!stremioConnected && stremioFormOpen && !stremioAuthKeyMode && (
+            <CredentialLoginForm
+              busy={stremioBusy}
+              onSubmit={(email, password) => void handleStremioConnect(email, password)}
+              onCancel={() => {
+                setStremioFormOpen(false);
+                setStremioError(null);
+              }}
+            />
+          )}
+          {!stremioConnected && stremioFormOpen && (
+            <div
+              style={{
+                padding: stremioAuthKeyMode ? '0 1.125rem' : '0.5rem 1.125rem 0',
+                borderBottom: stremioAuthKeyMode ? undefined : '1px solid rgba(255,255,255,0.055)',
+              }}
+            >
+              <button
+                onClick={() => {
+                  setStremioAuthKeyMode((m) => !m);
+                  setStremioError(null);
+                }}
+                disabled={stremioBusy}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '0.6875rem',
+                  cursor: 'pointer',
+                  padding: 0,
+                  marginBottom: stremioAuthKeyMode ? 0 : '0.5rem',
+                }}
+              >
+                {stremioAuthKeyMode ? t('auth.stremio.use_password_instead') : t('auth.stremio.use_authkey_instead')}
+              </button>
+            </div>
+          )}
+          {!stremioConnected && stremioFormOpen && stremioAuthKeyMode && (
+            <AuthKeyLoginForm
+              busy={stremioBusy}
+              onSubmit={(authKey) => void handleStremioConnectWithAuthKey(authKey)}
+              onCancel={() => {
+                setStremioFormOpen(false);
+                setStremioAuthKeyMode(false);
+                setStremioError(null);
+              }}
+            />
+          )}
+          {stremioError && (
+            <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
+              <p
+                style={{
+                  color: '#FF5D5D',
+                  fontSize: '0.75rem',
+                  margin: 0,
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
+                }}
+              >
+                {t('common.error')}: {stremioError}
+              </p>
+            </div>
+          )}
+          {stremioConnected && (
+            <div ref={stremioRowRef} style={{ position: 'relative' }}>
+              <SyncServiceRow
+                icon={
+                  <div
+                    style={{
+                      width: '2.75rem',
+                      height: '2.75rem',
+                      borderRadius: '0.75rem',
+                      background: 'rgba(123,91,245,0.12)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+                  </div>
+                }
+                title={t('settings.signed_in_as', 'Stremio')}
+                value={
+                  stremioBusy
+                    ? t('sync.device.syncing')
+                    : activeProfile?.stremioEmail
+                      ? activeProfile.stremioEmail
+                      : t('sync.device.connected')
+                }
+                valueColor="#54D17A"
+                onClick={() => setSelectedIntegration('stremio')}
+                busy={stremioBusy}
+                expanded={stremioPopoverOpen}
+              />
+              <SyncServicePopover
+                open={stremioPopoverOpen}
+                anchorRef={stremioRowRef}
+                serviceName="Stremio"
+                meta={stremioSyncMeta}
+                busy={stremioBusy}
+                onSyncNow={() => void handleStremioSyncNow()}
+                onDisconnect={() => setConfirmDisconnect({ title: 'Stremio', onConfirm: () => void handleStremioDisconnect() })}
+                onClose={() => setStremioPopoverOpen(false)}
+              />
+            </div>
+          )}
         </SettingsSection>
       )}
 
@@ -434,234 +666,6 @@ export function AccountSection({
               onSyncNow={() => void handleSimklSyncNow()}
               onDisconnect={() => setConfirmDisconnect({ title: 'Simkl', onConfirm: () => void handleSimklDisconnect() })}
               onClose={() => setSimklPopoverOpen(false)}
-            />
-          </div>
-        )}
-
-        {/* Nuvio */}
-        {!nuvioConnected && (
-          <SyncServiceRow
-            icon={
-              <div
-                style={{
-                  width: '2.75rem',
-                  height: '2.75rem',
-                  borderRadius: '0.75rem',
-                  background: 'rgba(255,255,255,0.06)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                }}
-              >
-                <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
-              </div>
-            }
-            title="Nuvio"
-            value={nuvioBusy ? t('auth.signing_in') : t('settings.connect_nuvio_account')}
-            onClick={() => setSelectedIntegration('nuvio')}
-            busy={nuvioBusy}
-            expanded={nuvioFormOpen}
-          />
-        )}
-        {!nuvioConnected && nuvioFormOpen && (
-          <CredentialLoginForm
-            busy={nuvioBusy}
-            onSubmit={(email, password) => void handleNuvioConnect(email, password)}
-            onCancel={() => {
-              setNuvioFormOpen(false);
-              setNuvioError(null);
-            }}
-          />
-        )}
-        {nuvioError && (
-          <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
-            <p
-              style={{
-                color: '#FF5D5D',
-                fontSize: '0.75rem',
-                margin: 0,
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
-              }}
-            >
-              {t('common.error')}: {nuvioError}
-            </p>
-          </div>
-        )}
-        {nuvioConnected && (
-          <div ref={nuvioRowRef} style={{ position: 'relative' }}>
-            <SyncServiceRow
-              icon={
-                <div
-                  style={{
-                    width: '2.75rem',
-                    height: '2.75rem',
-                    borderRadius: '0.75rem',
-                    background: 'rgba(255,255,255,0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
-                </div>
-              }
-              title="Nuvio"
-              value={
-                nuvioBusy
-                  ? t('sync.device.syncing')
-                  : activeProfile?.nuvioEmail
-                    ? t('settings.connected_as', activeProfile.nuvioEmail)
-                    : t('sync.device.connected')
-              }
-              valueColor="#54D17A"
-              onClick={() => setSelectedIntegration('nuvio')}
-              busy={nuvioBusy}
-              expanded={nuvioPopoverOpen}
-            />
-            <SyncServicePopover
-              open={nuvioPopoverOpen}
-              anchorRef={nuvioRowRef}
-              serviceName="Nuvio"
-              meta={nuvioSyncMeta}
-              busy={nuvioBusy}
-              onSyncNow={() => void handleNuvioSyncNow()}
-              onDisconnect={() => setConfirmDisconnect({ title: 'Nuvio', onConfirm: () => void handleNuvioDisconnect() })}
-              onClose={() => setNuvioPopoverOpen(false)}
-            />
-          </div>
-        )}
-
-        {/* Stremio */}
-        {!stremioConnected && (
-          <SyncServiceRow
-            icon={
-              <div
-                style={{
-                  width: '2.75rem',
-                  height: '2.75rem',
-                  borderRadius: '0.75rem',
-                  background: 'rgba(123,91,245,0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                }}
-              >
-                <img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
-              </div>
-            }
-            title="Stremio"
-            value={stremioBusy ? t('auth.signing_in') : t('settings.connect_stremio_account')}
-            onClick={() => setSelectedIntegration('stremio')}
-            busy={stremioBusy}
-            expanded={stremioFormOpen}
-          />
-        )}
-        {!stremioConnected && stremioFormOpen && !stremioAuthKeyMode && (
-          <CredentialLoginForm
-            busy={stremioBusy}
-            onSubmit={(email, password) => void handleStremioConnect(email, password)}
-            onCancel={() => {
-              setStremioFormOpen(false);
-              setStremioError(null);
-            }}
-          />
-        )}
-        {!stremioConnected && stremioFormOpen && (
-          <div
-            style={{
-              padding: stremioAuthKeyMode ? '0 1.125rem' : '0.5rem 1.125rem 0',
-              borderBottom: stremioAuthKeyMode ? undefined : '1px solid rgba(255,255,255,0.055)',
-            }}
-          >
-            <button
-              onClick={() => {
-                setStremioAuthKeyMode((m) => !m);
-                setStremioError(null);
-              }}
-              disabled={stremioBusy}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'rgba(255,255,255,0.5)',
-                fontSize: '0.6875rem',
-                cursor: 'pointer',
-                padding: 0,
-                marginBottom: stremioAuthKeyMode ? 0 : '0.5rem',
-              }}
-            >
-              {stremioAuthKeyMode ? t('auth.stremio.use_password_instead') : t('auth.stremio.use_authkey_instead')}
-            </button>
-          </div>
-        )}
-        {!stremioConnected && stremioFormOpen && stremioAuthKeyMode && (
-          <AuthKeyLoginForm
-            busy={stremioBusy}
-            onSubmit={(authKey) => void handleStremioConnectWithAuthKey(authKey)}
-            onCancel={() => {
-              setStremioFormOpen(false);
-              setStremioAuthKeyMode(false);
-              setStremioError(null);
-            }}
-          />
-        )}
-        {stremioError && (
-          <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
-            <p
-              style={{
-                color: '#FF5D5D',
-                fontSize: '0.75rem',
-                margin: 0,
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
-              }}
-            >
-              {t('common.error')}: {stremioError}
-            </p>
-          </div>
-        )}
-        {stremioConnected && (
-          <div ref={stremioRowRef} style={{ position: 'relative' }}>
-            <SyncServiceRow
-              icon={
-                <div
-                  style={{
-                    width: '2.75rem',
-                    height: '2.75rem',
-                    borderRadius: '0.75rem',
-                    background: 'rgba(123,91,245,0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
-                </div>
-              }
-              title="Stremio"
-              value={
-                stremioBusy
-                  ? t('sync.device.syncing')
-                  : activeProfile?.stremioEmail
-                    ? t('settings.connected_as', activeProfile.stremioEmail)
-                    : t('sync.device.connected')
-              }
-              valueColor="#54D17A"
-              onClick={() => setSelectedIntegration('stremio')}
-              busy={stremioBusy}
-              expanded={stremioPopoverOpen}
-            />
-            <SyncServicePopover
-              open={stremioPopoverOpen}
-              anchorRef={stremioRowRef}
-              serviceName="Stremio"
-              meta={stremioSyncMeta}
-              busy={stremioBusy}
-              onSyncNow={() => void handleStremioSyncNow()}
-              onDisconnect={() => setConfirmDisconnect({ title: 'Stremio', onConfirm: () => void handleStremioDisconnect() })}
-              onClose={() => setStremioPopoverOpen(false)}
             />
           </div>
         )}

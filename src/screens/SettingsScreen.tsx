@@ -1,14 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { platformInvoke as invoke } from '../platform/invoke';
-import { coreApplyPreferenceUpdate, coreInvoke, httpFetchText, storageRead, storageWrite } from '../core/engine';
+import { coreApplyPreferenceUpdate, coreInvoke, storageRead, storageWrite } from '../core/engine';
 import { Gamepad2, Keyboard, Search } from 'lucide-react';
-import {
-  coreAddonCollectionMutationPlan,
-  manifestFetchPlan,
-  normalizeManifestUrl,
-  parseManifest,
-  resolveManifestAssets,
-} from '../core/addonManifest';
+import { coreAddonCollectionMutationPlan, loadAddonManifestFromUrl, normalizeManifestUrl } from '../core/addonManifest';
 import type { AddonDescriptor, AppState, PluginRepository, PluginScraper, UserProfile } from '../core/types';
 import { addonKey, normalizeAddonDescriptor } from '../core/addons';
 import { saveProfile } from '../core/profiles';
@@ -49,34 +43,6 @@ import { DownloadsSection } from '../components/settings/DownloadsSection';
 import { AddonAddedDialog } from '../components/AddonAddedDialog';
 import { Toast } from '../components/Toast';
 import { isBrowserTarget } from '../platform/browser';
-
-async function settingsFetchJson(url: string): Promise<unknown> {
-  const response = await httpFetchText(url);
-  if (response.statusCode < 200 || response.statusCode > 299) {
-    throw new Error(`Request failed (${response.statusCode})`);
-  }
-  return JSON.parse(response.body);
-}
-
-async function loadAddonManifestFromUrl(rawUrl: string): Promise<AddonDescriptor> {
-  const plan = await manifestFetchPlan(rawUrl);
-  const candidateUrls = plan?.candidateUrls?.length ? plan.candidateUrls : [rawUrl];
-  let lastError: unknown = null;
-
-  for (const candidateUrl of candidateUrls) {
-    try {
-      const manifest = await settingsFetchJson(candidateUrl);
-      const parsed = await parseManifest(JSON.stringify(manifest), candidateUrl);
-      if (!parsed) throw new Error('Manifest parse returned empty result');
-      const resolved = await resolveManifestAssets(parsed);
-      return await normalizeAddonDescriptor((resolved ?? parsed) as AddonDescriptor);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error(`Unable to fetch addon manifest: ${rawUrl}`);
-}
 
 const TABS: { id: Tab; labelKey: string; subtitleKey: string; icon: React.ReactNode }[] = [
   { id: 'account', labelKey: 'auto.account_sync', subtitleKey: 'auto.account_devices_and_sync', icon: <AccountIcon /> },
@@ -155,6 +121,7 @@ export function SettingsScreen({
   const [pluginInstallLoading, setPluginInstallLoading] = useState(false);
   const [pluginInstallError, setPluginInstallError] = useState<string | null>(null);
   const [inAppUpdatesSupported, setInAppUpdatesSupported] = useState(true);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   useEffect(() => {
     invoke<boolean>('in_app_updates_supported')
@@ -190,6 +157,7 @@ export function SettingsScreen({
       if (!isBrowserTarget()) {
         void invoke('player_set_seek_thumbnail_enabled', { enabled: merged.seekThumbnailEnabled });
       }
+      setPrefsLoaded(true);
     });
     loadEnabledAddons().then((a) => setInstalledAddons(a));
   }, []);
@@ -290,10 +258,10 @@ export function SettingsScreen({
   };
 
   useEffect(() => {
-    if (!activeProfile?.nuvioAccessToken) return;
+    if (!prefsLoaded || !activeProfile?.nuvioAccessToken) return;
     if (prefs.continueWatchingSource !== 'nuvio') void setPref('continueWatchingSource', 'nuvio');
     if (prefs.integrationLibrarySource !== 'nuvio') void setPref('integrationLibrarySource', 'nuvio');
-  }, [activeProfile?.id, activeProfile?.nuvioAccessToken]);
+  }, [prefsLoaded, activeProfile?.id, activeProfile?.nuvioAccessToken]);
 
   const handleInstall = async () => {
     const rawUrl = addonUrl.trim();
@@ -522,6 +490,7 @@ export function SettingsScreen({
           <AccountSection
             prefs={prefs}
             setPref={setPref}
+            prefsLoaded={prefsLoaded}
             activeProfile={activeProfile}
             onProfileUpdated={onProfileUpdated}
             onSwitchProfile={onSwitchProfile}
