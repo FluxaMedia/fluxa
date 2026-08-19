@@ -1,8 +1,62 @@
 import type React from 'react';
 import { useState } from 'react';
+import { ChevronUp, ChevronDown, X } from 'lucide-react';
 import { effectiveFolderImageUrl, effectiveFolderShape } from '../core/collections';
 import type { UserCollectionFolder } from '../core/types';
 import { t } from '../i18n';
+
+export function moveItem<T>(items: T[], index: number, delta: -1 | 1): T[] {
+  const next = index + delta;
+  if (next < 0 || next >= items.length) return items;
+  const copy = [...items];
+  [copy[index], copy[next]] = [copy[next], copy[index]];
+  return copy;
+}
+
+export function MoveButtons({
+  onUp,
+  onDown,
+  onRemove,
+  upDisabled,
+  downDisabled,
+}: {
+  onUp: () => void;
+  onDown: () => void;
+  onRemove?: () => void;
+  upDisabled?: boolean;
+  downDisabled?: boolean;
+}) {
+  const btnStyle = (disabled?: boolean): React.CSSProperties => ({
+    width: '1.5rem',
+    height: '1.25rem',
+    border: 'none',
+    borderRadius: '0.25rem',
+    background: 'rgba(255,255,255,0.08)',
+    color: disabled ? 'rgba(255,255,255,0.2)' : '#fff',
+    cursor: disabled ? 'default' : 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  });
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+        <button onClick={onUp} disabled={upDisabled} style={btnStyle(upDisabled)}>
+          <ChevronUp size={12} />
+        </button>
+        <button onClick={onDown} disabled={downDisabled} style={btnStyle(downDisabled)}>
+          <ChevronDown size={12} />
+        </button>
+      </div>
+      {onRemove && (
+        <button onClick={onRemove} style={{ ...btnStyle(false), height: '2.625rem', color: '#e85d3f' }}>
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function hexLuminance(hex: string): number {
   const c = hex.replace('#', '');

@@ -20,6 +20,9 @@ export interface Meta {
   runtime?: string;
   releaseInfo?: string;
   focusGifUrl?: string;
+  focusGifEnabled?: boolean;
+  coverEmoji?: string;
+  hideTitle?: boolean;
   cast?: CastMember[];
   director?: string[];
   createdBy?: string[];
@@ -160,6 +163,7 @@ export interface HomeCategory {
   addonGenre?: string;
   catalogSources?: HomeCatalogSource[];
   hasMore?: boolean;
+  focusGlowEnabled?: boolean;
 }
 
 export interface LibraryItem {

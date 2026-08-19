@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { effectiveFolderImageUrl, effectiveFolderShape } from '../../core/collections';
-import { contrastOn } from '../../screens/CollectionEditorPrimitives';
+import { contrastOn, MoveButtons, moveItem } from '../../screens/CollectionEditorPrimitives';
 import type { UserCollection, UserCollectionFolder } from '../../core/types';
 import { t } from '../../i18n';
 import { usePosterSrc } from '../../hooks/usePosterSrc';
@@ -19,6 +19,7 @@ export function CollectionsTab({
   onDeleteCollection,
   onNewCollection,
   onShowAllOnHome,
+  onReorderCollections,
 }: {
   collections: UserCollection[];
   accent: string;
@@ -27,6 +28,7 @@ export function CollectionsTab({
   onDeleteCollection: (id: string) => void;
   onNewCollection: () => void;
   onShowAllOnHome: () => void;
+  onReorderCollections: (next: UserCollection[]) => void;
 }) {
   if (collections.length === 0) {
     return (
@@ -99,7 +101,7 @@ export function CollectionsTab({
         </button>
       </div>
 
-      {collections.map((col) => (
+      {collections.map((col, index) => (
         <CollectionSection
           key={col.id}
           collection={col}
@@ -107,6 +109,9 @@ export function CollectionsTab({
           onFolderClick={onFolderClick}
           onEdit={() => onEditCollection(col)}
           onDelete={() => onDeleteCollection(col.id)}
+          onMove={(delta) => onReorderCollections(moveItem(collections, index, delta))}
+          moveUpDisabled={index === 0}
+          moveDownDisabled={index === collections.length - 1}
         />
       ))}
     </div>
@@ -119,12 +124,18 @@ function CollectionSection({
   onFolderClick,
   onEdit,
   onDelete,
+  onMove,
+  moveUpDisabled,
+  moveDownDisabled,
 }: {
   collection: UserCollection;
   accent: string;
   onFolderClick: (folder: UserCollectionFolder, title: string, collection: UserCollection) => void;
   onEdit: () => void;
   onDelete: () => void;
+  onMove: (delta: -1 | 1) => void;
+  moveUpDisabled: boolean;
+  moveDownDisabled: boolean;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const folders = collection.folders ?? [];
@@ -133,6 +144,7 @@ function CollectionSection({
     <div style={{ marginBottom: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
         <span style={{ flex: 1, color: '#fff', fontSize: '1.125rem', fontWeight: 900 }}>{collection.title}</span>
+        <MoveButtons onUp={() => onMove(-1)} onDown={() => onMove(1)} upDisabled={moveUpDisabled} downDisabled={moveDownDisabled} />
         <button onClick={onEdit} style={S.actionBtn}>
           Edit
         </button>

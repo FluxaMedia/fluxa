@@ -12,6 +12,62 @@ const ROW_PADDING_LEFT = '2rem';
 const SCROLL_GAP = 12;
 const BUFFER = 3;
 
+const dominantColorCache = new Map<string, string | null>();
+
+function useDominantColor(src: string | null, enabled: boolean): string | null {
+  const [color, setColor] = React.useState<string | null>(() => (src ? (dominantColorCache.get(src) ?? null) : null));
+
+  React.useEffect(() => {
+    if (!enabled || !src) return;
+    const cached = dominantColorCache.get(src);
+    if (cached !== undefined) {
+      setColor(cached);
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (cancelled) return;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 16;
+        canvas.height = 16;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('no ctx');
+        ctx.drawImage(img, 0, 0, 16, 16);
+        const data = ctx.getImageData(0, 0, 16, 16).data;
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        let count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i];
+          g += data[i + 1];
+          b += data[i + 2];
+          count++;
+        }
+        const rgb = `rgb(${Math.round(r / count)}, ${Math.round(g / count)}, ${Math.round(b / count)})`;
+        dominantColorCache.set(src, rgb);
+        if (!cancelled) setColor(rgb);
+      } catch {
+        dominantColorCache.set(src, null);
+        if (!cancelled) setColor(null);
+      }
+    };
+    img.onerror = () => {
+      dominantColorCache.set(src, null);
+      if (!cancelled) setColor(null);
+    };
+    img.src = src;
+    return () => {
+      cancelled = true;
+    };
+  }, [src, enabled]);
+
+  return color;
+}
+
 function cardWidth(folder: Meta): number {
   const shape = (((folder as unknown as Record<string, unknown>).reason as string | undefined) ?? 'poster').toLowerCase();
   if (shape === 'wide' || shape === 'landscape') return 280;
@@ -25,12 +81,14 @@ export const CollectionShelfRow = React.memo(function CollectionShelfRow({
   onFolderClick,
   addonIcon,
   gifAutoplayEnabled = true,
+  focusGlowEnabled = false,
 }: {
   title: string;
   folders: Meta[];
   onFolderClick: (f: Meta) => void;
   addonIcon?: string;
   gifAutoplayEnabled?: boolean;
+  focusGlowEnabled?: boolean;
 }) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const dragScroll = useDragScroll(scrollRef);
@@ -127,6 +185,7 @@ export const CollectionShelfRow = React.memo(function CollectionShelfRow({
             onClick={onFolderClick}
             addonIcon={addonIcon}
             gifAutoplayEnabled={gifAutoplayEnabled}
+            focusGlowEnabled={focusGlowEnabled}
           />
         ))}
         {afterWidth > 0 && <div style={{ width: afterWidth, flexShrink: 0 }} />}
@@ -140,11 +199,13 @@ const FolderTileCard = React.memo(function FolderTileCard({
   onClick,
   addonIcon,
   gifAutoplayEnabled,
+  focusGlowEnabled,
 }: {
   folder: Meta;
   onClick: (f: Meta) => void;
   addonIcon?: string;
   gifAutoplayEnabled: boolean;
+  focusGlowEnabled: boolean;
 }) {
   const [hovered, setHovered] = React.useState(false);
   const [gifError, setGifError] = React.useState(false);
@@ -167,10 +228,12 @@ const FolderTileCard = React.memo(function FolderTileCard({
     cardImageUrl(folder.background, { kind: 'backdrop', displayWidth: w, dpr: window.devicePixelRatio });
   const { src: staticSrc } = usePosterSrc(staticUrl);
   const hasStatic = !!staticSrc;
-  const gifEligible = !!folder.focusGifUrl && inViewport && (gifAutoplayEnabled || hovered) && !gifError;
+  const gifEligible =
+    !!folder.focusGifUrl && folder.focusGifEnabled !== false && inViewport && (gifAutoplayEnabled || hovered) && !gifError;
   const hasGifSlot = useGifSlot(folder.id, gifEligible);
   const wantsMotion = gifEligible && hasGifSlot;
   const showPlaceholder = !hasStatic && !wantsMotion;
+  const glowColor = useDominantColor(staticSrc ?? null, focusGlowEnabled && hovered);
 
   React.useEffect(() => {
     setGifError(false);
@@ -193,7 +256,16 @@ const FolderTileCard = React.memo(function FolderTileCard({
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
     >
-      <div className="folder-card" data-motion-url={folder.focusGifUrl ?? undefined} style={{ ...collStyles.card, ...imgStyle }}>
+      <div
+        className="folder-card"
+        data-motion-url={folder.focusGifUrl ?? undefined}
+        style={{
+          ...collStyles.card,
+          ...imgStyle,
+          boxShadow: glowColor ? `0 0 1.5rem 0.125rem ${glowColor}` : undefined,
+          transition: 'box-shadow 0.2s ease',
+        }}
+      >
         {hasStatic && <img src={staticSrc} alt={folder.name} loading="lazy" decoding="async" draggable={false} style={collStyles.img} />}
         {wantsMotion && (
           <img
@@ -207,7 +279,9 @@ const FolderTileCard = React.memo(function FolderTileCard({
         )}
         {showPlaceholder && (
           <div style={collStyles.namePlaceholder}>
-            {addonIcon ? (
+            {folder.coverEmoji ? (
+              <span style={{ fontSize: '2.5rem' }}>{folder.coverEmoji}</span>
+            ) : addonIcon ? (
               <img src={addonIcon} alt="" style={{ width: '48%', height: '48%', objectFit: 'contain', opacity: 0.35 }} />
             ) : (
               <span style={collStyles.namePlaceholderText}>{folder.name.slice(0, 1).toUpperCase()}</span>
@@ -215,7 +289,7 @@ const FolderTileCard = React.memo(function FolderTileCard({
           </div>
         )}
       </div>
-      <p style={collStyles.folderName}>{folder.name}</p>
+      {!folder.hideTitle && <p style={collStyles.folderName}>{folder.name}</p>}
     </div>
   );
 });

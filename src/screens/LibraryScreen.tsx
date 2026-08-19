@@ -462,6 +462,7 @@ export const LibraryScreen = React.memo(
               onDeleteCollection={(id) => void handleDeleteCollection(id)}
               onNewCollection={() => setEditingCollection('new')}
               onShowAllOnHome={() => void saveCollections(collections.map((c) => ({ ...c, showOnHome: true })))}
+              onReorderCollections={(next) => void saveCollections(next)}
             />
           </div>
         ) : items.length === 0 ? (

@@ -15,6 +15,8 @@ import {
   ImagePreviewField,
   SectionLabel,
   Card,
+  MoveButtons,
+  moveItem,
 } from './CollectionEditorPrimitives';
 import { FolderEditorPage } from './FolderEditorPage';
 import { ImportDialog } from './ImportDialog';
@@ -190,8 +192,18 @@ function CollectionEditorPage({
                 {t('library.no_folders_yet')}
               </div>
             )}
-            {folders.map((folder) => (
-              <FolderRow key={folder.id} folder={folder} accent={accent} onClick={() => setEditingFolder(folder)} />
+            {folders.map((folder, index) => (
+              <div key={folder.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <FolderRow folder={folder} accent={accent} onClick={() => setEditingFolder(folder)} />
+                </div>
+                <MoveButtons
+                  onUp={() => setFolders((prev) => moveItem(prev, index, -1))}
+                  onDown={() => setFolders((prev) => moveItem(prev, index, 1))}
+                  upDisabled={index === 0}
+                  downDisabled={index === folders.length - 1}
+                />
+              </div>
             ))}
             <button
               disabled={folders.length >= 10}

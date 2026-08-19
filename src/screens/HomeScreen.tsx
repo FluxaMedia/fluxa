@@ -645,6 +645,7 @@ export const HomeScreen = React.memo(
                   onFolderClick={handleFolderTileClick}
                   addonIcon={cat.addonName ? addonIconByName.get(cat.addonName) : undefined}
                   gifAutoplayEnabled={gifAutoplayEnabled}
+                  focusGlowEnabled={cat.focusGlowEnabled ?? true}
                 />
               ) : (
                 <ShelfRow
