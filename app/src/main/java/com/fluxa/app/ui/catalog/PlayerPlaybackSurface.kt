@@ -19,6 +19,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.core.rust.models.NativeStreamBadge
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fluxa.app.player.LibassDebugLog
 import com.fluxa.app.player.MediaPlayerController
@@ -368,6 +374,28 @@ internal fun BoxScope.PlayerPlaybackSurface(
         }
     }
 
+    var pausedOverlayVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(playback.isPlaying, playback.isBuffering, timeline.duration, playerError) {
+        pausedOverlayVisible = false
+        if (playback.isPlaying || playback.isBuffering || timeline.duration <= 0L || playerError != null) {
+            return@LaunchedEffect
+        }
+        kotlinx.coroutines.delay(5000)
+        pausedOverlayVisible = true
+    }
+    androidx.compose.animation.AnimatedVisibility(
+        visible = pausedOverlayVisible && !showControls && playback.hasStartedPlaying,
+        enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(220)),
+        exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(180))
+    ) {
+        com.fluxa.app.shared.feature.player.PlayerPauseMetadataOverlay(
+            content = content,
+            episodeMetaLine = currentEpisodeMetaLine,
+            lang = lang,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+
     PlayerParentsGuideOverlay(
         categories = parentsGuide,
         lang = lang,
@@ -550,11 +578,24 @@ internal fun PlayerSettingsPanel(
             onClose = onCloseSettings
         )
     } else if (activeSettingsTab == 4) {
+        val context = LocalContext.current
+        var streamBadgesByUrl by remember { mutableStateOf<Map<String, List<NativeStreamBadge>>>(emptyMap()) }
+        LaunchedEffect(currentStreams) {
+            streamBadgesByUrl = withContext(Dispatchers.Default) {
+                val rulesJson = StreamBadgeRulesStore.read(context)
+                currentStreams
+                    .mapNotNull { stream -> stream.playableUrl?.let { it to stream } }
+                    .associate { (url, stream) ->
+                        url to runCatching { FluxaCoreNative.matchStreamBadges(stream, rulesJson) }.getOrDefault(emptyList())
+                    }
+            }
+        }
         SourceSidebar(
-            streams = currentStreams.map { it.toSourceUiModel() },
+            streams = currentStreams.map { it.toSourceUiModel(streamBadgesByUrl[it.playableUrl] ?: emptyList()) },
             currentUrl = currentUrl.orEmpty(),
             deviceType = deviceType,
             lang = lang,
+            badgePlacement = remember { StreamBadgeRulesStore.readPlacement(context) },
             onSelect = { selectedUrl ->
                 val selectedIndex = currentStreams.indexOfFirst { it.playableUrl == selectedUrl }
                 if (selectedIndex >= 0) onSelectStreamIndex(selectedIndex)
