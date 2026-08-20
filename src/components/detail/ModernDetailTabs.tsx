@@ -8,7 +8,6 @@ import { MS, S, spinnerStyle } from './detailStyles';
 import { CastAvatar, type NormalizedCastMember } from './castSection';
 import { dedupedWatchProviders, WatchProviderLogo, openWatchProvidersLink } from './watchProvidersSection';
 import { TrailerCarousel, type TrailerMetadata } from './TrailerCarousel';
-import { SimilarSourcePicker } from './ModernDetailParts';
 import { ModernEpisodeCard } from './ModernEpisodeCard';
 import type { ProgressEntry } from './EpisodePanel';
 
@@ -161,21 +160,16 @@ export function EpisodesTabContent({
 }
 
 export function RelatedTabContent({
-  similarSource,
-  onChangeSimilarSource,
   similarItems,
   poster,
   onNavigateDetail,
 }: {
-  similarSource: string;
-  onChangeSimilarSource: (source: string) => void;
   similarItems: Meta[];
   poster: ReturnType<typeof posterPrefsFromState>;
   onNavigateDetail: (meta: Meta) => void;
 }) {
   return (
     <div style={{ ...MS.relatedSection, minHeight: '12.5rem' }}>
-      <SimilarSourcePicker value={similarSource} onChange={onChangeSimilarSource} />
       {similarItems.length === 0 ? (
         <p style={MS.episodeCount}>{t('auto.no_similar_titles')}</p>
       ) : (

@@ -15,6 +15,7 @@ import { ModernDetailHero } from './ModernDetailHero';
 import { ModernDetailActionRow } from './ModernDetailActionRow';
 import { ModernDetailMetaBlock } from './ModernDetailMetaBlock';
 import { PrevSeasonDialog, SeasonControls } from './ModernDetailSeasonSection';
+import { SimilarSourcePicker } from './ModernDetailParts';
 import { ModernDetailRail } from './ModernDetailRail';
 
 export type ModernDetailProps = {
@@ -341,13 +342,17 @@ export function ModernDetailLayout({
                 tabs={seriesTabs}
                 active={activeTab}
                 onChange={(id) => setActiveTab(id as typeof activeTab)}
-                trailing={<SeasonControls
+                trailing={activeTab === 'related' ? (
+                  <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} />
+                ) : activeTab === 'episodes' ? (
+                  <SeasonControls
                   seasonNumbers={seasonNumbers}
                   selectedSeason={selectedSeason}
                   onSeasonChange={onSeasonChange}
                   seasonWatchedMap={seasonWatchedMap}
                   toggleSeasonWatched={toggleSeasonWatched}
-                />}
+                  />
+                ) : null}
               />
 
               {activeTab === 'episodes' && (
@@ -368,8 +373,6 @@ export function ModernDetailLayout({
 
               {activeTab === 'related' && (
                 <RelatedTabContent
-                  similarSource={similarSource}
-                  onChangeSimilarSource={changeSimilarSource}
                   similarItems={similarItems}
                   poster={poster}
                   onNavigateDetail={onNavigateDetail}
@@ -395,12 +398,13 @@ export function ModernDetailLayout({
                 tabs={movieTabs}
                 active={activeTab === 'episodes' ? 'related' : activeTab}
                 onChange={(id) => setActiveTab(id as typeof activeTab)}
+                trailing={
+                  activeTab !== 'details' ? <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} /> : null
+                }
               />
 
               {(activeTab === 'related' || activeTab === 'episodes') && (
                 <RelatedTabContent
-                  similarSource={similarSource}
-                  onChangeSimilarSource={changeSimilarSource}
                   similarItems={similarItems}
                   poster={poster}
                   onNavigateDetail={onNavigateDetail}

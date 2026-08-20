@@ -96,15 +96,17 @@ export function SeasonDropdown({
         />
       </button>
       {open && (
-        <div style={EP.seasonMenu}>
+        <div className="ui-popover" style={EP.seasonMenu}>
           {seasons.map((s) => {
             const isWatched = seasonWatched?.[s] === true;
             return (
               <button
                 key={s}
+                className="ui-popover-row"
                 style={{
                   ...EP.seasonMenuItem,
                   background: s === selected ? color.fillActive : 'transparent',
+                  color: s === selected ? color.textPrimary : color.textBody,
                   fontWeight: s === selected ? 700 : 500,
                   display: 'flex',
                   alignItems: 'center',
@@ -116,11 +118,7 @@ export function SeasonDropdown({
                 }}
               >
                 <span style={{ flex: 1 }}>{seasonLabel(s)}</span>
-                {isWatched ? (
-                  <Check size={15} color={color.textStrong} style={{ flexShrink: 0 }} />
-                ) : (
-                  <Circle size={15} color={color.textDim} style={{ flexShrink: 0 }} />
-                )}
+                {isWatched && <Check size={14} color={color.textStrong} style={{ flexShrink: 0 }} />}
               </button>
             );
           })}
