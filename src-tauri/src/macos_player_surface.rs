@@ -673,7 +673,7 @@ pub fn install_with_backend(
         let mut hwcopy_fallback_attempted = false;
         let mut gl_failure_reported = false;
 
-        loop {
+        'render: loop {
             while let Ok(cmd) = receiver.try_recv() {
                 match cmd {
                     SurfaceCommand::Load { url, start_at, .. } => {
@@ -789,7 +789,7 @@ pub fn install_with_backend(
                         let _ = cleanup_rx.recv_timeout(Duration::from_secs(5));
                         drop(render_target);
                         let _ = ack.send(());
-                        break;
+                        break 'render;
                     }
                 }
             }

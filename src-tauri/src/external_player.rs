@@ -14,10 +14,10 @@ use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[cfg(unix)]
-use std::io::{BufRead, Read, Write};
+use std::io::BufRead;
 #[cfg(unix)]
 use std::os::unix::net::UnixStream;
-use std::io::BufReader;
+use std::io::{BufReader, Read, Write};
 use std::net::TcpStream;
 
 #[derive(Serialize)]
