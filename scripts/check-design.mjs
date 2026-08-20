@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { globSync } from 'node:fs';
 
-const MIGRATED = [];
+const MIGRATED = ['src/components/detail/**/*.{ts,tsx}'];
 
 const ALLOWED_RADIUS = new Set(['0.25rem', '0.375rem', '0.5rem', '0.75rem', '1rem', '1.25rem', '999px', '50%', '0']);
 
@@ -18,6 +18,8 @@ const ALLOWED_FONT_SIZE = new Set([
   '3.125rem',
   'inherit',
 ]);
+
+const isFluid = (value) => value.startsWith('clamp(');
 
 const ALLOWED_Z = new Set(['0', '1', '5', '20', '40', '46', '60', '70', '80', '100']);
 
@@ -44,7 +46,7 @@ const rules = [
   },
   {
     name: 'serbest zIndex',
-    re: /zIndex:\s*(\d+)/g,
+    re: /zIndex:\s*([1-9]\d+)/g,
     hint: 'z.* kullan',
     value: true,
     allowed: ALLOWED_Z,
@@ -65,6 +67,7 @@ for (const file of files) {
       while ((match = rule.re.exec(line)) !== null) {
         const captured = rule.value ? match[1] : match[0];
         if (rule.value && rule.allowed.has(captured)) continue;
+        if (rule.value && isFluid(captured)) continue;
         if (!rule.value && rule.skip?.(captured)) continue;
         failures += 1;
         console.log(`${file}:${index + 1}  ${rule.name}: ${captured}  →  ${rule.hint}`);

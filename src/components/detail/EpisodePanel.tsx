@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { color, fade, radius } from '../../design';
 import { Check, ChevronDown, Circle } from 'lucide-react';
 import { t } from '../../i18n';
 import { EP, S, spinnerStyle } from './detailStyles';
@@ -85,7 +86,7 @@ export function SeasonDropdown({
         <span>{seasonLabel(selected)}</span>
         {seasonWatched && !hideButtonIndicator && (
           <span style={{ display: 'flex', alignItems: 'center', marginLeft: '0.125rem' }}>
-            {selectedIsWatched ? <Check size={14} color="rgba(255,255,255,0.85)" /> : <Circle size={14} color="rgba(255,255,255,0.35)" />}
+            {selectedIsWatched ? <Check size={14} color={color.textStrong} /> : <Circle size={14} color={color.textDim} />}
           </span>
         )}
         <ChevronDown
@@ -103,7 +104,7 @@ export function SeasonDropdown({
                 key={s}
                 style={{
                   ...EP.seasonMenuItem,
-                  background: s === selected ? 'rgba(255,255,255,0.14)' : 'transparent',
+                  background: s === selected ? color.fillActive : 'transparent',
                   fontWeight: s === selected ? 700 : 500,
                   display: 'flex',
                   alignItems: 'center',
@@ -116,9 +117,9 @@ export function SeasonDropdown({
               >
                 <span style={{ flex: 1 }}>{seasonLabel(s)}</span>
                 {isWatched ? (
-                  <Check size={15} color="rgba(255,255,255,0.85)" style={{ flexShrink: 0 }} />
+                  <Check size={15} color={color.textStrong} style={{ flexShrink: 0 }} />
                 ) : (
-                  <Circle size={15} color="rgba(255,255,255,0.3)" style={{ flexShrink: 0 }} />
+                  <Circle size={15} color={color.textDim} style={{ flexShrink: 0 }} />
                 )}
               </button>
             );
@@ -157,7 +158,7 @@ export function EpisodeRow({
     <div
       style={{
         ...EP.row,
-        background: selected ? 'rgba(255,255,255,0.1)' : hovered ? 'rgba(255,255,255,0.05)' : 'transparent',
+        background: selected ? color.fillHover : hovered ? color.fill : 'transparent',
         contentVisibility: 'auto',
         containIntrinsicSize: '5.75rem',
       }}
@@ -177,14 +178,14 @@ export function EpisodeRow({
           />
         ) : (
           <div style={EP.thumbPlaceholder}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.1)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill={color.fillHover}>
               <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z" />
             </svg>
           </div>
         )}
         {progressPct > 0 && (
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '0.1875rem', background: 'rgba(0,0,0,0.4)' }}>
-            <div style={{ height: '100%', width: `${progressPct}%`, background: '#F5C518', borderRadius: '0 0.125rem 0.125rem 0' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '0.1875rem', background: fade.shade(0.4) }}>
+            <div style={{ height: '100%', width: `${progressPct}%`, background: color.imdb, borderRadius: `0 ${radius.xs} ${radius.xs} 0` }} />
           </div>
         )}
         {(hovered || selected) && (
@@ -221,11 +222,11 @@ export function EpisodeRow({
                 }}
               >
                 {isWatched ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={color.light}>
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                   </svg>
                 ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.3)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={color.fillStrong}>
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
                   </svg>
                 )}
@@ -342,11 +343,11 @@ export function EpisodePanel({
             onClick={() => onMarkSeason([selectedSeason], !seasonWatchedMap?.[selectedSeason])}
           >
             {seasonWatchedMap?.[selectedSeason] ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={color.light}>
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
               </svg>
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.35)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={color.fillStrong}>
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
               </svg>
             )}
@@ -371,7 +372,7 @@ export function EpisodePanel({
       ) : (
         <>
           <div style={EP.searchRow}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,0.3)" style={{ flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={color.fillStrong} style={{ flexShrink: 0 }}>
               <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
             </svg>
             <input

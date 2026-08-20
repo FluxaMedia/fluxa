@@ -335,3 +335,17 @@ button, input, select, textarea {
 
 .fx-chip:not(.is-selected):hover { background: rgba(255,255,255,0.10) !important; border-color: rgba(255,255,255,0.16) !important; }
 .fx-chip.is-selected:hover { background: #E2E2E2 !important; }
+
+@media (max-width: 1100px) {
+  .detail-content {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .detail-rail {
+    position: static !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(255,255,255,0.08) !important;
+    padding-left: 0 !important;
+    padding-top: 1.5rem !important;
+  }
+}

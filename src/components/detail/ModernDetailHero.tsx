@@ -1,5 +1,7 @@
 import React from 'react';
-import { ArrowLeft, Maximize2, Volume2, VolumeX } from 'lucide-react';
+import { color, fade } from '../../design';
+import { Maximize2, Volume2, VolumeX, X } from 'lucide-react';
+import { t } from '../../i18n';
 import { MS } from './detailStyles';
 import type { useTrailerPlayback } from '../../hooks/useTrailerPlayback';
 
@@ -14,6 +16,8 @@ export function ModernDetailHero({
   onBack,
   heroLogo,
   displayMetaName,
+  progressPercent,
+  remainingLabel,
 }: {
   bgUrl: string | null | undefined;
   bgLayers: { url: string; key: number }[];
@@ -25,6 +29,8 @@ export function ModernDetailHero({
   onBack: () => void;
   heroLogo?: string;
   displayMetaName: string;
+  progressPercent?: number;
+  remainingLabel?: string | null;
 }) {
   const {
     trailerContainerRef,
@@ -116,8 +122,8 @@ export function ModernDetailHero({
       )}
 
       <div className="detail-hero" style={MS.heroWrap}>
-        <button className="detail-back" style={MS.backBtn} onClick={onBack}>
-          <ArrowLeft size={18} color="rgba(255,255,255,0.85)" />
+        <button className="detail-back" style={MS.backBtn} onClick={onBack} aria-label={t('common.close')} title={t('common.close')}>
+          <X size={18} color={color.textStrong} />
         </button>
 
         <div className="detail-logo" style={{ ...MS.logoWrap, opacity: trailerActive ? 0 : 1, transition: 'opacity 0.4s ease' }}>
@@ -132,6 +138,15 @@ export function ModernDetailHero({
             />
           ) : (
             <h1 style={MS.titleHero}>{displayMetaName}</h1>
+          )}
+
+          {progressPercent != null && progressPercent > 0 && (
+            <div style={MS.heroProgressRow}>
+              <span style={MS.heroProgressTrack}>
+                <span style={{ ...MS.heroProgressFill, width: `${Math.min(100, progressPercent)}%` }} />
+              </span>
+              {remainingLabel && <span style={MS.heroProgressLabel}>{remainingLabel}</span>}
+            </div>
           )}
         </div>
       </div>

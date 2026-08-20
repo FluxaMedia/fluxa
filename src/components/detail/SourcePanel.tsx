@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { color, fade, fontSize, radius } from '../../design';
 import { ChevronLeft, ChevronRight, Download, Link2, Magnet, Play } from 'lucide-react';
 import { t } from '../../i18n';
 import { EP, MS, SS, spinnerStyle } from './detailStyles';
@@ -65,9 +66,9 @@ export function SourceRow({
       <button
         style={{
           ...SS.streamRow,
-          background: hovered ? '#181818' : '#101010',
-          color: '#FFF',
-          boxShadow: hovered ? '0 0 0 0.125rem rgba(255,255,255,0.22)' : 'none',
+          background: hovered ? color.surface : color.bg,
+          color: color.textPrimary,
+          boxShadow: hovered ? `0 0 0 0.125rem ${color.fillStrong}` : 'none',
         }}
         onClick={onClick}
         onMouseEnter={() => setHovered(true)}
@@ -79,7 +80,7 @@ export function SourceRow({
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
           <span style={SS.streamName}>{heading}</span>
-          {stream.addonName && <span style={{ ...SS.streamAddon, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>{stream.addonName}</span>}
+          {stream.addonName && <span style={{ ...SS.streamAddon, color: color.textDim, flexShrink: 0 }}>{stream.addonName}</span>}
         </div>
         {lines.map((line, index) => (
           <span key={`${line}:${index}`} style={SS.streamDesc}>
@@ -238,8 +239,8 @@ function PillScrollArrow({ direction, onClick }: { direction: 'left' | 'right'; 
         border: 'none',
         cursor: 'pointer',
         padding: 0,
-        background: hovered ? 'rgba(20,22,32,0.95)' : 'rgba(12,13,24,0.85)',
-        color: '#FFF',
+        background: hovered ? color.surface : fade.elevated(0.85),
+        color: color.textPrimary,
       }}
     >
       {isLeft ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
@@ -299,7 +300,7 @@ export function MovieSourcePanel({
       <div
         style={{
           padding: '0.875rem 1rem 0.75rem',
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          borderBottom: `1px solid ${color.line}`,
           display: 'flex',
           alignItems: 'flex-start',
           justifyContent: 'space-between',
@@ -338,12 +339,12 @@ export function MovieSourcePanel({
           addonNames={addonNames}
           selectedAddon={selectedAddon}
           onSelect={selectAddon}
-          style={{ padding: '0.625rem 1rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}
+          style={{ padding: '0.625rem 1rem 0', borderBottom: `1px solid ${color.line}`, flexShrink: 0 }}
         />
       )}
 
       {isLoading && streamAddonCount > addonNames.length && (
-        <div style={{ padding: '0.5rem 1rem 0', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', fontWeight: 600 }}>
+        <div style={{ padding: '0.5rem 1rem 0', color: color.textDim, fontSize: fontSize.sm, fontWeight: 600 }}>
           {t('sources.searching_addons', streamAddonCount - addonNames.length)}
         </div>
       )}
@@ -394,20 +395,20 @@ function FailedAddonsNotice({ count, onRetry }: { count: number; onRetry?: () =>
         gap: '0.75rem',
         padding: '0.5rem 1rem',
         margin: '0.375rem 1rem 0',
-        background: 'rgba(255,255,255,0.06)',
-        borderRadius: '0.375rem',
+        background: color.fill,
+        borderRadius: radius.sm,
       }}
     >
-      <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', fontWeight: 600 }}>{t('sources.addons_failed', count)}</span>
+      <span style={{ color: color.textBody, fontSize: fontSize.sm, fontWeight: 600 }}>{t('sources.addons_failed', count)}</span>
       {onRetry && (
         <button
           onClick={onRetry}
           style={{
             background: 'none',
-            border: '1px solid rgba(255,255,255,0.2)',
-            borderRadius: '0.25rem',
-            color: '#FFF',
-            fontSize: '0.75rem',
+            border: `1px solid ${color.lineStrong}`,
+            borderRadius: radius.xs,
+            color: color.textPrimary,
+            fontSize: fontSize.sm,
             fontWeight: 600,
             padding: '0.25rem 0.625rem',
             cursor: 'pointer',
@@ -427,14 +428,14 @@ function PlaybackFailureNotice({ message }: { message: string }) {
       style={{
         padding: '0.625rem 1rem',
         margin: '0.375rem 1rem 0',
-        background: 'rgba(255,94,94,0.12)',
-        border: '1px solid rgba(255,94,94,0.32)',
-        borderRadius: '0.375rem',
+        background: fade.tint(0.12),
+        border: `1px solid ${fade.tint(0.32)}`,
+        borderRadius: radius.sm,
       }}
     >
-      <div style={{ color: '#FF9A9A', fontSize: '0.75rem', fontWeight: 700 }}>{t('player.playback_error_title')}</div>
+      <div style={{ color: color.error, fontSize: fontSize.sm, fontWeight: 700 }}>{t('player.playback_error_title')}</div>
       <div
-        style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.75rem', lineHeight: 1.4, marginTop: '0.1875rem', whiteSpace: 'pre-wrap' }}
+        style={{ color: color.textBody, fontSize: fontSize.sm, lineHeight: 1.4, marginTop: '0.1875rem', whiteSpace: 'pre-wrap' }}
       >
         {message}
       </div>
@@ -524,8 +525,8 @@ export function InlineSourceList({
           {episode.overview && (
             <p
               style={{
-                color: 'rgba(255,255,255,0.42)',
-                fontSize: '0.75rem',
+                color: color.textDim,
+                fontSize: fontSize.sm,
                 fontWeight: 400,
                 margin: '0.3125rem 0 0',
                 lineHeight: '1.0625rem',
@@ -546,12 +547,12 @@ export function InlineSourceList({
           addonNames={addonNames}
           selectedAddon={selectedAddon}
           onSelect={selectAddon}
-          style={{ padding: '0 1rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}
+          style={{ padding: '0 1rem 0.625rem', borderBottom: `1px solid ${color.line}`, flexShrink: 0 }}
         />
       )}
 
       {isLoading && streamAddonCount > addonNames.length && (
-        <div style={{ padding: '0 1rem 0.5rem', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', fontWeight: 600 }}>
+        <div style={{ padding: '0 1rem 0.5rem', color: color.textDim, fontSize: fontSize.sm, fontWeight: 600 }}>
           {t('sources.searching_addons', streamAddonCount - addonNames.length)}
         </div>
       )}

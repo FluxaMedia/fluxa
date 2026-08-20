@@ -1,4 +1,5 @@
 import { RATING_SOURCES, orderedRatingEntries } from './ratingSources';
+import { color, fade, fontSize, radius } from '../../design';
 
 interface RatingBadgeProps {
   source: string;
@@ -60,16 +61,16 @@ const styles = {
     alignItems: 'center',
     gap: '0.4375rem',
     flexShrink: 0,
-    background: 'rgba(0,0,0,0.55)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '0.4375rem',
+    background: fade.shade(0.55),
+    border: `1px solid ${color.line}`,
+    borderRadius: radius.md,
     padding: '0.25rem 0.5rem',
   } as const,
   logo: {
     height: '1.25rem',
     width: 'auto',
     display: 'block',
-    borderRadius: '0.1875rem',
+    borderRadius: radius.xs,
     userSelect: 'none',
   } as const,
   maskedLogo: {
@@ -82,8 +83,8 @@ const styles = {
     WebkitMaskPosition: 'center',
   } as const,
   score: {
-    color: 'rgba(255,255,255,0.92)',
-    fontSize: '0.9rem',
+    color: color.textPrimary,
+    fontSize: fontSize.md,
     fontWeight: 700,
     lineHeight: 1,
   } as const,

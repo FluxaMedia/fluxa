@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { color, fade, fontSize, radius } from '../../design';
 import { coreInvoke } from '../../core/engine';
 import type { CastMember, Meta, MetaLink } from '../../core/types';
 
@@ -122,12 +123,12 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
         style={{
           width: '4.375rem',
           height: '4.375rem',
-          borderRadius: '50%',
-          background: showImage ? 'transparent' : 'rgba(255,255,255,0.1)',
+          borderRadius: radius.circle,
+          background: showImage ? 'transparent' : color.fillHover,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          border: '1px solid rgba(255,255,255,0.14)',
+          border: `1px solid ${color.lineStrong}`,
           overflow: 'hidden',
         }}
       >
@@ -139,13 +140,13 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1rem', fontWeight: 600 }}>{initials}</span>
+          <span style={{ color: color.textBody, fontSize: fontSize.lg, fontWeight: 600 }}>{initials}</span>
         )}
       </div>
       <p
         style={{
-          color: '#FFFFFF',
-          fontSize: '0.75rem',
+          color: color.textPrimary,
+          fontSize: fontSize.sm,
           fontWeight: 750,
           lineHeight: '0.875rem',
           margin: '0.125rem 0 0',
@@ -154,22 +155,22 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical' as const,
-          textShadow: '0 1px 0.125rem rgba(0,0,0,0.8)',
+          textShadow: `0 1px 0.125rem ${fade.shade(0.8)}`,
         }}
       >
         {name}
       </p>
       <p
         style={{
-          color: 'rgba(255,255,255,0.75)',
-          fontSize: '0.6875rem',
+          color: color.textBody,
+          fontSize: fontSize.xs,
           margin: '1px 0 0',
           textAlign: 'center',
           overflow: 'hidden',
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical' as const,
-          textShadow: '0 1px 0.125rem rgba(0,0,0,0.8)',
+          textShadow: `0 1px 0.125rem ${fade.shade(0.8)}`,
         }}
       >
         {role}

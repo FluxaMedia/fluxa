@@ -7,6 +7,7 @@ export const color = {
   scrim: 'rgba(4,5,8,0.78)',
 
   textPrimary: '#FFFFFF',
+  textStrong: 'rgba(255,255,255,0.88)',
   textBody: 'rgba(255,255,255,0.72)',
   textMuted: 'rgba(255,255,255,0.55)',
   textDim: 'rgba(255,255,255,0.38)',
@@ -19,6 +20,7 @@ export const color = {
   fill: 'rgba(255,255,255,0.06)',
   fillHover: 'rgba(255,255,255,0.10)',
   fillActive: 'rgba(255,255,255,0.16)',
+  fillStrong: 'rgba(255,255,255,0.24)',
 
   accent: '#E85D3F',
   accentGold: '#F0C674',
@@ -27,9 +29,21 @@ export const color = {
   info: '#2196F3',
   imdb: '#F5C518',
 
+  ratingHigh: '#6C3',
+  ratingMid: '#FC3',
+  ratingLow: '#F33',
+
+  black: '#000000',
   onLight: '#000000',
   light: '#FFFFFF',
   lightHover: '#E2E2E2',
+} as const;
+
+export const fade = {
+  ground: (alpha: number) => `rgba(4,5,8,${alpha})`,
+  elevated: (alpha: number) => `rgba(10,11,20,${alpha})`,
+  shade: (alpha: number) => `rgba(0,0,0,${alpha})`,
+  tint: (alpha: number) => `rgba(255,255,255,${alpha})`,
 } as const;
 
 export const radius = {

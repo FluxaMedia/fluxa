@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { color, fade } from '../../design';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { platformOpenExternal } from '../../platform/browser';
 import { t } from '../../i18n';
@@ -85,7 +86,7 @@ function TrailerScrollButton({ direction, onClick }: { direction: 'left' | 'righ
       <button
         type="button"
         aria-label={isLeft ? 'Previous trailers' : 'Next trailers'}
-        style={{ ...S.trailerScrollButton, background: hovered ? 'rgba(255,255,255,0.18)' : 'rgba(14,15,22,0.88)' }}
+        style={{ ...S.trailerScrollButton, background: hovered ? color.fillActive : fade.elevated(0.88) }}
         onClick={onClick}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -119,7 +120,7 @@ const TrailerCard = React.memo(function TrailerCard({
       style={{
         ...S.trailerCard,
         transform: hovered ? 'translateY(-0.125rem)' : 'translateY(0)',
-        borderColor: hovered ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)',
+        borderColor: hovered ? color.lineStrong : color.line,
       }}
       onClick={() => platformOpenExternal(trailer.url).catch(() => {})}
       onMouseEnter={() => setHovered(true)}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { color, fade } from '../../design';
 import { MovieCard } from '../MovieCard';
 import { t } from '../../i18n';
 import type { DetailState, LibraryItem, Meta, MetaLink, Trailer, Video } from '../../core/types';
@@ -38,7 +39,7 @@ export function DetailsTabContent({
       {displayMeta.awards && (
         <div style={MS.detailsSection}>
           <h3 style={MS.detailsSectionTitle}>{t('detail.awards')}</h3>
-          <p style={{ ...MS.detailsText, color: '#54D17A', fontWeight: 700 }}>{displayMeta.awards}</p>
+          <p style={{ ...MS.detailsText, color: color.success, fontWeight: 700 }}>{displayMeta.awards}</p>
         </div>
       )}
       {(castMembers.length > 0 || directorLinks.length > 0) && (

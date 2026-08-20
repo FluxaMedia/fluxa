@@ -17,6 +17,7 @@ import { ModernDetailLayout } from '../components/detail/ModernDetailLayout';
 import { TraktCommentsDialog } from '../components/detail/TraktCommentsDialog';
 import { useSeasonWatched } from '../hooks/useSeasonWatched';
 import { imdbButtonFor, setViewingDiscordPresence } from '../core/discordPresence';
+import { formatRemaining } from '../core/continueWatchingUtils';
 
 void NAV_RAIL_WIDTH;
 void TOP_BAR_H;
@@ -367,6 +368,14 @@ export function DetailScreen({
     }
   }, [isSeries, selectedEpisode, openEpisodeSources, onDispatch, meta.type, meta.id]);
 
+  const heroProgress = useMemo(() => {
+    const entry = progressMap[meta.id] ?? continueWatchingEntry;
+    const duration = entry?.duration ?? 0;
+    const offset = entry?.timeOffset ?? 0;
+    if (duration <= 0 || offset <= 30) return null;
+    return { percent: Math.min(99, Math.round((offset / duration) * 100)), label: formatRemaining(offset, duration) };
+  }, [progressMap, meta.id, continueWatchingEntry]);
+
   const selectedEpisodeEnriched = useMemo(() => {
     if (!selectedEpisode || selectedEpisode.thumbnail) return selectedEpisode;
     const found = episodes.find((ep) => ep.id === selectedEpisode.id);
@@ -486,6 +495,8 @@ export function DetailScreen({
         omdbRatings={omdbRatings}
         mdblistRatings={mdblistRatings}
         fanartArtwork={fanartArtwork}
+        heroProgressPercent={heroProgress?.percent}
+        heroRemainingLabel={heroProgress?.label}
         availableAddons={detail.availableAddons ?? []}
         streamAddonCount={streamAddonCount}
         poster={poster}

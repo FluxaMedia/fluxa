@@ -1,4 +1,5 @@
 import { assetUrl } from '../../platform/assets';
+import { color, fade } from '../../design';
 export interface RatingSourceInfo {
   icon?: string;
   label: string;
@@ -12,9 +13,9 @@ const percent = (value: number) => `${Math.round(value)}%`;
 const outOfTen = (value: number) => value.toFixed(1);
 const bareScore = (value: number) => `${Math.round(value)}`;
 
-const METACRITIC_GREEN = '#6C3';
-const METACRITIC_YELLOW = '#FC3';
-const METACRITIC_RED = '#F33';
+const METACRITIC_GREEN = color.ratingHigh;
+const METACRITIC_YELLOW = color.ratingMid;
+const METACRITIC_RED = color.ratingLow;
 
 const metacriticCriticColor = (value: number) => {
   if (value >= 61) return METACRITIC_GREEN;

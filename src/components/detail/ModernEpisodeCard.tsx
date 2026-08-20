@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { color, fade, fontSize, radius } from '../../design';
 import { CheckCircle2, Circle, Play } from 'lucide-react';
 import { t } from '../../i18n';
 import type { Video } from '../../core/types';
@@ -97,7 +98,7 @@ export function ModernEpisodeCard({
           />
         ) : (
           <div style={MS.epThumbPlaceholder}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="rgba(255,255,255,0.07)">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill={color.fill}>
               <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z" />
             </svg>
           </div>
@@ -115,14 +116,14 @@ export function ModernEpisodeCard({
               top: '0.4375rem',
               left: '0.4375rem',
               zIndex: 3,
-              background: cwBadge === 'newEpisode' ? 'var(--primary-accent-color)' : 'rgba(0,0,0,0.68)',
-              color: cwBadge === 'newEpisode' ? 'var(--primary-accent-foreground-color, #fff)' : '#fff',
+              background: cwBadge === 'newEpisode' ? 'var(--primary-accent-color)' : fade.shade(0.68),
+              color: cwBadge === 'newEpisode' ? `var(--primary-accent-foreground-color, ${color.light})` : color.light,
               backdropFilter: cwBadge !== 'newEpisode' ? 'blur(0.25rem)' : undefined,
-              fontSize: '0.6875rem',
+              fontSize: fontSize.xs,
               fontWeight: 800,
               padding: '0.1875rem 0.4375rem',
-              borderRadius: '0.25rem',
-              textShadow: cwBadge === 'newEpisode' ? 'none' : '0 1px 0.25rem rgba(0,0,0,0.8)',
+              borderRadius: radius.xs,
+              textShadow: cwBadge === 'newEpisode' ? 'none' : `0 1px 0.25rem ${fade.shade(0.8)}`,
               letterSpacing: '0.0125rem',
             }}
           >
@@ -137,7 +138,7 @@ export function ModernEpisodeCard({
         )}
         {isWatched && !hovered && (
           <div style={{ position: 'absolute', top: '0.4375rem', right: '0.4375rem', zIndex: 3, pointerEvents: 'none' }}>
-            <CheckCircle2 size={18} color="rgba(255,255,255,0.7)" />
+            <CheckCircle2 size={18} color={color.textBody} />
           </div>
         )}
         {hovered && (
@@ -146,10 +147,10 @@ export function ModernEpisodeCard({
               style={{
                 width: '3.25rem',
                 height: '3.25rem',
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.14)',
+                borderRadius: radius.circle,
+                background: color.fillActive,
                 backdropFilter: 'blur(0.375rem)',
-                border: '1px solid rgba(255,255,255,0.22)',
+                border: `1px solid ${color.lineStrong}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -167,10 +168,10 @@ export function ModernEpisodeCard({
               right: '0.3125rem',
               width: '2rem',
               height: '2rem',
-              borderRadius: '50%',
+              borderRadius: radius.circle,
               border: 'none',
               padding: 0,
-              background: 'rgba(0,0,0,0.52)',
+              background: fade.shade(0.52),
               backdropFilter: 'blur(0.25rem)',
               display: 'flex',
               alignItems: 'center',
@@ -193,11 +194,11 @@ export function ModernEpisodeCard({
             }}
             title={isWatched ? t('detail.mark_unwatched') : t('detail.mark_watched')}
           >
-            {isWatched ? <CheckCircle2 size={18} color="rgba(255,255,255,0.9)" /> : <Circle size={18} color="rgba(255,255,255,0.55)" />}
+            {isWatched ? <CheckCircle2 size={18} color={color.textPrimary} /> : <Circle size={18} color={color.textMuted} />}
           </button>
         )}
       </div>
-      <h3 style={{ ...MS.epTitle, color: hovered ? 'rgba(255,255,255,0.82)' : '#FFFFFF' }}>
+      <h3 style={{ ...MS.epTitle, color: hovered ? color.textStrong : color.textPrimary }}>
         {number}. {displayTitle}
       </h3>
       {desc && !hideInfo && <p style={MS.epDesc}>{desc}</p>}

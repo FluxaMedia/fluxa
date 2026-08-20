@@ -14,7 +14,8 @@ import { useTrailerPlayback } from '../../hooks/useTrailerPlayback';
 import { ModernDetailHero } from './ModernDetailHero';
 import { ModernDetailActionRow } from './ModernDetailActionRow';
 import { ModernDetailMetaBlock } from './ModernDetailMetaBlock';
-import { ModernDetailSeasonSection } from './ModernDetailSeasonSection';
+import { PrevSeasonDialog, SeasonControls } from './ModernDetailSeasonSection';
+import { ModernDetailRail } from './ModernDetailRail';
 
 export type ModernDetailProps = {
   displayMeta: Meta;
@@ -56,6 +57,8 @@ export type ModernDetailProps = {
   omdbRatings?: { rottenTomatoes?: string; metascore?: string } | null;
   mdblistRatings?: Record<string, number> | null;
   fanartArtwork?: { hdLogo?: string } | null;
+  heroProgressPercent?: number;
+  heroRemainingLabel?: string | null;
   availableAddons: string[];
   streamAddonCount: number;
   poster: ReturnType<typeof posterPrefsFromState>;
@@ -109,6 +112,8 @@ export function ModernDetailLayout({
   omdbRatings,
   mdblistRatings,
   fanartArtwork,
+  heroProgressPercent,
+  heroRemainingLabel,
   availableAddons,
   streamAddonCount,
   poster,
@@ -254,17 +259,10 @@ export function ModernDetailLayout({
     ? t('format.season_episode_short', continueEp.season ?? 1, continueEp.episode ?? continueEp.number ?? 1)
     : null;
 
-  const hasMdblistRatings = mdblistRatings != null && Object.keys(mdblistRatings).length > 0;
   const modernMetaDetails: string[] = [];
-  if (!hasMdblistRatings) {
-    if (displayMeta.imdbRating) modernMetaDetails.push(`IMDb ${displayMeta.imdbRating}/10`);
-    if (omdbRatings?.rottenTomatoes) modernMetaDetails.push(`RT ${omdbRatings.rottenTomatoes}`);
-    if (omdbRatings?.metascore) modernMetaDetails.push(`Metascore ${omdbRatings.metascore}`);
-  }
   if (displayMeta.releaseInfo) modernMetaDetails.push(displayMeta.releaseInfo);
-  if (displayMeta.runtime) modernMetaDetails.push(displayMeta.runtime);
   if (isSeries && seasonNumbers.length > 0) modernMetaDetails.push(`${seasonNumbers.length} ${t('auto.seasons')}`);
-  const metaGenres = Array.isArray(displayMeta.genres) ? displayMeta.genres.slice(0, 3) : [];
+  if (displayMeta.runtime) modernMetaDetails.push(displayMeta.runtime);
 
   const heroLogo = fanartArtwork?.hdLogo || displayMeta.logo;
 
@@ -294,10 +292,12 @@ export function ModernDetailLayout({
         onBack={onBack}
         heroLogo={heroLogo}
         displayMetaName={displayMeta.name}
+        progressPercent={heroProgressPercent}
+        remainingLabel={heroRemainingLabel}
       />
 
       <div className="detail-content" style={MS.content}>
-        <>
+        <div className="detail-main" style={MS.mainCol}>
           <ModernDetailActionRow
             continueLabel={isSeries ? continueLabel : null}
             hasProgress={isSeries ? hasProgress : false}
@@ -319,21 +319,14 @@ export function ModernDetailLayout({
           />
 
           <ModernDetailMetaBlock
-            mdblistRatings={mdblistRatings}
-            metaGenres={metaGenres}
-            onNavigateGenre={onNavigateGenre}
+            certification={displayMeta.certification}
             metaDetails={modernMetaDetails}
             description={displayMeta.description}
           />
 
           {isSeries && (
             <>
-              <ModernDetailSeasonSection
-                seasonNumbers={seasonNumbers}
-                selectedSeason={selectedSeason}
-                onSeasonChange={onSeasonChange}
-                seasonWatchedMap={seasonWatchedMap}
-                toggleSeasonWatched={toggleSeasonWatched}
+              <PrevSeasonDialog
                 prevSeasonDialog={prevSeasonDialog}
                 onDismissPrevSeasonDialog={() => setPrevSeasonDialog(null)}
                 onConfirmPrevSeasonDialog={(includePrev) => {
@@ -344,7 +337,18 @@ export function ModernDetailLayout({
                 }}
               />
 
-              <ModernTabBar tabs={seriesTabs} active={activeTab} onChange={(id) => setActiveTab(id as typeof activeTab)} />
+              <ModernTabBar
+                tabs={seriesTabs}
+                active={activeTab}
+                onChange={(id) => setActiveTab(id as typeof activeTab)}
+                trailing={<SeasonControls
+                  seasonNumbers={seasonNumbers}
+                  selectedSeason={selectedSeason}
+                  onSeasonChange={onSeasonChange}
+                  seasonWatchedMap={seasonWatchedMap}
+                  toggleSeasonWatched={toggleSeasonWatched}
+                />}
+              />
 
               {activeTab === 'episodes' && (
                 <EpisodesTabContent
@@ -415,7 +419,19 @@ export function ModernDetailLayout({
               )}
             </>
           )}
-        </>
+        </div>
+
+        <ModernDetailRail
+          displayMeta={displayMeta}
+          posterUrl={displayMeta.poster ?? meta.poster}
+          mdblistRatings={mdblistRatings}
+          omdbRatings={omdbRatings}
+          castMembers={castMembers}
+          directorLinks={directorLinks}
+          peopleImages={peopleImages}
+          onNavigateGenre={onNavigateGenre}
+          onSeeAllCast={() => setActiveTab('details')}
+        />
       </div>
 
       {showSources && selectedEpisode && isSeries && (
