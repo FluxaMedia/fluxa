@@ -29,6 +29,15 @@ enum RenderBackend {
     Vulkan,
 }
 
+impl RenderBackend {
+    fn name(self) -> &'static str {
+        match self {
+            Self::OpenGl => "opengl",
+            Self::Vulkan => "vulkan",
+        }
+    }
+}
+
 fn read_render_backend(app: &AppHandle) -> RenderBackend {
     let state = app.state::<DesktopState>();
     match crate::storage::read_pref_field(state, "renderBackend").as_deref() {
@@ -432,10 +441,16 @@ enum SurfaceCommand {
 #[derive(Clone)]
 pub struct NativePlayerSurface {
     sender: mpsc::Sender<SurfaceCommand>,
+    backend: RenderBackend,
+    app: AppHandle,
 }
 
-impl NativePlayerSurface {
-    pub fn load(
+impl crate::player_surface::PlayerSurface for NativePlayerSurface {
+    fn backend_name(&self) -> &'static str {
+        self.backend.name()
+    }
+
+    fn load(
         &self,
         url: String,
         start_at: Option<u64>,
@@ -446,35 +461,110 @@ impl NativePlayerSurface {
             .map_err(|e| format!("native player surface is not available: {e}"))
     }
 
-    pub fn hide(&self) {
+    fn hide(&self) {
         let _ = self.sender.send(SurfaceCommand::Hide);
     }
 
-    pub fn show_loading(&self, title: String, episode_title: Option<String>) {
+    // The GTK tick owns the render state and stops with the main loop, so there is
+    // no thread to join; hiding releases the surface and stops playback.
+    fn shutdown(&self) -> Result<(), String> {
+        let _ = self.sender.send(SurfaceCommand::Hide);
+        Ok(())
+    }
+
+    fn show_loading(&self, title: String, episode_title: Option<String>) {
         let _ = self.sender.send(SurfaceCommand::ShowLoading {
             title,
             episode_title,
         });
     }
 
-    pub fn set_title(&self, title: String, episode_title: Option<String>) {
+    fn set_title(&self, title: String, episode_title: Option<String>) {
         let _ = self.sender.send(SurfaceCommand::SetTitle {
             title,
             episode_title,
         });
     }
 
-    pub fn set_artwork(
+    fn set_artwork(
         &self,
         title: String,
         episode_title: Option<String>,
-        _background: Option<(Vec<u8>, i32, i32)>,
-        _logo: Option<(Vec<u8>, i32, i32)>,
+        _background: crate::player_surface::Artwork,
+        _logo: crate::player_surface::Artwork,
     ) {
         let _ = self.sender.send(SurfaceCommand::SetArtwork {
             title,
             episode_title,
         });
+    }
+
+    fn set_cursor_visible(&self, _visible: bool) {}
+
+    fn command(&self, command: String) -> Result<(), String> {
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry_mut(&state, 60, |renderer| {
+            renderer.user_command(&command)
+        }) {
+            Ok(Some(())) => Ok(()),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn command_args(&self, commands: Vec<Vec<String>>) -> Result<(), String> {
+        let state = self.app.state::<DesktopState>();
+        for command in commands {
+            let args = command.iter().map(String::as_str).collect::<Vec<_>>();
+            match crate::player::with_renderer_retry(&state, 600, |renderer| {
+                renderer.command_args(&args)
+            }) {
+                Ok(Some(())) => {}
+                Ok(None) => return Err("player renderer is not initialized".to_string()),
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
+
+    fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry(&state, 80, |renderer| Ok(renderer.status())) {
+            Ok(Some(status)) => Ok(status),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn track_options(
+        &self,
+        track_type: String,
+    ) -> Result<Vec<crate::mpv_render::PlayerTrackOption>, String> {
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry(&state, 80, |renderer| {
+            Ok(renderer.track_options(&track_type))
+        }) {
+            Ok(Some(tracks)) => Ok(tracks),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
+    }
+
+    // sub-add loads the file synchronously, so this must never run on the render thread.
+    fn add_subtitle(
+        &self,
+        url: String,
+        title: Option<String>,
+        language: Option<String>,
+    ) -> Result<(), String> {
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry(&state, 80, |renderer| {
+            renderer.add_subtitle(&url, title.as_deref(), language.as_deref())
+        }) {
+            Ok(Some(())) => Ok(()),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -809,16 +899,14 @@ impl SurfaceTick {
 // Install
 
 pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
+    let surface_app = app_handle.clone();
     let (sender, receiver) = mpsc::channel();
     let (setup_tx, setup_rx) = mpsc::channel::<Result<(), String>>();
 
     let backend = read_render_backend(&app_handle);
     log::info!(
         "linux_player_surface: experimental render backend = {}",
-        match backend {
-            RenderBackend::OpenGl => "opengl",
-            RenderBackend::Vulkan => "vulkan",
-        }
+        backend.name()
     );
 
     let window = app_handle
@@ -954,7 +1042,11 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
         .recv_timeout(Duration::from_secs(5))
         .map_err(|_| "native player surface setup timed out".to_string())
         .and_then(|r| r)
-        .map(|()| NativePlayerSurface { sender })
+        .map(|()| NativePlayerSurface {
+            sender,
+            backend,
+            app: surface_app,
+        })
 }
 
 // Helpers

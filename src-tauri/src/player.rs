@@ -26,12 +26,14 @@ use crate::windows_player_surface;
 pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
-) -> Option<linux_player_surface::NativePlayerSurface> {
+) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
     if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
         return Some(surface);
     }
     match linux_player_surface::install(app_handle.clone()) {
         Ok(surface) => {
+            let surface: std::sync::Arc<dyn crate::player_surface::PlayerSurface> =
+                std::sync::Arc::new(surface);
             *state.native_player_surface.lock().unwrap() = Some(surface.clone());
             Some(surface)
         }
@@ -46,12 +48,14 @@ pub fn ensure_native_player_surface(
 pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
-) -> Option<windows_player_surface::NativePlayerSurface> {
+) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
     if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
         return Some(surface);
     }
     match windows_player_surface::install(app_handle.clone()) {
         Ok(surface) => {
+            let surface: std::sync::Arc<dyn crate::player_surface::PlayerSurface> =
+                std::sync::Arc::new(surface);
             *state.native_player_surface.lock().unwrap() = Some(surface.clone());
             Some(surface)
         }
@@ -66,10 +70,10 @@ pub fn ensure_native_player_surface(
 pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
-) -> Option<macos_player_surface::NativePlayerSurface> {
+) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
     let requested = macos_player_surface::requested_backend(app_handle);
     if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
-        if surface.backend() == requested {
+        if surface.backend_name() == requested.name() {
             return Some(surface);
         }
         log::info!(
@@ -97,6 +101,8 @@ pub fn ensure_native_player_surface(
     });
     match installed {
         Ok(surface) => {
+            let surface: std::sync::Arc<dyn crate::player_surface::PlayerSurface> =
+                std::sync::Arc::new(surface);
             *state.native_player_surface.lock().unwrap() = Some(surface.clone());
             Some(surface)
         }
@@ -220,7 +226,7 @@ fn torrent_sibling_subtitles(state: &DesktopState) -> Vec<(String, String, Optio
     );
     subtitles
 }
-fn with_renderer_retry<T, F>(
+pub(crate) fn with_renderer_retry<T, F>(
     state: &DesktopState,
     attempts: usize,
     f: F,
@@ -253,7 +259,7 @@ where
     Err("player renderer busy".to_string())
 }
 
-fn with_renderer_retry_mut<T, F>(
+pub(crate) fn with_renderer_retry_mut<T, F>(
     state: &DesktopState,
     attempts: usize,
     mut f: F,

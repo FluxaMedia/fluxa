@@ -47,6 +47,16 @@ enum RenderBackend {
     D3d11,
 }
 
+impl RenderBackend {
+    fn name(self) -> &'static str {
+        match self {
+            Self::OpenGl => "opengl",
+            Self::Vulkan => "vulkan",
+            Self::D3d11 => "d3d11",
+        }
+    }
+}
+
 fn hdr_output_enabled(app: &AppHandle) -> bool {
     let state = app.state::<DesktopState>();
     crate::storage::read_pref_bool(state, "hdrEnabled").unwrap_or(true)
@@ -330,10 +340,20 @@ enum SurfaceCommand {
 #[derive(Clone)]
 pub struct NativePlayerSurface {
     sender: mpsc::Sender<SurfaceCommand>,
+    backend: RenderBackend,
 }
 
-impl NativePlayerSurface {
-    pub fn load(
+impl crate::player_surface::PlayerSurface for NativePlayerSurface {
+    fn backend_name(&self) -> &'static str {
+        self.backend.name()
+    }
+
+    fn shutdown(&self) -> Result<(), String> {
+        self.hide();
+        Ok(())
+    }
+
+    fn load(
         &self,
         url: String,
         start_at: Option<u64>,
@@ -347,22 +367,22 @@ impl NativePlayerSurface {
             })
             .map_err(|e| format!("surface unavailable: {e}"))
     }
-    pub fn hide(&self) {
+    fn hide(&self) {
         let _ = self.sender.send(SurfaceCommand::Hide);
     }
-    pub fn command(&self, command: String) -> Result<(), String> {
+    fn command(&self, command: String) -> Result<(), String> {
         self.sender
             .send(SurfaceCommand::PlayerCommand(command))
             .map_err(|e| format!("surface unavailable: {e}"))
     }
-    pub fn command_args(&self, commands: Vec<Vec<String>>) -> Result<(), String> {
+    fn command_args(&self, commands: Vec<Vec<String>>) -> Result<(), String> {
         let (sender, receiver) = mpsc::channel();
         self.sender.send(SurfaceCommand::CommandArgs { commands, sender })
             .map_err(|e| format!("surface unavailable: {e}"))?;
         receiver.recv_timeout(Duration::from_secs(5))
             .map_err(|e| format!("player command unavailable: {e}"))?
     }
-    pub fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
+    fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
         let (sender, receiver) = mpsc::channel();
         self.sender
             .send(SurfaceCommand::Status(sender))
@@ -371,7 +391,7 @@ impl NativePlayerSurface {
             .recv_timeout(Duration::from_millis(250))
             .map_err(|e| format!("player status unavailable: {e}"))
     }
-    pub fn track_options(
+    fn track_options(
         &self,
         track_type: String,
     ) -> Result<Vec<crate::mpv_render::PlayerTrackOption>, String> {
@@ -383,7 +403,7 @@ impl NativePlayerSurface {
             .recv_timeout(Duration::from_secs(2))
             .map_err(|e| format!("player track options unavailable: {e}"))
     }
-    pub fn add_subtitle(
+    fn add_subtitle(
         &self,
         url: String,
         title: Option<String>,
@@ -402,27 +422,27 @@ impl NativePlayerSurface {
             .recv_timeout(Duration::from_secs(5))
             .map_err(|e| format!("player add subtitle unavailable: {e}"))?
     }
-    pub fn set_cursor_visible(&self, visible: bool) {
+    fn set_cursor_visible(&self, visible: bool) {
         let _ = self.sender.send(SurfaceCommand::SetCursorVisible(visible));
     }
-    pub fn show_loading(&self, title: String, episode_title: Option<String>) {
+    fn show_loading(&self, title: String, episode_title: Option<String>) {
         let _ = self.sender.send(SurfaceCommand::ShowLoading {
             title,
             episode_title,
         });
     }
-    pub fn set_title(&self, title: String, episode_title: Option<String>) {
+    fn set_title(&self, title: String, episode_title: Option<String>) {
         let _ = self.sender.send(SurfaceCommand::SetTitle {
             title,
             episode_title,
         });
     }
-    pub fn set_artwork(
+    fn set_artwork(
         &self,
         title: String,
         episode_title: Option<String>,
-        background: Option<(Vec<u8>, i32, i32)>,
-        logo: Option<(Vec<u8>, i32, i32)>,
+        background: crate::player_surface::Artwork,
+        logo: crate::player_surface::Artwork,
     ) {
         let _ = self.sender.send(SurfaceCommand::SetArtwork {
             title,
@@ -592,11 +612,7 @@ fn spawn_install_thread(
         let hdr_enabled = hdr_output_enabled(&app);
         log::info!(
             "player surface: experimental render backend = {}",
-            match backend {
-                RenderBackend::OpenGl => "opengl",
-                RenderBackend::Vulkan => "vulkan",
-                RenderBackend::D3d11 => "d3d11",
-            }
+            backend.name()
         );
 
         let mut render_ctx = match backend {
@@ -678,6 +694,7 @@ fn spawn_install_thread(
         log::info!("player surface: setup complete, entering render loop");
         let _ = setup_tx.send(Ok(NativePlayerSurface {
             sender: sender.clone(),
+            backend,
         }));
 
         // Render + command loop

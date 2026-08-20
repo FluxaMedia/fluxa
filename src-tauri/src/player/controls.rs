@@ -4,9 +4,7 @@ use super::*;
 pub fn player_torrent_sibling_subtitles(state: State<DesktopState>) -> Vec<Value> {
     torrent_sibling_subtitles(&state)
         .into_iter()
-        .map(|(url, title, language)| {
-            json!({ "url": url, "title": title, "language": language })
-        })
+        .map(|(url, title, language)| json!({ "url": url, "title": title, "language": language }))
         .collect()
 }
 
@@ -17,7 +15,6 @@ pub fn player_add_subtitle(
     title: Option<String>,
     language: Option<String>,
 ) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             return surface.add_subtitle(url, title, language);
@@ -63,7 +60,11 @@ pub fn player_set_anime4k_enabled(
             mode.as_deref().unwrap_or("a"),
         )
         .ok_or_else(|| {
-            log::error!("player_set_anime4k_enabled: shader chain not found for quality={:?} mode={:?}", quality, mode);
+            log::error!(
+                "player_set_anime4k_enabled: shader chain not found for quality={:?} mode={:?}",
+                quality,
+                mode
+            );
             "Anime4K shader chain not found".to_string()
         })?;
         vec![
@@ -124,7 +125,6 @@ pub fn player_set_anime4k_enabled(
             ],
         ]
     };
-    #[cfg(target_os = "windows")]
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             surface.command_args(commands)?;
@@ -142,7 +142,10 @@ pub fn player_set_anime4k_enabled(
             Ok(Some(())) => {}
             Ok(None) => return Err("player renderer is not initialized".to_string()),
             Err(err) => {
-                log::error!("player_set_anime4k_enabled: command {:?} failed: {err}", args);
+                log::error!(
+                    "player_set_anime4k_enabled: command {:?} failed: {err}",
+                    args
+                );
                 return Err(err);
             }
         }
@@ -169,7 +172,6 @@ pub fn player_command(
     if command == "stop" {
         state.player_overlay.lock().unwrap().eof_next_fired = true;
     }
-    #[cfg(target_os = "windows")]
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             return surface.command(command);

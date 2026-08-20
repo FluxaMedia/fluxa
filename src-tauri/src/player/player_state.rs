@@ -136,7 +136,6 @@ pub fn player_status(
             }
         }
     }
-    #[cfg(target_os = "windows")]
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             return surface.status();
@@ -170,7 +169,6 @@ pub fn player_track_options(
     track_type: String,
 ) -> Vec<mpv_render::PlayerTrackOption> {
     log::warn!("player_track_options invoked: track_type={track_type:?}");
-    #[cfg(target_os = "windows")]
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             return match surface.track_options(track_type.clone()) {
@@ -218,14 +216,9 @@ pub fn player_destroy(state: State<DesktopState>) -> bool {
     state.pending_hide.store(true, Ordering::Release);
     let _ = state.sleep_inhibitor.lock().unwrap().set_enabled(false);
     let had_vlc = state.player_renderer_vlc.lock().unwrap().take().is_some();
-    #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
     let native_surface = state.native_player_surface.lock().unwrap().take();
-    #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
     if let Some(surface) = native_surface {
-        #[cfg(target_os = "macos")]
         let _ = surface.shutdown();
-        #[cfg(not(target_os = "macos"))]
-        surface.hide();
     }
 
     let had_render = state.player_render_state.lock().unwrap().take().is_some();

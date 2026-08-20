@@ -2,12 +2,9 @@ use super::*;
 
 #[tauri::command]
 pub fn player_set_cursor_visible(state: State<DesktopState>, visible: bool) {
-    #[cfg(target_os = "windows")]
     if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
         surface.set_cursor_visible(visible);
     }
-    #[cfg(not(target_os = "windows"))]
-    let _ = (state, visible);
 }
 
 #[tauri::command]
@@ -133,4 +130,3 @@ pub async fn player_prefetch_artwork(background_url: Option<String>, logo_url: O
         .await;
     }
 }
-

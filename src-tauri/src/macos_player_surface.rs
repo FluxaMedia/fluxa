@@ -319,18 +319,40 @@ pub struct NativePlayerSurface {
     sender: mpsc::Sender<SurfaceCommand>,
     backend: RenderBackend,
     thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
+    app: AppHandle,
 }
 
 impl NativePlayerSurface {
     pub fn backend(&self) -> RenderBackend {
         self.backend
     }
+}
 
-    pub fn backend_name(&self) -> &'static str {
+impl crate::player_surface::PlayerSurface for NativePlayerSurface {
+    fn backend_name(&self) -> &'static str {
         self.backend.name()
     }
 
-    pub fn shutdown(&self) -> Result<(), String> {
+    fn load(
+        &self,
+        url: String,
+        start_at: Option<u64>,
+        total_duration: Option<u64>,
+    ) -> Result<(), String> {
+        self.sender
+            .send(SurfaceCommand::Load {
+                url,
+                start_at,
+                total_duration,
+            })
+            .map_err(|e| format!("surface unavailable: {e}"))
+    }
+
+    fn hide(&self) {
+        let _ = self.sender.send(SurfaceCommand::Hide);
+    }
+
+    fn shutdown(&self) -> Result<(), String> {
         let (ack_tx, ack_rx) = mpsc::channel();
         self.sender
             .send(SurfaceCommand::Shutdown { ack: ack_tx })
@@ -351,41 +373,26 @@ impl NativePlayerSurface {
         Ok(())
     }
 
-    pub fn load(
-        &self,
-        url: String,
-        start_at: Option<u64>,
-        total_duration: Option<u64>,
-    ) -> Result<(), String> {
-        self.sender
-            .send(SurfaceCommand::Load {
-                url,
-                start_at,
-                total_duration,
-            })
-            .map_err(|e| format!("surface unavailable: {e}"))
-    }
-    pub fn hide(&self) {
-        let _ = self.sender.send(SurfaceCommand::Hide);
-    }
-    pub fn show_loading(&self, title: String, episode_title: Option<String>) {
+    fn show_loading(&self, title: String, episode_title: Option<String>) {
         let _ = self.sender.send(SurfaceCommand::ShowLoading {
             title,
             episode_title,
         });
     }
-    pub fn set_title(&self, title: String, episode_title: Option<String>) {
+
+    fn set_title(&self, title: String, episode_title: Option<String>) {
         let _ = self.sender.send(SurfaceCommand::SetTitle {
             title,
             episode_title,
         });
     }
-    pub fn set_artwork(
+
+    fn set_artwork(
         &self,
         title: String,
         episode_title: Option<String>,
-        background: Option<(Vec<u8>, i32, i32)>,
-        logo: Option<(Vec<u8>, i32, i32)>,
+        background: crate::player_surface::Artwork,
+        logo: crate::player_surface::Artwork,
     ) {
         let _ = self.sender.send(SurfaceCommand::SetArtwork {
             title,
@@ -393,6 +400,74 @@ impl NativePlayerSurface {
             background,
             logo,
         });
+    }
+
+    fn set_cursor_visible(&self, _visible: bool) {}
+
+    fn command(&self, command: String) -> Result<(), String> {
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry_mut(&state, 60, |renderer| {
+            renderer.user_command(&command)
+        }) {
+            Ok(Some(())) => Ok(()),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn command_args(&self, commands: Vec<Vec<String>>) -> Result<(), String> {
+        let state = self.app.state::<DesktopState>();
+        for command in commands {
+            let args = command.iter().map(String::as_str).collect::<Vec<_>>();
+            match crate::player::with_renderer_retry(&state, 600, |renderer| {
+                renderer.command_args(&args)
+            }) {
+                Ok(Some(())) => {}
+                Ok(None) => return Err("player renderer is not initialized".to_string()),
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
+
+    fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry(&state, 80, |renderer| Ok(renderer.status())) {
+            Ok(Some(status)) => Ok(status),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn track_options(
+        &self,
+        track_type: String,
+    ) -> Result<Vec<crate::mpv_render::PlayerTrackOption>, String> {
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry(&state, 80, |renderer| {
+            Ok(renderer.track_options(&track_type))
+        }) {
+            Ok(Some(tracks)) => Ok(tracks),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
+    }
+
+    // sub-add loads the file synchronously, so this must never run on the render thread.
+    fn add_subtitle(
+        &self,
+        url: String,
+        title: Option<String>,
+        language: Option<String>,
+    ) -> Result<(), String> {
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry(&state, 80, |renderer| {
+            renderer.add_subtitle(&url, title.as_deref(), language.as_deref())
+        }) {
+            Ok(Some(())) => Ok(()),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -525,8 +600,9 @@ pub fn install_with_backend(
             let metal_layer =
                 prepared_layer.ok_or_else(|| "CAMetalLayer was not created".to_string())?;
 
-            let vk_ctx = crate::macos_vulkan::create_context(metal_layer.0 as *const c_void, init_w, init_h)
-                .map_err(|e| format!("Vulkan context creation failed: {e}"))?;
+            let vk_ctx =
+                crate::macos_vulkan::create_context(metal_layer.0 as *const c_void, init_w, init_h)
+                    .map_err(|e| format!("Vulkan context creation failed: {e}"))?;
 
             let state = app_handle.state::<DesktopState>();
             let mut render_guard = state.player_render_state.lock().unwrap();
@@ -975,6 +1051,7 @@ pub fn install_with_backend(
         sender,
         backend,
         thread: Arc::new(Mutex::new(Some(thread))),
+        app: app_handle,
     })
 }
 

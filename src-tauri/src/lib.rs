@@ -27,6 +27,7 @@ mod net_guard;
 mod oauth;
 mod oauth_callbacks;
 mod playback_engine;
+mod player_surface;
 mod player_surface_events;
 mod vulkan;
 mod player;
@@ -149,12 +150,8 @@ pub struct DesktopState {
     pub player_render_state: Mutex<Option<mpv_render::MpvRenderState>>,
     pub player_renderer_vlc: Mutex<Option<libvlc_render::LibvlcPlayer>>,
     pub active_player_engine: Mutex<playback_engine::PlayerEngine>,
-    #[cfg(target_os = "linux")]
-    pub native_player_surface: Mutex<Option<linux_player_surface::NativePlayerSurface>>,
-    #[cfg(target_os = "windows")]
-    pub native_player_surface: Mutex<Option<windows_player_surface::NativePlayerSurface>>,
-    #[cfg(target_os = "macos")]
-    pub native_player_surface: Mutex<Option<macos_player_surface::NativePlayerSurface>>,
+    pub native_player_surface:
+        Mutex<Option<std::sync::Arc<dyn player_surface::PlayerSurface>>>,
     pub player_overlay: Mutex<PlayerOverlayState>,
     pub thumbnail: Mutex<ThumbnailRuntimeState>,
     pub pending_hide: AtomicBool,
@@ -181,11 +178,6 @@ impl Default for DesktopState {
             player_render_state: Mutex::new(None),
             player_renderer_vlc: Mutex::new(None),
             active_player_engine: Mutex::new(playback_engine::PlayerEngine::Mpv),
-            #[cfg(target_os = "linux")]
-            native_player_surface: Mutex::new(None),
-            #[cfg(target_os = "windows")]
-            native_player_surface: Mutex::new(None),
-            #[cfg(target_os = "macos")]
             native_player_surface: Mutex::new(None),
             player_overlay: Mutex::new(PlayerOverlayState::default()),
             thumbnail: Mutex::new(ThumbnailRuntimeState::default()),
@@ -728,12 +720,8 @@ pub fn run() {
         .run(|app_handle, event| {
             if let tauri::RunEvent::Exit = event {
                 let state = app_handle.state::<DesktopState>();
-                #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
                 if let Some(surface) = state.native_player_surface.lock().unwrap().take() {
-                    #[cfg(target_os = "macos")]
                     let _ = surface.shutdown();
-                    #[cfg(not(target_os = "macos"))]
-                    surface.hide();
                 }
                 fluxa_streaming_engine::stop_torrent_server(None);
             }
