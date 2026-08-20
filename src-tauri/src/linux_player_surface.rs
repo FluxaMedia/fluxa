@@ -1100,37 +1100,10 @@ fn check_player_events(app: &AppHandle) {
         let eof = r.query_property("eof-reached").as_deref() == Some("yes");
         (events, eof)
     };
-    for event in events {
-        let error = match event {
-            crate::mpv_render::PlayerEvent::EndFile { eof: _, error } => error,
-            crate::mpv_render::PlayerEvent::PauseChanged(paused) => {
-                let _ = app.emit("native-player-pause-changed", paused);
-                continue;
-            }
-        };
-        if let Some(message) = error {
-            log::error!("linux player surface: stream failed to play: {message}");
-            let _ = app.emit("native-player-error", message);
-        }
-    }
+    crate::player_surface_events::drain_player_events(app, events);
     if !eof {
-        let mut overlay = state.player_overlay.lock().unwrap();
-        if overlay.eof_next_fired {
-            overlay.eof_next_fired = false;
-        }
+        crate::player_surface_events::clear_eof_latch(app);
         return;
     }
-    let mut overlay = state.player_overlay.lock().unwrap();
-    if !overlay.take_eof_next() {
-        return;
-    }
-
-    let next_sub = overlay.next_ep_subtitle.clone();
-    let auto_play = overlay.auto_play_next_episode;
-    drop(overlay);
-    if FluxaCore::should_play_next_episode(!next_sub.is_empty(), auto_play) {
-        let _ = app.emit("native-player-next-episode", ());
-    } else {
-        let _ = app.emit("native-player-close-requested", ());
-    }
+    crate::player_surface_events::fire_eof_transition(app);
 }

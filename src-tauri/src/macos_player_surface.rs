@@ -8,7 +8,6 @@ use crate::DesktopState;
 use crate::macos_vulkan::VulkanContext;
 use crate::mpv_render::VulkanTargetImage;
 use crate::playback_engine::{PlaybackEngine, PlayerEngine};
-use fluxa_core::FluxaCore;
 use std::ffi::{CStr, CString, c_void};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::Duration;
@@ -1122,41 +1121,20 @@ unsafe fn create_gl_context() -> Result<SendId, String> {
 fn check_player_events(app: &AppHandle) {
     let state = app.state::<DesktopState>();
     let (events, status) = {
-        let mut renderer = state.player_mpv_client.lock().unwrap();
-        match renderer.as_mut() {
-            Some(r) => (r.poll_events(), r.status()),
-            None => return,
-        }
-    };
-    for event in events {
-        let error = match event {
-            crate::mpv_render::PlayerEvent::EndFile { eof: _, error } => error,
-            crate::mpv_render::PlayerEvent::PauseChanged(paused) => {
-                let _ = app.emit("native-player-pause-changed", paused);
-                continue;
-            }
+        let Ok(mut renderer) = state.player_mpv_client.try_lock() else {
+            return;
         };
-        if let Some(message) = error {
-            log::error!("macos player surface: stream failed to play: {message}");
-            let _ = app.emit("native-player-error", message);
-        }
-    }
+        let Some(r) = renderer.as_mut() else {
+            return;
+        };
+        (r.poll_events(), r.status())
+    };
+    crate::player_surface_events::drain_player_events(app, events);
     if !status.eof_reached() {
+        crate::player_surface_events::clear_eof_latch(app);
         return;
     }
-    let mut overlay = state.player_overlay.lock().unwrap();
-    if !overlay.take_eof_next() {
-        return;
-    }
-
-    let next_sub = overlay.next_ep_subtitle.clone();
-    let auto_play = overlay.auto_play_next_episode;
-    drop(overlay);
-    if FluxaCore::should_play_next_episode(!next_sub.is_empty(), auto_play) {
-        let _ = app.emit("native-player-next-episode", ());
-    } else {
-        let _ = app.emit("native-player-close-requested", ());
-    }
+    crate::player_surface_events::fire_eof_transition(app);
 }
 
 // Artwork helpers

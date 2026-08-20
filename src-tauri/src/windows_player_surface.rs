@@ -15,7 +15,6 @@ use crate::windows_d3d11::D3d11Context;
 use crate::windows_egl::{self, EglContext};
 use crate::windows_vulkan::VulkanContext;
 use crate::DesktopState;
-use fluxa_core::FluxaCore;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{mpsc, Mutex, OnceLock};
@@ -996,37 +995,8 @@ fn check_player_events(app: &AppHandle) {
             None => return,
         }
     };
-    for event in events {
-        let (eof, error) = match event {
-            crate::mpv_render::PlayerEvent::EndFile { eof, error } => (eof, error),
-            crate::mpv_render::PlayerEvent::PauseChanged(paused) => {
-                let _ = app.emit("native-player-pause-changed", paused);
-                continue;
-            }
-        };
-        log::info!("player surface: mpv END_FILE event eof={eof} error={error:?}");
-        if let Some(message) = error {
-            log::error!("player surface: stream failed to play: {message}");
-            let _ = app.emit("native-player-error", message);
-            continue;
-        }
-        if !eof {
-            continue;
-        }
-        let mut overlay = state.player_overlay.lock().unwrap();
-        if !overlay.take_eof_next() {
-            continue;
-        }
-        let next_sub = overlay.next_ep_subtitle.clone();
-        let auto_play = overlay.auto_play_next_episode;
-        drop(overlay);
-        if FluxaCore::should_play_next_episode(!next_sub.is_empty(), auto_play) {
-            log::info!("player surface: eof reached, auto-playing next episode");
-            let _ = app.emit("native-player-next-episode", ());
-        } else {
-            log::info!("player surface: eof reached, closing player");
-            let _ = app.emit("native-player-close-requested", ());
-        }
+    if crate::player_surface_events::drain_player_events(app, events) {
+        crate::player_surface_events::fire_eof_transition(app);
     }
 }
 

@@ -27,6 +27,7 @@ mod net_guard;
 mod oauth;
 mod oauth_callbacks;
 mod playback_engine;
+mod player_surface_events;
 mod player;
 mod plugin_executor;
 mod poster_cache;

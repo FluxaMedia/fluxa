@@ -32,6 +32,7 @@ const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: i32 = 10002
 const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: i32 = 1000314007;
 const VK_STRUCTURE_TYPE_SUBMIT_INFO: i32 = 4;
 const VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO: i32 = 39;
+const VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT: u32 = 2;
 const VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO: i32 = 40;
 const VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO: i32 = 42;
 const VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER: i32 = 45;
@@ -773,7 +774,7 @@ impl VulkanContext {
         let pool_info = VkCommandPoolCreateInfo {
             s_type: VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             p_next: ptr::null(),
-            flags: 0,
+            flags: VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
             queue_family_index: self.queue_family_index,
         };
         let mut pool: VkCommandPool = ptr::null_mut();
