@@ -110,14 +110,6 @@ impl VulkanPlatform for LinuxPlatform {
         ])
     }
 
-    fn instance_layers(&self) -> Vec<CString> {
-        if std::env::var_os("FLUXA_VULKAN_VALIDATION").is_some() {
-            vec![CString::new("VK_LAYER_KHRONOS_validation").unwrap()]
-        } else {
-            Vec::new()
-        }
-    }
-
     unsafe fn create_surface(
         &self,
         instance: VkInstance,

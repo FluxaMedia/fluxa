@@ -572,7 +572,17 @@ impl VulkanContext {
 
         let extensions = platform.instance_extensions(&has_instance_ext)?;
         let instance_flags = platform.instance_flags(&has_instance_ext);
-        let layers = platform.instance_layers();
+        let mut layers = platform.instance_layers();
+        if std::env::var_os("FLUXA_VULKAN_VALIDATION").is_some() {
+            let validation = CString::new("VK_LAYER_KHRONOS_validation").unwrap();
+            if !layers.contains(&validation) {
+                layers.push(validation);
+            }
+            log::info!(
+                "{} Vulkan: FLUXA_VULKAN_VALIDATION set, enabling VK_LAYER_KHRONOS_validation",
+                platform.label()
+            );
+        }
 
         let app_name = CString::new("fluxa-desktop").unwrap();
         let app_info = VkApplicationInfo {
