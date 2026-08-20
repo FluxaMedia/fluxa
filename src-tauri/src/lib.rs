@@ -28,6 +28,7 @@ mod oauth;
 mod oauth_callbacks;
 mod playback_engine;
 mod player_surface_events;
+mod vulkan;
 mod player;
 mod plugin_executor;
 mod poster_cache;

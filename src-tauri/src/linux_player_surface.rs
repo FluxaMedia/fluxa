@@ -638,7 +638,7 @@ impl SurfaceTick {
                         let (w, h) = vulkan_surface_size(&self.gl_area, &self.webview_widget);
                         match create_vulkan_surface(&self.gl_area, w, h) {
                             Ok((surface_handle, native_surface)) => {
-                                match VulkanContext::new(native_surface, w, h) {
+                                match crate::linux_vulkan::create_context(native_surface, w, h) {
                                     Ok(ctx) => {
                                         let shared = Arc::new(VulkanShared {
                                             width: AtomicI32::new(w),

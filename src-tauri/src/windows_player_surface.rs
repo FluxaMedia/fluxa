@@ -123,16 +123,17 @@ impl RenderContext {
             }
             RenderContext::Vulkan(ctx) => {
                 if renderer.needs_vulkan_context() {
-                    let (instance, phys_device, device, queue_index, queue_count) =
+                    let (instance, phys_device, device, queue_index, queue_count, get_proc_addr) =
                         ctx.device_handles();
+                    let enabled_extensions = ctx.enabled_device_extension_ptrs();
                     renderer.create_vulkan_context(
                         instance,
                         phys_device,
                         device,
                         queue_index,
                         queue_count,
-                        std::ptr::null_mut(),
-                        &[],
+                        get_proc_addr,
+                        &enabled_extensions,
                     )?;
                 }
                 ctx.resize(width, height)?;
@@ -628,7 +629,7 @@ fn spawn_install_thread(
                 }
             }
             RenderBackend::Vulkan => {
-                match VulkanContext::new(child_hwnd as isize, init_w, init_h) {
+                match crate::windows_vulkan::create_context(child_hwnd as isize, init_w, init_h) {
                     Ok(ctx) => RenderContext::Vulkan(ctx),
                     Err(e) => {
                         log::error!("player surface: Vulkan context creation failed: {e}");

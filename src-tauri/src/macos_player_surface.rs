@@ -525,7 +525,7 @@ pub fn install_with_backend(
             let metal_layer =
                 prepared_layer.ok_or_else(|| "CAMetalLayer was not created".to_string())?;
 
-            let vk_ctx = VulkanContext::new(metal_layer.0 as *const c_void, init_w, init_h)
+            let vk_ctx = crate::macos_vulkan::create_context(metal_layer.0 as *const c_void, init_w, init_h)
                 .map_err(|e| format!("Vulkan context creation failed: {e}"))?;
 
             let state = app_handle.state::<DesktopState>();
@@ -545,7 +545,7 @@ pub fn install_with_backend(
             if let Some(r) = render_guard.as_mut() {
                 let (instance, phys_device, device, queue_index, queue_count, get_proc_addr) =
                     vk_ctx.device_handles();
-                let enabled_extensions = vk_ctx.enabled_device_extensions();
+                let enabled_extensions = vk_ctx.enabled_device_extension_ptrs();
                 r.create_vulkan_context(
                     instance,
                     phys_device,
@@ -880,7 +880,7 @@ pub fn install_with_backend(
                                 queue_count,
                                 get_proc_addr,
                             ) = ctx.device_handles();
-                            let enabled_extensions = ctx.enabled_device_extensions();
+                            let enabled_extensions = ctx.enabled_device_extension_ptrs();
                             match r.create_vulkan_context(
                                 instance,
                                 phys_device,
