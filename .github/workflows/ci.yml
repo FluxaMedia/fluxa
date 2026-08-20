@@ -8,6 +8,17 @@ on:
 
 env:
   RUST_VERSION: "stable"
+  # Placeholders only. These are baked in with env!() at compile time; a type-check
+  # job never calls the services, and dummies keep the workflow working on fork PRs
+  # where repository secrets are unavailable.
+  FLUXA_TRAKT_CLIENT_ID: ci
+  FLUXA_TRAKT_CLIENT_SECRET: ci
+  FLUXA_ANILIST_CLIENT_ID: ci
+  FLUXA_ANILIST_CLIENT_SECRET: ci
+  FLUXA_SIMKL_CLIENT_ID: ci
+  FLUXA_SIMKL_CLIENT_SECRET: ci
+  FLUXA_NUVIO_SUPABASE_URL: https://ci.invalid
+  FLUXA_NUVIO_SUPABASE_KEY: ci
 
 jobs:
   check:
