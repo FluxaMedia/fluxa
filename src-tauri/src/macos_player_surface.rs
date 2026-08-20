@@ -173,7 +173,7 @@ const NSOpenGLPFAAccelerated: u32 = 73;
 const NSOpenGLPFAColorSize: u32 = 8;
 const NSOpenGLPFADepthSize: u32 = 12;
 const NSOpenGLPFAOpenGLProfile: u32 = 99;
-const NSOpenGLProfileVersion3_2Core: u32 = 0x3200;
+const NSOpenGLProfileVersion4_1Core: u32 = 0x4100;
 
 // NSOpenGLContextParameter.
 const NS_OPENGL_CP_SWAP_INTERVAL: isize = 222;
@@ -431,16 +431,21 @@ pub fn install_with_backend(
 
     // Create the render subview on the main thread, collect result.
     // NSView frames are in points; inner_size() is physical pixels.
-    let (view_tx, view_rx) = mpsc::channel::<Result<SendId, String>>();
+    let (view_tx, view_rx) = mpsc::channel::<Result<(SendId, Option<SendId>), String>>();
     let parent_ptr = ns_view as usize;
     let frame_w = init_w as f64 / scale;
     let frame_h = init_h as f64 / scale;
+    let layer_request = match backend {
+        RenderBackend::Vulkan => Some((scale, init_w, init_h)),
+        RenderBackend::OpenGl => None,
+    };
     run_on_main(move || {
         let parent = SendId(parent_ptr as Id);
-        let _ = view_tx.send(unsafe { create_render_subview(parent, frame_w, frame_h) });
+        let _ =
+            view_tx.send(unsafe { create_render_subview(parent, frame_w, frame_h, layer_request) });
     });
 
-    let render_view = view_rx
+    let (render_view, prepared_layer) = view_rx
         .recv_timeout(Duration::from_secs(5))
         .map_err(|_| "macOS render view creation timed out".to_string())
         .and_then(|r| r)?;
@@ -518,17 +523,8 @@ pub fn install_with_backend(
             }
         }
         RenderBackend::Vulkan => {
-            let (layer_tx, layer_rx) = mpsc::channel::<Result<SendId, String>>();
-            let layer_view = render_view.0 as usize;
-            run_on_main(move || {
-                let _ = layer_tx.send(unsafe {
-                    create_metal_layer(layer_view as Id, scale, init_w, init_h).map(SendId)
-                });
-            });
-            let metal_layer = layer_rx
-                .recv_timeout(Duration::from_secs(5))
-                .map_err(|_| "macOS Metal layer creation timed out".to_string())
-                .and_then(|r| r)?;
+            let metal_layer =
+                prepared_layer.ok_or_else(|| "CAMetalLayer was not created".to_string())?;
 
             let vk_ctx = VulkanContext::new(metal_layer.0 as *const c_void, init_w, init_h)
                 .map_err(|e| format!("Vulkan context creation failed: {e}"))?;
@@ -548,7 +544,7 @@ pub fn install_with_backend(
                 }
             }
             if let Some(r) = render_guard.as_mut() {
-                let (instance, phys_device, device, queue_index, queue_count) =
+                let (instance, phys_device, device, queue_index, queue_count, get_proc_addr) =
                     vk_ctx.device_handles();
                 let enabled_extensions = vk_ctx.enabled_device_extensions();
                 r.create_vulkan_context(
@@ -557,7 +553,7 @@ pub fn install_with_backend(
                     device,
                     queue_index,
                     queue_count,
-                    std::ptr::null_mut(),
+                    get_proc_addr,
                     &enabled_extensions,
                 )
                 .map_err(|e| format!("mpv Vulkan context failed: {e}"))?;
@@ -873,6 +869,50 @@ pub fn install_with_backend(
                         let state = app.state::<DesktopState>();
 
                         let mut renderer = state.player_render_state.lock().unwrap();
+                        let mut rebuild_failed = false;
+                        if let Some(r) = renderer.as_mut()
+                            && r.needs_vulkan_context()
+                        {
+                            let (
+                                instance,
+                                phys_device,
+                                device,
+                                queue_index,
+                                queue_count,
+                                get_proc_addr,
+                            ) = ctx.device_handles();
+                            let enabled_extensions = ctx.enabled_device_extensions();
+                            match r.create_vulkan_context(
+                                instance,
+                                phys_device,
+                                device,
+                                queue_index,
+                                queue_count,
+                                get_proc_addr,
+                                &enabled_extensions,
+                            ) {
+                                Ok(()) => {
+                                    log::info!(
+                                        "macos_player_surface: Vulkan render context rebuilt"
+                                    );
+                                    last_vk_render_error = None;
+                                }
+                                Err(e) => {
+                                    if last_vk_render_error.as_deref() != Some(e.as_str()) {
+                                        log::error!(
+                                            "macos_player_surface: Vulkan context rebuild failed: {e}"
+                                        );
+                                        last_vk_render_error = Some(e);
+                                    }
+                                    rebuild_failed = true;
+                                }
+                            }
+                        }
+                        if rebuild_failed {
+                            drop(renderer);
+                            std::thread::sleep(Duration::from_millis(16));
+                            continue;
+                        }
                         if let Some(r) = renderer.as_mut() {
                             let image_usage = ctx.image_usage();
                             let result = ctx.render_and_present(
@@ -973,7 +1013,12 @@ fn fallback_to_hwcopy(app: &AppHandle, error: &str, attempted: &mut bool) -> boo
 
 // ObjC helpers
 
-unsafe fn create_render_subview(parent: SendId, w: f64, h: f64) -> Result<SendId, String> {
+unsafe fn create_render_subview(
+    parent: SendId,
+    w: f64,
+    h: f64,
+    metal_layer: Option<(f64, i32, i32)>,
+) -> Result<(SendId, Option<SendId>), String> {
     let ns_view_cls = cls("NSView");
     if ns_view_cls.is_null() {
         return Err("NSView class not found".to_string());
@@ -992,7 +1037,14 @@ unsafe fn create_render_subview(parent: SendId, w: f64, h: f64) -> Result<SendId
         return Err("NSView initWithFrame: failed".to_string());
     }
 
-    // wantsLayer = YES allows us to control z-ordering.
+    let layer = match metal_layer {
+        Some((contents_scale, pixel_w, pixel_h)) => {
+            let layer = create_metal_layer(contents_scale, pixel_w, pixel_h)?;
+            msg1_id(view, "setLayer:", layer);
+            Some(SendId(layer))
+        }
+        None => None,
+    };
     msg1_bool(view, "setWantsLayer:", 1);
     msg1_bool(view, "setWantsBestResolutionOpenGLSurface:", 1);
 
@@ -1002,10 +1054,10 @@ unsafe fn create_render_subview(parent: SendId, w: f64, h: f64) -> Result<SendId
     // Hidden until playback starts.
     msg1_bool(view, "setHidden:", 1);
 
-    Ok(SendId(view))
+    Ok((SendId(view), layer))
 }
 
-unsafe fn create_metal_layer(view: Id, contents_scale: f64, w: i32, h: i32) -> Result<Id, String> {
+unsafe fn create_metal_layer(contents_scale: f64, w: i32, h: i32) -> Result<Id, String> {
     let layer_cls = cls("CAMetalLayer");
     if layer_cls.is_null() {
         return Err("CAMetalLayer class not found".to_string());
@@ -1023,7 +1075,6 @@ unsafe fn create_metal_layer(view: Id, contents_scale: f64, w: i32, h: i32) -> R
             height: h as f64,
         },
     );
-    msg1_id(view, "setLayer:", layer);
     Ok(layer)
 }
 
@@ -1036,7 +1087,7 @@ unsafe fn create_gl_context() -> Result<SendId, String> {
         NSOpenGLPFADepthSize,
         24,
         NSOpenGLPFAOpenGLProfile,
-        NSOpenGLProfileVersion3_2Core,
+        NSOpenGLProfileVersion4_1Core,
         0,
     ];
 
@@ -1048,7 +1099,7 @@ unsafe fn create_gl_context() -> Result<SendId, String> {
         std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
     let pf: Id = init_attr(pf_alloc, sel("initWithAttributes:"), attribs.as_ptr());
     if pf.is_null() {
-        return Err("NSOpenGLPixelFormat init failed (3.2 core profile)".to_string());
+        return Err("NSOpenGLPixelFormat init failed (4.1 core profile)".to_string());
     }
 
     let ctx_cls = cls("NSOpenGLContext");

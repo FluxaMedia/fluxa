@@ -24,6 +24,9 @@ const VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO: i32 = 1;
 const VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO: i32 = 2;
 const VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO: i32 = 3;
 const VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO: i32 = 9;
+const VK_STRUCTURE_TYPE_FENCE_CREATE_INFO: i32 = 8;
+const VK_FENCE_CREATE_SIGNALED_BIT: u32 = 1;
+const VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT: u32 = 2;
 const VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR: i32 = 1000001000;
 const VK_STRUCTURE_TYPE_PRESENT_INFO_KHR: i32 = 1000001001;
 const VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT: i32 = 1000217000;
@@ -48,6 +51,8 @@ const VK_SHARING_MODE_EXCLUSIVE: i32 = 0;
 const VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR: u32 = 0x1;
 const VK_PRESENT_MODE_FIFO_KHR: i32 = 2;
 const VK_API_VERSION_1_0: u32 = 1 << 22;
+const VK_API_VERSION_1_2: u32 = (1 << 22) | (2 << 12);
+const VK_API_VERSION_1_3: u32 = (1 << 22) | (3 << 12);
 const VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: i32 = 1000001002;
 const VK_IMAGE_ASPECT_COLOR_BIT: u32 = 0x1;
 const VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT: u32 = 0x00002000;
@@ -377,6 +382,24 @@ type PfnCmdPipelineBarrier = unsafe extern "system" fn(
 );
 type PfnQueueSubmit =
     unsafe extern "system" fn(VkQueue, u32, *const VkSubmitInfo, VkFence) -> VkResult;
+type PfnEnumerateInstanceVersion = unsafe extern "system" fn(*mut u32) -> VkResult;
+type PfnCreateFence = unsafe extern "system" fn(
+    VkDevice,
+    *const VkFenceCreateInfo,
+    *const c_void,
+    *mut VkFence,
+) -> VkResult;
+type PfnDestroyFence = unsafe extern "system" fn(VkDevice, VkFence, *const c_void);
+type PfnWaitForFences =
+    unsafe extern "system" fn(VkDevice, u32, *const VkFence, u32, u64) -> VkResult;
+type PfnResetFences = unsafe extern "system" fn(VkDevice, u32, *const VkFence) -> VkResult;
+
+#[repr(C)]
+struct VkFenceCreateInfo {
+    s_type: i32,
+    p_next: *const c_void,
+    flags: u32,
+}
 
 struct VkFns {
     get_instance_proc_addr: PfnGetInstanceProcAddr,
@@ -393,6 +416,10 @@ struct VkFns {
     queue_present_khr: PfnQueuePresentKHR,
     create_semaphore: PfnCreateSemaphore,
     destroy_semaphore: PfnDestroySemaphore,
+    create_fence: PfnCreateFence,
+    destroy_fence: PfnDestroyFence,
+    wait_for_fences: PfnWaitForFences,
+    reset_fences: PfnResetFences,
     device_wait_idle: PfnDeviceWaitIdle,
     create_command_pool: PfnCreateCommandPool,
     destroy_command_pool: PfnDestroyCommandPool,
@@ -484,6 +511,7 @@ pub struct VulkanContext {
     acquire_semaphore: VkSemaphore,
     render_done_semaphore: VkSemaphore,
     transition_semaphore: VkSemaphore,
+    in_flight_fence: VkFence,
     command_pool: VkCommandPool,
     command_buffer: VkCommandBuffer,
     hdr: AtomicBool,
@@ -517,6 +545,38 @@ impl VulkanContext {
                 "vkEnumerateInstanceExtensionProperties",
             )?)
         };
+
+        let loader_version = match get_instance_proc(
+            get_instance_proc_addr,
+            ptr::null_mut(),
+            "vkEnumerateInstanceVersion",
+        ) {
+            Ok(addr) => {
+                let f: PfnEnumerateInstanceVersion = unsafe { std::mem::transmute(addr) };
+                let mut version: u32 = VK_API_VERSION_1_0;
+                if unsafe { f(&mut version) } == VK_SUCCESS {
+                    version
+                } else {
+                    VK_API_VERSION_1_0
+                }
+            }
+            Err(_) => VK_API_VERSION_1_0,
+        };
+        if loader_version < VK_API_VERSION_1_2 {
+            return Err(format!(
+                "MoltenVK reports Vulkan {}.{}; libplacebo needs 1.2 or newer",
+                (loader_version >> 22) & 0x7F,
+                (loader_version >> 12) & 0x3FF
+            ));
+        }
+        let api_version = loader_version.min(VK_API_VERSION_1_3);
+        log::info!(
+            "macOS Vulkan: MoltenVK loader reports {}.{}, requesting {}.{}",
+            (loader_version >> 22) & 0x7F,
+            (loader_version >> 12) & 0x3FF,
+            (api_version >> 22) & 0x7F,
+            (api_version >> 12) & 0x3FF
+        );
 
         let mut ext_count: u32 = 0;
         unsafe {
@@ -555,7 +615,7 @@ impl VulkanContext {
             application_version: 0,
             p_engine_name: app_name.as_ptr(),
             engine_version: 0,
-            api_version: VK_API_VERSION_1_0,
+            api_version,
         };
         let mut extensions = vec![
             CString::new("VK_KHR_surface").unwrap(),
@@ -766,9 +826,19 @@ impl VulkanContext {
         }
         let device_extension_ptrs: Vec<*const i8> =
             device_extensions.iter().map(|e| e.as_ptr()).collect();
+        let mut synchronization2_features = VkPhysicalDeviceSynchronization2Features {
+            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+            p_next: ptr::null_mut(),
+            synchronization2: 1,
+        };
+        let mut timeline_semaphore_features = VkPhysicalDeviceTimelineSemaphoreFeatures {
+            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
+            p_next: &mut synchronization2_features as *mut _ as *mut c_void,
+            timeline_semaphore: 1,
+        };
         let device_create_info = VkDeviceCreateInfo {
             s_type: VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            p_next: ptr::null(),
+            p_next: &mut timeline_semaphore_features as *mut _ as *const c_void,
             flags: 0,
             queue_create_info_count: 1,
             p_queue_create_infos: &queue_create_info,
@@ -805,6 +875,10 @@ impl VulkanContext {
         let queue_present_khr: PfnQueuePresentKHR = dproc!("vkQueuePresentKHR");
         let create_semaphore: PfnCreateSemaphore = dproc!("vkCreateSemaphore");
         let destroy_semaphore: PfnDestroySemaphore = dproc!("vkDestroySemaphore");
+        let create_fence: PfnCreateFence = dproc!("vkCreateFence");
+        let destroy_fence: PfnDestroyFence = dproc!("vkDestroyFence");
+        let wait_for_fences: PfnWaitForFences = dproc!("vkWaitForFences");
+        let reset_fences: PfnResetFences = dproc!("vkResetFences");
         let device_wait_idle: PfnDeviceWaitIdle = dproc!("vkDeviceWaitIdle");
         let create_command_pool: PfnCreateCommandPool = dproc!("vkCreateCommandPool");
         let destroy_command_pool: PfnDestroyCommandPool = dproc!("vkDestroyCommandPool");
@@ -834,6 +908,10 @@ impl VulkanContext {
             queue_present_khr,
             create_semaphore,
             destroy_semaphore,
+            create_fence,
+            destroy_fence,
+            wait_for_fences,
+            reset_fences,
             device_wait_idle,
             create_command_pool,
             destroy_command_pool,
@@ -864,6 +942,7 @@ impl VulkanContext {
             acquire_semaphore: 0,
             render_done_semaphore: 0,
             transition_semaphore: 0,
+            in_flight_fence: 0,
             command_pool: ptr::null_mut(),
             command_buffer: ptr::null_mut(),
             hdr: AtomicBool::new(false),
@@ -898,6 +977,19 @@ impl VulkanContext {
         self.acquire_semaphore = acquire;
         self.render_done_semaphore = render_done;
         self.transition_semaphore = transition;
+
+        let fence_info = VkFenceCreateInfo {
+            s_type: VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: VK_FENCE_CREATE_SIGNALED_BIT,
+        };
+        let mut fence: VkFence = 0;
+        let r4 =
+            unsafe { (self.fns.create_fence)(self.device, &fence_info, ptr::null(), &mut fence) };
+        if r4 != VK_SUCCESS {
+            return Err(format!("vkCreateFence failed: {r4}"));
+        }
+        self.in_flight_fence = fence;
         Ok(())
     }
 
@@ -905,7 +997,7 @@ impl VulkanContext {
         let pool_info = VkCommandPoolCreateInfo {
             s_type: VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             p_next: ptr::null(),
-            flags: 0,
+            flags: VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
             queue_family_index: self.queue_family_index,
         };
         let mut pool: VkCommandPool = ptr::null_mut();
@@ -1098,13 +1190,14 @@ impl VulkanContext {
         Ok(())
     }
 
-    pub fn device_handles(&self) -> (*mut c_void, *mut c_void, *mut c_void, u32, u32) {
+    pub fn device_handles(&self) -> (*mut c_void, *mut c_void, *mut c_void, u32, u32, *mut c_void) {
         (
             self.instance,
             self.phys_device,
             self.device,
             self.queue_family_index,
             1,
+            self.fns.get_instance_proc_addr as *mut c_void,
         )
     }
 
@@ -1156,10 +1249,14 @@ impl VulkanContext {
                     (self.fns.destroy_semaphore)(self.device, sem, ptr::null());
                 }
             }
+            if self.in_flight_fence != 0 {
+                (self.fns.destroy_fence)(self.device, self.in_flight_fence, ptr::null());
+            }
         }
         self.acquire_semaphore = 0;
         self.render_done_semaphore = 0;
         self.transition_semaphore = 0;
+        self.in_flight_fence = 0;
         let extent = self.extent;
         let _ = self.create_semaphores();
         let _ = self.create_swapchain(extent.width, extent.height);
@@ -1169,6 +1266,17 @@ impl VulkanContext {
     where
         F: FnMut(u64, i32, u32, u32, u64, u64) -> Result<i32, String>,
     {
+        unsafe {
+            let wait_result =
+                (self.fns.wait_for_fences)(self.device, 1, &self.in_flight_fence, 1, u64::MAX);
+            if wait_result != VK_SUCCESS {
+                return Err(format!("vkWaitForFences failed: {wait_result}"));
+            }
+            let reset_result = (self.fns.reset_fences)(self.device, 1, &self.in_flight_fence);
+            if reset_result != VK_SUCCESS {
+                return Err(format!("vkResetFences failed: {reset_result}"));
+            }
+        }
         let mut image_index: u32 = 0;
         let result = unsafe {
             (self.fns.acquire_next_image_khr)(
@@ -1256,7 +1364,7 @@ impl VulkanContext {
                 signal_semaphore_count: 1,
                 p_signal_semaphores: &self.transition_semaphore,
             };
-            let result = (self.fns.queue_submit)(self.queue, 1, &submit_info, 0);
+            let result = (self.fns.queue_submit)(self.queue, 1, &submit_info, self.in_flight_fence);
             if result != VK_SUCCESS {
                 return Err(format!("vkQueueSubmit failed: VkResult {result}"));
             }
@@ -1295,6 +1403,9 @@ impl Drop for VulkanContext {
             }
             if self.transition_semaphore != 0 {
                 (self.fns.destroy_semaphore)(self.device, self.transition_semaphore, ptr::null());
+            }
+            if self.in_flight_fence != 0 {
+                (self.fns.destroy_fence)(self.device, self.in_flight_fence, ptr::null());
             }
             if !self.command_pool.is_null() {
                 (self.fns.destroy_command_pool)(self.device, self.command_pool, ptr::null());
