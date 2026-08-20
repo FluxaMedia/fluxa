@@ -314,12 +314,6 @@ enum SurfaceCommand {
         track_type: String,
         sender: mpsc::Sender<Vec<crate::mpv_render::PlayerTrackOption>>,
     },
-    AddSubtitle {
-        url: String,
-        title: Option<String>,
-        language: Option<String>,
-        sender: mpsc::Sender<Result<(), String>>,
-    },
     SetCursorVisible(bool),
     ShowLoading {
         title: String,
@@ -341,6 +335,7 @@ enum SurfaceCommand {
 pub struct NativePlayerSurface {
     sender: mpsc::Sender<SurfaceCommand>,
     backend: RenderBackend,
+    app: AppHandle,
 }
 
 impl crate::player_surface::PlayerSurface for NativePlayerSurface {
@@ -403,24 +398,21 @@ impl crate::player_surface::PlayerSurface for NativePlayerSurface {
             .recv_timeout(Duration::from_secs(2))
             .map_err(|e| format!("player track options unavailable: {e}"))
     }
+    // sub-add loads the file synchronously, so this must never run on the render thread.
     fn add_subtitle(
         &self,
         url: String,
         title: Option<String>,
         language: Option<String>,
     ) -> Result<(), String> {
-        let (sender, receiver) = mpsc::channel();
-        self.sender
-            .send(SurfaceCommand::AddSubtitle {
-                url,
-                title,
-                language,
-                sender,
-            })
-            .map_err(|e| format!("surface unavailable: {e}"))?;
-        receiver
-            .recv_timeout(Duration::from_secs(5))
-            .map_err(|e| format!("player add subtitle unavailable: {e}"))?
+        let state = self.app.state::<DesktopState>();
+        match crate::player::with_renderer_retry(&state, 80, |renderer| {
+            renderer.add_subtitle(&url, title.as_deref(), language.as_deref())
+        }) {
+            Ok(Some(())) => Ok(()),
+            Ok(None) => Err("player renderer is not initialized".to_string()),
+            Err(e) => Err(e),
+        }
     }
     fn set_cursor_visible(&self, visible: bool) {
         let _ = self.sender.send(SurfaceCommand::SetCursorVisible(visible));
@@ -695,6 +687,7 @@ fn spawn_install_thread(
         let _ = setup_tx.send(Ok(NativePlayerSurface {
             sender: sender.clone(),
             backend,
+            app: app.clone(),
         }));
 
         // Render + command loop
@@ -847,27 +840,6 @@ fn spawn_install_thread(
                             .map(|r| r.track_options(&track_type))
                             .unwrap_or_default();
                         let _ = sender.send(tracks);
-                    }
-                    SurfaceCommand::AddSubtitle {
-                        url,
-                        title,
-                        language,
-                        sender,
-                    } => {
-                        let state = app.state::<DesktopState>();
-                        let renderer = state.player_mpv_client.lock().unwrap();
-                        let result = renderer
-                            .as_ref()
-                            .ok_or_else(|| "player renderer is not initialized".to_string())
-                            .and_then(|r| {
-                                r.add_subtitle(&url, title.as_deref(), language.as_deref())
-                            });
-                        if let Err(error) = &result {
-                            log::error!("player surface: add subtitle failed: {error}");
-                        } else {
-                            log::info!("player surface: external subtitle added: {url}");
-                        }
-                        let _ = sender.send(result);
                     }
                     SurfaceCommand::Hide => {
                         visible = false;
