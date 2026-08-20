@@ -16,7 +16,8 @@
     "build:webos": "node scripts/gen-core-methods.mjs && tsc && vite build --mode webos",
     "package:webos": "bash scripts/package-webos.sh",
     "tauri": "tauri",
-    "bump": "bash scripts/bump-version.sh"
+    "bump": "bash scripts/bump-version.sh",
+    "lint:design": "node scripts/check-design.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.64.0",
