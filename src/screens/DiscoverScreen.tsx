@@ -283,7 +283,7 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
                 key={i}
                 style={{
                   borderRadius: '0.625rem',
-                  background: '#1B212B',
+                  background: '#222222',
                   aspectRatio: '2/3',
                   animation: 'pulse 1.6s ease-in-out infinite',
                   animationDelay: `${(i % 8) * 0.07}s`,

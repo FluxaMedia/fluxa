@@ -108,8 +108,8 @@ function SearchScrollArrow({ direction, onClick }: { direction: 'left' | 'right'
         alignItems: 'center',
         justifyContent: isLeft ? 'flex-start' : 'flex-end',
         background: isLeft
-          ? 'linear-gradient(to right, rgba(4,5,8,0.9) 30%, transparent 100%)'
-          : 'linear-gradient(to left, rgba(4,5,8,0.9) 30%, transparent 100%)',
+          ? 'linear-gradient(to right, rgba(6,6,6,0.9) 30%, transparent 100%)'
+          : 'linear-gradient(to left, rgba(6,6,6,0.9) 30%, transparent 100%)',
         pointerEvents: 'none',
       }}
     >

@@ -342,7 +342,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
   thumbPlaceholder: {
     width: '100%',
     height: '100%',
-    background: '#1B212B',
+    background: '#222222',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

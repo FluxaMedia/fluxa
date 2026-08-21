@@ -269,7 +269,7 @@ export const LibraryScreen = React.memo(
             position: 'relative',
             height: '100%',
             paddingLeft: `${NAV_RAIL_WIDTH}rem`,
-            background: '#040508',
+            background: '#060606',
             boxSizing: 'border-box',
           }}
         >

@@ -45,7 +45,7 @@ export function useAppLayoutPrefs({
     () =>
       ({
         ...appStyles.root,
-        background: nativePlayerActive ? 'transparent' : '#040508',
+        background: nativePlayerActive ? 'transparent' : '#060606',
         ['--primary-accent-color' as string]: accentColor,
         ['--primary-accent-foreground-color' as string]: accentForegroundColor(accentColor),
       }) as React.CSSProperties,

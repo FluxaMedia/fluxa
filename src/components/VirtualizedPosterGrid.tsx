@@ -177,7 +177,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
                 width: cardWidth,
                 height: cardHeight,
                 borderRadius: posterPrefs.radius,
-                background: '#1B212B',
+                background: '#222222',
                 transform: `translate3d(${left}px, ${top}px, 0)`,
                 animation: 'pulse 1.6s ease-in-out infinite',
                 animationDelay: `${(col % 8) * 0.07}s`,
@@ -233,7 +233,7 @@ const PosterCard = React.memo(function PosterCard({
           height: posterPrefs.height,
           borderRadius: posterPrefs.radius,
           overflow: 'hidden',
-          background: '#1B212B',
+          background: '#222222',
           boxShadow: selected ? 'inset 0 0 0 0.125rem rgba(255,255,255,0.55), 0 0 0.75rem rgba(255,255,255,0.08)' : 'none',
         }}
       >
@@ -254,7 +254,7 @@ const PosterCard = React.memo(function PosterCard({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#1B212B',
+              background: '#222222',
             }}
           >
             <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '1.5rem', fontWeight: 900 }}>

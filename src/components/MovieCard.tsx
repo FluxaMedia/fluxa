@@ -127,7 +127,7 @@ export const MovieCard = React.memo(
               borderRadius: radius,
               overflow: 'hidden',
               position: 'relative',
-              background: '#12161D',
+              background: '#171717',
               border: '1px solid transparent',
               transform: 'none',
               transition: 'border-color 0.18s ease-out',
@@ -196,7 +196,7 @@ export const MovieCard = React.memo(
                   style={{
                     width: '100%',
                     height: '100%',
-                    background: '#12161D',
+                    background: '#171717',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

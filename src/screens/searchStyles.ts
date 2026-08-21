@@ -7,7 +7,7 @@ export const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    background: '#040508',
+    background: '#060606',
     overflow: 'hidden',
   },
   topBar: {

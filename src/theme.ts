@@ -1,11 +1,11 @@
 export const colors = {
-  screenBg: '#040508',
+  screenBg: '#060606',
   detailBg: '#050505',
-  cardBg: '#12161D',
-  cardFocused: '#1B212B',
-  navBg: '#090B12',
-  surface: '#12161D',
-  surfaceVariant: '#1B212B',
+  cardBg: '#171717',
+  cardFocused: '#222222',
+  navBg: '#0D0D0D',
+  surface: '#171717',
+  surfaceVariant: '#222222',
 
   primary: '#E85D3F',
   yellow: '#FFD94B',

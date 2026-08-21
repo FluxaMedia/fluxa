@@ -5,7 +5,7 @@ export const PX = 58;
 
 export const styles: Record<string, React.CSSProperties> = {
   screen: {
-    background: '#040508',
+    background: '#060606',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',

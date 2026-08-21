@@ -646,9 +646,9 @@ function formatCatalogTitle(name: string, type: string): string {
 }
 
 function LoadingSkeleton() {
-  const box: React.CSSProperties = { background: '#12161D', borderRadius: '0.625rem', animation: 'pulse 1.6s ease-in-out infinite' };
+  const box: React.CSSProperties = { background: '#171717', borderRadius: '0.625rem', animation: 'pulse 1.6s ease-in-out infinite' };
   return (
-    <div style={{ width: '100%', height: '100%', background: '#040508', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', background: '#060606', overflow: 'hidden' }}>
       <div style={{ ...box, width: '100%', height: HOME_HERO_HEIGHT, borderRadius: 0 }} />
       {[0, 1].map((row) => (
         <div key={row} style={{ padding: '1.75rem 3.625rem 0' }}>
@@ -710,7 +710,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     overflowY: 'auto',
     overflowX: 'hidden',
-    background: '#040508',
+    background: '#060606',
     scrollbarWidth: 'none',
     ['--hero-height' as string]: HOME_HERO_HEIGHT,
   },
@@ -723,7 +723,7 @@ const styles: Record<string, React.CSSProperties> = {
   heroPlaceholder: {
     width: '100%',
     height: HOME_HERO_HEIGHT,
-    background: '#12161D',
+    background: '#171717',
     animation: 'pulse 1.6s ease-in-out infinite',
   },
   empty: {
@@ -733,7 +733,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '1rem',
-    background: '#040508',
+    background: '#060606',
   },
   emptyTitle: {
     color: '#FFFFFF',

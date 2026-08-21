@@ -1,10 +1,10 @@
 export const color = {
-  bg: '#040508',
-  bgElevated: '#0A0B14',
-  navBg: '#090B12',
-  surface: '#12161D',
-  surfaceRaised: '#1B212B',
-  scrim: 'rgba(4,5,8,0.78)',
+  bg: '#060606',
+  bgElevated: '#0E0E0E',
+  navBg: '#0D0D0D',
+  surface: '#171717',
+  surfaceRaised: '#222222',
+  scrim: 'rgba(6,6,6,0.78)',
 
   textPrimary: '#FFFFFF',
   textStrong: 'rgba(255,255,255,0.88)',
@@ -40,8 +40,8 @@ export const color = {
 } as const;
 
 export const fade = {
-  ground: (alpha: number) => `rgba(4,5,8,${alpha})`,
-  elevated: (alpha: number) => `rgba(10,11,20,${alpha})`,
+  ground: (alpha: number) => `rgba(6,6,6,${alpha})`,
+  elevated: (alpha: number) => `rgba(14,14,14,${alpha})`,
   shade: (alpha: number) => `rgba(0,0,0,${alpha})`,
   tint: (alpha: number) => `rgba(255,255,255,${alpha})`,
 } as const;

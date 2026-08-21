@@ -63,7 +63,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: '0.5rem',
     padding: '1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px))',
-    background: '#12161D',
+    background: '#171717',
     border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: '1rem 1rem 0 0',
   },
