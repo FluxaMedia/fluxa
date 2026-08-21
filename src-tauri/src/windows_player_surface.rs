@@ -231,7 +231,10 @@ fn ensure_renderer_for_surface(
     if client_guard.is_none() {
         log::warn!("player surface: renderer missing, recreating before load");
         let (client, mut render) =
-            crate::mpv_render::MpvClientHandle::new().map_err(|e| format!("mpv init failed: {e}"))?;
+            crate::mpv_render::MpvClientHandle::new_with_scripts(
+                crate::player::mpv_script_paths(app),
+            )
+            .map_err(|e| format!("mpv init failed: {e}"))?;
         match backend {
             RenderBackend::OpenGl => {
                 render

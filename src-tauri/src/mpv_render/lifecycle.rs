@@ -1,7 +1,10 @@
 use super::*;
 
 impl MpvClientHandle {
-    fn new_internal(thumbnail: bool) -> Result<(Self, MpvRenderState), String> {
+    fn new_internal(
+        thumbnail: bool,
+        scripts: &[PathBuf],
+    ) -> Result<(Self, MpvRenderState), String> {
         let api = MpvApi::load()?;
         let handle = unsafe { (api.mpv_create)() };
         if handle.is_null() {
@@ -86,6 +89,12 @@ impl MpvClientHandle {
             // Lower audio latency and proper app name for PulseAudio/PipeWire
             client.set_option("audio-buffer", "0.2")?;
             client.set_option("audio-client-name", "fluxa")?;
+
+            for script in scripts {
+                if let Err(error) = client.set_option("script", &script.to_string_lossy()) {
+                    log::warn!("mpv custom script could not be loaded {:?}: {error}", script);
+                }
+            }
         }
 
         let init_result = unsafe { (client.api.mpv_initialize)(client.handle) };
@@ -164,11 +173,15 @@ impl MpvClientHandle {
     }
 
     pub fn new() -> Result<(Self, MpvRenderState), String> {
-        Self::new_internal(false)
+        Self::new_with_scripts(Vec::new())
+    }
+
+    pub fn new_with_scripts(scripts: Vec<PathBuf>) -> Result<(Self, MpvRenderState), String> {
+        Self::new_internal(false, &scripts)
     }
 
     pub fn new_thumbnail() -> Result<(Self, MpvRenderState), String> {
-        let (client, mut render) = Self::new_internal(true)?;
+        let (client, mut render) = Self::new_internal(true, &[])?;
         render.create_software_context()?;
         Ok((client, render))
     }

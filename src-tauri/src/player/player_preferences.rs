@@ -89,6 +89,20 @@ pub(super) fn mpv_options_from_preferences(
             .and_then(Value::as_bool)
             .unwrap_or(false),
     );
+    if let Some(app) = app {
+        let custom_shaders = crate::player::mpv_shader_paths(app);
+        if !custom_shaders.is_empty() {
+            let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
+            options.push((
+                "glsl-shaders".to_string(),
+                custom_shaders
+                    .iter()
+                    .map(|path| path.to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join(separator),
+            ));
+        }
+    }
     push_frame_interpolation_options(&mut options, get("frameInterpolationMode"));
     let sub_text_opacity = get("subtitleTextOpacity")
         .and_then(|v| v.parse::<f64>().ok())

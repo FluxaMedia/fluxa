@@ -27,7 +27,9 @@ pub async fn player_init(app: AppHandle, state: State<'_, DesktopState>) -> Resu
     tauri::async_runtime::spawn_blocking(move || {
         let state = app_for_headless.state::<DesktopState>();
         if state.player_mpv_client.lock().unwrap().is_none() {
-            match mpv_render::MpvClientHandle::new() {
+            match mpv_render::MpvClientHandle::new_with_scripts(crate::player::mpv_script_paths(
+                &app_for_headless,
+            )) {
                 Ok((client, render)) => {
                     *state.player_render_state.lock().unwrap() = Some(render);
                     *state.player_mpv_client.lock().unwrap() = Some(client);
@@ -228,7 +230,9 @@ pub async fn player_load(
     }
 
     if state.player_mpv_client.lock().unwrap().is_none() {
-        let (client, render) = mpv_render::MpvClientHandle::new()?;
+        let (client, render) = mpv_render::MpvClientHandle::new_with_scripts(
+            crate::player::mpv_script_paths(&app),
+        )?;
         *state.player_render_state.lock().unwrap() = Some(render);
         *state.player_mpv_client.lock().unwrap() = Some(client);
     }

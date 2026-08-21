@@ -506,7 +506,9 @@ pub fn install_with_backend(
                 let mut render_guard = state.player_render_state.lock().unwrap();
                 let mut client_guard = state.player_mpv_client.lock().unwrap();
                 if client_guard.is_none() {
-                    match crate::mpv_render::MpvClientHandle::new() {
+                    match crate::mpv_render::MpvClientHandle::new_with_scripts(
+                        crate::player::mpv_script_paths(&app_handle),
+                    ) {
                         Ok((client, render)) => {
                             *render_guard = Some(render);
                             *client_guard = Some(client);
@@ -545,7 +547,9 @@ pub fn install_with_backend(
             let mut render_guard = state.player_render_state.lock().unwrap();
             let mut client_guard = state.player_mpv_client.lock().unwrap();
             if client_guard.is_none() {
-                match crate::mpv_render::MpvClientHandle::new() {
+                match crate::mpv_render::MpvClientHandle::new_with_scripts(
+                    crate::player::mpv_script_paths(&app_handle),
+                ) {
                     Ok((client, render)) => {
                         *render_guard = Some(render);
                         *client_guard = Some(client);

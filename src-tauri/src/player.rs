@@ -11,6 +11,7 @@ use crate::playback_engine::{self, PlaybackEngine, PlayerEngine};
 use crate::render_backend::{read_render_backend, RenderBackend};
 use fluxa_core::FluxaCore;
 use serde_json::{Value, json};
+use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -57,6 +58,54 @@ pub(crate) fn reset_playback_state(state: &DesktopState) {
     let mut overlay = state.player_overlay.lock().unwrap();
     overlay.eof_next_fired = false;
     overlay.chapters_json = None;
+}
+
+pub(crate) fn mpv_script_paths(app: &AppHandle) -> Vec<PathBuf> {
+    let state = app.state::<DesktopState>();
+    let Some(data_dir) = state.data_dir.lock().unwrap().clone() else {
+        return Vec::new();
+    };
+    let scripts_dir = data_dir.join("mpv").join("scripts");
+    let _ = std::fs::create_dir_all(&scripts_dir);
+    let Ok(entries) = std::fs::read_dir(&scripts_dir) else {
+        return Vec::new();
+    };
+    let mut scripts = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("lua"))
+        })
+        .collect::<Vec<_>>();
+    scripts.sort_by(|a, b| a.to_string_lossy().cmp(&b.to_string_lossy()));
+    scripts
+}
+
+pub(crate) fn mpv_shader_paths(app: &AppHandle) -> Vec<PathBuf> {
+    let state = app.state::<DesktopState>();
+    let Some(data_dir) = state.data_dir.lock().unwrap().clone() else {
+        return Vec::new();
+    };
+    let shaders_dir = data_dir.join("mpv").join("shaders");
+    let _ = std::fs::create_dir_all(&shaders_dir);
+    let Ok(entries) = std::fs::read_dir(&shaders_dir) else {
+        return Vec::new();
+    };
+    let mut shaders = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("glsl"))
+        })
+        .collect::<Vec<_>>();
+    shaders.sort_by(|a, b| a.to_string_lossy().cmp(&b.to_string_lossy()));
+    shaders
 }
 
 pub(crate) fn load_libvlc_for_surface<F>(

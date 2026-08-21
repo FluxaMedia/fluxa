@@ -1004,7 +1004,9 @@ fn prepare_and_load(
         .try_lock()
         .map_err(|_| "player renderer busy — load deferred".to_string())?;
     if client_guard.is_none() {
-        let (client, render) = crate::mpv_render::MpvClientHandle::new()?;
+        let (client, render) = crate::mpv_render::MpvClientHandle::new_with_scripts(
+            crate::player::mpv_script_paths(app_handle),
+        )?;
         *render_guard = Some(render);
         *client_guard = Some(client);
     }
