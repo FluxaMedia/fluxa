@@ -107,7 +107,8 @@ final class FluxaAppleAddonResourceLoader {
                 addonName: addonName,
                 title: stream.title ?? addonName,
                 playableUrl: stream.playableUrl,
-                requestHeadersJson: requestHeadersJson
+                requestHeadersJson: requestHeadersJson,
+                subtitleUrls: []
             ))
         }
         return snapshots
