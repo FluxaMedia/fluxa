@@ -329,7 +329,7 @@ The same React build is the correct UI path for browser and webOS. Platform modu
 
 The first desktop foundation is now present: `contracts/theme.schema.json` defines the portable contract, `contracts/default-theme.json` is the default data source, and `src/theme/adapter.ts` maps it to CSS variables. Built-in theme selection and a first skin capability (showing or hiding Calendar in navigation) are wired through the existing profile preferences. The adapter validates theme data and safely falls back when skin JSON is invalid.
 
-The desktop shell now accepts and exports validated JSON theme packs up to 256 KiB, stores up to 24 custom packs in profile preferences, and applies skin visibility and section-order settings to the Home screen. Packs contain data only; they cannot execute code. Artwork/font installation, drag-and-drop route ordering, and the Compose/SwiftUI adapters still need to be implemented in their respective repositories.
+The desktop shell now accepts and exports validated JSON theme packs up to 256 KiB, stores up to 24 custom packs in profile preferences, and applies skin visibility and section-order settings to the Home and Detail screens. Detail skin section IDs are `hero`, `actions`, `meta`, `tabs`, `episodes`, `details`, `related`, and `rail`. Packs contain data only; they cannot execute code. Artwork/font installation, drag-and-drop route ordering, and the Compose/SwiftUI adapters still need to be implemented in their respective repositories.
 
 ### Android and Android TV
 

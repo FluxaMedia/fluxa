@@ -50,6 +50,7 @@ export type ModernDetailProps = {
   blurUnwatchedEpisodes: boolean;
   spoilerHideEpisodeInfo: boolean;
   detailSeasonSelectorMode: string;
+  hiddenSections: string[];
   episodeCardsLayout: string;
   isInWatchlist: boolean;
   isDropped: boolean;
@@ -126,6 +127,7 @@ export function ModernDetailLayout({
   blurUnwatchedEpisodes,
   spoilerHideEpisodeInfo,
   detailSeasonSelectorMode: _detailSeasonSelectorMode,
+  hiddenSections,
   episodeCardsLayout,
   onBack,
   onDispatch,
@@ -148,6 +150,7 @@ export function ModernDetailLayout({
   const [activeTab, setActiveTab] = useState<'episodes' | 'related' | 'details'>(() => (isSeries ? 'episodes' : 'details'));
   const [similarSource, setSimilarSource] = useState('auto');
   const [prevSeasonDialog, setPrevSeasonDialog] = useState<{ season: number; unwatchedPrev: number[] } | null>(null);
+  const hidden = useMemo(() => new Set(hiddenSections), [hiddenSections]);
 
   const screenRef = useRef<HTMLDivElement | null>(null);
   const [heroInView, setHeroInView] = useState(true);
@@ -273,16 +276,17 @@ export function ModernDetailLayout({
     { id: 'episodes', label: t('auto.episodes') },
     { id: 'details', label: t('common.details') },
     { id: 'related', label: t('auto.similar_titles') },
-  ];
+  ].filter((tab) => !hidden.has(tab.id));
 
   const movieTabs = [
     { id: 'details', label: t('common.details') },
     { id: 'related', label: t('auto.similar_titles') },
-  ];
+  ].filter((tab) => !hidden.has(tab.id));
+  const activeDetailTab = (seriesTabs.some((tab) => tab.id === activeTab) || movieTabs.some((tab) => tab.id === activeTab) ? activeTab : (seriesTabs[0]?.id ?? movieTabs[0]?.id ?? 'details')) as typeof activeTab;
 
   return (
     <div className="detail-screen" style={MS.screen} ref={screenRef}>
-      <ModernDetailHero
+      {!hidden.has('hero') && <ModernDetailHero
         bgUrl={bgUrl}
         bgLayers={bgLayers}
         bgLoadedKeys={bgLoadedKeys}
@@ -295,11 +299,11 @@ export function ModernDetailLayout({
         displayMetaName={displayMeta.name}
         progressPercent={heroProgressPercent}
         remainingLabel={heroRemainingLabel}
-      />
+      />}
 
       <div className="detail-content" style={MS.content}>
         <div className="detail-main" style={MS.mainCol}>
-          <ModernDetailActionRow
+          {!hidden.has('actions') && <ModernDetailActionRow
             continueLabel={isSeries ? continueLabel : null}
             hasProgress={isSeries ? hasProgress : false}
             onPlayClick={() => {
@@ -317,13 +321,13 @@ export function ModernDetailLayout({
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
             onOpenComments={onOpenComments}
-          />
+          />}
 
-          <ModernDetailMetaBlock
+          {!hidden.has('meta') && <ModernDetailMetaBlock
             certification={displayMeta.certification}
             metaDetails={modernMetaDetails}
             description={displayMeta.description}
-          />
+          />}
 
           {isSeries && (
             <>
@@ -338,13 +342,13 @@ export function ModernDetailLayout({
                 }}
               />
 
-              <ModernTabBar
+              {!hidden.has('tabs') && seriesTabs.length > 0 && <ModernTabBar
                 tabs={seriesTabs}
-                active={activeTab}
+                active={activeDetailTab}
                 onChange={(id) => setActiveTab(id as typeof activeTab)}
-                trailing={activeTab === 'related' ? (
+                trailing={activeDetailTab === 'related' ? (
                   <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} />
-                ) : activeTab === 'episodes' ? (
+                ) : activeDetailTab === 'episodes' ? (
                   <SeasonControls
                   seasonNumbers={seasonNumbers}
                   selectedSeason={selectedSeason}
@@ -353,9 +357,9 @@ export function ModernDetailLayout({
                   toggleSeasonWatched={toggleSeasonWatched}
                   />
                 ) : null}
-              />
+              />}
 
-              {activeTab === 'episodes' && (
+              {activeDetailTab === 'episodes' && !hidden.has('episodes') && (
                 <EpisodesTabContent
                   detail={detail}
                   filteredEps={filteredEps}
@@ -371,7 +375,7 @@ export function ModernDetailLayout({
                 />
               )}
 
-              {activeTab === 'related' && (
+              {activeDetailTab === 'related' && !hidden.has('related') && (
                 <RelatedTabContent
                   similarItems={similarItems}
                   poster={poster}
@@ -379,7 +383,7 @@ export function ModernDetailLayout({
                 />
               )}
 
-              {activeTab === 'details' && (
+              {activeDetailTab === 'details' && !hidden.has('details') && (
                 <DetailsTabContent
                   displayMeta={displayMeta}
                   castMembers={castMembers}
@@ -394,16 +398,16 @@ export function ModernDetailLayout({
 
           {!isSeries && (
             <>
-              <ModernTabBar
+              {!hidden.has('tabs') && movieTabs.length > 0 && <ModernTabBar
                 tabs={movieTabs}
-                active={activeTab === 'episodes' ? 'related' : activeTab}
+                active={activeDetailTab === 'episodes' ? 'related' : activeDetailTab}
                 onChange={(id) => setActiveTab(id as typeof activeTab)}
                 trailing={
-                  activeTab !== 'details' ? <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} /> : null
+                  activeDetailTab !== 'details' ? <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} /> : null
                 }
-              />
+              />}
 
-              {(activeTab === 'related' || activeTab === 'episodes') && (
+              {(activeDetailTab === 'related' || activeDetailTab === 'episodes') && !hidden.has('related') && (
                 <RelatedTabContent
                   similarItems={similarItems}
                   poster={poster}
@@ -411,7 +415,7 @@ export function ModernDetailLayout({
                 />
               )}
 
-              {activeTab === 'details' && (
+              {activeDetailTab === 'details' && !hidden.has('details') && (
                 <DetailsTabContent
                   displayMeta={displayMeta}
                   castMembers={castMembers}
@@ -425,7 +429,7 @@ export function ModernDetailLayout({
           )}
         </div>
 
-        <ModernDetailRail
+        {!hidden.has('rail') && <ModernDetailRail
           displayMeta={displayMeta}
           posterUrl={displayMeta.poster ?? meta.poster}
           mdblistRatings={mdblistRatings}
@@ -435,7 +439,7 @@ export function ModernDetailLayout({
           peopleImages={peopleImages}
           onNavigateGenre={onNavigateGenre}
           onSeeAllCast={() => setActiveTab('details')}
-        />
+        />}
       </div>
 
       {showSources && selectedEpisode && isSeries && (

@@ -18,6 +18,7 @@ import { TraktCommentsDialog } from '../components/detail/TraktCommentsDialog';
 import { useSeasonWatched } from '../hooks/useSeasonWatched';
 import { imdbButtonFor, setViewingDiscordPresence } from '../core/discordPresence';
 import { formatRemaining } from '../core/continueWatchingUtils';
+import { resolveTheme } from '../theme/adapter';
 
 void NAV_RAIL_WIDTH;
 void TOP_BAR_H;
@@ -91,6 +92,7 @@ export function DetailScreen({
   const isSeries = meta.type === 'series';
   const displayMeta = detail.meta ?? meta;
   const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
+  const detailHiddenSections = useMemo(() => resolveTheme(String(prefs.themeId ?? 'fluxa-dark'), String(prefs.skinConfig ?? '')).skin.detail.hiddenSections, [prefs.themeId, prefs.skinConfig]);
   const trailerOnHero = prefBool(prefs, 'trailerOnHero', false);
   const detailHeroAutoplayTrailer = prefBool(prefs, 'detailHeroAutoplayTrailer', false);
   const detailHeroAutoplayTrailerDelaySecs = Number(prefString(prefs, 'detailHeroAutoplayTrailerDelaySecs', '2'));
@@ -508,6 +510,7 @@ export function DetailScreen({
         blurUnwatchedEpisodes={blurUnwatchedEpisodes}
         spoilerHideEpisodeInfo={spoilerHideEpisodeInfo}
         detailSeasonSelectorMode={detailSeasonSelectorMode}
+        hiddenSections={detailHiddenSections}
         episodeCardsLayout={episodeCardsLayout}
         onBack={onBack}
         onDispatch={onDispatch}
