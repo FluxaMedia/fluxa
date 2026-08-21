@@ -82,6 +82,8 @@ data class FluxaThemePack(
 
 object FluxaThemePacks {
     val fluxaDark = FluxaThemePackDefaults.fluxaDark
+    val amoled = FluxaThemePackDefaults.amoled
+    val midnightBlue = FluxaThemePackDefaults.midnightBlue
 
     private val json = Json { ignoreUnknownKeys = true }
 

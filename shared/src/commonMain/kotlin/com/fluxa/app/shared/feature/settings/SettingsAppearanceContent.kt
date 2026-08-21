@@ -77,8 +77,8 @@ internal fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: S
     SettingsGroupCard {
         SettingsChoiceRow(AppStrings.t(lang, "settings.theme"), model.themeId, themeOptions) { id ->
             val pack = when (id) {
-                "amoled" -> FluxaThemePacks.fluxaDark.copy(id = "amoled", nameKey = "theme.amoled", colors = FluxaThemePacks.fluxaDark.colors.copy(background = "#000000", backgroundElevated = "#000000", surface = "#080808", surfaceRaised = "#141414", navigation = "#000000"))
-                "midnight-blue" -> FluxaThemePacks.fluxaDark.copy(id = "midnight-blue", nameKey = "theme.midnight_blue", colors = FluxaThemePacks.fluxaDark.colors.copy(background = "#080A10", backgroundElevated = "#0D1220", surface = "#121A2A", surfaceRaised = "#1B263D", navigation = "#090E1A", textSecondary = "#A9B4C8", textMuted = "#71809A", accent = "#5C8DFF"))
+                "amoled" -> FluxaThemePacks.amoled
+                "midnight-blue" -> FluxaThemePacks.midnightBlue
                 else -> FluxaThemePacks.fluxaDark
             }
             onAction(SettingsAction.AppearanceChanged(model.copy(themeId = id, themeJson = themeJson.encodeToString(pack))))
