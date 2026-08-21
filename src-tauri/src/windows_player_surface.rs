@@ -11,6 +11,7 @@
 
 use crate::mpv_render::VulkanTargetImage;
 use crate::playback_engine::{PlaybackEngine, PlayerEngine};
+use crate::render_backend::{read_render_backend, RenderBackend};
 use crate::windows_d3d11::D3d11Context;
 use crate::windows_egl::{self, EglContext};
 use crate::windows_vulkan::VulkanContext;
@@ -40,35 +41,9 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 static CURSOR_HIDDEN: AtomicBool = AtomicBool::new(false);
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum RenderBackend {
-    OpenGl,
-    Vulkan,
-    D3d11,
-}
-
-impl RenderBackend {
-    fn name(self) -> &'static str {
-        match self {
-            Self::OpenGl => "opengl",
-            Self::Vulkan => "vulkan",
-            Self::D3d11 => "d3d11",
-        }
-    }
-}
-
 fn hdr_output_enabled(app: &AppHandle) -> bool {
     let state = app.state::<DesktopState>();
     crate::storage::read_pref_bool(state, "hdrEnabled").unwrap_or(true)
-}
-
-fn read_render_backend(app: &AppHandle) -> RenderBackend {
-    let state = app.state::<DesktopState>();
-    match crate::storage::read_pref_field(state, "renderBackend").as_deref() {
-        Some("vulkan") => RenderBackend::Vulkan,
-        Some("d3d11") => RenderBackend::D3d11,
-        _ => RenderBackend::OpenGl,
-    }
 }
 
 enum RenderContext {
@@ -737,20 +712,16 @@ fn spawn_install_thread(
                         let _ = app.emit("native-player-show", ());
                         let state = app.state::<DesktopState>();
 
-                        state.pending_hide.store(false, Ordering::Release);
-                        state.player_overlay.lock().unwrap().eof_next_fired = false;
+                        crate::player::reset_playback_state(&state);
                         if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
-                            let result = (|| {
-                                let mut players = state.player_renderer_vlc.lock().unwrap();
-                                if players.is_none() {
-                                    *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
-                                }
-                                let player = players
-                                    .as_mut()
-                                    .ok_or_else(|| "libVLC player is unavailable".to_string())?;
-                                player.attach_hwnd(child_hwnd as *mut std::ffi::c_void)?;
-                                player.load(&url, start_at)
-                            })();
+                            let result = crate::player::load_libvlc_for_surface(
+                                &state,
+                                &url,
+                                start_at,
+                                |player| {
+                                    player.attach_hwnd(child_hwnd as *mut std::ffi::c_void)
+                                },
+                            );
                             if let Err(error) = result {
                                 log::error!("player surface: libVLC load failed: {error}");
                                 let _ = app.emit("native-player-error", error);
@@ -770,11 +741,12 @@ fn spawn_install_thread(
                         }
                         let mut renderer = state.player_mpv_client.lock().unwrap();
                         if let Some(r) = renderer.as_mut() {
-                            if render_ctx.is_hdr() {
-                                let _ = r.set_option("target-trc", "linear");
-                                let _ = r.set_option("target-prim", "bt.709");
-                            }
-                            if let Err(e) = r.load(&url, start_at) {
+                            if let Err(e) = crate::player::load_mpv_engine(
+                                r,
+                                &url,
+                                start_at,
+                                render_ctx.is_hdr(),
+                            ) {
                                 log::error!("player surface: load() failed: {e}");
                                 drop(renderer);
                                 let _ = app.emit("native-player-error", e);
@@ -962,7 +934,7 @@ fn spawn_install_thread(
                     std::thread::sleep(Duration::from_millis(16));
                 }
 
-                check_player_events(&app);
+                crate::player_surface_events::check_player_events(&app);
             } else {
                 std::thread::sleep(Duration::from_millis(16));
             }
@@ -972,42 +944,4 @@ fn spawn_install_thread(
         unsafe { DestroyWindow(child_hwnd) };
         log::info!("player surface: render thread exiting, native render context released");
     });
-}
-
-fn check_player_events(app: &AppHandle) {
-    let state = app.state::<DesktopState>();
-    let events = {
-        let Ok(mut renderer) = state.player_mpv_client.try_lock() else {
-            return;
-        };
-        match renderer.as_mut() {
-            Some(r) => r.poll_events(),
-            None => return,
-        }
-    };
-    if crate::player_surface_events::drain_player_events(app, events) {
-        crate::player_surface_events::fire_eof_transition(app);
-    }
-}
-
-// Image scaling helpers — mirrors the Linux versions so artwork decoding works
-// on Windows too.
-
-pub fn scale_artwork_cover(
-    bytes: Vec<u8>,
-    target_w: u32,
-    target_h: u32,
-) -> Option<(Vec<u8>, i32, i32)> {
-    let img = image::load_from_memory(&bytes).ok()?;
-    let filled = img.resize_to_fill(target_w, target_h, image::imageops::FilterType::Triangle);
-    let rgba = filled.to_rgba8();
-    Some((rgba.into_raw(), target_w as i32, target_h as i32))
-}
-
-pub fn scale_artwork_fit(bytes: Vec<u8>, max_w: u32, max_h: u32) -> Option<(Vec<u8>, i32, i32)> {
-    let img = image::load_from_memory(&bytes).ok()?;
-    let resized = img.resize(max_w, max_h, image::imageops::FilterType::Triangle);
-    let (rw, rh) = (resized.width(), resized.height());
-    let rgba = resized.to_rgba8();
-    Some((rgba.into_raw(), rw as i32, rh as i32))
 }

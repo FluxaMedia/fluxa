@@ -8,6 +8,7 @@ use crate::DesktopState;
 use crate::macos_vulkan::VulkanContext;
 use crate::mpv_render::VulkanTargetImage;
 use crate::playback_engine::{PlaybackEngine, PlayerEngine};
+use crate::render_backend::{read_render_backend, RenderBackend};
 use std::ffi::{CStr, CString, c_void};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::Duration;
@@ -41,33 +42,6 @@ fn log_gl_diagnostics() {
             value(GL_VERSION),
             value(GL_SHADING_LANGUAGE_VERSION)
         );
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum RenderBackend {
-    OpenGl,
-    Vulkan,
-}
-
-fn read_render_backend(app: &AppHandle) -> RenderBackend {
-    let state = app.state::<DesktopState>();
-    match crate::storage::read_pref_field(state, "renderBackend").as_deref() {
-        Some("vulkan") => RenderBackend::Vulkan,
-        _ => RenderBackend::OpenGl,
-    }
-}
-
-pub fn requested_backend(app: &AppHandle) -> RenderBackend {
-    read_render_backend(app)
-}
-
-impl RenderBackend {
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::OpenGl => "opengl",
-            Self::Vulkan => "vulkan",
-        }
     }
 }
 
@@ -405,52 +379,22 @@ impl crate::player_surface::PlayerSurface for NativePlayerSurface {
     fn set_cursor_visible(&self, _visible: bool) {}
 
     fn command(&self, command: String) -> Result<(), String> {
-        let state = self.app.state::<DesktopState>();
-        match crate::player::with_renderer_retry_mut(&state, 60, |renderer| {
-            renderer.user_command(&command)
-        }) {
-            Ok(Some(())) => Ok(()),
-            Ok(None) => Err("player renderer is not initialized".to_string()),
-            Err(e) => Err(e),
-        }
+        crate::player_surface_events::engine_command(&self.app, command)
     }
 
     fn command_args(&self, commands: Vec<Vec<String>>) -> Result<(), String> {
-        let state = self.app.state::<DesktopState>();
-        for command in commands {
-            let args = command.iter().map(String::as_str).collect::<Vec<_>>();
-            match crate::player::with_renderer_retry(&state, 600, |renderer| {
-                renderer.command_args(&args)
-            }) {
-                Ok(Some(())) => {}
-                Ok(None) => return Err("player renderer is not initialized".to_string()),
-                Err(e) => return Err(e),
-            }
-        }
-        Ok(())
+        crate::player_surface_events::engine_command_args(&self.app, commands)
     }
 
     fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
-        let state = self.app.state::<DesktopState>();
-        match crate::player::with_renderer_retry(&state, 80, |renderer| Ok(renderer.status())) {
-            Ok(Some(status)) => Ok(status),
-            Ok(None) => Err("player renderer is not initialized".to_string()),
-            Err(e) => Err(e),
-        }
+        crate::player_surface_events::engine_status(&self.app)
     }
 
     fn track_options(
         &self,
         track_type: String,
     ) -> Result<Vec<crate::mpv_render::PlayerTrackOption>, String> {
-        let state = self.app.state::<DesktopState>();
-        match crate::player::with_renderer_retry(&state, 80, |renderer| {
-            Ok(renderer.track_options(&track_type))
-        }) {
-            Ok(Some(tracks)) => Ok(tracks),
-            Ok(None) => Err("player renderer is not initialized".to_string()),
-            Err(e) => Err(e),
-        }
+        crate::player_surface_events::engine_track_options(&self.app, track_type)
     }
 
     // sub-add loads the file synchronously, so this must never run on the render thread.
@@ -460,14 +404,7 @@ impl crate::player_surface::PlayerSurface for NativePlayerSurface {
         title: Option<String>,
         language: Option<String>,
     ) -> Result<(), String> {
-        let state = self.app.state::<DesktopState>();
-        match crate::player::with_renderer_retry(&state, 80, |renderer| {
-            renderer.add_subtitle(&url, title.as_deref(), language.as_deref())
-        }) {
-            Ok(Some(())) => Ok(()),
-            Ok(None) => Err("player renderer is not initialized".to_string()),
-            Err(e) => Err(e),
-        }
+        crate::player_surface_events::engine_add_subtitle(&self.app, url, title, language)
     }
 }
 
@@ -682,25 +619,16 @@ pub fn install_with_backend(
                             msg1_bool(view as Id, "setHidden:", 0);
                         });
                         visible = true;
-                        app.state::<DesktopState>()
-                            .pending_hide
-                            .store(false, std::sync::atomic::Ordering::Release);
-                        let _ = app.emit("native-player-show", ());
                         let state = app.state::<DesktopState>();
-
-                        state.player_overlay.lock().unwrap().eof_next_fired = false;
+                        crate::player::reset_playback_state(&state);
+                        let _ = app.emit("native-player-show", ());
                         if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
-                            let result = (|| {
-                                let mut players = state.player_renderer_vlc.lock().unwrap();
-                                if players.is_none() {
-                                    *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
-                                }
-                                let player = players
-                                    .as_mut()
-                                    .ok_or_else(|| "libVLC player is unavailable".to_string())?;
-                                player.attach_nsobject(rv)?;
-                                player.load(&url, start_at)
-                            })();
+                            let result = crate::player::load_libvlc_for_surface(
+                                &state,
+                                &url,
+                                start_at,
+                                |player| player.attach_nsobject(rv),
+                            );
                             if let Err(error) = result {
                                 let _ = app.emit("native-player-error", error);
                                 visible = false;
@@ -713,7 +641,12 @@ pub fn install_with_backend(
                         }
                         let mut r = state.player_mpv_client.lock().unwrap();
                         if let Some(renderer) = r.as_mut() {
-                            if let Err(e) = renderer.load(&url, start_at) {
+                            if let Err(e) = crate::player::load_mpv_engine(
+                                renderer,
+                                &url,
+                                start_at,
+                                false,
+                            ) {
                                 drop(r);
                                 let _ = app.emit("native-player-error", e);
                                 visible = false;
@@ -1029,7 +962,7 @@ pub fn install_with_backend(
                     }
                 }
 
-                check_player_events(&app);
+                crate::player_surface_events::check_player_events(&app);
             } else {
                 std::thread::sleep(Duration::from_millis(16));
             }
@@ -1194,43 +1127,3 @@ unsafe fn create_gl_context() -> Result<SendId, String> {
 }
 
 // Player event polling
-
-fn check_player_events(app: &AppHandle) {
-    let state = app.state::<DesktopState>();
-    let (events, status) = {
-        let Ok(mut renderer) = state.player_mpv_client.try_lock() else {
-            return;
-        };
-        let Some(r) = renderer.as_mut() else {
-            return;
-        };
-        (r.poll_events(), r.status())
-    };
-    crate::player_surface_events::drain_player_events(app, events);
-    if !status.eof_reached() {
-        crate::player_surface_events::clear_eof_latch(app);
-        return;
-    }
-    crate::player_surface_events::fire_eof_transition(app);
-}
-
-// Artwork helpers
-
-pub fn scale_artwork_cover(
-    bytes: Vec<u8>,
-    target_w: u32,
-    target_h: u32,
-) -> Option<(Vec<u8>, i32, i32)> {
-    let img = image::load_from_memory(&bytes).ok()?;
-    let filled = img.resize_to_fill(target_w, target_h, image::imageops::FilterType::Triangle);
-    let rgba = filled.to_rgba8();
-    Some((rgba.into_raw(), target_w as i32, target_h as i32))
-}
-
-pub fn scale_artwork_fit(bytes: Vec<u8>, max_w: u32, max_h: u32) -> Option<(Vec<u8>, i32, i32)> {
-    let img = image::load_from_memory(&bytes).ok()?;
-    let resized = img.resize(max_w, max_h, image::imageops::FilterType::Triangle);
-    let (rw, rh) = (resized.width(), resized.height());
-    let rgba = resized.to_rgba8();
-    Some((rgba.into_raw(), rw as i32, rh as i32))
-}

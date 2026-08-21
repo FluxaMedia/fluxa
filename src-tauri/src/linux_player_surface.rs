@@ -10,7 +10,8 @@
 
 use crate::linux_vulkan::{NativeSurface, VulkanContext};
 use crate::mpv_render::VulkanTargetImage;
-use crate::playback_engine::{PlaybackEngine, PlayerEngine};
+use crate::playback_engine::PlayerEngine;
+use crate::render_backend::{read_render_backend, RenderBackend};
 use crate::DesktopState;
 use fluxa_core::FluxaCore;
 use glib::ControlFlow;
@@ -22,29 +23,6 @@ use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 use webkit2gtk::WebViewExt;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum RenderBackend {
-    OpenGl,
-    Vulkan,
-}
-
-impl RenderBackend {
-    fn name(self) -> &'static str {
-        match self {
-            Self::OpenGl => "opengl",
-            Self::Vulkan => "vulkan",
-        }
-    }
-}
-
-fn read_render_backend(app: &AppHandle) -> RenderBackend {
-    let state = app.state::<DesktopState>();
-    match crate::storage::read_pref_field(state, "renderBackend").as_deref() {
-        Some("vulkan") => RenderBackend::Vulkan,
-        _ => RenderBackend::OpenGl,
-    }
-}
 
 enum VulkanSurfaceHandle {
     Wayland(crate::linux_wayland_subsurface::VideoSubsurface),
@@ -502,52 +480,22 @@ impl crate::player_surface::PlayerSurface for NativePlayerSurface {
     fn set_cursor_visible(&self, _visible: bool) {}
 
     fn command(&self, command: String) -> Result<(), String> {
-        let state = self.app.state::<DesktopState>();
-        match crate::player::with_renderer_retry_mut(&state, 60, |renderer| {
-            renderer.user_command(&command)
-        }) {
-            Ok(Some(())) => Ok(()),
-            Ok(None) => Err("player renderer is not initialized".to_string()),
-            Err(e) => Err(e),
-        }
+        crate::player_surface_events::engine_command(&self.app, command)
     }
 
     fn command_args(&self, commands: Vec<Vec<String>>) -> Result<(), String> {
-        let state = self.app.state::<DesktopState>();
-        for command in commands {
-            let args = command.iter().map(String::as_str).collect::<Vec<_>>();
-            match crate::player::with_renderer_retry(&state, 600, |renderer| {
-                renderer.command_args(&args)
-            }) {
-                Ok(Some(())) => {}
-                Ok(None) => return Err("player renderer is not initialized".to_string()),
-                Err(e) => return Err(e),
-            }
-        }
-        Ok(())
+        crate::player_surface_events::engine_command_args(&self.app, commands)
     }
 
     fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
-        let state = self.app.state::<DesktopState>();
-        match crate::player::with_renderer_retry(&state, 80, |renderer| Ok(renderer.status())) {
-            Ok(Some(status)) => Ok(status),
-            Ok(None) => Err("player renderer is not initialized".to_string()),
-            Err(e) => Err(e),
-        }
+        crate::player_surface_events::engine_status(&self.app)
     }
 
     fn track_options(
         &self,
         track_type: String,
     ) -> Result<Vec<crate::mpv_render::PlayerTrackOption>, String> {
-        let state = self.app.state::<DesktopState>();
-        match crate::player::with_renderer_retry(&state, 80, |renderer| {
-            Ok(renderer.track_options(&track_type))
-        }) {
-            Ok(Some(tracks)) => Ok(tracks),
-            Ok(None) => Err("player renderer is not initialized".to_string()),
-            Err(e) => Err(e),
-        }
+        crate::player_surface_events::engine_track_options(&self.app, track_type)
     }
 
     // sub-add loads the file synchronously, so this must never run on the render thread.
@@ -557,14 +505,7 @@ impl crate::player_surface::PlayerSurface for NativePlayerSurface {
         title: Option<String>,
         language: Option<String>,
     ) -> Result<(), String> {
-        let state = self.app.state::<DesktopState>();
-        match crate::player::with_renderer_retry(&state, 80, |renderer| {
-            renderer.add_subtitle(&url, title.as_deref(), language.as_deref())
-        }) {
-            Ok(Some(())) => Ok(()),
-            Ok(None) => Err("player renderer is not initialized".to_string()),
-            Err(e) => Err(e),
-        }
+        crate::player_surface_events::engine_add_subtitle(&self.app, url, title, language)
     }
 }
 
@@ -604,30 +545,20 @@ impl SurfaceTick {
         while let Ok(command) = self.receiver.try_recv() {
             match command {
                 SurfaceCommand::Load { url, start_at } => {
-                    self.app.state::<DesktopState>().pending_hide
-                        .store(false, std::sync::atomic::Ordering::Release);
                     let state = self.app.state::<DesktopState>();
-                    let mut overlay = state.player_overlay.lock().unwrap();
-                    overlay.eof_next_fired = false;
-                    overlay.chapters_json = None;
+                    crate::player::reset_playback_state(&state);
                     if *self.app.state::<DesktopState>().active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
                         self.gl_area.set_auto_render(false);
                         self.gl_area.show();
                         let gl_area = &self.gl_area;
-                        let app = &self.app;
                         let result = (|| {
                             use glib::translate::ToGlibPtr;
                             let window = gl_area.window().ok_or_else(|| "libVLC requires a realized X11 video surface".to_string())?;
                             let x11_window = window.downcast::<gdkx11::X11Window>().map_err(|_| "embedded libVLC currently requires an X11 session; Wayland needs the libVLC video-callback renderer".to_string())?;
                             let xid = unsafe { gdkx11::ffi::gdk_x11_window_get_xid(x11_window.to_glib_none().0) };
-                            let state = app.state::<DesktopState>();
-                            let mut players = state.player_renderer_vlc.lock().unwrap();
-                            if players.is_none() {
-                                *players = Some(crate::libvlc_render::LibvlcPlayer::new()?);
-                            }
-                            let player = players.as_mut().ok_or_else(|| "libVLC player is unavailable".to_string())?;
-                            player.attach_xwindow(xid as u32)?;
-                            player.load(&url, start_at)
+                            crate::player::load_libvlc_for_surface(&state, &url, start_at, |player| {
+                                player.attach_xwindow(xid as u32)
+                            })
                         })();
                         if let Err(error) = result {
                             self.visible.set(false);
@@ -892,7 +823,7 @@ impl SurfaceTick {
             }
         }
 
-        check_player_events(&self.app);
+        crate::player_surface_events::check_player_events(&self.app);
     }
 }
 
@@ -1102,10 +1033,6 @@ fn prepare_and_load(
             {
                 return Err(VULKAN_CONTEXT_PENDING.to_string());
             }
-            if shared.hdr.load(Ordering::Acquire) {
-                let _ = client.set_option("target-trc", "linear");
-                let _ = client.set_option("target-prim", "bt.709");
-            }
         }
     }
 
@@ -1119,7 +1046,16 @@ fn prepare_and_load(
             log::warn!("failed to set ICC profile: {e}");
         }
     }
-    client.load(url, start_at)
+    crate::player::load_mpv_engine(
+        client,
+        url,
+        start_at,
+        vulkan_state
+            .borrow()
+            .as_ref()
+            .map(|state| state.shared.hdr.load(Ordering::Acquire))
+            .unwrap_or(false),
+    )
 }
 
 fn monitor_refresh_fps(gl_area: &gtk::GLArea) -> Option<f64> {
@@ -1177,25 +1113,4 @@ fn query_x11_icc_profile() -> Option<Vec<u8>> {
         xlib::XFree(prop as *mut std::os::raw::c_void);
         Some(data)
     }
-}
-
-fn check_player_events(app: &AppHandle) {
-    let state = app.state::<DesktopState>();
-    let (events, eof) = {
-        let Ok(mut renderer) = state.player_mpv_client.try_lock() else {
-            return;
-        };
-        let Some(r) = renderer.as_mut() else {
-            return;
-        };
-        let events = r.poll_events();
-        let eof = r.query_property("eof-reached").as_deref() == Some("yes");
-        (events, eof)
-    };
-    crate::player_surface_events::drain_player_events(app, events);
-    if !eof {
-        crate::player_surface_events::clear_eof_latch(app);
-        return;
-    }
-    crate::player_surface_events::fire_eof_transition(app);
 }

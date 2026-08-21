@@ -7,6 +7,8 @@ use crate::custom_fonts;
 use crate::libvlc_render;
 use crate::mpv_render;
 use crate::playback_engine::{self, PlaybackEngine, PlayerEngine};
+#[cfg(target_os = "macos")]
+use crate::render_backend::{read_render_backend, RenderBackend};
 use fluxa_core::FluxaCore;
 use serde_json::{Value, json};
 use std::process::Command;
@@ -22,15 +24,19 @@ use crate::macos_player_surface;
 #[cfg(target_os = "windows")]
 use crate::windows_player_surface;
 
-#[cfg(target_os = "linux")]
-pub fn ensure_native_player_surface(
-    app_handle: &AppHandle,
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+fn cache_native_player_surface<S, F>(
     state: &DesktopState,
-) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
+    install: F,
+) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>>
+where
+    S: crate::player_surface::PlayerSurface + 'static,
+    F: FnOnce() -> Result<S, String>,
+{
     if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
         return Some(surface);
     }
-    match linux_player_surface::install(app_handle.clone()) {
+    match install() {
         Ok(surface) => {
             let surface: std::sync::Arc<dyn crate::player_surface::PlayerSurface> =
                 std::sync::Arc::new(surface);
@@ -38,10 +44,60 @@ pub fn ensure_native_player_surface(
             Some(surface)
         }
         Err(error) => {
-            log::warn!("native OpenGL player surface was not installed: {error}");
+            log::warn!("native player surface was not installed: {error}");
             None
         }
     }
+}
+
+pub(crate) fn reset_playback_state(state: &DesktopState) {
+    state
+        .pending_hide
+        .store(false, std::sync::atomic::Ordering::Release);
+    let mut overlay = state.player_overlay.lock().unwrap();
+    overlay.eof_next_fired = false;
+    overlay.chapters_json = None;
+}
+
+pub(crate) fn load_libvlc_for_surface<F>(
+    state: &DesktopState,
+    url: &str,
+    start_at: Option<u64>,
+    attach: F,
+) -> Result<(), String>
+where
+    F: FnOnce(&mut libvlc_render::LibvlcPlayer) -> Result<(), String>,
+{
+    let mut players = state.player_renderer_vlc.lock().unwrap();
+    if players.is_none() {
+        *players = Some(libvlc_render::LibvlcPlayer::new()?);
+    }
+    let player = players
+        .as_mut()
+        .ok_or_else(|| "libVLC player is unavailable".to_string())?;
+    attach(player)?;
+    player.load(url, start_at)
+}
+
+pub(crate) fn load_mpv_engine(
+    client: &mut mpv_render::MpvClientHandle,
+    url: &str,
+    start_at: Option<u64>,
+    hdr: bool,
+) -> Result<(), String> {
+    if hdr {
+        let _ = client.set_option("target-trc", "linear");
+        let _ = client.set_option("target-prim", "bt.709");
+    }
+    client.load(url, start_at)
+}
+
+#[cfg(target_os = "linux")]
+pub fn ensure_native_player_surface(
+    app_handle: &AppHandle,
+    state: &DesktopState,
+) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
+    cache_native_player_surface(state, || linux_player_surface::install(app_handle.clone()))
 }
 
 #[cfg(target_os = "windows")]
@@ -49,21 +105,7 @@ pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
 ) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
-    if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
-        return Some(surface);
-    }
-    match windows_player_surface::install(app_handle.clone()) {
-        Ok(surface) => {
-            let surface: std::sync::Arc<dyn crate::player_surface::PlayerSurface> =
-                std::sync::Arc::new(surface);
-            *state.native_player_surface.lock().unwrap() = Some(surface.clone());
-            Some(surface)
-        }
-        Err(error) => {
-            log::warn!("native OpenGL player surface was not installed: {error}");
-            None
-        }
-    }
+    cache_native_player_surface(state, || windows_player_surface::install(app_handle.clone()))
 }
 
 #[cfg(target_os = "macos")]
@@ -71,7 +113,7 @@ pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
 ) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
-    let requested = macos_player_surface::requested_backend(app_handle);
+    let requested = read_render_backend(app_handle);
     if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
         if surface.backend_name() == requested.name() {
             return Some(surface);
@@ -89,11 +131,11 @@ pub fn ensure_native_player_surface(
         }
     }
     let installed = macos_player_surface::install(app_handle.clone()).or_else(|error| {
-        if requested == macos_player_surface::RenderBackend::Vulkan {
+        if requested == RenderBackend::Vulkan {
             log::warn!("macOS Vulkan initialization failed; retrying with OpenGL: {error}");
             macos_player_surface::install_with_backend(
                 app_handle.clone(),
-                macos_player_surface::RenderBackend::OpenGl,
+                RenderBackend::OpenGl,
             )
         } else {
             Err(error)

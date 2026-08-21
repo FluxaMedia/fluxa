@@ -33,6 +33,7 @@ mod vulkan;
 mod player;
 mod plugin_executor;
 mod poster_cache;
+mod render_backend;
 mod roku;
 mod sleep_inhibitor;
 mod storage;
