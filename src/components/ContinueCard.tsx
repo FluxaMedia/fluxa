@@ -230,15 +230,15 @@ export function ContinueCard({
               width: '3.5rem',
               height: '3.5rem',
               borderRadius: '50%',
-              background: 'rgba(255,255,255,0.14)',
+              background: 'var(--fluxa-fill-active)',
               backdropFilter: 'blur(0.375rem)',
-              border: '1px solid rgba(255,255,255,0.22)',
+              border: '1px solid var(--fluxa-border-strong)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="white" style={{ marginLeft: '0.1875rem' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--fluxa-text-primary)" style={{ marginLeft: '0.1875rem' }}>
               <path d="M8 5v14l11-7z" />
             </svg>
           </div>
@@ -304,7 +304,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
     height: '11.25rem',
     borderRadius: '0.5rem',
     overflow: 'hidden',
-    background: '#111318',
+    background: 'var(--fluxa-surface)',
     cursor: 'pointer',
     outline: 'none',
   },
@@ -315,7 +315,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
     height: '13.625rem',
     borderRadius: '0.1875rem',
     overflow: 'hidden',
-    background: '#141922',
+    background: 'var(--fluxa-surface-raised)',
     cursor: 'pointer',
     outline: 'none',
   },
@@ -324,14 +324,14 @@ const cwStyles: Record<string, React.CSSProperties> = {
     width: '100%',
     height: '100%',
     overflow: 'hidden',
-    background: '#141922',
+    background: 'var(--fluxa-surface-raised)',
   },
   posterImageArea: {
     position: 'relative',
     width: '100%',
     height: '10.0625rem',
     overflow: 'hidden',
-    background: '#141922',
+    background: 'var(--fluxa-surface-raised)',
   },
   artwork: {
     width: '100%',
@@ -342,13 +342,13 @@ const cwStyles: Record<string, React.CSSProperties> = {
   thumbPlaceholder: {
     width: '100%',
     height: '100%',
-    background: '#222222',
+    background: 'var(--fluxa-surface-raised)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   placeholderText: {
-    color: 'rgba(255,255,255,0.22)',
+    color: 'var(--fluxa-text-faint)',
     fontSize: '3rem',
     fontWeight: 900,
   },
@@ -360,7 +360,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '0.5rem',
-    background: '#050506',
+    background: 'var(--fluxa-background)',
   },
   landscapeFooter: {
     position: 'absolute',
@@ -371,7 +371,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
     height: '4.25rem',
     padding: '1.85rem 0.75rem 1rem',
     alignItems: 'flex-end',
-    background: 'linear-gradient(transparent, rgba(3,4,6,0.94))',
+    background: 'linear-gradient(transparent, var(--fluxa-scrim))',
   },
   metaStack: { flex: 1, minWidth: 0 },
   imageProgressBg: {
@@ -381,12 +381,12 @@ const cwStyles: Record<string, React.CSSProperties> = {
     bottom: '0.5rem',
     height: '0.25rem',
     borderRadius: '62.4375rem',
-    background: 'rgba(255,255,255,0.25)',
+    background: 'var(--fluxa-fill-active)',
   },
   landscapeShade: {
     position: 'absolute',
     inset: 0,
-    background: 'linear-gradient(180deg, rgba(0,0,0,0.04) 34%, rgba(0,0,0,0.74) 100%)',
+    background: 'linear-gradient(180deg, transparent 34%, var(--fluxa-scrim) 100%)',
     pointerEvents: 'none',
   },
   landscapeProgressBg: {
@@ -397,7 +397,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
     left: '0.75rem',
     height: '0.3125rem',
     borderRadius: '62.4375rem',
-    background: 'rgba(255,255,255,0.48)',
+    background: 'var(--fluxa-fill-strong)',
     boxShadow: '0 0 0.375rem rgba(0,0,0,0.5)',
   },
   progressBar: {
@@ -410,11 +410,11 @@ const cwStyles: Record<string, React.CSSProperties> = {
     position: 'absolute',
     top: '0.5rem',
     right: '0.5625rem',
-    color: '#FFFFFF',
+    color: 'var(--fluxa-text-primary)',
     fontSize: '0.6875rem',
     fontWeight: 750,
     textShadow: '0 1px 0.3125rem rgba(0,0,0,0.88)',
-    background: 'rgba(0,0,0,0.52)',
+    background: 'var(--fluxa-scrim)',
     borderRadius: '0.3125rem',
     padding: '0.2rem 0.4rem',
   },
@@ -427,17 +427,17 @@ const cwStyles: Record<string, React.CSSProperties> = {
     position: 'absolute',
     top: '0.5rem',
     left: '0.5625rem',
-    color: '#FFFFFF',
+    color: 'var(--fluxa-text-primary)',
     fontSize: '0.75rem',
     fontWeight: 800,
     textShadow: '0 1px 0.3125rem rgba(0,0,0,0.88)',
-    background: 'rgba(0,0,0,0.42)',
+    background: 'var(--fluxa-scrim)',
     borderRadius: '0.25rem',
     padding: '0.1875rem 0.375rem',
   },
 
   episodeName: {
-    color: 'rgba(255,255,255,0.72)',
+    color: 'var(--fluxa-text-secondary)',
     fontSize: '0.78rem',
     fontWeight: 650,
     margin: '0.38rem 0 0',
@@ -446,7 +446,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
   },
   name: {
-    color: '#FFFFFF',
+    color: 'var(--fluxa-text-primary)',
     fontSize: '0.95rem',
     fontWeight: 800,
     margin: 0,

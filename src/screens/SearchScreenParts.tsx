@@ -108,8 +108,8 @@ function SearchScrollArrow({ direction, onClick }: { direction: 'left' | 'right'
         alignItems: 'center',
         justifyContent: isLeft ? 'flex-start' : 'flex-end',
         background: isLeft
-          ? 'linear-gradient(to right, rgba(6,6,6,0.9) 30%, transparent 100%)'
-          : 'linear-gradient(to left, rgba(6,6,6,0.9) 30%, transparent 100%)',
+          ? 'linear-gradient(to right, rgba(var(--fluxa-background-rgb),0.9) 30%, transparent 100%)'
+          : 'linear-gradient(to left, rgba(var(--fluxa-background-rgb),0.9) 30%, transparent 100%)',
         pointerEvents: 'none',
       }}
     >
@@ -118,9 +118,9 @@ function SearchScrollArrow({ direction, onClick }: { direction: 'left' | 'right'
           width: '2.375rem',
           height: '2.375rem',
           borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.16)',
-          background: hovered ? 'rgba(255,255,255,0.18)' : 'rgba(14,15,22,0.9)',
-          color: '#fff',
+          border: '1px solid var(--fluxa-border-strong)',
+          background: hovered ? 'var(--fluxa-fill-strong)' : 'var(--fluxa-background-elevated)',
+          color: 'var(--fluxa-text-primary)',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -148,14 +148,14 @@ export function RecentSearchChip({ value, onClick, onRemove }: { value: string; 
     <div
       style={{
         ...styles.recentChip,
-        background: hovered ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.045)',
-        borderColor: hovered ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
+        background: hovered ? 'var(--fluxa-fill-strong)' : 'var(--fluxa-background-elevated)',
+        borderColor: hovered ? 'var(--fluxa-border-strong)' : 'var(--fluxa-border)',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <button style={styles.recentChipMain} onClick={onClick}>
-        <Clock size={15} color="rgba(255,255,255,0.45)" />
+        <Clock size={15} color="var(--fluxa-text-muted)" />
         <span style={styles.recentChipText}>{value}</span>
       </button>
       <button
@@ -189,9 +189,9 @@ export function TypeChip({ label, selected, onClick }: { label: string; selected
         height: '2.125rem',
         padding: '0 1rem',
         borderRadius: '62.4375rem',
-        border: selected ? 'none' : '1px solid rgba(255,255,255,0.12)',
-        background: selected ? '#FFFFFF' : hovered ? 'rgba(255,255,255,0.08)' : 'transparent',
-        color: selected ? '#000000' : '#FFFFFF',
+        border: selected ? 'none' : '1px solid var(--fluxa-border-strong)',
+        background: selected ? 'var(--fluxa-text-primary)' : hovered ? 'var(--fluxa-fill)' : 'transparent',
+        color: selected ? 'var(--fluxa-background)' : 'var(--fluxa-text-primary)',
         fontSize: '0.8125rem',
         fontWeight: 700,
         cursor: 'pointer',
@@ -214,9 +214,9 @@ export function GenreCard({ genre, onClick }: { genre: string; onClick: () => vo
       style={{
         height: '4rem',
         borderRadius: '0.75rem',
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: hovered ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-        color: '#FFFFFF',
+        border: '1px solid var(--fluxa-border)',
+        background: hovered ? 'var(--fluxa-fill-strong)' : 'var(--fluxa-background-elevated)',
+        color: 'var(--fluxa-text-primary)',
         fontSize: '0.875rem',
         fontWeight: 700,
         cursor: 'pointer',
@@ -224,7 +224,7 @@ export function GenreCard({ genre, onClick }: { genre: string; onClick: () => vo
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: hovered ? '0 0 0 0.0938rem rgba(255,255,255,0.3)' : 'none',
+        boxShadow: hovered ? '0 0 0 0.0938rem var(--fluxa-fill-strong)' : 'none',
       }}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}

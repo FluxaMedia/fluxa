@@ -86,15 +86,15 @@ function StreamRow({
     <div
       style={{
         ...styles.row,
-        background: hovered ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-        boxShadow: hovered ? '0 0 0 0.125rem rgba(255,255,255,0.25)' : 'none',
+        background: hovered ? 'var(--fluxa-fill-strong)' : 'var(--fluxa-background-elevated)',
+        boxShadow: hovered ? '0 0 0 0.125rem var(--fluxa-fill-active)' : 'none',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => onPlay?.(stream)}
     >
       <div style={styles.playIcon}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.8)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--fluxa-text-secondary)">
           <path d="M8 5v14l11-7z" />
         </svg>
       </div>
@@ -114,7 +114,7 @@ const styles: Record<string, React.CSSProperties> = {
     paddingTop: '1.5rem',
   },
   sectionTitle: {
-    color: 'rgba(255,255,255,0.4)',
+    color: 'var(--fluxa-text-muted)',
     fontSize: '0.8125rem',
     fontWeight: 700,
     letterSpacing: '0.05rem',
@@ -128,8 +128,8 @@ const styles: Record<string, React.CSSProperties> = {
   spinner: {
     width: '1.75rem',
     height: '1.75rem',
-    border: '0.1875rem solid rgba(255,255,255,0.15)',
-    borderTopColor: 'rgba(255,255,255,0.8)',
+    border: '0.1875rem solid var(--fluxa-border)',
+    borderTopColor: 'var(--fluxa-text-secondary)',
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
   },
@@ -151,7 +151,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '2rem',
     height: '2rem',
     borderRadius: '50%',
-    background: 'rgba(255,255,255,0.1)',
+    background: 'var(--fluxa-fill)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -162,7 +162,7 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 0,
   },
   rowTitle: {
-    color: '#FFFFFF',
+    color: 'var(--fluxa-text-primary)',
     fontSize: '0.875rem',
     fontWeight: 600,
     margin: 0,
@@ -171,13 +171,13 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
   },
   addonName: {
-    color: 'rgba(255,255,255,0.45)',
+    color: 'var(--fluxa-text-muted)',
     fontSize: '0.75rem',
     margin: '0.125rem 0 0',
   },
   torrentTag: {
-    background: 'rgba(255,255,255,0.08)',
-    color: 'rgba(255,255,255,0.5)',
+    background: 'var(--fluxa-fill)',
+    color: 'var(--fluxa-text-muted)',
     fontSize: '0.625rem',
     fontWeight: 700,
     padding: '0.125rem 0.4375rem',
@@ -186,7 +186,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   empty: {
-    color: 'rgba(255,255,255,0.4)',
+    color: 'var(--fluxa-text-muted)',
     fontSize: '0.875rem',
   },
 };

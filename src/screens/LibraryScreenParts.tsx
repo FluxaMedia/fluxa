@@ -64,7 +64,7 @@ export function CircleBtn({ onClick, size, children }: { onClick: () => void; si
         height: size,
         minWidth: size,
         borderRadius: '50%',
-        background: hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)',
+        background: hovered ? 'var(--fluxa-fill-active)' : 'var(--fluxa-fill)',
         border: 'none',
         cursor: 'pointer',
         display: 'flex',
@@ -87,8 +87,8 @@ export function TabChip({ active, onClick, children }: { active: boolean; onClic
   return (
     <button
       style={{
-        background: active ? '#FFFFFF' : hovered ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
-        color: active ? '#000000' : '#FFFFFF',
+        background: active ? 'var(--fluxa-text-primary)' : hovered ? 'var(--fluxa-fill-strong)' : 'var(--fluxa-fill)',
+        color: active ? 'var(--fluxa-background)' : 'var(--fluxa-text-primary)',
         border: 'none',
         borderRadius: '1.25rem',
         padding: '0.5rem 1.25rem',
