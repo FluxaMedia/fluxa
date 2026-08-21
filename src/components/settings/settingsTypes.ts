@@ -41,6 +41,7 @@ export interface Prefs {
   posterWidthPreset: string;
   posterLandscapeMode: boolean;
   posterHideTitles: boolean;
+  posterHoverPreview: boolean;
   cardLayout: string;
   catalogTypeSuffixEnabled: boolean;
   continueWatchingLayout: string;
@@ -201,6 +202,7 @@ export const DEFAULT_PREFS: Prefs = {
   posterWidthPreset: 'medium',
   posterLandscapeMode: false,
   posterHideTitles: false,
+  posterHoverPreview: true,
   cardLayout: 'vertical',
   catalogTypeSuffixEnabled: false,
   continueWatchingLayout: 'horizontal',

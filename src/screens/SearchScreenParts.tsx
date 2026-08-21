@@ -78,6 +78,7 @@ export function SearchCategoryRow({
               radius={posterPrefs.radius}
               layout={posterPrefs.layout}
               hideTitle={posterPrefs.hideTitles}
+              preview={posterPrefs.hoverPreview}
               onClick={onItemClick}
               onDispatch={onDispatch}
             />

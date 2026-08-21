@@ -6,7 +6,6 @@ import type { DetailState, LibraryItem, Meta, MetaLink, Trailer, Video } from '.
 import type { posterPrefsFromState } from '../../core/posterPrefs';
 import { MS, S, spinnerStyle } from './detailStyles';
 import { CastAvatar, type NormalizedCastMember } from './castSection';
-import { dedupedWatchProviders, WatchProviderLogo, openWatchProvidersLink } from './watchProvidersSection';
 import { TrailerCarousel, type TrailerMetadata } from './TrailerCarousel';
 import { ModernEpisodeCard } from './ModernEpisodeCard';
 import type { ProgressEntry } from './EpisodePanel';
@@ -26,7 +25,6 @@ export function DetailsTabContent({
   displayTrailers: Trailer[];
   trailerMetadata: TrailerMetadata;
 }) {
-  const watchProviders = dedupedWatchProviders(displayMeta.watchProviders);
   return (
     <div style={{ ...MS.detailsTab, minHeight: '12.5rem' }}>
       {displayMeta.description && (
@@ -54,21 +52,6 @@ export function DetailsTabContent({
                 name={member.name}
                 role={member.role || t('detail.actor')}
                 imageUrl={member.imageUrl ?? peopleImages[member.name]}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-      {watchProviders.length > 0 && (
-        <div style={MS.detailsSection}>
-          <h3 style={MS.detailsSectionTitle}>{t('detail.watch_providers')}</h3>
-          <div style={S.castRow}>
-            {watchProviders.map((provider) => (
-              <WatchProviderLogo
-                key={provider.name}
-                name={provider.name}
-                logo={provider.logo}
-                onClick={() => openWatchProvidersLink(displayMeta.watchProviders?.link)}
               />
             ))}
           </div>
@@ -183,6 +166,7 @@ export function RelatedTabContent({
               radius={poster.radius}
               hideTitle={poster.hideTitles}
               layout={poster.layout}
+              preview={poster.hoverPreview}
               onClick={onNavigateDetail}
             />
           ))}

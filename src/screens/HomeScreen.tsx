@@ -460,6 +460,7 @@ export const HomeScreen = React.memo(
       return map;
     }, [state.addons.installed]);
     const showHero = resolvedHomePlan.showHero;
+    const heroSlotVisible = showHero && (!!billboardWithTrailer || !!home.billboard);
     const showContinueWatching = prefBool(prefs, 'continueWatchingEnabled', true);
     const gifAutoplayEnabled = prefBool(prefs, 'gifAutoplayEnabled', false);
     const topTenFeedKeys = useMemo(() => {
@@ -501,11 +502,14 @@ export const HomeScreen = React.memo(
       };
     }, [continueWatching, keepScheduled, showThisWeek]);
 
-    if (home.isLoading && !billboard && categories.length === 0 && (home.continueWatching?.length ?? 0) === 0) {
+    const noContent = !billboard && categories.length === 0 && continueWatching.length === 0;
+    const awaitingFirstLoad = home.isLoading || deferStaleRefresh;
+
+    if (awaitingFirstLoad && noContent) {
       return <LoadingSkeleton />;
     }
 
-    if (home.error && !billboard && categories.length === 0 && continueWatching.length === 0) {
+    if (home.error && noContent) {
       return (
         <HomeStateMessage
           title={t('common.error')}
@@ -516,7 +520,7 @@ export const HomeScreen = React.memo(
       );
     }
 
-    if (!home.isLoading && !billboard && categories.length === 0 && continueWatching.length === 0) {
+    if (!awaitingFirstLoad && noContent) {
       return <EmptyHome onOpenSettings={onOpenSettings} />;
     }
 
@@ -545,7 +549,8 @@ export const HomeScreen = React.memo(
 
     return (
       <div ref={scrollRef} className="home-screen" style={styles.screen}>
-        {billboardWithTrailer && showHero && (
+        {heroSlotVisible && !billboardWithTrailer && <div style={styles.heroPlaceholder} />}
+        {heroSlotVisible && billboardWithTrailer && (
           <HeroSection
             meta={billboardWithTrailer}
             slides={heroSlidesWithTrailers}
@@ -564,7 +569,7 @@ export const HomeScreen = React.memo(
 
         <div
           className="home-shelves"
-          style={{ ...styles.shelves, marginTop: billboardWithTrailer && showHero ? styles.shelves.marginTop : 0 }}
+          style={{ ...styles.shelves, marginTop: heroSlotVisible ? styles.shelves.marginTop : 0 }}
         >
           {showContinueWatching && cwItems.length > 0 && (
             <ContinueWatchingRow
@@ -602,6 +607,7 @@ export const HomeScreen = React.memo(
                   onViewAll={handleViewAll}
                   isLoading={cat.items.length === 0 && !!home.isLoading}
                   posterPrefs={posterPrefs}
+                  preview={posterPrefs.hoverPreview}
                   topTenEnabled={topTenFeedKeys.has(cat.id)}
                   addonIcon={cat.addonName ? addonIconByName.get(cat.addonName) : undefined}
                   onNearEnd={nearEndCallbacks.get(cat.id)}
@@ -713,6 +719,12 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: `-${HOME_HERO_OVERLAP}`,
     paddingTop: '0.5rem',
     paddingBottom: '5rem',
+  },
+  heroPlaceholder: {
+    width: '100%',
+    height: HOME_HERO_HEIGHT,
+    background: '#12161D',
+    animation: 'pulse 1.6s ease-in-out infinite',
   },
   empty: {
     height: '100%',

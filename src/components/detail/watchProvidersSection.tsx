@@ -17,10 +17,12 @@ export const WatchProviderLogo = React.memo(function WatchProviderLogo({
   name,
   logo,
   onClick,
+  size = '3.25rem',
 }: {
   name: string;
   logo?: string;
   onClick: () => void;
+  size?: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = logo && !imageFailed;
@@ -29,12 +31,12 @@ export const WatchProviderLogo = React.memo(function WatchProviderLogo({
       onClick={onClick}
       title={name}
       style={{
-        width: '3.25rem',
-        height: '3.25rem',
+        width: size,
+        height: size,
         flexShrink: 0,
         padding: 0,
         border: `1px solid ${color.lineStrong}`,
-        borderRadius: radius.lg,
+        borderRadius: radius.md,
         background: showImage ? 'transparent' : color.fillHover,
         display: 'flex',
         alignItems: 'center',

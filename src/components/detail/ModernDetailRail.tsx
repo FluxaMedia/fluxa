@@ -6,6 +6,8 @@ import { MS } from './detailStyles';
 import { GenreTag } from './ModernDetailParts';
 import { RatingsRow } from './RatingBadge';
 import type { NormalizedCastMember } from './castSection';
+import { formatEpDate } from './EpisodePanel';
+import { dedupedWatchProviders, WatchProviderLogo, openWatchProvidersLink } from './watchProvidersSection';
 
 type ScoreRow = { label: string; value: string; fill: number };
 
@@ -66,6 +68,9 @@ export function ModernDetailRail({
   const genres = Array.isArray(displayMeta.genres) ? displayMeta.genres.slice(0, 6) : [];
   const visibleCast = castMembers.slice(0, 5);
   const creators = displayMeta.createdBy?.length ? displayMeta.createdBy : displayMeta.director;
+  const watchProviders = dedupedWatchProviders(displayMeta.watchProviders).slice(0, 5);
+  const nextEpisode = displayMeta.nextEpisodeToAir;
+  const language = displayMeta.originalLanguage?.toUpperCase();
 
   return (
     <aside className="detail-rail" style={MS.railCol}>
@@ -89,6 +94,34 @@ export function ModernDetailRail({
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {nextEpisode?.airDate && (
+        <div style={MS.railGroup}>
+          <SectionLabel>{t('detail.next_episode')}</SectionLabel>
+          <span style={MS.railNextValue}>{formatEpDate(nextEpisode.airDate)}</span>
+          <span style={MS.railCastNames}>
+            {t('format.season_episode_short', nextEpisode.season, nextEpisode.episode)}
+            {nextEpisode.name ? ` · ${nextEpisode.name}` : ''}
+          </span>
+        </div>
+      )}
+
+      {watchProviders.length > 0 && (
+        <div style={MS.railGroup}>
+          <SectionLabel>{t('detail.watch_providers')}</SectionLabel>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: space[1.5] }}>
+            {watchProviders.map((provider) => (
+              <WatchProviderLogo
+                key={provider.name}
+                name={provider.name}
+                logo={provider.logo}
+                size="2.25rem"
+                onClick={() => openWatchProvidersLink(displayMeta.watchProviders?.link)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -154,6 +187,7 @@ export function ModernDetailRail({
           <Fact label={t('detail.director')} value={directorLinks.map((link) => link.name).join(', ')} />
         ) : null}
         {displayMeta.network ? <Fact label={t('detail.fact_network')} value={displayMeta.network} /> : null}
+        {language ? <Fact label={t('detail.fact_language')} value={language} /> : null}
         {displayMeta.status ? <Fact label={t('detail.fact_status')} value={displayMeta.status} /> : null}
         {displayMeta.productionCountries?.length ? (
           <Fact label={t('detail.fact_country')} value={displayMeta.productionCountries.slice(0, 2).join(', ')} />

@@ -780,6 +780,7 @@ export const MS: Record<string, React.CSSProperties> = {
   railScoreValue: { fontSize: fontSize.sm, color: color.textPrimary, fontWeight: weight.bold, fontVariantNumeric: 'tabular-nums' },
   railTrack: { height: '0.125rem', background: color.fillHover, borderRadius: radius.pill, overflow: 'hidden' },
   railTrackFill: { display: 'block', height: '100%', background: color.textBody },
+  railNextValue: { fontSize: fontSize.md, color: color.textPrimary, fontWeight: weight.bold },
   railCastNames: { fontSize: fontSize.xs, color: color.textBody, fontWeight: weight.medium, lineHeight: lineHeight.normal },
   railSeeAll: {
     background: 'none',

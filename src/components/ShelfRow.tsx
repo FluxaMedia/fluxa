@@ -23,6 +23,7 @@ interface Props {
   posterPrefs?: PosterPrefs;
   topTenEnabled?: boolean;
   addonIcon?: string;
+  preview?: boolean;
   onNearEnd?: () => void;
   isLoadingMore?: boolean;
   onDispatch?: (actionJson: string) => void | Promise<void>;
@@ -40,6 +41,7 @@ export const ShelfRow = React.memo(
     posterPrefs,
     topTenEnabled = false,
     addonIcon,
+    preview,
     onNearEnd,
     isLoadingMore,
     onDispatch,
@@ -146,6 +148,7 @@ export const ShelfRow = React.memo(
                       hideTitle={hideTitle}
                       topTenRank={topTenEnabled && idx < 10 ? idx + 1 : undefined}
                       addonIcon={addonIcon}
+                      preview={preview}
                       onClick={onItemClick}
                       onDispatch={onDispatch}
                     />

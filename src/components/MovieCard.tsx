@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Check } from 'lucide-react';
 import { t } from '../i18n';
 import type { Meta } from '../core/types';
@@ -6,6 +6,7 @@ import type { PosterPrefs } from '../core/posterPrefs';
 import { rpdbPosterUrl } from '../core/rpdb';
 import { cardImageUrl } from '../core/imageSizes';
 import { ContextMenu } from './ui/ContextMenu';
+import { PosterPreviewCard } from './PosterPreviewCard';
 
 interface Props {
   meta: Meta;
@@ -16,6 +17,7 @@ interface Props {
   layout?: PosterPrefs['layout'];
   topTenRank?: number;
   addonIcon?: string;
+  preview?: boolean;
   onClick?: (meta: Meta) => void;
   onDispatch?: (actionJson: string) => void | Promise<void>;
 }
@@ -30,6 +32,7 @@ export const MovieCard = React.memo(
     layout = 'vertical',
     topTenRank,
     addonIcon,
+    preview = false,
     onClick,
     onDispatch,
   }: Props) {
@@ -37,6 +40,31 @@ export const MovieCard = React.memo(
     const [imgLoaded, setImgLoaded] = useState(false);
     const [rpdbFailed, setRpdbFailed] = useState(false);
     const [menuPoint, setMenuPoint] = useState<{ x: number; y: number } | null>(null);
+    const [previewAnchor, setPreviewAnchor] = useState<DOMRect | null>(null);
+    const previewTimerRef = useRef<number | null>(null);
+
+    const clearPreviewTimer = useCallback(() => {
+      if (previewTimerRef.current !== null) {
+        window.clearTimeout(previewTimerRef.current);
+        previewTimerRef.current = null;
+      }
+    }, []);
+
+    useEffect(() => clearPreviewTimer, [clearPreviewTimer]);
+
+    const openPreview = useCallback(
+      (target: HTMLElement) => {
+        if (!preview) return;
+        clearPreviewTimer();
+        previewTimerRef.current = window.setTimeout(() => setPreviewAnchor(target.getBoundingClientRect()), 650);
+      },
+      [preview, clearPreviewTimer],
+    );
+
+    const closePreview = useCallback(() => {
+      clearPreviewTimer();
+      setPreviewAnchor(null);
+    }, [clearPreviewTimer]);
 
     const anyMeta = meta as unknown as Record<string, unknown>;
     const isWatched = anyMeta.watched === true || anyMeta.notWatched === false;
@@ -110,7 +138,12 @@ export const MovieCard = React.memo(
               flexShrink: 0,
               marginLeft: topTenRank != null ? Math.round(rankNumWidth - rankOverlap) : 0,
             }}
-            onClick={() => onClick?.(meta)}
+            onClick={() => {
+              closePreview();
+              onClick?.(meta);
+            }}
+            onMouseEnter={(e) => openPreview(e.currentTarget)}
+            onMouseLeave={closePreview}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -299,6 +332,26 @@ export const MovieCard = React.memo(
             )}
           </div>
         )}
+        {previewAnchor && (
+          <PosterPreviewCard
+            meta={meta}
+            anchor={previewAnchor}
+            onOpenDetail={() => {
+              closePreview();
+              onClick?.(meta);
+            }}
+            onToggleLibrary={
+              onDispatch
+                ? () => {
+                    void onDispatch(JSON.stringify({ type: 'toggleWatchlistRequested', item: meta }));
+                    closePreview();
+                  }
+                : undefined
+            }
+            onMouseEnter={clearPreviewTimer}
+            onMouseLeave={closePreview}
+          />
+        )}
         {onDispatch && (
           <ContextMenu
             point={menuPoint}
@@ -324,6 +377,7 @@ export const MovieCard = React.memo(
     if (prev.width !== next.width || prev.height !== next.height || prev.radius !== next.radius) return false;
     if (prev.hideTitle !== next.hideTitle || prev.layout !== next.layout) return false;
     if (prev.topTenRank !== next.topTenRank || prev.addonIcon !== next.addonIcon) return false;
+    if (prev.preview !== next.preview) return false;
     if (prev.onClick !== next.onClick || prev.onDispatch !== next.onDispatch) return false;
     if (prev.meta === next.meta) return true;
     const pm = prev.meta as unknown as Record<string, unknown>;

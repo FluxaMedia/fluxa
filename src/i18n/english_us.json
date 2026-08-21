@@ -335,6 +335,9 @@
   "detail.fact_network": "Network",
   "detail.fact_status": "Status",
   "detail.fact_creator": "Creator",
+  "detail.next_episode": "Next episode",
+  "detail.fact_language": "Language",
+  "detail.preview_more_info": "More info",
   "detail.fact_country": "Country",
   "detail.read_less": "Read less",
   "detail.trakt_comments": "Trakt comments",
@@ -1793,5 +1796,7 @@
   "auth.error.email_not_confirmed": "Confirm your email address before signing in",
   "auth.error.rate_limited": "Too many attempts, try again shortly",
   "auth.error.unknown": "Sign in failed",
-  "player.watch_party_instance_prompt": "Watch Together instance address"
+  "player.watch_party_instance_prompt": "Watch Together instance address",
+  "settings.poster_hover_preview": "Hover preview",
+  "settings.poster_hover_preview_desc": "Show a preview card when the pointer rests on a poster."
 }

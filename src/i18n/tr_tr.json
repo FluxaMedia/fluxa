@@ -335,6 +335,9 @@
   "detail.fact_network": "Ağ",
   "detail.fact_status": "Durum",
   "detail.fact_creator": "Yaratıcı",
+  "detail.next_episode": "Sonraki bölüm",
+  "detail.fact_language": "Dil",
+  "detail.preview_more_info": "Detaylar",
   "detail.fact_country": "Ülke",
   "detail.read_less": "Daha az göster",
   "detail.trakt_comments": "Trakt yorumları",
@@ -1793,5 +1796,7 @@
   "auth.error.email_not_confirmed": "Giriş yapmadan önce e-postanı doğrula",
   "auth.error.rate_limited": "Çok fazla deneme, biraz sonra tekrar dene",
   "auth.error.unknown": "Giriş başarısız",
-  "player.watch_party_instance_prompt": "Watch Together instance adresi"
+  "player.watch_party_instance_prompt": "Watch Together instance adresi",
+  "settings.poster_hover_preview": "Üzerine gelince önizleme",
+  "settings.poster_hover_preview_desc": "İmleç posterin üzerinde beklediğinde önizleme kartı gösterilir."
 }

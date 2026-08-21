@@ -8,6 +8,7 @@ export interface PosterPrefs {
   height: number;
   radius: number;
   hideTitles: boolean;
+  hoverPreview: boolean;
 }
 
 export function posterPrefsFromState(state: Pick<AppState, 'settings'>, scale = 1): PosterPrefs {
@@ -29,6 +30,7 @@ export function posterPrefsFromState(state: Pick<AppState, 'settings'>, scale = 
     height: Math.round(height * scale * densityScale * uiScale),
     radius: posterCornerRadius(cornerPreset),
     hideTitles: values.posterHideTitles === true,
+    hoverPreview: values.posterHoverPreview !== false,
   };
 }
 

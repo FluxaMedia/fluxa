@@ -138,6 +138,12 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           onToggle={(v) => setPref('posterLandscapeMode', v)}
         />
         <ToggleTile
+          title={t('settings.poster_hover_preview')}
+          subtitle={t('settings.poster_hover_preview_desc')}
+          checked={prefs.posterHoverPreview}
+          onToggle={(v) => setPref('posterHoverPreview', v)}
+        />
+        <ToggleTile
           title={t('auto.hide_titles')}
           subtitle={t('auto.hide_titles')}
           checked={prefs.posterHideTitles}
