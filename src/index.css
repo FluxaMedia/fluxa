@@ -84,6 +84,9 @@ html {
   --fluxa-navigation: #0D0D0D;
   --fluxa-text-primary: #FFFFFF;
   --fluxa-text-primary-rgb: 255, 255, 255;
+  --fluxa-text-secondary-rgb: 184, 184, 190;
+  --fluxa-text-muted-rgb: 138, 138, 145;
+  --fluxa-black-rgb: 0, 0, 0;
   --fluxa-text-secondary: rgba(255,255,255,0.72);
   --fluxa-text-muted: rgba(255,255,255,0.55);
   --fluxa-text-strong: rgba(255,255,255,0.88);
@@ -100,6 +103,9 @@ html {
   --fluxa-fill-hover: var(--fluxa-border-strong);
   --fluxa-accent-soft: rgba(232,93,63,0.2);
   --fluxa-accent-shadow: rgba(232,93,63,0.65);
+  --fluxa-success-soft: rgba(69,211,132,0.13);
+  --fluxa-warning-soft: rgba(240,198,116,0.13);
+  --fluxa-error-soft: rgba(255,107,107,0.13);
 }
 
 html, body, #root {
@@ -342,23 +348,23 @@ button, input, select, textarea {
   transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
-.fx-btn-primary:hover { background: #E2E2E2 !important; }
-.fx-btn-secondary:hover { background: rgba(255,255,255,0.10) !important; border-color: rgba(255,255,255,0.16) !important; }
-.fx-btn-ghost:hover { color: #FFFFFF !important; }
+.fx-btn-primary:hover { background: var(--fluxa-text-strong) !important; }
+.fx-btn-secondary:hover { background: rgba(var(--fluxa-text-primary-rgb), 0.10) !important; border-color: var(--fluxa-border-strong) !important; }
+.fx-btn-ghost:hover { color: var(--fluxa-text-primary) !important; }
 
 .fx-iconbtn {
   transition: border-color 0.12s ease, background-color 0.12s ease;
   cursor: pointer;
 }
 
-.fx-iconbtn:hover { border-color: #FFFFFF !important; background: rgba(255,255,255,0.10) !important; }
+.fx-iconbtn:hover { border-color: var(--fluxa-focus) !important; background: rgba(var(--fluxa-text-primary-rgb), 0.10) !important; }
 
 .fx-chip {
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
-.fx-chip:not(.is-selected):hover { background: rgba(255,255,255,0.10) !important; border-color: rgba(255,255,255,0.16) !important; }
-.fx-chip.is-selected:hover { background: #E2E2E2 !important; }
+.fx-chip:not(.is-selected):hover { background: rgba(var(--fluxa-text-primary-rgb), 0.10) !important; border-color: var(--fluxa-border-strong) !important; }
+.fx-chip.is-selected:hover { background: var(--fluxa-text-strong) !important; }
 
 @media (max-width: 1100px) {
   .detail-content {

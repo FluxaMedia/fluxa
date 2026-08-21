@@ -19,9 +19,9 @@ interface ToastProps {
 }
 
 const VARIANT_COLORS: Record<NonNullable<ToastProps['variant']>, { icon: string; iconBg: string }> = {
-  warning: { icon: '#f0b74a', iconBg: 'rgba(240,183,74,0.13)' },
-  error: { icon: '#ff7b7b', iconBg: 'rgba(255,90,90,0.13)' },
-  success: { icon: '#8fd19e', iconBg: 'rgba(143,209,158,0.13)' },
+  warning: { icon: 'var(--fluxa-warning)', iconBg: 'var(--fluxa-warning-soft)' },
+  error: { icon: 'var(--fluxa-error)', iconBg: 'var(--fluxa-error-soft)' },
+  success: { icon: 'var(--fluxa-success)', iconBg: 'var(--fluxa-success-soft)' },
 };
 
 export function Toast({ variant = 'warning', title, message, details, detailsLabel, detailsHideLabel, actions, onClose }: ToastProps) {
@@ -35,8 +35,8 @@ export function Toast({ variant = 'warning', title, message, details, detailsLab
       style={{
         width: 'min(23.75rem, 100%)',
         boxSizing: 'border-box',
-        background: 'rgba(20,22,28,0.97)',
-        border: '1px solid rgba(255,255,255,0.1)',
+        background: 'var(--fluxa-surface-raised)',
+        border: '1px solid var(--fluxa-border)',
         borderRadius: '0.75rem',
         boxShadow: '0 0.75rem 2.5rem rgba(0,0,0,0.5)',
         padding: '0.875rem 1rem',
@@ -59,8 +59,8 @@ export function Toast({ variant = 'warning', title, message, details, detailsLab
           <Icon size={16} color={colors.icon} />
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 700, margin: 0 }}>{title}</p>
-          <p style={{ color: 'rgba(255,255,255,0.62)', fontSize: '0.8125rem', margin: '0.1875rem 0 0', lineHeight: 1.4 }}>{message}</p>
+          <p style={{ color: 'var(--fluxa-text-primary)', fontSize: '0.875rem', fontWeight: 700, margin: 0 }}>{title}</p>
+          <p style={{ color: 'var(--fluxa-text-secondary)', fontSize: '0.8125rem', margin: '0.1875rem 0 0', lineHeight: 1.4 }}>{message}</p>
           {details && (
             <>
               <button
@@ -70,7 +70,7 @@ export function Toast({ variant = 'warning', title, message, details, detailsLab
                   border: 'none',
                   padding: 0,
                   marginTop: '0.5rem',
-                  color: 'rgba(255,255,255,0.42)',
+                  color: 'var(--fluxa-text-muted)',
                   fontSize: '0.7188rem',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -83,10 +83,10 @@ export function Toast({ variant = 'warning', title, message, details, detailsLab
                   style={{
                     margin: '0.5rem 0 0',
                     padding: '0.5rem 0.625rem',
-                    background: 'rgba(0,0,0,0.4)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'var(--fluxa-background)',
+                    border: '1px solid var(--fluxa-border)',
                     borderRadius: '0.375rem',
-                    color: 'rgba(255,255,255,0.55)',
+                    color: 'var(--fluxa-text-secondary)',
                     fontSize: '0.6875rem',
                     fontFamily: "'Cascadia Mono', 'Consolas', monospace",
                     lineHeight: 1.5,
@@ -108,11 +108,11 @@ export function Toast({ variant = 'warning', title, message, details, detailsLab
                   key={action.label}
                   onClick={action.onClick}
                   style={{
-                    background: action.primary ? '#fff' : 'rgba(255,255,255,0.08)',
-                    border: action.primary ? 'none' : '1px solid rgba(255,255,255,0.14)',
+                    background: action.primary ? 'var(--fluxa-accent)' : 'var(--fluxa-border)',
+                    border: action.primary ? 'none' : '1px solid var(--fluxa-border-strong)',
                     borderRadius: '0.5rem',
                     padding: '0.4375rem 0.875rem',
-                    color: action.primary ? '#000' : 'rgba(255,255,255,0.85)',
+                    color: action.primary ? 'var(--fluxa-accent-foreground)' : 'var(--fluxa-text-primary)',
                     fontSize: '0.8125rem',
                     fontWeight: 700,
                     cursor: 'pointer',

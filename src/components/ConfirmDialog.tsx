@@ -31,7 +31,7 @@ export function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            style={{ ...S.confirmBtn, background: destructive ? '#c0392b' : '#FFFFFF', color: destructive ? '#fff' : '#000' }}
+            style={{ ...S.confirmBtn, background: destructive ? 'var(--fluxa-error)' : 'var(--fluxa-accent)', color: destructive ? 'var(--fluxa-accent-foreground)' : 'var(--fluxa-accent-foreground)' }}
           >
             {confirmLabel}
           </button>
@@ -48,7 +48,7 @@ const S: Record<string, React.CSSProperties> = {
     position: 'fixed',
     inset: 0,
     zIndex: 10000,
-    background: 'rgba(0,0,0,0.7)',
+    background: 'var(--fluxa-scrim)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -56,22 +56,22 @@ const S: Record<string, React.CSSProperties> = {
   dialog: {
     width: '20rem',
     borderRadius: '0.75rem',
-    background: '#141414',
-    border: '1px solid rgba(255,255,255,0.10)',
+    background: 'var(--fluxa-surface-raised)',
+    border: '1px solid var(--fluxa-border)',
     padding: '1.5rem',
     textAlign: 'center',
     fontFamily: FONT,
   },
-  title: { margin: 0, color: '#FFFFFF', fontSize: '1rem', fontWeight: 700 },
-  body: { margin: '0.625rem 0 1.375rem', color: 'rgba(255,255,255,0.55)', fontSize: '0.8125rem', lineHeight: 1.5 },
+  title: { margin: 0, color: 'var(--fluxa-text-primary)', fontSize: '1rem', fontWeight: 700 },
+  body: { margin: '0.625rem 0 1.375rem', color: 'var(--fluxa-text-secondary)', fontSize: '0.8125rem', lineHeight: 1.5 },
   actions: { display: 'flex', gap: '0.5rem' },
   cancelBtn: {
     flex: 1,
     height: '2.75rem',
     borderRadius: '0.5rem',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.10)',
-    color: 'rgba(255,255,255,0.55)',
+    background: 'var(--fluxa-border)',
+    border: '1px solid var(--fluxa-border)',
+    color: 'var(--fluxa-text-secondary)',
     fontSize: '0.8125rem',
     fontWeight: 500,
     fontFamily: FONT,

@@ -127,6 +127,9 @@ export function themeCssVariables(theme: ThemePack): Record<string, string> {
   for (const [key, value] of Object.entries(theme.colors)) variables[cssName(key)] = value;
   variables['--fluxa-background-rgb'] = rgbChannels(theme.colors.background);
   variables['--fluxa-text-primary-rgb'] = rgbChannels(theme.colors.textPrimary);
+  variables['--fluxa-text-secondary-rgb'] = rgbChannels(theme.colors.textSecondary);
+  variables['--fluxa-text-muted-rgb'] = rgbChannels(theme.colors.textMuted);
+  variables['--fluxa-black-rgb'] = '0, 0, 0';
   variables['--fluxa-accent-rgb'] = rgbChannels(theme.colors.accent);
   variables['--fluxa-text-strong'] = withAlpha(theme.colors.textPrimary, 0.88);
   variables['--fluxa-text-dim'] = withAlpha(theme.colors.textMuted, 0.72);
@@ -136,6 +139,9 @@ export function themeCssVariables(theme: ThemePack): Record<string, string> {
   variables['--fluxa-fill-hover'] = theme.colors.borderStrong;
   variables['--fluxa-accent-soft'] = withAlpha(theme.colors.accent, 0.2);
   variables['--fluxa-accent-shadow'] = withAlpha(theme.colors.accent, 0.65);
+  variables['--fluxa-success-soft'] = withAlpha(theme.colors.success, 0.13);
+  variables['--fluxa-warning-soft'] = withAlpha(theme.colors.warning, 0.13);
+  variables['--fluxa-error-soft'] = withAlpha(theme.colors.error, 0.13);
   variables['--fluxa-display-font'] = theme.typography.displayFont;
   variables['--fluxa-body-font'] = theme.typography.bodyFont;
   variables['--fluxa-title-weight'] = String(theme.typography.titleWeight);
