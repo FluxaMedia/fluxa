@@ -17,7 +17,8 @@
     "package:webos": "bash scripts/package-webos.sh",
     "tauri": "tauri",
     "bump": "bash scripts/bump-version.sh",
-    "lint:design": "node scripts/check-design.mjs"
+    "lint:design": "node scripts/check-design.mjs",
+    "theme:sync": "node scripts/generate-theme-consumers.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.64.0",
