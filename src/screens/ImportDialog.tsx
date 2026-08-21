@@ -24,7 +24,7 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
         position: 'fixed',
         inset: 0,
         zIndex: 100,
-        background: 'rgba(0,0,0,0.75)',
+        background: 'var(--fluxa-scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -34,7 +34,8 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
     >
       <div
         style={{
-          background: '#111620',
+          background: 'var(--fluxa-surface-raised)',
+          border: '1px solid var(--fluxa-border)',
           borderRadius: '0.75rem',
           padding: '1.5rem',
           width: '100%',
@@ -45,7 +46,7 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
           boxSizing: 'border-box',
         }}
       >
-        <span style={{ color: '#fff', fontSize: '1.125rem', fontWeight: 900 }}>{t('library.import_collections')}</span>
+        <span style={{ color: 'var(--fluxa-text-primary)', fontSize: '1.125rem', fontWeight: 900 }}>{t('library.import_collections')}</span>
         <textarea
           value={json}
           onChange={(e) => setJson(e.target.value)}
@@ -55,10 +56,10 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
             minHeight: '10rem',
             maxHeight: '22.5rem',
             padding: '0.75rem',
-            background: 'rgba(255,255,255,0.05)',
+            background: 'var(--fluxa-background)',
             border: `1px solid ${accent}55`,
             borderRadius: '0.5rem',
-            color: '#fff',
+            color: 'var(--fluxa-text-primary)',
             fontSize: '0.8125rem',
             fontFamily: 'monospace',
             resize: 'vertical',
@@ -73,7 +74,7 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
             style={{
               background: 'none',
               border: 'none',
-              color: 'rgba(255,255,255,0.6)',
+              color: 'var(--fluxa-text-secondary)',
               fontSize: '0.875rem',
               cursor: 'pointer',
               padding: '0.5rem 0.75rem',
@@ -87,10 +88,10 @@ export function ImportDialog({ accent, onDismiss, onImport }: Props) {
               if (json.trim()) onImport(json.trim());
             }}
             style={{
-              background: json.trim() ? accent : 'rgba(255,255,255,0.12)',
+              background: json.trim() ? accent : 'var(--fluxa-border-strong)',
               border: 'none',
               borderRadius: '0.5rem',
-              color: json.trim() ? contrastOn(accent) : 'rgba(255,255,255,0.3)',
+              color: json.trim() ? contrastOn(accent) : 'var(--fluxa-text-muted)',
               fontSize: '0.875rem',
               fontWeight: 700,
               cursor: json.trim() ? 'pointer' : 'default',

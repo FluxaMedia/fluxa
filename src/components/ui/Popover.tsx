@@ -3,12 +3,12 @@ import { createPortal } from 'react-dom';
 import { useIsMobile } from '../../platform/viewport';
 
 export const POPOVER_SURFACE: CSSProperties = {
-  background: '#1A1A1A',
-  border: '1px solid rgba(255,255,255,0.12)',
+  background: 'var(--fluxa-surface-raised)',
+  border: '1px solid var(--fluxa-border-strong)',
   borderRadius: '0.625rem',
   boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.6)',
   scrollbarWidth: 'thin',
-  scrollbarColor: 'rgba(255,255,255,0.10) transparent',
+  scrollbarColor: 'var(--fluxa-border) transparent',
 };
 
 type Placement = 'bottom-start' | 'bottom-end' | 'bottom' | 'top-start' | 'top-end' | 'top';
@@ -125,7 +125,7 @@ export function Popover({
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex, display: 'flex', alignItems: 'flex-end' }}
+        style={{ position: 'fixed', inset: 0, background: 'var(--fluxa-scrim)', zIndex, display: 'flex', alignItems: 'flex-end' }}
       >
         <div
           ref={panelRef}

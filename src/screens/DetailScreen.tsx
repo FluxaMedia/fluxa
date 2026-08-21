@@ -616,7 +616,7 @@ function ResumeDialog({
         position: 'fixed',
         inset: 0,
         zIndex: 99998,
-        background: 'rgba(0,0,0,0.72)',
+        background: 'var(--fluxa-scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -626,8 +626,8 @@ function ResumeDialog({
     >
       <div
         style={{
-          background: '#18191f',
-          border: '1px solid rgba(255,255,255,0.10)',
+          background: 'var(--fluxa-surface-raised)',
+          border: '1px solid var(--fluxa-border)',
           borderRadius: '0.75rem',
           padding: '1.75rem 1.75rem 1.5rem',
           maxWidth: '22.5rem',
@@ -636,15 +636,15 @@ function ResumeDialog({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <p style={{ margin: '0 0 1.5rem', fontSize: '1rem', fontWeight: 600, color: '#fff' }}>{t('detail.resume_dialog_title')}</p>
+        <p style={{ margin: '0 0 1.5rem', fontSize: '1rem', fontWeight: 600, color: 'var(--fluxa-text-primary)' }}>{t('detail.resume_dialog_title')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
           <button
             style={{
               padding: '0.6875rem 1.125rem',
               borderRadius: '0.5rem',
               border: 'none',
-              background: '#fff',
-              color: '#000',
+              background: 'var(--fluxa-accent)',
+              color: 'var(--fluxa-accent-foreground)',
               fontSize: '0.8125rem',
               fontWeight: 600,
               fontFamily: FONT,
@@ -659,9 +659,9 @@ function ResumeDialog({
             style={{
               padding: '0.6875rem 1.125rem',
               borderRadius: '0.5rem',
-              border: '1px solid rgba(255,255,255,0.12)',
+              border: '1px solid var(--fluxa-border-strong)',
               background: 'transparent',
-              color: 'rgba(255,255,255,0.70)',
+              color: 'var(--fluxa-text-secondary)',
               fontSize: '0.8125rem',
               fontFamily: FONT,
               cursor: 'pointer',
