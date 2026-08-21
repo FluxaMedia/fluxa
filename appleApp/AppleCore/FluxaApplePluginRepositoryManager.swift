@@ -136,6 +136,7 @@ final class FluxaApplePluginRepositoryManager {
         let rawJson = executePluginScraper(
             client: httpClient,
             code: code,
+            repositoryUrl: scraper.repositoryUrl,
             scraperId: scraper.id,
             scraperSettingsJson: scraper.settingsJson,
             tmdbId: tmdbId,

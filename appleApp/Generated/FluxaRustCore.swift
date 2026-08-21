@@ -473,6 +473,22 @@ fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
+    typealias FfiType = Double
+    typealias SwiftType = Double
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
+        return try lift(readDouble(&buf))
+    }
+
+    public static func write(_ value: Double, into buf: inout [UInt8]) {
+        writeDouble(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -672,6 +688,12 @@ public func FfiConverterTypePluginHttpResponse_lower(_ value: PluginHttpResponse
 
 public protocol PluginHttpClient: AnyObject, Sendable {
     
+    /**
+     * Before every connection, resolve the requested host and reject every
+     * loopback, private, link-local, or unspecified A/AAAA result. Apply the
+     * same check to every redirect target to prevent DNS rebinding and redirect
+     * based SSRF; this core-side policy can only inspect the original URL.
+     */
     func fetch(request: PluginHttpRequest)  -> PluginHttpResponse
     
 }
@@ -871,9 +893,25 @@ fileprivate struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
         return dict
     }
 }
+public func appCoreDispatchDeltaJson(handle: Int64, actionJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_app_core_dispatch_delta_json(
+        FfiConverterInt64.lower(handle),
+        FfiConverterString.lower(actionJson),$0
+    )
+})
+}
 public func appCoreDispatchJson(handle: Int64, actionJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_fluxa_core_fn_func_app_core_dispatch_json(
+        FfiConverterInt64.lower(handle),
+        FfiConverterString.lower(actionJson),$0
+    )
+})
+}
+public func appCoreDispatchResultJson(handle: Int64, actionJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_app_core_dispatch_result_json(
         FfiConverterInt64.lower(handle),
         FfiConverterString.lower(actionJson),$0
     )
@@ -883,6 +921,26 @@ public func appCoreStateJson(handle: Int64) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_fluxa_core_fn_func_app_core_state_json(
         FfiConverterInt64.lower(handle),$0
+    )
+})
+}
+public func appCoreStateResultJson(handle: Int64) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_app_core_state_result_json(
+        FfiConverterInt64.lower(handle),$0
+    )
+})
+}
+public func appCoreUpdatePlayer(handle: Int64, positionMs: Int64, streamIndex: Int64, buffering: Bool, playbackEnded: Bool, started: Bool, rendered: Bool) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_app_core_update_player(
+        FfiConverterInt64.lower(handle),
+        FfiConverterInt64.lower(positionMs),
+        FfiConverterInt64.lower(streamIndex),
+        FfiConverterBool.lower(buffering),
+        FfiConverterBool.lower(playbackEnded),
+        FfiConverterBool.lower(started),
+        FfiConverterBool.lower(rendered),$0
     )
 })
 }
@@ -938,11 +996,12 @@ public func drainCoreErrorLogJson() -> String  {
     )
 })
 }
-public func executePluginScraper(client: PluginHttpClient, code: String, scraperId: String, scraperSettingsJson: String, tmdbId: String, mediaType: String, season: Int32?, episode: Int32?) -> String  {
+public func executePluginScraper(client: PluginHttpClient, code: String, repositoryUrl: String, scraperId: String, scraperSettingsJson: String, tmdbId: String, mediaType: String, season: Int32?, episode: Int32?) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_fluxa_core_fn_func_execute_plugin_scraper(
         FfiConverterCallbackInterfacePluginHttpClient_lower(client),
         FfiConverterString.lower(code),
+        FfiConverterString.lower(repositoryUrl),
         FfiConverterString.lower(scraperId),
         FfiConverterString.lower(scraperSettingsJson),
         FfiConverterString.lower(tmdbId),
@@ -974,9 +1033,25 @@ public func headlessEngineCompleteEffectJson(handle: Int64, resultJson: String) 
     )
 })
 }
+public func headlessEngineCompleteEffectResultJson(handle: Int64, resultJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_headless_engine_complete_effect_result_json(
+        FfiConverterInt64.lower(handle),
+        FfiConverterString.lower(resultJson),$0
+    )
+})
+}
 public func headlessEngineDispatchJson(handle: Int64, actionJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_fluxa_core_fn_func_headless_engine_dispatch_json(
+        FfiConverterInt64.lower(handle),
+        FfiConverterString.lower(actionJson),$0
+    )
+})
+}
+public func headlessEngineDispatchResultJson(handle: Int64, actionJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_headless_engine_dispatch_result_json(
         FfiConverterInt64.lower(handle),
         FfiConverterString.lower(actionJson),$0
     )
@@ -986,6 +1061,47 @@ public func headlessEngineSnapshotJson(handle: Int64) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_fluxa_core_fn_func_headless_engine_snapshot_json(
         FfiConverterInt64.lower(handle),$0
+    )
+})
+}
+/**
+ * Structured alternatives to the legacy lifecycle calls below. They preserve
+ * the common `{ ok, value | error }` contract without changing existing FFI
+ * return types used by older Kotlin and Swift clients.
+ */
+public func headlessEngineSnapshotResultJson(handle: Int64) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_headless_engine_snapshot_result_json(
+        FfiConverterInt64.lower(handle),$0
+    )
+})
+}
+/**
+ * Returns the parsed subtitle cues for the platform subtitle picker.
+ *
+ * These explicit UniFFI functions keep Swift consumers independent from the
+ * generic `core_invoke` bridge while leaving the subtitle-sync policy in Rust.
+ */
+public func subtitleCueListJson(subtitleText: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_subtitle_cue_list_json(
+        FfiConverterString.lower(subtitleText),$0
+    )
+})
+}
+public func subtitleSyncApplyJson(capturedTime: Double, cueStart: Double) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_subtitle_sync_apply_json(
+        FfiConverterDouble.lower(capturedTime),
+        FfiConverterDouble.lower(cueStart),$0
+    )
+})
+}
+public func subtitleSyncCaptureJson(subtitleText: String, currentTime: Double) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_fluxa_core_fn_func_subtitle_sync_capture_json(
+        FfiConverterString.lower(subtitleText),
+        FfiConverterDouble.lower(currentTime),$0
     )
 })
 }
@@ -1005,10 +1121,22 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_fluxa_core_checksum_func_app_core_dispatch_delta_json() != 31429) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_fluxa_core_checksum_func_app_core_dispatch_json() != 29233) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_fluxa_core_checksum_func_app_core_dispatch_result_json() != 41164) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_fluxa_core_checksum_func_app_core_state_json() != 13708) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_fluxa_core_checksum_func_app_core_state_result_json() != 47382) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_fluxa_core_checksum_func_app_core_update_player() != 42020) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_fluxa_core_checksum_func_core_capabilities_json() != 55183) {
@@ -1032,7 +1160,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_fluxa_core_checksum_func_drain_core_error_log_json() != 16662) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_fluxa_core_checksum_func_execute_plugin_scraper() != 40233) {
+    if (uniffi_fluxa_core_checksum_func_execute_plugin_scraper() != 34888) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_fluxa_core_checksum_func_fluxa_core_version() != 38862) {
@@ -1044,13 +1172,31 @@ private let initializationResult: InitializationResult = {
     if (uniffi_fluxa_core_checksum_func_headless_engine_complete_effect_json() != 61331) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_fluxa_core_checksum_func_headless_engine_complete_effect_result_json() != 57934) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_fluxa_core_checksum_func_headless_engine_dispatch_json() != 33612) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_fluxa_core_checksum_func_headless_engine_dispatch_result_json() != 33657) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_fluxa_core_checksum_func_headless_engine_snapshot_json() != 60797) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_fluxa_core_checksum_method_pluginhttpclient_fetch() != 61885) {
+    if (uniffi_fluxa_core_checksum_func_headless_engine_snapshot_result_json() != 31247) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_fluxa_core_checksum_func_subtitle_cue_list_json() != 24870) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_fluxa_core_checksum_func_subtitle_sync_apply_json() != 10964) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_fluxa_core_checksum_func_subtitle_sync_capture_json() != 31450) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_fluxa_core_checksum_method_pluginhttpclient_fetch() != 4808) {
         return InitializationResult.apiChecksumMismatch
     }
 
