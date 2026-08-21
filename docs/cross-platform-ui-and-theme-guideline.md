@@ -426,7 +426,7 @@ Status: React/CSS adapter is implemented. Compose and SwiftUI adapters, plus cro
 - replace tvOS hardcoded application colors
 - preserve content-brand colors as separate tokens
 
-Status: global desktop tokens, root styling, navigation, loading surfaces, and profile selection use semantic variables. A full hardcoded-color audit is still required before calling this phase complete.
+Status: global desktop tokens, root styling, navigation, loading surfaces, profile selection, Home/Detail, Search, Library, Category, poster grid, and hero surfaces use semantic variables. Provider/IMDb/rating colors and player-specific overlays remain explicit by design; a final hardcoded-color audit is still required before calling this phase complete.
 
 ### Phase 4: Add built-in theme selection
 

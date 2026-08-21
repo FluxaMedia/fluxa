@@ -77,11 +77,13 @@ html {
   --primary-foreground-color: #FFFFFF;
   --secondary-foreground-color: #000000;
   --fluxa-background: #060606;
+  --fluxa-background-rgb: 6, 6, 6;
   --fluxa-background-elevated: #0A0A0B;
   --fluxa-surface: #141416;
   --fluxa-surface-raised: #1C1C1F;
   --fluxa-navigation: #0D0D0D;
   --fluxa-text-primary: #FFFFFF;
+  --fluxa-text-primary-rgb: 255, 255, 255;
   --fluxa-text-secondary: rgba(255,255,255,0.72);
   --fluxa-text-muted: rgba(255,255,255,0.55);
   --fluxa-text-strong: rgba(255,255,255,0.88);
@@ -90,10 +92,12 @@ html {
   --fluxa-border: rgba(255,255,255,0.08);
   --fluxa-border-strong: rgba(255,255,255,0.16);
   --fluxa-accent: #E85D3F;
+  --fluxa-accent-rgb: 232, 93, 63;
   --fluxa-accent-foreground: #FFFFFF;
   --fluxa-focus: #FFFFFF;
   --fluxa-fill-active: rgba(255,255,255,0.22);
   --fluxa-fill-strong: rgba(255,255,255,0.3);
+  --fluxa-fill-hover: var(--fluxa-border-strong);
   --fluxa-accent-soft: rgba(232,93,63,0.2);
   --fluxa-accent-shadow: rgba(232,93,63,0.65);
 }

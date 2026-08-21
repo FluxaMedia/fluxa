@@ -101,6 +101,12 @@ function withAlpha(color: string, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
+function rgbChannels(color: string): string {
+  const value = color.slice(1);
+  if (value.length !== 6 && value.length !== 8) return '255, 255, 255';
+  return [value.slice(0, 2), value.slice(2, 4), value.slice(4, 6)].map((channel) => Number.parseInt(channel, 16)).join(', ');
+}
+
 export function resolveTheme(themeId: string | undefined, rawSkinConfig?: string, customThemes?: ThemePack[]): ThemeRuntime {
   const parsed = parseSkinConfig(rawSkinConfig);
   return {
@@ -119,11 +125,15 @@ export function resolveTheme(themeId: string | undefined, rawSkinConfig?: string
 export function themeCssVariables(theme: ThemePack): Record<string, string> {
   const variables: Record<string, string> = {};
   for (const [key, value] of Object.entries(theme.colors)) variables[cssName(key)] = value;
+  variables['--fluxa-background-rgb'] = rgbChannels(theme.colors.background);
+  variables['--fluxa-text-primary-rgb'] = rgbChannels(theme.colors.textPrimary);
+  variables['--fluxa-accent-rgb'] = rgbChannels(theme.colors.accent);
   variables['--fluxa-text-strong'] = withAlpha(theme.colors.textPrimary, 0.88);
   variables['--fluxa-text-dim'] = withAlpha(theme.colors.textMuted, 0.72);
   variables['--fluxa-text-faint'] = withAlpha(theme.colors.textMuted, 0.48);
   variables['--fluxa-fill-active'] = withAlpha(theme.colors.textPrimary, 0.22);
   variables['--fluxa-fill-strong'] = withAlpha(theme.colors.textPrimary, 0.3);
+  variables['--fluxa-fill-hover'] = theme.colors.borderStrong;
   variables['--fluxa-accent-soft'] = withAlpha(theme.colors.accent, 0.2);
   variables['--fluxa-accent-shadow'] = withAlpha(theme.colors.accent, 0.65);
   variables['--fluxa-display-font'] = theme.typography.displayFont;

@@ -133,7 +133,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
         overflowX: 'hidden',
         position: 'relative',
         scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(255,255,255,0.1) transparent',
+        scrollbarColor: 'var(--fluxa-border) transparent',
         contain: 'strict',
       }}
       onScroll={handleScroll}
@@ -177,7 +177,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
                 width: cardWidth,
                 height: cardHeight,
                 borderRadius: posterPrefs.radius,
-                background: '#222222',
+                background: 'var(--fluxa-surface-raised)',
                 transform: `translate3d(${left}px, ${top}px, 0)`,
                 animation: 'pulse 1.6s ease-in-out infinite',
                 animationDelay: `${(col % 8) * 0.07}s`,
@@ -233,8 +233,8 @@ const PosterCard = React.memo(function PosterCard({
           height: posterPrefs.height,
           borderRadius: posterPrefs.radius,
           overflow: 'hidden',
-          background: '#222222',
-          boxShadow: selected ? 'inset 0 0 0 0.125rem rgba(255,255,255,0.55), 0 0 0.75rem rgba(255,255,255,0.08)' : 'none',
+          background: 'var(--fluxa-surface-raised)',
+          boxShadow: selected ? 'inset 0 0 0 0.125rem var(--fluxa-text-muted), 0 0 0.75rem var(--fluxa-border)' : 'none',
         }}
       >
         {imgSrc && !imgErr ? (
@@ -254,10 +254,10 @@ const PosterCard = React.memo(function PosterCard({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#222222',
+              background: 'var(--fluxa-surface-raised)',
             }}
           >
-            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '1.5rem', fontWeight: 900 }}>
+            <span style={{ color: 'var(--fluxa-text-faint)', fontSize: '1.5rem', fontWeight: 900 }}>
               {(meta.name ?? '').slice(0, 2).toUpperCase()}
             </span>
           </div>
@@ -267,7 +267,7 @@ const PosterCard = React.memo(function PosterCard({
         <>
           <p
             style={{
-              color: '#fff',
+              color: 'var(--fluxa-text-primary)',
               fontSize: '0.875rem',
               fontWeight: 700,
               margin: '0.375rem 0 0',
@@ -282,7 +282,7 @@ const PosterCard = React.memo(function PosterCard({
           {(meta.year ?? meta.releaseInfo) && (
             <p
               style={{
-                color: 'rgba(255,255,255,0.45)',
+                color: 'var(--fluxa-text-muted)',
                 fontSize: '0.75rem',
                 fontWeight: 400,
                 margin: '0.125rem 0 0',
