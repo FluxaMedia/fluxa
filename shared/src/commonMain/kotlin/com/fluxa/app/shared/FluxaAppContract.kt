@@ -70,6 +70,7 @@ internal data class FluxaAppActions(
     val onSettingsPushCategory: (SettingsCategory) -> Unit = {},
     val onSettingsPopCategory: () -> Unit = {},
     val onSettingsSelectCategory: (SettingsCategory) -> Unit = {},
+    val onImportThemeRequested: ((String?) -> Unit) -> Unit = { onResult -> onResult(null) },
     val onAddonStoreAction: (AddonStoreAction) -> Unit = {},
     val onOpenUrlRequested: (String) -> Unit = {},
     val onAddonStoreBackRequested: () -> Unit = {},

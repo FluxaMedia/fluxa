@@ -46,6 +46,7 @@ import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.cardRowSpacing
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.CONTINUE_WATCHING_CATEGORY_ID
+import com.fluxa.app.ui.catalog.LocalFluxaThemePack
 
 @Composable
 fun TvCatalogHomeScreen(
@@ -60,6 +61,7 @@ fun TvCatalogHomeScreen(
     modifier: Modifier = Modifier
 ) {
     val columnFocus = remember { FocusRequester() }
+    val compactLayout = LocalFluxaThemePack.current.layouts.home == "compact"
     Box(modifier = modifier.fillMaxSize()) {
         if (state.rows.isEmpty()) {
             TvCatalogHomeLoading(Modifier.fillMaxSize())
@@ -74,12 +76,12 @@ fun TvCatalogHomeScreen(
                     .focusRequester(columnFocus)
                     .focusRestorer(),
                 contentPadding = PaddingValues(top = 44.dp, bottom = 64.dp),
-                verticalArrangement = Arrangement.spacedBy(30.dp)
+                verticalArrangement = Arrangement.spacedBy(if (compactLayout) 20.dp else 30.dp)
             ) {
                 val heroItems = state.heroItems.ifEmpty {
                     orderedRows.firstOrNull { it.id != CONTINUE_WATCHING_CATEGORY_ID }?.items.orEmpty()
                 }
-                if (state.showHeroSection && heroItems.isNotEmpty()) {
+                if (state.showHeroSection && !compactLayout && heroItems.isNotEmpty()) {
                     item(key = "tv-hero") {
                         TvHeroRow(
                             items = heroItems,

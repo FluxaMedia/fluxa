@@ -97,6 +97,7 @@ data class FluxaAppSettingsCallbacks(
     val onCheckForUpdateRequested: () -> Unit = {},
     val onSettingsBackRequested: () -> Unit = {},
     val onSettingsCanPopChanged: (Boolean) -> Unit = {},
+    val onImportThemeRequested: ((String?) -> Unit) -> Unit = { onResult -> onResult(null) },
 )
 
 data class FluxaAppLibraryCallbacks(

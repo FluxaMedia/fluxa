@@ -95,6 +95,22 @@ internal fun AppRoutesHost(
         }
     }
 
+    var pendingThemeImport by remember { mutableStateOf<((String?) -> Unit)?>(null) }
+    val themePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val callback = pendingThemeImport
+        pendingThemeImport = null
+        coroutineScope.launch {
+            val rawJson = uri?.let {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes().decodeToString() }
+                    }.getOrNull()
+                }
+            }
+            callback?.invoke(rawJson)
+        }
+    }
+
     var pendingLocalMediaFolderPicked by remember {
         mutableStateOf<((com.fluxa.app.shared.feature.localmedia.LocalMediaPickedFolder?) -> Unit)?>(null)
     }
@@ -447,6 +463,10 @@ internal fun AppRoutesHost(
                 },
                 onSettingsBackRequested = navigateBackSafely,
                 onSettingsCanPopChanged = onSettingsCanPopChanged,
+                onImportThemeRequested = { onImported ->
+                    pendingThemeImport = onImported
+                    themePicker.launch("application/json")
+                },
             ),
             overlay = com.fluxa.app.shared.FluxaAppOverlayCallbacks(
                 onOverlayOpenChanged = onOverlayOpenChanged,

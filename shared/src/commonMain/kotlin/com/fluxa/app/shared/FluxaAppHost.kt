@@ -170,6 +170,7 @@ private fun FluxaAppHostContent(
     val onCheckForUpdateRequested = settingsCallbacks.onCheckForUpdateRequested
     val onSettingsBackRequested = settingsCallbacks.onSettingsBackRequested
     val onSettingsCanPopChanged = settingsCallbacks.onSettingsCanPopChanged
+    val onImportThemeRequested = settingsCallbacks.onImportThemeRequested
     val onOverlayOpenChanged = overlayCallbacks.onOverlayOpenChanged
 
     val nuvioIcon = visuals.nuvioIcon
@@ -633,6 +634,7 @@ private fun FluxaAppHostContent(
             onSettingsPushCategory = appState::pushSettingsCategory,
             onSettingsPopCategory = appState::popSettingsCategory,
             onSettingsSelectCategory = appState::selectSettingsCategory,
+            onImportThemeRequested = onImportThemeRequested,
             onAddonStoreAction = { action ->
                 scope.launch {
                     addonStoreStore?.dispatch(action)

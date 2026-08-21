@@ -65,6 +65,7 @@ import com.fluxa.app.shared.feature.search.SearchScreen
 import com.fluxa.app.shared.feature.player.PlayerControlsSurface
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaThemePacks
+import com.fluxa.app.ui.catalog.LocalFluxaThemePack
 import com.fluxa.app.ui.catalog.toColorScheme
 
 enum class FluxaDestination(val titleKey: String) {
@@ -149,6 +150,7 @@ internal fun FluxaApp(
     val onSettingsPushCategory = actions.onSettingsPushCategory
     val onSettingsPopCategory = actions.onSettingsPopCategory
     val onSettingsSelectCategory = actions.onSettingsSelectCategory
+    val onImportThemeRequested = actions.onImportThemeRequested
     val onAddonStoreAction = actions.onAddonStoreAction
     val onOpenUrlRequested = actions.onOpenUrlRequested
     val onAddonStoreBackRequested = actions.onAddonStoreBackRequested
@@ -180,7 +182,10 @@ internal fun FluxaApp(
         // bottom navigation is actually visible and consuming the haze source.
         val liquidGlassRequested = !isTv && settingsState?.appearance?.liquidGlassMode == true
         val hazeState = rememberHazeState()
-        androidx.compose.runtime.CompositionLocalProvider(com.fluxa.app.ui.catalog.LocalAccentColor provides accentColor) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            com.fluxa.app.ui.catalog.LocalAccentColor provides accentColor,
+            LocalFluxaThemePack provides themePack,
+        ) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -451,6 +456,7 @@ internal fun FluxaApp(
                     onPushCategory = onSettingsPushCategory,
                     onPopCategory = onSettingsPopCategory,
                     onSelectCategory = onSettingsSelectCategory,
+                    onImportThemeRequested = onImportThemeRequested,
                     deviceType = deviceType,
                     brandIcons = settingsBrandIcons,
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)

@@ -248,6 +248,7 @@ data class SettingsUiState(
 sealed interface SettingsAction {
     data class GeneralChanged(val value: SettingsGeneralUiModel) : SettingsAction
     data class AppearanceChanged(val value: SettingsAppearanceUiModel) : SettingsAction
+    data class ThemeImported(val rawJson: String) : SettingsAction
     data class AppearanceHomeChanged(val value: SettingsAppearanceHomeUiModel) : SettingsAction
     data class AppearanceDetailChanged(val value: SettingsAppearanceDetailUiModel) : SettingsAction
     data class PlaybackChanged(val value: SettingsPlaybackUiModel) : SettingsAction

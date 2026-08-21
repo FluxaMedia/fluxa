@@ -97,6 +97,7 @@ fun SettingsScreen(
     onSelectCategory: (SettingsCategory) -> Unit = {},
     deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
     brandIcons: SettingsBrandIcons = SettingsBrandIcons(),
+    onImportThemeRequested: ((String?) -> Unit) -> Unit = { onResult -> onResult(null) },
     modifier: Modifier = Modifier
 ) {
     val category = backStack.lastOrNull() ?: SettingsCategory.Hub
@@ -159,7 +160,8 @@ fun SettingsScreen(
                     CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
                         SettingsCategoryContent(
                             animatedCategory, state, lang, brandIcons, onAction, onPushCategory,
-                            onSwitchProfilesRequested, profileState, onProfileAction, navigateAndHighlight
+                            onSwitchProfilesRequested, profileState, onProfileAction, navigateAndHighlight,
+                            onImportThemeRequested
                         )
                     }
                     Spacer(Modifier.height(120.dp))
@@ -206,9 +208,10 @@ fun SettingsScreen(
             ) {
                 CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
                     SettingsCategoryContent(
-                            animatedCategory, state, lang, brandIcons, onAction, onPushCategory,
-                            onSwitchProfilesRequested, profileState, onProfileAction, navigateAndHighlight
-                        )
+                        animatedCategory, state, lang, brandIcons, onAction, onPushCategory,
+                        onSwitchProfilesRequested, profileState, onProfileAction, navigateAndHighlight,
+                        onImportThemeRequested
+                    )
                 }
                 Spacer(Modifier.height(120.dp))
             }
@@ -229,7 +232,8 @@ internal fun SettingsCategoryContent(
     onSwitchProfiles: () -> Unit,
     profileState: ProfileUiState?,
     onProfileAction: (ProfileAction) -> Unit,
-    onNavigateSearchResult: (SettingsSearchEntry) -> Unit
+    onNavigateSearchResult: (SettingsSearchEntry) -> Unit,
+    onImportThemeRequested: ((String?) -> Unit) -> Unit
 ) {
     when (category) {
         SettingsCategory.Hub -> SettingsHubContent(
@@ -256,7 +260,7 @@ internal fun SettingsCategoryContent(
         SettingsCategory.MdblistApi -> SettingsMdblistApiContent(state.account, lang, onAction)
         SettingsCategory.Notifications -> SettingsNotificationsContent(state.notifications, lang, onAction)
         SettingsCategory.General -> SettingsGeneralContent(state.general, lang, onAction)
-        SettingsCategory.Appearance -> SettingsAppearanceContent(state.appearance, lang, onAction, onNavigate = onNavigate)
+        SettingsCategory.Appearance -> SettingsAppearanceContent(state.appearance, lang, onAction, onNavigate = onNavigate, onImportThemeRequested = onImportThemeRequested)
         SettingsCategory.AppearanceHome -> SettingsAppearanceHomeContent(state.appearanceHome, lang, onAction)
         SettingsCategory.AppearanceDetail -> SettingsAppearanceDetailContent(state.appearanceDetail, lang, onAction)
         SettingsCategory.Playback -> SettingsPlaybackCoreContent(state.playback, state.subtitles, lang, onAction, onNavigate = onNavigate)

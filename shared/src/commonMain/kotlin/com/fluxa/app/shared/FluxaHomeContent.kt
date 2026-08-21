@@ -147,6 +147,7 @@ import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.cardRowSpacing
 import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.LocalFluxaThemePack
 import com.fluxa.app.ui.catalog.PosterActionSheet
 import com.fluxa.app.ui.catalog.WindowWidthClass
 
@@ -186,6 +187,8 @@ internal fun FluxaHomeContent(
             contentRows.filterNot { it.id == CONTINUE_WATCHING_CATEGORY_ID }
     }
     val isDesktop = LocalDeviceType.current == DeviceType.Desktop
+    val homeLayout = LocalFluxaThemePack.current.layouts.home
+    val compactLayout = homeLayout == "compact"
     val listState = rememberLazyListState()
     var initialHeroResolved by remember { mutableStateOf(false) }
     var posterActionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
@@ -202,9 +205,9 @@ internal fun FluxaHomeContent(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = bottomContentInset),
-            verticalArrangement = Arrangement.spacedBy(if (isDesktop && showHero) 10.dp else if (isDesktop) 18.dp else 24.dp)
+            verticalArrangement = Arrangement.spacedBy(if (compactLayout) 14.dp else if (isDesktop && showHero) 10.dp else if (isDesktop) 18.dp else 24.dp)
         ) {
-            if (showHero) {
+            if (showHero && !compactLayout) {
                 item(key = "hero") {
                     FluxaHomeHero(
                         items = heroItems,

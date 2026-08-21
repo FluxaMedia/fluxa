@@ -62,12 +62,16 @@ internal fun SettingsGeneralContent(model: SettingsGeneralUiModel, lang: String?
 }
 
 @Composable
-internal fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit) {
-    val themeOptions = listOf(
+internal fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit, onImportThemeRequested: ((String?) -> Unit) -> Unit) {
+    val builtInThemeOptions = listOf(
         SettingsChoiceOption("fluxa-dark", AppStrings.t(lang, "theme.fluxa_dark")),
         SettingsChoiceOption("amoled", AppStrings.t(lang, "theme.amoled")),
         SettingsChoiceOption("midnight-blue", AppStrings.t(lang, "theme.midnight_blue")),
     )
+    val themeOptions = builtInThemeOptions + FluxaThemePacks.parseJson(model.themeJson)
+        ?.takeIf { pack -> builtInThemeOptions.none { it.value == pack.id } }
+        ?.let { pack -> listOf(SettingsChoiceOption(pack.id, AppStrings.t(lang, "theme.custom"))) }
+        .orEmpty()
     val themeJson = Json { encodeDefaults = true }
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_appearance_theme"))
     SettingsGroupCard {
@@ -79,6 +83,10 @@ internal fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: S
             }
             onAction(SettingsAction.AppearanceChanged(model.copy(themeId = id, themeJson = themeJson.encodeToString(pack))))
         }
+        SettingsNavRow(
+            AppStrings.t(lang, "settings.theme_import"),
+            description = AppStrings.t(lang, "settings.theme_import_desc")
+        ) { onImportThemeRequested { rawJson -> rawJson?.let { onAction(SettingsAction.ThemeImported(it)) } } }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 10.dp)) {
             Text(AppStrings.t(lang, "auto.accent_color"), color = Color.White, modifier = Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

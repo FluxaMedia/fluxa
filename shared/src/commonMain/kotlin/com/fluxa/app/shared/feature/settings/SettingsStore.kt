@@ -1,5 +1,6 @@
 package com.fluxa.app.shared.feature.settings
 
+import com.fluxa.app.ui.catalog.FluxaThemePacks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,14 @@ class SettingsStore(
         when (action) {
             is SettingsAction.GeneralChanged -> dataSource.updateGeneral(action.value)
             is SettingsAction.AppearanceChanged -> dataSource.updateAppearance(action.value)
+            is SettingsAction.ThemeImported -> {
+                val pack = FluxaThemePacks.parseJson(action.rawJson)
+                if (pack != null) {
+                    dataSource.updateAppearance(
+                        state.value.appearance.copy(themeId = pack.id, themeJson = action.rawJson)
+                    )
+                }
+            }
             is SettingsAction.AppearanceHomeChanged -> dataSource.updateAppearanceHome(action.value)
             is SettingsAction.AppearanceDetailChanged -> dataSource.updateAppearanceDetail(action.value)
             is SettingsAction.PlaybackChanged -> dataSource.updatePlayback(action.value)
