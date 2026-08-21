@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, HardDrive, Palette, PlayCircle, Puzzle, RefreshCw, Settings, User } from 'lucide-react';
+import { ArrowLeft, Download, HardDrive, LayoutGrid, Palette, PlayCircle, Plug, Puzzle, RefreshCw, Settings, User } from 'lucide-react';
 
 export function AccountIcon() {
   return <User size={22} />;
@@ -11,6 +11,12 @@ export function PlayCircleIcon() {
 }
 export function ExtensionIcon() {
   return <Puzzle size={22} />;
+}
+export function PluginIcon() {
+  return <Plug size={22} />;
+}
+export function CatalogsIcon() {
+  return <LayoutGrid size={22} />;
 }
 export function SettingsIcon() {
   return <Settings size={22} />;

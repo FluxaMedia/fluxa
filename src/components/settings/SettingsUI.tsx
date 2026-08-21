@@ -3,6 +3,8 @@ export {
   PaletteIcon,
   PlayCircleIcon,
   ExtensionIcon,
+  PluginIcon,
+  CatalogsIcon,
   SettingsIcon,
   ArrowBackIcon,
   StorageIcon,

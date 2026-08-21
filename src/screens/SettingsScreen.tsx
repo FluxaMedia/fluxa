@@ -18,16 +18,17 @@ import type { Prefs, Tab } from '../components/settings/settingsTypes';
 import {
   AccountIcon,
   ArrowBackIcon,
+  CatalogsIcon,
   DownloadIcon,
   ExtensionIcon,
   PaletteIcon,
   PlayCircleIcon,
+  PluginIcon,
   RefreshIcon,
   SettingsIcon,
   SidebarDivider,
   SidebarItem,
   SettingsDetailHeader,
-  StorageIcon,
   VersionFooter,
 } from '../components/settings/SettingsUI';
 import { AccountSection } from '../components/settings/AccountSection';
@@ -51,9 +52,9 @@ const TABS: { id: Tab; labelKey: string; subtitleKey: string; icon: React.ReactN
   { id: 'playback', labelKey: 'auto.playback', subtitleKey: 'auto.player_behavior_and_defaults', icon: <PlayCircleIcon /> },
   { id: 'shortcuts', labelKey: 'settings.shortcuts_tab', subtitleKey: 'settings.shortcuts_tab_desc', icon: <Keyboard size={22} /> },
   { id: 'controller', labelKey: 'settings.controller_tab', subtitleKey: 'settings.controller_tab_desc', icon: <Gamepad2 size={22} /> },
-  { id: 'content', labelKey: 'auto.catalogs', subtitleKey: 'auto.categories_sources_and_ranking', icon: <StorageIcon /> },
+  { id: 'content', labelKey: 'auto.catalogs', subtitleKey: 'auto.categories_sources_and_ranking', icon: <CatalogsIcon /> },
   { id: 'addons', labelKey: 'auto.add_ons', subtitleKey: 'auto.installed_add_ons_and_settings', icon: <ExtensionIcon /> },
-  { id: 'plugins', labelKey: 'plugins.title', subtitleKey: 'plugins.subtitle', icon: <ExtensionIcon /> },
+  { id: 'plugins', labelKey: 'plugins.title', subtitleKey: 'plugins.subtitle', icon: <PluginIcon /> },
   { id: 'downloads', labelKey: 'auto.downloads', subtitleKey: 'auto.download_and_storage_settings', icon: <DownloadIcon /> },
 ];
 
