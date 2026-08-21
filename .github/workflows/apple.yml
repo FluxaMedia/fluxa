@@ -78,6 +78,7 @@ jobs:
       - name: Set up XcodeGen
         run: |
           if ! command -v xcodegen >/dev/null; then
+            brew untap aws/tap || true
             brew install xcodegen
           fi
 
@@ -153,6 +154,7 @@ jobs:
       - name: Set up XcodeGen
         run: |
           if ! command -v xcodegen >/dev/null; then
+            brew untap aws/tap || true
             brew install xcodegen
           fi
 
