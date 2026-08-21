@@ -45,7 +45,7 @@ export function useAppInit(
 
   const loadHomeOnStartup = useCallback(async () => {
     try {
-      const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', force: true, language: getLanguage() }));
+      const homeResult = await dispatchAction(JSON.stringify({ type: 'homeLoadRequested', language: getLanguage() }));
       if (homeResult) {
         updateState(homeResult.state);
         if (homeResult.effects.length > 0) await pumpEffects(homeResult.effects, updateState);
@@ -95,21 +95,27 @@ export function useAppInit(
         setReady(true);
       }
 
+      const reconcileProfile = async (profileId: string, local: UserProfile) => {
+        const refreshed = await refreshNuvioProfiles(local).catch(() => local);
+        const resolvedProfiles = await loadProfiles();
+        setAllProfiles(resolvedProfiles);
+        setActiveProfile(resolvedProfiles.find((p) => p.id === profileId) ?? refreshed);
+        await hydratePluginsFromNuvio(refreshed).catch(() => undefined);
+        await hydratePluginsFromStorage(updateState);
+      };
+
       try {
         const [profileId, profiles] = await Promise.all([getActiveProfileId(), loadProfiles()]);
-        let resolvedProfiles = profiles;
         if (profileId) {
-          let found = profiles.find((p) => p.id === profileId) ?? null;
-          if (found?.nuvioAccessToken) {
-            const refreshed = await refreshNuvioProfiles(found).catch(() => found);
-            resolvedProfiles = await loadProfiles();
-            found = resolvedProfiles.find((p) => p.id === profileId) ?? refreshed;
-          }
-          setAllProfiles(resolvedProfiles);
-          setActiveProfile(found);
-          if (found) {
-            await hydratePluginsFromNuvio(found).catch(() => undefined);
-            await hydratePluginsFromStorage(updateState);
+          const local = profiles.find((p) => p.id === profileId) ?? null;
+          if (local) {
+            setAllProfiles(profiles);
+            setActiveProfile(local);
+            if (local.nuvioAccessToken) void reconcileProfile(profileId, local).catch(() => undefined);
+            else void hydratePluginsFromStorage(updateState).catch(() => undefined);
+          } else {
+            setAllProfiles(profiles);
+            setActiveProfile(null);
           }
         }
       } catch {
