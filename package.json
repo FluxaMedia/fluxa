@@ -18,7 +18,8 @@
     "tauri": "tauri",
     "bump": "bash scripts/bump-version.sh",
     "lint:design": "node scripts/check-design.mjs",
-    "theme:sync": "node scripts/generate-theme-consumers.mjs"
+    "theme:sync": "node scripts/generate-theme-consumers.mjs",
+    "theme:verify": "node scripts/verify-theme-consumers.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.64.0",
