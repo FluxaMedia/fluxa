@@ -158,7 +158,7 @@ The long-term source of truth should be a small versioned theme contract package
 - a dedicated `fluxa-theme` package/repository, or
 - a `contracts/theme` directory maintained with the cross-platform contract files.
 
-The first implementation may live in `fluxa-desktop` while the schema is stabilized, but the schema and built-in theme data must then be copied/generated into the Android and Apple consumers rather than manually redesigned.
+The first implementation may live in `fluxa-desktop` while the schema is stabilized. `npm run theme:sync` generates the native default consumers from `contracts/default-theme.json`; generated files must not be hand-edited.
 
 ### Theme pack format
 
@@ -274,7 +274,7 @@ FluxaTheme
 
 SwiftUI maps it to an environment value or an equivalent `FluxaTheme` value. webOS uses the React/CSS adapter and must not receive a Compose/WASM theme implementation.
 
-The adapter is allowed to translate a token for platform needs. It is not allowed to invent a different meaning for the token.
+The adapter is allowed to translate a token for platform needs. It is not allowed to invent a different meaning for the token. The currently supported cross-platform home layout presets are `shelves` and `compact`; unknown presets fall back to `shelves` on native shells.
 
 ### Theme scope and sync
 
@@ -329,7 +329,7 @@ The same React build is the correct UI path for browser and webOS. Platform modu
 
 The first desktop foundation is now present: `contracts/theme.schema.json` defines the portable contract, `contracts/default-theme.json` is the default data source, and `src/theme/adapter.ts` maps it to CSS variables. Built-in theme selection and a first skin capability (showing or hiding Calendar in navigation) are wired through the existing profile preferences. The adapter validates theme data and safely falls back when skin JSON is invalid.
 
-The desktop shell now accepts and exports validated JSON theme packs up to 256 KiB, stores up to 24 custom packs in profile preferences, and applies skin visibility and section-order settings to the Home and Detail screens. Detail skin section IDs are `hero`, `actions`, `meta`, `tabs`, `episodes`, `details`, `related`, and `rail`. Packs contain data only; they cannot execute code. Artwork/font installation and drag-and-drop route ordering remain future extensions. The Compose adapter and Android theme persistence are implemented in `fluxa`; the tvOS SwiftUI adapter is implemented in `appleApp/tvOS`.
+The desktop shell now accepts and exports validated JSON theme packs up to 256 KiB, stores up to 24 custom packs in profile preferences, and applies skin visibility and section-order settings to the Home and Detail screens. Detail skin section IDs are `hero`, `actions`, `meta`, `tabs`, `episodes`, `details`, `related`, and `rail`. Packs contain data only; they cannot execute code. Artwork/font installation and drag-and-drop route ordering remain future extensions. The Compose adapter and Android custom JSON import are implemented in `fluxa`; the tvOS SwiftUI adapter loads a persisted JSON pack from `AppStorage` and is implemented in `appleApp/tvOS`.
 
 ### Android and Android TV
 
@@ -416,7 +416,7 @@ Status: desktop contract, default data, documentation, and validation tests are 
 - add the SwiftUI adapter for tvOS
 - add a snapshot/golden test that the same theme produces equivalent semantic tokens
 
-Status: React/CSS, Compose, and tvOS SwiftUI adapters are implemented. Cross-consumer golden tests and a canonical generated contract package remain to be added.
+Status: React/CSS, Compose, and tvOS SwiftUI adapters are implemented. Native default consumers are generated from the desktop contract. Cross-consumer golden tests and a canonical generated contract package remain to be added.
 
 ### Phase 3: Migrate existing UI
 
@@ -436,7 +436,7 @@ Status: global desktop tokens, root styling, navigation, loading surfaces, profi
 - persist the theme at the selected profile scope
 - verify that missing/invalid themes fall back safely
 
-Status: desktop and Android built-in themes, persistence fields, live application, and safe fallback are implemented. tvOS has the adapter foundation. Live preview/reset, shared profile-scope verification, and native tvOS build verification remain.
+Status: desktop and Android built-in themes, custom JSON import, persistence fields, live application, and safe fallback are implemented. tvOS loads its persisted theme pack through `AppStorage`. Live preview/reset, shared profile-scope verification, and native tvOS build verification remain.
 
 ### Phase 5: Add custom theme packs
 
@@ -456,7 +456,7 @@ Status: desktop JSON import/export, validation, profile persistence, reserved-ID
 - implement only supported presets in tvOS/webOS
 - expose platform capability fallback instead of pretending every layout is identical
 
-Status: desktop Home section visibility and order are implemented. Named layout presets and cross-platform capability fallbacks remain.
+Status: desktop Home section visibility and order are implemented. Android Compose and tvOS consume the `compact` home preset and fall back to the default shelves behavior for unknown values. Broader named layout presets remain.
 
 ## Acceptance criteria
 
@@ -471,6 +471,8 @@ A theme feature is complete only when:
 - a missing custom font or asset has a deterministic fallback
 - theme selection survives restart and profile changes correctly
 - typecheck/build tests cover every affected consumer
+
+The Apple native build must be verified in Xcode CI or on macOS. Linux can verify the generated Swift source shape and the shared Android consumer, but cannot prove the tvOS target compiles.
 
 ## Final architectural decision
 
