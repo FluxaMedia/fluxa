@@ -481,63 +481,65 @@ export function SettingsScreen({
       </div>
 
       <div className="settings-content" style={styles.content}>
-        <SettingsDetailHeader title={t(TABS.find((item) => item.id === tab)?.labelKey ?? 'nav.settings')} />
-        {normalizedSettingsQuery && searchResults.length === 0 && (
-          <div style={settingsSearchStyles.noResults}>{t('settings.search_no_results')}</div>
-        )}
+        <div style={styles.contentInner}>
+          <SettingsDetailHeader title={t(TABS.find((item) => item.id === tab)?.labelKey ?? 'nav.settings')} />
+          {normalizedSettingsQuery && searchResults.length === 0 && (
+            <div style={settingsSearchStyles.noResults}>{t('settings.search_no_results')}</div>
+          )}
 
-        {tab === 'account' && (
-          <AccountSection
-            prefs={prefs}
-            setPref={setPref}
-            prefsLoaded={prefsLoaded}
-            activeProfile={activeProfile}
-            onProfileUpdated={onProfileUpdated}
-            onSwitchProfile={onSwitchProfile}
-            onDispatch={onDispatch}
-            onNuvioSyncComplete={reloadInstalledAddons}
-          />
-        )}
-        {tab === 'general' && <GeneralSection prefs={prefs} setPref={setPref} />}
-        {tab === 'appearance' && <AppearanceSection prefs={prefs} setPref={setPref} />}
-        {tab === 'playback' && <PlaybackSection prefs={prefs} setPref={setPref} />}
-        {tab === 'shortcuts' && <ShortcutsSection />}
-        {tab === 'controller' && <ControllerSection />}
-        {tab === 'content' && (
-          <ContentSection prefs={prefs} setPref={setPref} installedAddons={installedAddons} disabledAddonKeys={disabledAddonKeys} />
-        )}
-        {tab === 'addons' && (
-          <AddonsSection
-            prefs={prefs}
-            setPref={setPref}
-            addonUrl={addonUrl}
-            setAddonUrl={setAddonUrl}
-            installedAddons={installedAddons}
-            disabledAddonKeys={disabledAddonKeys}
-            installLoading={addonInstallStatus.loading}
-            installError={addonInstallStatus.error}
-            onInstall={handleInstall}
-            onRemove={handleRemove}
-            onToggle={handleToggleAddon}
-            onReorder={handleReorderAddon}
-            onDispatch={onDispatch}
-          />
-        )}
-        {tab === 'plugins' && (
-          <PluginsSection
-            pluginUrl={pluginUrl}
-            setPluginUrl={setPluginUrl}
-            repositories={pluginRepositories}
-            scrapers={pluginScrapers}
-            loading={pluginInstallLoading || !!state.plugins?.addingRepositoryUrl}
-            error={pluginInstallError ?? pluginStateError}
-            onInstall={handleInstallPlugin}
-            onRemove={handleRemovePlugin}
-            onRefresh={handleRefreshPlugin}
-            onToggleScraper={handleTogglePluginScraper}
-          />
-        )}
-        {tab === 'downloads' && !isBrowserTarget() && <DownloadsSection prefs={prefs} setPref={setPref} />}
+          {tab === 'account' && (
+            <AccountSection
+              prefs={prefs}
+              setPref={setPref}
+              prefsLoaded={prefsLoaded}
+              activeProfile={activeProfile}
+              onProfileUpdated={onProfileUpdated}
+              onSwitchProfile={onSwitchProfile}
+              onDispatch={onDispatch}
+              onNuvioSyncComplete={reloadInstalledAddons}
+            />
+          )}
+          {tab === 'general' && <GeneralSection prefs={prefs} setPref={setPref} />}
+          {tab === 'appearance' && <AppearanceSection prefs={prefs} setPref={setPref} />}
+          {tab === 'playback' && <PlaybackSection prefs={prefs} setPref={setPref} />}
+          {tab === 'shortcuts' && <ShortcutsSection />}
+          {tab === 'controller' && <ControllerSection />}
+          {tab === 'content' && (
+            <ContentSection prefs={prefs} setPref={setPref} installedAddons={installedAddons} disabledAddonKeys={disabledAddonKeys} />
+          )}
+          {tab === 'addons' && (
+            <AddonsSection
+              prefs={prefs}
+              setPref={setPref}
+              addonUrl={addonUrl}
+              setAddonUrl={setAddonUrl}
+              installedAddons={installedAddons}
+              disabledAddonKeys={disabledAddonKeys}
+              installLoading={addonInstallStatus.loading}
+              installError={addonInstallStatus.error}
+              onInstall={handleInstall}
+              onRemove={handleRemove}
+              onToggle={handleToggleAddon}
+              onReorder={handleReorderAddon}
+              onDispatch={onDispatch}
+            />
+          )}
+          {tab === 'plugins' && (
+            <PluginsSection
+              pluginUrl={pluginUrl}
+              setPluginUrl={setPluginUrl}
+              repositories={pluginRepositories}
+              scrapers={pluginScrapers}
+              loading={pluginInstallLoading || !!state.plugins?.addingRepositoryUrl}
+              error={pluginInstallError ?? pluginStateError}
+              onInstall={handleInstallPlugin}
+              onRemove={handleRemovePlugin}
+              onRefresh={handleRefreshPlugin}
+              onToggleScraper={handleTogglePluginScraper}
+            />
+          )}
+          {tab === 'downloads' && !isBrowserTarget() && <DownloadsSection prefs={prefs} setPref={setPref} />}
+        </div>
       </div>
       {addedAddonName && <AddonAddedDialog addonName={addedAddonName} onConfirm={() => setAddedAddonName(null)} />}
       {addonInstallStatus.error && (

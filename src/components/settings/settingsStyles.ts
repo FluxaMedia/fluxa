@@ -1,5 +1,5 @@
 import type React from 'react';
-import { color, fade, font, fontSize, heading, radius } from '../../design/tokens';
+import { color, fade, font, fontSize, heading, layout, radius } from '../../design/tokens';
 
 export const NAV_RAIL_WIDTH = 6.5;
 
@@ -27,7 +27,7 @@ export const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
   },
   sidebarTitle: {
-    ...heading('h2'),
+    ...heading('h1'),
     color: color.textPrimary,
     margin: '0 0 0.25rem',
   },
@@ -48,6 +48,10 @@ export const styles: Record<string, React.CSSProperties> = {
     padding: '0 0.625rem 6rem 0',
     scrollbarWidth: 'thin',
     scrollbarColor: `${color.line} transparent`,
+  },
+  contentInner: {
+    width: '100%',
+    maxWidth: layout.reading,
   },
   categoryCard: {
     width: '100%',
@@ -107,32 +111,35 @@ export const styles: Record<string, React.CSSProperties> = {
   detailHeader: {
     display: 'flex',
     alignItems: 'center',
-    minHeight: '2.25rem',
-    marginBottom: '1.375rem',
-    paddingBottom: '1.125rem',
+    minHeight: '2.75rem',
+    marginBottom: '1.75rem',
+    paddingBottom: '1.25rem',
     borderBottom: `1px solid ${color.line}`,
   },
   detailTitle: {
-    ...heading('h2'),
+    ...heading('h1'),
     color: color.textPrimary,
   },
   settingsGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.375rem',
+    gap: '0.5rem',
     marginBottom: '1.5rem',
   },
   groupHeading: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '0.5rem',
     paddingLeft: '0.25rem',
   },
   groupTitle: {
     color: color.textDim,
     fontSize: fontSize.xs,
-    fontWeight: 600,
+    fontWeight: 700,
     margin: 0,
     fontFamily: FONT,
     textTransform: 'uppercase',
-    letterSpacing: '0.07em',
+    letterSpacing: '0.1em',
   },
   groupSubtitle: {
     color: color.textFaint,
@@ -145,11 +152,8 @@ export const styles: Record<string, React.CSSProperties> = {
   settingsCard: {
     width: '100%',
     borderRadius: radius.lg,
-    background: color.surfaceRaised,
-    border: `1px solid ${color.lineStrong}`,
-    overflow: 'visible',
+    background: color.surface,
     boxSizing: 'border-box',
-    boxShadow: `0 1px 0.25rem ${fade.shade(0.28)}`,
   },
   rowTitle: {
     color: color.textStrong,

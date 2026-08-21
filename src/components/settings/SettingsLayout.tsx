@@ -52,7 +52,7 @@ export function SidebarItem({
             width: '0.1875rem',
             height: '1.125rem',
             borderRadius: '0 0.125rem 0.125rem 0',
-            background: color.textPrimary,
+            background: 'var(--primary-accent-color)',
           }}
         />
       )}
@@ -64,7 +64,7 @@ export function SidebarItem({
           flexShrink: 0,
           width: '1.375rem',
           height: '1.375rem',
-          color: selected ? color.textPrimary : color.textDim,
+          color: selected ? 'var(--primary-accent-color)' : color.textDim,
           transition: 'color 0.12s',
         }}
       >
