@@ -70,6 +70,9 @@ targets:
       - name: Build FluxaCore
         script: ../gradlew -p .. :core:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
+      - name: Build FluxaShared
+        script: ../gradlew -p .. :shared:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
       - name: Build FluxaData
         script: ../gradlew -p .. :data:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
