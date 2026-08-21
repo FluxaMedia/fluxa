@@ -6,6 +6,7 @@ import type { SkinLayout, ThemePack, ThemeRuntime } from './types';
 const HEX_COLOR = /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/i;
 const THEME_ID = /^[a-z0-9][a-z0-9._-]{1,63}$/;
 const THEME_NAME_KEY = /^[a-z0-9._-]+$/;
+const FONT_FAMILY = /^[a-zA-Z0-9\s,'._-]{1,120}$/;
 const COLOR_KEYS = ['background', 'backgroundElevated', 'surface', 'surfaceRaised', 'navigation', 'textPrimary', 'textSecondary', 'textMuted', 'border', 'borderStrong', 'accent', 'accentForeground', 'success', 'warning', 'error', 'info', 'focus', 'scrim'];
 const SHAPE_KEYS = ['cardRadius', 'controlRadius', 'dialogRadius'];
 const SPACING_KEYS = ['screenPadding', 'sectionGap', 'controlGap'];
@@ -25,7 +26,7 @@ export function isValidThemePack(value: unknown): value is ThemePack {
   if ('name' in value && (typeof value.name !== 'string' || value.name.length > 80)) return false;
   const colors = value.colors;
   if (!isRecord(colors) || !COLOR_KEYS.every((key) => key in colors) || !Object.values(colors).every((color) => typeof color === 'string' && HEX_COLOR.test(color))) return false;
-  if (!isRecord(value.typography) || typeof value.typography.displayFont !== 'string' || typeof value.typography.bodyFont !== 'string') return false;
+  if (!isRecord(value.typography) || typeof value.typography.displayFont !== 'string' || !FONT_FAMILY.test(value.typography.displayFont) || typeof value.typography.bodyFont !== 'string' || !FONT_FAMILY.test(value.typography.bodyFont)) return false;
   if (typeof value.typography.titleWeight !== 'number' || typeof value.typography.bodyWeight !== 'number') return false;
   const shape = value.shape;
   if (!isRecord(shape) || !SHAPE_KEYS.every((key) => key in shape) || !Object.values(shape).every((size) => typeof size === 'number' && size >= 0)) return false;

@@ -506,7 +506,7 @@ export const HomeScreen = React.memo(
       };
     }, [continueWatching, keepScheduled, showThisWeek]);
 
-    const noContent = !billboard && (!showCatalogs || categories.length === 0) && (!showContinueWatching || continueWatching.length === 0);
+    const noContent = (!heroSlotVisible || !billboard) && (!showCatalogs || categories.length === 0) && (!showContinueWatching || continueWatching.length === 0);
     const awaitingFirstLoad = home.isLoading || deferStaleRefresh;
     const homeSectionOrder = skin.home.sectionOrder.length ? skin.home.sectionOrder : ['hero', 'continueWatching', 'catalogs'];
     const heroSectionVisible = homeSectionOrder.includes('hero') && heroSlotVisible;

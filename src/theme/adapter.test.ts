@@ -11,6 +11,10 @@ describe('theme adapter', () => {
     expect(isValidThemePack({ ...FLUXA_DARK_THEME, colors: { ...FLUXA_DARK_THEME.colors, accent: 'red' } })).toBe(false);
   });
 
+  it('rejects CSS injection through font fields', () => {
+    expect(isValidThemePack({ ...FLUXA_DARK_THEME, typography: { ...FLUXA_DARK_THEME.typography, bodyFont: 'url(javascript:alert(1))' } })).toBe(false);
+  });
+
   it('falls back safely when skin configuration is malformed', () => {
     expect(resolveTheme('fluxa-dark', '{"navigation":{"visible":"home"}}').skin).toEqual(DEFAULT_SKIN);
   });
