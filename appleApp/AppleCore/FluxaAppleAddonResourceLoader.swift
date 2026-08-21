@@ -97,18 +97,20 @@ final class FluxaAppleAddonResourceLoader {
         ) else {
             throw URLError(.cannotParseResponse)
         }
-        return streams.compactMap { stream in
+        var snapshots = [AppleDetailStreamSnapshot]()
+        for stream in streams {
             guard let data = try? JSONSerialization.data(withJSONObject: stream.requestHeaders),
                   let requestHeadersJson = String(data: data, encoding: .utf8) else {
-                return nil
+                continue
             }
-            return AppleDetailStreamSnapshot(
+            snapshots.append(AppleDetailStreamSnapshot(
                 addonName: addonName,
                 title: stream.title ?? addonName,
                 playableUrl: stream.playableUrl,
                 requestHeadersJson: requestHeadersJson
-            )
+            ))
         }
+        return snapshots
     }
 }
 
