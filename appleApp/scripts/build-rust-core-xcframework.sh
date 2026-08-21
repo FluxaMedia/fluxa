@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${FLUXA_SKIP_RUST_CORE_BUILD:-0}" == "1" ]]; then
+    exit 0
+fi
+
 project_dir="$(cd "$(dirname "$0")/../.." && pwd)"
 rust_dir="$(cd "$project_dir/../fluxa-core" && pwd)"
 output_dir="$project_dir/appleApp/Generated"

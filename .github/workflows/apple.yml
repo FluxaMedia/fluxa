@@ -40,8 +40,8 @@ permissions:
   contents: read
 
 jobs:
-  ios:
-    name: iOS simulator
+  rust-core:
+    name: Rust core artifact
     runs-on: macos-26
     timeout-minutes: 45
     steps:
@@ -56,13 +56,6 @@ jobs:
       - name: Link sibling Rust core
         run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
 
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - uses: gradle/actions/setup-gradle@v4
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -74,6 +67,43 @@ jobs:
         with:
           workspaces: fluxa-core
           cache-on-failure: true
+
+      - name: Build Rust core XCFramework
+        env:
+          FLUXA_BUILD_STREAMING_ENGINE: "1"
+        run: appleApp/scripts/build-rust-core-xcframework.sh
+
+      - name: Verify Apple streaming bridge
+        working-directory: fluxa-core
+        run: cargo test -p fluxa_streaming_engine --no-default-features --features apple --lib
+
+      - name: Upload Rust core artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-rust-core
+          path: appleApp/Generated
+          if-no-files-found: error
+
+  ios:
+    name: iOS simulator
+    needs: rust-core
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Rust core artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-rust-core
+          path: appleApp/Generated
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
 
       - name: Set up XcodeGen
         run: |
@@ -92,20 +122,13 @@ jobs:
           :player:iosSimulatorArm64MainKlibrary
           :shared:iosSimulatorArm64Test
 
-      - name: Verify Apple streaming bridge
-        working-directory: fluxa-core
-        run: cargo test -p fluxa_streaming_engine --no-default-features --features apple --lib
-
       - name: Generate Apple host project
         working-directory: appleApp
         run: xcodegen generate
 
-      - name: Build Fluxa Rust core
-        env:
-          FLUXA_BUILD_STREAMING_ENGINE: "1"
-        run: appleApp/scripts/build-rust-core-xcframework.sh
-
       - name: Build iOS host
+        env:
+          FLUXA_SKIP_RUST_CORE_BUILD: "1"
         run: >-
           xcodebuild
           -project appleApp/FluxaApple.xcodeproj
@@ -118,19 +141,17 @@ jobs:
 
   tvos:
     name: tvOS simulator
+    needs: rust-core
     runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/checkout@v7
+      - name: Download Rust core artifact
+        uses: actions/download-artifact@v4
         with:
-          repository: FluxaMedia/fluxa-core
-          path: fluxa-core
-          ref: ${{ inputs.fluxa_core_ref || 'master' }}
-
-      - name: Link sibling Rust core
-        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
+          name: apple-rust-core
+          path: appleApp/Generated
 
       - uses: actions/setup-java@v5
         with:
@@ -138,18 +159,6 @@ jobs:
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: fluxa-core
-          cache-on-failure: true
 
       - name: Set up XcodeGen
         run: |
@@ -174,10 +183,9 @@ jobs:
         working-directory: appleApp
         run: xcodegen generate
 
-      - name: Build Fluxa Rust core
-        run: appleApp/scripts/build-rust-core-xcframework.sh
-
       - name: Build tvOS host
+        env:
+          FLUXA_SKIP_RUST_CORE_BUILD: "1"
         run: >-
           xcodebuild
           -project appleApp/FluxaApple.xcodeproj
