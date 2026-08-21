@@ -329,11 +329,11 @@ The same React build is the correct UI path for browser and webOS. Platform modu
 
 The first desktop foundation is now present: `contracts/theme.schema.json` defines the portable contract, `contracts/default-theme.json` is the default data source, and `src/theme/adapter.ts` maps it to CSS variables. Built-in theme selection and a first skin capability (showing or hiding Calendar in navigation) are wired through the existing profile preferences. The adapter validates theme data and safely falls back when skin JSON is invalid.
 
-The desktop shell now accepts and exports validated JSON theme packs up to 256 KiB, stores up to 24 custom packs in profile preferences, and applies skin visibility and section-order settings to the Home and Detail screens. Detail skin section IDs are `hero`, `actions`, `meta`, `tabs`, `episodes`, `details`, `related`, and `rail`. Packs contain data only; they cannot execute code. Artwork/font installation, drag-and-drop route ordering, and the Compose/SwiftUI adapters still need to be implemented in their respective repositories.
+The desktop shell now accepts and exports validated JSON theme packs up to 256 KiB, stores up to 24 custom packs in profile preferences, and applies skin visibility and section-order settings to the Home and Detail screens. Detail skin section IDs are `hero`, `actions`, `meta`, `tabs`, `episodes`, `details`, `related`, and `rail`. Packs contain data only; they cannot execute code. Artwork/font installation and drag-and-drop route ordering remain future extensions. The Compose adapter and Android theme persistence are implemented in `fluxa`; the tvOS SwiftUI adapter is implemented in `appleApp/tvOS`.
 
 ### Android and Android TV
 
-The shared Compose UI already contains a common application shell and a separate TV home path. Replace the fixed `FluxaColorScheme` and direct `Color.White`/`FluxaColors` usage with the portable theme adapter.
+The shared Compose UI already contains a common application shell and a separate TV home path. `FluxaThemePack` deserializes the portable contract, maps semantic colors into `ColorScheme`, and persists the selected built-in theme in shared settings. TV layout differences remain valid and are applied independently from the theme data.
 
 TV layout differences remain valid. A TV-specific layout preset may change focus spacing, navigation rail width, card sizes, and animation behavior without changing core decisions.
 
@@ -341,7 +341,7 @@ Do not make TV behavior depend on a desktop or web layout assumption.
 
 ### iOS and tvOS
 
-The existing Apple host already exposes the shared core and Compose/KMP data sources. Keep platform lifecycle, playback, and Apple framework integration in the Apple shell.
+The existing Apple host already exposes the shared core and Compose/KMP data sources. Keep platform lifecycle, playback, and Apple framework integration in the Apple shell. tvOS uses `FluxaTvosTheme.swift` to decode the same theme fields and expose them through SwiftUI environment values.
 
 The current tvOS separation is intentional because the existing Compose and dependency stack does not provide the same tvOS surface as Android/iOS. tvOS should consume the same theme contract through a SwiftUI adapter instead of trying to consume Android Material theme classes.
 
@@ -416,7 +416,7 @@ Status: desktop contract, default data, documentation, and validation tests are 
 - add the SwiftUI adapter for tvOS
 - add a snapshot/golden test that the same theme produces equivalent semantic tokens
 
-Status: React/CSS adapter is implemented. Compose and SwiftUI adapters, plus cross-consumer golden tests, remain to be added.
+Status: React/CSS, Compose, and tvOS SwiftUI adapters are implemented. Cross-consumer golden tests and a canonical generated contract package remain to be added.
 
 ### Phase 3: Migrate existing UI
 
@@ -426,7 +426,7 @@ Status: React/CSS adapter is implemented. Compose and SwiftUI adapters, plus cro
 - replace tvOS hardcoded application colors
 - preserve content-brand colors as separate tokens
 
-Status: global desktop tokens, root styling, navigation, loading surfaces, profile selection, Home/Detail, Search, Library, Category, poster grid, and hero surfaces use semantic variables. Provider/IMDb/rating colors and player-specific overlays remain explicit by design; a final hardcoded-color audit is still required before calling this phase complete.
+Status: global desktop tokens, root styling, navigation, loading surfaces, profile selection, Home/Detail, Search, Library, Category, poster grid, and hero surfaces use semantic variables. Provider/IMDb/rating colors and player-specific overlays remain explicit by design. Android consumes the same semantic data through Compose, and tvOS applies the shared roles through SwiftUI. A final desktop hardcoded-color audit is still required before calling this phase complete.
 
 ### Phase 4: Add built-in theme selection
 
@@ -436,7 +436,7 @@ Status: global desktop tokens, root styling, navigation, loading surfaces, profi
 - persist the theme at the selected profile scope
 - verify that missing/invalid themes fall back safely
 
-Status: desktop built-in themes, persistence fields, live CSS application, and safe skin fallback are implemented. Live preview/reset and shared profile-scope verification remain.
+Status: desktop and Android built-in themes, persistence fields, live application, and safe fallback are implemented. tvOS has the adapter foundation. Live preview/reset, shared profile-scope verification, and native tvOS build verification remain.
 
 ### Phase 5: Add custom theme packs
 
