@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct FluxaTvosApp: App {
     @StateObject private var homeModel: FluxaTvosHomeModel
+    @AppStorage("fluxa.theme.pack") private var storedThemeJSON = ""
 
     init() {
         _homeModel = StateObject(
@@ -13,11 +14,12 @@ struct FluxaTvosApp: App {
     }
 
     var body: some Scene {
-        let theme = FluxaThemePacks.fluxaDark
+        let theme = FluxaThemePacks.decode(storedThemeJSON.data(using: .utf8) ?? Data())
+        let compactLayout = theme.layouts.home == "compact"
         WindowGroup {
             NavigationStack {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 36) {
+                    VStack(alignment: .leading, spacing: compactLayout ? 24 : 36) {
                         Text(FluxaTvos.shared.homeTitle())
                             .font(.largeTitle.bold())
                             .foregroundStyle(Color(themeHex: theme.colors.textPrimary, fallback: .white))
@@ -26,12 +28,12 @@ struct FluxaTvosApp: App {
                                 .frame(maxWidth: .infinity, minHeight: 360)
                         }
                         ForEach(homeModel.rows) { row in
-                            VStack(alignment: .leading, spacing: 14) {
+                            VStack(alignment: .leading, spacing: compactLayout ? 10 : 14) {
                                 Text(row.title)
                                     .font(.title2.bold())
                                     .foregroundStyle(Color(themeHex: theme.colors.textPrimary, fallback: .white))
                                 ScrollView(.horizontal) {
-                                    LazyHStack(spacing: 18) {
+                                    LazyHStack(spacing: compactLayout ? 12 : 18) {
                                         ForEach(row.items) { item in
                                             VStack(alignment: .leading, spacing: 8) {
                                                 AsyncImage(url: item.artworkUrl) { image in
