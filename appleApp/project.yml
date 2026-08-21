@@ -18,6 +18,7 @@ targets:
     type: application
     platform: iOS
     info:
+      path: Generated/FluxaIos-Info.plist
       properties:
         LSApplicationQueriesSchemes:
           - infuse
