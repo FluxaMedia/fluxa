@@ -170,7 +170,10 @@ internal fun FluxaApp(
     val onProfileEditCancel = profileEditor.onProfileEditCancel
     val onPickBackgroundClick = profileEditor.onPickBackgroundClick
 
-    MaterialTheme(colorScheme = FluxaThemePacks.fluxaDark.toColorScheme(accentColor)) {
+    val themePack = remember(settingsState?.appearance?.themeId, settingsState?.appearance?.themeJson) {
+        settingsState?.appearance?.themeJson?.takeIf { it.isNotBlank() }?.let(FluxaThemePacks::fromJson) ?: FluxaThemePacks.fluxaDark
+    }
+    MaterialTheme(colorScheme = themePack.toColorScheme(accentColor)) {
         val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
         val isDesktop = deviceType == com.fluxa.app.ui.catalog.DeviceType.Desktop
         // TV never captures a full-screen blur source. Mobile only does it while the

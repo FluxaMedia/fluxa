@@ -48,6 +48,8 @@ abstract class PersistentSettingsDataSource(
 
     override suspend fun updateAppearance(value: SettingsAppearanceUiModel) {
         preferences.putLong(SettingsPreferenceKeys.ACCENT_COLOR_ARGB, value.accentColorArgb)
+        preferences.putString(SettingsPreferenceKeys.THEME_ID, value.themeId)
+        preferences.putString(SettingsPreferenceKeys.THEME_JSON, value.themeJson)
         preferences.putBoolean(SettingsPreferenceKeys.AMOLED_MODE, value.amoledMode)
         preferences.putBoolean(SettingsPreferenceKeys.LIQUID_GLASS_MODE, value.liquidGlassMode)
         preferences.putBoolean(SettingsPreferenceKeys.ANIMATIONS_ENABLED, value.animationsEnabled)
@@ -253,6 +255,8 @@ abstract class PersistentSettingsDataSource(
             ),
             appearance = defaults.appearance.copy(
                 accentColorArgb = preferences.getLong(SettingsPreferenceKeys.ACCENT_COLOR_ARGB, defaults.appearance.accentColorArgb),
+                themeId = preferences.getString(SettingsPreferenceKeys.THEME_ID, defaults.appearance.themeId) ?: defaults.appearance.themeId,
+                themeJson = preferences.getString(SettingsPreferenceKeys.THEME_JSON, defaults.appearance.themeJson) ?: defaults.appearance.themeJson,
                 amoledMode = preferences.getBoolean(SettingsPreferenceKeys.AMOLED_MODE, defaults.appearance.amoledMode),
                 liquidGlassMode = preferences.getBoolean(SettingsPreferenceKeys.LIQUID_GLASS_MODE, defaults.appearance.liquidGlassMode),
                 animationsEnabled = preferences.getBoolean(SettingsPreferenceKeys.ANIMATIONS_ENABLED, defaults.appearance.animationsEnabled),
@@ -374,6 +378,8 @@ object SettingsPreferenceKeys {
     const val START_PAGE = "startPage"
     const val BACKGROUND_PLAYBACK = "backgroundPlayback"
     const val ACCENT_COLOR_ARGB = "accentColorArgb"
+    const val THEME_ID = "themeId"
+    const val THEME_JSON = "themeJson"
     const val AMOLED_MODE = "amoledMode"
     const val LIQUID_GLASS_MODE = "liquidGlassMode"
     const val ANIMATIONS_ENABLED = "animationsEnabled"

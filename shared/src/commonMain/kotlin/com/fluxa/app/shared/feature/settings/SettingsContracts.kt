@@ -86,6 +86,8 @@ data class SettingsGeneralUiModel(
 
 data class SettingsAppearanceUiModel(
     val accentColorArgb: Long = 0xFFFFFFFFL,
+    val themeId: String = "fluxa-dark",
+    val themeJson: String = "",
     val amoledMode: Boolean = false,
     val liquidGlassMode: Boolean = false,
     val animationsEnabled: Boolean = true,

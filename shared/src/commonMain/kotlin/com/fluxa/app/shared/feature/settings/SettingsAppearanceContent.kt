@@ -37,6 +37,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.ui.catalog.FluxaThemePacks
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @Composable
 internal fun SettingsGeneralContent(model: SettingsGeneralUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
@@ -60,8 +63,22 @@ internal fun SettingsGeneralContent(model: SettingsGeneralUiModel, lang: String?
 
 @Composable
 internal fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit) {
+    val themeOptions = listOf(
+        SettingsChoiceOption("fluxa-dark", AppStrings.t(lang, "theme.fluxa_dark")),
+        SettingsChoiceOption("amoled", AppStrings.t(lang, "theme.amoled")),
+        SettingsChoiceOption("midnight-blue", AppStrings.t(lang, "theme.midnight_blue")),
+    )
+    val themeJson = Json { encodeDefaults = true }
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_appearance_theme"))
     SettingsGroupCard {
+        SettingsChoiceRow(AppStrings.t(lang, "settings.theme"), model.themeId, themeOptions) { id ->
+            val pack = when (id) {
+                "amoled" -> FluxaThemePacks.fluxaDark.copy(id = "amoled", nameKey = "theme.amoled", colors = FluxaThemePacks.fluxaDark.colors.copy(background = "#000000", backgroundElevated = "#000000", surface = "#080808", surfaceRaised = "#141414", navigation = "#000000"))
+                "midnight-blue" -> FluxaThemePacks.fluxaDark.copy(id = "midnight-blue", nameKey = "theme.midnight_blue", colors = FluxaThemePacks.fluxaDark.colors.copy(background = "#080A10", backgroundElevated = "#0D1220", surface = "#121A2A", surfaceRaised = "#1B263D", navigation = "#090E1A", textSecondary = "#A9B4C8", textMuted = "#71809A", accent = "#5C8DFF"))
+                else -> FluxaThemePacks.fluxaDark
+            }
+            onAction(SettingsAction.AppearanceChanged(model.copy(themeId = id, themeJson = themeJson.encodeToString(pack))))
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 10.dp)) {
             Text(AppStrings.t(lang, "auto.accent_color"), color = Color.White, modifier = Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
