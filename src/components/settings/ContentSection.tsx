@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { coreBuildMetadataFeedOptions, coreEffectiveMetadataFeedSelection, coreToggleMetadataFeedLimited } from '../../core/engine';
 import type { AddonDescriptor } from '../../core/types';
 import { addonKey } from '../../core/addons';
 import { t } from '../../i18n';
-import { InfoTile, SettingsSection, StorageIcon, ToggleTile, isFeedEnabled } from './SettingsUI';
+import { InfoTile, InputTile, SettingsSection, StorageIcon, ToggleTile, isFeedEnabled } from './SettingsUI';
 import type { Prefs } from './settingsTypes';
+import { setRpdbApiKey, validateRpdbApiKey } from '../../core/rpdb';
+import { color } from '../../design/tokens';
 
 function applyFeedOrder(feeds: { key: string; label: string }[], order: string[]): { key: string; label: string }[] {
   if (!order.length) return feeds;
@@ -168,6 +170,24 @@ export function ContentSection({
     };
   }, [installedAddons, disabledAddonKeys]);
 
+  const [rpdbKeyStatus, setRpdbKeyStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const rpdbCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!prefs.rpdbApiKey) {
+      setRpdbKeyStatus('idle');
+      return;
+    }
+    setRpdbKeyStatus('checking');
+    if (rpdbCheckTimer.current) clearTimeout(rpdbCheckTimer.current);
+    rpdbCheckTimer.current = setTimeout(() => {
+      void validateRpdbApiKey(prefs.rpdbApiKey).then((valid) => setRpdbKeyStatus(valid ? 'valid' : 'invalid'));
+    }, 500);
+    return () => {
+      if (rpdbCheckTimer.current) clearTimeout(rpdbCheckTimer.current);
+    };
+  }, [prefs.rpdbApiKey]);
+
   return (
     <>
       <SettingsSection title={t('settings.hero_catalogs')} subtitle={t('settings.show_hero_section_desc')}>
@@ -205,6 +225,146 @@ export function ContentSection({
         defaultAll={false}
         onChange={(v) => setPref('topTenFeedToggles', v)}
       />
+      <SettingsSection title={t('settings.integrations')} subtitle={t('settings.integrations_desc')}>
+        <InputTile
+          title={t('settings.tmdb_api_key')}
+          subtitle={t('settings.tmdb_api_key_desc')}
+          value={prefs.tmdbApiKey}
+          placeholder={t('settings.api_key_placeholder')}
+          onChange={(v) => setPref('tmdbApiKey', v)}
+          status={
+            <p style={{ fontSize: '0.75rem', marginTop: '0.375rem', color: prefs.tmdbApiKey ? color.success : color.textMuted }}>
+              {prefs.tmdbApiKey ? t('settings.tmdb_metadata_source_active') : t('settings.tmdb_metadata_source_inactive')}
+            </p>
+          }
+        />
+        {prefs.tmdbApiKey && (
+          <ToggleTile
+            title={t('settings.tmdb_prefer_over_addons')}
+            subtitle={t('settings.tmdb_prefer_over_addons_desc')}
+            checked={prefs.tmdbPreferOverAddons}
+            onToggle={(v) => setPref('tmdbPreferOverAddons', v)}
+          />
+        )}
+        <InputTile
+          title={t('settings.rpdb_api_key')}
+          subtitle={t('settings.rpdb_api_key_desc')}
+          value={prefs.rpdbApiKey}
+          placeholder={t('settings.api_key_placeholder')}
+          onChange={(v) => {
+            void setPref('rpdbApiKey', v);
+            setRpdbApiKey(v);
+          }}
+          status={
+            rpdbKeyStatus !== 'idle' && (
+              <p
+                style={{
+                  fontSize: '0.75rem',
+                  marginTop: '0.375rem',
+                  color: rpdbKeyStatus === 'invalid' ? 'var(--primary-accent-color)' : color.textMuted,
+                }}
+              >
+                {rpdbKeyStatus === 'checking'
+                  ? t('settings.rpdb_key_checking')
+                  : rpdbKeyStatus === 'valid'
+                    ? t('settings.rpdb_key_valid')
+                    : t('settings.rpdb_key_invalid')}
+              </p>
+            )
+          }
+        />
+        <InputTile
+          title={t('settings.omdb_api_key')}
+          subtitle={t('settings.omdb_api_key_desc')}
+          value={prefs.omdbApiKey}
+          placeholder={t('settings.api_key_placeholder')}
+          onChange={(v) => setPref('omdbApiKey', v)}
+        />
+        <InputTile
+          title={t('settings.mdblist_api_key')}
+          subtitle={t('settings.mdblist_api_key_desc')}
+          value={prefs.mdblistApiKey}
+          placeholder={t('settings.api_key_placeholder')}
+          onChange={(v) => setPref('mdblistApiKey', v)}
+        />
+        <InputTile
+          title={t('settings.fanart_api_key')}
+          subtitle={t('settings.fanart_api_key_desc')}
+          value={prefs.fanartApiKey}
+          placeholder={t('settings.api_key_placeholder')}
+          onChange={(v) => setPref('fanartApiKey', v)}
+        />
+      </SettingsSection>
+      {prefs.tmdbApiKey && (
+        <SettingsSection title={t('settings.tmdb_enrichment')} subtitle={t('settings.tmdb_enrichment_desc')}>
+          <ToggleTile
+            title={t('settings.tmdb_enrich_artwork')}
+            subtitle={t('settings.tmdb_enrich_artwork_desc')}
+            checked={prefs.tmdbEnrichArtworkEnabled}
+            onToggle={(v) => setPref('tmdbEnrichArtworkEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_description')}
+            subtitle={t('settings.tmdb_enrich_description_desc')}
+            checked={prefs.tmdbEnrichDescriptionEnabled}
+            onToggle={(v) => setPref('tmdbEnrichDescriptionEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_genres_keywords')}
+            subtitle={t('settings.tmdb_enrich_genres_keywords_desc')}
+            checked={prefs.tmdbEnrichGenresKeywordsEnabled}
+            onToggle={(v) => setPref('tmdbEnrichGenresKeywordsEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_cast_crew')}
+            subtitle={t('settings.tmdb_enrich_cast_crew_desc')}
+            checked={prefs.tmdbEnrichCastCrewEnabled}
+            onToggle={(v) => setPref('tmdbEnrichCastCrewEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_network')}
+            subtitle={t('settings.tmdb_enrich_network_desc')}
+            checked={prefs.tmdbEnrichNetworkEnabled}
+            onToggle={(v) => setPref('tmdbEnrichNetworkEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_ratings')}
+            subtitle={t('settings.tmdb_enrich_ratings_desc')}
+            checked={prefs.tmdbRatingsEnabled}
+            onToggle={(v) => setPref('tmdbRatingsEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_collection')}
+            subtitle={t('settings.tmdb_enrich_collection_desc')}
+            checked={prefs.tmdbCollectionInfoEnabled}
+            onToggle={(v) => setPref('tmdbCollectionInfoEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_status_schedule')}
+            subtitle={t('settings.tmdb_enrich_status_schedule_desc')}
+            checked={prefs.tmdbEnrichStatusScheduleEnabled}
+            onToggle={(v) => setPref('tmdbEnrichStatusScheduleEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_origin_titles')}
+            subtitle={t('settings.tmdb_enrich_origin_titles_desc')}
+            checked={prefs.tmdbEnrichOriginTitlesEnabled}
+            onToggle={(v) => setPref('tmdbEnrichOriginTitlesEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_watch_providers')}
+            subtitle={t('settings.tmdb_enrich_watch_providers_desc')}
+            checked={prefs.tmdbEnrichWatchProvidersEnabled}
+            onToggle={(v) => setPref('tmdbEnrichWatchProvidersEnabled', v)}
+          />
+          <ToggleTile
+            title={t('settings.tmdb_enrich_episode_stills')}
+            subtitle={t('settings.tmdb_enrich_episode_stills_desc')}
+            checked={prefs.tmdbEpisodeImagesEnabled}
+            onToggle={(v) => setPref('tmdbEpisodeImagesEnabled', v)}
+          />
+        </SettingsSection>
+      )}
     </>
   );
 }

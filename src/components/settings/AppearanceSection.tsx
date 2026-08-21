@@ -34,7 +34,7 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           onChange={(v) => setPref('uiScale', String(v))}
         />
       </SettingsSection>
-      <SettingsSection title={t('auto.interface_3c5ec842')} subtitle={t('auto.language_theme_startup')}>
+      <SettingsSection title={t('auto.interface_3c5ec842')} subtitle={t('settings.appearance_interface_desc')}>
         <ToggleTile
           title={t('settings.gif_autoplay')}
           subtitle={t('settings.gif_autoplay_desc')}
@@ -93,7 +93,7 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           onSelect={(v) => setPref('navItemsAlign', v)}
         />
       </SettingsSection>
-      <SettingsSection title={t('auto.posters')} subtitle={t('auto.poster_width')}>
+      <SettingsSection title={t('auto.posters')} subtitle={t('settings.appearance_posters_desc')}>
         <ChoiceTile
           title={t('auto.card_corners')}
           subtitle={t('auto.card_corners')}

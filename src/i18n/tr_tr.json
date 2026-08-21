@@ -1036,6 +1036,8 @@
   "settings.appearance_home_screen_desc": "Afişler ve Devam Ediyor.",
   "settings.appearance_detail_screen": "Detay Ekranı",
   "settings.appearance_detail_screen_desc": "Fragman, bölüm düzeni ve daha fazlası.",
+  "settings.appearance_interface_desc": "Hareket, önizlemeler ve gezinme düzeni.",
+  "settings.appearance_posters_desc": "Kart şekli, yoğunluk ve afiş/Devam Ediyor satırlarının görünümü.",
   "settings.trailer_on_hero": "Hero'da Fragman",
   "settings.trailer_on_hero_desc": "Detay sayfası hero bölümünde fragman düğmesini gösterir.",
   "settings.blur_unwatched_episodes": "İzlenmemiş Bölümleri Bulanıklaştır",

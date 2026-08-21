@@ -1036,6 +1036,8 @@
   "settings.appearance_home_screen_desc": "Posters and Continue Watching.",
   "settings.appearance_detail_screen": "Detail Screen",
   "settings.appearance_detail_screen_desc": "Trailer, episode layout and more.",
+  "settings.appearance_interface_desc": "Motion, previews, and how navigation is laid out.",
+  "settings.appearance_posters_desc": "Card shape, density, and how posters and Continue Watching rows look.",
   "settings.trailer_on_hero": "Trailer on Hero",
   "settings.trailer_on_hero_desc": "Show trailer button on the detail page hero.",
   "settings.blur_unwatched_episodes": "Blur Unwatched Episodes",
