@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { styles, FONT } from './settingsStyles';
+import { color, fade, fontSize, radius } from '../../design/tokens';
 import { Popover } from '../ui/Popover';
 
 export function SliderTile({
@@ -27,7 +28,7 @@ export function SliderTile({
     <div
       style={{
         width: '100%',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        borderBottom: `1px solid ${color.line}`,
         padding: '0.875rem 1rem',
         boxSizing: 'border-box',
       }}
@@ -40,7 +41,7 @@ export function SliderTile({
         <span
           style={{
             color: 'var(--primary-accent-color)',
-            fontSize: '0.8125rem',
+            fontSize: fontSize.base,
             fontWeight: 600,
             fontFamily: FONT,
             flexShrink: 0,
@@ -58,8 +59,8 @@ export function SliderTile({
             left: 0,
             right: 0,
             height: '0.1875rem',
-            borderRadius: '0.125rem',
-            background: 'rgba(255,255,255,0.10)',
+            borderRadius: radius.xs,
+            background: color.lineStrong,
           }}
         />
         <div
@@ -88,9 +89,9 @@ export function SliderTile({
             left: `calc(${pct}% - 0.5rem)`,
             width: '1rem',
             height: '1rem',
-            borderRadius: '50%',
+            borderRadius: radius.circle,
             background: 'var(--primary-accent-color)',
-            boxShadow: '0 1px 0.25rem rgba(0,0,0,0.5)',
+            boxShadow: `0 1px 0.25rem ${fade.shade(0.5)}`,
             transition: 'left 0.05s',
             pointerEvents: 'none',
           }}
@@ -118,9 +119,9 @@ export function ToggleTile({
         width: '100%',
         minHeight: '3.75rem',
         borderRadius: 0,
-        background: hovered ? 'rgba(255,255,255,0.03)' : 'transparent',
+        background: hovered ? fade.tint(0.03) : 'transparent',
         border: 'none',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        borderBottom: `1px solid ${color.line}`,
         display: 'flex',
         alignItems: 'center',
         padding: '0.75rem 1rem',
@@ -146,8 +147,8 @@ export function ToggleTile({
           flexShrink: 0,
           width: '2.75rem',
           height: '1.625rem',
-          borderRadius: '62.4375rem',
-          background: checked ? 'var(--primary-accent-color)' : 'rgba(255,255,255,0.14)',
+          borderRadius: radius.pill,
+          background: checked ? 'var(--primary-accent-color)' : fade.tint(0.14),
           position: 'relative',
           transition: 'background 0.18s',
           cursor: 'pointer',
@@ -161,10 +162,10 @@ export function ToggleTile({
             left: checked ? 21 : 3,
             width: '1.25rem',
             height: '1.25rem',
-            borderRadius: '50%',
-            background: checked ? '#000000' : 'rgba(255,255,255,0.80)',
+            borderRadius: radius.circle,
+            background: checked ? color.black : fade.tint(0.8),
             transition: 'left 0.18s',
-            boxShadow: '0 1px 0.1875rem rgba(0,0,0,0.4)',
+            boxShadow: `0 1px 0.1875rem ${fade.shade(0.4)}`,
           }}
         />
       </div>
@@ -193,7 +194,7 @@ export function ChoiceTile({
       style={{
         width: '100%',
         minHeight: '3.75rem',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        borderBottom: `1px solid ${color.line}`,
         display: 'flex',
         alignItems: 'center',
         padding: '0.75rem 1rem',
@@ -241,8 +242,8 @@ export function Dropdown({
         aria-expanded={open}
         style={{
           ...styles.dropdownButton,
-          borderColor: open ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.10)',
-          background: '#1A1A1A',
+          borderColor: open ? color.lineStrong : color.line,
+          background: color.surfaceRaised,
         }}
         onClick={() => setOpen((value) => !value)}
       >
@@ -271,8 +272,8 @@ export function Dropdown({
               className="ui-popover-row"
               style={{
                 ...styles.dropdownItem,
-                background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                color: active ? '#FFFFFF' : 'rgba(255,255,255,0.72)',
+                background: active ? color.fillHover : 'transparent',
+                color: active ? color.textPrimary : color.textBody,
               }}
               onClick={() => {
                 onSelect(option.value);
@@ -313,11 +314,11 @@ export function InputTile({
   const inputStyle: React.CSSProperties = {
     width: '100%',
     boxSizing: 'border-box',
-    background: 'rgba(255,255,255,0.045)',
-    border: '1px solid rgba(255,255,255,0.10)',
-    borderRadius: '0.5rem',
-    color: '#FFFFFF',
-    fontSize: '0.8125rem',
+    background: fade.tint(0.045),
+    border: `1px solid ${color.line}`,
+    borderRadius: radius.md,
+    color: color.textPrimary,
+    fontSize: fontSize.base,
     fontFamily: FONT,
     padding: '0.625rem 0.75rem',
     outline: 'none',
@@ -328,7 +329,7 @@ export function InputTile({
     <div
       style={{
         width: '100%',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        borderBottom: `1px solid ${color.line}`,
         padding: '0.875rem 1rem',
         boxSizing: 'border-box',
       }}

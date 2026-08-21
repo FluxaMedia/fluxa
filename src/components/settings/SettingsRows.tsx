@@ -1,6 +1,7 @@
 import React, { useState, type RefObject } from 'react';
 import { t } from '../../i18n';
 import { styles, FONT } from './settingsStyles';
+import { color, fade, font, fontSize } from '../../design/tokens';
 import type { SyncMeta } from './settingsTypes';
 import { Popover } from '../ui/Popover';
 import { timeAgo } from './settingsOptions';
@@ -10,7 +11,7 @@ export function ActionTile({
   subtitle,
   icon,
   onClick,
-  accent = '#FFFFFF',
+  accent = color.textPrimary,
 }: {
   title: string;
   subtitle: string;
@@ -26,8 +27,8 @@ export function ActionTile({
         minHeight: '3.625rem',
         borderRadius: 0,
         border: 'none',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
-        background: hovered ? (accent === '#FFFFFF' ? 'rgba(255,255,255,0.03)' : `${accent}18`) : 'transparent',
+        borderBottom: `1px solid ${color.line}`,
+        background: hovered ? (accent === color.textPrimary ? fade.tint(0.03) : `${accent}18`) : 'transparent',
         display: 'flex',
         alignItems: 'center',
         padding: '0.75rem 1rem',
@@ -49,13 +50,25 @@ export function ActionTile({
   );
 }
 
-export function InfoTile({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
+export function InfoTile({
+  title,
+  value,
+  icon,
+  mono,
+  trailing,
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  mono?: boolean;
+  trailing?: React.ReactNode;
+}) {
   return (
     <div
       style={{
         width: '100%',
         minHeight: '3.75rem',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        borderBottom: `1px solid ${color.line}`,
         display: 'flex',
         alignItems: 'center',
         padding: '0.75rem 1rem',
@@ -64,10 +77,13 @@ export function InfoTile({ title, value, icon }: { title: string; value: string;
       }}
     >
       <span style={styles.rowIcon}>{icon}</span>
-      <div>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <p style={styles.rowTitle}>{title}</p>
-        <p style={styles.rowSubtitle}>{value}</p>
+        <p style={mono ? { ...styles.rowSubtitle, fontFamily: font.mono, fontSize: fontSize.xs, wordBreak: 'break-all' } : styles.rowSubtitle}>
+          {value}
+        </p>
       </div>
+      {trailing}
     </div>
   );
 }
@@ -97,8 +113,8 @@ export function SyncServiceRow({
       style={{
         width: '100%',
         minHeight: '3.875rem',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
-        background: hovered && onClick ? (destructive ? 'rgba(255,80,80,0.05)' : 'rgba(255,255,255,0.03)') : 'transparent',
+        borderBottom: `1px solid ${color.line}`,
+        background: hovered && onClick ? (destructive ? `${color.error}0D` : fade.tint(0.03)) : 'transparent',
         display: 'flex',
         alignItems: 'center',
         padding: '0.75rem 1rem',
@@ -116,8 +132,8 @@ export function SyncServiceRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <p
           style={{
-            color: destructive ? '#FF5A5A' : 'rgba(255,255,255,0.90)',
-            fontSize: '0.875rem',
+            color: destructive ? color.error : color.textStrong,
+            fontSize: fontSize.md,
             fontWeight: 600,
             margin: 0,
             fontFamily: FONT,
@@ -129,8 +145,8 @@ export function SyncServiceRow({
         {value && (
           <p
             style={{
-              color: valueColor ?? 'rgba(255,255,255,0.40)',
-              fontSize: '0.75rem',
+              color: valueColor ?? color.textDim,
+              fontSize: fontSize.sm,
               margin: '0.125rem 0 0',
               fontFamily: FONT,
               lineHeight: '0.9375rem',
@@ -146,7 +162,7 @@ export function SyncServiceRow({
           width="18"
           height="18"
           viewBox="0 0 24 24"
-          fill="rgba(255,255,255,0.22)"
+          fill={color.textFaint}
           style={expanded === undefined ? undefined : { transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.14s' }}
         >
           <path d={expanded === undefined ? 'm9 18 6-6-6-6v12z' : 'M7 10l5 5 5-5z'} />
@@ -187,7 +203,7 @@ export function SyncServicePopover({
     (meta?.error
       ? `${t('settings.sync_error')} · ${meta.error}`
       : `${isOutOfSync ? t('settings.out_of_sync') : t('settings.synced')}${meta ? ` · ${timeAgo(meta.lastSyncAt)}` : ''}`);
-  const effectiveStatusColor = statusColor ?? (meta?.error ? '#FF5A5A' : isOutOfSync ? '#FF9500' : '#54D17A');
+  const effectiveStatusColor = statusColor ?? (meta?.error ? color.error : isOutOfSync ? color.accentGold : color.success);
   const counts = [
     meta && meta.continueWatchingCount > 0 ? `${meta.continueWatchingCount} ${t('auto.continue_watching')}` : null,
     meta && meta.watchlistCount > 0 ? `${meta.watchlistCount} ${t('settings.watchlist')}` : null,
@@ -200,7 +216,7 @@ export function SyncServicePopover({
       <div style={{ padding: '0.6875rem 1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
           <span style={{ width: '0.3125rem', height: '0.3125rem', borderRadius: '50%', background: effectiveStatusColor, flexShrink: 0 }} />
-          <span style={{ color: effectiveStatusColor, fontSize: '0.75rem', fontWeight: 500, fontFamily: FONT }}>{effectiveStatus}</span>
+          <span style={{ color: effectiveStatusColor, fontSize: fontSize.sm, fontWeight: 500, fontFamily: FONT }}>{effectiveStatus}</span>
         </div>
         {counts && <p style={{ ...styles.rowSubtitle, marginTop: '0.25rem' }}>{counts}</p>}
       </div>
@@ -218,7 +234,7 @@ export function SyncServicePopover({
           onDisconnect();
           onClose();
         }}
-        color="#FF5A5A"
+        textColor={color.error}
       />
     </Popover>
   );
@@ -228,12 +244,12 @@ function PopoverActionButton({
   label,
   onClick,
   disabled = false,
-  color = 'rgba(255,255,255,0.85)',
+  textColor = color.textStrong,
 }: {
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  color?: string;
+  textColor?: string;
 }) {
   const [hovered, setHovered] = useState(false);
   return (
@@ -245,8 +261,8 @@ function PopoverActionButton({
       style={{
         ...styles.dropdownItem,
         justifyContent: 'flex-start',
-        color,
-        background: hovered && !disabled ? 'rgba(255,255,255,0.06)' : 'transparent',
+        color: textColor,
+        background: hovered && !disabled ? color.fill : 'transparent',
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.5 : 1,
       }}

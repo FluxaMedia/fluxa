@@ -6,6 +6,7 @@ import { t } from '../../i18n';
 import {
   ActionTile,
   ChoiceTile,
+  InfoTile,
   InputTile,
   SettingsSection,
   SliderTile,
@@ -15,6 +16,7 @@ import {
   subtitleFontOptions,
 } from './SettingsUI';
 import { styles, FONT } from './settingsStyles';
+import { color, fontSize, radius } from '../../design/tokens';
 import type { Prefs } from './settingsTypes';
 import { listCustomFonts, pickAndAddCustomFont, removeCustomFont, type CustomFont } from '../../core/customFonts';
 import { StreamBadgesSection } from './StreamBadgesSection';
@@ -23,6 +25,7 @@ const isWindows = navigator.userAgent.includes('Windows');
 
 export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void }) {
   const [mpvScriptsDir, setMpvScriptsDir] = useState<string | null>(null);
+  const [mpvShadersDir, setMpvShadersDir] = useState<string | null>(null);
   const [scriptsDirCopied, setScriptsDirCopied] = useState(false);
   const [externalPlayers, setExternalPlayers] = useState<Array<{ id: string; label: string }>>([]);
   const browserTarget = isBrowserTarget();
@@ -40,7 +43,10 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
     if (browserTarget) return;
     invoke<string | null>('get_data_dir')
       .then((dir) => {
-        if (dir) setMpvScriptsDir(`${dir}/mpv/scripts`);
+        if (dir) {
+          setMpvScriptsDir(`${dir}/mpv/scripts`);
+          setMpvShadersDir(`${dir}/mpv/shaders`);
+        }
       })
       .catch(() => {});
   }, [browserTarget]);
@@ -181,48 +187,39 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
               onChange={(v) => setPref('mpvCustomOptions', v)}
             />
             {mpvScriptsDir && (
-              <div
-                style={{
-                  width: '100%',
-                  minHeight: '3.625rem',
-                  borderBottom: '1px solid rgba(255,255,255,0.055)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '0.75rem 1rem',
-                  boxSizing: 'border-box',
-                  gap: '0.75rem',
-                }}
-              >
-                <span style={{ ...styles.rowIcon, color: 'var(--primary-accent-color)' }}>
+              <InfoTile
+                title={t('settings.mpv_scripts_dir')}
+                value={mpvScriptsDir}
+                mono
+                icon={
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
                   </svg>
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={styles.rowTitle}>{t('settings.mpv_scripts_dir')}</p>
-                  <p style={{ ...styles.rowSubtitle, fontFamily: 'monospace', fontSize: '0.6875rem', wordBreak: 'break-all' }}>
-                    {mpvScriptsDir}
-                  </p>
-                </div>
-                <button
-                  style={{
-                    background: scriptsDirCopied ? 'rgba(84,209,122,0.12)' : 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    color: scriptsDirCopied ? '#54D17A' : 'rgba(255,255,255,0.65)',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    padding: '0.375rem 0.8125rem',
-                    borderRadius: '0.5rem',
-                    fontFamily: FONT,
-                    flexShrink: 0,
-                    transition: 'background 0.12s, color 0.12s',
-                  }}
-                  onClick={() => void copyScriptsDir()}
-                >
-                  {scriptsDirCopied ? '✓ Copied' : 'Copy'}
-                </button>
-              </div>
+                }
+                trailing={
+                  <button
+                    style={{
+                      background: scriptsDirCopied ? `${color.success}1F` : color.fill,
+                      border: `1px solid ${color.lineStrong}`,
+                      color: scriptsDirCopied ? color.success : color.textBody,
+                      fontSize: fontSize.sm,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      padding: '0.375rem 0.8125rem',
+                      borderRadius: radius.md,
+                      fontFamily: FONT,
+                      flexShrink: 0,
+                      transition: 'background 0.12s, color 0.12s',
+                    }}
+                    onClick={() => void copyScriptsDir()}
+                  >
+                    {scriptsDirCopied ? '✓ Copied' : 'Copy'}
+                  </button>
+                }
+              />
+            )}
+            {mpvShadersDir && (
+              <InfoTile title={t('settings.mpv_shaders_dir')} value={mpvShadersDir} mono icon={<Type size={18} />} />
             )}
           </>
         )}
@@ -700,7 +697,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
             subtitle={fontUploadError ?? t('settings.upload_custom_font_desc')}
             icon={<Type size={18} />}
             onClick={() => void uploadCustomFont()}
-            accent={fontUploadError ? '#FF5D5D' : '#FFFFFF'}
+            accent={fontUploadError ? color.error : color.textPrimary}
           />
         )}
         {customFonts.map((font) => (
@@ -709,7 +706,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
             style={{
               width: '100%',
               minHeight: '2.75rem',
-              borderBottom: '1px solid rgba(255,255,255,0.055)',
+              borderBottom: `1px solid ${color.line}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -720,8 +717,8 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
           >
             <span
               style={{
-                fontSize: '0.8125rem',
-                color: 'rgba(255,255,255,0.75)',
+                fontSize: fontSize.base,
+                color: color.textBody,
                 fontFamily: FONT,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -736,7 +733,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'rgba(255,255,255,0.4)',
+                color: color.textDim,
                 cursor: 'pointer',
                 padding: '0.25rem',
                 display: 'flex',

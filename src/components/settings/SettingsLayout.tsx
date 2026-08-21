@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { platformInvoke } from '../../platform/invoke';
 import { styles, FONT } from './settingsStyles';
+import { color, fade, fontSize, radius } from '../../design/tokens';
 
 export function SidebarItem({
   label,
@@ -21,10 +22,10 @@ export function SidebarItem({
       style={{
         width: '100%',
         minHeight: '2.875rem',
-        background: selected ? 'rgba(255,255,255,0.08)' : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
-        color: '#FFFFFF',
+        background: selected ? color.fillHover : hovered ? fade.tint(0.04) : 'transparent',
+        color: color.textPrimary,
         border: 'none',
-        borderRadius: '0.5625rem',
+        borderRadius: radius.md,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -51,7 +52,7 @@ export function SidebarItem({
             width: '0.1875rem',
             height: '1.125rem',
             borderRadius: '0 0.125rem 0.125rem 0',
-            background: '#FFFFFF',
+            background: color.textPrimary,
           }}
         />
       )}
@@ -63,7 +64,7 @@ export function SidebarItem({
           flexShrink: 0,
           width: '1.375rem',
           height: '1.375rem',
-          color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.40)',
+          color: selected ? color.textPrimary : color.textDim,
           transition: 'color 0.12s',
         }}
       >
@@ -73,9 +74,9 @@ export function SidebarItem({
         <span
           style={{
             display: 'block',
-            fontSize: '0.875rem',
+            fontSize: fontSize.md,
             fontWeight: selected ? 600 : 500,
-            color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
+            color: selected ? color.textPrimary : color.textBody,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -88,8 +89,8 @@ export function SidebarItem({
           <span
             style={{
               display: 'block',
-              fontSize: '0.6875rem',
-              color: 'rgba(255,255,255,0.30)',
+              fontSize: fontSize.xs,
+              color: color.textFaint,
               marginTop: 1,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -113,7 +114,7 @@ export function SettingsDetailHeader({ title }: { title: string }) {
 }
 
 export function SidebarDivider() {
-  return <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0.625rem 0' }} />;
+  return <div style={{ height: 1, background: color.line, margin: '0.625rem 0' }} />;
 }
 
 export function SettingsSection({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
@@ -136,7 +137,7 @@ export function SettingsPanel({ children }: { children: React.ReactNode }) {
         boxSizing: 'border-box',
         borderRadius: 0,
         background: 'transparent',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        borderBottom: `1px solid ${color.line}`,
         padding: '0.875rem 1rem',
       }}
     >
