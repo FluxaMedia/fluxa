@@ -58,7 +58,8 @@ data class SubtitleCueUiModel(
 
 private fun subtitleCueTime(seconds: Double): String {
     val total = seconds.coerceAtLeast(0.0).toInt()
-    return "%02d:%02d:%02d".format(total / 3600, (total / 60) % 60, total % 60)
+    return listOf(total / 3600, (total / 60) % 60, total % 60)
+        .joinToString(":") { it.toString().padStart(2, '0') }
 }
 
 @Composable

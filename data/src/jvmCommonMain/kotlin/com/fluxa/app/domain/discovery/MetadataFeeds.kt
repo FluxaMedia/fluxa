@@ -36,29 +36,6 @@ fun buildCs3MetadataFeedOptions(catalogs: List<Cs3CatalogFeedDescriptor>): List<
         )
     }
 
-fun isMetadataFeedEnabled(selectedKeys: List<String>?, key: String): Boolean {
-    return selectedKeys == null || selectedKeys.contains(key)
-}
-
-fun effectiveMetadataFeedSelection(selectedKeys: List<String>?, availableKeys: List<String>): List<String>? {
-    return FluxaCoreNative.effectiveMetadataFeedSelection(selectedKeys, availableKeys)
-}
-
-fun effectiveHomeMetadataFeedSelection(selectedKeys: List<String>?, availableKeys: List<String>): List<String>? {
-    val selection = effectiveMetadataFeedSelection(selectedKeys, availableKeys)
-    return if (
-        selection != null &&
-        selection.isEmpty() &&
-        !selectedKeys.isNullOrEmpty() &&
-        availableKeys.isNotEmpty() &&
-        selectedKeys.none { it in availableKeys }
-    ) {
-        null
-    } else {
-        selection
-    }
-}
-
 fun toggleMetadataFeed(selectedKeys: List<String>?, availableKeys: List<String>, key: String): List<String> {
     return FluxaCoreNative.toggleMetadataFeed(selectedKeys, availableKeys, key)
 }
@@ -76,20 +53,6 @@ fun setMetadataFeedGroupEnabled(
     return FluxaCoreNative.setMetadataFeedGroupEnabled(selectedKeys, availableKeys, groupKeys, enabled)
 }
 
-fun orderedMetadataFeeds(options: List<MetadataFeedOption>, order: List<String>?): List<MetadataFeedOption> {
-    val optionByKey = options.associateBy { it.key }
-    return FluxaCoreNative.orderedMetadataFeedKeys(options.map { it.key }, order).mapNotNull { optionByKey[it] }
-}
-
 fun moveMetadataFeedOrder(options: List<MetadataFeedOption>, currentOrder: List<String>?, key: String, delta: Int): List<String> {
     return FluxaCoreNative.moveMetadataFeedOrder(options.map { it.key }, currentOrder, key, delta)
-}
-
-fun metadataFeedHomeTitle(label: String): String {
-    val parts = label.split(" - ").map { it.trim() }.filter { it.isNotEmpty() }
-    return when {
-        parts.size >= 3 -> parts.drop(1).joinToString(" ")
-        parts.size == 2 -> parts[1]
-        else -> label
-    }
 }
