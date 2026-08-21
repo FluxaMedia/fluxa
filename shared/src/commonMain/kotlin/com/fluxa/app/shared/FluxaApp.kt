@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
@@ -65,21 +64,8 @@ import com.fluxa.app.shared.feature.search.SearchAction
 import com.fluxa.app.shared.feature.search.SearchScreen
 import com.fluxa.app.shared.feature.player.PlayerControlsSurface
 import com.fluxa.app.ui.catalog.FluxaColors
-
-private val FluxaColorScheme = darkColorScheme(
-    background = FluxaColors.background,
-    surface = FluxaColors.surface,
-    surfaceVariant = FluxaColors.surfaceCard,
-    primary = Color.White,
-    secondary = Color.White,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    onSurfaceVariant = Color.White.copy(alpha = 0.85f),
-    onPrimary = Color.Black,
-    onSecondary = Color.Black,
-    outline = Color.White.copy(alpha = 0.3f),
-    error = FluxaColors.errorRed
-)
+import com.fluxa.app.ui.catalog.FluxaThemePacks
+import com.fluxa.app.ui.catalog.toColorScheme
 
 enum class FluxaDestination(val titleKey: String) {
     Home("nav.home"),
@@ -140,6 +126,7 @@ internal fun FluxaApp(
     val streamBadgesState = features.streamBadges
     val authState = features.auth
     val playerState = features.player
+    val accentColor = profileState?.activeProfile?.accentColorArgb?.let { Color(it) } ?: FluxaColors.accent
 
     val onDestinationSelected = actions.onDestinationSelected
     val onCatalogAction = actions.onCatalogAction
@@ -183,14 +170,13 @@ internal fun FluxaApp(
     val onProfileEditCancel = profileEditor.onProfileEditCancel
     val onPickBackgroundClick = profileEditor.onPickBackgroundClick
 
-    MaterialTheme(colorScheme = FluxaColorScheme) {
+    MaterialTheme(colorScheme = FluxaThemePacks.fluxaDark.toColorScheme(accentColor)) {
         val isTv = deviceType == com.fluxa.app.ui.catalog.DeviceType.TV
         val isDesktop = deviceType == com.fluxa.app.ui.catalog.DeviceType.Desktop
         // TV never captures a full-screen blur source. Mobile only does it while the
         // bottom navigation is actually visible and consuming the haze source.
         val liquidGlassRequested = !isTv && settingsState?.appearance?.liquidGlassMode == true
         val hazeState = rememberHazeState()
-        val accentColor = profileState?.activeProfile?.accentColorArgb?.let { Color(it) } ?: FluxaColors.accent
         androidx.compose.runtime.CompositionLocalProvider(com.fluxa.app.ui.catalog.LocalAccentColor provides accentColor) {
         Box(
             modifier = modifier
