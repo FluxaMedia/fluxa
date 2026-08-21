@@ -15,13 +15,15 @@ const TABS: { route: NavRoute; icon: React.ElementType; labelKey: string }[] = [
 export const MobileTabBar = React.memo(function MobileTabBar({
   activeRoute,
   onNavigate,
+  routes,
 }: {
   activeRoute: NavRoute;
   onNavigate: (route: NavRoute) => void;
+  routes?: NavRoute[];
 }) {
   return (
     <nav className="mobile-tabbar">
-      {TABS.map(({ route, icon: Icon, labelKey }) => {
+      {(routes ? TABS.filter(({ route }) => routes.includes(route)) : TABS).map(({ route, icon: Icon, labelKey }) => {
         const active = route === activeRoute;
         return (
           <button

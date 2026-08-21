@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, HardDrive, LayoutGrid, Palette, PlayCircle, Plug, Puzzle, RefreshCw, Settings, User } from 'lucide-react';
+import { ArrowLeft, Download, HardDrive, LayoutGrid, Palette, PlayCircle, Plug, Puzzle, RefreshCw, Settings, Trash2, User } from 'lucide-react';
 
 export function AccountIcon() {
   return <User size={22} />;
@@ -32,4 +32,7 @@ export function DownloadIcon() {
 }
 export function RefreshIcon() {
   return <RefreshCw size={22} />;
+}
+export function TrashIcon() {
+  return <Trash2 size={22} />;
 }

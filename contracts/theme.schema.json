@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluxamedia.github.io/fluxa/contracts/theme.schema.json",
+  "title": "Fluxa Theme Pack",
+  "type": "object",
+  "required": ["schemaVersion", "id", "nameKey", "colors", "typography", "shape", "spacing", "motion", "layouts"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,63}$" },
+    "nameKey": { "type": "string", "pattern": "^[a-z0-9._-]+$" },
+    "name": { "type": "string", "maxLength": 80 },
+    "colors": {
+      "type": "object",
+      "required": ["background", "backgroundElevated", "surface", "surfaceRaised", "navigation", "textPrimary", "textSecondary", "textMuted", "border", "borderStrong", "accent", "accentForeground", "success", "warning", "error", "info", "focus", "scrim"],
+      "properties": {
+        "background": { "$ref": "#/$defs/color" },
+        "backgroundElevated": { "$ref": "#/$defs/color" },
+        "surface": { "$ref": "#/$defs/color" },
+        "surfaceRaised": { "$ref": "#/$defs/color" },
+        "navigation": { "$ref": "#/$defs/color" },
+        "textPrimary": { "$ref": "#/$defs/color" },
+        "textSecondary": { "$ref": "#/$defs/color" },
+        "textMuted": { "$ref": "#/$defs/color" },
+        "border": { "$ref": "#/$defs/color" },
+        "borderStrong": { "$ref": "#/$defs/color" },
+        "accent": { "$ref": "#/$defs/color" },
+        "accentForeground": { "$ref": "#/$defs/color" },
+        "success": { "$ref": "#/$defs/color" },
+        "warning": { "$ref": "#/$defs/color" },
+        "error": { "$ref": "#/$defs/color" },
+        "info": { "$ref": "#/$defs/color" },
+        "focus": { "$ref": "#/$defs/color" },
+        "scrim": { "$ref": "#/$defs/color" }
+      },
+      "additionalProperties": false
+    },
+    "typography": {
+      "type": "object",
+      "required": ["displayFont", "bodyFont", "titleWeight", "bodyWeight"],
+      "properties": {
+        "displayFont": { "type": "string", "maxLength": 120 },
+        "bodyFont": { "type": "string", "maxLength": 120 },
+        "titleWeight": { "type": "number", "minimum": 100, "maximum": 1000 },
+        "bodyWeight": { "type": "number", "minimum": 100, "maximum": 1000 }
+      },
+      "additionalProperties": false
+    },
+    "shape": {
+      "type": "object",
+      "required": ["cardRadius", "controlRadius", "dialogRadius"],
+      "properties": {
+        "cardRadius": { "type": "number", "minimum": 0, "maximum": 128 },
+        "controlRadius": { "type": "number", "minimum": 0, "maximum": 128 },
+        "dialogRadius": { "type": "number", "minimum": 0, "maximum": 128 }
+      },
+      "additionalProperties": false
+    },
+    "spacing": {
+      "type": "object",
+      "required": ["screenPadding", "sectionGap", "controlGap"],
+      "properties": {
+        "screenPadding": { "type": "number", "minimum": 0, "maximum": 256 },
+        "sectionGap": { "type": "number", "minimum": 0, "maximum": 256 },
+        "controlGap": { "type": "number", "minimum": 0, "maximum": 256 }
+      },
+      "additionalProperties": false
+    },
+    "motion": {
+      "type": "object",
+      "required": ["enabled", "fastMs", "normalMs", "slowMs"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "fastMs": { "type": "number", "minimum": 0, "maximum": 5000 },
+        "normalMs": { "type": "number", "minimum": 0, "maximum": 5000 },
+        "slowMs": { "type": "number", "minimum": 0, "maximum": 5000 }
+      },
+      "additionalProperties": false
+    },
+    "layouts": {
+      "type": "object",
+      "required": ["home", "detail", "library", "navigation"],
+      "properties": {
+        "home": { "type": "string", "maxLength": 80 },
+        "detail": { "type": "string", "maxLength": 80 },
+        "library": { "type": "string", "maxLength": 80 },
+        "navigation": { "type": "string", "maxLength": 80 }
+      },
+      "additionalProperties": false
+    },
+    "assets": { "type": "object", "additionalProperties": { "type": "string" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6,8}$" }
+  }
+}

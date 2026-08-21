@@ -10,6 +10,7 @@ export {
   StorageIcon,
   DownloadIcon,
   RefreshIcon,
+  TrashIcon,
 } from './settingsIcons';
 
 export {

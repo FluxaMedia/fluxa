@@ -17,6 +17,7 @@ import { fetchHeroDescription } from '../core/homeEffects';
 import type { AppState, HomeCategory, Meta, Trailer } from '../core/types';
 import { getLanguage, t } from '../i18n';
 import { useInViewport } from '../hooks/useInViewport';
+import { resolveTheme } from '../theme/adapter';
 
 const ROW_PLACEHOLDER_HEIGHT = 340;
 
@@ -280,6 +281,8 @@ export const HomeScreen = React.memo(
     const continueWatching = useMemo(() => (home.continueWatching ?? []) as Meta[], [home.continueWatching]);
     const posterPrefs = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);
     const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
+    const skin = useMemo(() => resolveTheme(String(prefs.themeId ?? 'fluxa-dark'), String(prefs.skinConfig ?? '')).skin, [prefs.themeId, prefs.skinConfig]);
+    const hiddenHomeSections = useMemo(() => new Set(skin.home.hiddenSections), [skin.home.hiddenSections]);
     const [heroTrailers, setHeroTrailers] = useState<Record<string, Trailer[]>>({});
     const [fetchedHeroTrailerIds, setFetchedHeroTrailerIds] = useState<string[]>([]);
     const [heroLogos, setHeroLogos] = useState<Record<string, string>>({});
@@ -460,8 +463,9 @@ export const HomeScreen = React.memo(
       return map;
     }, [state.addons.installed]);
     const showHero = resolvedHomePlan.showHero;
-    const heroSlotVisible = showHero && (!!billboardWithTrailer || !!home.billboard);
-    const showContinueWatching = prefBool(prefs, 'continueWatchingEnabled', true);
+    const heroSlotVisible = showHero && !hiddenHomeSections.has('hero') && (!!billboardWithTrailer || !!home.billboard);
+    const showContinueWatching = prefBool(prefs, 'continueWatchingEnabled', true) && !hiddenHomeSections.has('continueWatching');
+    const showCatalogs = !hiddenHomeSections.has('catalogs');
     const gifAutoplayEnabled = prefBool(prefs, 'gifAutoplayEnabled', false);
     const topTenFeedKeys = useMemo(() => {
       const raw = prefs.topTenFeedToggles;
@@ -502,8 +506,32 @@ export const HomeScreen = React.memo(
       };
     }, [continueWatching, keepScheduled, showThisWeek]);
 
-    const noContent = !billboard && categories.length === 0 && continueWatching.length === 0;
+    const noContent = !billboard && (!showCatalogs || categories.length === 0) && (!showContinueWatching || continueWatching.length === 0);
     const awaitingFirstLoad = home.isLoading || deferStaleRefresh;
+    const homeSectionOrder = skin.home.sectionOrder.length ? skin.home.sectionOrder : ['hero', 'continueWatching', 'catalogs'];
+    const heroSectionVisible = homeSectionOrder.includes('hero') && heroSlotVisible;
+    const heroBeforeShelves = homeSectionOrder.indexOf('hero') <= homeSectionOrder.findIndex((section) => section !== 'hero');
+    const heroContent = (
+      <>
+        {heroSectionVisible && !billboardWithTrailer && <div style={styles.heroPlaceholder} />}
+        {heroSectionVisible && billboardWithTrailer && (
+          <HeroSection
+            meta={billboardWithTrailer}
+            slides={heroSlidesWithTrailers}
+            preferSeasonPosters={prefBool(prefs, 'homeSeasonPostersOnHero', true)}
+            onPlay={onPlay}
+            onDetails={onNavigateDetail}
+            onAddToWatchlist={handleAddToWatchlist}
+            isActive={isActive && !heroScrolledPast}
+            autoplayTrailer={autoplayTrailerEnabled}
+            autoplayTrailerDelaySecs={Number(prefString(prefs, 'homeHeroAutoplayTrailerDelaySecs', '2'))}
+            preferredSubtitleLanguage={prefString(prefs, 'preferredSubtitleLanguage', 'none')}
+            secondarySubtitleLanguage={prefString(prefs, 'secondarySubtitleLanguage', 'none')}
+            pendingLogoIds={heroPendingLogoIds}
+          />
+        )}
+      </>
+    );
 
     if (awaitingFirstLoad && noContent) {
       return <LoadingSkeleton />;
@@ -549,75 +577,71 @@ export const HomeScreen = React.memo(
 
     return (
       <div ref={scrollRef} className="home-screen" style={styles.screen}>
-        {heroSlotVisible && !billboardWithTrailer && <div style={styles.heroPlaceholder} />}
-        {heroSlotVisible && billboardWithTrailer && (
-          <HeroSection
-            meta={billboardWithTrailer}
-            slides={heroSlidesWithTrailers}
-            preferSeasonPosters={prefBool(prefs, 'homeSeasonPostersOnHero', true)}
-            onPlay={onPlay}
-            onDetails={onNavigateDetail}
-            onAddToWatchlist={handleAddToWatchlist}
-            isActive={isActive && !heroScrolledPast}
-            autoplayTrailer={autoplayTrailerEnabled}
-            autoplayTrailerDelaySecs={Number(prefString(prefs, 'homeHeroAutoplayTrailerDelaySecs', '2'))}
-            preferredSubtitleLanguage={prefString(prefs, 'preferredSubtitleLanguage', 'none')}
-            secondarySubtitleLanguage={prefString(prefs, 'secondarySubtitleLanguage', 'none')}
-            pendingLogoIds={heroPendingLogoIds}
-          />
-        )}
+        {heroBeforeShelves && heroContent}
 
         <div
           className="home-shelves"
-          style={{ ...styles.shelves, marginTop: heroSlotVisible ? styles.shelves.marginTop : 0 }}
+          style={{ ...styles.shelves, marginTop: heroBeforeShelves && heroSectionVisible ? styles.shelves.marginTop : 0 }}
         >
-          {showContinueWatching && cwItems.length > 0 && (
-            <ContinueWatchingRow
-              items={cwItems}
-              cwLayout={cwLayout}
-              artworkPreference={cwArtwork}
-              remainingFormat={cwRemainingFormat}
-              progressDirection={cwProgressDirection}
-              onItemClick={onResume}
-              onNavigateDetail={onNavigateDetail}
-              onStartOver={onStartOver}
-              onPlayManually={onPlayManually}
-              onDispatch={onDispatch}
-            />
-          )}
-          {showContinueWatching && showThisWeek && thisWeek.length > 0 && (
-            <ThisWeekRow items={thisWeek} artworkPreference={cwArtwork} onItemClick={onNavigateDetail} />
-          )}
-          {categories.map((cat) => (
-            <LazyRow key={cat.id}>
-              {cat.type === 'collection' ? (
-                <CollectionShelfRow
-                  title={cat.name}
-                  folders={cat.items}
-                  onFolderClick={handleFolderTileClick}
-                  addonIcon={cat.addonName ? addonIconByName.get(cat.addonName) : undefined}
-                  gifAutoplayEnabled={gifAutoplayEnabled}
-                  focusGlowEnabled={cat.focusGlowEnabled ?? true}
-                />
-              ) : (
-                <ShelfRow
-                  title={formatCatalogTitle(cat.name, cat.type)}
-                  items={categoryItems.get(cat.id) ?? cat.items}
-                  onItemClick={onNavigateDetail}
-                  onViewAll={handleViewAll}
-                  isLoading={cat.items.length === 0 && !!home.isLoading}
-                  posterPrefs={posterPrefs}
-                  preview={posterPrefs.hoverPreview}
-                  topTenEnabled={topTenFeedKeys.has(cat.id)}
-                  addonIcon={cat.addonName ? addonIconByName.get(cat.addonName) : undefined}
-                  onNearEnd={nearEndCallbacks.get(cat.id)}
-                  isLoadingMore={loadingMoreCategoryId === cat.id}
-                  onDispatch={onDispatch}
-                />
-              )}
-            </LazyRow>
-          ))}
+          {homeSectionOrder.map((section) => {
+            if (section === 'continueWatching') {
+              return (
+                <React.Fragment key={section}>
+                  {showContinueWatching && cwItems.length > 0 && (
+                    <ContinueWatchingRow
+                      items={cwItems}
+                      cwLayout={cwLayout}
+                      artworkPreference={cwArtwork}
+                      remainingFormat={cwRemainingFormat}
+                      progressDirection={cwProgressDirection}
+                      onItemClick={onResume}
+                      onNavigateDetail={onNavigateDetail}
+                      onStartOver={onStartOver}
+                      onPlayManually={onPlayManually}
+                      onDispatch={onDispatch}
+                    />
+                  )}
+                  {showContinueWatching && showThisWeek && thisWeek.length > 0 && (
+                    <ThisWeekRow items={thisWeek} artworkPreference={cwArtwork} onItemClick={onNavigateDetail} />
+                  )}
+                </React.Fragment>
+              );
+            }
+            if (section === 'catalogs' && showCatalogs) {
+              return categories.map((cat) => (
+                <LazyRow key={cat.id}>
+                  {cat.type === 'collection' ? (
+                    <CollectionShelfRow
+                      title={cat.name}
+                      folders={cat.items}
+                      onFolderClick={handleFolderTileClick}
+                      addonIcon={cat.addonName ? addonIconByName.get(cat.addonName) : undefined}
+                      gifAutoplayEnabled={gifAutoplayEnabled}
+                      focusGlowEnabled={cat.focusGlowEnabled ?? true}
+                    />
+                  ) : (
+                    <ShelfRow
+                      title={formatCatalogTitle(cat.name, cat.type)}
+                      items={categoryItems.get(cat.id) ?? cat.items}
+                      onItemClick={onNavigateDetail}
+                      onViewAll={handleViewAll}
+                      isLoading={cat.items.length === 0 && !!home.isLoading}
+                      posterPrefs={posterPrefs}
+                      preview={posterPrefs.hoverPreview}
+                      topTenEnabled={topTenFeedKeys.has(cat.id)}
+                      addonIcon={cat.addonName ? addonIconByName.get(cat.addonName) : undefined}
+                      onNearEnd={nearEndCallbacks.get(cat.id)}
+                      isLoadingMore={loadingMoreCategoryId === cat.id}
+                      onDispatch={onDispatch}
+                    />
+                  )}
+                </LazyRow>
+              ));
+            }
+            return null;
+          })}
         </div>
+        {!heroBeforeShelves && heroContent}
       </div>
     );
   },
@@ -646,9 +670,9 @@ function formatCatalogTitle(name: string, type: string): string {
 }
 
 function LoadingSkeleton() {
-  const box: React.CSSProperties = { background: '#171717', borderRadius: '0.625rem', animation: 'pulse 1.6s ease-in-out infinite' };
+  const box: React.CSSProperties = { background: 'var(--fluxa-surface-raised)', borderRadius: '0.625rem', animation: 'pulse 1.6s ease-in-out infinite' };
   return (
-    <div style={{ width: '100%', height: '100%', background: '#060606', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', background: 'var(--fluxa-background)', overflow: 'hidden' }}>
       <div style={{ ...box, width: '100%', height: HOME_HERO_HEIGHT, borderRadius: 0 }} />
       {[0, 1].map((row) => (
         <div key={row} style={{ padding: '1.75rem 3.625rem 0' }}>
@@ -710,7 +734,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     overflowY: 'auto',
     overflowX: 'hidden',
-    background: '#060606',
+    background: 'var(--fluxa-background)',
     scrollbarWidth: 'none',
     ['--hero-height' as string]: HOME_HERO_HEIGHT,
   },
@@ -723,7 +747,7 @@ const styles: Record<string, React.CSSProperties> = {
   heroPlaceholder: {
     width: '100%',
     height: HOME_HERO_HEIGHT,
-    background: '#171717',
+    background: 'var(--fluxa-surface-raised)',
     animation: 'pulse 1.6s ease-in-out infinite',
   },
   empty: {
@@ -733,16 +757,16 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '1rem',
-    background: '#060606',
+    background: 'var(--fluxa-background)',
   },
   emptyTitle: {
-    color: '#FFFFFF',
+    color: 'var(--fluxa-text-primary)',
     fontSize: '2rem',
     fontWeight: 800,
     margin: 0,
   },
   emptyText: {
-    color: 'rgba(255,255,255,0.5)',
+    color: 'var(--fluxa-text-muted)',
     fontSize: '1rem',
     textAlign: 'center',
     lineHeight: 1.6,
@@ -752,9 +776,9 @@ const styles: Record<string, React.CSSProperties> = {
     height: '2.625rem',
     padding: '0 1.125rem',
     borderRadius: '62.4375rem',
-    border: '1px solid rgba(255,255,255,0.14)',
-    background: '#FFFFFF',
-    color: '#000000',
+    border: '1px solid var(--fluxa-border-strong)',
+    background: 'var(--fluxa-text-primary)',
+    color: 'var(--fluxa-background)',
     fontSize: '0.8125rem',
     fontWeight: 850,
     cursor: 'pointer',

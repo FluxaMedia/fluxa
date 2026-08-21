@@ -452,7 +452,7 @@ export default function App() {
   }, [setDiscoverInitialGenre]);
 
   const prefs = React.useMemo(() => appPrefs(settingsState), [settingsState.settings?.values]);
-  const { rootStyle, isTopBar, navBarPosition, navItemsAlign, sidebarAlwaysOpen, sidebarOffset, mirrorSearchToLeft } = useAppLayoutPrefs({
+  const { rootStyle, isTopBar, navBarPosition, navItemsAlign, sidebarAlwaysOpen, sidebarOffset, mirrorSearchToLeft, navigationRoutes } = useAppLayoutPrefs({
     state: settingsState,
     prefs,
     nativePlayerActive,
@@ -499,7 +499,7 @@ export default function App() {
   const navigation =
     !nativePlayerActive &&
     (isMobile ? (
-      <MobileTabBar activeRoute={activeRoute} onNavigate={navigateRoute} />
+      <MobileTabBar activeRoute={activeRoute} onNavigate={navigateRoute} routes={navigationRoutes as NavRoute[]} />
     ) : isTopBar ? (
       <TopBar
         activeRoute={activeRoute}
@@ -508,6 +508,7 @@ export default function App() {
         position={navBarPosition}
         itemsAlign={navItemsAlign}
         topOffset={bannerOffset}
+        routes={navigationRoutes as NavRoute[]}
       />
     ) : (
       <NavSidebar
@@ -517,6 +518,7 @@ export default function App() {
         itemsAlign={navItemsAlign}
         topOffset={bannerOffset}
         alwaysOpen={sidebarAlwaysOpen}
+        routes={navigationRoutes as NavRoute[]}
       />
     ));
 

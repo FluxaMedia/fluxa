@@ -43,6 +43,7 @@ interface SidebarProps {
   itemsAlign?: string;
   topOffset?: number;
   alwaysOpen?: boolean;
+  routes?: NavRoute[];
 }
 
 interface TopBarProps {
@@ -52,6 +53,7 @@ interface TopBarProps {
   position?: string;
   itemsAlign?: string;
   topOffset?: number;
+  routes?: NavRoute[];
 }
 
 const PINNED_KEY = 'fluxa-sidebar-pinned';
@@ -113,6 +115,7 @@ export const NavSidebar = React.memo(function NavSidebar({
   itemsAlign: alignValue = 'center',
   topOffset = 0,
   alwaysOpen = false,
+  routes,
 }: SidebarProps) {
   const [pinned, setPinned] = useState<boolean>(() => {
     try {
@@ -158,18 +161,18 @@ export const NavSidebar = React.memo(function NavSidebar({
           justifyContent: panelJustify(position, itemsAlign),
           gap: '0.25rem',
           padding: '0.5rem 0.625rem 0.75rem',
-          background: '#141414',
+          background: 'var(--fluxa-navigation)',
           borderRadius: sidebarPanelRadius(position),
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid var(--fluxa-border)',
           ...sidebarBorder(position),
-          boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.35)',
+          boxShadow: '0 0.5rem 2rem var(--fluxa-scrim, rgba(0,0,0,0.35))',
           width: isHorizontal ? 'min(38.75rem, calc(100vw - 3rem))' : 96,
           minHeight: isHorizontal ? 58 : undefined,
           maxHeight: isHorizontal ? undefined : 'calc(100vh - 5rem)',
         }}
         onDoubleClick={onChromeDoubleClick}
       >
-        {ROUTES.map((route) => (
+        {(routes ?? ROUTES).map((route) => (
           <NavItem key={route} route={route} isActive={route === activeRoute} onNavigate={onNavigate} label={t(LABEL_KEYS[route])} />
         ))}
       </div>
@@ -198,17 +201,17 @@ export const NavSidebar = React.memo(function NavSidebar({
                   : position === 'bottom'
                     ? '0.5rem 0.5rem 0 0'
                     : '0 0.5rem 0.5rem 0',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid var(--fluxa-border)',
             ...sidebarBorder(position),
-            background: '#141414',
-            color: 'rgba(255,255,255,0.35)',
+            background: 'var(--fluxa-navigation)',
+            color: 'var(--fluxa-text-muted)',
             cursor: 'pointer',
             transition: 'left 0.25s ease, right 0.25s ease, top 0.25s ease, bottom 0.25s ease, color 0.15s',
             padding: 0,
             boxShadow: '0.125rem 0 0.5rem rgba(0,0,0,0.3)',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--fluxa-focus)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fluxa-text-muted)')}
         >
           {/* → = pinned/always-open  |  ← = hover-only */}
           {pinned ? (
@@ -235,8 +238,9 @@ export const TopBar = React.memo(function TopBar({
   position: positionValue = 'top',
   itemsAlign: alignValue = 'center',
   topOffset = 0,
+  routes,
 }: TopBarProps) {
-  const TOP_ROUTES: NavRoute[] = ['home', 'library', 'discover', 'calendar'];
+  const TOP_ROUTES: NavRoute[] = (routes ?? ['home', 'library', 'discover', 'calendar']).filter((route) => route !== 'settings');
   const position = normalizePosition(positionValue, 'top');
   const itemsAlign = normalizeAlign(alignValue);
   const isVertical = position === 'left' || position === 'right';
@@ -266,11 +270,11 @@ export const TopBar = React.memo(function TopBar({
         alignItems: 'center',
         justifyContent: panelJustify(position, itemsAlign),
         gap: '0.125rem',
-        background: transparent ? 'transparent' : 'rgba(10, 12, 20, 0.96)',
-        border: transparent ? 'none' : '1px solid rgba(255,255,255,0.10)',
+        background: transparent ? 'transparent' : 'var(--fluxa-navigation)',
+        border: transparent ? 'none' : '1px solid var(--fluxa-border)',
         borderRadius: transparent ? 0 : 999,
         padding: transparent ? '0.875rem 0.375rem 0.5rem' : '0.3125rem 0.375rem',
-        boxShadow: transparent ? 'none' : '0 0.5rem 2rem rgba(0,0,0,0.35)',
+        boxShadow: transparent ? 'none' : '0 0.5rem 2rem var(--fluxa-scrim, rgba(0,0,0,0.35))',
         maxHeight: isVertical ? 'calc(100vh - 3rem)' : undefined,
       }}
       onDoubleClick={onChromeDoubleClick}
@@ -308,8 +312,8 @@ function NavItem({
         padding: '0.75rem 0.375rem',
         borderRadius: '0.625rem',
         border: 'none',
-        background: isActive ? 'rgba(255,255,255,0.12)' : hovered ? 'rgba(255,255,255,0.07)' : 'transparent',
-        color: isActive ? '#FFFFFF' : hovered ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.40)',
+        background: isActive ? 'var(--fluxa-border-strong)' : hovered ? 'var(--fluxa-border)' : 'transparent',
+        color: isActive ? 'var(--fluxa-text-primary)' : hovered ? 'var(--fluxa-text-secondary)' : 'var(--fluxa-text-muted)',
         cursor: 'pointer',
         outline: 'none',
         transition: 'background 0.15s, color 0.15s',
@@ -329,7 +333,7 @@ function NavItem({
             width: '0.1875rem',
             height: '1.5rem',
             borderRadius: '62.4375rem 0 0 62.4375rem',
-            background: '#FFFFFF',
+            background: 'var(--fluxa-focus)',
           }}
         />
       )}

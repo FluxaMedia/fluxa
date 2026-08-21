@@ -53,7 +53,7 @@ export const appStyles: Record<string, React.CSSProperties> = {
     position: 'relative',
     width: '100vw',
     height: '100vh',
-    background: '#060606',
+    background: 'var(--fluxa-background)',
     overflow: 'hidden',
   },
   content: {
@@ -67,13 +67,13 @@ export const appStyles: Record<string, React.CSSProperties> = {
   loading: {
     width: '100vw',
     height: '100vh',
-    background: '#060606',
+    background: 'var(--fluxa-background)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#FFFFFF',
+    color: 'var(--fluxa-text-primary)',
     fontSize: '2.5rem',
     fontWeight: 900,
     fontFamily: "'Montserrat', sans-serif",

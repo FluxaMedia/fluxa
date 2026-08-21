@@ -75,7 +75,7 @@ export function PlayerSeekBar({
               top: '50%',
               height: trackHeight,
               transform: 'translateY(-50%)',
-              background: 'color-mix(in srgb, var(--primary-accent-color) 20%, transparent)',
+              background: 'var(--fluxa-accent-soft)',
               borderRadius: '0.1875rem',
               pointerEvents: 'none',
             }}

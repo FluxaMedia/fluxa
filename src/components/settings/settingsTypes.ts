@@ -28,6 +28,9 @@ export interface Prefs {
   mdblistApiKey: string;
   fanartApiKey: string;
   accentColorArgb: string;
+  themeId: string;
+  skinConfig: string;
+  customThemes: string;
   uiScale: string;
   animationsEnabled: boolean;
   reducedEffects: boolean;
@@ -189,6 +192,9 @@ export const DEFAULT_PREFS: Prefs = {
   tmdbEnrichOriginTitlesEnabled: true,
   tmdbEnrichWatchProvidersEnabled: true,
   accentColorArgb: '#FFFFFF',
+  themeId: 'fluxa-dark',
+  skinConfig: '',
+  customThemes: '[]',
   uiScale: '100',
   animationsEnabled: true,
   reducedEffects: false,

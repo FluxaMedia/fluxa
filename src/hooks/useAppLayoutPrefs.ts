@@ -2,8 +2,9 @@ import { useEffect, useMemo } from 'react';
 import { prefString } from '../core/appPrefs';
 import { storageRead, storageWrite } from '../core/engine';
 import { loadPrefs, prefsOwnerId, savePrefs } from '../core/libraryOps';
-import { accentForegroundColor, appStyles, computeAutoUiScale } from '../appConstants';
+import { appStyles, computeAutoUiScale } from '../appConstants';
 import type { AppState } from '../core/types';
+import { applyThemeToDocument, orderedVisibleRoutes, parseThemePacks, resolveTheme, themeRootStyle } from '../theme/adapter';
 
 export function useAppLayoutPrefs({
   state,
@@ -41,21 +42,26 @@ export function useAppLayoutPrefs({
   }, [updateState]);
 
   const accentColor = prefString(prefs, 'accentColorArgb', '#FFFFFF');
+  const themeRuntime = useMemo(
+    () => resolveTheme(prefString(prefs, 'themeId', 'fluxa-dark'), prefString(prefs, 'skinConfig', ''), parseThemePacks(prefString(prefs, 'customThemes', '[]'))),
+    [prefs],
+  );
+  const effectiveTheme = useMemo(
+    () => ({ ...themeRuntime.theme, colors: { ...themeRuntime.theme.colors, accent: accentColor } }),
+    [accentColor, themeRuntime.theme],
+  );
   const rootStyle = useMemo(
     () =>
       ({
         ...appStyles.root,
-        background: nativePlayerActive ? 'transparent' : '#060606',
-        ['--primary-accent-color' as string]: accentColor,
-        ['--primary-accent-foreground-color' as string]: accentForegroundColor(accentColor),
+        ...themeRootStyle(effectiveTheme, nativePlayerActive),
       }) as React.CSSProperties,
-    [nativePlayerActive, prefs, accentColor],
+    [nativePlayerActive, effectiveTheme],
   );
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--primary-accent-color', accentColor);
-    document.documentElement.style.setProperty('--primary-accent-foreground-color', accentForegroundColor(accentColor));
-  }, [accentColor]);
+    applyThemeToDocument(effectiveTheme);
+  }, [effectiveTheme]);
 
   const navLayout = prefString(prefs, 'navLayout', 'sidebar');
   const storedPrefs = (state.settings?.values ?? {}) as Record<string, unknown>;
@@ -82,5 +88,6 @@ export function useAppLayoutPrefs({
     sidebarAlwaysOpen,
     sidebarOffset,
     mirrorSearchToLeft,
+    navigationRoutes: orderedVisibleRoutes(themeRuntime.skin),
   };
 }

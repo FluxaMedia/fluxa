@@ -404,7 +404,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
     height: '100%',
     borderRadius: '62.4375rem',
     background: 'var(--primary-accent-color)',
-    boxShadow: '0 0 0.375rem color-mix(in srgb, var(--primary-accent-color) 65%, transparent)',
+    boxShadow: '0 0 0.375rem var(--fluxa-accent-shadow)',
   },
   remainingBadge: {
     position: 'absolute',

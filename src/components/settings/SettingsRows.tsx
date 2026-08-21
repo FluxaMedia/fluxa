@@ -28,7 +28,7 @@ export function ActionTile({
         borderRadius: 0,
         border: 'none',
         borderBottom: `1px solid ${color.line}`,
-        background: hovered ? (accent === color.textPrimary ? fade.tint(0.03) : `${accent}18`) : 'transparent',
+        background: hovered ? (accent === color.textPrimary ? fade.tint(0.03) : 'var(--fluxa-fill)') : 'transparent',
         display: 'flex',
         alignItems: 'center',
         padding: '1rem 1.125rem',

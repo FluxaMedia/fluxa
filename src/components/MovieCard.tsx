@@ -106,7 +106,7 @@ export const MovieCard = React.memo(
                   fontFamily: '"Arial Black", "Arial Bold", Arial, sans-serif',
                   lineHeight: 1,
                   color: 'transparent',
-                  WebkitTextStroke: `${rankStroke}px rgba(255,255,255,0.45)`,
+                  WebkitTextStroke: `${rankStroke}px var(--fluxa-text-faint)`,
                   userSelect: 'none',
                   letterSpacing: '-0.05em',
                   display: 'block',
@@ -127,7 +127,7 @@ export const MovieCard = React.memo(
               borderRadius: radius,
               overflow: 'hidden',
               position: 'relative',
-              background: '#171717',
+              background: 'var(--fluxa-surface-raised)',
               border: '1px solid transparent',
               transform: 'none',
               transition: 'border-color 0.18s ease-out',
@@ -196,7 +196,7 @@ export const MovieCard = React.memo(
                   style={{
                     width: '100%',
                     height: '100%',
-                    background: '#171717',
+                    background: 'var(--fluxa-surface-raised)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -205,7 +205,7 @@ export const MovieCard = React.memo(
                   {addonIcon ? (
                     <img src={addonIcon} alt="" style={{ width: '48%', height: '48%', objectFit: 'contain', opacity: 0.35 }} />
                   ) : (
-                    <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '2rem', fontWeight: 900 }}>
+                    <span style={{ color: 'var(--fluxa-text-faint)', fontSize: '2rem', fontWeight: 900 }}>
                       {(meta.name ?? '').slice(0, 2).toUpperCase()}
                     </span>
                   )}
@@ -222,7 +222,7 @@ export const MovieCard = React.memo(
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'rgba(0,0,0,0.55)',
+                  background: 'var(--fluxa-scrim)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -234,7 +234,7 @@ export const MovieCard = React.memo(
                 <WatchedCheckmark />
                 <span
                   style={{
-                    color: '#FFFFFF',
+                    color: 'var(--fluxa-text-primary)',
                     fontSize: '0.8125rem',
                     fontWeight: 700,
                     letterSpacing: '0.0313rem',
@@ -254,14 +254,14 @@ export const MovieCard = React.memo(
                   left: 0,
                   right: 0,
                   height: '0.1875rem',
-                  background: 'rgba(255,255,255,0.22)',
+                  background: 'var(--fluxa-fill-active)',
                 }}
               >
                 <div
                   style={{
                     height: '100%',
                     width: `${Math.min(progressRatio, 1) * 100}%`,
-                    background: '#E85D3F',
+                    background: 'var(--fluxa-accent)',
                     borderRadius: '0 0.125rem 0.125rem 0',
                   }}
                 />
@@ -275,14 +275,14 @@ export const MovieCard = React.memo(
                   position: 'absolute',
                   top: '0.5rem',
                   right: '0.5rem',
-                  background: 'rgba(0,0,0,0.72)',
+                  background: 'var(--fluxa-scrim)',
                   borderRadius: '0.3125rem',
                   padding: '0.125rem 0.4375rem',
                 }}
               >
                 <span
                   style={{
-                    color: 'rgba(255,255,255,0.7)',
+                    color: 'var(--fluxa-text-secondary)',
                     fontSize: '0.625rem',
                     fontWeight: 700,
                     letterSpacing: '0.0313rem',
@@ -310,7 +310,7 @@ export const MovieCard = React.memo(
           >
             <p
               style={{
-                color: '#FFFFFF',
+                color: 'var(--fluxa-text-primary)',
                 fontSize: '0.8125rem',
                 fontWeight: 700,
                 margin: 0,
@@ -326,7 +326,7 @@ export const MovieCard = React.memo(
               {meta.name}
             </p>
             {meta.year && (
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.6875rem', fontWeight: 400, margin: 0, lineHeight: 1.3 }}>
+              <p style={{ color: 'var(--fluxa-text-muted)', fontSize: '0.6875rem', fontWeight: 400, margin: 0, lineHeight: 1.3 }}>
                 {meta.year}
               </p>
             )}
@@ -397,8 +397,8 @@ function WatchedCheckmark() {
       style={{
         width: '2rem',
         height: '1.25rem',
-        borderLeft: '0.25rem solid #FFFFFF',
-        borderBottom: '0.25rem solid #FFFFFF',
+        borderLeft: '0.25rem solid var(--fluxa-text-primary)',
+        borderBottom: '0.25rem solid var(--fluxa-text-primary)',
         transform: 'rotate(-45deg)',
         boxSizing: 'border-box',
         marginBottom: '0.25rem',

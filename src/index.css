@@ -76,13 +76,33 @@ html {
   --primary-accent-color: #E85D3F;
   --primary-foreground-color: #FFFFFF;
   --secondary-foreground-color: #000000;
+  --fluxa-background: #060606;
+  --fluxa-background-elevated: #0A0A0B;
+  --fluxa-surface: #141416;
+  --fluxa-surface-raised: #1C1C1F;
+  --fluxa-navigation: #0D0D0D;
+  --fluxa-text-primary: #FFFFFF;
+  --fluxa-text-secondary: rgba(255,255,255,0.72);
+  --fluxa-text-muted: rgba(255,255,255,0.55);
+  --fluxa-text-strong: rgba(255,255,255,0.88);
+  --fluxa-text-dim: rgba(255,255,255,0.396);
+  --fluxa-text-faint: rgba(255,255,255,0.264);
+  --fluxa-border: rgba(255,255,255,0.08);
+  --fluxa-border-strong: rgba(255,255,255,0.16);
+  --fluxa-accent: #E85D3F;
+  --fluxa-accent-foreground: #FFFFFF;
+  --fluxa-focus: #FFFFFF;
+  --fluxa-fill-active: rgba(255,255,255,0.22);
+  --fluxa-fill-strong: rgba(255,255,255,0.3);
+  --fluxa-accent-soft: rgba(232,93,63,0.2);
+  --fluxa-accent-shadow: rgba(232,93,63,0.65);
 }
 
 html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: #040508;
+  background: var(--fluxa-background);
 }
 
 .app-content {
@@ -99,7 +119,7 @@ html[data-native-player-active] #root {
 }
 
 body {
-  color: #FFFFFF;
+  color: var(--fluxa-text-primary);
   font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -107,8 +127,8 @@ body {
 
 ::-webkit-scrollbar { width: 0.25rem; height: 0.25rem; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 0.125rem; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+::-webkit-scrollbar-thumb { background: var(--fluxa-border-strong); border-radius: 0.125rem; }
+::-webkit-scrollbar-thumb:hover { background: var(--fluxa-text-muted); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -143,11 +163,11 @@ body {
 }
 
 .ui-popover-row:hover {
-  background: rgba(255,255,255,0.06) !important;
+  background: var(--fluxa-border) !important;
 }
 
 .ui-popover-row:active {
-  background: rgba(255,255,255,0.1) !important;
+  background: var(--fluxa-border-strong) !important;
 }
 
 .fluxa-ibtn {
@@ -155,11 +175,11 @@ body {
 }
 
 .fluxa-ibtn:hover {
-  background: rgba(255,255,255,0.1) !important;
+  background: var(--fluxa-border-strong) !important;
 }
 
 .fluxa-ibtn:active {
-  background: rgba(255,255,255,0.16) !important;
+  background: var(--fluxa-text-muted) !important;
 }
 
 .ui-popover-icon {
@@ -168,7 +188,7 @@ body {
 }
 
 .ui-popover-icon:hover {
-  background: rgba(255,255,255,0.08) !important;
+  background: var(--fluxa-border) !important;
 }
 
 .ui-popover-chip {
@@ -176,8 +196,8 @@ body {
 }
 
 .ui-popover-chip:hover {
-  border-color: rgba(255,255,255,0.22) !important;
-  background: rgba(255,255,255,0.12) !important;
+  border-color: var(--fluxa-border-strong) !important;
+  background: var(--fluxa-border-strong) !important;
 }
 
 .movie-card .mc-dim {
@@ -213,8 +233,8 @@ body {
 }
 
 input:focus {
-  border-color: rgba(255,255,255,0.3) !important;
-  box-shadow: 0 0 0 0.125rem rgba(255,255,255,0.08);
+  border-color: var(--fluxa-border-strong) !important;
+  box-shadow: 0 0 0 0.125rem var(--fluxa-border);
 }
 
 button {
@@ -224,7 +244,7 @@ button {
 button:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 0.125rem solid rgba(255,255,255,0.55);
+  outline: 0.125rem solid var(--fluxa-focus);
   outline-offset: 0.125rem;
 }
 
