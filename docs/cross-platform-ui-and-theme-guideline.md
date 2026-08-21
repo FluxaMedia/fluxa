@@ -158,7 +158,7 @@ The long-term source of truth should be a small versioned theme contract package
 - a dedicated `fluxa-theme` package/repository, or
 - a `contracts/theme` directory maintained with the cross-platform contract files.
 
-The first implementation may live in `fluxa-desktop` while the schema is stabilized. `npm run theme:sync` generates the native default consumers from `contracts/default-theme.json`; generated files must not be hand-edited.
+The first implementation may live in `fluxa-desktop` while the schema is stabilized. `contracts/built-in-themes.json` contains the built-in packs, and `npm run theme:sync` generates the native consumers from it; generated files must not be hand-edited.
 
 ### Theme pack format
 
@@ -327,7 +327,7 @@ Consolidate these into one React theme adapter. `useAppLayoutPrefs` should apply
 
 The same React build is the correct UI path for browser and webOS. Platform modules such as `src/platform/webos.ts` should continue to provide only webOS capabilities and services.
 
-The first desktop foundation is now present: `contracts/theme.schema.json` defines the portable contract, `contracts/default-theme.json` is the default data source, and `src/theme/adapter.ts` maps it to CSS variables. Built-in theme selection and a first skin capability (showing or hiding Calendar in navigation) are wired through the existing profile preferences. The adapter validates theme data and safely falls back when skin JSON is invalid.
+The first desktop foundation is now present: `contracts/theme.schema.json` defines the portable contract, `contracts/built-in-themes.json` is the built-in data source, and `src/theme/adapter.ts` maps it to CSS variables. Built-in theme selection and a first skin capability (showing or hiding Calendar in navigation) are wired through the existing profile preferences. The adapter validates theme data and safely falls back when skin JSON is invalid.
 
 The desktop shell now accepts and exports validated JSON theme packs up to 256 KiB, stores up to 24 custom packs in profile preferences, and applies skin visibility and section-order settings to the Home and Detail screens. Detail skin section IDs are `hero`, `actions`, `meta`, `tabs`, `episodes`, `details`, `related`, and `rail`. Packs contain data only; they cannot execute code. Artwork/font installation and drag-and-drop route ordering remain future extensions. The Compose adapter and Android custom JSON import are implemented in `fluxa`; the tvOS SwiftUI adapter loads a persisted JSON pack from `AppStorage` and is implemented in `appleApp/tvOS`.
 
@@ -406,7 +406,7 @@ Android should deserialize the same JSON into a Kotlin data model in the shared 
 - define the required token list and defaults
 - add schema validation tests
 
-Status: desktop contract, default data, documentation, and validation tests are implemented. The canonical shared copy still needs to move to a cross-platform contracts package or be generated for each consumer.
+Status: desktop contract, built-in data, documentation, validation tests, and generated native consumers are implemented. A dedicated cross-platform contracts package remains an optional repository-organization improvement.
 
 ### Phase 2: Build the theme adapters
 
@@ -416,7 +416,7 @@ Status: desktop contract, default data, documentation, and validation tests are 
 - add the SwiftUI adapter for tvOS
 - add a snapshot/golden test that the same theme produces equivalent semantic tokens
 
-Status: React/CSS, Compose, and tvOS SwiftUI adapters are implemented. Native default consumers are generated from the desktop contract. Cross-consumer golden tests and a canonical generated contract package remain to be added.
+Status: React/CSS, Compose, and tvOS SwiftUI adapters are implemented. Native built-in consumers are generated from the desktop contract and checked by `npm run theme:verify`. A dedicated generated contract package remains an optional repository-organization improvement.
 
 ### Phase 3: Migrate existing UI
 
