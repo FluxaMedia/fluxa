@@ -1,39 +1,10 @@
-import defaultThemeJson from '../../contracts/default-theme.json';
+import builtInThemesJson from '../../contracts/built-in-themes.json';
 import type { SkinLayout, ThemePack } from './types';
 
-export const FLUXA_DARK_THEME = defaultThemeJson as ThemePack;
+export const FLUXA_DARK_THEME = builtInThemesJson[0] as ThemePack;
 
-export const AMOLED_THEME: ThemePack = {
-  ...FLUXA_DARK_THEME,
-  id: 'amoled',
-  nameKey: 'theme.amoled',
-  colors: {
-    ...FLUXA_DARK_THEME.colors,
-    background: '#000000',
-    backgroundElevated: '#000000',
-    surface: '#080808',
-    surfaceRaised: '#141414',
-    navigation: '#000000',
-  },
-};
-
-export const MIDNIGHT_THEME: ThemePack = {
-  ...FLUXA_DARK_THEME,
-  id: 'midnight-blue',
-  nameKey: 'theme.midnight_blue',
-  colors: {
-    ...FLUXA_DARK_THEME.colors,
-    background: '#080A10',
-    backgroundElevated: '#0D1220',
-    surface: '#121A2A',
-    surfaceRaised: '#1B263D',
-    navigation: '#090E1A',
-    textSecondary: '#A9B4C8',
-    textMuted: '#71809A',
-    accent: '#5C8DFF',
-    accentForeground: '#FFFFFF',
-  },
-};
+export const AMOLED_THEME = builtInThemesJson[1] as ThemePack;
+export const MIDNIGHT_THEME = builtInThemesJson[2] as ThemePack;
 
 export const DEFAULT_SKIN: SkinLayout = {
   navigation: {
@@ -54,7 +25,7 @@ export const DEFAULT_SKIN: SkinLayout = {
   },
 };
 
-export const BUILT_IN_THEMES: ThemePack[] = [FLUXA_DARK_THEME, AMOLED_THEME, MIDNIGHT_THEME];
+export const BUILT_IN_THEMES: ThemePack[] = builtInThemesJson as ThemePack[];
 
 export function themeById(id: string | undefined, customThemes: ThemePack[] = []): ThemePack {
   const customTheme = customThemes.find((theme) => theme.id === id);
