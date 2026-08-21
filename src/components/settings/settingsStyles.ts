@@ -123,8 +123,8 @@ export const styles: Record<string, React.CSSProperties> = {
   settingsGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.5rem',
-    marginBottom: '1.5rem',
+    gap: '0.875rem',
+    marginBottom: '1.75rem',
   },
   groupHeading: {
     display: 'flex',
@@ -153,7 +153,9 @@ export const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     borderRadius: radius.lg,
     background: color.surface,
+    border: `1px solid ${color.lineStrong}`,
     boxSizing: 'border-box',
+    overflow: 'hidden',
   },
   rowTitle: {
     color: color.textStrong,
@@ -185,7 +187,7 @@ export const styles: Record<string, React.CSSProperties> = {
   dropdownWrap: {
     position: 'relative',
     flexShrink: 0,
-    minWidth: '10.9375rem',
+    width: '13.75rem',
     zIndex: 2,
   },
   dropdownButton: {

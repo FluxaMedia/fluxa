@@ -448,7 +448,6 @@ export function SettingsScreen({
             <SidebarItem
               key={tabItem.id}
               label={t(tabItem.labelKey)}
-              subtitle={t(tabItem.subtitleKey)}
               icon={tabItem.icon}
               selected={tab === tabItem.id}
               onClick={() => setTab(tabItem.id)}

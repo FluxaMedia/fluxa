@@ -31,7 +31,7 @@ export function ActionTile({
         background: hovered ? (accent === color.textPrimary ? fade.tint(0.03) : `${accent}18`) : 'transparent',
         display: 'flex',
         alignItems: 'center',
-        padding: '0.75rem 1rem',
+        padding: '1rem 1.125rem',
         boxSizing: 'border-box',
         gap: '0.75rem',
         cursor: onClick ? 'pointer' : 'default',
@@ -67,11 +67,11 @@ export function InfoTile({
     <div
       style={{
         width: '100%',
-        minHeight: '3.75rem',
+        minHeight: '4.25rem',
         borderBottom: `1px solid ${color.line}`,
         display: 'flex',
         alignItems: 'center',
-        padding: '0.75rem 1rem',
+        padding: '1rem 1.125rem',
         boxSizing: 'border-box',
         gap: '0.75rem',
       }}
@@ -117,7 +117,7 @@ export function SyncServiceRow({
         background: hovered && onClick ? (destructive ? `${color.error}0D` : fade.tint(0.03)) : 'transparent',
         display: 'flex',
         alignItems: 'center',
-        padding: '0.75rem 1rem',
+        padding: '1rem 1.125rem',
         boxSizing: 'border-box',
         gap: '0.75rem',
         cursor: onClick ? 'pointer' : 'default',

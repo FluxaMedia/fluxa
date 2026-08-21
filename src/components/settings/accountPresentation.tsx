@@ -33,6 +33,28 @@ export function providerIcon(key: string): React.ReactNode {
   );
 }
 
+export function providerRowIcon(key: string): React.ReactNode {
+  const icon = PROVIDER_ICON[key];
+  if (!icon) return null;
+  return (
+    <div
+      style={{
+        width: '2.5rem',
+        height: '2.5rem',
+        borderRadius: '0.625rem',
+        background: icon.background,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+      <img src={icon.src} alt={icon.alt} style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} />
+    </div>
+  );
+}
+
 export function generateCodeVerifier(): string {
   const array = new Uint8Array(48);
   crypto.getRandomValues(array);

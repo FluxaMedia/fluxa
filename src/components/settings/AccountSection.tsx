@@ -14,10 +14,10 @@ import {
 } from './SettingsUI';
 import type { Prefs } from './settingsTypes';
 
-import { AuthKeyLoginForm, CredentialLoginForm, type IntegrationService } from './accountPresentation';
+import { AuthKeyLoginForm, CredentialLoginForm, providerRowIcon, type IntegrationService } from './accountPresentation';
 import { useIntegrationAccounts } from './useIntegrationAccounts';
 import { AccountIntegrationDetail } from './AccountIntegrationDetail';
-import { assetUrl } from '../../platform/assets';
+import { color } from '../../design/tokens';
 
 export function AccountSection({
   prefs,
@@ -176,22 +176,7 @@ export function AccountSection({
           {/* Nuvio */}
           {!nuvioConnected && !stremioConnected && (
             <SyncServiceRow
-              icon={
-                <div
-                  style={{
-                    width: '2.75rem',
-                    height: '2.75rem',
-                    borderRadius: '0.75rem',
-                    background: 'rgba(255,255,255,0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
-                </div>
-              }
+              icon={providerRowIcon('nuvio')}
               title="Nuvio"
               value={nuvioBusy ? t('auth.signing_in') : t('settings.connect_nuvio_account')}
               onClick={() => setSelectedIntegration('nuvio')}
@@ -226,22 +211,7 @@ export function AccountSection({
           {nuvioConnected && (
             <div ref={nuvioRowRef} style={{ position: 'relative' }}>
               <SyncServiceRow
-                icon={
-                  <div
-                    style={{
-                      width: '2.75rem',
-                      height: '2.75rem',
-                      borderRadius: '0.75rem',
-                      background: 'rgba(255,255,255,0.06)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <img src={assetUrl('nuvio.png')} alt="Nuvio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
-                  </div>
-                }
+                icon={providerRowIcon('nuvio')}
                 title={t('settings.signed_in_as', 'Nuvio')}
                 value={
                   nuvioBusy
@@ -250,7 +220,7 @@ export function AccountSection({
                       ? activeProfile.nuvioEmail
                       : t('sync.device.connected')
                 }
-                valueColor="#54D17A"
+                valueColor={activeProfile?.nuvioEmail ? undefined : color.success}
                 onClick={() => setSelectedIntegration('nuvio')}
                 busy={nuvioBusy}
                 expanded={nuvioPopoverOpen}
@@ -271,22 +241,7 @@ export function AccountSection({
           {/* Stremio */}
           {!stremioConnected && !nuvioConnected && (
             <SyncServiceRow
-              icon={
-                <div
-                  style={{
-                    width: '2.75rem',
-                    height: '2.75rem',
-                    borderRadius: '0.75rem',
-                    background: 'rgba(123,91,245,0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
-                </div>
-              }
+              icon={providerRowIcon('stremio')}
               title="Stremio"
               value={stremioBusy ? t('auth.signing_in') : t('settings.connect_stremio_account')}
               onClick={() => setSelectedIntegration('stremio')}
@@ -359,22 +314,7 @@ export function AccountSection({
           {stremioConnected && (
             <div ref={stremioRowRef} style={{ position: 'relative' }}>
               <SyncServiceRow
-                icon={
-                  <div
-                    style={{
-                      width: '2.75rem',
-                      height: '2.75rem',
-                      borderRadius: '0.75rem',
-                      background: 'rgba(123,91,245,0.12)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <img src={assetUrl('stremio.svg')} alt="Stremio" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
-                  </div>
-                }
+                icon={providerRowIcon('stremio')}
                 title={t('settings.signed_in_as', 'Stremio')}
                 value={
                   stremioBusy
@@ -383,7 +323,7 @@ export function AccountSection({
                       ? activeProfile.stremioEmail
                       : t('sync.device.connected')
                 }
-                valueColor="#54D17A"
+                valueColor={activeProfile?.stremioEmail ? undefined : color.success}
                 onClick={() => setSelectedIntegration('stremio')}
                 busy={stremioBusy}
                 expanded={stremioPopoverOpen}
@@ -407,24 +347,9 @@ export function AccountSection({
         {/* Trakt */}
         {!traktConnected && (
           <SyncServiceRow
-            icon={
-              <div
-                style={{
-                  width: '2.75rem',
-                  height: '2.75rem',
-                  borderRadius: '0.75rem',
-                  background: 'rgba(237,28,36,0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                }}
-              >
-                <img src={assetUrl('trakt.svg')} alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
-              </div>
-            }
+            icon={providerRowIcon('trakt')}
             title="Trakt.tv"
-            value={traktBusy ? t('trakt.device.waiting') : t('auto.connect_trakt_tv_account')}
+            value={traktBusy ? t('trakt.device.waiting') : t('auto.not_connected')}
             onClick={() => setSelectedIntegration('trakt')}
             busy={traktBusy}
           />
@@ -447,31 +372,10 @@ export function AccountSection({
         {traktConnected && (
           <div ref={traktRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={
-                <div
-                  style={{
-                    width: '2.75rem',
-                    height: '2.75rem',
-                    borderRadius: '0.75rem',
-                    background: 'rgba(237,28,36,0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <img src={assetUrl('trakt.svg')} alt="Trakt" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
-                </div>
-              }
+              icon={providerRowIcon('trakt')}
               title="Trakt.tv"
-              value={
-                traktBusy
-                  ? t('sync.device.syncing')
-                  : activeProfile?.traktUsername
-                    ? t('settings.connected_as', activeProfile.traktUsername)
-                    : t('sync.device.connected')
-              }
-              valueColor="#54D17A"
+              value={traktBusy ? t('sync.device.syncing') : t('sync.device.connected')}
+              valueColor={color.success}
               onClick={() => setSelectedIntegration('trakt')}
               busy={traktBusy}
               expanded={traktPopoverOpen}
@@ -492,24 +396,9 @@ export function AccountSection({
         {/* AniList */}
         {!anilistConnected && (
           <SyncServiceRow
-            icon={
-              <div
-                style={{
-                  width: '2.75rem',
-                  height: '2.75rem',
-                  borderRadius: '0.75rem',
-                  background: 'rgba(2,169,255,0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                }}
-              >
-                <img src={assetUrl('anilist.svg')} alt="AniList" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
-              </div>
-            }
+            icon={providerRowIcon('anilist')}
             title="AniList"
-            value={anilistBusy ? t('trakt.device.waiting') : t('auto.connect_anilist_account')}
+            value={anilistBusy ? t('trakt.device.waiting') : t('auto.not_connected')}
             onClick={() => setSelectedIntegration('anilist')}
             busy={anilistBusy}
           />
@@ -532,35 +421,14 @@ export function AccountSection({
         {anilistConnected && (
           <div ref={anilistRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={
-                <div
-                  style={{
-                    width: '2.75rem',
-                    height: '2.75rem',
-                    borderRadius: '0.75rem',
-                    background: 'rgba(2,169,255,0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <img
-                    src={assetUrl('anilist.svg')}
-                    alt="AniList"
-                    style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }}
-                  />
-                </div>
-              }
+              icon={providerRowIcon('anilist')}
               title="AniList"
               value={
                 anilistBusy
                   ? t('sync.device.syncing')
-                  : activeProfile?.anilistUsername
-                    ? t('settings.connected_as', activeProfile.anilistUsername)
-                    : t('settings.anime_tracking_enabled')
+                  : `${t('sync.device.connected')} · ${t('settings.anime_tracking_enabled')}`
               }
-              valueColor="#54D17A"
+              valueColor={color.success}
               onClick={() => setSelectedIntegration('anilist')}
               busy={anilistBusy}
               expanded={anilistPopoverOpen}
@@ -576,7 +444,7 @@ export function AccountSection({
                   ? `${t('settings.anime_tracking_enabled')} · ${new Date(anilistSyncMeta.lastSyncAt).toLocaleString()}`
                   : t('settings.anime_tracking_enabled')
               }
-              statusColor="#54D17A"
+              statusColor={color.success}
               syncLabel={t('settings.sync_now')}
               onSyncNow={() => void handleAnilistSyncNow()}
               onDisconnect={() => setConfirmDisconnect({ title: 'AniList', onConfirm: () => void handleAnilistDisconnect() })}
@@ -588,24 +456,9 @@ export function AccountSection({
         {/* Simkl */}
         {!simklConnected && (
           <SyncServiceRow
-            icon={
-              <div
-                style={{
-                  width: '2.75rem',
-                  height: '2.75rem',
-                  borderRadius: '0.75rem',
-                  background: 'rgba(255,255,255,0.06)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                }}
-              >
-                <img src={assetUrl('simkl.svg')} alt="Simkl" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
-              </div>
-            }
+            icon={providerRowIcon('simkl')}
             title="Simkl"
-            value={simklBusy ? t('trakt.device.waiting') : t('auto.connect_simkl_account')}
+            value={simklBusy ? t('trakt.device.waiting') : t('auto.not_connected')}
             onClick={() => setSelectedIntegration('simkl')}
             busy={simklBusy}
           />
@@ -628,31 +481,10 @@ export function AccountSection({
         {simklConnected && (
           <div ref={simklRowRef} style={{ position: 'relative' }}>
             <SyncServiceRow
-              icon={
-                <div
-                  style={{
-                    width: '2.75rem',
-                    height: '2.75rem',
-                    borderRadius: '0.75rem',
-                    background: 'rgba(255,255,255,0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <img src={assetUrl('simkl.svg')} alt="Simkl" style={{ width: '2.125rem', height: '2.125rem', objectFit: 'contain' }} />
-                </div>
-              }
+              icon={providerRowIcon('simkl')}
               title="Simkl"
-              value={
-                simklBusy
-                  ? t('sync.device.syncing')
-                  : activeProfile?.simklUsername
-                    ? t('settings.connected_as', activeProfile.simklUsername)
-                    : t('sync.device.connected')
-              }
-              valueColor="#54D17A"
+              value={simklBusy ? t('sync.device.syncing') : t('sync.device.connected')}
+              valueColor={color.success}
               onClick={() => setSelectedIntegration('simkl')}
               busy={simklBusy}
               expanded={simklPopoverOpen}

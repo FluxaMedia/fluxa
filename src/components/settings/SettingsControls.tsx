@@ -29,7 +29,7 @@ export function SliderTile({
       style={{
         width: '100%',
         borderBottom: `1px solid ${color.line}`,
-        padding: '0.875rem 1rem',
+        padding: '1.125rem 1.125rem',
         boxSizing: 'border-box',
       }}
     >
@@ -117,14 +117,14 @@ export function ToggleTile({
     <div
       style={{
         width: '100%',
-        minHeight: '3.75rem',
+        minHeight: '4.25rem',
         borderRadius: 0,
         background: hovered ? fade.tint(0.03) : 'transparent',
         border: 'none',
         borderBottom: `1px solid ${color.line}`,
         display: 'flex',
         alignItems: 'center',
-        padding: '0.75rem 1rem',
+        padding: '1rem 1.125rem',
         boxSizing: 'border-box',
         justifyContent: 'space-between',
         cursor: 'pointer',
@@ -193,11 +193,11 @@ export function ChoiceTile({
     <div
       style={{
         width: '100%',
-        minHeight: '3.75rem',
+        minHeight: '4.25rem',
         borderBottom: `1px solid ${color.line}`,
         display: 'flex',
         alignItems: 'center',
-        padding: '0.75rem 1rem',
+        padding: '1rem 1.125rem',
         boxSizing: 'border-box',
         gap: '1rem',
       }}
@@ -273,7 +273,7 @@ export function Dropdown({
               style={{
                 ...styles.dropdownItem,
                 background: active ? color.fillHover : 'transparent',
-                color: active ? color.textPrimary : color.textBody,
+                color: active ? 'var(--primary-accent-color)' : color.textBody,
               }}
               onClick={() => {
                 onSelect(option.value);
@@ -330,7 +330,7 @@ export function InputTile({
       style={{
         width: '100%',
         borderBottom: `1px solid ${color.line}`,
-        padding: '0.875rem 1rem',
+        padding: '1.125rem 1.125rem',
         boxSizing: 'border-box',
       }}
     >

@@ -21,8 +21,8 @@ export function SidebarItem({
     <button
       style={{
         width: '100%',
-        minHeight: '2.875rem',
-        background: selected ? color.fillHover : hovered ? fade.tint(0.04) : 'transparent',
+        minHeight: '2.5rem',
+        background: hovered ? fade.tint(0.04) : 'transparent',
         color: color.textPrimary,
         border: 'none',
         borderRadius: radius.md,
@@ -138,7 +138,7 @@ export function SettingsPanel({ children }: { children: React.ReactNode }) {
         borderRadius: 0,
         background: 'transparent',
         borderBottom: `1px solid ${color.line}`,
-        padding: '0.875rem 1rem',
+        padding: '1.125rem 1.125rem',
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4375rem' }}>{children}</div>
