@@ -50,7 +50,7 @@ export function providerRowIcon(key: string): React.ReactNode {
         flexShrink: 0,
       }}
     >
-      <img src={icon.src} alt={icon.alt} style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} />
+      <img src={icon.src} alt={icon.alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     </div>
   );
 }
