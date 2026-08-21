@@ -5,6 +5,13 @@ export type ExternalLinkTarget = {
   callback: boolean;
 };
 
+export type ExternalLinkOptions = {
+  errorUrl?: string;
+  position?: number;
+  filename?: string;
+  subtitleUrl?: string;
+};
+
 function isIos(): boolean {
   const ua = navigator.userAgent;
   if (/iPad|iPhone|iPod/.test(ua)) return true;
@@ -28,13 +35,25 @@ function intentUrl(url: string, pkg?: string): string {
   return parts.join(';');
 }
 
-export function externalLinkTargets(url: string, successUrl: string): ExternalLinkTarget[] {
+function infusePlayUrl(url: string, successUrl: string, options: ExternalLinkOptions): string {
+  const params = [`url=${encodeURIComponent(url)}`];
+  if (Number.isFinite(options.position) && (options.position ?? 0) > 0) {
+    params.push(`position=${Math.floor(options.position ?? 0)}`);
+  }
+  if (options.filename?.trim()) params.push(`filename=${encodeURIComponent(options.filename.trim())}`);
+  if (options.subtitleUrl?.trim()) params.push(`sub=${encodeURIComponent(options.subtitleUrl.trim())}`);
+  params.push(`x-success=${encodeURIComponent(successUrl)}`);
+  if (options.errorUrl?.trim()) params.push(`x-error=${encodeURIComponent(options.errorUrl.trim())}`);
+  return `infuse://x-callback-url/play?${params.join('&')}`;
+}
+
+export function externalLinkTargets(url: string, successUrl: string, options: ExternalLinkOptions = {}): ExternalLinkTarget[] {
   const encoded = encodeURIComponent(url);
   const success = encodeURIComponent(successUrl);
 
   if (isIos()) {
     return [
-      { id: 'infuse', label: 'Infuse', href: `infuse://x-callback-url/play?url=${encoded}&x-success=${success}`, callback: true },
+      { id: 'infuse', label: 'Infuse', href: infusePlayUrl(url, successUrl, options), callback: true },
       { id: 'vlc', label: 'VLC', href: `vlc-x-callback://x-callback-url/stream?url=${encoded}&x-success=${success}`, callback: true },
       { id: 'outplayer', label: 'Outplayer', href: `outplayer://${url}`, callback: false },
       { id: 'nplayer', label: 'nPlayer', href: `nplayer-${url}`, callback: false },
@@ -52,7 +71,7 @@ export function externalLinkTargets(url: string, successUrl: string): ExternalLi
 
   if (isMac()) {
     return [
-      { id: 'infuse', label: 'Infuse', href: `infuse://x-callback-url/play?url=${encoded}&x-success=${success}`, callback: true },
+      { id: 'infuse', label: 'Infuse', href: infusePlayUrl(url, successUrl, options), callback: true },
       { id: 'iina', label: 'IINA', href: `iina://weblink?url=${encoded}`, callback: false },
     ];
   }

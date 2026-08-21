@@ -136,16 +136,24 @@ export function WebPlayerOverlay({
   const lastTapRef = useRef<{ at: number; side: 'left' | 'right' } | null>(null);
   const [seekFlash, setSeekFlash] = useState<{ side: 'left' | 'right'; at: number } | null>(null);
   const [handoffOpen, setHandoffOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
   const externalTargets = useMemo(
-    () => (onHandoff ? externalLinkTargets(url, `${window.location.origin}${window.location.pathname}?fluxa_external=done`) : []),
-    [url, onHandoff],
+    () =>
+      onHandoff
+        ? externalLinkTargets(url, `${window.location.origin}${window.location.pathname}?fluxa_external=done`, {
+            errorUrl: `${window.location.origin}${window.location.pathname}?fluxa_external=error`,
+            position: currentTime || resumeAt,
+            filename: title,
+            subtitleUrl: subtitles.find((subtitle) => subtitle.url.trim())?.url,
+          })
+        : [],
+    [currentTime, onHandoff, resumeAt, subtitles, title, url],
   );
   const fallbackUsedRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
-  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [selectedSubtitle, setSelectedSubtitle] = useState<number>(subtitles.length > 0 ? 0 : -1);
