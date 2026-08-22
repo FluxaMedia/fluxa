@@ -1,0 +1,116 @@
+package com.fluxa.app.player
+
+import android.content.Context
+import android.util.Log
+import com.fluxa.app.core.rust.FluxaStreamingNative
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.ServerSocket
+import java.net.URL
+import java.util.UUID
+import org.json.JSONObject
+import kotlinx.coroutines.*
+
+class TorrentServerEngine(private val context: Context) {
+    companion object {
+        @Volatile
+        var castAccessToken: String = ""
+            private set
+    }
+
+    private val port = 8090
+    private var watcherJob: Job? = null
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    @Volatile private var running = false
+    @Volatile private var generation: Long? = null
+    @Volatile private var torrentActive = false
+
+    fun start() {
+        if (isRunning() && healthResponds()) return
+
+        ensurePortFree()
+        // Keep torrent pieces and librqbit's session persistence across normal
+        // app/engine restarts. Cache removal is an explicit user action, not
+        // a lifecycle side effect.
+        val dataDir = java.io.File(context.filesDir, "rust_torrent_cache").apply { mkdirs() }
+
+        try {
+            castAccessToken = UUID.randomUUID().toString()
+            val result = FluxaStreamingNative.startTorrentServer(dataDir.absolutePath, port, castAccessToken)
+            generation = runCatching { JSONObject(result).getLong("generation") }.getOrNull()
+            running = generation != null
+            if (running) {
+                Log.i("TorrentServer", "Rust torrent engine started on port $port")
+                startWatcher()
+            } else {
+                Log.w("TorrentServer", "Rust torrent engine did not report readiness on port $port")
+            }
+        } catch (e: IOException) {
+            Log.e("TorrentServer", "Failed to start engine", e)
+            running = false
+        } catch (e: Exception) {
+            Log.e("TorrentServer", "Failed to start Rust torrent engine", e)
+            running = false
+        }
+    }
+    
+    private fun startWatcher() {
+        watcherJob?.cancel()
+        watcherJob = scope.launch {
+            while (isActive) {
+                delay(if (torrentActive) 3_000L else 30_000L)
+                if (!healthResponds()) {
+                    Log.w("TorrentServer", "Rust torrent engine health check failed. Restarting...")
+                    FluxaStreamingNative.stopTorrentServer(generation)
+                    running = false
+                    start()
+                }
+            }
+        }
+    }
+
+    fun stop() {
+        watcherJob?.cancel()
+        Log.i("TorrentServer", "Stopping Rust torrent engine...")
+        try {
+            FluxaStreamingNative.stopTorrentServer(generation)
+            running = false
+            generation = null
+            castAccessToken = ""
+        } catch (e: Exception) {
+            Log.e("TorrentServer", "Rust torrent engine stop failed", e)
+        }
+        
+        scope.launch {
+            delay(500)
+            ensurePortFree()
+        }
+    }
+
+    fun isRunning(): Boolean {
+        return running
+    }
+
+    fun setTorrentActive(active: Boolean) {
+        torrentActive = active
+    }
+
+    private fun healthResponds(): Boolean = runCatching {
+        (URL("http://127.0.0.1:$port/health").openConnection() as HttpURLConnection).run {
+            connectTimeout = 1_000
+            readTimeout = 1_000
+            requestMethod = "GET"
+            connect()
+            responseCode in 200..299
+        }
+    }.getOrDefault(false)
+
+    private fun ensurePortFree() {
+        try {
+            ServerSocket(port).use { /* Port is free */ }
+        } catch (e: IOException) {
+            Log.w("TorrentServer", "Port $port is busy. Engine might be already running or zombie process exists.")
+            // Instead of lsof, we just hope destroyForcibly worked or the new process can take over
+        }
+    }
+}
