@@ -1,0 +1,63 @@
+{
+  "effects": [
+    {
+      "generation": 1,
+      "id": "fx-1",
+      "payload": {
+        "contentType": "movie",
+        "id": "tt1",
+        "language": "en",
+        "profile": null,
+        "sourceAddonCatalogType": "",
+        "sourceAddonTransportUrl": ""
+      },
+      "type": "fetchMetaDetail"
+    },
+    {
+      "generation": 1,
+      "id": "fx-2",
+      "payload": {
+        "id": "tt1"
+      },
+      "type": "readPlaybackProgress"
+    }
+  ],
+  "revision": 1,
+  "state": {
+    "detail": {
+      "availableAddons": [],
+      "contentType": "movie",
+      "error": null,
+      "failedAddons": [],
+      "fanartArtwork": null,
+      "feedback": null,
+      "generation": 1,
+      "hasStreamProviders": null,
+      "id": "tt1",
+      "isInWatchlist": null,
+      "isLoading": true,
+      "isLoadingStreams": false,
+      "language": "en",
+      "lastPrefetch": null,
+      "lastPrefetchError": null,
+      "loadingAddonNames": [],
+      "localWatchedVideoIds": [],
+      "mdblistRatings": null,
+      "meta": null,
+      "omdbRatings": null,
+      "profile": null,
+      "resolvedRequestId": null,
+      "savedPlayback": null,
+      "seasonEpisodes": [],
+      "seasonLoading": null,
+      "selectedAddon": null,
+      "similarItems": [],
+      "streams": [],
+      "streamsError": null,
+      "trailers": [],
+      "userAddons": [],
+      "visibleStreams": [],
+      "watchedVideoIds": []
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "movies": [],
+  "shows": [{
+    "ids": {"imdb": "tt0944947"},
+    "seasons": [{"number": 1, "episodes": [{"number": 2}]}]
+  }]
+}

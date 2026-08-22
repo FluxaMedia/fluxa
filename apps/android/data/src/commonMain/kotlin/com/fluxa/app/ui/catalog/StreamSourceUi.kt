@@ -1,0 +1,49 @@
+package com.fluxa.app.ui.catalog
+
+import com.fluxa.app.core.rust.models.NativeStreamBadge
+import com.fluxa.app.data.remote.Stream
+
+data class StreamSourceUiModel(
+    val playableUrl: String?,
+    val header: String,
+    val body: String?,
+    val badges: List<NativeStreamBadge> = emptyList()
+)
+
+fun Stream.toSourceUiModel(badges: List<NativeStreamBadge> = emptyList()): StreamSourceUiModel = StreamSourceUiModel(
+    playableUrl = playableUrl,
+    header = streamSourceHeader(),
+    body = streamRawBody(),
+    badges = badges
+)
+
+fun Stream.streamSourceHeader(): String {
+    return name
+        ?.takeIf { it.isNotBlank() }
+        ?: title?.takeIf { it.isNotBlank() }
+        ?: description?.takeIf { it.isNotBlank() }
+        ?: addonName?.takeIf { it.isNotBlank() }
+        ?: playableUrl.orEmpty()
+}
+
+fun Stream.streamRawBody(): String? {
+    val header = streamSourceHeader()
+    return listOf(description, title, addonName)
+        .firstOrNull { value -> !value.isNullOrBlank() && value != header }
+}
+
+fun Stream.cloudstreamPlaybackDetailLine(): String? {
+    val addon = addonName?.trim().orEmpty()
+    if (addon.isBlank()) return null
+    val quality = name
+        ?.lines()
+        ?.map { it.trim() }
+        ?.firstOrNull { line -> line.isNotBlank() && line != addon }
+        ?: return null
+    val fileName = title?.trim()?.takeIf { it.isNotBlank() }
+        ?: effectiveFilename?.trim()?.takeIf { it.isNotBlank() }
+        ?: url?.substringBefore('?')?.substringAfterLast('/')?.trim()?.takeIf { it.isNotBlank() }
+        ?: return null
+    if (fileName.contains(quality, ignoreCase = true)) return fileName
+    return listOf(fileName, quality).joinToString(" - ")
+}

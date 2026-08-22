@@ -1,0 +1,22 @@
+{
+  "effects": [
+    {
+      "generation": 1,
+      "id": "fx-1",
+      "payload": {
+        "key": "subtitleLanguage",
+        "value": "en"
+      },
+      "type": "writeSettings"
+    }
+  ],
+  "revision": 1,
+  "state": {
+    "settings": {
+      "lastWriteError": null,
+      "values": {
+        "subtitleLanguage": "en"
+      }
+    }
+  }
+}

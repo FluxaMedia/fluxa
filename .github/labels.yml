@@ -1,0 +1,28 @@
+# Source of truth for repository labels. Apply these labels in GitHub Settings or with your label management tool.
+bug:
+  color: d73a4a
+  description: Something is not working
+enhancement:
+  color: a2eeef
+  description: New feature or improvement
+needs-triage:
+  color: fbca04
+  description: Needs maintainer review
+android:
+  color: 3ddc84
+  description: Android platform
+apple:
+  color: 555555
+  description: iOS or tvOS platform
+desktop:
+  color: 0366d6
+  description: Desktop platform
+web:
+  color: 1d76db
+  description: Browser or webOS platform
+core:
+  color: 5319e7
+  description: Shared Rust core
+documentation:
+  color: 0075ca
+  description: Documentation or repository maintenance

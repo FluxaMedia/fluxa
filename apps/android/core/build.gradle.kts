@@ -1,0 +1,65 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+
+plugins {
+    alias(libs.plugins.fluxa.kmp.library)
+}
+
+android {
+    namespace = "com.fluxa.app.core"
+    sourceSets.getByName("main").assets.srcDir(
+        rootProject.layout.projectDirectory.asFile.resolve("../../shared")
+    )
+}
+
+kotlin {
+    tvosArm64()
+    tvosSimulatorArm64()
+
+    targets
+        .withType<KotlinNativeTarget>()
+        .matching { it.name.startsWith("tvos") || it.name.startsWith("ios") }
+        .configureEach {
+            binaries.framework {
+                baseName = "FluxaCore"
+                isStatic = true
+            }
+        }
+
+    sourceSets {
+        val jvmCommonMain by creating {
+            dependsOn(commonMain.get())
+        }
+        val nativeMain by creating {
+            dependsOn(commonMain.get())
+        }
+        val appleMain by creating {
+            dependsOn(nativeMain)
+        }
+        val iosMain by creating {
+            dependsOn(appleMain)
+        }
+        val tvosMain by creating {
+            dependsOn(appleMain)
+        }
+        getByName("iosArm64Main").dependsOn(iosMain)
+        getByName("iosSimulatorArm64Main").dependsOn(iosMain)
+        getByName("tvosArm64Main").dependsOn(tvosMain)
+        getByName("tvosSimulatorArm64Main").dependsOn(tvosMain)
+        androidMain {
+            dependsOn(jvmCommonMain)
+        }
+        commonMain.dependencies {
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.datetime)
+        }
+        androidMain.dependencies {
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.kotlinx.coroutines.android)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+        }
+    }
+}

@@ -1,0 +1,96 @@
+import Foundation
+
+enum FluxaThemePackDefaults {
+    static let fluxaDark = FluxaThemePack(
+        schemaVersion: 1,
+        id: "fluxa-dark",
+        nameKey: "theme.fluxa_dark",
+        colors: FluxaThemeColors(
+            background: "#060606",
+            backgroundElevated: "#0A0A0B",
+            surface: "#141416",
+            surfaceRaised: "#1C1C1F",
+            navigation: "#0D0D0D",
+            textPrimary: "#FFFFFF",
+            textSecondary: "#B8B8BE",
+            textMuted: "#8A8A91",
+            border: "#FFFFFF14",
+            borderStrong: "#FFFFFF29",
+            accent: "#E85D3F",
+            accentForeground: "#FFFFFF",
+            success: "#45D483",
+            warning: "#F0C674",
+            error: "#FF6B6B",
+            info: "#2196F3",
+            focus: "#FFFFFF",
+            scrim: "#000000C7",
+        ),
+        typography: FluxaThemeTypography(displayFont: "Archivo", bodyFont: "Montserrat", titleWeight: 700, bodyWeight: 400),
+        shape: FluxaThemeShape(cardRadius: 12, controlRadius: 8, dialogRadius: 16),
+        spacing: FluxaThemeSpacing(screenPadding: 24, sectionGap: 20, controlGap: 12),
+        motion: FluxaThemeMotion(enabled: true, fastMs: 120, normalMs: 180, slowMs: 300),
+        layouts: FluxaThemeLayouts(home: "shelves", detail: "hero-with-rail", library: "poster-grid", navigation: "sidebar")
+    )
+
+    static let amoled = FluxaThemePack(
+        schemaVersion: 1,
+        id: "amoled",
+        nameKey: "theme.amoled",
+        colors: FluxaThemeColors(
+            background: "#000000",
+            backgroundElevated: "#000000",
+            surface: "#080808",
+            surfaceRaised: "#141414",
+            navigation: "#000000",
+            textPrimary: "#FFFFFF",
+            textSecondary: "#B8B8BE",
+            textMuted: "#8A8A91",
+            border: "#FFFFFF14",
+            borderStrong: "#FFFFFF29",
+            accent: "#E85D3F",
+            accentForeground: "#FFFFFF",
+            success: "#45D483",
+            warning: "#F0C674",
+            error: "#FF6B6B",
+            info: "#2196F3",
+            focus: "#FFFFFF",
+            scrim: "#000000C7",
+        ),
+        typography: FluxaThemeTypography(displayFont: "Archivo", bodyFont: "Montserrat", titleWeight: 700, bodyWeight: 400),
+        shape: FluxaThemeShape(cardRadius: 12, controlRadius: 8, dialogRadius: 16),
+        spacing: FluxaThemeSpacing(screenPadding: 24, sectionGap: 20, controlGap: 12),
+        motion: FluxaThemeMotion(enabled: true, fastMs: 120, normalMs: 180, slowMs: 300),
+        layouts: FluxaThemeLayouts(home: "shelves", detail: "hero-with-rail", library: "poster-grid", navigation: "sidebar")
+    )
+
+    static let midnightBlue = FluxaThemePack(
+        schemaVersion: 1,
+        id: "midnight-blue",
+        nameKey: "theme.midnight_blue",
+        colors: FluxaThemeColors(
+            background: "#080A10",
+            backgroundElevated: "#0D1220",
+            surface: "#121A2A",
+            surfaceRaised: "#1B263D",
+            navigation: "#090E1A",
+            textPrimary: "#FFFFFF",
+            textSecondary: "#A9B4C8",
+            textMuted: "#71809A",
+            border: "#FFFFFF14",
+            borderStrong: "#FFFFFF29",
+            accent: "#5C8DFF",
+            accentForeground: "#FFFFFF",
+            success: "#45D483",
+            warning: "#F0C674",
+            error: "#FF6B6B",
+            info: "#2196F3",
+            focus: "#FFFFFF",
+            scrim: "#000000C7",
+        ),
+        typography: FluxaThemeTypography(displayFont: "Archivo", bodyFont: "Montserrat", titleWeight: 700, bodyWeight: 400),
+        shape: FluxaThemeShape(cardRadius: 12, controlRadius: 8, dialogRadius: 16),
+        spacing: FluxaThemeSpacing(screenPadding: 24, sectionGap: 20, controlGap: 12),
+        motion: FluxaThemeMotion(enabled: true, fastMs: 120, normalMs: 180, slowMs: 300),
+        layouts: FluxaThemeLayouts(home: "shelves", detail: "hero-with-rail", library: "poster-grid", navigation: "sidebar")
+    )
+}

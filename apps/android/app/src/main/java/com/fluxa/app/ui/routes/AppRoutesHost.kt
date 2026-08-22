@@ -1,0 +1,550 @@
+package com.fluxa.app.ui.routes
+
+import android.content.Context
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.media3.exoplayer.ExoPlayer
+import com.fluxa.app.shared.LocalHeroTrailerSurface
+import com.fluxa.app.shared.feature.detail.LocalDetailRatingLogo
+import com.fluxa.app.ui.catalog.HeroTrailerVideoSurface
+import com.fluxa.app.data.local.*
+import com.fluxa.app.data.local.OfflineDownloadManager
+import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.shared.FluxaDestination
+import com.fluxa.app.ui.PlayerLaunchRequest
+import com.fluxa.app.ui.TraktDeviceAuthUiState
+import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.HomeViewModel
+import com.fluxa.app.ui.catalog.UpdateManager
+import com.fluxa.app.ui.catalog.BiometricLockHelper
+import com.fluxa.app.ui.catalog.copyProfileImageToLocalUri
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.fluxa.app.ui.catalog.formatRuntimeLabel
+
+@Composable
+internal fun AppRoutesHost(
+    context: Context,
+    currentDestination: FluxaDestination,
+    authStartOnNuvio: Boolean,
+    playerRequest: PlayerLaunchRequest?,
+    deviceType: DeviceType,
+    androidFluxaPlatformServices: com.fluxa.app.ui.AndroidFluxaPlatformServices,
+    activeProfile: UserProfile?,
+    onActiveProfileChanged: (UserProfile?) -> Unit,
+    onNavigateToDestination: (FluxaDestination) -> Unit,
+    onPlayerRequestChanged: (PlayerLaunchRequest?) -> Unit,
+    profileManager: ProfileManager,
+    homeViewModel: HomeViewModel,
+    mainPlayer: ExoPlayer,
+    coroutineScope: CoroutineScope,
+    offlineDownloadManager: OfflineDownloadManager,
+    onShowTraktSheet: () -> Unit,
+    onShowSimklSheet: () -> Unit,
+    onTraktDeviceAuthChanged: (TraktDeviceAuthUiState?) -> Unit,
+    onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
+    navigateBackSafely: () -> Unit,
+    settingsPopRequestId: Int,
+    onSettingsCanPopChanged: (Boolean) -> Unit,
+    overlayPopRequestId: Int,
+    onOverlayOpenChanged: (Boolean) -> Unit,
+    onDestinationChanged: (FluxaDestination) -> Unit = {}
+) {
+    if (playerRequest != null) {
+        PlayerRoute(
+            request = playerRequest,
+            activeProfile = activeProfile,
+            profileManager = profileManager,
+            homeViewModel = homeViewModel,
+            mainPlayer = mainPlayer,
+            onUpdatePlayerRequest = onPlayerRequestChanged,
+            onBack = navigateBackSafely,
+            onProfileChanged = onActiveProfileChanged
+        )
+        return
+    }
+
+    var pendingAvatarPicked by remember { mutableStateOf<((String?) -> Unit)?>(null) }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val callback = pendingAvatarPicked
+        pendingAvatarPicked = null
+        if (uri == null || callback == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            val copied = withContext(Dispatchers.IO) { copyProfileImageToLocalUri(context, uri) ?: uri.toString() }
+            callback(copied)
+        }
+    }
+
+    var pendingThemeImport by remember { mutableStateOf<((String?) -> Unit)?>(null) }
+    val themePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val callback = pendingThemeImport
+        pendingThemeImport = null
+        coroutineScope.launch {
+            val rawJson = uri?.let {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes().decodeToString() }
+                    }.getOrNull()
+                }
+            }
+            callback?.invoke(rawJson)
+        }
+    }
+
+    var pendingLocalMediaFolderPicked by remember {
+        mutableStateOf<((com.fluxa.app.shared.feature.localmedia.LocalMediaPickedFolder?) -> Unit)?>(null)
+    }
+    val localMediaFolderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        val callback = pendingLocalMediaFolderPicked
+        pendingLocalMediaFolderPicked = null
+        if (callback == null) return@rememberLauncherForActivityResult
+        if (uri == null) {
+            callback(null)
+        } else {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+            val label = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)?.name.orEmpty()
+            callback(com.fluxa.app.shared.feature.localmedia.LocalMediaPickedFolder(uri.toString(), label))
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalHeroTrailerSurface provides { url, cues, onActiveSubtitleChanged, trailerModifier ->
+            HeroTrailerVideoSurface(url, cues, onActiveSubtitleChanged, trailerModifier)
+        },
+        LocalDetailRatingLogo provides { source, value, logoModifier ->
+            val resource = when (source) {
+                "imdb" -> com.fluxa.app.R.drawable.rating_imdb
+                "tmdb" -> com.fluxa.app.R.drawable.rating_tmdb
+                "trakt" -> com.fluxa.app.R.drawable.rating_trakt
+                "letterboxd" -> com.fluxa.app.R.drawable.rating_letterboxd
+                "tomatoes" -> if ((value.toFloatOrNull() ?: 0f) >= 60f) com.fluxa.app.R.drawable.rating_rt_tomato_fresh else com.fluxa.app.R.drawable.rating_rt_tomato_rotten
+                "popcorn" -> if ((value.toFloatOrNull() ?: 0f) >= 60f) com.fluxa.app.R.drawable.rating_rt_popcorn_full else com.fluxa.app.R.drawable.rating_rt_popcorn_spilled
+                "metacritic", "metacriticuser" -> com.fluxa.app.R.drawable.rating_metacritic
+                "myanimelist" -> com.fluxa.app.R.drawable.rating_mal
+                else -> null
+            }
+            if (resource != null) {
+                Image(painter = painterResource(resource), contentDescription = null, modifier = logoModifier)
+            }
+        }
+    ) {
+    com.fluxa.app.shared.FluxaAppHost(
+        platformServices = androidFluxaPlatformServices,
+        config = com.fluxa.app.shared.FluxaAppHostConfig(
+            deviceType = deviceType,
+            isLowRamDevice = context.getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice == true,
+            language = activeProfile?.language,
+            destination = currentDestination,
+            showNavigationBar = true,
+            authStartOnNuvio = authStartOnNuvio,
+            biometricAvailable = BiometricLockHelper.isAvailable(context),
+            settingsPopRequestId = settingsPopRequestId,
+            overlayPopRequestId = overlayPopRequestId,
+        ),
+        callbacks = com.fluxa.app.shared.FluxaAppHostCallbacks(
+            navigation = com.fluxa.app.shared.FluxaAppNavigationCallbacks(
+                onCatalogAction = { action ->
+                    when (action) {
+                        is com.fluxa.app.shared.feature.catalog.CatalogAction.ItemSelected -> {
+                            val resume = action.item.resume
+                            val streamUrl = resume?.streamUrl
+                            if (!streamUrl.isNullOrBlank()) {
+                                val meta = if (action.item.source.strictProviderData) {
+                                    action.item.toStrictProviderMeta()
+                                } else {
+                                    androidFluxaPlatformServices.catalogHomeDataSource
+                                        .resolveMeta(action.item.id, action.item.type)
+                                        ?: action.item.toStrictProviderMeta()
+                                }
+                                onPlayerRequestChanged(
+                                    PlayerLaunchRequest(
+                                        meta = meta,
+                                        videoId = resume.videoId,
+                                        initialProgress = resume.positionMs,
+                                        initialProgressPercent = resume.progressPercent,
+                                        streamIndex = 0,
+                                        initialStreams = listOf(
+                                            com.fluxa.app.data.remote.Stream(
+                                                name = resume.streamTitle,
+                                                title = resume.streamTitle,
+                                                url = streamUrl
+                                            )
+                                        ),
+                                        lastStreamUrl = streamUrl,
+                                        lastStreamTitle = resume.streamTitle
+                                    )
+                                )
+                            }
+                        }
+                        is com.fluxa.app.shared.feature.catalog.CatalogAction.MarkWatchedRequested -> {
+                            val providerId = action.item.strictProviderId()
+                            if (providerId != null) {
+                                homeViewModel.markProviderItemWatched(
+                                    action.item.toStrictProviderMeta(),
+                                    providerId,
+                                    action.item.source.providerAccountId
+                                )
+                            } else {
+                                androidFluxaPlatformServices.catalogHomeDataSource
+                                    .resolveMeta(action.item.id, action.item.type)
+                                    ?.let(homeViewModel::markWatchedFromPlayback)
+                            }
+                        }
+                        is com.fluxa.app.shared.feature.catalog.CatalogAction.DropRequested -> {
+                            val providerId = action.item.strictProviderId()
+                            if (providerId != null) {
+                                homeViewModel.dropProviderContinueWatching(
+                                    action.item.toStrictProviderMeta(),
+                                    providerId,
+                                    action.item.source.providerAccountId
+                                )
+                            } else {
+                                androidFluxaPlatformServices.catalogHomeDataSource
+                                    .resolveMeta(action.item.id, action.item.type)
+                                    ?.let(homeViewModel::forgetPlaybackProgress)
+                            }
+                        }
+                        is com.fluxa.app.shared.feature.catalog.CatalogAction.AddToLibraryRequested -> {
+                            val providerId = action.item.strictProviderId()
+                            if (providerId != null) {
+                                homeViewModel.addProviderItemToLibrary(
+                                    action.item.toStrictProviderMeta(),
+                                    providerId,
+                                    action.item.source.providerAccountId
+                                )
+                            } else {
+                                androidFluxaPlatformServices.catalogHomeDataSource
+                                    .resolveMeta(action.item.id, action.item.type)
+                                    ?.let(homeViewModel::addToWatchlist)
+                            }
+                        }
+                        is com.fluxa.app.shared.feature.catalog.CatalogAction.HeroPageChanged -> {
+                            val poolIndex = homeViewModel.billboardPool.value.indexOfFirst {
+                                it.id == action.item.id && it.type == action.item.type
+                            }
+                            if (poolIndex >= 0) homeViewModel.syncBillboardIndex(poolIndex)
+                        }
+                        else -> Unit
+                    }
+                },
+                onDetailNavigationEvent = onDetailNavigationEvent@{ event ->
+                    val androidDetailSource = androidFluxaPlatformServices.detailDataSource
+                    val detail = androidDetailSource.detailViewModel.uiState.value.detail ?: return@onDetailNavigationEvent
+                    val meta = com.fluxa.app.data.remote.Meta(
+                        id = detail.id, name = detail.name, type = detail.type, poster = detail.poster, background = detail.background,
+                        logo = detail.logo, description = detail.description, imdbRating = detail.imdbRating, releaseInfo = detail.releaseInfo,
+                        released = detail.released, originalLanguage = detail.originalLanguage, originalName = detail.originalName,
+                        videos = detail.videos, trailers = detail.trailers
+                    )
+                    when (event) {
+                        is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.PlayStream -> {
+                            val resolvedStream = androidDetailSource.resolveStream(event.stream.playableUrl)
+                            val remoteStreams = androidDetailSource.detailViewModel.uiState.value.filteredStreams
+                            val streams = if (resolvedStream != null && remoteStreams.none { it.playableUrl == resolvedStream.playableUrl }) {
+                                listOf(resolvedStream) + remoteStreams
+                            } else {
+                                remoteStreams
+                            }
+                            val index = resolvedStream?.let { stream -> streams.indexOfFirst { it.playableUrl == stream.playableUrl } }?.coerceAtLeast(0) ?: 0
+                            onPlayerRequestChanged(
+                                PlayerLaunchRequest(
+                                    meta = meta,
+                                    videoId = event.episodeId,
+                                    initialProgress = event.resumeProgress,
+                                    initialProgressPercent = event.resumeProgressPercent,
+                                    streamIndex = index,
+                                    initialStreams = streams,
+                                    lastStreamUrl = event.stream.playableUrl,
+                                    lastStreamTitle = event.stream.title
+                                )
+                            )
+                        }
+                        is com.fluxa.app.shared.feature.detail.DetailNavigationEvent.SelectSources -> Unit
+                    }
+                },
+                onDetailBackRequested = {},
+                onOpenUrlRequested = { url ->
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                },
+                onAddonStoreBackRequested = navigateBackSafely,
+                onPluginsBackRequested = navigateBackSafely,
+                onStreamBadgesBackRequested = navigateBackSafely,
+                onDownloadOpened = { id ->
+                    offlineDownloadManager.items.value.firstOrNull { it.id == id }?.let { item ->
+                        if (item.isPlayable) {
+                            onPlayerRequestChanged(
+                                PlayerLaunchRequest(
+                                    meta = offlineDownloadManager.asPlayableMeta(item),
+                                    videoId = item.videoId,
+                                    initialProgress = 0L,
+                                    streamIndex = 0,
+                                    initialStreams = listOf(offlineDownloadManager.asPlayableStream(item))
+                                )
+                            )
+                        }
+                    }
+                },
+                onDestinationChanged = onDestinationChanged,
+            ),
+            auth = com.fluxa.app.shared.FluxaAppAuthCallbacks(
+                onAuthBackRequested = navigateBackSafely,
+                onAuthCompleted = { onNavigateToDestination(FluxaDestination.Home) },
+                onConnectStremioRequested = {
+                    val profile = activeProfile
+                    if (profile?.authKey.isNullOrBlank()) {
+                        onNavigateToDestination(FluxaDestination.Auth)
+                    } else {
+                        homeViewModel.setProviderSyncing("stremio", true)
+                        homeViewModel.syncStremioIntegration(
+                            profile = profile,
+                            onProfileUpdated = { updated ->
+                                onActiveProfileChanged(updated)
+                                profileManager.saveProfile(updated)
+                                profileManager.setLastActiveProfile(updated)
+                                homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                            },
+                            onComplete = { homeViewModel.setProviderSyncing("stremio", false) }
+                        )
+                    }
+                },
+                onConnectNuvioRequested = {
+                    val profile = activeProfile
+                    if (profile?.nuvioAccessToken.isNullOrBlank()) {
+                        onNavigateToDestination(FluxaDestination.Auth)
+                    } else {
+                        homeViewModel.setProviderSyncing("nuvio", true)
+                        homeViewModel.syncNuvioIntegration(
+                            profile = profile,
+                            onProfileUpdated = { updated ->
+                                onActiveProfileChanged(updated)
+                                profileManager.saveProfile(updated)
+                                profileManager.setLastActiveProfile(updated)
+                                homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                            },
+                            onComplete = { homeViewModel.setProviderSyncing("nuvio", false) }
+                        )
+                    }
+                },
+                onConnectStremioWithCredentials = { email, password ->
+                    val profile = activeProfile
+                    if (profile != null) {
+                        homeViewModel.connectStremioWithCredentials(
+                            email = email,
+                            password = password,
+                            profile = profile,
+                            onProfileUpdated = { updated ->
+                                onActiveProfileChanged(updated)
+                                profileManager.saveProfile(updated)
+                                profileManager.setLastActiveProfile(updated)
+                                homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                            },
+                            onComplete = { homeViewModel.setProviderSyncing("stremio", false) }
+                        )
+                    }
+                },
+                onConnectNuvioWithCredentials = { email, password ->
+                    val profile = activeProfile
+                    if (profile != null) {
+                        homeViewModel.connectNuvioWithCredentials(
+                            email = email,
+                            password = password,
+                            profile = profile,
+                            onProfileUpdated = { updated ->
+                                onActiveProfileChanged(updated)
+                                profileManager.saveProfile(updated)
+                                profileManager.setLastActiveProfile(updated)
+                                homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                            },
+                            onComplete = { homeViewModel.setProviderSyncing("nuvio", false) }
+                        )
+                    }
+                },
+                onConnectTraktRequested = {
+                    if (!activeProfile?.traktAccessToken.isNullOrBlank()) {
+                        onShowTraktSheet()
+                    } else {
+                        connectTrakt(context, activeProfile, profileManager, homeViewModel, onActiveProfileChanged, onTraktDeviceAuthChanged)
+                    }
+                },
+                onConnectSimklRequested = {
+                    if (!activeProfile?.simklAccessToken.isNullOrBlank()) {
+                        onShowSimklSheet()
+                    } else {
+                        connectSimkl(context, activeProfile)
+                    }
+                },
+                onSyncProviderRequested = { provider ->
+                    val profile = activeProfile
+                    val providerId = ThirdPartyProviderId.from(provider)
+                    if (profile != null && providerId != null) {
+                        homeViewModel.syncThirdPartyProvider(
+                            profile = profile,
+                            providerId = providerId,
+                            onProfileUpdated = { updated ->
+                                onActiveProfileChanged(updated)
+                                profileManager.saveProfile(updated)
+                                profileManager.setLastActiveProfile(updated)
+                                homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
+                            },
+                            onComplete = {},
+                        )
+                    }
+                },
+                onConnectAnilistRequested = { connectAnilist(context, activeProfile) },
+            ),
+            library = com.fluxa.app.shared.FluxaAppLibraryCallbacks(
+                onPickLocalMediaFolderRequested = { _, onPicked ->
+                    pendingLocalMediaFolderPicked = onPicked
+                    localMediaFolderPicker.launch(null)
+                }
+            ),
+            profile = com.fluxa.app.shared.FluxaAppProfileCallbacks(
+                onPickAvatarRequested = { onPicked ->
+                    pendingAvatarPicked = onPicked
+                    avatarPicker.launch("image/*")
+                },
+                onBiometricAuthRequested = { profile, onResult ->
+                    val activity = context as? androidx.fragment.app.FragmentActivity
+                    if (activity != null) {
+                        BiometricLockHelper.authenticate(
+                            activity = activity,
+                            lang = profile.language,
+                            profileId = profile.id,
+                            onSuccess = { onResult(true) },
+                            onFailure = { onResult(false) }
+                        )
+                    } else {
+                        onResult(false)
+                    }
+                },
+                onProfileSelectionCompleted = { profileId ->
+                    profileManager.getProfiles().firstOrNull { it.id == profileId }?.let { profile ->
+                        onActiveProfileChanged(profile)
+                        profileManager.setLastActiveProfile(profile)
+                        coroutineScope.launch { androidFluxaPlatformServices.pluginsDataSource.refresh() }
+                        onNavigateToDestination(FluxaDestination.Home)
+                    }
+                },
+            ),
+            settings = com.fluxa.app.shared.FluxaAppSettingsCallbacks(
+                onManageAddonsRequested = { onNavigateToDestination(FluxaDestination.AddonStore) },
+                onManagePluginsRequested = { onNavigateToDestination(FluxaDestination.Plugins) },
+                onManageStreamBadgesRequested = { onNavigateToDestination(FluxaDestination.StreamBadges) },
+                onCheckForUpdateRequested = {
+                    coroutineScope.launch {
+                        val update = com.fluxa.app.ui.catalog.UpdateManager.checkUpdate()
+                        onUpdateInfoChanged(update)
+                    }
+                },
+                onSettingsBackRequested = navigateBackSafely,
+                onSettingsCanPopChanged = onSettingsCanPopChanged,
+                onImportThemeRequested = { onImported ->
+                    pendingThemeImport = onImported
+                    themePicker.launch("application/json")
+                },
+            ),
+            overlay = com.fluxa.app.shared.FluxaAppOverlayCallbacks(
+                onOverlayOpenChanged = onOverlayOpenChanged,
+            ),
+        ),
+        visuals = com.fluxa.app.shared.FluxaAppHostVisuals(
+            nuvioIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_nuvio),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp)
+                )
+            },
+            stremioIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_stremio),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp)
+                )
+            },
+            traktIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_trakt),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp)
+                )
+            },
+            simklIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_simkl),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp)
+                )
+            },
+            anilistIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_anilist),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp)
+                )
+            },
+        ),
+        modifier = Modifier
+        .fillMaxSize()
+        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+    )
+    }
+}
+
+
+private fun com.fluxa.app.shared.feature.catalog.CatalogItemUiModel.strictProviderId():
+    com.fluxa.app.data.local.ThirdPartyProviderId? =
+    source.takeIf { it.strictProviderData }
+        ?.providerId
+        ?.let(com.fluxa.app.data.local.ThirdPartyProviderId::from)
+
+private fun com.fluxa.app.shared.feature.catalog.CatalogItemUiModel.toStrictProviderMeta() =
+    com.fluxa.app.data.remote.Meta(
+        id = id,
+        name = card.title,
+        type = type,
+        poster = posterUrl ?: card.artworkUrl,
+        background = backdropUrl,
+        logo = card.logoUrl,
+        description = description,
+        ageRating = ageRating,
+        seasonsCount = seasonsCount,
+        runtime = formatRuntimeLabel(runtimeLabel),
+        timeOffset = resume?.positionMs,
+        duration = resume?.durationMs,
+        lastVideoId = resume?.videoId,
+        lastStreamUrl = resume?.streamUrl,
+        lastStreamTitle = resume?.streamTitle,
+        resumeProgressPercent = resume?.progressPercent,
+        genres = genres,
+        releaseInfo = releaseLabel,
+        imdbRating = ratingLabel,
+        reason = source.providerId
+            ?.let(com.fluxa.app.data.local.ThirdPartyProviderId::from)
+            ?.reasonLabel
+    )

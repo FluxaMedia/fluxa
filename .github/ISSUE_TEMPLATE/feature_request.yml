@@ -1,42 +1,37 @@
 name: Feature request
-description: Suggest an idea or improvement for Fluxa Desktop
-labels: ["enhancement", "needs triage"]
+description: Suggest an improvement for Fluxa.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for the idea. Please search existing issues first in case it's already been suggested.
   - type: textarea
     id: problem
     attributes:
-      label: What problem does this solve?
-      description: Describe the itch, not just the solution. What are you trying to do that's hard or impossible today?
+      label: Problem
+      description: What problem or limitation would this solve?
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: What would you like to happen?
+      label: Proposal
+      description: Describe the behavior you would like.
     validations:
       required: true
   - type: dropdown
     id: platform
     attributes:
-      label: Which platforms is this for?
+      label: Platform
       multiple: true
       options:
         - All
+        - Android
+        - Android TV
+        - iOS
+        - tvOS
         - Windows
         - macOS
         - Linux
-        - Web (browser)
+        - Web
         - webOS
-    validations:
-      required: false
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives considered
-      description: Anything you've tried or other ways this could work.
     validations:
       required: false

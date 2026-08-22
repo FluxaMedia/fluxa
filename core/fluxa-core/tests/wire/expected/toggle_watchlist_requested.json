@@ -1,0 +1,49 @@
+{
+  "effects": [
+    {
+      "generation": 1,
+      "id": "fx-1",
+      "payload": {
+        "command": {
+          "item": {
+            "id": "tt1",
+            "name": "Movie",
+            "type": "movie"
+          },
+          "type": "toggleWatchlist"
+        },
+        "profileId": "guest"
+      },
+      "type": "writeLibraryCommand"
+    }
+  ],
+  "revision": 1,
+  "state": {
+    "library": {
+      "activeProfileId": "",
+      "completed": null,
+      "continueWatching": null,
+      "dropped": null,
+      "error": null,
+      "generation": 0,
+      "isLoading": false,
+      "lastCommand": {
+        "item": {
+          "id": "tt1",
+          "name": "Movie",
+          "type": "movie"
+        },
+        "type": "toggleWatchlist"
+      },
+      "lastWatchedSync": null,
+      "lastWatchedSyncError": null,
+      "lastWrite": null,
+      "lastWriteError": null,
+      "liked": null,
+      "pendingPlaybackProgress": null,
+      "savedPlaybackProgress": null,
+      "watched": null,
+      "watchlist": null
+    }
+  }
+}

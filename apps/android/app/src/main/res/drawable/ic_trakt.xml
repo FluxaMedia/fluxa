@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path android:pathData="M48,11.26v25.47C48,42.95 42.95,48 36.73,48H11.26C5.04,48 0,42.95 0,36.73V11.26C0,5.04 5.04,0 11.26,0h25.47a11.24,11.24 0,0 1,9.62 5.4c0.18,0.29 0.34,0.59 0.5,0.89 0.33,0.68 0.6,1.39 0.79,2.14 0.1,0.37 0.18,0.76 0.23,1.15 0.09,0.54 0.13,1.11 0.13,1.68Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="23.26"
+                android:centerY="-0.456"
+                android:gradientRadius="31.12">
+                <item android:offset="0" android:color="#9F42C6" />
+                <item android:offset="0.27" android:color="#A041C3" />
+                <item android:offset="0.42" android:color="#A43EBB" />
+                <item android:offset="0.53" android:color="#AA39AD" />
+                <item android:offset="0.64" android:color="#B4339A" />
+                <item android:offset="0.73" android:color="#C02B81" />
+                <item android:offset="0.82" android:color="#CF2061" />
+                <item android:offset="0.9" android:color="#E1143C" />
+                <item android:offset="0.97" android:color="#F50613" />
+                <item android:offset="1" android:color="#FF0000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="m13.62 17.97 7.92 7.92 1.47-1.47-7.92-7.92-1.47 1.47Zm14.39 14.4 1.47-1.46-2.16-2.16L47.64 8.43c-.19-.75-.46-1.46-.79-2.14L24.39 28.75l3.62 3.62Zm-15.09-13.7-1.46 1.46 14.4 14.4 1.46-1.47L23 28.75 46.35 5.4c-.36-.6-.78-1.16-1.25-1.68L21.54 27.28l-8.62-8.61Zm34.95-9.09L28.7 28.75l1.47 1.46L48 12.38v-1.12c0-.57-.04-1.14-.13-1.68ZM25.16 22.27l-7.92-7.92-1.47 1.47 7.92 7.92 1.47-1.47Zm16.16 12.85c0 3.42-2.78 6.2-6.2 6.2H12.88c-3.42 0-6.2-2.78-6.2-6.2V12.88c0-3.42 2.78-6.21 6.2-6.21h20.78V4.6H12.88c-4.56 0-8.28 3.71-8.28 8.28v22.24c0 4.56 3.71 8.28 8.28 8.28h22.24c4.56 0 8.28-3.71 8.28-8.28v-3.51h-2.07v3.51Z" />
+</vector>

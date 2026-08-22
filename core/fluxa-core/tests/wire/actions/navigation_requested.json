@@ -1,0 +1,8 @@
+{
+  "initialState": {},
+  "action": {
+    "type": "navigationRequested",
+    "route": "detail",
+    "params": { "id": "tt1", "contentType": "movie" }
+  }
+}

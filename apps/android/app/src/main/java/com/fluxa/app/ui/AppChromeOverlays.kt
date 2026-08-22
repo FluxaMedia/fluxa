@@ -1,0 +1,137 @@
+package com.fluxa.app.ui
+
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewModelScope
+import com.fluxa.app.data.local.*
+import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.common.AppStrings
+import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.HomeViewModel
+import com.fluxa.app.ui.catalog.UpdateManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+@Composable
+internal fun AppChromeOverlays(
+    context: Context,
+    applicationContext: Context,
+    deviceType: DeviceType,
+    activeProfile: UserProfile?,
+    onActiveProfileChanged: (UserProfile?) -> Unit,
+    profileManager: ProfileManager,
+    homeViewModel: HomeViewModel,
+    updateInfo: UpdateManager.UpdateInfo?,
+    isDownloading: Boolean,
+    downloadProgress: Float,
+    isDirectLoading: Boolean,
+    showTraktSheet: Boolean,
+    isTraktSyncing: Boolean,
+    traktContinueWatchingLastUpdatedAt: Long,
+    showSimklSheet: Boolean,
+    onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
+    onDownloadingChanged: (Boolean) -> Unit,
+    onDownloadProgressChanged: (Float) -> Unit,
+    onShowTraktSheetChanged: (Boolean) -> Unit,
+    onTraktSyncingChanged: (Boolean) -> Unit,
+    onShowSimklSheetChanged: (Boolean) -> Unit
+) {
+    AppUpdateOverlay(
+        update = updateInfo,
+        deviceType = deviceType,
+        activeProfile = activeProfile,
+        isDownloading = isDownloading,
+        downloadProgress = downloadProgress,
+        onUpdateNow = {
+            val update = updateInfo ?: return@AppUpdateOverlay
+            onDownloadingChanged(true)
+            homeViewModel.viewModelScope.launch {
+                val success = UpdateManager.downloadAndInstall(
+                    context = applicationContext,
+                    updateUrl = update.url,
+                    expectedSha256 = update.sha256,
+                    onProgress = onDownloadProgressChanged
+                )
+                if (!success) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            applicationContext,
+                            AppStrings.t(activeProfile?.safeLanguage, "update.download_failed"),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        onDownloadingChanged(false)
+                    }
+                }
+            }
+        },
+        onSkip = { onUpdateInfoChanged(null) }
+    )
+    DirectLoadingOverlay(visible = isDirectLoading)
+    if (showTraktSheet && activeProfile != null) {
+        TraktIntegrationSheet(
+            profile = activeProfile,
+            lastContinueWatchingUpdatedAt = traktContinueWatchingLastUpdatedAt,
+            syncing = isTraktSyncing,
+            onDismiss = { onShowTraktSheetChanged(false) },
+            onSyncNow = {
+                onTraktSyncingChanged(true)
+                homeViewModel.syncTraktIntegration(
+                    profile = activeProfile,
+                    onProfileUpdated = { updated ->
+                        onActiveProfileChanged(updated)
+                        profileManager.saveProfile(updated)
+                        profileManager.setLastActiveProfile(updated)
+                    }
+                ) { success ->
+                    onTraktSyncingChanged(false)
+                    Toast.makeText(
+                        context,
+                        AppStrings.t(activeProfile.safeLanguage, if (success) "toast.trakt_synced" else "toast.trakt_sync_failed"),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            },
+            onDisconnect = {
+                homeViewModel.clearProviderData(activeProfile, ThirdPartyProviderId.TRAKT) {
+                    val updated = profileManager.updateProfile(activeProfile.id) {
+                        it.copy(
+                            traktAccessToken = null,
+                            traktRefreshToken = null,
+                            traktTokenExpiresAt = null,
+                            traktLastSyncAt = null,
+                            traktLastSyncedItems = null,
+                            traktLastContinueWatchingCount = null,
+                            traktLastWatchlistCount = null
+                        )
+                    } ?: activeProfile
+                    onActiveProfileChanged(updated)
+                    profileManager.setLastActiveProfile(updated)
+                    homeViewModel.loadInitialData(updated, force = true)
+                    onShowTraktSheetChanged(false)
+                }
+            }
+        )
+    }
+    if (showSimklSheet && activeProfile != null) {
+        com.fluxa.app.ui.SimpleIntegrationSheet(
+            titleKey = "brand.simkl",
+            iconRes = com.fluxa.app.R.drawable.ic_simkl,
+            lang = activeProfile.safeLanguage,
+            onDismiss = { onShowSimklSheetChanged(false) },
+            onDisconnect = {
+                homeViewModel.clearProviderData(activeProfile, ThirdPartyProviderId.SIMKL) {
+                    val updated = profileManager.updateProfile(activeProfile.id) {
+                        it.copy(simklAccessToken = null)
+                    } ?: activeProfile
+                    onActiveProfileChanged(updated)
+                    profileManager.setLastActiveProfile(updated)
+                    homeViewModel.loadInitialData(updated, force = true)
+                    onShowSimklSheetChanged(false)
+                }
+            }
+        )
+    }
+}

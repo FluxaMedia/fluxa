@@ -1,0 +1,9 @@
+/target/
+CLAUDE.md
+AGENTS.md
+docs/external/
+*.pdb
+stremio-addon-api/
+fluxa-streaming-engine/resources/ffmpeg/
+fluxa-streaming-engine/target/
+fluxa-streaming-engine/.env

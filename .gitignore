@@ -15,8 +15,32 @@ src-tauri/gen/
 *.log
 
 # mpv/FFmpeg binaries — fetched by CI, not stored in repo
-src-tauri/lib/*.so
-src-tauri/lib/*.so.*
-src-tauri/lib/*.dll
-src-tauri/lib/*.dylib
-src-tauri/lib/*.jar
+**/src-tauri/lib/*.so
+**/src-tauri/lib/*.so.*
+**/src-tauri/lib/*.dll
+**/src-tauri/lib/*.dylib
+**/src-tauri/lib/*.jar
+
+# Monorepo-wide generated and local state
+**/target/
+**/build/
+**/.gradle/
+**/.kotlin/
+**/src-tauri/gen/
+**/src-tauri/lib/
+**/node_modules/
+**/dist/
+**/dist-web/
+**/dist-webos/
+**/.env
+**/.env.*
+!**/.env.example
+**/fuzz/corpus/
+**/fuzz/target/
+*.apk
+*.aab
+*.ipa
+
+# Legacy Desktop checkout paths left outside the monorepo layout
+/src/
+/src-tauri/

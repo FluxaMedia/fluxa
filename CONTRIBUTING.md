@@ -1,121 +1,55 @@
-# Contributing to Fluxa Desktop
+# Contributing to Fluxa
 
-Thanks for wanting to help. Fluxa Desktop is the Tauri shell — one codebase that ships as
-a native desktop app, a browser build ([Fluxa Pages](https://fluxamedia.github.io/fluxa-desktop/)),
-and a webOS build. It handles windows, the UI, and platform I/O; the decisions live in
-[fluxa-core](https://github.com/FluxaMedia/fluxa-core).
+Fluxa is a media hub with shared Rust application logic and platform shells for Android, Apple platforms, desktop, web, and webOS.
 
-## The shell is thin on purpose
+## Repository layout
 
-Before writing a feature, ask: **does this belong in fluxa-core or here?**
-
-| fluxa-core | fluxa-desktop |
-|---|---|
-| Addon resolution, stream policy | Window / tray / OS integration |
-| Library & playback rules, search | Tauri commands (thin wrappers) |
-| Catalog handling, data models | React UI components |
-| State machines | IPC glue, desktop config |
-
-If a feature is about *what* the app does, it's core. If it's about *how* it presents or
-integrates on a device, it's here. When in doubt, prefer core so the logic stays reusable
-across Android and the other targets — but only move genuinely portable, decision-making
-code, not something that needs a platform API to express.
-
-## Getting set up
-
-```bash
-git clone https://github.com/FluxaMedia/fluxa-desktop.git
-cd fluxa-desktop
-npm install
-npm run tauri dev
+```text
+apps/android   Android and Android TV shell plus shared KMP modules
+apps/apple     iOS and tvOS host code
+apps/desktop   Desktop, web, and webOS shell
+core/          Shared Rust domain logic and streaming engine
+shared/i18n    Shared English and Turkish application strings
 ```
 
-**Prerequisites**
+Put decisions, policies, state transitions, and cross-platform contracts in `core/fluxa-core`. Keep UI, storage, networking, lifecycle, players, and OS integrations in the relevant platform shell. Do not duplicate a business rule in a platform just because calling the core is inconvenient.
 
-- Node 22+ and Rust stable
-- `libmpv` — install it system-wide, or run `./src-tauri/fetch-libmpv.sh` to pull the
-  prebuilt gpu-next fork used for release builds
+## Local checks
 
-fluxa-core is consumed from `../fluxa-core` (see `package.json`), so clone it as a sibling
-directory. The commands you'll use most:
+For Desktop checks, install the already-declared dependencies from the app lockfile:
 
 ```bash
-npm run check            # typecheck + cargo check — run this before every PR
-npm test                 # frontend unit tests (vitest)
-npm run build            # production frontend build
-npm run build:web        # browser build in dist-web
-npm run build:web:pages  # browser build with the GitHub Pages base path
-npm run build:webos      # webOS build in dist-webos
+npm --prefix apps/desktop ci
 ```
 
-## Before you open a PR
+Do this only when you have a suitable connection; the checks themselves are offline.
 
 ```bash
-npm run check
-npm test
+npm run check:structure
+npm run check:i18n
+npm run check:desktop
+npm run test:desktop
+npm run check:core
+npm run check:wasm
+npm run verify:core-consumers
+npm run check:android
+npm run check:apple
 ```
 
-Both must pass. If you touched Rust, `cargo fmt` and `cargo clippy` in `src-tauri/` too.
+For Android or Apple changes, run the relevant Gradle tasks from `apps/android` on a machine with the required SDKs. Avoid dependency downloads unless you are on Wi-Fi; use offline mode where possible.
 
-## Two things that bite in this repo
+When changing user-facing copy, edit `shared/i18n` and run `npm run generate:i18n` so Android's generated resources stay synchronized.
 
-**Web/webOS builds run the same code as the desktop app.** A `@tauri-apps/*` import or a
-Tauri command with no web fallback will compile fine and then throw at runtime in the
-browser build. If you add a native command, add its `webInvoke` case in
-`src/platform/web/invoke.ts` (or a deliberate unsupported path). Reference bundled assets
-with `assetUrl()` from `src/platform/assets`, never a bare `/foo.svg` — the Pages build is
-served from a subdirectory and absolute paths 404 there.
+## Pull requests
 
-**`npm run tauri dev` is not a packaged build.** Bugs involving the asset protocol, CSP,
-bundled-library paths, or production error boundaries only show up in a real bundle. Build
-one locally before claiming a production-only fix is done:
+- Keep changes focused and preserve the shared/core boundary.
+- Add or update a focused test for new behavior or a regression.
+- Check every affected target, not only the target used during development.
+- Keep user-facing strings in the platform localization files.
+- Do not commit generated build output, credentials, SDK state, or downloaded media libraries.
 
-```bash
-npm run tauri build -- --bundles appimage   # Linux
-./src-tauri/target/release/bundle/appimage/*.AppImage --appimage-extract
-squashfs-root/AppRun                        # run via AppRun, not the raw binary
-```
-
-Cutting a GitHub release is not part of testing a fix — build and verify locally first.
-
-## i18n
-
-Every user-facing string goes through `t()` from `src/i18n.ts`. No hardcoded text in JSX
-or component logic — not even with a `|| 'fallback'` guard. When you add a string:
-
-1. Add the key to `src/i18n/english_us.json`
-2. Add the translation to `src/i18n/tr_tr.json`
-3. Use `t('your.key')` — `%s` substitution works: `t('player.playing_in_seconds', n)`
-
-## Style
-
-- **No comments in code.** Not inline, not doc comments. Explanation belongs in the commit
-  message or PR description; rename or restructure until the code reads on its own.
-- **English only** for everything developer-facing: identifiers, files, commit messages,
-  PR text, test names.
-- Match the surrounding component's idiom — this codebase leans on inline styles and small
-  hooks; follow what a file already does rather than importing a new pattern.
-- For UI, keep it neutral: white/muted text on dark surfaces, simple borders, no random
-  accent colours or decorative gradients.
-- Keep changes focused — one logical change per commit, no drive-by refactors folded into a fix.
-
-## Commits and pull requests
-
-- Write a real commit message: what changed and *why*, imperative mood.
-- Say in the PR which targets you checked. "Works in `tauri dev`" is not the same as "works
-  in the AppImage" or "works on Pages" — name what you actually ran.
-- New behaviour needs a test where it's testable; a bug fix should include the test that
-  catches it.
-
-## Reporting bugs
-
-Open an issue with your OS, whether it's the desktop/web/webOS build, the version, and
-steps to reproduce. For a crash, the terminal output or the in-app error boundary text is
-gold. If it only happens in a packaged build, say so.
+Describe what changed, why it belongs in the chosen layer, and which checks were run.
 
 ## Legal
 
-Contributions are licensed under the repository's GPLv3. Fluxa is a client for
-user-installed addons; it hosts and distributes no content. Don't add anything that changes that.
-
-Questions are welcome on [Discord](https://discord.gg/wan9FeDEfe).
+Fluxa is a client for user-installed addons. It does not host or distribute media. Contributions are licensed under GPLv3.

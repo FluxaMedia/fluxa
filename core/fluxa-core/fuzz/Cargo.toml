@@ -1,0 +1,51 @@
+[package]
+name = "fluxa_core-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.fluxa_core]
+path = ".."
+default-features = false
+features = ["fuzzing", "dv-codec"]
+
+[[bin]]
+name = "episode_matching"
+path = "fuzz_targets/episode_matching.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "percent_decode"
+path = "fuzz_targets/percent_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "manifest_parse"
+path = "fuzz_targets/manifest_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "engine_dispatch"
+path = "fuzz_targets/engine_dispatch.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dv_sample"
+path = "fuzz_targets/dv_sample.rs"
+test = false
+doc = false
+bench = false

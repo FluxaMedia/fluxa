@@ -1,0 +1,309 @@
+package com.fluxa.app.shared.feature.player
+
+import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.FluxaDimensions
+import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.NextEpisodePreviewUiModel
+import com.fluxa.app.ui.catalog.SkipSegmentUiModel
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+
+@Composable
+fun PlayerSkipSegmentOverlay(
+    currentPosition: Long,
+    skipSegments: List<SkipSegmentUiModel>,
+    dismissedSkipSegments: Set<String>,
+    hasStartedPlaying: Boolean,
+    showControls: Boolean,
+    deviceType: DeviceType,
+    nextEpisode: NextEpisodePreviewUiModel?,
+    nextEpisodeThresholdReached: Boolean,
+    autoSkipSegments: Boolean,
+    autoPlayCountdownSeconds: Int? = null,
+    lang: String,
+    onSkipSegment: (SkipSegmentUiModel) -> Unit,
+    onPlayNextEpisode: () -> Unit,
+    onDismissSegment: (SkipSegmentUiModel) -> Unit,
+    onNextEpisodeCardShown: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val activeSkipSegment = remember(currentPosition, skipSegments, dismissedSkipSegments, hasStartedPlaying, autoSkipSegments) {
+        if (!hasStartedPlaying || autoSkipSegments) null
+        else skipSegments.find { segment ->
+            currentPosition in segment.startMs until segment.endMs &&
+                segment.dismissKey() !in dismissedSkipSegments
+        }
+    }
+    val showNextEpisodeCard = activeSkipSegment == null && nextEpisodeThresholdReached
+
+    LaunchedEffect(showNextEpisodeCard) {
+        if (showNextEpisodeCard) onNextEpisodeCardShown()
+    }
+
+    AnimatedVisibility(
+        visible = activeSkipSegment != null || showNextEpisodeCard,
+        enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha)) + slideInVertically(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand, easing = FastOutSlowInEasing)) { it / 2 },
+        exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.quick)) + slideOutVertically(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing)) { it / 2 },
+        modifier = modifier
+            .padding(
+                start = 18.dp,
+                end = 14.dp,
+                bottom = if (deviceType == DeviceType.Mobile) {
+                    if (showControls) 132.dp else 76.dp
+                } else {
+                    92.dp
+                }
+            )
+            .zIndex(280f)
+    ) {
+        val episode = nextEpisode
+        if (showNextEpisodeCard && episode != null) {
+            SkipSegmentCard(
+                deviceType = deviceType,
+                type = "outro",
+                nextEpisode = episode,
+                lang = lang,
+                autoAdvanceSeconds = autoPlayCountdownSeconds,
+                onSkip = onPlayNextEpisode,
+                onDismiss = {}
+            )
+        } else activeSkipSegment?.let { segment ->
+            SkipSegmentCard(
+                deviceType = deviceType,
+                type = segment.type,
+                nextEpisode = nextEpisode,
+                lang = lang,
+                onSkip = if (segment.type == "outro" && nextEpisode != null) onPlayNextEpisode else { { onSkipSegment(segment) } },
+                onDismiss = { onDismissSegment(segment) }
+            )
+        }
+    }
+}
+
+enum class ZoomOverlayMode { Original, Fit, Zoom }
+
+@Composable
+private fun PlayerToastPill(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, deviceType: DeviceType) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(FluxaDimensions.PlayerChrome.pillCornerRadius))
+            .background(if (deviceType == DeviceType.Mobile) FluxaDimensions.PlayerChrome.deckBackground else Color.Black.copy(alpha = 0.74f))
+            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(FluxaDimensions.PlayerChrome.pillCornerRadius))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(15.dp))
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = if (deviceType == DeviceType.Mobile) 15.sp else 18.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun PlayerEdgeLevelIndicator(level: Float, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(110.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(Color.White.copy(alpha = 0.22f)),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(level.coerceIn(0f, 1f))
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White)
+            )
+        }
+    }
+}
+
+@Composable
+fun BoxScope.PlayerTransientOverlays(
+    showSegmentSkipFeedback: Boolean,
+    holdSpeedVisible: Boolean,
+    holdSpeed: Float,
+    deviceType: DeviceType,
+    showVolumeBar: Boolean,
+    currentVolume: Int,
+    maxVolume: Int,
+    showBrightnessBar: Boolean = false,
+    currentBrightness: Float = 1f,
+    showSeekFeedback: Boolean,
+    seekDirection: Int,
+    seekFeedbackMs: Long,
+    seekForwardMs: Long,
+    seekBackwardMs: Long,
+    showZoomOverlay: Boolean = false,
+    zoomOverlayMode: ZoomOverlayMode = ZoomOverlayMode.Original,
+    zoomLabelText: String = ""
+) {
+    AnimatedVisibility(
+        visible = showSegmentSkipFeedback,
+        enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.blink)) + scaleIn(animationSpec = tween(FluxaDimensions.AnimDuration.quick), initialScale = 0.82f),
+        exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpandAlt)) + scaleOut(animationSpec = tween(FluxaDimensions.AnimDuration.settingsExpandAlt), targetScale = 1.08f),
+        modifier = Modifier
+            .align(Alignment.Center)
+            .zIndex(320f)
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            SegmentSkipChevronFeedback()
+        }
+    }
+
+    AnimatedVisibility(
+        visible = showZoomOverlay,
+        enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.routeExit)) + scaleIn(animationSpec = tween(FluxaDimensions.AnimDuration.routeExit, easing = FastOutSlowInEasing), initialScale = 0.80f),
+        exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand)) + scaleOut(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand), targetScale = 1.06f),
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(top = if (deviceType == DeviceType.Mobile) 34.dp else 54.dp)
+            .zIndex(295f)
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val icon = when (zoomOverlayMode) {
+                ZoomOverlayMode.Original -> FluxaIcons.ZoomFitScreen
+                ZoomOverlayMode.Fit -> FluxaIcons.ZoomOutMap
+                ZoomOverlayMode.Zoom -> FluxaIcons.ZoomIn
+            }
+            PlayerToastPill(icon = icon, text = zoomLabelText, deviceType = deviceType)
+        }
+    }
+
+    AnimatedVisibility(
+        visible = holdSpeedVisible,
+        enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.heightAnim)) + scaleIn(animationSpec = tween(FluxaDimensions.AnimDuration.scaleAlpha, easing = FastOutSlowInEasing), initialScale = 0.86f),
+        exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.quick)) + scaleOut(animationSpec = tween(FluxaDimensions.AnimDuration.quick), targetScale = 0.92f),
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(top = if (deviceType == DeviceType.Mobile) 34.dp else 54.dp)
+            .zIndex(310f)
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            PlayerToastPill(icon = FluxaIcons.Speed, text = "${holdSpeed}x", deviceType = deviceType)
+        }
+    }
+
+    if (deviceType == DeviceType.Mobile) {
+        AnimatedVisibility(
+            visible = showVolumeBar,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = FluxaDimensions.PlayerChrome.edgeMargin)
+                .zIndex(300f)
+        ) {
+            val volumeIcon = when {
+                maxVolume <= 0 || currentVolume <= 0 -> FluxaIcons.VolumeMute
+                currentVolume.toFloat() / maxVolume.toFloat() < 0.5f -> FluxaIcons.VolumeDown
+                else -> FluxaIcons.VolumeUp
+            }
+            PlayerEdgeLevelIndicator(
+                level = if (maxVolume > 0) currentVolume.toFloat() / maxVolume.toFloat() else 0f,
+                icon = volumeIcon
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showBrightnessBar,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = FluxaDimensions.PlayerChrome.edgeMargin)
+                .zIndex(300f)
+        ) {
+            PlayerEdgeLevelIndicator(
+                level = currentBrightness,
+                icon = if (currentBrightness < 0.5f) FluxaIcons.BrightnessLow else FluxaIcons.BrightnessHigh
+            )
+        }
+    } else {
+        AnimatedVisibility(
+            visible = showVolumeBar,
+            enter = fadeIn() + slideInVertically(),
+            exit = fadeOut() + slideOutVertically(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 40.dp)
+                .zIndex(300f)
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                VolumeBar(currentVolume, maxVolume)
+            }
+        }
+    }
+
+    AnimatedVisibility(
+        visible = showSeekFeedback,
+        enter = if (seekDirection > 0) slideInHorizontally { it } + fadeIn() else slideInHorizontally { -it } + fadeIn(),
+        exit = if (seekDirection > 0) slideOutHorizontally { it } + fadeOut() else slideOutHorizontally { -it } + fadeOut(),
+        modifier = Modifier
+            .align(if (seekDirection > 0) Alignment.CenterEnd else Alignment.CenterStart)
+            .fillMaxHeight()
+            .width(if (deviceType == DeviceType.TV) 300.dp else 180.dp)
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = if (seekDirection > 0)
+                        listOf(Color.Transparent, Color.White.copy(alpha = 0.2f))
+                    else
+                        listOf(Color.White.copy(alpha = 0.2f), Color.Transparent)
+                )
+            )
+            .zIndex(300f)
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            PlayerSeekFeedback(seekDirection, seekFeedbackMs.takeIf { it > 0L } ?: if (seekDirection > 0) seekForwardMs else seekBackwardMs)
+        }
+    }
+}

@@ -1,0 +1,192 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
+package com.fluxa.app.shared.feature.catalog
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.foundation.focusGroup
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.fluxa.app.ui.catalog.CatalogCard
+import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.cardRowSpacing
+import com.fluxa.app.common.AppStrings
+import com.fluxa.app.ui.catalog.CONTINUE_WATCHING_CATEGORY_ID
+import com.fluxa.app.ui.catalog.LocalFluxaThemePack
+
+@Composable
+fun TvCatalogHomeScreen(
+    state: CatalogHomeUiState,
+    onAction: (CatalogAction) -> Unit,
+    language: String? = null,
+    hideContinueWatchingLabels: Boolean = false,
+    continueWatchingWidthPreset: String = "medium",
+    continueWatchingCornerPreset: String = "medium",
+    continueWatchingDensity: String = "medium",
+    continueWatchingLandscapeMode: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val columnFocus = remember { FocusRequester() }
+    val compactLayout = LocalFluxaThemePack.current.layouts.home == "compact"
+    Box(modifier = modifier.fillMaxSize()) {
+        if (state.rows.isEmpty()) {
+            TvCatalogHomeLoading(Modifier.fillMaxSize())
+        } else {
+            LaunchedEffect(Unit) { runCatching { columnFocus.requestFocus() } }
+            val contentRows = state.rows.filterNot { it.categoryType == "collection_folder" }
+            val orderedRows = contentRows.filter { it.id == CONTINUE_WATCHING_CATEGORY_ID } +
+                contentRows.filterNot { it.id == CONTINUE_WATCHING_CATEGORY_ID }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(columnFocus)
+                    .focusRestorer(),
+                contentPadding = PaddingValues(top = 44.dp, bottom = 64.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compactLayout) 20.dp else 30.dp)
+            ) {
+                val heroItems = state.heroItems.ifEmpty {
+                    orderedRows.firstOrNull { it.id != CONTINUE_WATCHING_CATEGORY_ID }?.items.orEmpty()
+                }
+                if (state.showHeroSection && !compactLayout && heroItems.isNotEmpty()) {
+                    item(key = "tv-hero") {
+                        TvHeroRow(
+                            items = heroItems,
+                            language = language,
+                            onItemClick = { onAction(CatalogAction.ItemSelected(it)) },
+                            modifier = Modifier.padding(horizontal = 58.dp)
+                        )
+                    }
+                }
+                items(orderedRows, key = { it.id }, contentType = { "catalog-row" }) { row ->
+                    Column(
+                        modifier = Modifier.focusGroup(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text(
+                            text = row.title,
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 58.dp)
+                        )
+                        val isContinueWatchingRow = row.id == CONTINUE_WATCHING_CATEGORY_ID
+                        LazyRow(
+                            modifier = Modifier.focusRestorer(),
+                            contentPadding = PaddingValues(horizontal = 58.dp),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                if (isContinueWatchingRow) cardRowSpacing(continueWatchingDensity) else 20.dp
+                            )
+                        ) {
+                            items(row.items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
+                                val cardItem = if (isContinueWatchingRow) {
+                                    item.withProminentContinueWatchingCard(
+                                        deviceType = DeviceType.TV,
+                                        hideLabels = hideContinueWatchingLabels,
+                                        widthPreset = continueWatchingWidthPreset,
+                                        cornerPreset = continueWatchingCornerPreset,
+                                        landscapeMode = continueWatchingLandscapeMode
+                                    )
+                                } else {
+                                    item
+                                }
+                                CatalogCard(
+                                    model = cardItem.card,
+                                    onClick = { onAction(CatalogAction.ItemSelected(cardItem)) },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            if (row.canLoadMore) {
+                                item(key = "${row.id}:load-more") {
+                                    var focused by remember { mutableStateOf(false) }
+                                    Box(
+                                        modifier = Modifier
+                                            .width(124.dp)
+                                            .height(186.dp)
+                                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                            .background(if (focused) Color.White else FluxaColors.surfaceRaised)
+                                            .onFocusChanged { focused = it.isFocused }
+                                            .then(if (focused) Modifier.border(3.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)) else Modifier)
+                                            .clickable { onAction(CatalogAction.LoadMore(row.id)) }
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        androidx.compose.material3.Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                            contentDescription = AppStrings.t(null, "common.view_all"),
+                                            tint = if (focused) Color.Black else Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TvCatalogHomeLoading(modifier: Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 58.dp, vertical = 44.dp),
+        verticalArrangement = Arrangement.spacedBy(28.dp)
+    ) {
+        repeat(3) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.28f)
+                    .height(28.dp)
+                    .background(FluxaColors.surfaceRaised)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                repeat(6) {
+                    Box(
+                        modifier = Modifier
+                            .width(132.dp)
+                            .height(198.dp)
+                            .background(FluxaColors.surfaceRaised)
+                    )
+                }
+            }
+        }
+    }
+}

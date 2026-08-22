@@ -1,0 +1,8 @@
+{
+  "initialState": {},
+  "action": {
+    "type": "settingsChanged",
+    "key": "subtitleLanguage",
+    "value": "en"
+  }
+}

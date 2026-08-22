@@ -1,0 +1,12 @@
+{
+  "initialState": {},
+  "action": {
+    "type": "detailLoadRequested",
+    "contentType": "movie",
+    "id": "tt1",
+    "language": "en",
+    "sourceAddonTransportUrl": null,
+    "sourceAddonCatalogType": null,
+    "profile": null
+  }
+}

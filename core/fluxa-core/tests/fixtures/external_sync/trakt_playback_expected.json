@@ -1,0 +1,18 @@
+[
+  {
+    "id": "tt0944947",
+    "name": "Example Show",
+    "type": "series",
+    "resumeProgressPercent": 50.0,
+    "lastVideoId": "tt0944947:1:2",
+    "lastEpisodeName": "The Episode",
+    "lastEpisodeSeason": 1,
+    "lastEpisodeNumber": 2,
+    "lastEpisodeThumbnail": null,
+    "savedAt": "2026-07-21T00:00:00.000Z",
+    "reason": "trakt",
+    "poster": null,
+    "background": null,
+    "logo": null
+  }
+]

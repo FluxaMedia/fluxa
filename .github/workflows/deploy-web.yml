@@ -12,31 +12,28 @@ concurrency:
   group: deploy-web
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: apps/desktop
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/checkout@v7
-        with:
-          repository: FluxaMedia/fluxa-core
-          path: fluxa-core
-
-      - name: Link core sibling path
-        run: ln -s "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
-
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
       - name: Build fluxa-core WASM
-        working-directory: fluxa-core
+        working-directory: core/fluxa-core
         run: |
           cargo install wasm-bindgen-cli --locked
           cargo build --release --target wasm32-unknown-unknown --no-default-features --features wasm
@@ -48,7 +45,7 @@ jobs:
 
       - name: Build GitHub Pages bundle
         env:
-          VITE_BASE_PATH: /fluxa-desktop/
+          VITE_BASE_PATH: /fluxa/
           VITE_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
           VITE_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
           VITE_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
@@ -61,5 +58,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: dist-web
+          publish_dir: apps/desktop/dist-web
           force_orphan: true

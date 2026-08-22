@@ -1,0 +1,57 @@
+package com.fluxa.app.shared.platform
+
+import com.fluxa.app.core.apple.AppleCatalogItemSnapshot
+import com.fluxa.app.core.apple.AppleDiscoverRequestSnapshot
+import com.fluxa.app.core.apple.AppleDiscoverSnapshot
+import com.fluxa.app.shared.feature.discover.DiscoverDataSource
+import com.fluxa.app.shared.feature.discover.DiscoverFilterOptionUiModel
+import com.fluxa.app.shared.feature.discover.DiscoverFiltersUiModel
+import com.fluxa.app.shared.feature.discover.DiscoverUiState
+import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+class AppleDiscoverDataSource : DiscoverDataSource {
+    private val state = MutableStateFlow(DiscoverUiState())
+    private var onDiscoverRequested: (AppleDiscoverRequestSnapshot) -> Unit = {}
+
+    override fun observeDiscover(): Flow<DiscoverUiState> = state.asStateFlow()
+
+    override suspend fun updateFilters(filters: DiscoverFiltersUiModel) {
+        state.value = state.value.copy(filters = filters, isLoading = true)
+        onDiscoverRequested(filters.toAppleRequest())
+    }
+
+    override suspend fun loadMore() {
+        onDiscoverRequested(state.value.filters.toAppleRequest())
+    }
+
+    fun setOnDiscoverRequested(handler: (AppleDiscoverRequestSnapshot) -> Unit) {
+        onDiscoverRequested = handler
+    }
+
+    fun update(snapshot: AppleDiscoverSnapshot) {
+        state.value = DiscoverUiState(
+            filters = DiscoverFiltersUiModel(snapshot.request.contentType, snapshot.request.catalogKey, snapshot.request.genre),
+            catalogOptions = snapshot.catalogOptions.map { DiscoverFilterOptionUiModel(it.id, it.label) },
+            genreOptions = snapshot.genreOptions.map { DiscoverFilterOptionUiModel(it.id, it.label) },
+            results = snapshot.results.map { it.toAppleDiscoverCatalogItem() },
+            isLoading = snapshot.isLoading
+        )
+    }
+}
+
+private fun DiscoverFiltersUiModel.toAppleRequest() = AppleDiscoverRequestSnapshot(contentType, catalogKey, genre)
+
+private fun AppleCatalogItemSnapshot.toAppleDiscoverCatalogItem(): CatalogItemUiModel = appleCatalogItem(
+    id = id,
+    type = type,
+    title = title,
+    subtitle = subtitle,
+    artworkUrl = artworkUrl,
+    logoUrl = logoUrl,
+    addonTransportUrl = addonTransportUrl,
+    catalogType = catalogType,
+    cacheNamespace = "apple-discover",
+)

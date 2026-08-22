@@ -1,0 +1,267 @@
+import { ensureWebosProxy, IS_WEBOS } from '../webos';
+const companionUrl = import.meta.env.VITE_FLUXA_COMPANION_URL || 'http://127.0.0.1:19876';
+
+function isLocalCompanionUrl(sourceUrl: string): boolean {
+  try {
+    const host = new URL(sourceUrl).hostname;
+    return host === '127.0.0.1' || host === 'localhost' || host === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
+export function transcodeUrl(
+  sourceUrl: string,
+  startSeconds?: number,
+  headers?: Record<string, string>,
+  target?: BrowserTranscodeTarget,
+): string {
+  const input = isLocalCompanionUrl(sourceUrl) ? sourceUrl : proxyUrl(sourceUrl, headers ?? {});
+  const params = new URLSearchParams({ url: input });
+  if (startSeconds && startSeconds > 0) params.set('start', String(Math.floor(startSeconds)));
+  if (target) {
+    params.set('videoCodec', target.videoCodec);
+    params.set('audioCodec', target.audioCodec);
+    params.set('container', target.container);
+  }
+  return `${companionUrl}/transcode?${params.toString()}`;
+}
+
+export interface BrowserTranscodeTarget {
+  videoCodec: string;
+  audioCodec: string;
+  container: 'mp4' | 'webm';
+}
+
+function browserSupportsVideo(codec: string | null | undefined): boolean {
+  const normalized = codec?.toLowerCase() ?? '';
+  const mime = normalized.includes('av1')
+    ? 'video/webm; codecs="av01.0.08M.08"'
+    : normalized.includes('vp9')
+      ? 'video/webm; codecs="vp09.00.10.08"'
+      : normalized.includes('vp8')
+        ? 'video/webm; codecs="vp8"'
+        : normalized.includes('hevc') || normalized.includes('h265')
+          ? 'video/mp4; codecs="hvc1.2.4.L153.B0"'
+          : normalized.includes('h264') || normalized.includes('avc')
+            ? 'video/mp4; codecs="avc1.640028"'
+            : '';
+  return Boolean(mime && document.createElement('video').canPlayType(mime));
+}
+
+function browserSupportsAudio(codec: string | null | undefined): boolean {
+  const normalized = canonicalAudioCodec(codec);
+  const mimes =
+    normalized === 'opus'
+      ? ['audio/webm; codecs="opus"', 'audio/mp4; codecs="opus"']
+      : normalized === 'vorbis'
+        ? ['audio/webm; codecs="vorbis"']
+        : normalized === 'aac'
+          ? ['audio/mp4; codecs="mp4a.40.2"']
+          : normalized === 'eac3'
+            ? ['audio/mp4; codecs="ec-3"']
+            : normalized === 'ac3'
+              ? ['audio/mp4; codecs="ac-3"']
+              : normalized === 'ac4'
+                ? ['audio/mp4; codecs="ac-4"']
+                : normalized === 'flac'
+                  ? ['audio/flac', 'audio/mp4; codecs="flac"']
+                  : normalized === 'alac'
+                    ? ['audio/mp4; codecs="alac"']
+                    : normalized === 'mp3'
+                      ? ['audio/mpeg']
+                      : [];
+  if (mimes.length === 0) return false;
+  const audio = document.createElement('audio');
+  return mimes.some((mime) => audio.canPlayType(mime) !== '');
+}
+
+export function chooseBrowserTranscodeTarget(
+  videoCodec: string | null | undefined,
+  audioCodec: string | null | undefined,
+): BrowserTranscodeTarget {
+  const normalizedVideo = videoCodec?.toLowerCase() ?? '';
+  const normalizedAudio = canonicalAudioCodec(audioCodec);
+  const targetVideo = browserSupportsVideo(normalizedVideo) ? normalizedVideo : 'h264';
+  const targetAudio = browserSupportsAudio(normalizedAudio) ? normalizedAudio : 'aac';
+  const webmVideo = ['vp8', 'vp9', 'av1'].some((codec) => targetVideo.includes(codec));
+  const webmAudio = !targetAudio || targetAudio.includes('opus') || targetAudio.includes('vorbis');
+  const webm = webmVideo && webmAudio;
+  return { videoCodec: targetVideo, audioCodec: targetAudio, container: webm ? 'webm' : 'mp4' };
+}
+
+export function proxyUrl(sourceUrl: string, headers: Record<string, string>): string {
+  return `${companionUrl}/proxy?url=${encodeURIComponent(sourceUrl)}&h=${encodeURIComponent(JSON.stringify(headers))}`;
+}
+
+export async function fetchThroughProxyIfNeeded(sourceUrl: string, headers: Record<string, string> = {}): Promise<Response> {
+  if (isLocalCompanionUrl(sourceUrl)) return fetch(sourceUrl);
+  if (IS_WEBOS) await ensureWebosProxy();
+  const attempts = IS_WEBOS ? [proxyUrl(sourceUrl, headers), sourceUrl] : [sourceUrl, proxyUrl(sourceUrl, headers)];
+  let lastError: unknown;
+  for (const candidate of attempts) {
+    try {
+      const response = await fetch(candidate);
+      if (response.ok) return response;
+      lastError = new Error(`request failed: ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+function extensionOf(sourceUrl: string): string {
+  try {
+    return new URL(sourceUrl).pathname.split('.').pop()?.toLowerCase() ?? '';
+  } catch {
+    return sourceUrl.split('?')[0].split('.').pop()?.toLowerCase() ?? '';
+  }
+}
+
+export function codecString(videoCodec: string | null | undefined, audioCodec: string | null | undefined): string {
+  const video =
+    videoCodec?.toLowerCase().includes('h264') || videoCodec?.toLowerCase().includes('avc')
+      ? 'avc1.42E01E'
+      : videoCodec?.toLowerCase().includes('vp9')
+        ? 'vp09.00.10.08'
+        : videoCodec?.toLowerCase().includes('vp8')
+          ? 'vp8'
+          : videoCodec?.toLowerCase().includes('av1')
+            ? 'av01.0.05M.08'
+            : (videoCodec ?? '');
+  const normalizedAudio = canonicalAudioCodec(audioCodec);
+  const audio =
+    normalizedAudio === 'aac'
+      ? 'mp4a.40.2'
+      : normalizedAudio === 'opus'
+        ? 'opus'
+        : normalizedAudio === 'vorbis'
+          ? 'vorbis'
+          : normalizedAudio === 'mp3'
+            ? 'mp3'
+            : normalizedAudio === 'eac3'
+              ? 'ec-3'
+              : normalizedAudio === 'ac3'
+                ? 'ac-3'
+                : normalizedAudio === 'ac4'
+                  ? 'ac-4'
+                  : normalizedAudio === 'flac'
+                    ? 'flac'
+                    : normalizedAudio === 'alac'
+                      ? 'alac'
+                      : (audioCodec ?? '');
+  return [video, audio].filter(Boolean).join(', ');
+}
+
+function canonicalAudioCodec(codec: string | null | undefined): string {
+  const compact = (codec?.toLowerCase() ?? '').replace(/[._\s-]/g, '');
+  if (compact.includes('eac3')) return 'eac3';
+  if (compact.includes('ac4')) return 'ac4';
+  if (compact.includes('ac3')) return 'ac3';
+  if (compact.includes('mp4a') || compact.includes('aac')) return 'aac';
+  if (compact.includes('opus')) return 'opus';
+  if (compact.includes('vorbis')) return 'vorbis';
+  if (compact.includes('flac')) return 'flac';
+  if (compact.includes('alac')) return 'alac';
+  if (compact.includes('mp3') || compact.includes('mpeg')) return 'mp3';
+  return codec?.toLowerCase() ?? '';
+}
+
+const WEBOS_NATIVE_CONTAINERS = new Set([
+  'mkv',
+  'mp4',
+  'm4v',
+  'mov',
+  'webm',
+  'avi',
+  'ts',
+  'm2ts',
+  'mts',
+  'mpg',
+  'mpeg',
+  'm3u8',
+  'mpd',
+  'wmv',
+  'asf',
+  'flv',
+  '3gp',
+  'vob',
+]);
+
+// MKV -> WebM in-browser remux only covers codecs the WebM container itself
+// supports (bitstream copy, no re-encode) — VP8/VP9/AV1 + Opus/Vorbis/none.
+// H.264/HEVC+AAC MKVs still fall through to the companion-server transcode
+// path below until an MP4 remux target exists.
+export function canRemuxToWebm(sourceUrl: string, videoCodec: string | null | undefined, audioCodec: string | null | undefined): boolean {
+  if (IS_WEBOS) return false;
+  if (extensionOf(sourceUrl) !== 'mkv') return false;
+  const video = videoCodec?.toLowerCase() ?? '';
+  const isWebmVideoCodec = ['vp8', 'vp9', 'av1'].some((codec) => video.includes(codec));
+  if (!isWebmVideoCodec || !browserSupportsVideo(video)) return false;
+  const audio = audioCodec?.toLowerCase() ?? '';
+  if (audio && !(audio.includes('opus') || audio.includes('vorbis'))) return false;
+  if (audio && !browserSupportsAudio(audio)) return false;
+  return true;
+}
+
+export function canDirectPlay(sourceUrl: string, videoCodec: string | null | undefined, audioCodec: string | null | undefined): boolean {
+  const extension = extensionOf(sourceUrl);
+  if (IS_WEBOS) return extension === '' || WEBOS_NATIVE_CONTAINERS.has(extension);
+  if (['mkv', 'avi', 'wmv', 'flv', 'm2ts', 'ts'].includes(extension)) return false;
+  const video = document.createElement('video');
+  const codecs = codecString(videoCodec, audioCodec);
+  const mime =
+    extension === 'webm'
+      ? `video/webm${codecs ? `; codecs="${codecs}"` : ''}`
+      : extension === 'm3u8'
+        ? 'application/vnd.apple.mpegurl'
+        : extension === 'ogg' || extension === 'ogv'
+          ? `video/ogg${codecs ? `; codecs="${codecs}"` : ''}`
+          : `video/mp4${codecs ? `; codecs="${codecs}"` : ''}`;
+  const browserSupport = video.canPlayType(mime);
+  if (browserSupport === '') return false;
+  return true;
+}
+
+export interface PlaybackUrlChoice {
+  url: string;
+  mode: 'direct' | 'proxy' | 'transcode' | 'mse-remux';
+}
+
+export function choosePlaybackUrl(
+  playUrl: string,
+  remoteSource: string,
+  probe: { videoCodec: string | null; audioCodec: string | null } | null,
+  headers: Record<string, string> | undefined,
+  resumeAtSeconds?: number,
+): PlaybackUrlChoice {
+  const playable = canDirectPlay(remoteSource, probe?.videoCodec, probe?.audioCodec);
+
+  if (IS_WEBOS) {
+    if (!headers) return { url: playUrl, mode: 'direct' };
+    return { url: proxyUrl(remoteSource, headers), mode: 'proxy' };
+  }
+
+  if (!headers && (!probe || playable)) return { url: playUrl, mode: 'direct' };
+  if (probe && playable) return { url: proxyUrl(remoteSource, headers ?? {}), mode: 'proxy' };
+  if (probe && canRemuxToWebm(remoteSource, probe.videoCodec, probe.audioCodec)) {
+    return { url: headers ? proxyUrl(remoteSource, headers) : remoteSource, mode: 'mse-remux' };
+  }
+  const target = probe ? chooseBrowserTranscodeTarget(probe.videoCodec, probe.audioCodec) : undefined;
+  return { url: transcodeUrl(playUrl, resumeAtSeconds, headers, target), mode: 'transcode' };
+}
+
+export async function probeStream(
+  sourceUrl: string,
+  headers?: Record<string, string>,
+): Promise<{ videoCodec: string | null; audioCodec: string | null; duration: number | null } | null> {
+  if (IS_WEBOS) return null;
+  try {
+    const input = isLocalCompanionUrl(sourceUrl) ? sourceUrl : proxyUrl(sourceUrl, headers ?? {});
+    const response = await fetch(`${companionUrl}/probe?url=${encodeURIComponent(input)}`);
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
+  }
+}

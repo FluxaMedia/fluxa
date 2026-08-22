@@ -1,0 +1,184 @@
+name: Apple
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/apple.yml"
+      - "apps/apple/**"
+      - "apps/android/build-logic/**"
+      - "apps/android/core/**"
+      - "apps/android/data/**"
+      - "apps/android/player/**"
+      - "apps/android/shared/**"
+      - "apps/android/gradle/**"
+      - "apps/android/gradle.properties"
+      - "apps/android/settings.gradle.kts"
+      - "apps/android/build.gradle.kts"
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/apple.yml"
+      - "apps/apple/**"
+      - "apps/android/build-logic/**"
+      - "apps/android/core/**"
+      - "apps/android/data/**"
+      - "apps/android/player/**"
+      - "apps/android/shared/**"
+      - "apps/android/gradle/**"
+      - "apps/android/gradle.properties"
+      - "apps/android/settings.gradle.kts"
+      - "apps/android/build.gradle.kts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-core:
+    name: Rust core artifact
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core/fluxa-core
+          cache-on-failure: true
+
+      - name: Build Rust core XCFramework
+        env:
+          FLUXA_BUILD_STREAMING_ENGINE: "1"
+        run: apps/apple/scripts/build-rust-core-xcframework.sh
+
+      - name: Verify Apple streaming bridge
+        working-directory: core/fluxa-core
+        run: cargo test -p fluxa_streaming_engine --no-default-features --features apple --lib
+
+      - name: Upload Rust core artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-rust-core
+          path: apps/apple/Generated
+          if-no-files-found: error
+
+  ios:
+    name: iOS simulator
+    needs: rust-core
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Rust core artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-rust-core
+          path: apps/apple/Generated
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null; then
+            brew untap aws/tap || true
+            brew install xcodegen
+          fi
+
+      - name: Verify iOS shared code
+        run: >-
+          ./apps/android/gradlew --no-daemon -p apps/android
+          checkAppleTypedCatalogBridge
+          checkSharedPlayerBoundary
+          :core:linkIosSimulatorArm64
+          :data:compileIosMainKotlinMetadata
+          :player:iosSimulatorArm64MainKlibrary
+          :shared:iosSimulatorArm64Test
+
+      - name: Generate Apple host project
+        working-directory: apps/apple
+        run: xcodegen generate
+
+      - name: Build iOS host
+        env:
+          FLUXA_SKIP_RUST_CORE_BUILD: "1"
+        working-directory: apps/apple
+        run: >-
+          xcodebuild
+          -project FluxaApple.xcodeproj
+          -scheme FluxaIos
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          ARCHS=arm64
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+  tvos:
+    name: tvOS simulator
+    needs: rust-core
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Rust core artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-rust-core
+          path: apps/apple/Generated
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null; then
+            brew untap aws/tap || true
+            brew install xcodegen
+          fi
+
+      - name: Verify tvOS shared code
+        run: >-
+          ./apps/android/gradlew --no-daemon -p apps/android
+          checkAppleTvosKmpBoundary
+          checkSharedPlayerBoundary
+          :core:linkDebugFrameworkTvosSimulatorArm64
+          :data:linkDebugFrameworkTvosSimulatorArm64
+          :player:linkDebugFrameworkTvosSimulatorArm64
+          :core:tvosSimulatorArm64Test
+          :data:tvosSimulatorArm64Test
+          :player:tvosSimulatorArm64Test
+
+      - name: Generate Apple host project
+        working-directory: apps/apple
+        run: xcodegen generate
+
+      - name: Build tvOS host
+        env:
+          FLUXA_SKIP_RUST_CORE_BUILD: "1"
+        working-directory: apps/apple
+        run: >-
+          xcodebuild
+          -project FluxaApple.xcodeproj
+          -scheme FluxaTvos
+          -sdk appletvsimulator
+          -destination 'generic/platform=tvOS Simulator'
+          ARCHS=arm64
+          CODE_SIGNING_ALLOWED=NO
+          build

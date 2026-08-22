@@ -1,0 +1,12 @@
+{
+  "initialState": {},
+  "action": {
+    "type": "scrobbleRequested",
+    "token": "trakt-token",
+    "metaType": "movie",
+    "itemId": "tt1",
+    "progress": 42.5,
+    "actionName": "pause",
+    "profile": null
+  }
+}

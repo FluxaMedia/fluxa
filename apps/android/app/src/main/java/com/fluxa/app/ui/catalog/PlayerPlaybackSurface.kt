@@ -1,0 +1,647 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
+package com.fluxa.app.ui.catalog
+
+import com.fluxa.app.common.AppStrings
+import android.view.LayoutInflater
+import android.view.SurfaceView
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.core.rust.models.NativeStreamBadge
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fluxa.app.player.LibassDebugLog
+import com.fluxa.app.player.MediaPlayerController
+import com.fluxa.app.player.SubtitleFrameRenderer
+import com.fluxa.app.player.collectFrom
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
+import com.fluxa.app.R
+import com.fluxa.app.data.local.*
+import com.fluxa.app.data.local.UserProfile
+import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.shared.feature.player.MediaTrack
+import com.fluxa.app.player.ExternalSubtitleTrack
+import com.fluxa.app.player.NativeAssTrack
+import com.fluxa.app.player.MpvAndroidSurfaceView
+import com.fluxa.app.player.MpvEmbeddedPlayer
+import com.fluxa.app.player.PlayerEngine
+import com.fluxa.app.shared.feature.player.TorrentStreamStatus
+import com.fluxa.app.shared.feature.player.ArtisticLoadingOverlay
+import com.fluxa.app.shared.feature.player.MarkSegmentSidebar
+import com.fluxa.app.shared.feature.player.MobilePlayerSettingsSheet
+import com.fluxa.app.shared.feature.player.PlayerContentUiModel
+import com.fluxa.app.shared.feature.player.PlayerSkipSegmentOverlay
+import com.fluxa.app.shared.feature.player.PlayerTopIconButton
+import com.fluxa.app.shared.feature.player.PlayerTransientOverlays
+import com.fluxa.app.shared.feature.player.SourceSidebar
+import com.fluxa.app.shared.feature.player.UniversalSettingsSidebar
+import com.fluxa.app.shared.feature.player.SubtitleCueUiModel
+import com.fluxa.app.shared.feature.player.ZoomOverlayMode
+import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
+
+private data class ExoSurfaceConfig(
+    val resizeMode: Int,
+    val zoomScale: Float,
+    val fillScale: Float,
+    val subtitleSize: Float,
+    val subtitleTextOpacity: Float,
+    val subtitleBackgroundOpacity: Float,
+    val subtitleOutlineOpacity: Float,
+    val nativeAssOverlayActive: Boolean
+)
+
+private data class MpvSurfaceConfig(
+    val player: MpvEmbeddedPlayer?,
+    val zoomScale: Float
+)
+
+@Composable
+internal fun BoxScope.PlayerPlaybackSurface(
+    content: PlayerContentUiModel,
+    currentUrl: String?,
+    resolvedUrl: String?,
+    useMpvBackend: Boolean,
+    mpvPlayer: MpvEmbeddedPlayer?,
+    exoPlayer: ExoPlayer,
+    activeProfile: UserProfile?,
+    resizeMode: Int,
+    playback: PlaybackSnapshot,
+    timeline: TimelineSnapshot,
+    buffer: BufferSnapshot,
+    render: RenderSnapshot,
+    playerError: String?,
+    torrentStatus: TorrentStreamStatus,
+    deviceType: DeviceType,
+    isSwitchingAudioSource: Boolean,
+    currentStreamIndex: Int,
+    currentStreamDetailLine: String?,
+    currentStreamsSize: Int,
+    lang: String,
+    showControls: Boolean,
+    activeEngine: PlayerEngine?,
+    showControlsTemp: () -> Unit,
+    seekSafely: (Long) -> Unit,
+    toggleSubtitleSelection: () -> Unit,
+    onToggleAspect: () -> Unit,
+    playbackSpeed: Float,
+    onPlaybackSpeedChange: (Float) -> Unit,
+    playPauseFocusRequester: androidx.compose.ui.focus.FocusRequester,
+    seekbarFocusRequester: androidx.compose.ui.focus.FocusRequester,
+    isScrubbing: Boolean,
+    scrubPosition: Long,
+    onScrubbingChange: (Boolean, Long) -> Unit,
+    currentEpisodeMetaLine: String?,
+    currentSubtitle: MediaTrack?,
+    currentExternalSubtitles: List<ExternalSubtitleTrack>,
+    embeddedNativeAssTracks: List<NativeAssTrack>,
+    subtitleDelayMs: Long,
+    effectiveTechnicalInfo: String?,
+    seekForwardMs: Long,
+    seekBackwardMs: Long,
+    hasPreviousEpisode: Boolean,
+    hasNextEpisode: Boolean,
+    nextEpisode: NextEpisodePreviewUiModel?,
+    onPlayPrevious: () -> Unit,
+    onPlayNext: () -> Unit,
+    onCast: () -> Unit,
+    onOpenInExternalPlayer: () -> Unit,
+    onWatchParty: () -> Unit,
+    onPictureInPicture: () -> Unit,
+    onShowSettingsTab: (Int) -> Unit,
+    onClose: () -> Unit,
+    onNextEpisodeCardShown: () -> Unit,
+    timelinePosition: () -> Long,
+    skipSegments: List<SkipSegmentUiModel>,
+    chapters: List<com.fluxa.app.shared.feature.player.Chapter> = emptyList(),
+    dismissedSkipSegments: Set<String>,
+    onSkipSegment: (SkipSegmentUiModel) -> Unit,
+    onDismissSegment: (SkipSegmentUiModel) -> Unit,
+    showSegmentSkipFeedback: Boolean,
+    holdSpeedVisible: Boolean,
+    showVolumeBar: Boolean,
+    currentVolume: Int,
+    maxVolume: Int,
+    showBrightnessBar: Boolean = false,
+    currentBrightness: Float = 1f,
+    showSeekFeedback: Boolean,
+    seekDirection: Int,
+    seekFeedbackMs: Long,
+    videoZoomScale: Float = 1.0f,
+    fillScale: Float = 1.0f,
+    showZoomOverlay: Boolean = false,
+    parentsGuide: List<com.fluxa.app.data.remote.ParentsGuideCategory> = emptyList(),
+    showParentsGuide: Boolean = false,
+    onParentsGuideAnimationComplete: () -> Unit = {}
+) {
+    val seekSurfaceViewRef = remember { mutableStateOf<SurfaceView?>(null) }
+    val nativeLibassSurfaceView = remember { mutableStateOf<NativeLibassSubtitleSurfaceView?>(null) }
+    val exoSubtitleViewRef = remember { mutableStateOf<androidx.media3.ui.SubtitleView?>(null) }
+
+    if (!useMpvBackend) {
+        LaunchedEffect(exoPlayer, exoSubtitleViewRef.value) {
+            val subtitleView = exoSubtitleViewRef.value ?: return@LaunchedEffect
+            val coordinator = MediaPlayerController.getSubtitleCoordinator(exoPlayer) ?: return@LaunchedEffect
+            SubtitleFrameRenderer(subtitleView).collectFrom(this, coordinator.frames)
+        }
+    }
+
+    if (!resolvedUrl.isNullOrEmpty()) {
+        if (useMpvBackend) {
+            val mpvSurfaceConfig = remember(mpvPlayer, videoZoomScale) {
+                MpvSurfaceConfig(mpvPlayer, videoZoomScale)
+            }
+            AndroidView(
+                factory = { ctx ->
+                    MpvAndroidSurfaceView(ctx).apply {
+                        applyMpvSurfaceConfig(mpvSurfaceConfig)
+                    }
+                },
+                update = { view ->
+                    view.applyMpvSurfaceConfig(mpvSurfaceConfig)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            val currentSubtitleIsAss = currentSubtitle?.sampleMimeType?.let { mime ->
+                mime.contains("ssa", ignoreCase = true) || mime.contains("ass", ignoreCase = true)
+            } == true
+            val libassRelay = remember(exoPlayer) { MediaPlayerController.getLibassRelay(exoPlayer) }
+            val relayRendererActiveFlow = remember(libassRelay, currentSubtitleIsAss) {
+                if (currentSubtitleIsAss) {
+                    libassRelay?.activeRenderer?.map { renderer -> renderer != null } ?: flowOf(false)
+                } else {
+                    flowOf(false)
+                }
+            }
+            val relayRendererActive by relayRendererActiveFlow.collectAsStateWithLifecycle(false)
+
+            val nativeAssActive = relayRendererActive && currentSubtitleIsAss ||
+                selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles) != null ||
+                selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks) != null
+            LaunchedEffect(
+                nativeAssActive,
+                relayRendererActive,
+                currentSubtitle?.id,
+                currentSubtitle?.sampleMimeType,
+                currentExternalSubtitles.size,
+                embeddedNativeAssTracks.size
+            ) {
+                LibassDebugLog.d(
+                    "surface nativeAssActive=$nativeAssActive relayRendererActive=$relayRendererActive " +
+                        "currentSubtitle=${currentSubtitle?.id} mime=${currentSubtitle?.sampleMimeType} label=${currentSubtitle?.label} lang=${currentSubtitle?.language} " +
+                        "externalCount=${currentExternalSubtitles.size} embeddedAssCount=${embeddedNativeAssTracks.size} " +
+                        "selectedExternal=${selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles)?.let { LibassDebugLog.urlSummary(it.url) } ?: "<none>"} " +
+                        "selectedEmbedded=${selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks)?.id ?: "<none>"}"
+                )
+            }
+
+            val exoSurfaceConfig = remember(
+                resizeMode, videoZoomScale, fillScale,
+                activeProfile?.safeSubtitleSize,
+                activeProfile?.safeSubtitleTextOpacity,
+                activeProfile?.safeSubtitleBackgroundOpacity,
+                activeProfile?.safeSubtitleOutlineOpacity,
+                nativeAssActive
+            ) {
+                ExoSurfaceConfig(
+                    resizeMode = resizeMode,
+                    zoomScale = videoZoomScale,
+                    fillScale = fillScale,
+                    subtitleSize = activeProfile?.safeSubtitleSize ?: 20f,
+                    subtitleTextOpacity = activeProfile?.safeSubtitleTextOpacity ?: 1f,
+                    subtitleBackgroundOpacity = activeProfile?.safeSubtitleBackgroundOpacity ?: 0.75f,
+                    subtitleOutlineOpacity = activeProfile?.safeSubtitleOutlineOpacity ?: 0f,
+                    nativeAssOverlayActive = nativeAssActive
+                )
+            }
+            AndroidView(
+                factory = { ctx ->
+                    (LayoutInflater.from(ctx).inflate(R.layout.player_view_surface, android.widget.FrameLayout(ctx), false) as PlayerView).apply {
+                        player = exoPlayer
+                        useController = false
+                        setBackgroundColor(0xFF000000.toInt())
+                        layoutParams = android.widget.FrameLayout.LayoutParams(
+                            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                            android.view.Gravity.CENTER
+                        )
+                        applyExoSurfaceConfig(exoSurfaceConfig, activeProfile)
+                        exoSubtitleViewRef.value = subtitleView
+                        val contentFrame = findViewById<android.widget.FrameLayout>(androidx.media3.ui.R.id.exo_content_frame)
+                        nativeLibassSurfaceView.value = NativeLibassSubtitleSurfaceView(ctx).also { overlay ->
+                            contentFrame.addView(
+                                overlay,
+                                android.widget.FrameLayout.LayoutParams(
+                                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                                )
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                update = { view ->
+                    if (seekSurfaceViewRef.value == null) {
+                        seekSurfaceViewRef.value = view.videoSurfaceView as? SurfaceView
+                    }
+                    view.applyExoSurfaceConfig(exoSurfaceConfig, activeProfile)
+                }
+            )
+            NativeLibassSubtitleOverlay(
+                exoPlayer = exoPlayer,
+                externalSubtitle = selectedNativeAssSubtitle(currentSubtitle, currentExternalSubtitles),
+                embeddedSubtitle = selectedEmbeddedNativeAssTrack(currentSubtitle, embeddedNativeAssTracks),
+                subtitleDelayMs = subtitleDelayMs,
+                surfaceView = nativeLibassSurfaceView.value,
+                enabled = nativeAssActive
+            )
+        }
+    }
+    val currentPosition = timelinePosition()
+    val showLoadingOverlay = playerError != null ||
+        (!render.isVideoRendered && !(useMpvBackend && playback.hasStartedPlaying)) ||
+        (playback.hasStartedPlaying && playback.isBuffering)
+    if (showLoadingOverlay) {
+        ArtisticLoadingOverlay(content.background, content.logo, content.title, torrentStatus, deviceType, buffer, playerError, currentUrl, isSwitchingAudioSource, currentSourceIdx = currentStreamIndex + 1, totalSources = currentStreamsSize, playback, hasRenderedFirstFrame = render.isVideoRendered, lang = lang, isTorrentUrl = FluxaCoreNative.isTorrentPlaybackUrl(currentUrl))
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(8.dp)
+        ) {
+            PlayerTopIconButton(FluxaIcons.ArrowBack, onClose)
+        }
+    }
+
+    val controlsAlpha by animateFloatAsState(if (showControls && render.isVideoRendered) 1f else 0f)
+    CompositionLocalProvider(
+        LocalSeekSurfaceView provides seekSurfaceViewRef.value,
+        LocalSeekExoPlayer provides exoPlayer
+    ) {
+    val watchTogetherState by WatchTogetherManager.state.collectAsStateWithLifecycle()
+    val watchTogetherCanControl = watchTogetherState.canControlLocally
+
+    Box(modifier = Modifier.fillMaxSize().alpha(controlsAlpha)) {
+        if (showControls && render.isVideoRendered) {
+            PlayerUIContent(
+                content = content,
+                lang = lang,
+                duration = timeline.duration,
+                position = currentPosition,
+                bufferedFraction = buffer.seekbarBufferedProgress,
+                chapters = chapters,
+                isPlaying = playback.isPlaying,
+                isBuffering = playback.isBuffering,
+                hasStartedPlaying = playback.hasStartedPlaying,
+                deviceType = deviceType,
+                onPlayPause = {
+                    if (watchTogetherCanControl) {
+                        activeEngine?.setPaused(playback.isPlaying)
+                        showControlsTemp()
+                        WatchTogetherManager.notifyPlaybackChanged()
+                    }
+                },
+                onSeek = {
+                    if (watchTogetherCanControl) {
+                        seekSafely(it)
+                        showControlsTemp()
+                        WatchTogetherManager.notifyPlaybackChanged()
+                    }
+                },
+                onToggleSubtitles = { toggleSubtitleSelection() },
+                onToggleAspect = onToggleAspect,
+                onSpeedChange = { if (watchTogetherCanControl) onPlaybackSpeedChange(it) },
+                playbackSpeed = playbackSpeed,
+                playPauseFocusRequester = playPauseFocusRequester,
+                seekbarFocusRequester = seekbarFocusRequester,
+                isScrubbing = isScrubbing,
+                scrubPosition = scrubPosition,
+                onScrubbingChange = { scrubbing, position ->
+                    if (watchTogetherCanControl) onScrubbingChange(scrubbing, position)
+                },
+                onScrubSeek = { if (watchTogetherCanControl) activeEngine?.seekTo(it, exact = false) },
+                isSwitchingAudioSource = isSwitchingAudioSource,
+                detailedStatus = torrentStatus.detailedStatus,
+                episodeMetaLine = currentEpisodeMetaLine,
+                streamDetailLine = currentStreamDetailLine,
+                subtitlesEnabled = currentSubtitle != null,
+                supportsTrackSettings = true,
+                technicalInfo = effectiveTechnicalInfo,
+                seekForwardMs = seekForwardMs,
+                seekBackwardMs = seekBackwardMs,
+                hasPreviousEpisode = hasPreviousEpisode,
+                hasNextEpisode = hasNextEpisode,
+                showSourcesButton = false,
+                showEpisodesButton = content.isSeries,
+                introDbMarkingEnabled = content.isSeries && activeProfile?.safeIntroDbApiKey?.isNotBlank() == true,
+                onPlayPrevious = onPlayPrevious,
+                onPlayNext = onPlayNext,
+                onCast = onCast,
+                onOpenInExternalPlayer = onOpenInExternalPlayer,
+                onWatchParty = onWatchParty,
+                onPictureInPicture = onPictureInPicture,
+                onShowSettings = onShowSettingsTab,
+                onClose = onClose,
+                accentColor = Color(activeProfile?.safeAccentColorArgb ?: FluxaColors.accentArgb)
+            )
+        }
+    }
+
+    var pausedOverlayVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(playback.isPlaying, playback.isBuffering, timeline.duration, playerError) {
+        pausedOverlayVisible = false
+        if (playback.isPlaying || playback.isBuffering || timeline.duration <= 0L || playerError != null) {
+            return@LaunchedEffect
+        }
+        kotlinx.coroutines.delay(5000)
+        pausedOverlayVisible = true
+    }
+    androidx.compose.animation.AnimatedVisibility(
+        visible = pausedOverlayVisible && !showControls && playback.hasStartedPlaying,
+        enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(220)),
+        exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(180))
+    ) {
+        com.fluxa.app.shared.feature.player.PlayerPauseMetadataOverlay(
+            content = content,
+            episodeMetaLine = currentEpisodeMetaLine,
+            lang = lang,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+
+    PlayerParentsGuideOverlay(
+        categories = parentsGuide,
+        lang = lang,
+        isVisible = showParentsGuide,
+        onAnimationComplete = onParentsGuideAnimationComplete,
+        accentColor = Color(activeProfile?.safeAccentColorArgb ?: FluxaColors.accentArgb),
+        modifier = Modifier
+            .align(Alignment.TopStart)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(start = 16.dp, top = 64.dp)
+    )
+
+    PlayerSkipSegmentOverlay(
+        currentPosition = currentPosition,
+        skipSegments = skipSegments,
+        dismissedSkipSegments = dismissedSkipSegments,
+        hasStartedPlaying = playback.hasStartedPlaying,
+        showControls = showControls,
+        deviceType = deviceType,
+        nextEpisode = nextEpisode,
+        nextEpisodeThresholdReached = timeline.duration > 0L &&
+            currentPosition >= (timeline.duration * ((activeProfile?.safeNextEpisodeThresholdPercent ?: 90f) / 100f)).toLong(),
+        autoSkipSegments = activeProfile?.safeAutoSkipIntro == true,
+        autoPlayCountdownSeconds = if (activeProfile?.safeAutoPlayNextEpisode == true) activeProfile.safeAutoPlayCountdownSecs else null,
+        lang = lang,
+        onSkipSegment = onSkipSegment,
+        onPlayNextEpisode = onPlayNext,
+        onDismissSegment = onDismissSegment,
+        onNextEpisodeCardShown = {
+            onNextEpisodeCardShown()
+        },
+        modifier = Modifier.align(Alignment.BottomEnd)
+    )
+
+    val zoomOverlayMode = when {
+        resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT -> ZoomOverlayMode.Original
+        videoZoomScale <= fillScale * 1.05f -> ZoomOverlayMode.Fit
+        else -> ZoomOverlayMode.Zoom
+    }
+    val zoomLabelText = when (zoomOverlayMode) {
+        ZoomOverlayMode.Original -> AppStrings.t(lang, "player.zoom_original")
+        ZoomOverlayMode.Fit -> AppStrings.t(lang, "player.zoom_fill")
+        ZoomOverlayMode.Zoom -> "${"%.1f".format(videoZoomScale / fillScale)}x"
+    }
+
+    PlayerTransientOverlays(
+        showSegmentSkipFeedback = showSegmentSkipFeedback,
+        holdSpeedVisible = holdSpeedVisible,
+        holdSpeed = activeProfile?.safeHoldSpeed ?: 2f,
+        deviceType = deviceType,
+        showVolumeBar = showVolumeBar,
+        currentVolume = currentVolume,
+        maxVolume = maxVolume,
+        showBrightnessBar = showBrightnessBar,
+        currentBrightness = currentBrightness,
+        showSeekFeedback = showSeekFeedback,
+        seekDirection = seekDirection,
+        seekFeedbackMs = seekFeedbackMs,
+        seekForwardMs = seekForwardMs,
+        seekBackwardMs = seekBackwardMs,
+        showZoomOverlay = showZoomOverlay,
+        zoomOverlayMode = zoomOverlayMode,
+        zoomLabelText = zoomLabelText
+    )
+    }
+}
+
+private fun PlayerView.applyExoSurfaceConfig(config: ExoSurfaceConfig, profile: UserProfile?) {
+    resizeMode = config.resizeMode
+    scaleX = 1.0f
+    scaleY = 1.0f
+    val contentScale = if (config.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+        (config.zoomScale / config.fillScale.coerceAtLeast(1.0f)).coerceAtLeast(1.0f)
+    } else 1.0f
+    findViewById<android.view.View>(androidx.media3.ui.R.id.exo_content_frame)?.apply {
+        scaleX = contentScale
+        scaleY = contentScale
+    }
+    subtitleView?.let { sv ->
+        sv.setApplyEmbeddedStyles(true)
+        sv.setApplyEmbeddedFontSizes(true)
+        sv.setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, config.subtitleSize)
+        sv.setStyle(subtitleCaptionStyle(profile))
+        sv.visibility = if (config.nativeAssOverlayActive) android.view.View.GONE else android.view.View.VISIBLE
+    }
+    setTag(R.id.player_surface_config_tag, config)
+}
+
+private fun MpvAndroidSurfaceView.applyMpvSurfaceConfig(config: MpvSurfaceConfig) {
+    if (getTag(R.id.player_surface_config_tag) == config) return
+    bind(config.player)
+    scaleX = config.zoomScale
+    scaleY = config.zoomScale
+    setTag(R.id.player_surface_config_tag, config)
+}
+
+@Composable
+internal fun PlayerSettingsPanel(
+    content: PlayerContentUiModel,
+    currentVideoId: String?,
+    deviceType: DeviceType,
+    viewModel: HomeViewModel,
+    activeProfile: UserProfile?,
+    lang: String,
+    activeSettingsTab: Int,
+    onSelectSettingsTab: (Int) -> Unit,
+    currentStreams: List<Stream>,
+    currentUrl: String?,
+    currentStreamIndex: Int,
+    availableAudios: List<MediaTrack>,
+    currentAudio: MediaTrack?,
+    availableSubtitles: List<MediaTrack>,
+    currentSubtitle: MediaTrack?,
+    playbackSpeed: Float,
+    audioDelayMs: Long,
+    subtitleDelayMs: Long,
+    onEpisodeSelected: (String, String?) -> Unit,
+    onCloseSettings: () -> Unit,
+    onSelectStreamIndex: (Int) -> Unit,
+    onSelectAudio: (MediaTrack) -> Unit,
+    onSelectSubtitle: (MediaTrack) -> Unit,
+    onDisableSubtitle: () -> Unit,
+    onSpeedChange: (Float) -> Unit,
+    onAudioDelayChange: (Long) -> Unit,
+    onSubtitleDelayChange: (Long) -> Unit,
+    onSubtitleTextOpacityChange: (Float) -> Unit,
+    onSubtitleBackgroundOpacityChange: (Float) -> Unit,
+    onSubtitleOutlineOpacityChange: (Float) -> Unit,
+    subtitleCues: List<SubtitleCueUiModel> = emptyList(),
+    onSubtitleCueClick: (SubtitleCueUiModel) -> Unit = {},
+    currentPositionMs: Long = 0L,
+    markSegmentType: String? = null,
+    markSegmentStartMs: Long? = null,
+    markSegmentEndMs: Long? = null,
+    markSegmentSubmitting: Boolean = false,
+    markSegmentFeedback: String? = null,
+    markSegmentCooldownRemainingSec: Long? = null,
+    onSelectMarkSegmentType: (String) -> Unit = {},
+    onMarkSegmentStart: () -> Unit = {},
+    onMarkSegmentEnd: () -> Unit = {},
+    onAdjustMarkSegmentStart: (Long) -> Unit = {},
+    onAdjustMarkSegmentEnd: (Long) -> Unit = {},
+    onSubmitMarkSegment: () -> Unit = {}
+) {
+    if (activeSettingsTab == -1 && deviceType == DeviceType.Mobile) {
+        MobilePlayerSettingsSheet(
+            lang = lang,
+            supportsTrackSettings = true,
+            playbackSpeed = playbackSpeed,
+            onSelectSettings = onSelectSettingsTab,
+            onDismiss = onCloseSettings
+        )
+    } else if (activeSettingsTab == 5) {
+        MarkSegmentSidebar(
+            deviceType = deviceType,
+            lang = lang,
+            selectedType = markSegmentType,
+            startMs = markSegmentStartMs,
+            endMs = markSegmentEndMs,
+            currentPositionMs = currentPositionMs,
+            submitting = markSegmentSubmitting,
+            cooldownRemainingSec = markSegmentCooldownRemainingSec,
+            feedback = markSegmentFeedback,
+            onSelectType = onSelectMarkSegmentType,
+            onMarkStart = onMarkSegmentStart,
+            onMarkEnd = onMarkSegmentEnd,
+            onAdjustStart = onAdjustMarkSegmentStart,
+            onAdjustEnd = onAdjustMarkSegmentEnd,
+            onSubmit = onSubmitMarkSegment,
+            onClose = onCloseSettings
+        )
+    } else if (activeSettingsTab == 3 && content.type == "series") {
+        EpisodeSidebar(
+            content = content,
+            currentId = currentVideoId ?: content.id,
+            deviceType = deviceType,
+            viewModel = viewModel,
+            activeProfile = activeProfile,
+            onSelect = onEpisodeSelected,
+            onClose = onCloseSettings
+        )
+    } else if (activeSettingsTab == 4) {
+        val context = LocalContext.current
+        var streamBadgesByUrl by remember { mutableStateOf<Map<String, List<NativeStreamBadge>>>(emptyMap()) }
+        LaunchedEffect(currentStreams) {
+            streamBadgesByUrl = withContext(Dispatchers.Default) {
+                val rulesJson = StreamBadgeRulesStore.read(context)
+                currentStreams
+                    .mapNotNull { stream -> stream.playableUrl?.let { it to stream } }
+                    .associate { (url, stream) ->
+                        url to runCatching { FluxaCoreNative.matchStreamBadges(stream, rulesJson) }.getOrDefault(emptyList())
+                    }
+            }
+        }
+        SourceSidebar(
+            streams = currentStreams.map { it.toSourceUiModel(streamBadgesByUrl[it.playableUrl] ?: emptyList()) },
+            currentUrl = currentUrl.orEmpty(),
+            deviceType = deviceType,
+            lang = lang,
+            badgePlacement = remember { StreamBadgeRulesStore.readPlacement(context) },
+            onSelect = { selectedUrl ->
+                val selectedIndex = currentStreams.indexOfFirst { it.playableUrl == selectedUrl }
+                if (selectedIndex >= 0) onSelectStreamIndex(selectedIndex)
+                onCloseSettings()
+            },
+            onClose = onCloseSettings
+        )
+    } else {
+        UniversalSettingsSidebar(
+            activeTab = activeSettingsTab,
+            audioTracks = availableAudios,
+            currentAudio = currentAudio,
+            subtitleTracks = availableSubtitles,
+            currentSubtitle = currentSubtitle,
+            playbackSpeed = playbackSpeed,
+            audioDelayMs = audioDelayMs,
+            subtitleDelayMs = subtitleDelayMs,
+            subtitleTextOpacity = activeProfile?.safeSubtitleTextOpacity ?: 1f,
+            subtitleBackgroundOpacity = activeProfile?.safeSubtitleBackgroundOpacity ?: 0.5f,
+            subtitleOutlineOpacity = activeProfile?.safeSubtitleOutlineOpacity ?: 1f,
+            onSelectAudio = {
+                onSelectAudio(it)
+                onCloseSettings()
+            },
+            onSelectSubtitle = {
+                onSelectSubtitle(it)
+                onCloseSettings()
+            },
+            onDisableSubtitle = {
+                onDisableSubtitle()
+                onCloseSettings()
+            },
+            onSpeedChange = {
+                onSpeedChange(it)
+                onCloseSettings()
+            },
+            onAudioDelayChange = onAudioDelayChange,
+            onSubtitleDelayChange = onSubtitleDelayChange,
+            onSubtitleTextOpacityChange = onSubtitleTextOpacityChange,
+            onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
+            onSubtitleOutlineOpacityChange = onSubtitleOutlineOpacityChange,
+            subtitleCues = subtitleCues,
+            onSubtitleCueClick = onSubtitleCueClick,
+            deviceType = deviceType,
+            lang = lang,
+            languageDisplayName = ::nativeLanguageName,
+            onClose = onCloseSettings
+        )
+    }
+}

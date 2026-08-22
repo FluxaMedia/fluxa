@@ -1,0 +1,37 @@
+[package]
+name = "fluxa_streaming_engine"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[features]
+default = ["native"]
+engine = [
+    "dep:axum",
+    "dep:fluxa_core",
+    "dep:librqbit",
+    "dep:reqwest",
+    "dep:tokio",
+    "dep:tokio-util",
+    "dep:tower-http",
+    "dep:url",
+]
+native = ["engine", "dep:jni"]
+apple = ["engine"]
+
+[dependencies]
+axum = { version = "0.8", optional = true }
+tower-http = { version = "0.6", features = ["cors"], optional = true }
+dolby_vision = { workspace = true }
+fluxa_core = { workspace = true, features = ["streaming-shared"], optional = true }
+jni = { workspace = true, optional = true }
+memchr = "2"
+librqbit = { git = "https://github.com/KhooLy/rqbit.git", rev = "cc372979", package = "librqbit", default-features = false, features = ["rust-tls", "disable-upload"], optional = true }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "form", "rustls", "stream"], optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "io-util", "sync", "process", "fs", "macros"], optional = true }
+tokio-util = { version = "0.7", features = ["io", "rt"], optional = true }
+url = { version = "2", optional = true }

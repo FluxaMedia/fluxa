@@ -1,0 +1,392 @@
+package com.fluxa.app.data.remote
+
+import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import okhttp3.OkHttpClient
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.Field
+import retrofit2.http.FormUrlEncoded
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Headers
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.Path
+import retrofit2.http.Query
+
+interface ExternalSyncApi {
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/last_activities")
+    suspend fun getLastActivities(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String
+    ): Response<JsonObject>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("search/tmdb/{id}?type=show")
+    suspend fun getShowByTmdbId(
+        @Path("id") tmdbId: Int,
+        @Header("trakt-api-key") apiKey: String
+    ): List<TraktSearchResult>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("lists/{listId}")
+    suspend fun getList(
+        @Path("listId") listId: String,
+        @Header("trakt-api-key") apiKey: String
+    ): TraktListSummary
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("lists/{listId}/items/{type}")
+    suspend fun getListItems(
+        @Path("listId") listId: Long,
+        @Path("type") type: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int = 50,
+        @Query("sort_by") sortBy: String? = null,
+        @Query("sort_how") sortHow: String? = null
+    ): List<TraktListItem>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("shows/{id}/seasons/{season}")
+    suspend fun getSeasonEpisodes(
+        @Path("id") traktOrImdbId: String, 
+        @Path("season") seasonNumber: Int,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("translations") translations: String? = null
+    ): List<TraktEpisode>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/watchlist")
+    suspend fun getWatchlist(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/playback")
+    suspend fun getPlayback(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("extended") extended: String = "full,images"
+    ): List<TraktPlaybackItem>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/progress/up_next")
+    suspend fun getUpNext(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("extended") extended: String = "full,images",
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): JsonArray
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @DELETE("sync/playback/{id}")
+    suspend fun deletePlayback(
+        @Path("id") id: Long,
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String
+    ): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/watched/movies")
+    suspend fun getWatchedMovies(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000,
+        @Query("extended") extended: String? = null
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/watched/shows")
+    suspend fun getWatchedShows(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000,
+        @Query("extended") extended: String? = null
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/collection/movies")
+    suspend fun getMovieCollection(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/collection/shows")
+    suspend fun getShowCollection(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/favorites/movies/added/desc")
+    suspend fun getFavoriteMovies(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/favorites/shows/added/desc")
+    suspend fun getFavoriteShows(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): Response<List<TraktSyncItem>>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("sync/watchlist/{type}")
+    suspend fun getWatchlistByType(
+        @Path("type") type: String,
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 1000
+    ): Response<List<TraktSyncItem>>
+
+    @POST("https://api.trakt.tv/oauth/token")
+    suspend fun exchangeCode(@Body request: TraktTokenRequest): TraktTokenResponse
+
+    @POST("https://api.trakt.tv/oauth/token")
+    suspend fun refreshToken(@Body request: TraktRefreshTokenRequest): TraktTokenResponse
+
+    @Headers("Content-Type: application/json")
+    @POST("oauth/device/code")
+    suspend fun createDeviceCode(@Body request: TraktDeviceCodeRequest): TraktDeviceCodeResponse
+
+    @Headers("Content-Type: application/json")
+    @POST("oauth/device/token")
+    suspend fun exchangeDeviceCode(@Body request: TraktDeviceTokenRequest): Response<TraktTokenResponse>
+
+    @FormUrlEncoded
+    @POST("https://api.simkl.com/oauth/token")
+    suspend fun exchangeSimklCode(
+        @Field("client_id") clientId: String,
+        @Field("code_verifier") codeVerifier: String,
+        @Field("grant_type") grantType: String,
+        @Field("code") code: String,
+        @Field("redirect_uri") redirectUri: String
+    ): ExternalOAuthTokenResponse
+
+    @GET("https://api.simkl.com/sync/all-items/{type}/{status}")
+    suspend fun getSimklAllItems(
+        @Path("type") type: String,
+        @Path("status") status: String,
+        @Header("Authorization") token: String,
+        @Header("simkl-api-key") apiKey: String,
+        @Query("extended") extended: String = "full",
+        @Query("episode_watched_at") episodeWatchedAt: String = "yes",
+        @Query("date_from") dateFrom: String? = null
+    ): SimklAllItemsResponse
+
+    @GET("https://api.simkl.com/tv/episodes/{id}")
+    suspend fun getSimklTvEpisodes(
+        @Path("id") id: Int,
+        @Query("client_id") apiKey: String
+    ): List<SimklEpisodeDetail>
+
+    @GET("https://api.simkl.com/sync/activities")
+    suspend fun getSimklActivities(
+        @Header("Authorization") token: String,
+        @Header("simkl-api-key") apiKey: String
+    ): com.google.gson.JsonObject
+
+    @GET("https://api.simkl.com/sync/playback")
+    suspend fun getSimklPlaybackSessions(
+        @Header("Authorization") token: String,
+        @Header("simkl-api-key") apiKey: String
+    ): List<com.google.gson.JsonObject>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("users/settings")
+    suspend fun getTraktSettings(
+        @Header("Authorization") token: String,
+        @Header("trakt-api-key") apiKey: String
+    ): com.google.gson.JsonObject
+
+    @GET("https://api.simkl.com/users/settings")
+    suspend fun getSimklSettings(
+        @Header("Authorization") token: String,
+        @Header("simkl-api-key") apiKey: String
+    ): com.google.gson.JsonObject
+
+    @Headers("Content-Type: application/json")
+    @POST("https://graphql.anilist.co")
+    suspend fun anilistGraphQl(
+        @Header("Authorization") token: String,
+        @Body request: AnilistGraphQlRequest
+    ): com.google.gson.JsonObject
+
+    @GET("https://api.simkl.com/search/id")
+    suspend fun simklSearchById(
+        @Query("imdb") imdb: String,
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Query("app-name") appName: String = "fluxa",
+        @Query("app-version") appVersion: String = ""
+    ): Response<List<SimklSearchResult>>
+
+    @GET("https://api.simkl.com/tv/{id}/episodes")
+    suspend fun simklGetEpisodes(
+        @Path("id") simklId: Long,
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Query("app-name") appName: String = "fluxa",
+        @Query("app-version") appVersion: String = ""
+    ): Response<List<SimklEpisodeInfo>>
+
+    @Headers("Content-Type: application/json")
+    @POST("https://api.simkl.com/scrobble/start")
+    suspend fun simklScrobbleStart(
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Query("app-name") appName: String = "fluxa",
+        @Query("app-version") appVersion: String = "",
+        @Body body: okhttp3.RequestBody
+    ): Response<Unit>
+
+    @Headers("Content-Type: application/json")
+    @POST("https://api.simkl.com/scrobble/pause")
+    suspend fun simklScrobblePause(
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Query("app-name") appName: String = "fluxa",
+        @Query("app-version") appVersion: String = "",
+        @Body body: okhttp3.RequestBody
+    ): Response<Unit>
+
+    @Headers("Content-Type: application/json")
+    @POST("https://api.simkl.com/scrobble/stop")
+    suspend fun simklScrobbleStop(
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Query("app-name") appName: String = "fluxa",
+        @Query("app-version") appVersion: String = "",
+        @Body body: okhttp3.RequestBody
+    ): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("scrobble/start")
+    suspend fun scrobbleStart(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktScrobbleRequest): Response<TraktScrobbleResponse>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("scrobble/pause")
+    suspend fun scrobblePause(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktScrobbleRequest): Response<TraktScrobbleResponse>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("scrobble/stop")
+    suspend fun scrobbleStop(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktScrobbleRequest): Response<TraktScrobbleResponse>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("sync/history")
+    suspend fun addToHistory(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("sync/history/remove")
+    suspend fun removeFromHistory(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("sync/watchlist")
+    suspend fun addToWatchlist(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("sync/watchlist/remove")
+    suspend fun removeFromWatchlist(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("sync/favorites")
+    suspend fun addToFavorites(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @POST("sync/favorites/remove")
+    suspend fun removeFromFavorites(@Header("Authorization") token: String, @Header("trakt-api-key") apiKey: String, @Body request: TraktHistorySyncRequest): Response<Unit>
+
+    @Headers("Content-Type: application/json")
+    @POST("https://api.simkl.com/sync/history")
+    suspend fun simklAddToHistory(
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @Headers("Content-Type: application/json")
+    @POST("https://api.simkl.com/sync/history/remove")
+    suspend fun simklRemoveFromHistory(
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @Headers("Content-Type: application/json")
+    @POST("https://api.simkl.com/sync/add-to-list")
+    suspend fun simklAddToList(
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @Headers("Content-Type: application/json")
+    @POST("https://api.simkl.com/sync/remove-from-list")
+    suspend fun simklRemoveFromList(
+        @Query("client_id") clientId: String,
+        @Header("Authorization") token: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("movies/trending?limit=15")
+    suspend fun getTrendingMovies(@Header("trakt-api-key") apiKey: String): List<TraktTrendingItem>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("shows/trending?limit=15")
+    suspend fun getTrendingShows(@Header("trakt-api-key") apiKey: String): List<TraktTrendingItem>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("movies/anticipated?limit=10")
+    suspend fun getAnticipatedMovies(@Header("trakt-api-key") apiKey: String): List<TraktAnticipatedItem>
+
+    @Headers("Content-Type: application/json", "trakt-api-version: 2")
+    @GET("shows/anticipated?limit=10")
+    suspend fun getAnticipatedShows(@Header("trakt-api-key") apiKey: String): List<TraktAnticipatedItem>
+    
+    companion object {
+        private const val BASE_URL = "https://api.trakt.tv/"
+        private var instance: ExternalSyncApi? = null
+        fun create(): ExternalSyncApi {
+            if (instance == null) {
+                val logging = okhttp3.logging.HttpLoggingInterceptor().apply { level = okhttp3.logging.HttpLoggingInterceptor.Level.NONE }
+                val client = OkHttpClient.Builder()
+                    .addInterceptor(logging)
+                    .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                instance = Retrofit.Builder()
+                    .baseUrl(BASE_URL)
+                    .callFactory { request -> client.newCall(request) }
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+                    .create(ExternalSyncApi::class.java)
+            }
+            return instance!!
+        }
+    }
+}

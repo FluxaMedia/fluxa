@@ -14,7 +14,7 @@ concurrency:
 
 defaults:
   run:
-    working-directory: installer
+    working-directory: apps/desktop/installer
 
 jobs:
   build:
@@ -41,7 +41,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: installer/src-tauri
+          workspaces: apps/desktop/installer/src-tauri
 
       - uses: actions/setup-node@v7
         with:
@@ -56,9 +56,9 @@ jobs:
         with:
           name: installer-${{ matrix.os }}
           path: |
-            installer/src-tauri/target/release/bundle/nsis/*.exe
-            installer/src-tauri/target/release/bundle/dmg/*.dmg
-            installer/src-tauri/target/release/bundle/appimage/*.AppImage
+            apps/desktop/installer/src-tauri/target/release/bundle/nsis/*.exe
+            apps/desktop/installer/src-tauri/target/release/bundle/dmg/*.dmg
+            apps/desktop/installer/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: ignore
 
   release:

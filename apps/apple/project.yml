@@ -1,0 +1,81 @@
+name: FluxaApple
+options:
+  xcodeVersion: "16.4"
+  deploymentTarget:
+    iOS: "18.5"
+    tvOS: "17.0"
+settings:
+  base:
+    GENERATE_INFOPLIST_FILE: YES
+    HEADER_SEARCH_PATHS: "$(SRCROOT)/Generated/FluxaRustCoreFFI"
+    LIBRARY_SEARCH_PATHS: "$(SRCROOT)/Generated"
+    OTHER_LDFLAGS[sdk=iphoneos*]: "-lfluxa_core-ios -lfluxa_streaming_engine-ios"
+    OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_core-ios-simulator -lfluxa_streaming_engine-ios-simulator"
+    OTHER_LDFLAGS[sdk=appletvos*]: "-lfluxa_core-tvos"
+    OTHER_LDFLAGS[sdk=appletvsimulator*]: "-lfluxa_core-tvos-simulator"
+targets:
+  FluxaIos:
+    type: application
+    platform: iOS
+    info:
+      path: Generated/FluxaIos-Info.plist
+      properties:
+        LSApplicationQueriesSchemes:
+          - infuse
+        CFBundleURLTypes:
+          - CFBundleURLName: FluxaApple
+            CFBundleURLSchemes:
+              - fluxaapple
+    sources:
+      - path: Shared
+      - path: AppleCore
+      - path: iOS
+      - path: Generated/FluxaRustCore.swift
+    resources:
+      - path: ../../shared/i18n
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: AVFoundation.framework
+      - sdk: AVKit.framework
+    preBuildScripts:
+      - name: Build Fluxa Rust Core
+        script: scripts/build-rust-core-xcframework.sh
+        basedOnDependencyAnalysis: false
+      - name: Build FluxaCore
+        script: ../android/gradlew -p ../android :core:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
+      - name: Build FluxaShared
+        script: ../android/gradlew -p ../android :shared:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
+  FluxaTvos:
+    type: application
+    platform: tvOS
+    sources:
+      - path: Shared/FluxaAppleCustomPlayerViewController.swift
+      - path: Shared/FluxaAppleAudioSessionCoordinator.swift
+      - path: AppleCore
+        excludes:
+          - FluxaAppleAddonCatalogResolver.swift
+          - FluxaAppleAddonResourceLoader.swift
+          - FluxaAppleAddonStoreManager.swift
+          - FluxaAppleCatalogBootstrap.swift
+          - FluxaAppleCatalogLoader.swift
+          - FluxaAppleDownloadManager.swift
+          - FluxaApplePluginRepositoryManager.swift
+      - path: tvOS
+      - path: Generated/FluxaRustCore.swift
+    resources:
+      - path: ../../shared/i18n
+    preBuildScripts:
+      - name: Build Fluxa Rust Core
+        script: scripts/build-rust-core-xcframework.sh
+        basedOnDependencyAnalysis: false
+      - name: Build FluxaCore
+        script: ../android/gradlew -p ../android :core:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
+      - name: Build FluxaData
+        script: ../android/gradlew -p ../android :data:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
+      - name: Build FluxaPlayer
+        script: ../android/gradlew -p ../android :player:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false

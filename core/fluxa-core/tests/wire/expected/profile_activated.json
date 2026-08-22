@@ -1,0 +1,56 @@
+{
+  "effects": [],
+  "revision": 1,
+  "state": {
+    "home": {
+      "activeProfile": {
+        "id": "p1",
+        "name": "Default"
+      },
+      "billboard": null,
+      "categories": [],
+      "continueWatching": [],
+      "error": null,
+      "externalContinueWatching": [],
+      "generation": 0,
+      "isDirectLoading": false,
+      "isLoading": false,
+      "isStale": false,
+      "metadataFeeds": [],
+      "paging": {
+        "categoryId": "",
+        "error": null,
+        "isLoading": false,
+        "items": null
+      },
+      "userAddons": [],
+      "watchlist": []
+    },
+    "library": {
+      "activeProfileId": "p1",
+      "completed": null,
+      "continueWatching": null,
+      "dropped": null,
+      "error": null,
+      "generation": 0,
+      "isLoading": false,
+      "lastCommand": null,
+      "lastWatchedSync": null,
+      "lastWatchedSyncError": null,
+      "lastWrite": null,
+      "lastWriteError": null,
+      "liked": null,
+      "pendingPlaybackProgress": null,
+      "savedPlaybackProgress": null,
+      "watched": null,
+      "watchlist": null
+    },
+    "profile": {
+      "active": {
+        "id": "p1",
+        "name": "Default"
+      },
+      "activeProfileId": "p1"
+    }
+  }
+}

@@ -17,6 +17,10 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: apps/desktop
+
 jobs:
   # Created up front so the three build jobs upload into one existing draft
   # instead of racing to create it.
@@ -40,21 +44,13 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
-        with:
-          repository: FluxaMedia/fluxa-core
-          path: fluxa-core
-      - name: Link sibling repos
-        shell: bash
-        run: |
-          PARENT="$(dirname "$GITHUB_WORKSPACE")"
-          cmd //c mklink //J "$PARENT\\fluxa-core" "$GITHUB_WORKSPACE\\fluxa-core"
 
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
@@ -64,7 +60,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: apps/desktop/src-tauri
 
       - name: Fetch libmpv (KhooLy/mpv gpu-next fork)
         shell: bash
@@ -134,6 +130,7 @@ jobs:
           FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
           FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
         with:
+          projectPath: apps/desktop
           tagName: ${{ github.event_name == 'push' && github.ref_name || '' }}
           releaseName: ${{ github.event_name == 'push' && format('Fluxa Desktop {0}', github.ref_name) || '' }}
           releaseDraft: true
@@ -145,8 +142,8 @@ jobs:
         with:
           name: fluxa-windows-x64
           path: |
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*
+            apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*
+            apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*
           if-no-files-found: error
 
   # libmpv comes prebuilt from KhooLy/mpv, already dylibbundler'd.
@@ -156,18 +153,13 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
-        with:
-          repository: FluxaMedia/fluxa-core
-          path: fluxa-core
-      - name: Link sibling repos
-        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
 
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
@@ -178,7 +170,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: apps/desktop/src-tauri
 
       - name: Fetch libmpv (KhooLy/mpv gpu-next fork)
         run: ./src-tauri/fetch-libmpv.sh "$LIBMPV_TAG"
@@ -235,6 +227,7 @@ jobs:
           FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
           FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
         with:
+          projectPath: apps/desktop
           tagName: ${{ github.event_name == 'push' && github.ref_name || '' }}
           releaseName: ${{ github.event_name == 'push' && format('Fluxa Desktop {0}', github.ref_name) || '' }}
           releaseDraft: true
@@ -242,7 +235,7 @@ jobs:
 
       - name: Verify bundled macOS application libraries
         run: |
-          APP="src-tauri/target/universal-apple-darwin/release/bundle/macos/Fluxa Desktop.app"
+          APP="apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Fluxa Desktop.app"
           LIB_DIR="$APP/Contents/Resources/lib"
           test -d "$LIB_DIR"
           test -f "$LIB_DIR/libmpv.dylib"
@@ -268,8 +261,8 @@ jobs:
         with:
           name: fluxa-macos-universal
           path: |
-            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
-            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz
+            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz
           if-no-files-found: error
 
   # libmpv comes prebuilt from KhooLy/mpv (built on ubuntu-24.04, must match).
@@ -281,18 +274,13 @@ jobs:
       appimage_signature: ${{ steps.strip-appimage.outputs.signature }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
-        with:
-          repository: FluxaMedia/fluxa-core
-          path: fluxa-core
-      - name: Link sibling repos
-        run: ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$(dirname "$GITHUB_WORKSPACE")/fluxa-core"
 
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
@@ -302,7 +290,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: apps/desktop/src-tauri
 
       # cached under $HOME, not /var/cache/apt/archives, to avoid root-owned dir
       - name: Cache apt packages
@@ -341,7 +329,6 @@ jobs:
           test -f src-tauri/lib/vlc/libvlc.so.5
           test -d src-tauri/lib/vlc/plugins
 
-
       - name: Verify libmpv.so is intact
         run: |
           ldd src-tauri/lib/libmpv.so.2 | grep 'not found' && exit 1 || true
@@ -366,6 +353,7 @@ jobs:
           FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
           FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
         with:
+          projectPath: apps/desktop
           tagName: ${{ github.event_name == 'push' && github.ref_name || '' }}
           releaseName: ${{ github.event_name == 'push' && format('Fluxa Desktop {0}', github.ref_name) || '' }}
           releaseDraft: true
@@ -379,7 +367,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          APPIMAGE="$(realpath "$(find src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage -maxdepth 1 -iname '*.AppImage' | head -n1)")"
+          APPIMAGE="$(realpath "$(find apps/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage -maxdepth 1 -iname '*.AppImage' | head -n1)")"
           chmod +x "$APPIMAGE"
           WORKDIR="$(mktemp -d)"
           (cd "$WORKDIR" && "$APPIMAGE" --appimage-extract >/dev/null)
@@ -411,8 +399,8 @@ jobs:
         with:
           name: fluxa-linux-x64
           path: |
-            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
-            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+            apps/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+            apps/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
           if-no-files-found: error
 
   publish-release:

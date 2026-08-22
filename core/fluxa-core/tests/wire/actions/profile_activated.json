@@ -1,0 +1,7 @@
+{
+  "initialState": {},
+  "action": {
+    "type": "profileActivated",
+    "profile": { "id": "p1", "name": "Default" }
+  }
+}

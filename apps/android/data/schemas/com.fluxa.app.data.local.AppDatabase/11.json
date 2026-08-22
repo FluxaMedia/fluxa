@@ -1,0 +1,557 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 11,
+    "identityHash": "3b183a297ce202ed8a171a3c129d11fe",
+    "entities": [
+      {
+        "tableName": "content_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` TEXT NOT NULL, `contentId` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `poster` TEXT, `background` TEXT, `logo` TEXT, `description` TEXT, `rating` TEXT, `releaseInfo` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `contentId`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "poster",
+            "columnName": "poster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "background",
+            "columnName": "background",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "logo",
+            "columnName": "logo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "releaseInfo",
+            "columnName": "releaseInfo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "contentId"
+          ]
+        }
+      },
+      {
+        "tableName": "watchlist_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` TEXT NOT NULL, `contentId` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `contentId`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "addedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "contentId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_watchlist_entries_profile_addedAt",
+            "unique": false,
+            "columnNames": [
+              "profileId",
+              "addedAt"
+            ],
+            "orders": [
+              "ASC",
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_watchlist_entries_profile_addedAt` ON `${TABLE_NAME}` (`profileId` ASC, `addedAt` DESC)"
+          }
+        ]
+      },
+      {
+        "tableName": "playback_progress",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` TEXT NOT NULL, `contentId` TEXT NOT NULL, `videoId` TEXT, `timeOffset` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `lastStreamIndex` INTEGER, `lastEpisodeName` TEXT, `lastStreamUrl` TEXT, `lastStreamTitle` TEXT, `continueWatchingPoster` TEXT, `continueWatchingBackground` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `contentId`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timeOffset",
+            "columnName": "timeOffset",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastStreamIndex",
+            "columnName": "lastStreamIndex",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastEpisodeName",
+            "columnName": "lastEpisodeName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastStreamUrl",
+            "columnName": "lastStreamUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastStreamTitle",
+            "columnName": "lastStreamTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "continueWatchingPoster",
+            "columnName": "continueWatchingPoster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "continueWatchingBackground",
+            "columnName": "continueWatchingBackground",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "contentId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_playback_progress_profile_updatedAt",
+            "unique": false,
+            "columnNames": [
+              "profileId",
+              "updatedAt"
+            ],
+            "orders": [
+              "ASC",
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playback_progress_profile_updatedAt` ON `${TABLE_NAME}` (`profileId` ASC, `updatedAt` DESC)"
+          }
+        ]
+      },
+      {
+        "tableName": "user_feedback",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` TEXT NOT NULL, `contentId` TEXT NOT NULL, `isLiked` INTEGER, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `contentId`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isLiked",
+            "columnName": "isLiked",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "contentId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_user_feedback_profile_updatedAt",
+            "unique": false,
+            "columnNames": [
+              "profileId",
+              "updatedAt"
+            ],
+            "orders": [
+              "ASC",
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_user_feedback_profile_updatedAt` ON `${TABLE_NAME}` (`profileId` ASC, `updatedAt` DESC)"
+          }
+        ]
+      },
+      {
+        "tableName": "track_preferences",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` TEXT NOT NULL, `contentId` TEXT NOT NULL, `lastAudioLanguage` TEXT, `lastSubtitleLanguage` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `contentId`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAudioLanguage",
+            "columnName": "lastAudioLanguage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastSubtitleLanguage",
+            "columnName": "lastSubtitleLanguage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "contentId"
+          ]
+        }
+      },
+      {
+        "tableName": "watched_episodes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` TEXT NOT NULL, `seriesId` TEXT NOT NULL, `videoId` TEXT NOT NULL, `watchedAt` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `seriesId`, `videoId`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "watchedAt",
+            "columnName": "watchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "seriesId",
+            "videoId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_watched_episodes_profile_series",
+            "unique": false,
+            "columnNames": [
+              "profileId",
+              "seriesId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_watched_episodes_profile_series` ON `${TABLE_NAME}` (`profileId`, `seriesId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "external_playback_progress",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` TEXT NOT NULL, `provider` TEXT NOT NULL, `contentId` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `poster` TEXT, `background` TEXT, `logo` TEXT, `description` TEXT, `rating` TEXT, `releaseInfo` TEXT, `videoId` TEXT, `timeOffset` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `lastEpisodeName` TEXT, `reason` TEXT, `continueWatchingPoster` TEXT, `continueWatchingBackground` TEXT, `syncedAt` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `provider`, `contentId`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "poster",
+            "columnName": "poster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "background",
+            "columnName": "background",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "logo",
+            "columnName": "logo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "releaseInfo",
+            "columnName": "releaseInfo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timeOffset",
+            "columnName": "timeOffset",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastEpisodeName",
+            "columnName": "lastEpisodeName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "continueWatchingPoster",
+            "columnName": "continueWatchingPoster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "continueWatchingBackground",
+            "columnName": "continueWatchingBackground",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "syncedAt",
+            "columnName": "syncedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "provider",
+            "contentId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_external_playback_progress_profile_syncedAt",
+            "unique": false,
+            "columnNames": [
+              "profileId",
+              "syncedAt"
+            ],
+            "orders": [
+              "ASC",
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_external_playback_progress_profile_syncedAt` ON `${TABLE_NAME}` (`profileId` ASC, `syncedAt` DESC)"
+          }
+        ]
+      },
+      {
+        "tableName": "external_watched_episodes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` TEXT NOT NULL, `provider` TEXT NOT NULL, `seriesId` TEXT NOT NULL, `videoId` TEXT NOT NULL, `syncedAt` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `provider`, `seriesId`, `videoId`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedAt",
+            "columnName": "syncedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "provider",
+            "seriesId",
+            "videoId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_external_watched_episodes_profile_provider_series",
+            "unique": false,
+            "columnNames": [
+              "profileId",
+              "provider",
+              "seriesId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_external_watched_episodes_profile_provider_series` ON `${TABLE_NAME}` (`profileId`, `provider`, `seriesId`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3b183a297ce202ed8a171a3c129d11fe')"
+    ]
+  }
+}

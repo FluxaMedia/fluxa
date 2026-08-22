@@ -20,6 +20,10 @@ env:
   FLUXA_NUVIO_SUPABASE_URL: https://ci.invalid
   FLUXA_NUVIO_SUPABASE_KEY: ci
 
+defaults:
+  run:
+    working-directory: apps/desktop
+
 jobs:
   check:
     name: cargo check (${{ matrix.name }})
@@ -37,20 +41,6 @@ jobs:
             os: macos-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
-        with:
-          repository: FluxaMedia/fluxa-core
-          path: fluxa-core
-
-      - name: Link sibling repos
-        shell: bash
-        run: |
-          PARENT="$(dirname "$GITHUB_WORKSPACE")"
-          if [ "${{ matrix.name }}" = "windows" ]; then
-            cmd //c mklink //J "$PARENT\\fluxa-core" "$GITHUB_WORKSPACE\\fluxa-core"
-          else
-            ln -sfn "$GITHUB_WORKSPACE/fluxa-core" "$PARENT/fluxa-core"
-          fi
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
@@ -61,7 +51,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: apps/desktop/src-tauri
           key: ci-${{ matrix.name }}
 
       - name: Install system dependencies
@@ -85,15 +75,15 @@ jobs:
           mkdir -p src-tauri/lib && touch src-tauri/lib/placeholder
 
       - name: cargo check
-        working-directory: src-tauri
+        working-directory: apps/desktop/src-tauri
         run: cargo check --lib --bins --tests
 
       # Informational until the existing ~80 warnings are cleared; check/test are the hard gates.
       - name: cargo clippy
-        working-directory: src-tauri
+        working-directory: apps/desktop/src-tauri
         continue-on-error: true
         run: cargo clippy --lib --bins --tests
 
       - name: cargo test
-        working-directory: src-tauri
+        working-directory: apps/desktop/src-tauri
         run: cargo test --lib

@@ -1,0 +1,7 @@
+{
+  "action": "pause",
+  "body": {
+    "movie": {"ids": {"imdb": "tt1375666"}},
+    "progress": 50.0
+  }
+}

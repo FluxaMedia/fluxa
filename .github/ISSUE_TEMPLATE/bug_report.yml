@@ -1,62 +1,59 @@
 name: Bug report
-description: Something in Fluxa Desktop is broken or behaving wrong
-labels: ["bug", "needs triage"]
+description: Report a reproducible problem in Fluxa.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report this. Please search existing issues first — a quick check saves everyone time.
-  - type: textarea
-    id: what-happened
-    attributes:
-      label: What happened
-      description: What went wrong, and what did you expect instead?
-      placeholder: When I click Play on an episode, the player opens black and never loads. I expected it to start playing.
-    validations:
-      required: true
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to reproduce
-      placeholder: |
-        1. Open a series detail page
-        2. Pick a source
-        3. …
-    validations:
-      required: true
+        Please search existing issues first and remove sensitive data from logs.
   - type: dropdown
     id: platform
     attributes:
       label: Platform
       multiple: true
       options:
+        - Android
+        - Android TV
+        - iOS
+        - tvOS
         - Windows
         - macOS
         - Linux
-        - Web (browser)
+        - Web
         - webOS
     validations:
       required: true
   - type: input
-    id: os-version
+    id: version
     attributes:
-      label: OS version / browser
-      placeholder: Windows 11 23H2 · or · Firefox 130 on Ubuntu 24.04
+      label: Version
+      placeholder: 2.1.7 or commit SHA
     validations:
       required: true
-  - type: input
-    id: app-version
+  - type: textarea
+    id: steps
     attributes:
-      label: Fluxa version
-      description: Settings → About, or the release tag you downloaded. For web, the date you last loaded it.
-      placeholder: 0.1.30
+      label: Steps to reproduce
+      placeholder: Tell us exactly what happened before the problem appeared.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: Logs / error text
-      description: Terminal output, the in-app error boundary text, or a browser console screenshot. For a production-only bug, mention if it also happens in `tauri dev`.
+      label: Logs or screenshots
       render: text
     validations:
       required: false

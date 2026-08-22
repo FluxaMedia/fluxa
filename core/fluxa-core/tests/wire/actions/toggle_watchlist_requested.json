@@ -1,0 +1,7 @@
+{
+  "initialState": {},
+  "action": {
+    "type": "toggleWatchlistRequested",
+    "item": { "id": "tt1", "type": "movie", "name": "Movie" }
+  }
+}

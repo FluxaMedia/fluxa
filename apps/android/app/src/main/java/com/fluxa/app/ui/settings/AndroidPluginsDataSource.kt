@@ -1,0 +1,167 @@
+package com.fluxa.app.ui.settings
+
+import com.fluxa.app.shared.feature.plugins.syncNuvioPluginsForProfile
+import com.fluxa.app.common.AppStrings
+import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
+import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.plugins.PluginManager
+import com.fluxa.app.plugins.PluginRepositoryManager
+import com.fluxa.app.plugins.cloudstream.InstalledPlugin
+import com.fluxa.app.plugins.cloudstream.PluginInfo
+import com.fluxa.app.shared.feature.plugins.CloudstreamPluginUiModel
+import com.fluxa.app.shared.feature.plugins.CloudstreamRepoUiModel
+import com.fluxa.app.shared.feature.plugins.JvmNuvioPluginsUiController
+import com.fluxa.app.shared.feature.plugins.PluginsDataSource
+import com.fluxa.app.shared.feature.plugins.PluginsUiState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
+
+class AndroidPluginsDataSource(
+    private val pluginRepositoryManager: PluginRepositoryManager,
+    private val pluginManager: PluginManager,
+    private val nuvioCoordinator: NuvioAccountImportCoordinator,
+    private val profileManager: ProfileManager,
+    private val language: () -> String
+) : PluginsDataSource {
+
+    private data class Extras(
+        val isAddingCloudstreamRepo: Boolean = false,
+        val cloudstreamRepoError: String? = null,
+        val openRepoUrl: String? = null,
+        val openRepoName: String? = null,
+        val openRepoPlugins: List<PluginInfo> = emptyList(),
+        val isLoadingRepoPlugins: Boolean = false,
+        val installingPluginKeys: Set<String> = emptySet(),
+        val repoDialogError: String? = null
+    )
+
+    private val extras = MutableStateFlow(Extras())
+    private val nuvio = JvmNuvioPluginsUiController(
+        repositoryState = pluginRepositoryManager.state,
+        refreshAllRepositories = pluginRepositoryManager::refreshAllRepositories,
+        addRepositoryCommand = pluginRepositoryManager::addRepository,
+        removeRepositoryCommand = pluginRepositoryManager::removeRepository,
+        refreshRepositoryCommand = pluginRepositoryManager::refreshRepository,
+        toggleScraperCommand = pluginRepositoryManager::toggleScraper,
+        updateScraperSettingsCommand = pluginRepositoryManager::updateScraperSettings,
+        settingsLayout = pluginRepositoryManager::getSettingsLayout,
+    )
+
+    override fun observePlugins(): Flow<PluginsUiState> = combine(
+        nuvio.observePlugins(),
+        pluginManager.installedPlugins,
+        pluginManager.repositories,
+        pluginManager.automaticUpdatesEnabled,
+        extras
+    ) { nuvioState, installedPlugins, repos, automaticUpdatesEnabled, ex ->
+        nuvioState.copy(
+            cloudstreamRepos = repos.map { CloudstreamRepoUiModel(name = it.name, url = it.url, iconUrl = it.iconUrl) },
+            installedCloudstreamPluginCount = installedPlugins.size,
+            cloudstreamAutomaticUpdatesEnabled = automaticUpdatesEnabled,
+            isAddingCloudstreamRepo = ex.isAddingCloudstreamRepo,
+            cloudstreamRepoError = ex.cloudstreamRepoError,
+            openRepoUrl = ex.openRepoUrl,
+            openRepoName = ex.openRepoName,
+            openRepoPlugins = mapCloudstreamPlugins(ex, installedPlugins),
+            isLoadingRepoPlugins = ex.isLoadingRepoPlugins,
+            installingPluginKeys = ex.installingPluginKeys,
+            repoDialogError = ex.repoDialogError,
+        )
+    }
+
+    private fun mapCloudstreamPlugins(ex: Extras, installedPlugins: List<InstalledPlugin>): List<CloudstreamPluginUiModel> =
+        ex.openRepoPlugins.map { plugin ->
+            val key = pluginManager.pluginInstallKey(ex.openRepoUrl, plugin.internalName)
+            CloudstreamPluginUiModel(
+                internalName = plugin.internalName,
+                name = plugin.name,
+                description = plugin.description,
+                iconUrl = plugin.iconUrl,
+                typesLabel = plugin.getDisplayTypes(),
+                isInstalled = installedPlugins.any { pluginManager.pluginInstallKey(it.repositoryUrl, it.internalName) == key }
+            )
+        }
+
+    override suspend fun refresh() {
+        val activeId = profileManager.getLastActiveProfileId()
+        val profile = profileManager.getProfiles().firstOrNull { it.id == activeId }
+        syncNuvioPluginsForProfile(profile, nuvioCoordinator, pluginRepositoryManager::syncNuvioPlugins)
+        nuvio.refresh()
+    }
+    override suspend fun addRepository(manifestUrl: String) = nuvio.addRepository(manifestUrl)
+    override suspend fun removeRepository(manifestUrl: String) = nuvio.removeRepository(manifestUrl)
+    override suspend fun refreshRepository(manifestUrl: String) = nuvio.refreshRepository(manifestUrl)
+    override suspend fun toggleScraper(scraperId: String, enabled: Boolean) = nuvio.toggleScraper(scraperId, enabled)
+    override suspend fun requestScraperSettings(scraperId: String) = nuvio.requestScraperSettings(scraperId)
+    override suspend fun dismissScraperSettings() = nuvio.dismissScraperSettings()
+    override suspend fun saveScraperSettings(scraperId: String, values: Map<String, Any?>) =
+        nuvio.saveScraperSettings(scraperId, values)
+
+    override suspend fun addCloudstreamRepository(url: String, publisherPublicKey: String) {
+        extras.update { it.copy(isAddingCloudstreamRepo = true, cloudstreamRepoError = null) }
+        val normalizedUrl = FluxaCoreNative.normalizeCloudstreamRepoUrl(url)
+        val result = pluginManager.addRepository(normalizedUrl, publisherPublicKey)
+        extras.update {
+            if (result.isSuccess) {
+                it.copy(isAddingCloudstreamRepo = false)
+            } else {
+                it.copy(
+                    isAddingCloudstreamRepo = false,
+                    cloudstreamRepoError = result.exceptionOrNull()?.message
+                        ?.let { error ->
+                            if (error == com.fluxa.app.plugins.cloudstream.SIGNATURE_ERROR) {
+                                AppStrings.t(language(), "addons.repository_signature_invalid")
+                            } else {
+                                error
+                            }
+                        }
+                        ?: AppStrings.t(language(), "addons.repository_add_failed")
+                )
+            }
+        }
+    }
+
+    override suspend fun setCloudstreamAutomaticUpdatesEnabled(enabled: Boolean) {
+        pluginManager.setAutomaticUpdatesEnabled(enabled)
+    }
+
+    override suspend fun openRepo(url: String) {
+        val repoName = pluginManager.repositories.value.find { it.url == url }?.name?.takeIf { it.isNotBlank() }
+        extras.update {
+            it.copy(openRepoUrl = url, openRepoName = repoName, isLoadingRepoPlugins = true, openRepoPlugins = emptyList(), repoDialogError = null)
+        }
+        val plugins = pluginManager.getPluginsFromRepository(url)
+        extras.update { it.copy(openRepoPlugins = plugins, isLoadingRepoPlugins = false) }
+    }
+
+    override suspend fun dismissRepoDialog() {
+        extras.update { it.copy(openRepoUrl = null, openRepoName = null, openRepoPlugins = emptyList(), repoDialogError = null) }
+    }
+
+    override suspend fun removeRepo(url: String) {
+        pluginManager.removeRepository(url)
+    }
+
+    override suspend fun toggleRepoPlugin(repoUrl: String, internalName: String) {
+        val key = pluginManager.pluginInstallKey(repoUrl, internalName)
+        val plugin = extras.value.openRepoPlugins.find { it.internalName == internalName } ?: return
+        val isInstalled = pluginManager.installedPlugins.value.any {
+            pluginManager.pluginInstallKey(it.repositoryUrl, it.internalName) == key
+        }
+        extras.update { it.copy(installingPluginKeys = it.installingPluginKeys + key, repoDialogError = null) }
+        if (isInstalled) {
+            pluginManager.uninstallPlugin(repoUrl, internalName)
+        } else {
+            val result = pluginManager.installPlugin(plugin, repoUrl)
+            if (result.isFailure) {
+                extras.update {
+                    it.copy(repoDialogError = result.exceptionOrNull()?.message ?: AppStrings.t(language(), "auto.install_failed"))
+                }
+            }
+        }
+        extras.update { it.copy(installingPluginKeys = it.installingPluginKeys - key) }
+    }
+}
