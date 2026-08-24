@@ -149,6 +149,10 @@ fun UniversalSettingsSidebar(
                     val channelLabel = track.audioChannelLabel
                     val trackSubtitle = when {
                         !track.isSupported -> AppStrings.t(lang, "player.unsupported")
+                        track.sourceName != null -> listOfNotNull(
+                            track.sourceName,
+                            channelLabel.takeIf { it.isNotBlank() }
+                        ).joinToString(" · ")
                         channelLabel.isNotBlank() -> channelLabel
                         else -> null
                     }
@@ -157,6 +161,7 @@ fun UniversalSettingsSidebar(
                         isSelected = track == currentAudio,
                         onClick = { onSelectAudio(track) },
                         subtitle = trackSubtitle,
+                        badge = track.sourceName?.let { AppStrings.t(lang, "player.external_audio_badge") },
                         deviceType = deviceType
                     )
                 }

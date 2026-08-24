@@ -78,8 +78,6 @@ fn word_boundary_regex_for(normalized_preference: &str) -> Option<regex::Regex> 
     *cache = Some((normalized_preference.to_string(), regex.clone()));
     Some(regex)
 }
-// HLS EXT-X-MEDIA and most scrapers tag renditions with ISO 639-2 ("tur",
-// "eng"), while profile preferences are ISO 639-1 ("tr", "en").
 pub(crate) fn iso_639_1_of(code: &str) -> &str {
     match code {
         "tur" => "tr",

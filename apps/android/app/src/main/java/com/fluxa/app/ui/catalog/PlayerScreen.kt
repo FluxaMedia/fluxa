@@ -200,6 +200,13 @@ fun PlayerScreen(
         resizeMode = state.resizeMode
     )
 
+    PlayerExternalAudioEffects(
+        activeEngine = activeEngine,
+        currentStreams = state.currentStreams,
+        currentUrl = state.resolvedUrl ?: state.currentUrl,
+        preferredAudioLanguage = TrackSelectionState.resolvePreferredAudioLanguage(activeProfile, meta)
+    )
+
     val updateEngine: (PlayerEngineSnapshot.() -> PlayerEngineSnapshot) -> Unit = { f ->
         state.updateEngineSnapshot(f(state.engine))
     }

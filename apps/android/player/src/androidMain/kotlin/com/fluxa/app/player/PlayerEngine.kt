@@ -49,6 +49,7 @@ interface PlayerEngine {
 
     fun prepareAndPlay(request: PlayerEngineRequest)
     fun addExternalSubtitles(subtitles: List<ExternalSubtitleTrack>)
+    fun setExternalAudioTracks(tracks: List<ExternalAudioTrack>)
     fun pause()
     fun stop()
     fun clear()
@@ -117,6 +118,10 @@ class ExoPlayerEngine(
 
     override fun addExternalSubtitles(subtitles: List<ExternalSubtitleTrack>) {
         controller.addExternalSubtitles(subtitles)
+    }
+
+    override fun setExternalAudioTracks(tracks: List<ExternalAudioTrack>) {
+        controller.setExternalAudioTracks(tracks)
     }
 
     override fun pause() {
@@ -328,6 +333,10 @@ class MpvPlayerEngine(
 
     override fun addExternalSubtitles(subtitles: List<ExternalSubtitleTrack>) {
         player.addExternalSubtitles(subtitles)
+    }
+
+    override fun setExternalAudioTracks(tracks: List<ExternalAudioTrack>) {
+        player.setExternalAudioTracks(tracks)
     }
 
     override fun pause() {

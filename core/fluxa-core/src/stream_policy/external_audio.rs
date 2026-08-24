@@ -27,7 +27,7 @@ fn source_name(stream: &Stream, index: usize) -> String {
         .as_deref()
         .or(stream.title.as_deref())
         .map(str::to_string)
-        .unwrap_or_else(|| format!("Kaynak {}", index + 1))
+        .unwrap_or_else(|| format!("Source {}", index + 1))
 }
 
 fn stream_language(stream: &Stream) -> String {

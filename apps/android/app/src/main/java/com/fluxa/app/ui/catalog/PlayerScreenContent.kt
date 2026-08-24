@@ -427,7 +427,10 @@ internal fun PlayerScreenContent(
                     activeEngine?.setSpeed(it)
                     showControlsTemp()
                 },
-                onAudioDelayChange = { state.audioDelayMs = it.coerceIn(-5_000L, 5_000L) },
+                onAudioDelayChange = {
+                    val limit = com.fluxa.app.player.PlayerDelayController.maxAudioDelayMs()
+                    state.audioDelayMs = it.coerceIn(-limit, limit)
+                },
                 onSubtitleDelayChange = { state.subtitleDelayMs = it.coerceIn(-5_000L, 5_000L) },
                 subtitleCues = subtitleCueUiModels,
                 onSubtitleCueClick = { cue ->

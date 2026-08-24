@@ -44,6 +44,7 @@ internal object MediaPlayerControllerFactory {
 
     internal class ExoRequestContext {
         @Volatile var streamHeaders: Map<String, String> = emptyMap()
+        @Volatile var audioSourceHeaders: Map<String, Map<String, String>> = emptyMap()
         @Volatile var dolbyVisionFallbackMode: DolbyVisionFallbackMode = DolbyVisionFallbackMode.Off
         @Volatile var lastDolbyVisionDecision: String = "dv_fallback=not_checked"
         @Volatile var dvProxyPlanDebug: String = ""
@@ -61,6 +62,7 @@ internal object MediaPlayerControllerFactory {
 
     private val requestContexts = Collections.synchronizedMap(WeakHashMap<ExoPlayer, ExoRequestContext>())
     private val libassRelays = Collections.synchronizedMap(WeakHashMap<ExoPlayer, LibassEventRelay>())
+    private val mediaSourceFactories = Collections.synchronizedMap(WeakHashMap<ExoPlayer, DefaultMediaSourceFactory>())
     private val subtitleCoordinators = Collections.synchronizedMap(WeakHashMap<ExoPlayer, com.fluxa.app.player.subtitle.SubtitleCoordinator>())
     private val subtitleClockBindings = Collections.synchronizedMap(WeakHashMap<ExoPlayer, ExoPlaybackClock>())
     private val subtitleScopes = Collections.synchronizedMap(WeakHashMap<ExoPlayer, kotlinx.coroutines.CoroutineScope>())
@@ -84,6 +86,8 @@ internal object MediaPlayerControllerFactory {
     fun getLibassRelay(player: ExoPlayer): LibassEventRelay? = libassRelays[player]
     fun getSubtitleCoordinator(player: ExoPlayer): com.fluxa.app.player.subtitle.SubtitleCoordinator? = subtitleCoordinators[player]
     internal fun requestContext(player: ExoPlayer): ExoRequestContext? = requestContexts[player]
+
+    internal fun mediaSourceFactory(player: ExoPlayer): DefaultMediaSourceFactory? = mediaSourceFactories[player]
     internal fun audioProcessingMode(player: ExoPlayer): String = audioProcessingModes[player] ?: "reference"
     internal fun audioOffloadActive(player: ExoPlayer): Boolean = audioOffloadStates[player] == true
     internal fun audioFallbackRetrying(player: ExoPlayer): Boolean = audioFallbackRetryStates[player] == true
@@ -451,9 +455,11 @@ internal object MediaPlayerControllerFactory {
 
                 //  CRITICAL FIX: ABSOLUTELY DO NOT TOUCH LOCALHOST HEADERS
                 if (host != "127.0.0.1" && host != "localhost") {
-                    StreamRequestPolicy.headersFor(request.url.toString(), requestContext.streamHeaders).forEach { (k, v) ->
-                        builder.header(k, v)
-                    }
+                    val overrides = requestContext.audioSourceHeaders[host]
+                    StreamRequestPolicy.headersFor(
+                        request.url.toString(),
+                        overrides ?: requestContext.streamHeaders
+                    ).forEach { (k, v) -> builder.header(k, v) }
                 }
 
                 val response = chain.proceed(builder.build())
@@ -595,6 +601,7 @@ internal object MediaPlayerControllerFactory {
             playWhenReady = true
             setWakeMode(C.WAKE_MODE_NETWORK)
             requestContexts[this] = requestContext
+            mediaSourceFactories[this] = mediaSourceFactory
             relay?.let { libassRelays[this] = it }
             subtitleCoordinators[this] = subtitleCoordinator
             subtitleScopes[this] = subtitleScope

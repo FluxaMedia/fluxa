@@ -14,6 +14,7 @@ data class MediaTrack(
     val containerTrackId: String? = null,
     val bitrate: Long? = null,
     val sampleRate: Int? = null,
+    val sourceName: String? = null,
 ) {
     val audioChannelLabel: String
         get() {

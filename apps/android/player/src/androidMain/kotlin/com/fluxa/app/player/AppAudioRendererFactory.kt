@@ -41,12 +41,23 @@ import java.util.concurrent.atomic.AtomicLong
 
 object PlayerDelayController {
     private val audioDelayMs = AtomicLong(0L)
+    @Volatile private var maxDelayMs = DEFAULT_MAX_DELAY_MS
 
     fun setAudioDelayMs(value: Long) {
-        audioDelayMs.set(value.coerceIn(-5_000L, 5_000L))
+        audioDelayMs.set(value.coerceIn(-maxDelayMs, maxDelayMs))
     }
 
     fun audioDelayUs(): Long = audioDelayMs.get() * 1_000L
+
+    fun setExternalAudioActive(active: Boolean) {
+        maxDelayMs = if (active) EXTERNAL_MAX_DELAY_MS else DEFAULT_MAX_DELAY_MS
+        setAudioDelayMs(audioDelayMs.get())
+    }
+
+    fun maxAudioDelayMs(): Long = maxDelayMs
+
+    const val DEFAULT_MAX_DELAY_MS = 5_000L
+    const val EXTERNAL_MAX_DELAY_MS = 60_000L
 }
 
 object AudioDecoderSupport {

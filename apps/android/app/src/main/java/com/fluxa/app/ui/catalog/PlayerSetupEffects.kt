@@ -15,7 +15,9 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.player.DolbyVisionFallbackMode
+import com.fluxa.app.player.ExternalAudioTrack
 import com.fluxa.app.player.ExoPlayerEngine
 import com.fluxa.app.player.MpvEmbeddedPlayer
 import com.fluxa.app.player.PlayerEngine
@@ -28,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun PlayerOrientationLock(activity: Activity?, deviceType: DeviceType) {
@@ -103,6 +106,42 @@ internal fun PlayerEngineSettingsEffects(
     }
     LaunchedEffect(resizeMode, activeEngine) {
         activeEngine?.setZoomed(resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM)
+    }
+}
+
+@Composable
+internal fun PlayerExternalAudioEffects(
+    activeEngine: PlayerEngine?,
+    currentStreams: List<Stream>,
+    currentUrl: String?,
+    preferredAudioLanguage: String?
+) {
+    LaunchedEffect(activeEngine, currentStreams, currentUrl, preferredAudioLanguage) {
+        val engine = activeEngine ?: return@LaunchedEffect
+        if (currentStreams.isEmpty()) {
+            engine.setExternalAudioTracks(emptyList())
+            return@LaunchedEffect
+        }
+        val tracks = withContext(Dispatchers.Default) {
+            FluxaCoreNative.externalAudioOptions(
+                streams = currentStreams,
+                selectedStreamUrl = currentUrl,
+                preferredAudioLanguage = preferredAudioLanguage
+            )
+                .filter { it.audioOnly }
+                .map { option ->
+                    ExternalAudioTrack(
+                        id = option.id,
+                        url = option.url,
+                        label = option.label,
+                        language = option.language.takeIf { it.isNotBlank() },
+                        sourceName = option.sourceName,
+                        audioOnly = true,
+                        headers = option.headers.orEmpty()
+                    )
+                }
+        }
+        engine.setExternalAudioTracks(tracks)
     }
 }
 

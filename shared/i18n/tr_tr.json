@@ -864,6 +864,7 @@
   "player.subtitles_subtitle": "Altyazı seçimini yapın.",
   "player.speed_subtitle": "Oynatma hızını seçin.",
   "player.local_source": "Yerel kaynak",
+  "player.external_audio_badge": "Harici",
   "player.unsupported": "Desteklenmiyor",
   "player.audio_track": "Ses parçası",
   "player.off": "Kapalı",

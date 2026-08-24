@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import com.fluxa.app.core.rust.models.NativeDvProxyPlan
 import java.util.Locale
 
@@ -28,6 +30,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
     private var currentUrl: String? = null
     private var currentStream: com.fluxa.app.data.remote.Stream? = null
     private var currentExternalSubtitles: List<ExternalSubtitleTrack> = emptyList()
+    private var currentExternalAudio: List<ExternalAudioTrack> = emptyList()
     @Volatile private var audioDecoderName: String? = null
     @Volatile private var failedAudioCodecName: String? = null
     @Volatile private var failedAudioMimeType: String? = null
@@ -290,18 +293,25 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         )
     }
 
+    private fun externalAudioFor(trackGroupId: String?): ExternalAudioTrack? {
+        val childIndex = trackGroupId?.substringBefore(':', "")?.toIntOrNull() ?: return null
+        return currentExternalAudio.getOrNull(childIndex - 1)
+    }
+
     private fun updateTracks(tracks: Tracks) {
         val audios = mutableListOf<MediaTrack>()
         val subtitles = mutableListOf<MediaTrack>()
 
         tracks.groups.forEachIndexed { groupIndex, group ->
             if (group.type == C.TRACK_TYPE_AUDIO) {
+                val external = externalAudioFor(group.mediaTrackGroup.id)
                 for (i in 0 until group.length) {
                     val format = group.getTrackFormat(i)
                     audios.add(MediaTrack(
                         id = "audio_$groupIndex-$i",
-                        label = format.label ?: format.language ?: "Ses ${audios.size + 1}",
-                        language = format.language,
+                        label = external?.label ?: format.label ?: format.language ?: "Ses ${audios.size + 1}",
+                        language = external?.language ?: format.language,
+                        sourceName = external?.sourceName,
                         type = C.TRACK_TYPE_AUDIO,
                         groupIndex = groupIndex,
                         trackIndex = i,
@@ -394,6 +404,9 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         currentUrl = url
         currentStream = stream
         currentExternalSubtitles = subtitles
+        currentExternalAudio = emptyList()
+        PlayerDelayController.setExternalAudioActive(false)
+        MediaPlayerControllerFactory.requestContext(exoPlayer)?.audioSourceHeaders = emptyMap()
         LibassDebugLog.d(
             "prepare ExoPlayer url=${LibassDebugLog.urlSummary(url)} externalSubtitles=${subtitles.size} streamTitle=${stream?.effectiveFilename ?: stream?.rawDisplayTitle}"
         )
@@ -455,9 +468,58 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
                     .build()
             })
         }
-        exoPlayer.setMediaItem(builder.build())
-        exoPlayer.prepare()
+        applyMedia(builder.build(), C.TIME_UNSET)
         exoPlayer.play()
+    }
+
+    val hasExternalAudio: Boolean get() = currentExternalAudio.isNotEmpty()
+
+    fun setExternalAudioTracks(tracks: List<ExternalAudioTrack>) {
+        val deduped = tracks.distinctBy { it.url }.filter { it.url.isNotBlank() }
+        if (deduped.map { it.url } == currentExternalAudio.map { it.url }) return
+        currentExternalAudio = deduped
+        PlayerDelayController.setExternalAudioActive(deduped.isNotEmpty())
+        MediaPlayerControllerFactory.requestContext(exoPlayer)?.audioSourceHeaders =
+            deduped.mapNotNull { track ->
+                val host = runCatching { Uri.parse(track.url).host }.getOrNull()?.lowercase()
+                if (host.isNullOrBlank() || track.headers.isEmpty()) null else host to track.headers
+            }.toMap()
+
+        val item = exoPlayer.currentMediaItem ?: return
+        val position = exoPlayer.currentPosition.coerceAtLeast(0L)
+        val wasPlaying = exoPlayer.playWhenReady
+        applyMedia(item, position)
+        exoPlayer.playWhenReady = wasPlaying
+    }
+
+    private fun applyMedia(item: MediaItem, positionMs: Long) {
+        val audio = currentExternalAudio
+        if (audio.isEmpty()) {
+            if (positionMs == C.TIME_UNSET) exoPlayer.setMediaItem(item) else exoPlayer.setMediaItem(item, positionMs)
+            exoPlayer.prepare()
+            return
+        }
+        val factory = MediaPlayerControllerFactory.mediaSourceFactory(exoPlayer)
+        if (factory == null) {
+            if (positionMs == C.TIME_UNSET) exoPlayer.setMediaItem(item) else exoPlayer.setMediaItem(item, positionMs)
+            exoPlayer.prepare()
+            return
+        }
+        val sources = mutableListOf<MediaSource>(factory.createMediaSource(item))
+        audio.forEach { track ->
+            val audioItem = MediaItem.Builder()
+                .setUri(Uri.parse(track.url))
+                .setMediaId(track.id)
+                .build()
+            sources += factory.createMediaSource(audioItem)
+        }
+        val merged = MergingMediaSource(true, false, *sources.toTypedArray())
+        if (positionMs == C.TIME_UNSET) {
+            exoPlayer.setMediaSource(merged)
+        } else {
+            exoPlayer.setMediaSource(merged, positionMs)
+        }
+        exoPlayer.prepare()
     }
 
     private fun findAudioCodecName(error: Throwable?): String? {
@@ -690,8 +752,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         val currentPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
         val wasPlaying = exoPlayer.playWhenReady
         LibassDebugLog.d("rebuilding media item with added ASS subtitles count=${subtitleConfigurations.size} positionMs=$currentPosition wasPlaying=$wasPlaying")
-        exoPlayer.setMediaItem(currentItem.buildUpon().setSubtitleConfigurations(subtitleConfigurations).build(), currentPosition)
-        exoPlayer.prepare()
+        applyMedia(currentItem.buildUpon().setSubtitleConfigurations(subtitleConfigurations).build(), currentPosition)
         exoPlayer.playWhenReady = wasPlaying
     }
 

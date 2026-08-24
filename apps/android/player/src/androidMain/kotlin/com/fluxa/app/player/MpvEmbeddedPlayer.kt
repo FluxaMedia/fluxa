@@ -121,6 +121,8 @@ class MpvEmbeddedPlayer(
     @Volatile private var pendingLoad: PendingMpvLoad? = null
     @Volatile private var activeLoad: PendingMpvLoad? = null
     @Volatile private var externalSubtitlesAdded = false
+    @Volatile private var externalAudioAdded = false
+    @Volatile private var currentExternalAudio: List<ExternalAudioTrack> = emptyList()
     private var hardwareWatchdogJob: Job? = null
     private val voInUse = "gpu"
     @Volatile private var hardwareDecodeEnabled = true
@@ -319,6 +321,33 @@ class MpvEmbeddedPlayer(
         loadFile(load)
     }
 
+    val hasExternalAudio: Boolean get() = currentExternalAudio.isNotEmpty()
+
+    fun setExternalAudioTracks(tracks: List<ExternalAudioTrack>) {
+        val deduped = tracks.distinctBy { it.url }.filter { it.url.isNotBlank() }
+        val added = deduped.filter { track -> currentExternalAudio.none { it.url == track.url } }
+        currentExternalAudio = deduped
+        PlayerDelayController.setExternalAudioActive(deduped.isNotEmpty())
+        if (hasLoadedCurrentFile) {
+            added.forEach(::addExternalAudioTrack)
+            updateTracksFromProperties()
+        }
+    }
+
+    private fun addExternalAudioTrack(track: ExternalAudioTrack) {
+        runCatching {
+            mpv.command(
+                arrayOf("audio-add", track.url, "auto", track.label, track.language.orEmpty())
+            )
+        }
+    }
+
+    private fun addExternalAudioOnce() {
+        if (externalAudioAdded) return
+        externalAudioAdded = true
+        currentExternalAudio.forEach(::addExternalAudioTrack)
+    }
+
     fun addExternalSubtitles(subtitles: List<ExternalSubtitleTrack>) {
         if (subtitles.isEmpty()) return
         val existingUrls = currentSubtitles.map { it.url }.toSet()
@@ -355,6 +384,9 @@ class MpvEmbeddedPlayer(
         )
         hasLoadedCurrentFile = false
         externalSubtitlesAdded = false
+        externalAudioAdded = false
+        currentExternalAudio = emptyList()
+        PlayerDelayController.setExternalAudioActive(false)
         lastErrorLog = null
         lastTrackListKey = ""
         _state.value = MpvPlaybackState(isBuffering = true)
@@ -397,7 +429,8 @@ class MpvEmbeddedPlayer(
     }
 
     fun setAudioDelayMs(delayMs: Long) {
-        if (initialized) mpv.setPropertyDouble("audio-delay", delayMs.coerceIn(-5_000L, 5_000L) / 1000.0)
+        val limit = PlayerDelayController.maxAudioDelayMs()
+        if (initialized) mpv.setPropertyDouble("audio-delay", delayMs.coerceIn(-limit, limit) / 1000.0)
     }
 
     fun setSubtitleDelayMs(delayMs: Long) {
@@ -698,6 +731,7 @@ class MpvEmbeddedPlayer(
         hardwareWatchdogJob = null
         if (!hasLoadedCurrentFile) hasLoadedCurrentFile = true
         addExternalSubtitlesOnce()
+        addExternalAudioOnce()
         _state.value = _state.value.copy(isBuffering = false, isVideoReady = true, error = null)
         updatePositionOnly()
         updateTechnicalInfo()

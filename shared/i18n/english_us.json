@@ -864,6 +864,7 @@
   "player.subtitles_subtitle": "Choose a subtitle track.",
   "player.speed_subtitle": "Choose playback speed.",
   "player.local_source": "Local source",
+  "player.external_audio_badge": "External",
   "player.unsupported": "Unsupported",
   "player.audio_track": "Audio track",
   "player.off": "Off",
