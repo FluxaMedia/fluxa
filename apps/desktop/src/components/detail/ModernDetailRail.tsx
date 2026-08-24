@@ -33,6 +33,12 @@ function buildScoreRows(
   return rows;
 }
 
+function nameList(value: string[] | undefined): string[] {
+  if (Array.isArray(value)) return value.filter((entry) => typeof entry === 'string' && entry.trim().length > 0);
+  if (typeof value === 'string') return (value as string).split(',').map((entry) => entry.trim()).filter(Boolean);
+  return [];
+}
+
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div style={MS.railRow}>
@@ -67,7 +73,8 @@ export function ModernDetailRail({
   const scoreRows = hasMdblistRatings ? [] : buildScoreRows(displayMeta, omdbRatings);
   const genres = Array.isArray(displayMeta.genres) ? displayMeta.genres.slice(0, 6) : [];
   const visibleCast = castMembers.slice(0, 5);
-  const creators = displayMeta.createdBy?.length ? displayMeta.createdBy : displayMeta.director;
+  const createdBy = nameList(displayMeta.createdBy);
+  const creators = createdBy.length ? createdBy : nameList(displayMeta.director);
   const watchProviders = dedupedWatchProviders(displayMeta.watchProviders).slice(0, 5);
   const nextEpisode = displayMeta.nextEpisodeToAir;
   const language = displayMeta.originalLanguage?.toUpperCase();
@@ -182,8 +189,8 @@ export function ModernDetailRail({
       )}
 
       <div style={MS.railGroup}>
-        {creators?.length ? <Fact label={t('detail.fact_creator')} value={creators.slice(0, 2).join(', ')} /> : null}
-        {directorLinks.length > 0 && !creators?.length ? (
+        {creators.length ? <Fact label={t('detail.fact_creator')} value={creators.slice(0, 2).join(', ')} /> : null}
+        {directorLinks.length > 0 && !creators.length ? (
           <Fact label={t('detail.director')} value={directorLinks.map((link) => link.name).join(', ')} />
         ) : null}
         {displayMeta.network ? <Fact label={t('detail.fact_network')} value={displayMeta.network} /> : null}
