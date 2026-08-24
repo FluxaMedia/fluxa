@@ -78,9 +78,26 @@ fn word_boundary_regex_for(normalized_preference: &str) -> Option<regex::Regex> 
     *cache = Some((normalized_preference.to_string(), regex.clone()));
     Some(regex)
 }
+// HLS EXT-X-MEDIA and most scrapers tag renditions with ISO 639-2 ("tur",
+// "eng"), while profile preferences are ISO 639-1 ("tr", "en").
+pub(crate) fn iso_639_1_of(code: &str) -> &str {
+    match code {
+        "tur" => "tr",
+        "eng" => "en",
+        "jpn" => "ja",
+        "ger" | "deu" => "de",
+        "fre" | "fra" => "fr",
+        "spa" => "es",
+        "ita" => "it",
+        "rus" => "ru",
+        "por" => "pt",
+        "ara" => "ar",
+        other => other,
+    }
+}
 pub(crate) fn subtitle_language_alias_matches(label: &str, normalized_preference: &str) -> bool {
     match normalized_preference {
-        "tr" => ["turkish", "turkce", "turk", "altyazi", "altyazı"]
+        "tr" => ["turkish", "turkce", "türkçe", "turk", "altyazi", "altyazı"]
             .iter()
             .any(|alias| label.contains(alias)),
         "en" => ["english", "eng"].iter().any(|alias| label.contains(alias)),
@@ -114,6 +131,7 @@ fn subtitle_language_matches_precompiled(
         return false;
     }
     let language = normalize_language(language.unwrap_or(""));
+    let language = iso_639_1_of(language.split(['-', '_']).next().unwrap_or(""));
     if language.starts_with(normalized_preference) {
         return true;
     }

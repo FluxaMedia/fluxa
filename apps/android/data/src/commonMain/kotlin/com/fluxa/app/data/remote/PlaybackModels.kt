@@ -7,6 +7,14 @@ data class SubtitleData(
     val lang: String? = null
 )
 
+data class AudioTrackData(
+    val id: String = "",
+    val url: String = "",
+    val lang: String = "",
+    val label: String? = null,
+    val headers: Map<String, String>? = null
+)
+
 data class SubtitleAttributes(
     val url: String = "",
     val languages: List<String> = emptyList(),

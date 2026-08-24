@@ -80,6 +80,7 @@ pub struct Stream {
     #[serde(rename = "subtitles")]
     pub subtitles: Option<Vec<SubtitleTrack>>,
     pub subtitle_tracks: Option<Vec<SubtitleTrack>>,
+    pub audio_tracks: Option<Vec<AudioTrack>>,
     pub headers: Option<HashMap<String, String>>,
     pub behavior_hints: Option<StreamBehaviorHints>,
     #[serde(flatten)]
@@ -100,6 +101,16 @@ pub struct SubtitleTrack {
     pub url: String,
     pub lang: String,
     pub label: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioTrack {
+    pub id: String,
+    pub url: String,
+    pub lang: String,
+    pub label: Option<String>,
+    pub headers: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

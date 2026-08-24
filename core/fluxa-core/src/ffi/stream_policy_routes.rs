@@ -37,6 +37,9 @@ pub(super) fn route_stream_policy(method: &str, args_json: &str) -> Outcome {
             )))
         }
         "playerTrackState" => opt_json(stream_policy::player_track_state_json(args_json)),
+        "externalAudioOptions" => {
+            opt_json(stream_policy::external_audio_options_json(args_json))
+        }
         "resolvePreferredAudioLanguage" => {
             let args = object(args_json)?;
             let last = args.get("lastAudioLanguage").and_then(Value::as_str);

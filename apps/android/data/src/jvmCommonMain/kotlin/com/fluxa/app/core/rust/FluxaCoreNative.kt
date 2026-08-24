@@ -14,6 +14,7 @@ import com.fluxa.app.core.rust.models.NativeCacheEntryPolicy
 import com.fluxa.app.core.rust.models.NativeCacheTrimPolicy
 import com.fluxa.app.core.rust.models.NativeCloudstreamRequest
 import com.fluxa.app.core.rust.models.NativeDataFailurePolicy
+import com.fluxa.app.core.rust.models.NativeExternalAudioOption
 import com.fluxa.app.core.rust.models.NativeDetailSeasonLoadPlan
 import com.fluxa.app.core.rust.models.NativeDiscoverSelectionPlan
 import com.fluxa.app.core.rust.models.NativeDetailStreamResultPlan
@@ -976,6 +977,23 @@ object FluxaCoreNative {
         val value = FluxaCoreUniFfi.coreInvokeValue("playerTrackState", gson.toJson(request))
         return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativePlayerTrackState::class.java) }
             ?: NativePlayerTrackState()
+    }
+
+    fun externalAudioOptions(
+        streams: List<Stream>,
+        selectedStreamUrl: String?,
+        preferredAudioLanguage: String?
+    ): List<NativeExternalAudioOption> {
+        if (streams.isEmpty()) return emptyList()
+        val request = NativeExternalAudioRequest(
+            streams = streams,
+            selectedStreamUrl = selectedStreamUrl,
+            preferredAudioLanguage = preferredAudioLanguage
+        )
+        val value = FluxaCoreUniFfi.coreInvokeValue("externalAudioOptions", gson.toJson(request))
+        val options = value.takeUnless { it.isJsonNull }?.asJsonObject?.getAsJsonArray("options")
+            ?: return emptyList()
+        return options.map { gson.fromJson(it, NativeExternalAudioOption::class.java) }
     }
 
     fun parseAddonResourceResult(

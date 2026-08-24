@@ -55,11 +55,21 @@ pub struct PluginStreamResult {
     pub info_hash: Option<String>,
     pub headers: Option<HashMap<String, String>>,
     pub subtitles: Option<Vec<PluginSubtitleResult>>,
+    pub audio_tracks: Option<Vec<PluginAudioResult>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginSubtitleResult {
+    pub url: String,
+    pub language: String,
+    pub name: Option<String>,
+    pub headers: Option<HashMap<String, String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginAudioResult {
     pub url: String,
     pub language: String,
     pub name: Option<String>,

@@ -1,5 +1,7 @@
-use crate::types::plugin::{PluginManifest, PluginStreamResult, PluginSubtitleResult};
-use crate::types::resource::{Stream, SubtitleTrack};
+use crate::types::plugin::{
+    PluginAudioResult, PluginManifest, PluginStreamResult, PluginSubtitleResult,
+};
+use crate::types::resource::{AudioTrack, Stream, SubtitleTrack};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -110,12 +112,22 @@ struct RawPluginStreamResult {
     info_hash: Option<String>,
     headers: Option<HashMap<String, String>>,
     subtitles: Option<Vec<RawPluginSubtitleResult>>,
+    audio_tracks: Option<Vec<RawPluginAudioResult>>,
     unavailable_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RawPluginSubtitleResult {
+    url: Option<String>,
+    language: Option<String>,
+    name: Option<String>,
+    headers: Option<HashMap<String, String>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawPluginAudioResult {
     url: Option<String>,
     language: Option<String>,
     name: Option<String>,
@@ -165,6 +177,20 @@ pub(crate) fn parse_plugin_stream_results_json(raw_json: &str) -> String {
                     .collect::<Vec<_>>()
             });
 
+            let audio_tracks = item.audio_tracks.map(|tracks| {
+                tracks
+                    .into_iter()
+                    .filter_map(|track| {
+                        Some(PluginAudioResult {
+                            url: non_blank(track.url)?,
+                            language: track.language.unwrap_or_else(|| "Unknown".to_string()),
+                            name: track.name,
+                            headers: track.headers.filter(|h| !h.is_empty()),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            });
+
             Some(PluginStreamResult {
                 title,
                 name: item.name,
@@ -179,6 +205,7 @@ pub(crate) fn parse_plugin_stream_results_json(raw_json: &str) -> String {
                 info_hash: item.info_hash,
                 headers,
                 subtitles: subtitles.filter(|s| !s.is_empty()),
+                audio_tracks: audio_tracks.filter(|t| !t.is_empty()),
             })
         })
         .collect();
@@ -237,6 +264,9 @@ fn plugin_result_to_stream(result: PluginStreamResult) -> Stream {
     if let Some(size) = result.size {
         extra.insert("size".to_string(), Value::String(size));
     }
+    if let Some(language) = &result.language {
+        extra.insert("language".to_string(), Value::String(language.clone()));
+    }
     if let Some(provider) = &result.provider {
         extra.insert("provider".to_string(), Value::String(provider.clone()));
     }
@@ -259,6 +289,20 @@ fn plugin_result_to_stream(result: PluginStreamResult) -> Stream {
             .collect()
     });
 
+    let audio_tracks = result.audio_tracks.map(|tracks| {
+        tracks
+            .into_iter()
+            .enumerate()
+            .map(|(index, track)| AudioTrack {
+                id: format!("plugin-audio-{index}"),
+                url: track.url,
+                lang: track.language,
+                label: track.name,
+                headers: track.headers,
+            })
+            .collect()
+    });
+
     Stream {
         url: Some(result.url),
         name: result.name.or(result.provider),
@@ -267,6 +311,7 @@ fn plugin_result_to_stream(result: PluginStreamResult) -> Stream {
         headers: result.headers,
         subtitles: subtitle_tracks.clone(),
         subtitle_tracks,
+        audio_tracks,
         extra,
         ..Default::default()
     }

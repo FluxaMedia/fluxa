@@ -91,6 +91,17 @@ data class NativePlayerTrackState(
 
 data class SubtitleTrackRef(val id: String?, val label: String, val language: String?)
 
+data class NativeExternalAudioOption(
+    val id: String = "",
+    val url: String = "",
+    val label: String = "",
+    val language: String = "",
+    val headers: Map<String, String>? = null,
+    val sourceName: String = "",
+    val audioOnly: Boolean = false,
+    val recommended: Boolean = false
+)
+
 data class NativeStreamDiscoveryPlan(
     val cacheKey: String = "",
     val addonRequests: List<NativeStreamAddonRequest> = emptyList(),

@@ -53,6 +53,12 @@ internal data class NativePlayerTrackStateRequest(
     val secondarySubtitleLanguage: String?
 )
 
+internal data class NativeExternalAudioRequest(
+    val streams: List<Stream>,
+    val selectedStreamUrl: String?,
+    val preferredAudioLanguage: String?
+)
+
 internal data class NativeStreamDiscoveryCacheKeyRequest(
     val type: String,
     val id: String,

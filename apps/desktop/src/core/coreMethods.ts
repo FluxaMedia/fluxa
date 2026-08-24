@@ -105,6 +105,7 @@ export const CORE_METHODS = [
   'episodeFilenameCandidate',
   'episodeTextMatches',
   'exportCollections',
+  'externalAudioOptions',
   'externalProviderActionPlan',
   'externalSyncRefreshRetryAction',
   'externalSyncResponseAction',

@@ -17,6 +17,8 @@ data class Stream(
     val videoHash: String? = null,
     val videoSize: Long? = null,
     val subtitles: List<SubtitleData>? = null,
+    val audioTracks: List<AudioTrackData>? = null,
+    val language: String? = null,
     val sources: List<String>? = null,
     val behaviorHints: Map<String, Any>? = null,
     val headers: Map<String, String>? = null,
