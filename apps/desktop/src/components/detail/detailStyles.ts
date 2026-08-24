@@ -329,6 +329,7 @@ export const EP: Record<string, React.CSSProperties> = {
   },
   backToEpisodesBtn: {
     display: 'grid',
+    marginLeft: '-0.5rem',
     placeItems: 'center',
     width: '2.125rem',
     height: '2.125rem',
@@ -361,10 +362,10 @@ export const EP: Record<string, React.CSSProperties> = {
   sourceOverview: {
     color: color.textDim,
     fontSize: fontSize.sm,
-    lineHeight: '1.125rem',
-    margin: '0.5rem 0 0',
+    lineHeight: '1.1875rem',
+    margin: '0.6875rem 0 0',
     display: '-webkit-box',
-    WebkitLineClamp: 2,
+    WebkitLineClamp: 3,
     WebkitBoxOrient: 'vertical',
     overflow: 'hidden',
   },
