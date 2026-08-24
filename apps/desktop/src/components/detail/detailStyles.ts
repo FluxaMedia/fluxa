@@ -611,13 +611,13 @@ export const MS: Record<string, React.CSSProperties> = {
   pageBgGradLeft: {
     position: 'absolute',
     inset: 0,
-    background: `linear-gradient(to right, ${fade.elevated(0.95)} 0%, ${fade.elevated(0.6)} 34%, ${fade.elevated(0.2)} 62%, ${fade.elevated(0.05)} 100%)`,
+    background: `linear-gradient(to right, ${fade.elevated(0.92)} 0%, ${fade.elevated(0.5)} 32%, ${fade.elevated(0.12)} 58%, transparent 100%)`,
   },
   pageBgGradBottom: {
     position: 'absolute',
     inset: 0,
     background:
-      `linear-gradient(to bottom, ${fade.elevated(0.1)} 0%, ${fade.elevated(0.28)} 34%, ${fade.elevated(0.62)} 52%, ${fade.elevated(0.88)} 66%, ${color.bgElevated} 78%)`,
+      `linear-gradient(to bottom, transparent 0%, ${fade.elevated(0.12)} 40%, ${fade.elevated(0.45)} 62%, ${fade.elevated(0.85)} 80%, ${color.bgElevated} 92%)`,
   },
   heroWrap: {
     position: 'relative',
@@ -749,7 +749,7 @@ export const MS: Record<string, React.CSSProperties> = {
     zIndex: 1,
     padding: '1.5rem 3.75rem 3.75rem 4.6875rem',
     marginTop: '-5rem',
-    background: `linear-gradient(to bottom, transparent 0rem, ${fade.elevated(0.55)} 4rem, ${fade.elevated(0.92)} 8rem, ${color.bgElevated} 12rem)`,
+    background: `linear-gradient(to bottom, transparent 0rem, ${fade.elevated(0.4)} 5rem, ${fade.elevated(0.88)} 11rem, ${color.bgElevated} 16rem)`,
     display: 'grid',
     gridTemplateColumns: `minmax(0, 1fr) ${layout.detailRail}`,
     gap: '2.25rem',

@@ -149,6 +149,7 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           fontSize: fontSize.sm,
           fontWeight: 750,
           lineHeight: '1.0625rem',
+          height: '2.125rem',
           margin: '0.375rem 0 0',
           textAlign: 'center',
           overflow: 'hidden',
