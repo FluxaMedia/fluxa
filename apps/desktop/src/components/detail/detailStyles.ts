@@ -678,7 +678,15 @@ export const MS: Record<string, React.CSSProperties> = {
   heroProgressLabel: { fontSize: fontSize.sm, color: color.textMuted, fontVariantNumeric: 'tabular-nums' },
   metaChipRow: { display: 'flex', alignItems: 'center', gap: space[2.5], flexWrap: 'wrap' },
   actionRow: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  actionIcons: { display: 'flex', alignItems: 'center', gap: '0.25rem' },
+  actionIcons: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.125rem',
+    height: '3.125rem',
+    padding: '0 0.375rem',
+    borderRadius: radius.md,
+    background: fade.tint(0.06),
+  },
   playBtn: {
     display: 'flex',
     alignItems: 'center',

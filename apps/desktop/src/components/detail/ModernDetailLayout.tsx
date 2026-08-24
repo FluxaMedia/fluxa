@@ -256,7 +256,7 @@ export function ModernDetailLayout({
   }, [selectedSeason, seasonWatchedMap, seasonNumbers, dispatchMarkSeason]);
 
   const continueEp = episodePlan?.selectedEpisode ?? filteredEps[0] ?? episodes[0];
-  const hasProgress = episodePlan?.selectedEpisode != null;
+  const hasProgress = !!(continueWatchingEntry?.lastVideoId || progressMap[meta.id]?.lastVideoId);
   const continueLabel = continueEp
     ? t('format.season_episode_short', continueEp.season ?? 1, continueEp.episode ?? continueEp.number ?? 1)
     : null;
