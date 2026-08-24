@@ -9,7 +9,7 @@ import { youtubeVideoId } from './youtube';
 import { InlineSourceList, MovieSourcePanel } from './SourcePanel';
 import { type ProgressEntry } from './EpisodePanel';
 import { useSeasonWatched } from '../../hooks/useSeasonWatched';
-import { DetailsTabContent, EpisodesTabContent, RelatedTabContent } from './ModernDetailTabs';
+import { CastRow, DetailsTabContent, EpisodesTabContent, RelatedTabContent } from './ModernDetailTabs';
 import { useTrailerPlayback } from '../../hooks/useTrailerPlayback';
 import { ModernDetailHero } from './ModernDetailHero';
 import { ModernDetailActionRow } from './ModernDetailActionRow';
@@ -345,6 +345,10 @@ export function ModernDetailLayout({
           onNavigateGenre={onNavigateGenre}
         />}
 
+        {!hidden.has('details') && (
+          <CastRow castMembers={castMembers} directorLinks={directorLinks} peopleImages={peopleImages} creators={creators} />
+        )}
+
         {isSeries && (
           <>
             <PrevSeasonDialog
@@ -385,15 +389,7 @@ export function ModernDetailLayout({
           </>
         )}
 
-        {!hidden.has('details') && (
-          <DetailsTabContent
-            displayMeta={displayMeta}
-            castMembers={castMembers}
-            directorLinks={directorLinks}
-            peopleImages={peopleImages}
-            creators={creators}
-          />
-        )}
+        {!hidden.has('details') && <DetailsTabContent displayMeta={displayMeta} />}
 
         {!hidden.has('related') && (
           <RelatedTabContent

@@ -677,7 +677,8 @@ export const MS: Record<string, React.CSSProperties> = {
   heroProgressFill: { display: 'block', height: '100%', background: color.accent },
   heroProgressLabel: { fontSize: fontSize.sm, color: color.textMuted, fontVariantNumeric: 'tabular-nums' },
   metaChipRow: { display: 'flex', alignItems: 'center', gap: space[2.5], flexWrap: 'wrap' },
-  actionRow: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
+  actionRow: { display: 'flex', alignItems: 'center', gap: '1rem' },
+  actionIcons: { display: 'flex', alignItems: 'center', gap: '0.25rem' },
   playBtn: {
     display: 'flex',
     alignItems: 'center',

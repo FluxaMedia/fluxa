@@ -10,46 +10,45 @@ import { CastAvatar, type NormalizedCastMember } from './castSection';
 import { ModernEpisodeCard } from './ModernEpisodeCard';
 import type { ProgressEntry } from './EpisodePanel';
 
-export function DetailsTabContent({
-  displayMeta,
+export function CastRow({
   castMembers,
   directorLinks,
   peopleImages,
   creators,
 }: {
-  displayMeta: Meta;
   castMembers: NormalizedCastMember[];
   directorLinks: MetaLink[];
   peopleImages: Record<string, string>;
   creators: string[];
 }) {
+  if (castMembers.length === 0 && directorLinks.length === 0 && creators.length === 0) return null;
+  return (
+    <div style={S.castRow}>
+      {creators.map((name) => (
+        <CastAvatar key={`creator-${name}`} name={name} role={t('detail.fact_creator')} imageUrl={peopleImages[name]} />
+      ))}
+      {directorLinks.map((l) => (
+        <CastAvatar key={`dir-${l.name}`} name={l.name} role={t('detail.director')} imageUrl={peopleImages[l.name]} />
+      ))}
+      {castMembers.map((member) => (
+        <CastAvatar
+          key={`cast-${member.name}:${member.role ?? ''}`}
+          name={member.name}
+          role={member.role || t('detail.actor')}
+          imageUrl={member.imageUrl ?? peopleImages[member.name]}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function DetailsTabContent({ displayMeta }: { displayMeta: Meta }) {
   return (
     <div style={MS.detailsTab}>
       {displayMeta.awards && (
         <div style={MS.detailsSection}>
           <h3 style={MS.detailsSectionTitle}>{t('detail.awards')}</h3>
           <p style={{ ...MS.detailsText, color: color.success, fontWeight: 700 }}>{displayMeta.awards}</p>
-        </div>
-      )}
-      {(castMembers.length > 0 || directorLinks.length > 0 || creators.length > 0) && (
-        <div style={MS.detailsSection}>
-          <h3 style={MS.detailsSectionTitle}>{t('detail.cast_crew')}</h3>
-          <div style={S.castRow}>
-            {creators.map((name) => (
-              <CastAvatar key={`creator-${name}`} name={name} role={t('detail.fact_creator')} imageUrl={peopleImages[name]} />
-            ))}
-            {directorLinks.map((l) => (
-              <CastAvatar key={`dir-${l.name}`} name={l.name} role={t('detail.director')} imageUrl={peopleImages[l.name]} />
-            ))}
-            {castMembers.map((member) => (
-              <CastAvatar
-                key={`cast-${member.name}:${member.role ?? ''}`}
-                name={member.name}
-                role={member.role || t('detail.actor')}
-                imageUrl={member.imageUrl ?? peopleImages[member.name]}
-              />
-            ))}
-          </div>
         </div>
       )}
       <MetaFactsSection displayMeta={displayMeta} />
