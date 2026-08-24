@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { prefString } from '../core/appPrefs';
 import { storageRead, storageWrite } from '../core/engine';
 import { loadPrefs, prefsOwnerId, savePrefs } from '../core/libraryOps';
-import { appStyles, computeAutoUiScale } from '../appConstants';
+import { accentForegroundColor, appStyles, computeAutoUiScale } from '../appConstants';
 import type { AppState } from '../core/types';
 import { applyThemeToDocument, orderedVisibleRoutes, parseThemePacks, resolveTheme, themeRootStyle } from '../theme/adapter';
 
@@ -47,7 +47,10 @@ export function useAppLayoutPrefs({
     [prefs],
   );
   const effectiveTheme = useMemo(
-    () => ({ ...themeRuntime.theme, colors: { ...themeRuntime.theme.colors, accent: accentColor } }),
+    () => ({
+      ...themeRuntime.theme,
+      colors: { ...themeRuntime.theme.colors, accent: accentColor, accentForeground: accentForegroundColor(accentColor) },
+    }),
     [accentColor, themeRuntime.theme],
   );
   const rootStyle = useMemo(
