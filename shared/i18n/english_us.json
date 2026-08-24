@@ -601,6 +601,8 @@
   "toast.anilist_connected": "AniList connected",
   "toast.anilist_connect_failed": "Could not connect AniList",
   "sources.no_stream_addons": "No stream addons found.",
+  "sources.no_stream_addons_hint": "Install a stream addon to find playable sources.",
+  "sources.no_sources_hint": "Try another addon, or check back in a moment.",
   "player.error_no_source": "No source found.",
   "player.error_generic": "Something went wrong: %s",
   "player.error_server": "Server error (HTTP 4xx/5xx). Try another source.",

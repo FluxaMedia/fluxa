@@ -601,6 +601,8 @@
   "toast.anilist_connected": "AniList bağlandı",
   "toast.anilist_connect_failed": "AniList bağlanamadı",
   "sources.no_stream_addons": "Stream addonu bulunamadı.",
+  "sources.no_stream_addons_hint": "Oynatılabilir kaynak bulmak için bir stream eklentisi kur.",
+  "sources.no_sources_hint": "Başka bir eklenti dene ya da biraz sonra tekrar bak.",
   "player.error_no_source": "Kaynak bulunamadı.",
   "player.error_generic": "Hata oluştu: %s",
   "player.error_server": "Sunucu hatası (HTTP 4xx/5xx). Lütfen başka bir kaynak deneyin.",

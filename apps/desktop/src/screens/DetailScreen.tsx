@@ -47,6 +47,7 @@ interface Props {
   onPlay: (stream: Stream, meta: Meta, episode?: Video | null, resumeAt?: number, sourceCandidates?: Stream[]) => void;
   onNavigateDetail: (meta: Meta) => void;
   onNavigateGenre?: (genre: string) => void;
+  onOpenSettings?: () => void;
   onBack: () => void;
   initialEpisode?: Video | null;
   autoShowStreams?: boolean;
@@ -60,6 +61,7 @@ export function DetailScreen({
   onPlay,
   onNavigateDetail,
   onNavigateGenre,
+  onOpenSettings,
   onBack,
   initialEpisode,
   autoShowStreams,
@@ -490,6 +492,7 @@ export function DetailScreen({
         onDispatch={onDispatch}
         onNavigateDetail={onNavigateDetail}
         onNavigateGenre={onNavigateGenre}
+        onOpenSettings={onOpenSettings}
         onSeasonChange={changeSeason}
         onEpisodeClick={handleEpisodeClick}
         onMovieSources={openMovieSources}

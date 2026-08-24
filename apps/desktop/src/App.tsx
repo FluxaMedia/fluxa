@@ -603,6 +603,10 @@ export default function App() {
               )
             }
             onNavigateDetail={handleNavigateDetail}
+            onOpenSettings={() => {
+              setDetailMeta(null);
+              navigateRoute('settings');
+            }}
             onNavigateGenre={(genre) => {
               setDiscoverInitialGenre(genre);
               setDetailMeta(null);

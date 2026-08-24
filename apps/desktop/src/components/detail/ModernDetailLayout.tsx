@@ -68,6 +68,7 @@ export type ModernDetailProps = {
   onDispatch: (actionJson: string) => void;
   onNavigateDetail: (meta: Meta) => void;
   onNavigateGenre?: (genre: string) => void;
+  onOpenSettings?: () => void;
   onSeasonChange: (season: number) => void;
   onEpisodeClick: (ep: Video) => void;
   onMovieSources: () => void;
@@ -132,6 +133,7 @@ export function ModernDetailLayout({
   onDispatch,
   onNavigateDetail,
   onNavigateGenre,
+  onOpenSettings,
   onSeasonChange,
   onEpisodeClick,
   onMovieSources,
@@ -424,6 +426,7 @@ export function ModernDetailLayout({
               onPlay={onPlaySource}
               onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))}
               onRetryFailed={onRetryFailed}
+              onOpenSettings={onOpenSettings}
             />
           </div>
         </div>
@@ -444,6 +447,7 @@ export function ModernDetailLayout({
               onAddonChange={(addon) => onDispatch(JSON.stringify({ type: 'detailSelectedAddonChanged', addon }))}
               onClose={onBackToEpisodes}
               onRetryFailed={onRetryFailed}
+              onOpenSettings={onOpenSettings}
             />
           </div>
         </div>

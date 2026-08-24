@@ -8,6 +8,7 @@ import { useDragScroll } from '../../hooks/useDragScroll';
 import { streamMagnetLink, enqueueOfflineDownload } from '../../core/engine';
 import { buildOfflineDownloadRequest, streamShellPlan } from '../../core/streamLinks';
 import { ContextMenu } from '../ui/ContextMenu';
+import { formatEpDate } from './EpisodePanel';
 
 export function streamDisplayText(value: string | undefined): string | undefined {
   const text = value
@@ -260,6 +261,7 @@ export function MovieSourcePanel({
   onAddonChange,
   onClose,
   onRetryFailed,
+  onOpenSettings,
 }: {
   meta: Meta;
   streams: Stream[];
@@ -272,6 +274,7 @@ export function MovieSourcePanel({
   onAddonChange?: (addon: string | null) => void;
   onClose?: () => void;
   onRetryFailed?: () => void;
+  onOpenSettings?: () => void;
 }) {
   const [selectedAddon, setSelectedAddon] = useState<string | null>(null);
 
@@ -359,9 +362,7 @@ export function MovieSourcePanel({
           </div>
         )}
         {!isLoading && visibleStreams.length === 0 && (
-          <div style={SS.center}>
-            <p style={SS.emptyText}>{availableAddons.length === 0 ? t('sources.no_stream_addons') : t('auto.no_sources_found_3019f12c')}</p>
-          </div>
+          <SourcesEmptyState hasAddons={availableAddons.length > 0} onOpenSettings={onOpenSettings} onRetry={onRetryFailed} />
         )}
         {visibleStreams.length > 0 && (
           <div style={EP.inlineStreamList}>
@@ -381,6 +382,45 @@ export function MovieSourcePanel({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SourcesEmptyState({
+  hasAddons,
+  onOpenSettings,
+  onRetry,
+}: {
+  hasAddons: boolean;
+  onOpenSettings?: () => void;
+  onRetry?: () => void;
+}) {
+  const action = hasAddons ? onRetry : onOpenSettings;
+  const actionLabel = hasAddons ? t('sources.retry') : t('settings.open_addon_settings');
+  return (
+    <div style={SS.center}>
+      <p style={SS.emptyText}>{hasAddons ? t('auto.no_sources_found_3019f12c') : t('sources.no_stream_addons')}</p>
+      <p style={{ color: color.textDim, fontSize: fontSize.sm, margin: '0.375rem 0 0', textAlign: 'center', maxWidth: '20rem' }}>
+        {hasAddons ? t('sources.no_sources_hint') : t('sources.no_stream_addons_hint')}
+      </p>
+      {action && (
+        <button
+          onClick={action}
+          style={{
+            marginTop: '1rem',
+            background: color.light,
+            color: color.onLight,
+            border: 'none',
+            borderRadius: radius.md,
+            padding: '0.5625rem 1.125rem',
+            fontSize: fontSize.base,
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -434,9 +474,7 @@ function PlaybackFailureNotice({ message }: { message: string }) {
       }}
     >
       <div style={{ color: color.error, fontSize: fontSize.sm, fontWeight: 700 }}>{t('player.playback_error_title')}</div>
-      <div
-        style={{ color: color.textBody, fontSize: fontSize.sm, lineHeight: 1.4, marginTop: '0.1875rem', whiteSpace: 'pre-wrap' }}
-      >
+      <div style={{ color: color.textBody, fontSize: fontSize.sm, lineHeight: 1.4, marginTop: '0.1875rem', whiteSpace: 'pre-wrap' }}>
         {message}
       </div>
     </div>
@@ -456,6 +494,7 @@ export function InlineSourceList({
   onPlay,
   onAddonChange,
   onRetryFailed,
+  onOpenSettings,
 }: {
   episode: Video;
   meta: Meta;
@@ -469,6 +508,7 @@ export function InlineSourceList({
   onPlay: (stream: Stream) => void;
   onAddonChange?: (addon: string | null) => void;
   onRetryFailed?: () => void;
+  onOpenSettings?: () => void;
 }) {
   const [selectedAddon, setSelectedAddon] = useState<string | null>(null);
 
@@ -493,53 +533,32 @@ export function InlineSourceList({
   const epNum = episode.episode ?? episode.number ?? '';
   const seasonNum = episode.season ?? 1;
   const epTitle = episode.title?.trim() || episode.name?.trim() || t('format.episode_number', epNum);
-  const episodeLabel = `${t('format.season_abbrev')}${seasonNum}, ${t('format.episode_abbrev')}${epNum}: ${epTitle}`;
+  const episodeMeta = [
+    `${t('format.season_abbrev')}${seasonNum} ${t('format.episode_abbrev')}${epNum}`,
+    episode.released ? formatEpDate(episode.released) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-      <div style={{ padding: '0.8125rem 1rem 0', flexShrink: 0 }}>
-        <button style={EP.backToEpisodesBtn} onClick={onBack}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-          </svg>
-          <span>{t('auto.episodes')}</span>
-        </button>
-        <div style={{ ...EP.sourceHeader, padding: '0.625rem 0 0.875rem' }}>
-          {meta.logo ? (
-            <img
-              src={meta.logo}
-              alt=""
-              style={{
-                display: 'block',
-                maxWidth: '8.75rem',
-                maxHeight: '2.75rem',
-                objectFit: 'contain',
-                objectPosition: 'left',
-                marginBottom: '0.375rem',
-              }}
-            />
-          ) : (
-            <h3 style={{ ...EP.sourceTitle, margin: '0 0 0.375rem' }}>{meta.name ?? meta.id}</h3>
+      <div style={{ padding: '0.8125rem 1rem 0.875rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+          <button style={EP.backToEpisodesBtn} onClick={onBack} title={t('auto.episodes')} aria-label={t('auto.episodes')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+          </button>
+          {episode.thumbnail && (
+            <img src={episode.thumbnail} alt="" style={EP.sourceEpisodeThumb} onError={(e) => (e.currentTarget.style.display = 'none')} />
           )}
-          <p style={EP.sourceSubtitle}>{episodeLabel}</p>
-          {episode.overview && (
-            <p
-              style={{
-                color: color.textDim,
-                fontSize: fontSize.sm,
-                fontWeight: 400,
-                margin: '0.3125rem 0 0',
-                lineHeight: '1.0625rem',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}
-            >
-              {episode.overview}
-            </p>
-          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={EP.sourceKicker}>{meta.name ?? meta.id}</p>
+            <h3 style={EP.sourceTitle}>{epTitle}</h3>
+            <p style={EP.sourceSubtitle}>{episodeMeta}</p>
+          </div>
         </div>
+        {episode.overview && <p style={EP.sourceOverview}>{episode.overview}</p>}
       </div>
 
       {(isLoading || addonNames.length > 0) && (
@@ -547,7 +566,7 @@ export function InlineSourceList({
           addonNames={addonNames}
           selectedAddon={selectedAddon}
           onSelect={selectAddon}
-          style={{ padding: '0 1rem 0.625rem', borderBottom: `1px solid ${color.line}`, flexShrink: 0 }}
+          style={{ padding: '0 1rem 0.625rem', borderTop: `1px solid ${color.line}`, paddingTop: '0.625rem', flexShrink: 0 }}
         />
       )}
 
@@ -567,9 +586,7 @@ export function InlineSourceList({
           </div>
         )}
         {!isLoading && visibleStreams.length === 0 && (
-          <div style={SS.center}>
-            <p style={SS.emptyText}>{availableAddons.length === 0 ? t('sources.no_stream_addons') : t('auto.no_sources_found_3019f12c')}</p>
-          </div>
+          <SourcesEmptyState hasAddons={availableAddons.length > 0} onOpenSettings={onOpenSettings} onRetry={onRetryFailed} />
         )}
         {visibleStreams.length > 0 && (
           <div style={EP.inlineStreamList}>
