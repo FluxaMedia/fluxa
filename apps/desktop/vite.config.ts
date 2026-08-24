@@ -4,6 +4,7 @@ import { visualizer } from 'rollup-plugin-visualizer';
 
 const host = process.env.TAURI_DEV_HOST;
 const sharedPath = new URL('../../shared', import.meta.url).pathname;
+const repoRoot = new URL('../..', import.meta.url).pathname;
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -31,7 +32,7 @@ export default defineConfig(async ({ mode }) => {
     clearScreen: false,
     server: {
       fs: {
-        allow: [sharedPath],
+        allow: [repoRoot, sharedPath],
       },
       port: 1420,
       strictPort: true,
