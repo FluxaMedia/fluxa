@@ -107,26 +107,16 @@ const TrailerCard = React.memo(function TrailerCard({
   metadata?: TrailerMetadata[string];
 }) {
   const [hovered, setHovered] = useState(false);
-  const trailerWithDescription = trailer as Trailer & { description?: string };
   const thumbnail = metadata?.thumbnail || youtubeThumbnail(trailer.url);
   const title = metadata?.title?.trim() || trailer.title?.trim() || `${t('auto.trailer')} ${index + 1}`;
-  const description =
-    metadata?.description?.trim() ||
-    trailerWithDescription.description?.trim() ||
-    (trailer.type?.trim() && trailer.type.trim().toLowerCase() !== title.toLowerCase() ? trailer.type.trim() : '');
-
   return (
     <button
-      style={{
-        ...S.trailerCard,
-        transform: hovered ? 'translateY(-0.125rem)' : 'translateY(0)',
-        borderColor: hovered ? color.lineStrong : color.line,
-      }}
+      style={S.trailerCard}
       onClick={() => platformOpenExternal(trailer.url).catch(() => {})}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <span style={S.trailerThumb}>
+      <span style={{ ...S.trailerThumb, opacity: hovered ? 0.82 : 1 }}>
         {thumbnail ? (
           <img src={thumbnail} alt={title} style={S.trailerThumbImg} loading="lazy" />
         ) : (
@@ -134,13 +124,12 @@ const TrailerCard = React.memo(function TrailerCard({
         )}
         <span style={S.trailerOverlay} />
         <span style={S.trailerPlayButton}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <path d="M8 5v14l11-7z" />
           </svg>
         </span>
       </span>
       <span style={S.trailerCardTitle}>{title}</span>
-      {description && <span style={S.trailerCardMeta}>{description}</span>}
     </button>
   );
 });

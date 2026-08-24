@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { t } from '../../i18n';
 import { color, fontSize, weight } from '../../design';
 import { MS } from './detailStyles';
@@ -14,6 +14,17 @@ export function ModernDetailMetaBlock({
   description?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [clamped, setClamped] = useState(false);
+  const descRef = useRef<HTMLParagraphElement | null>(null);
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    const measure = () => setClamped(el.scrollHeight - el.clientHeight > 4);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [description]);
   const [primary, ...secondary] = metaDetails;
   return (
     <div style={MS.metaBlock}>
@@ -30,8 +41,10 @@ export function ModernDetailMetaBlock({
       )}
       {description && (
         <>
-          <p style={expanded ? { ...MS.descText, WebkitLineClamp: 'unset', overflow: 'visible' } : MS.descText}>{description}</p>
-          {description.length > 180 && (
+          <p ref={descRef} style={expanded ? { ...MS.descText, WebkitLineClamp: 'unset', overflow: 'visible' } : MS.descText}>
+            {description}
+          </p>
+          {(clamped || expanded) && (
             <button
               onClick={() => setExpanded((value) => !value)}
               style={{
