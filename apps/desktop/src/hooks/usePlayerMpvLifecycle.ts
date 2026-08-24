@@ -16,9 +16,21 @@ import type { PlayerArtwork, PlayerDisplayTitle } from '../core/playerUtils';
 import type { ResolvedSubtitles } from '../core/subtitles';
 import type { AppState } from '../core/types';
 
-// mpv fetches each track the moment it is added, and subtitle hosts rate-limit
-// a burst of tens of parallel downloads with 429s that fail every track.
+// mpv downloads each track as it is added, and subtitle hosts answer a rapid
+// run of requests with 429s that fail every track. resolveSubtitles has already
+// moved the preferred-language track to the front, so keeping the head of the
+// list keeps the one that matters.
 const SUBTITLE_ADD_CONCURRENCY = 4;
+const MAX_REMOTE_SUBTITLE_TRACKS = 8;
+
+function isLocalSubtitle(url: string): boolean {
+  return !/^https?:\/\//i.test(url) || /^https?:\/\/(127\.0\.0\.1|localhost)[:/]/i.test(url);
+}
+
+function limitRemoteSubtitles<T extends { url: string }>(subtitles: T[]): T[] {
+  let remaining = MAX_REMOTE_SUBTITLE_TRACKS;
+  return subtitles.filter((subtitle) => isLocalSubtitle(subtitle.url) || remaining-- > 0);
+}
 
 type Options = {
   stateRef: MutableRefObject<AppState>;
@@ -121,10 +133,13 @@ export function usePlayerMpvLifecycle(options: Options) {
         }
       }
       if (isCancelled(generation)) return;
-      debugLog(`subtitles: resolved=${subtitles.length}, failedAddons=${failedAddons.join(',') || 'none'}`);
+      const addedSubtitles = limitRemoteSubtitles(subtitles);
+      debugLog(
+        `subtitles: resolved=${subtitles.length}, added=${addedSubtitles.length}, failedAddons=${failedAddons.join(',') || 'none'}`,
+      );
       setPlayerSubtitleUrl(subtitles.find((subtitle) => /^https?:\/\//i.test(subtitle.url))?.url);
       const failedTrackAddons: string[] = [];
-      await runWithConcurrency(subtitles, SUBTITLE_ADD_CONCURRENCY, (subtitle) =>
+      await runWithConcurrency(addedSubtitles, SUBTITLE_ADD_CONCURRENCY, (subtitle) =>
         embeddedMpvAddSubtitle(subtitle.url, subtitle.addonName ?? subtitle.label, subtitle.lang).catch(() => {
           if (subtitle.addonName) failedTrackAddons.push(subtitle.addonName);
         }),
