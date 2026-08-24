@@ -10,6 +10,7 @@ export function ModernDetailMetaBlock({
   metaDetails,
   description,
   genres,
+  scores,
   ratings,
   onNavigateGenre,
 }: {
@@ -17,6 +18,7 @@ export function ModernDetailMetaBlock({
   metaDetails: string[];
   description?: string;
   genres: string[];
+  scores: string[];
   ratings?: React.ReactNode;
   onNavigateGenre?: (genre: string) => void;
 }) {
@@ -35,7 +37,7 @@ export function ModernDetailMetaBlock({
   const [primary, ...secondary] = metaDetails;
   return (
     <div style={MS.metaBlock}>
-      {(metaDetails.length > 0 || certification || genres.length > 0) && (
+      {(metaDetails.length > 0 || certification || genres.length > 0 || scores.length > 0) && (
         <div style={{ ...MS.metaChipRow, marginBottom: '0.75rem' }}>
           {primary && <span style={{ fontSize: fontSize.base, fontWeight: weight.semibold, color: color.textStrong }}>{primary}</span>}
           {certification && <AgeBadge label={certification} />}
@@ -46,6 +48,11 @@ export function ModernDetailMetaBlock({
           ))}
           {genres.map((genre) => (
             <GenreTag key={genre} label={genre} onClick={() => onNavigateGenre?.(genre)} />
+          ))}
+          {scores.map((score) => (
+            <span key={score} style={{ fontSize: fontSize.base, fontWeight: weight.semibold, color: color.textStrong }}>
+              {score}
+            </span>
           ))}
         </div>
       )}

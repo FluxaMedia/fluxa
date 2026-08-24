@@ -18,6 +18,7 @@ export function DetailsTabContent({
   peopleImages,
   displayTrailers,
   trailerMetadata,
+  creators,
 }: {
   displayMeta: Meta;
   castMembers: NormalizedCastMember[];
@@ -25,20 +26,23 @@ export function DetailsTabContent({
   peopleImages: Record<string, string>;
   displayTrailers: Trailer[];
   trailerMetadata: TrailerMetadata;
+  creators: string[];
 }) {
   return (
     <div style={MS.detailsTab}>
-      <MetaFactsSection displayMeta={displayMeta} directorLinks={directorLinks} />
       {displayMeta.awards && (
         <div style={MS.detailsSection}>
           <h3 style={MS.detailsSectionTitle}>{t('detail.awards')}</h3>
           <p style={{ ...MS.detailsText, color: color.success, fontWeight: 700 }}>{displayMeta.awards}</p>
         </div>
       )}
-      {(castMembers.length > 0 || directorLinks.length > 0) && (
+      {(castMembers.length > 0 || directorLinks.length > 0 || creators.length > 0) && (
         <div style={MS.detailsSection}>
           <h3 style={MS.detailsSectionTitle}>{t('detail.cast_crew')}</h3>
           <div style={S.castRow}>
+            {creators.map((name) => (
+              <CastAvatar key={`creator-${name}`} name={name} role={t('detail.fact_creator')} imageUrl={peopleImages[name]} />
+            ))}
             {directorLinks.map((l) => (
               <CastAvatar key={`dir-${l.name}`} name={l.name} role={t('detail.director')} imageUrl={peopleImages[l.name]} />
             ))}
@@ -59,6 +63,7 @@ export function DetailsTabContent({
           <TrailerCarousel trailers={displayTrailers} trailerMetadata={trailerMetadata} />
         </div>
       )}
+      <MetaFactsSection displayMeta={displayMeta} />
     </div>
   );
 }

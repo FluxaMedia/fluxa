@@ -16,6 +16,7 @@ import { ModernDetailMetaBlock } from './ModernDetailMetaBlock';
 import { PrevSeasonDialog, SeasonControls } from './ModernDetailSeasonSection';
 import { SimilarSourcePicker } from './ModernDetailParts';
 import { RatingsRow } from './RatingBadge';
+import { nameList } from './MetaFacts';
 
 export type ModernDetailProps = {
   displayMeta: Meta;
@@ -271,15 +272,15 @@ export function ModernDetailLayout({
   const genres = Array.isArray(displayMeta.genres) ? displayMeta.genres.slice(0, 6) : [];
   const hasMdblistRatings = mdblistRatings != null && Object.keys(mdblistRatings).length > 0;
   const imdbScore = displayMeta.imdbRating ? Number(displayMeta.imdbRating) : null;
-  const ratingsNode = hasMdblistRatings ? (
-    <RatingsRow ratings={mdblistRatings} />
-  ) : imdbScore || omdbRatings?.rottenTomatoes || omdbRatings?.metascore ? (
-    <div style={MS.scoreRow}>
-      {imdbScore ? <span style={MS.scoreItem}>{`IMDb ${imdbScore.toFixed(1)}`}</span> : null}
-      {omdbRatings?.rottenTomatoes ? <span style={MS.scoreItem}>{`Rotten Tomatoes ${omdbRatings.rottenTomatoes}`}</span> : null}
-      {omdbRatings?.metascore ? <span style={MS.scoreItem}>{`Metascore ${omdbRatings.metascore}`}</span> : null}
-    </div>
-  ) : null;
+  const ratingsNode = hasMdblistRatings ? <RatingsRow ratings={mdblistRatings} /> : null;
+  const scores: string[] = [];
+  if (!hasMdblistRatings) {
+    if (imdbScore) scores.push(`IMDb ${imdbScore.toFixed(1)}`);
+    if (omdbRatings?.rottenTomatoes) scores.push(`RT ${omdbRatings.rottenTomatoes}`);
+    if (omdbRatings?.metascore) scores.push(`Metascore ${omdbRatings.metascore}`);
+  }
+  const createdBy = nameList(displayMeta.createdBy);
+  const creators = createdBy.length ? createdBy : nameList(displayMeta.director);
 
   const episodeGridStyle = episodeCardsLayout === 'list' ? { ...MS.episodeGrid, gridTemplateColumns: '1fr' } : MS.episodeGrid;
 
@@ -326,6 +327,7 @@ export function ModernDetailLayout({
           metaDetails={modernMetaDetails}
           description={displayMeta.description}
           genres={genres}
+          scores={scores}
           ratings={ratingsNode}
           onNavigateGenre={onNavigateGenre}
         />}
@@ -378,6 +380,7 @@ export function ModernDetailLayout({
             peopleImages={peopleImages}
             displayTrailers={displayTrailers}
             trailerMetadata={trailerMetadata}
+            creators={creators}
           />
         )}
 

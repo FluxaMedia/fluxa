@@ -1,7 +1,7 @@
 import React from 'react';
 import { t } from '../../i18n';
 import { SectionLabel, space } from '../../design';
-import type { Meta, MetaLink } from '../../core/types';
+import type { Meta } from '../../core/types';
 import { MS } from './detailStyles';
 import { formatEpDate } from './EpisodePanel';
 import { dedupedWatchProviders, WatchProviderLogo, openWatchProvidersLink } from './watchProvidersSection';
@@ -21,17 +21,12 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function MetaFactsSection({ displayMeta, directorLinks }: { displayMeta: Meta; directorLinks: MetaLink[] }) {
-  const createdBy = nameList(displayMeta.createdBy);
-  const creators = createdBy.length ? createdBy : nameList(displayMeta.director);
+export function MetaFactsSection({ displayMeta }: { displayMeta: Meta }) {
   const watchProviders = dedupedWatchProviders(displayMeta.watchProviders).slice(0, 6);
   const nextEpisode = displayMeta.nextEpisodeToAir;
   const language = displayMeta.originalLanguage?.toUpperCase();
 
   const facts: React.ReactNode[] = [];
-  if (creators.length) facts.push(<Fact key="creator" label={t('detail.fact_creator')} value={creators.slice(0, 2).join(', ')} />);
-  if (!creators.length && directorLinks.length > 0)
-    facts.push(<Fact key="director" label={t('detail.director')} value={directorLinks.map((link) => link.name).join(', ')} />);
   if (displayMeta.network) facts.push(<Fact key="network" label={t('detail.fact_network')} value={displayMeta.network} />);
   if (language) facts.push(<Fact key="language" label={t('detail.fact_language')} value={language} />);
   if (displayMeta.status) facts.push(<Fact key="status" label={t('detail.fact_status')} value={displayMeta.status} />);

@@ -113,16 +113,16 @@ export const S: Record<string, React.CSSProperties> = {
   trailerRail: { position: 'relative' },
   trailerList: {
     display: 'flex',
-    gap: '0.875rem',
+    gap: '1rem',
     overflowX: 'auto',
     overflowY: 'hidden',
     scrollbarWidth: 'none',
-    padding: '0.125rem 0 0.625rem',
+    padding: 0,
   },
   trailerScrollEdge: {
     position: 'absolute',
-    top: '0.125rem',
-    bottom: '0.625rem',
+    top: 0,
+    bottom: 0,
     width: '4.75rem',
     zIndex: 4,
     display: 'flex',
@@ -155,7 +155,7 @@ export const S: Record<string, React.CSSProperties> = {
     transition: 'background 0.15s',
   },
   trailerCard: {
-    width: '15.25rem',
+    width: '18.5rem',
     flexShrink: 0,
     border: 'none',
     background: 'none',
@@ -972,7 +972,7 @@ export const MS: Record<string, React.CSSProperties> = {
   relatedSection: { paddingBottom: '3rem' },
   relatedGrid: { display: 'flex', flexWrap: 'wrap', gap: '1rem' },
   detailsTab: { paddingBottom: 0 },
-  detailsSection: { marginBottom: '1.875rem' },
+  detailsSection: { marginBottom: '2.25rem' },
   detailsSectionTitle: {
     color: color.textDim,
     flexShrink: 0,
