@@ -55,8 +55,8 @@ class SubtitleCoordinator(
         selectEmbedded()
     }
 
-    fun loadEmbeddedCues(fullFileCues: List<TextCue>) {
-        embedded.loadEmbeddedCues(fullFileCues)
+    fun addEmbeddedCues(cues: List<TextCue>) {
+        embedded.addEmbeddedCues(cues)
         selectEmbedded()
     }
 

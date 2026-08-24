@@ -83,10 +83,10 @@ internal class EmbeddedTextInterceptor(
     }
 
     private fun handleSample(timeUs: Long, text: String) {
-        val wholeFileCues = cueParserFor(currentFormat).parse(text)
-        if (wholeFileCues.isNotEmpty()) {
+        val parsed = cueParserFor(currentFormat).parse(text)
+        if (parsed.isNotEmpty()) {
             closePending(null)
-            coordinator.loadEmbeddedCues(wholeFileCues)
+            coordinator.addEmbeddedCues(parsed)
             return
         }
         closePending(timeUs)

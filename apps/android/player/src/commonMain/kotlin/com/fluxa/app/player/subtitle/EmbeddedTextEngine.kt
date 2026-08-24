@@ -14,26 +14,32 @@ class EmbeddedTextEngine(
     val cues: StateFlow<List<TextCue>> = _cues
 
     private val cueBuffer = mutableListOf<TextCue>()
+    private val known = mutableSetOf<TextCue>()
 
     fun onSample(startUs: Long, endUs: Long, rawText: String) {
         val text = stripMarkup(rawText)
         if (text.isEmpty() || endUs <= startUs) return
-        cueBuffer += TextCue(startUs, endUs, text)
-        _cues.value = cueBuffer.toList()
-        scheduler.setCueIndex(CueIndex(cueBuffer.toList()))
+        addCues(listOf(TextCue(startUs, endUs, text)))
     }
 
-    fun loadEmbeddedCues(fullFileCues: List<TextCue>) {
-        cueBuffer.clear()
-        cueBuffer += fullFileCues
-        _cues.value = fullFileCues
-        scheduler.setCueIndex(CueIndex(cueBuffer.toList()))
+    fun addEmbeddedCues(cues: List<TextCue>) {
+        addCues(cues)
     }
 
     fun reset() {
         cueBuffer.clear()
+        known.clear()
         _cues.value = emptyList()
         scheduler.setCueIndex(CueIndex(emptyList()))
+    }
+
+    private fun addCues(cues: List<TextCue>) {
+        val fresh = cues.filter { known.add(it) }
+        if (fresh.isEmpty()) return
+        cueBuffer += fresh
+        val snapshot = cueBuffer.sortedBy { it.startUs }
+        _cues.value = snapshot
+        scheduler.setCueIndex(CueIndex(snapshot))
     }
 
     fun setDelayUs(value: Long) = scheduler.setDelayUs(value)
