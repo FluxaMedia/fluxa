@@ -7,7 +7,6 @@ import { type NormalizedCastMember } from './castSection';
 import { youtubeVideoId, type TrailerMetadata } from './TrailerCarousel';
 import { InlineSourceList, MovieSourcePanel } from './SourcePanel';
 import { type ProgressEntry } from './EpisodePanel';
-import { ModernTabBar } from './DetailButtons';
 import { useSeasonWatched } from '../../hooks/useSeasonWatched';
 import { DetailsTabContent, EpisodesTabContent, RelatedTabContent } from './ModernDetailTabs';
 import { useTrailerPlayback } from '../../hooks/useTrailerPlayback';
@@ -16,7 +15,7 @@ import { ModernDetailActionRow } from './ModernDetailActionRow';
 import { ModernDetailMetaBlock } from './ModernDetailMetaBlock';
 import { PrevSeasonDialog, SeasonControls } from './ModernDetailSeasonSection';
 import { SimilarSourcePicker } from './ModernDetailParts';
-import { ModernDetailRail } from './ModernDetailRail';
+import { RatingsRow } from './RatingBadge';
 
 export type ModernDetailProps = {
   displayMeta: Meta;
@@ -147,7 +146,6 @@ export function ModernDetailLayout({
   onOpenComments,
   onBgError,
 }: ModernDetailProps) {
-  const [activeTab, setActiveTab] = useState<'episodes' | 'related' | 'details'>(() => (isSeries ? 'episodes' : 'details'));
   const [similarSource, setSimilarSource] = useState('auto');
   const [prevSeasonDialog, setPrevSeasonDialog] = useState<{ season: number; unwatchedPrev: number[] } | null>(null);
   const hidden = useMemo(() => new Set(hiddenSections), [hiddenSections]);
@@ -270,19 +268,20 @@ export function ModernDetailLayout({
 
   const heroLogo = fanartArtwork?.hdLogo || displayMeta.logo;
 
+  const genres = Array.isArray(displayMeta.genres) ? displayMeta.genres.slice(0, 6) : [];
+  const hasMdblistRatings = mdblistRatings != null && Object.keys(mdblistRatings).length > 0;
+  const imdbScore = displayMeta.imdbRating ? Number(displayMeta.imdbRating) : null;
+  const ratingsNode = hasMdblistRatings ? (
+    <RatingsRow ratings={mdblistRatings} />
+  ) : imdbScore || omdbRatings?.rottenTomatoes || omdbRatings?.metascore ? (
+    <div style={MS.scoreRow}>
+      {imdbScore ? <span style={MS.scoreItem}>{`IMDb ${imdbScore.toFixed(1)}`}</span> : null}
+      {omdbRatings?.rottenTomatoes ? <span style={MS.scoreItem}>{`Rotten Tomatoes ${omdbRatings.rottenTomatoes}`}</span> : null}
+      {omdbRatings?.metascore ? <span style={MS.scoreItem}>{`Metascore ${omdbRatings.metascore}`}</span> : null}
+    </div>
+  ) : null;
+
   const episodeGridStyle = episodeCardsLayout === 'list' ? { ...MS.episodeGrid, gridTemplateColumns: '1fr' } : MS.episodeGrid;
-
-  const seriesTabs = [
-    { id: 'episodes', label: t('auto.episodes') },
-    { id: 'details', label: t('common.details') },
-    { id: 'related', label: t('auto.similar_titles') },
-  ].filter((tab) => !hidden.has(tab.id));
-
-  const movieTabs = [
-    { id: 'details', label: t('common.details') },
-    { id: 'related', label: t('auto.similar_titles') },
-  ].filter((tab) => !hidden.has(tab.id));
-  const activeDetailTab = (seriesTabs.some((tab) => tab.id === activeTab) || movieTabs.some((tab) => tab.id === activeTab) ? activeTab : (seriesTabs[0]?.id ?? movieTabs[0]?.id ?? 'details')) as typeof activeTab;
 
   return (
     <div className="detail-screen" style={MS.screen} ref={screenRef}>
@@ -302,143 +301,94 @@ export function ModernDetailLayout({
       />}
 
       <div className="detail-content" style={MS.content}>
-        <div className="detail-main" style={MS.mainCol}>
-          {!hidden.has('actions') && <ModernDetailActionRow
-            continueLabel={isSeries ? continueLabel : null}
-            hasProgress={isSeries ? hasProgress : false}
-            onPlayClick={() => {
-              if (isSeries) {
-                if (continueEp) onEpisodeClick(continueEp);
-              } else onMovieSources();
-            }}
-            trailerUrl={trailerOnHero && displayTrailers.length > 0 ? displayTrailers[0].url : undefined}
-            isInWatchlist={isInWatchlist}
-            onToggleWatchlist={onToggleWatchlist}
-            isCompleted={isCompleted}
-            onToggleCompleted={onToggleCompleted}
-            isDropped={isDropped}
-            onToggleDropped={onToggleDropped}
-            isFavorite={isFavorite}
-            onToggleFavorite={onToggleFavorite}
-            onOpenComments={onOpenComments}
-          />}
-
-          {!hidden.has('meta') && <ModernDetailMetaBlock
-            certification={displayMeta.certification}
-            metaDetails={modernMetaDetails}
-            description={displayMeta.description}
-          />}
-
-          {isSeries && (
-            <>
-              <PrevSeasonDialog
-                prevSeasonDialog={prevSeasonDialog}
-                onDismissPrevSeasonDialog={() => setPrevSeasonDialog(null)}
-                onConfirmPrevSeasonDialog={(includePrev) => {
-                  if (!prevSeasonDialog) return;
-                  const seasons = includePrev ? [...prevSeasonDialog.unwatchedPrev, prevSeasonDialog.season] : [prevSeasonDialog.season];
-                  dispatchMarkSeason(seasons, true);
-                  setPrevSeasonDialog(null);
-                }}
-              />
-
-              {!hidden.has('tabs') && seriesTabs.length > 0 && <ModernTabBar
-                tabs={seriesTabs}
-                active={activeDetailTab}
-                onChange={(id) => setActiveTab(id as typeof activeTab)}
-                trailing={activeDetailTab === 'related' ? (
-                  <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} />
-                ) : activeDetailTab === 'episodes' ? (
-                  <SeasonControls
-                  seasonNumbers={seasonNumbers}
-                  selectedSeason={selectedSeason}
-                  onSeasonChange={onSeasonChange}
-                  seasonWatchedMap={seasonWatchedMap}
-                  toggleSeasonWatched={toggleSeasonWatched}
-                  />
-                ) : null}
-              />}
-
-              {activeDetailTab === 'episodes' && !hidden.has('episodes') && (
-                <EpisodesTabContent
-                  detail={detail}
-                  filteredEps={filteredEps}
-                  watchedMap={watchedMap}
-                  progressMap={progressMap}
-                  metaId={meta.id}
-                  continueWatchingEntry={continueWatchingEntry}
-                  episodeGridStyle={episodeGridStyle}
-                  blurUnwatchedEpisodes={blurUnwatchedEpisodes}
-                  spoilerHideEpisodeInfo={spoilerHideEpisodeInfo}
-                  onEpisodeClick={onEpisodeClick}
-                  toggleEpisodeWatched={toggleEpisodeWatched}
-                />
-              )}
-
-              {activeDetailTab === 'related' && !hidden.has('related') && (
-                <RelatedTabContent
-                  similarItems={similarItems}
-                  poster={poster}
-                  onNavigateDetail={onNavigateDetail}
-                />
-              )}
-
-              {activeDetailTab === 'details' && !hidden.has('details') && (
-                <DetailsTabContent
-                  displayMeta={displayMeta}
-                  castMembers={castMembers}
-                  directorLinks={directorLinks}
-                  peopleImages={peopleImages}
-                  displayTrailers={displayTrailers}
-                  trailerMetadata={trailerMetadata}
-                />
-              )}
-            </>
-          )}
-
-          {!isSeries && (
-            <>
-              {!hidden.has('tabs') && movieTabs.length > 0 && <ModernTabBar
-                tabs={movieTabs}
-                active={activeDetailTab === 'episodes' ? 'related' : activeDetailTab}
-                onChange={(id) => setActiveTab(id as typeof activeTab)}
-                trailing={
-                  activeDetailTab !== 'details' ? <SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} /> : null
-                }
-              />}
-
-              {(activeDetailTab === 'related' || activeDetailTab === 'episodes') && !hidden.has('related') && (
-                <RelatedTabContent
-                  similarItems={similarItems}
-                  poster={poster}
-                  onNavigateDetail={onNavigateDetail}
-                />
-              )}
-
-              {activeDetailTab === 'details' && !hidden.has('details') && (
-                <DetailsTabContent
-                  displayMeta={displayMeta}
-                  castMembers={castMembers}
-                  directorLinks={directorLinks}
-                  peopleImages={peopleImages}
-                  displayTrailers={displayTrailers}
-                  trailerMetadata={trailerMetadata}
-                />
-              )}
-            </>
-          )}
-        </div>
-
-        {!hidden.has('rail') && <ModernDetailRail
-          displayMeta={displayMeta}
-          mdblistRatings={mdblistRatings}
-          omdbRatings={omdbRatings}
-          castMembers={castMembers}
-          directorLinks={directorLinks}
-          peopleImages={peopleImages}
-          onNavigateGenre={onNavigateGenre}
-          onSeeAllCast={() => setActiveTab('details')}
+        {!hidden.has('actions') && <ModernDetailActionRow
+          continueLabel={isSeries ? continueLabel : null}
+          hasProgress={isSeries ? hasProgress : false}
+          onPlayClick={() => {
+            if (isSeries) {
+              if (continueEp) onEpisodeClick(continueEp);
+            } else onMovieSources();
+          }}
+          trailerUrl={trailerOnHero && displayTrailers.length > 0 ? displayTrailers[0].url : undefined}
+          isInWatchlist={isInWatchlist}
+          onToggleWatchlist={onToggleWatchlist}
+          isCompleted={isCompleted}
+          onToggleCompleted={onToggleCompleted}
+          isDropped={isDropped}
+          onToggleDropped={onToggleDropped}
+          isFavorite={isFavorite}
+          onToggleFavorite={onToggleFavorite}
+          onOpenComments={onOpenComments}
         />}
+
+        {!hidden.has('meta') && <ModernDetailMetaBlock
+          certification={displayMeta.certification}
+          metaDetails={modernMetaDetails}
+          description={displayMeta.description}
+          genres={genres}
+          ratings={ratingsNode}
+          onNavigateGenre={onNavigateGenre}
+        />}
+
+        {isSeries && (
+          <>
+            <PrevSeasonDialog
+              prevSeasonDialog={prevSeasonDialog}
+              onDismissPrevSeasonDialog={() => setPrevSeasonDialog(null)}
+              onConfirmPrevSeasonDialog={(includePrev) => {
+                if (!prevSeasonDialog) return;
+                const seasons = includePrev ? [...prevSeasonDialog.unwatchedPrev, prevSeasonDialog.season] : [prevSeasonDialog.season];
+                dispatchMarkSeason(seasons, true);
+                setPrevSeasonDialog(null);
+              }}
+            />
+
+            {!hidden.has('episodes') && (
+              <EpisodesTabContent
+                detail={detail}
+                filteredEps={filteredEps}
+                watchedMap={watchedMap}
+                progressMap={progressMap}
+                metaId={meta.id}
+                continueWatchingEntry={continueWatchingEntry}
+                episodeGridStyle={episodeGridStyle}
+                blurUnwatchedEpisodes={blurUnwatchedEpisodes}
+                spoilerHideEpisodeInfo={spoilerHideEpisodeInfo}
+                onEpisodeClick={onEpisodeClick}
+                toggleEpisodeWatched={toggleEpisodeWatched}
+                seasonControls={
+                  <SeasonControls
+                    seasonNumbers={seasonNumbers}
+                    selectedSeason={selectedSeason}
+                    onSeasonChange={onSeasonChange}
+                    seasonWatchedMap={seasonWatchedMap}
+                    toggleSeasonWatched={toggleSeasonWatched}
+                  />
+                }
+              />
+            )}
+          </>
+        )}
+
+        {!hidden.has('details') && (
+          <DetailsTabContent
+            displayMeta={displayMeta}
+            castMembers={castMembers}
+            directorLinks={directorLinks}
+            peopleImages={peopleImages}
+            displayTrailers={displayTrailers}
+            trailerMetadata={trailerMetadata}
+          />
+        )}
+
+        {!hidden.has('related') && (
+          <RelatedTabContent
+            similarItems={similarItems}
+            poster={poster}
+            onNavigateDetail={onNavigateDetail}
+            sourcePicker={<SimilarSourcePicker value={similarSource} onChange={changeSimilarSource} />}
+          />
+        )}
       </div>
 
       {showSources && selectedEpisode && isSeries && (

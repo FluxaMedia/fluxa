@@ -3,15 +3,22 @@ import { t } from '../../i18n';
 import { color, fontSize, weight } from '../../design';
 import { MS } from './detailStyles';
 import { AgeBadge } from './DetailButtons';
+import { GenreTag } from './ModernDetailParts';
 
 export function ModernDetailMetaBlock({
   certification,
   metaDetails,
   description,
+  genres,
+  ratings,
+  onNavigateGenre,
 }: {
   certification?: string;
   metaDetails: string[];
   description?: string;
+  genres: string[];
+  ratings?: React.ReactNode;
+  onNavigateGenre?: (genre: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [clamped, setClamped] = useState(false);
@@ -28,7 +35,7 @@ export function ModernDetailMetaBlock({
   const [primary, ...secondary] = metaDetails;
   return (
     <div style={MS.metaBlock}>
-      {(metaDetails.length > 0 || certification) && (
+      {(metaDetails.length > 0 || certification || genres.length > 0) && (
         <div style={{ ...MS.metaChipRow, marginBottom: '0.75rem' }}>
           {primary && <span style={{ fontSize: fontSize.base, fontWeight: weight.semibold, color: color.textStrong }}>{primary}</span>}
           {certification && <AgeBadge label={certification} />}
@@ -37,8 +44,12 @@ export function ModernDetailMetaBlock({
               {detail}
             </span>
           ))}
+          {genres.map((genre) => (
+            <GenreTag key={genre} label={genre} onClick={() => onNavigateGenre?.(genre)} />
+          ))}
         </div>
       )}
+      {ratings && <div style={{ marginBottom: '0.875rem' }}>{ratings}</div>}
       {description && (
         <>
           <p ref={descRef} style={expanded ? { ...MS.descText, WebkitLineClamp: 'unset', overflow: 'visible' } : MS.descText}>

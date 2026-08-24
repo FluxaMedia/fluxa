@@ -118,11 +118,12 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
     .toUpperCase();
   const showImage = imageUrl && !imageFailed;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', width: '7.25rem', flexShrink: 0 }}>
+    <div style={{ display: 'contents' }}>
       <div
         style={{
           width: '4.375rem',
           height: '4.375rem',
+          justifySelf: 'center',
           borderRadius: radius.circle,
           background: showImage ? 'transparent' : color.fillHover,
           display: 'flex',
@@ -149,8 +150,7 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           fontSize: fontSize.sm,
           fontWeight: 750,
           lineHeight: '1.0625rem',
-          height: '2.125rem',
-          margin: '0.375rem 0 0',
+          margin: 0,
           textAlign: 'center',
           overflow: 'hidden',
           display: '-webkit-box',
@@ -166,7 +166,7 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           color: color.textBody,
           fontSize: fontSize.xs,
           lineHeight: '1rem',
-          margin: '0.125rem 0 0',
+          margin: 0,
           textAlign: 'center',
           overflow: 'hidden',
           display: '-webkit-box',

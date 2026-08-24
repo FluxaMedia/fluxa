@@ -5,6 +5,7 @@ import { t } from '../../i18n';
 import type { DetailState, LibraryItem, Meta, MetaLink, Trailer, Video } from '../../core/types';
 import type { posterPrefsFromState } from '../../core/posterPrefs';
 import { MS, S, spinnerStyle } from './detailStyles';
+import { MetaFactsSection } from './MetaFacts';
 import { CastAvatar, type NormalizedCastMember } from './castSection';
 import { TrailerCarousel, type TrailerMetadata } from './TrailerCarousel';
 import { ModernEpisodeCard } from './ModernEpisodeCard';
@@ -26,7 +27,8 @@ export function DetailsTabContent({
   trailerMetadata: TrailerMetadata;
 }) {
   return (
-    <div style={{ ...MS.detailsTab, minHeight: '12.5rem' }}>
+    <div style={MS.detailsTab}>
+      <MetaFactsSection displayMeta={displayMeta} directorLinks={directorLinks} />
       {displayMeta.awards && (
         <div style={MS.detailsSection}>
           <h3 style={MS.detailsSectionTitle}>{t('detail.awards')}</h3>
@@ -73,6 +75,7 @@ export function EpisodesTabContent({
   spoilerHideEpisodeInfo,
   onEpisodeClick,
   toggleEpisodeWatched,
+  seasonControls,
 }: {
   detail: DetailState;
   filteredEps: Video[];
@@ -85,9 +88,14 @@ export function EpisodesTabContent({
   spoilerHideEpisodeInfo: boolean;
   onEpisodeClick: (ep: Video) => void;
   toggleEpisodeWatched: (ep: Video, isWatched: boolean) => void;
+  seasonControls?: React.ReactNode;
 }) {
   return (
-    <div style={{ ...MS.episodeSection, minHeight: '12.5rem' }}>
+    <div style={MS.episodeSection}>
+      <div style={MS.sectionHeaderRow}>
+        <h3 style={{ ...MS.detailsSectionTitle, margin: 0 }}>{t('auto.episodes')}</h3>
+        {seasonControls}
+      </div>
       {detail.isLoading && filteredEps.length === 0 ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '2.5rem' }}>
           <div style={spinnerStyle} />
@@ -140,13 +148,19 @@ export function RelatedTabContent({
   similarItems,
   poster,
   onNavigateDetail,
+  sourcePicker,
 }: {
   similarItems: Meta[];
   poster: ReturnType<typeof posterPrefsFromState>;
   onNavigateDetail: (meta: Meta) => void;
+  sourcePicker?: React.ReactNode;
 }) {
   return (
-    <div style={{ ...MS.relatedSection, minHeight: '12.5rem' }}>
+    <div style={MS.relatedSection}>
+      <div style={MS.sectionHeaderRow}>
+        <h3 style={{ ...MS.detailsSectionTitle, margin: 0 }}>{t('auto.similar_titles')}</h3>
+        {sourcePicker}
+      </div>
       {similarItems.length === 0 ? (
         <p style={MS.episodeCount}>{t('auto.no_similar_titles')}</p>
       ) : (
