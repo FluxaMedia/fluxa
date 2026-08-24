@@ -1569,6 +1569,10 @@ fn playback_session_for(
             .get(&key)
             .map(|window| window.playback_offset)
     });
+    // Resolved before the lock: torrent_cancellation_token takes the same
+    // non-reentrant runtime mutex, and reaching for it while holding the guard
+    // deadlocks the thread against itself and wedges the whole HTTP server.
+    let parent = torrent_cancellation_token(state, torrent_id);
     if let Ok(mut runtime) = state.runtime.lock() {
         let sessions = &mut runtime.playback_sessions;
         let seek =
@@ -1583,17 +1587,17 @@ fn playback_session_for(
             + u64::from(seek || !sessions.contains_key(&key));
         let session = sessions.entry(key).or_insert_with(|| PlaybackSession {
             generation,
-            cancel: torrent_cancellation_token(state, torrent_id).child_token(),
+            cancel: parent.child_token(),
         });
         if seek {
             *session = PlaybackSession {
                 generation,
-                cancel: torrent_cancellation_token(state, torrent_id).child_token(),
+                cancel: parent.child_token(),
             };
         }
         return session.cancel.clone();
     }
-    torrent_cancellation_token(state, torrent_id).child_token()
+    parent.child_token()
 }
 
 fn torrent_cancellation_token(state: &EngineState, torrent_id: usize) -> CancellationToken {
