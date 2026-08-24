@@ -852,9 +852,16 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                 return;
             };
             let Ok(parent_box) = parent_widget.downcast::<gtk::Box>() else {
-                let _ = setup_tx.send(Err(
-                    "WebView parent is not a GTK Box; widget hierarchy may differ on this Tauri build".to_string(),
-                ));
+                let mut chain = Vec::new();
+                let mut cursor = Some(webview_widget.clone());
+                while let Some(widget) = cursor {
+                    chain.push(widget.type_().name().to_string());
+                    cursor = widget.parent();
+                }
+                let _ = setup_tx.send(Err(format!(
+                    "WebView parent is not a GTK Box; widget hierarchy may differ on this Tauri build (chain: {})",
+                    chain.join(" < ")
+                )));
                 return;
             };
 
