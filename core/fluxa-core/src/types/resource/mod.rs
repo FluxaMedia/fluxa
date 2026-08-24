@@ -2,6 +2,30 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 
+fn string_or_vec<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        Text(String),
+        List(Vec<String>),
+    }
+
+    Ok(match Option::<StringOrVec>::deserialize(deserializer)? {
+        None => None,
+        Some(StringOrVec::List(items)) => Some(items),
+        Some(StringOrVec::Text(text)) => Some(
+            text.split(',')
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+                .map(str::to_string)
+                .collect(),
+        ),
+    })
+}
+
 // `extra` catches any field an addon sends that isn't modeled above. Effect
 // payloads echo these objects back to the platform verbatim, so a field this
 // struct doesn't know about must still survive a decode/encode round trip
@@ -21,8 +45,11 @@ pub struct MetaItem {
     pub release_info: Option<String>,
     pub imdb_rating: Option<String>,
     pub released: Option<String>,
+    #[serde(deserialize_with = "string_or_vec")]
     pub genres: Option<Vec<String>>,
+    #[serde(deserialize_with = "string_or_vec")]
     pub director: Option<Vec<String>>,
+    #[serde(deserialize_with = "string_or_vec")]
     pub cast: Option<Vec<String>>,
     pub year: Option<String>,
     pub runtime: Option<String>,
@@ -146,4 +173,39 @@ pub struct StreamBehaviorHints {
 pub struct ProxyHeaders {
     pub request: Option<HashMap<String, String>>,
     pub response: Option<HashMap<String, String>>,
+}
+
+#[cfg(test)]
+mod meta_item_tests {
+    use super::MetaItem;
+    use serde_json::json;
+
+    fn director_of(value: serde_json::Value) -> Option<Vec<String>> {
+        serde_json::from_value::<MetaItem>(json!({
+            "id": "tt11198330",
+            "type": "series",
+            "name": "House of the Dragon",
+            "director": value,
+        }))
+        .expect("meta with a string director must still decode")
+        .director
+    }
+
+    #[test]
+    fn empty_string_director_decodes_instead_of_rejecting_the_meta() {
+        assert_eq!(director_of(json!("")), Some(vec![]));
+    }
+
+    #[test]
+    fn comma_joined_director_splits_into_entries() {
+        assert_eq!(
+            director_of(json!("Ryan Condal, Miguel Sapochnik")),
+            Some(vec!["Ryan Condal".to_string(), "Miguel Sapochnik".to_string()]),
+        );
+    }
+
+    #[test]
+    fn list_director_is_preserved() {
+        assert_eq!(director_of(json!(["Ryan Condal"])), Some(vec!["Ryan Condal".to_string()]));
+    }
 }
