@@ -12,6 +12,7 @@
 #include <mutex>
 #include <string>
 #include <sys/stat.h>
+#include <vector>
 
 #define LOG_TAG "FluxaLibassRenderer"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -77,6 +78,14 @@ struct LibassApi {
     ass_flush_events_fn flush_events = nullptr;
 };
 
+struct CachedCoverage {
+    int w = 0;
+    int h = 0;
+    int len = 0;
+    int offset = 0;
+    uint64_t hash = 0;
+};
+
 struct Session {
     ASS_Library* library = nullptr;
     ASS_Renderer* renderer = nullptr;
@@ -86,6 +95,7 @@ struct Session {
     int last_bmp_width = 0;
     int last_bmp_height = 0;
     bool last_had_image = false;
+    std::vector<CachedCoverage> last_coverage;
 };
 
 static LibassApi g_api;
@@ -335,6 +345,7 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeClearEvents(JNIEnv*, jobjec
     auto* session = reinterpret_cast<Session*>(handle);
     if (!session || !session->track || !ensure_api() || !g_api.flush_events) return;
     g_api.flush_events(session->track);
+    session->last_coverage.clear();
 }
 
 extern "C" JNIEXPORT jint JNICALL
@@ -366,6 +377,47 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
     if (direct_capacity <= 0) return -1;
     const size_t coverage_capacity = static_cast<size_t>(direct_capacity);
 
+    const int max_images = (meta_capacity - 1) / 9;
+
+    if (detect_change == 1 && !size_changed && !force_render && !session->last_coverage.empty()) {
+        size_t matched = 0;
+        bool reusable = true;
+        for (ASS_Image* img = images; img; img = img->next) {
+            if (img->w <= 0 || img->h <= 0 || !img->bitmap) continue;
+            if (matched >= session->last_coverage.size()) { reusable = false; break; }
+            const CachedCoverage& prev = session->last_coverage[matched];
+            const int row_stride = (img->w + 3) & ~3;
+            if (prev.w != img->w || prev.h != img->h || prev.len != row_stride * img->h) {
+                reusable = false;
+                break;
+            }
+            ++matched;
+        }
+        if (reusable && matched == session->last_coverage.size()) {
+            jint* reused_meta = env->GetIntArrayElements(out_meta, nullptr);
+            if (!reused_meta) return -1;
+            int reused_count = 0;
+            for (ASS_Image* img = images; img && reused_count < max_images; img = img->next) {
+                if (img->w <= 0 || img->h <= 0 || !img->bitmap) continue;
+                const CachedCoverage& prev = session->last_coverage[static_cast<size_t>(reused_count)];
+                const int base = 1 + reused_count * 9;
+                reused_meta[base + 0] = img->dst_x;
+                reused_meta[base + 1] = img->dst_y;
+                reused_meta[base + 2] = prev.w;
+                reused_meta[base + 3] = prev.h;
+                reused_meta[base + 4] = static_cast<jint>(img->color);
+                reused_meta[base + 5] = static_cast<jint>(prev.hash >> 32);
+                reused_meta[base + 6] = static_cast<jint>(prev.hash & 0xFFFFFFFFu);
+                reused_meta[base + 7] = prev.offset;
+                reused_meta[base + 8] = prev.len;
+                ++reused_count;
+            }
+            reused_meta[0] = reused_count;
+            env->ReleaseIntArrayElements(out_meta, reused_meta, 0);
+            return reused_count;
+        }
+    }
+
     jint* meta = env->GetIntArrayElements(out_meta, nullptr);
     auto* coverage = static_cast<uint8_t*>(env->GetDirectBufferAddress(out_coverage));
     if (!meta || !coverage) {
@@ -375,7 +427,7 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
 
     int image_count = 0;
     int coverage_offset = 0;
-    const int max_images = (meta_capacity - 1) / 9;
+    session->last_coverage.clear();
 
     for (ASS_Image* img = images; img && image_count < max_images; img = img->next) {
         if (img->w <= 0 || img->h <= 0 || !img->bitmap) continue;
@@ -418,6 +470,9 @@ Java_com_fluxa_app_player_NativeLibassRenderer_nativeRenderImages(
         meta[base + 6] = static_cast<jint>(coverage_hash & 0xFFFFFFFFu);
         meta[base + 7] = coverage_offset;
         meta[base + 8] = coverage_len;
+
+        session->last_coverage.push_back(
+            CachedCoverage{img->w, img->h, coverage_len, coverage_offset, coverage_hash});
 
         coverage_offset += coverage_len;
         ++image_count;
