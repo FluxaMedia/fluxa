@@ -321,6 +321,8 @@ export const EP: Record<string, React.CSSProperties> = {
   empty: { padding: '1.5rem 0.875rem', color: color.textDim, fontSize: fontSize.base },
   inlineSources: {
     flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
     overflowY: 'auto',
     padding: '0.8125rem 1rem 1.5rem',
     background: color.black,
