@@ -118,11 +118,11 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
     .toUpperCase();
   const showImage = imageUrl && !imageFailed;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '9.75rem', flexShrink: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '9.25rem', flexShrink: 0 }}>
       <div
         style={{
-          width: '5.75rem',
-          height: '5.75rem',
+          width: '5.5rem',
+          height: '5.5rem',
           borderRadius: radius.circle,
           background: showImage ? 'transparent' : color.fillHover,
           display: 'flex',

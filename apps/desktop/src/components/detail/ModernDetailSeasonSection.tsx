@@ -20,7 +20,7 @@ export function SeasonControls({
 }) {
   const watched = seasonWatchedMap[selectedSeason] === true;
   return (
-    <>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
       <button
         onClick={toggleSeasonWatched}
         title={watched ? t('detail.mark_season_unwatched') : t('detail.mark_season_watched')}
@@ -37,7 +37,7 @@ export function SeasonControls({
         seasonWatched={seasonWatchedMap}
         hideButtonIndicator
       />
-    </>
+    </div>
   );
 }
 
