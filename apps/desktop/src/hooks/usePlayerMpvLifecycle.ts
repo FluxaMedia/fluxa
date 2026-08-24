@@ -11,9 +11,14 @@ import {
   initEmbeddedMpv,
   playerTorrentSiblingSubtitles,
 } from '../core/mpvPlayer';
+import { runWithConcurrency } from '../core/fetchPlanning';
 import type { PlayerArtwork, PlayerDisplayTitle } from '../core/playerUtils';
 import type { ResolvedSubtitles } from '../core/subtitles';
 import type { AppState } from '../core/types';
+
+// mpv fetches each track the moment it is added, and subtitle hosts rate-limit
+// a burst of tens of parallel downloads with 429s that fail every track.
+const SUBTITLE_ADD_CONCURRENCY = 4;
 
 type Options = {
   stateRef: MutableRefObject<AppState>;
@@ -119,12 +124,10 @@ export function usePlayerMpvLifecycle(options: Options) {
       debugLog(`subtitles: resolved=${subtitles.length}, failedAddons=${failedAddons.join(',') || 'none'}`);
       setPlayerSubtitleUrl(subtitles.find((subtitle) => /^https?:\/\//i.test(subtitle.url))?.url);
       const failedTrackAddons: string[] = [];
-      await Promise.all(
-        subtitles.map((subtitle) =>
-          embeddedMpvAddSubtitle(subtitle.url, subtitle.addonName ?? subtitle.label, subtitle.lang).catch(() => {
-            if (subtitle.addonName) failedTrackAddons.push(subtitle.addonName);
-          }),
-        ),
+      await runWithConcurrency(subtitles, SUBTITLE_ADD_CONCURRENCY, (subtitle) =>
+        embeddedMpvAddSubtitle(subtitle.url, subtitle.addonName ?? subtitle.label, subtitle.lang).catch(() => {
+          if (subtitle.addonName) failedTrackAddons.push(subtitle.addonName);
+        }),
       );
       if (isCancelled(generation)) return;
       if (!isCancelled(generation))
