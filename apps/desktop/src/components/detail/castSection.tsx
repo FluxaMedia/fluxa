@@ -153,11 +153,12 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           margin: 0,
           textAlign: 'center',
           overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical' as const,
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          maxWidth: '7.25rem',
           textShadow: `0 1px 0.125rem ${fade.shade(0.8)}`,
         }}
+        title={name}
       >
         {name}
       </p>
@@ -169,11 +170,12 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           margin: 0,
           textAlign: 'center',
           overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitLineClamp: 1,
-          WebkitBoxOrient: 'vertical' as const,
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          maxWidth: '7.25rem',
           textShadow: `0 1px 0.125rem ${fade.shade(0.8)}`,
         }}
+        title={role}
       >
         {role}
       </p>
