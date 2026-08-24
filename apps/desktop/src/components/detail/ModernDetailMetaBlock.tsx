@@ -22,11 +22,25 @@ export function ModernDetailMetaBlock({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [clamped, setClamped] = useState(false);
+  const [unclamp, setUnclamp] = useState(false);
   const descRef = useRef<HTMLParagraphElement | null>(null);
   useEffect(() => {
+    setExpanded(false);
+    setUnclamp(false);
     const el = descRef.current;
     if (!el) return;
-    const measure = () => setClamped(el.scrollHeight - el.clientHeight > 4);
+    const measure = () => {
+      const line = parseFloat(getComputedStyle(el).lineHeight) || 20;
+      const hidden = el.scrollHeight - el.clientHeight;
+      if (hidden > line * 1.05) {
+        setClamped(true);
+      } else if (hidden > 2) {
+        setUnclamp(true);
+        setClamped(false);
+      } else {
+        setClamped(false);
+      }
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
@@ -52,10 +66,10 @@ export function ModernDetailMetaBlock({
       {ratings && <div style={{ marginBottom: '0.875rem' }}>{ratings}</div>}
       {description && (
         <>
-          <p ref={descRef} style={expanded ? { ...MS.descText, WebkitLineClamp: 'unset', overflow: 'visible' } : MS.descText}>
+          <p ref={descRef} style={expanded || unclamp ? { ...MS.descText, WebkitLineClamp: 'unset', overflow: 'visible' } : MS.descText}>
             {description}
           </p>
-          {(clamped || expanded) && (
+          {!unclamp && (clamped || expanded) && (
             <button
               onClick={() => setExpanded((value) => !value)}
               style={{

@@ -118,12 +118,11 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
     .toUpperCase();
   const showImage = imageUrl && !imageFailed;
   return (
-    <div style={{ display: 'contents' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '8.25rem', flexShrink: 0 }}>
       <div
         style={{
           width: '4.375rem',
           height: '4.375rem',
-          justifySelf: 'center',
           borderRadius: radius.circle,
           background: showImage ? 'transparent' : color.fillHover,
           display: 'flex',
@@ -150,12 +149,12 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           fontSize: fontSize.sm,
           fontWeight: 750,
           lineHeight: '1.0625rem',
-          margin: 0,
+          margin: '0.5rem 0 0',
           textAlign: 'center',
           overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          maxWidth: '7.25rem',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical' as const,
           textShadow: `0 1px 0.125rem ${fade.shade(0.8)}`,
         }}
         title={name}
@@ -167,12 +166,12 @@ export const CastAvatar = React.memo(function CastAvatar({ name, role, imageUrl 
           color: color.textBody,
           fontSize: fontSize.xs,
           lineHeight: '1rem',
-          margin: 0,
+          margin: '0.1875rem 0 0',
           textAlign: 'center',
           overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          maxWidth: '7.25rem',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical' as const,
           textShadow: `0 1px 0.125rem ${fade.shade(0.8)}`,
         }}
         title={role}
