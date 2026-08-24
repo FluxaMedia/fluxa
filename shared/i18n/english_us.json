@@ -856,6 +856,8 @@
   "sources.addon_still_loading": "%s still loading...",
   "player.debug_log": "Debug Log",
   "player.embedded_source": "embedded",
+  "player.loading_track": "loading…",
+  "player.track_failed": "unavailable",
   "player.audio_title": "Audio",
   "player.subtitles_title": "Subtitles",
   "player.adjust": "Adjust",

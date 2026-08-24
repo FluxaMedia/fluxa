@@ -770,6 +770,7 @@ export default function App() {
         logoUrl={playerLogoUrl}
         metaId={playerMetaId}
         subtitleUrl={playerSubtitleUrl}
+        subtitles={playerSubtitles}
         streamHeaders={playerStreamHeaders}
         streamRef={playingStreamRef}
         metaRef={playingMetaRef}

@@ -856,6 +856,8 @@
   "sources.addon_still_loading": "%s hâlâ yükleniyor...",
   "player.debug_log": "Hata Ayıklama Günlüğü",
   "player.embedded_source": "gömülü",
+  "player.loading_track": "yükleniyor…",
+  "player.track_failed": "açılamadı",
   "player.audio_title": "Ses",
   "player.subtitles_title": "Altyazı",
   "player.adjust": "Ayarla",

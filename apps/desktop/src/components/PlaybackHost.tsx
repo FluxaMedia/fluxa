@@ -2,6 +2,7 @@ import React, { type RefObject } from 'react';
 import { PlayerLoadingOverlay } from './PlayerLoadingOverlay';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ReactPlayerOverlay } from '../appScreens';
+import type { PlayerSubtitleSource } from '../core/playerUtils';
 import type { Meta, Stream, Video } from '../core/types';
 import type { PlayerLoadingOverlayState } from '../hooks/usePlayer';
 import type { TorrentTelemetryContext } from '../core/mpvPlayer';
@@ -19,6 +20,7 @@ interface Props {
   logoUrl?: string;
   metaId?: string;
   subtitleUrl?: string;
+  subtitles?: PlayerSubtitleSource[];
   streamHeaders?: Record<string, string>;
   streamRef: RefObject<Stream | null>;
   metaRef: RefObject<Meta | null>;
@@ -47,6 +49,7 @@ export function PlaybackHost({
   logoUrl,
   metaId,
   subtitleUrl,
+  subtitles,
   streamHeaders,
   streamRef,
   metaRef,
@@ -93,6 +96,7 @@ export function PlaybackHost({
               initialLogoUrl={logoUrl}
               metaId={metaId}
               initialSubtitleUrl={subtitleUrl}
+              subtitles={subtitles}
               initialStreamHeaders={streamHeaders}
               streamRef={streamRef}
               metaRef={metaRef}

@@ -12,24 +12,23 @@ import {
   playerTorrentSiblingSubtitles,
 } from '../core/mpvPlayer';
 import { runWithConcurrency } from '../core/fetchPlanning';
-import type { PlayerArtwork, PlayerDisplayTitle } from '../core/playerUtils';
+import type { PlayerArtwork, PlayerDisplayTitle, PlayerSubtitleSource } from '../core/playerUtils';
 import type { ResolvedSubtitles } from '../core/subtitles';
 import type { AppState } from '../core/types';
 
 // mpv downloads each track as it is added, and subtitle hosts answer a rapid
-// run of requests with 429s that fail every track. resolveSubtitles has already
-// moved the preferred-language track to the front, so keeping the head of the
-// list keeps the one that matters.
+// run of requests with 429s that fail every track. Only the preferred track --
+// resolveSubtitles has already moved it to the front -- and local files are
+// loaded up front; the rest are added when the viewer picks one.
 const SUBTITLE_ADD_CONCURRENCY = 4;
-const MAX_REMOTE_SUBTITLE_TRACKS = 8;
 
 function isLocalSubtitle(url: string): boolean {
   return !/^https?:\/\//i.test(url) || /^https?:\/\/(127\.0\.0\.1|localhost)[:/]/i.test(url);
 }
 
-function limitRemoteSubtitles<T extends { url: string }>(subtitles: T[]): T[] {
-  let remaining = MAX_REMOTE_SUBTITLE_TRACKS;
-  return subtitles.filter((subtitle) => isLocalSubtitle(subtitle.url) || remaining-- > 0);
+function eagerSubtitles<T extends { url: string }>(subtitles: T[]): T[] {
+  let remoteAllowance = 1;
+  return subtitles.filter((subtitle) => isLocalSubtitle(subtitle.url) || remoteAllowance-- > 0);
 }
 
 type Options = {
@@ -46,6 +45,7 @@ type Options = {
   setPlayerUrl: Dispatch<SetStateAction<string | null>>;
   setPlayerUsesTorrent: Dispatch<SetStateAction<boolean>>;
   setPlayerSubtitleUrl: Dispatch<SetStateAction<string | undefined>>;
+  setPlayerSubtitles: Dispatch<SetStateAction<PlayerSubtitleSource[]>>;
   setPlayerSubtitleWarning: Dispatch<SetStateAction<string[] | null>>;
 };
 
@@ -64,6 +64,7 @@ export function usePlayerMpvLifecycle(options: Options) {
     setPlayerUrl,
     setPlayerUsesTorrent,
     setPlayerSubtitleUrl,
+    setPlayerSubtitles,
     setPlayerSubtitleWarning,
   } = options;
 
@@ -133,7 +134,8 @@ export function usePlayerMpvLifecycle(options: Options) {
         }
       }
       if (isCancelled(generation)) return;
-      const addedSubtitles = limitRemoteSubtitles(subtitles);
+      const addedSubtitles = eagerSubtitles(subtitles);
+      setPlayerSubtitles(subtitles);
       debugLog(
         `subtitles: resolved=${subtitles.length}, added=${addedSubtitles.length}, failedAddons=${failedAddons.join(',') || 'none'}`,
       );
@@ -161,6 +163,7 @@ export function usePlayerMpvLifecycle(options: Options) {
       pendingArtworkRef,
       playerUsesTorrentRef,
       setPlayerSubtitleUrl,
+      setPlayerSubtitles,
       setPlayerSubtitleWarning,
       setPlayerTitle,
       setPlayerUrl,

@@ -602,6 +602,8 @@
     <string name="toast_dot_anilist_connected">AniList connected</string>
     <string name="toast_dot_anilist_connect_failed">Could not connect AniList</string>
     <string name="sources_dot_no_stream_addons">No stream addons found.</string>
+    <string name="sources_dot_no_stream_addons_hint">Install a stream addon to find playable sources.</string>
+    <string name="sources_dot_no_sources_hint">Try another addon, or check back in a moment.</string>
     <string name="player_dot_error_no_source">No source found.</string>
     <string name="player_dot_error_generic">Something went wrong: %s</string>
     <string name="player_dot_error_server">Server error (HTTP 4xx/5xx). Try another source.</string>
@@ -855,6 +857,8 @@
     <string name="sources_dot_addon_still_loading">%s still loading...</string>
     <string name="player_dot_debug_log">Debug Log</string>
     <string name="player_dot_embedded_source">embedded</string>
+    <string name="player_dot_loading_track">loading…</string>
+    <string name="player_dot_track_failed">unavailable</string>
     <string name="player_dot_audio_title">Audio</string>
     <string name="player_dot_subtitles_title">Subtitles</string>
     <string name="player_dot_adjust">Adjust</string>
@@ -865,6 +869,7 @@
     <string name="player_dot_subtitles_subtitle">Choose a subtitle track.</string>
     <string name="player_dot_speed_subtitle">Choose playback speed.</string>
     <string name="player_dot_local_source">Local source</string>
+    <string name="player_dot_external_audio_badge">External</string>
     <string name="player_dot_unsupported">Unsupported</string>
     <string name="player_dot_audio_track">Audio track</string>
     <string name="player_dot_off">Off</string>

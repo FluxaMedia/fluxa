@@ -602,6 +602,8 @@
     <string name="toast_dot_anilist_connected">AniList bağlandı</string>
     <string name="toast_dot_anilist_connect_failed">AniList bağlanamadı</string>
     <string name="sources_dot_no_stream_addons">Stream addonu bulunamadı.</string>
+    <string name="sources_dot_no_stream_addons_hint">Oynatılabilir kaynak bulmak için bir stream eklentisi kur.</string>
+    <string name="sources_dot_no_sources_hint">Başka bir eklenti dene ya da biraz sonra tekrar bak.</string>
     <string name="player_dot_error_no_source">Kaynak bulunamadı.</string>
     <string name="player_dot_error_generic">Hata oluştu: %s</string>
     <string name="player_dot_error_server">Sunucu hatası (HTTP 4xx/5xx). Lütfen başka bir kaynak deneyin.</string>
@@ -855,6 +857,8 @@
     <string name="sources_dot_addon_still_loading">%s hâlâ yükleniyor...</string>
     <string name="player_dot_debug_log">Hata Ayıklama Günlüğü</string>
     <string name="player_dot_embedded_source">gömülü</string>
+    <string name="player_dot_loading_track">yükleniyor…</string>
+    <string name="player_dot_track_failed">açılamadı</string>
     <string name="player_dot_audio_title">Ses</string>
     <string name="player_dot_subtitles_title">Altyazı</string>
     <string name="player_dot_adjust">Ayarla</string>
@@ -865,6 +869,7 @@
     <string name="player_dot_subtitles_subtitle">Altyazı seçimini yapın.</string>
     <string name="player_dot_speed_subtitle">Oynatma hızını seçin.</string>
     <string name="player_dot_local_source">Yerel kaynak</string>
+    <string name="player_dot_external_audio_badge">Harici</string>
     <string name="player_dot_unsupported">Desteklenmiyor</string>
     <string name="player_dot_audio_track">Ses parçası</string>
     <string name="player_dot_off">Kapalı</string>

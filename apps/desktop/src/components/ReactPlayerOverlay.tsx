@@ -30,6 +30,7 @@ import { PlayerStreamLinksMenu } from './player/PlayerStreamLinksMenu';
 import { usePlayerSeekInteractions } from './player/usePlayerSeekInteractions';
 import { usePlayerMediaSession } from './player/usePlayerMediaSession';
 import { usePlayerTrackControls } from './player/usePlayerTrackControls';
+import type { PlayerSubtitleSource } from '../core/playerUtils';
 import { usePlayerAnime4k } from './player/usePlayerAnime4k';
 import { usePlayerUtilityActions } from './player/usePlayerUtilityActions';
 import { usePlayerCenterGesture } from './player/usePlayerCenterGesture';
@@ -61,6 +62,7 @@ interface Props {
   initialLogoUrl?: string;
   metaId?: string;
   initialSubtitleUrl?: string;
+  subtitles?: PlayerSubtitleSource[];
   initialStreamHeaders?: Record<string, string>;
   streamRef?: RefObject<Stream | null>;
   metaRef?: RefObject<Meta | null>;
@@ -88,6 +90,7 @@ export function ReactPlayerOverlay({
   initialLogoUrl,
   metaId,
   initialSubtitleUrl,
+  subtitles = [],
   initialStreamHeaders,
   streamRef,
   metaRef,
@@ -287,11 +290,13 @@ export function ReactPlayerOverlay({
     setPlaybackSpeed,
     audioTracks,
     subTracks,
+    loadingTrackId,
+    failedTrackId,
     openTrackPopover,
     setSpeed,
     selectTrack,
     disableSubs,
-  } = usePlayerTrackControls(resetActivity);
+  } = usePlayerTrackControls(resetActivity, subtitles);
 
   const { miniPlayerActive, isFullscreenRef, setPlayerFullscreen, toggleFullscreen, toggleMiniPlayer } = usePlayerWindowMode(resetActivity);
   const {
@@ -735,6 +740,8 @@ export function ReactPlayerOverlay({
           type={trackPopover}
           audioTracks={audioTracks}
           subTracks={subTracks}
+          loadingTrackId={loadingTrackId}
+          failedTrackId={failedTrackId}
           playbackSpeed={playbackSpeed}
           refs={{ audio: audioTrackBtnRef, sub: subTrackBtnRef, speed: speedBtnRef }}
           onClose={() => setTrackPopover(null)}

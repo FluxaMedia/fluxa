@@ -233,6 +233,12 @@ function groupTracks(tracks: PlayerTrackOption[]): TrackGroup[] {
   return Array.from(groups.values());
 }
 
+const trackHint: CSSProperties = {
+  flexShrink: 0,
+  fontSize: '0.6875rem',
+  color: 'rgba(255,255,255,0.4)',
+};
+
 const styleBtn: CSSProperties = {
   background: 'rgba(255,255,255,0.07)',
   border: '1px solid rgba(255,255,255,0.10)',
@@ -309,6 +315,8 @@ interface TrackPopoverProps {
   onSetSpeed: (speed: number) => void;
   onSelectTrack: (type: 'audio' | 'sub', id: string) => void;
   onDisableSubs: () => void;
+  loadingTrackId?: string | null;
+  failedTrackId?: string | null;
   subtitleDelay?: number;
   subtitlePosition?: number;
   subtitleFont?: string;
@@ -357,6 +365,8 @@ export function TrackPopover({
   onSetSpeed,
   onSelectTrack,
   onDisableSubs,
+  loadingTrackId = null,
+  failedTrackId = null,
   subtitleDelay = 0,
   subtitlePosition = 100,
   subtitleFont = 'default',
@@ -839,6 +849,8 @@ export function TrackPopover({
                   {track.selected && <Check size={14} />}
                 </span>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trackSourceLabel(track)}</span>
+                {track.id === loadingTrackId && <span style={trackHint}>{t('player.loading_track')}</span>}
+                {track.id === failedTrackId && <span style={trackHint}>{t('player.track_failed')}</span>}
               </span>
               {track.format && (
                 <span

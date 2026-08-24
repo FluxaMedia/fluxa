@@ -14,6 +14,8 @@ export function PlayerTrackPanel({
   onSetSpeed,
   onSelectTrack,
   onDisableSubs,
+  loadingTrackId,
+  failedTrackId,
   subtitleControls,
 }: {
   type: Exclude<PlayerTrackPopover, null>;
@@ -29,6 +31,8 @@ export function PlayerTrackPanel({
   onSetSpeed: (speed: number) => void;
   onSelectTrack: (type: 'audio' | 'sub', id: string) => void;
   onDisableSubs: () => void;
+  loadingTrackId?: string | null;
+  failedTrackId?: string | null;
   subtitleControls: ReturnType<typeof usePlayerSubtitleControls>;
 }) {
   return (
@@ -42,6 +46,8 @@ export function PlayerTrackPanel({
       onSetSpeed={onSetSpeed}
       onSelectTrack={onSelectTrack}
       onDisableSubs={onDisableSubs}
+      loadingTrackId={loadingTrackId}
+      failedTrackId={failedTrackId}
       subtitleDelay={subtitleControls.subtitleDelay}
       subtitlePosition={subtitleControls.subtitlePosition}
       subtitleFont={subtitleControls.subtitleFont}

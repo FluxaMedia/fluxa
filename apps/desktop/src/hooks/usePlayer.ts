@@ -156,6 +156,7 @@ function useDesktopPlayer({
   const [playerLogoUrl, setPlayerLogoUrl] = useState<string | undefined>();
   const [playerMetaId, setPlayerMetaId] = useState<string | undefined>();
   const [playerSubtitleUrl, setPlayerSubtitleUrl] = useState<string | undefined>();
+  const [nativeSubtitles, setNativeSubtitles] = useState<PlayerSubtitleSource[]>([]);
   const [playerStreamHeaders, setPlayerStreamHeaders] = useState<Record<string, string> | undefined>();
   const [playerUsesTorrent, setPlayerUsesTorrent] = useState(false);
   const [skipSegmentCoverage, setSkipSegmentCoverage] = useState<Record<string, string[]>>({});
@@ -238,6 +239,7 @@ function useDesktopPlayer({
     setPlayerUrl,
     setPlayerUsesTorrent,
     setPlayerSubtitleUrl,
+    setPlayerSubtitles: setNativeSubtitles,
     setPlayerSubtitleWarning,
   });
 
@@ -743,7 +745,7 @@ function useDesktopPlayer({
     playerLogoUrl,
     playerMetaId,
     playerSubtitleUrl,
-    playerSubtitles: [],
+    playerSubtitles: nativeSubtitles,
     playerCodecs: null,
     playerResumeAt: undefined,
     playerSkipSegments: [],
