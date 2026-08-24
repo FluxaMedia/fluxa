@@ -12,6 +12,7 @@ fn audio_passthrough_failure_text(details: &[String], message: &str) -> bool {
             || line.contains("audiotrack")
             || line.contains("spdif")
             || line.starts_with("ao:")
+            || line.starts_with("ao/")
     };
     let failure_mentioned = |line: &str| {
         line.contains("failed")
@@ -149,6 +150,19 @@ impl MpvClientHandle {
                             self.log_ring.pop_front();
                         }
                         self.log_ring.push_back((msg.log_level, text.to_string()));
+                        // A sink that refuses bitstream kills audio without ending
+                        // the file, so the end-of-file fallback below never sees it.
+                        let ao_line = format!("{prefix}: {text}");
+                        if msg.log_level <= 30 && self.is_audio_passthrough_failure(&[], &ao_line) {
+                            match self.retry_audio_as_pcm() {
+                                Ok(()) => log::warn!(
+                                    "mpv audio output rejected passthrough; retrying as decoded PCM"
+                                ),
+                                Err(error) => {
+                                    log::warn!("mpv PCM audio fallback failed: {error}")
+                                }
+                            }
+                        }
                     }
                 }
                 MPV_EVENT_END_FILE if !event.data.is_null() => {
