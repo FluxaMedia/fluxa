@@ -300,11 +300,18 @@ export function ModernDetailLayout({
         onBack={onBack}
         heroLogo={heroLogo}
         displayMetaName={displayMeta.name}
-        progressPercent={heroProgressPercent}
-        remainingLabel={heroRemainingLabel}
       />}
 
       <div className="detail-content" style={MS.content}>
+        {heroProgressPercent != null && heroProgressPercent > 0 && (
+          <div style={MS.heroProgressRow}>
+            <span style={MS.heroProgressTrack}>
+              <span style={{ ...MS.heroProgressFill, width: `${Math.min(100, heroProgressPercent)}%` }} />
+            </span>
+            {heroRemainingLabel && <span style={MS.heroProgressLabel}>{heroRemainingLabel}</span>}
+          </div>
+        )}
+
         {!hidden.has('actions') && <ModernDetailActionRow
           continueLabel={isSeries ? continueLabel : null}
           hasProgress={isSeries ? hasProgress : false}

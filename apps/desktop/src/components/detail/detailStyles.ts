@@ -666,9 +666,9 @@ export const MS: Record<string, React.CSSProperties> = {
   scoreRow: { display: 'flex', flexWrap: 'wrap', gap: space[4] },
   scoreItem: { fontSize: fontSize.base, color: color.textStrong, fontWeight: weight.semibold },
   sectionHeaderRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space[4], margin: '0 0 0.875rem' },
-  heroProgressRow: { display: 'flex', alignItems: 'center', gap: space[3] },
+  heroProgressRow: { display: 'flex', alignItems: 'center', gap: space[3], marginBottom: '-0.375rem' },
   heroProgressTrack: {
-    width: '13rem',
+    width: '9.25rem',
     height: '0.1875rem',
     borderRadius: radius.pill,
     background: color.fillStrong,
@@ -678,15 +678,7 @@ export const MS: Record<string, React.CSSProperties> = {
   heroProgressLabel: { fontSize: fontSize.sm, color: color.textMuted, fontVariantNumeric: 'tabular-nums' },
   metaChipRow: { display: 'flex', alignItems: 'center', gap: space[2.5], flexWrap: 'wrap' },
   actionRow: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  actionIcons: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.125rem',
-    height: '3.125rem',
-    padding: '0 0.375rem',
-    borderRadius: radius.md,
-    background: fade.tint(0.06),
-  },
+  actionIcons: { display: 'flex', alignItems: 'center', gap: '0.25rem' },
   playBtn: {
     display: 'flex',
     alignItems: 'center',

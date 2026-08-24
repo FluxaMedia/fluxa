@@ -16,8 +16,6 @@ export function ModernDetailHero({
   onBack,
   heroLogo,
   displayMetaName,
-  progressPercent,
-  remainingLabel,
 }: {
   bgUrl: string | null | undefined;
   bgLayers: { url: string; key: number }[];
@@ -29,8 +27,6 @@ export function ModernDetailHero({
   onBack: () => void;
   heroLogo?: string;
   displayMetaName: string;
-  progressPercent?: number;
-  remainingLabel?: string | null;
 }) {
   const {
     trailerContainerRef,
@@ -140,14 +136,6 @@ export function ModernDetailHero({
             <h1 style={MS.titleHero}>{displayMetaName}</h1>
           )}
 
-          {progressPercent != null && progressPercent > 0 && (
-            <div style={MS.heroProgressRow}>
-              <span style={MS.heroProgressTrack}>
-                <span style={{ ...MS.heroProgressFill, width: `${Math.min(100, progressPercent)}%` }} />
-              </span>
-              {remainingLabel && <span style={MS.heroProgressLabel}>{remainingLabel}</span>}
-            </div>
-          )}
         </div>
       </div>
     </>
