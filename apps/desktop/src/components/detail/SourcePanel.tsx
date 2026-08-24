@@ -556,9 +556,9 @@ export function InlineSourceList({
             <p style={EP.sourceKicker}>{meta.name ?? meta.id}</p>
             <h3 style={EP.sourceTitle}>{epTitle}</h3>
             <p style={EP.sourceSubtitle}>{episodeMeta}</p>
+            {episode.overview && <p style={EP.sourceOverview}>{episode.overview}</p>}
           </div>
         </div>
-        {episode.overview && <p style={EP.sourceOverview}>{episode.overview}</p>}
       </div>
 
       {(isLoading || addonNames.length > 0) && (
