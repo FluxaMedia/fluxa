@@ -67,7 +67,7 @@ pub(crate) fn external_audio_options_json(request_json: &str) -> Option<String> 
         let stream_headers = headers_value(stream);
 
         for track in stream.audio_tracks.iter().flatten() {
-            if track.url.trim().is_empty() || !seen.insert(track.url.clone()) {
+            if is_selected || track.url.trim().is_empty() || !seen.insert(track.url.clone()) {
                 continue;
             }
             let headers = track
@@ -207,6 +207,17 @@ mod tests {
 
         assert_eq!(result[0]["headers"]["Referer"], "https://vidrame.pro/vr/397ac592");
         assert_eq!(result[0]["sourceName"], "HDFilmizle · Çift Dil");
+    }
+
+    #[test]
+    fn renditions_of_the_selected_stream_stay_with_its_own_player() {
+        let result = options(json!({
+            "streams": [hdfilmizle_dual()],
+            "selectedStreamUrl": "https://cdn.example/master.m3u8",
+            "preferredAudioLanguage": "tr"
+        }));
+
+        assert!(result.is_empty());
     }
 
     #[test]
