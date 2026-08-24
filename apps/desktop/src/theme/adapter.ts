@@ -124,7 +124,9 @@ export function resolveTheme(themeId: string | undefined, rawSkinConfig?: string
 
 export function themeCssVariables(theme: ThemePack): Record<string, string> {
   const variables: Record<string, string> = {};
-  for (const [key, value] of Object.entries(theme.colors)) variables[cssName(key)] = value;
+  for (const [key, value] of Object.entries(theme.colors)) {
+    if (value) variables[cssName(key)] = value;
+  }
   variables['--fluxa-background-rgb'] = rgbChannels(theme.colors.background);
   variables['--fluxa-text-primary-rgb'] = rgbChannels(theme.colors.textPrimary);
   variables['--fluxa-text-secondary-rgb'] = rgbChannels(theme.colors.textSecondary);
@@ -157,7 +159,8 @@ export function themeCssVariables(theme: ThemePack): Record<string, string> {
   variables['--fluxa-motion-normal'] = `${theme.motion.normalMs}ms`;
   variables['--fluxa-motion-slow'] = `${theme.motion.slowMs}ms`;
   variables['--primary-accent-color'] = theme.colors.accent;
-  variables['--primary-accent-foreground-color'] = theme.colors.accentForeground || accentForegroundColor(theme.colors.accent);
+  variables['--fluxa-accent-foreground'] = theme.colors.accentForeground || accentForegroundColor(theme.colors.accent);
+  variables['--primary-accent-foreground-color'] = variables['--fluxa-accent-foreground'];
   return variables;
 }
 
