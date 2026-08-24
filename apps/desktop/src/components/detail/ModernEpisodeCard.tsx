@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { color, fade, fontSize, radius } from '../../design';
-import { CheckCircle2, Circle, Play } from 'lucide-react';
+import { Check, CheckCircle2, Circle, Play } from 'lucide-react';
 import { t } from '../../i18n';
 import type { Video } from '../../core/types';
 import { MS } from './detailStyles';
@@ -104,7 +104,7 @@ export function ModernEpisodeCard({
           </div>
         )}
         {minutesRemaining > 0 && <div style={MS.epTimeRemaining}>{t('format.remaining_minutes', minutesRemaining)}</div>}
-        {progressPct > 0 && (
+        {progressPct > 0 && !isWatched && (
           <div style={MS.epProgressTrack}>
             <div style={{ ...MS.epProgressFill, width: `${progressPct}%`, background: 'var(--primary-accent-color)' }} />
           </div>
@@ -137,8 +137,22 @@ export function ModernEpisodeCard({
           </div>
         )}
         {isWatched && !hovered && (
-          <div style={{ position: 'absolute', top: '0.4375rem', right: '0.4375rem', zIndex: 3, pointerEvents: 'none' }}>
-            <CheckCircle2 size={18} color={color.textBody} />
+          <div
+            style={{
+              position: 'absolute',
+              top: '0.4375rem',
+              right: '0.4375rem',
+              zIndex: 3,
+              width: '1.625rem',
+              height: '1.625rem',
+              borderRadius: radius.circle,
+              background: fade.shade(0.6),
+              display: 'grid',
+              placeItems: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <Check size={15} strokeWidth={3} color={color.light} />
           </div>
         )}
         {hovered && (
