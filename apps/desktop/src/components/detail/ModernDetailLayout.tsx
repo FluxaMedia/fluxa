@@ -278,9 +278,9 @@ export function ModernDetailLayout({
   const metascore = parseInt(omdbRatings?.metascore ?? '', 10);
   if (Number.isFinite(metascore)) fallbackRatings.metacritic = metascore;
   const ratingsNode = hasMdblistRatings ? (
-    <RatingsRow ratings={mdblistRatings} />
+    <RatingsRow ratings={mdblistRatings} bare />
   ) : Object.keys(fallbackRatings).length > 0 ? (
-    <RatingsRow ratings={fallbackRatings} />
+    <RatingsRow ratings={fallbackRatings} bare />
   ) : null;
   const createdBy = nameList(displayMeta.createdBy);
   const creators = createdBy.length ? createdBy : nameList(displayMeta.director);

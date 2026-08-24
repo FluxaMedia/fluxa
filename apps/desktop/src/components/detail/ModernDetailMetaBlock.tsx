@@ -49,21 +49,29 @@ export function ModernDetailMetaBlock({
   const [primary, ...secondary] = metaDetails;
   return (
     <div style={MS.metaBlock}>
-      {(metaDetails.length > 0 || certification || genres.length > 0) && (
-        <div style={{ ...MS.metaChipRow, marginBottom: '0.75rem' }}>
+      {(metaDetails.length > 0 || certification || ratings) && (
+        <div style={{ ...MS.metaChipRow, marginBottom: '0.5rem' }}>
           {primary && <span style={{ fontSize: fontSize.base, fontWeight: weight.semibold, color: color.textStrong }}>{primary}</span>}
           {certification && <AgeBadge label={certification} />}
           {secondary.map((detail) => (
-            <span key={detail} style={{ fontSize: fontSize.base, fontWeight: weight.medium, color: color.textMuted }}>
-              {detail}
-            </span>
+            <React.Fragment key={detail}>
+              <span style={MS.metaDot}>·</span>
+              <span style={{ fontSize: fontSize.base, fontWeight: weight.medium, color: color.textMuted }}>{detail}</span>
+            </React.Fragment>
           ))}
-          {genres.map((genre) => (
-            <GenreTag key={genre} label={genre} onClick={() => onNavigateGenre?.(genre)} />
+          {ratings}
+        </div>
+      )}
+      {genres.length > 0 && (
+        <div style={{ ...MS.metaChipRow, marginBottom: '0.875rem' }}>
+          {genres.map((genre, index) => (
+            <React.Fragment key={genre}>
+              {index > 0 && <span style={MS.metaDot}>·</span>}
+              <GenreTag label={genre} onClick={() => onNavigateGenre?.(genre)} />
+            </React.Fragment>
           ))}
         </div>
       )}
-      {ratings && <div style={{ marginBottom: '0.875rem' }}>{ratings}</div>}
       {description && (
         <>
           <p ref={descRef} style={expanded || unclamp ? { ...MS.descText, WebkitLineClamp: 'unset', overflow: 'visible' } : MS.descText}>
