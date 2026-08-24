@@ -40,6 +40,8 @@ export function useTrailerPlayback({
   const trailerActive = !!trailerStreamUrl && trailerReady;
   const trailerPending = trailerResolving || trailerLoading || !!trailerStreamUrl;
   const [selectedTrailerSubtitle, setSelectedTrailerSubtitle] = useState<YoutubeTrailerSubtitleTrack | null>(null);
+  const [manualStart, setManualStart] = useState(false);
+  const canPlayTrailer = trailerVideoIds.length > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -63,12 +65,13 @@ export function useTrailerPlayback({
     setTrailerResolving(false);
     setTrailerLoading(false);
     setTrailerMuted(true);
+    setManualStart(false);
   }, [metaId]);
 
   useEffect(() => {
-    if (!autoplay || !isActive || trailerVideoIds.length === 0) return;
+    if ((!autoplay && !manualStart) || !isActive || trailerVideoIds.length === 0) return;
     let cancelled = false;
-    let delayElapsed = autoplayDelaySecs <= 0;
+    let delayElapsed = manualStart || autoplayDelaySecs <= 0;
     let resolvedTrailer: Awaited<ReturnType<typeof resolveYoutubeTrailer>> | null = null;
     let resolveFinished = false;
     setTrailerResolving(true);
@@ -90,7 +93,7 @@ export function useTrailerPlayback({
       delayElapsed = true;
       if (!resolveFinished) setTrailerLoading(true);
       applyResolvedTrailer();
-    }, autoplayDelaySecs * 1000);
+    }, manualStart ? 0 : autoplayDelaySecs * 1000);
 
     (async () => {
       for (const id of trailerVideoIds) {
@@ -116,7 +119,7 @@ export function useTrailerPlayback({
       setTrailerResolving(false);
       window.clearTimeout(delayId);
     };
-  }, [trailerVideoIds, autoplay, autoplayDelaySecs, isActive]);
+  }, [trailerVideoIds, autoplay, autoplayDelaySecs, isActive, manualStart]);
 
   useEffect(() => {
     if (isActive) return;
@@ -237,6 +240,7 @@ export function useTrailerPlayback({
     setTrailerStreamUrl(null);
     setTrailerAudioUrl(null);
     setTrailerLoading(false);
+    setManualStart(false);
   };
 
   const toggleTrailerMute = () => {
@@ -275,7 +279,15 @@ export function useTrailerPlayback({
     } catch {}
   };
 
+  function startTrailer() {
+    if (!canPlayTrailer) return;
+    setTrailerMuted(false);
+    setManualStart(true);
+  }
+
   return {
+    canPlayTrailer,
+    startTrailer,
     trailerContainerRef,
     trailerVideoRef,
     trailerAudioRef,

@@ -2,12 +2,11 @@ import React from 'react';
 import { color, fade } from '../../design';
 import { MovieCard } from '../MovieCard';
 import { t } from '../../i18n';
-import type { DetailState, LibraryItem, Meta, MetaLink, Trailer, Video } from '../../core/types';
+import type { DetailState, LibraryItem, Meta, MetaLink, Video } from '../../core/types';
 import type { posterPrefsFromState } from '../../core/posterPrefs';
 import { MS, S, spinnerStyle } from './detailStyles';
 import { MetaFactsSection } from './MetaFacts';
 import { CastAvatar, type NormalizedCastMember } from './castSection';
-import { TrailerCarousel, type TrailerMetadata } from './TrailerCarousel';
 import { ModernEpisodeCard } from './ModernEpisodeCard';
 import type { ProgressEntry } from './EpisodePanel';
 
@@ -16,16 +15,12 @@ export function DetailsTabContent({
   castMembers,
   directorLinks,
   peopleImages,
-  displayTrailers,
-  trailerMetadata,
   creators,
 }: {
   displayMeta: Meta;
   castMembers: NormalizedCastMember[];
   directorLinks: MetaLink[];
   peopleImages: Record<string, string>;
-  displayTrailers: Trailer[];
-  trailerMetadata: TrailerMetadata;
   creators: string[];
 }) {
   return (
@@ -55,12 +50,6 @@ export function DetailsTabContent({
               />
             ))}
           </div>
-        </div>
-      )}
-      {displayTrailers.length > 0 && (
-        <div style={MS.detailsSection}>
-          <h3 style={MS.detailsSectionTitle}>{t('auto.trailers')}</h3>
-          <TrailerCarousel trailers={displayTrailers} trailerMetadata={trailerMetadata} />
         </div>
       )}
       <MetaFactsSection displayMeta={displayMeta} />

@@ -5,7 +5,7 @@ import type { Meta } from '../core/types';
 import { t } from '../i18n';
 import { heroKeyframes, heroStyles as styles } from './heroStyles';
 import { readOptionalString } from './HeroSectionParts';
-import { youtubeVideoId } from './detail/TrailerCarousel';
+import { youtubeVideoId } from './detail/youtube';
 import { useTrailerPlayback } from '../hooks/useTrailerPlayback';
 import { assetUrl } from '../platform/assets';
 

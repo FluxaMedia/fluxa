@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getLanguage, t } from '../../i18n';
+import { platformOpenExternal } from '../../platform/browser';
 import type { DetailState, LibraryItem, Meta, MetaLink, Stream, Trailer, Video } from '../../core/types';
 import type { posterPrefsFromState } from '../../core/posterPrefs';
 import { MS } from './detailStyles';
 import { type NormalizedCastMember } from './castSection';
-import { youtubeVideoId, type TrailerMetadata } from './TrailerCarousel';
+import { youtubeVideoId } from './youtube';
 import { InlineSourceList, MovieSourcePanel } from './SourcePanel';
 import { type ProgressEntry } from './EpisodePanel';
 import { useSeasonWatched } from '../../hooks/useSeasonWatched';
@@ -35,7 +36,6 @@ export type ModernDetailProps = {
   episodePlan: { seasonNumbers?: number[]; selectedSeason?: number; episodes?: Video[]; selectedEpisode?: Video | null } | null;
   similarItems: Meta[];
   displayTrailers: Trailer[];
-  trailerMetadata: TrailerMetadata;
   castMembers: NormalizedCastMember[];
   directorLinks: MetaLink[];
   peopleImages: Record<string, string>;
@@ -100,7 +100,6 @@ export function ModernDetailLayout({
   episodePlan,
   similarItems,
   displayTrailers,
-  trailerMetadata,
   castMembers,
   directorLinks,
   peopleImages,
@@ -314,7 +313,18 @@ export function ModernDetailLayout({
               if (continueEp) onEpisodeClick(continueEp);
             } else onMovieSources();
           }}
-          trailerUrl={trailerOnHero && displayTrailers.length > 0 ? displayTrailers[0].url : undefined}
+          onPlayTrailer={
+            trailerOnHero
+              ? trailer.canPlayTrailer && !trailer.trailerPending
+                ? () => {
+                    screenRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                    trailer.startTrailer();
+                  }
+                : undefined
+              : displayTrailers.length > 0
+                ? () => platformOpenExternal(displayTrailers[0].url).catch(() => {})
+                : undefined
+          }
           isInWatchlist={isInWatchlist}
           onToggleWatchlist={onToggleWatchlist}
           isCompleted={isCompleted}
@@ -381,8 +391,6 @@ export function ModernDetailLayout({
             castMembers={castMembers}
             directorLinks={directorLinks}
             peopleImages={peopleImages}
-            displayTrailers={displayTrailers}
-            trailerMetadata={trailerMetadata}
             creators={creators}
           />
         )}

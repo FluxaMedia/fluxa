@@ -11,7 +11,6 @@ import { getLanguage, t } from '../i18n';
 import { fetchTmdbPeopleImages } from '../core/tmdb';
 import { NAV_RAIL_WIDTH, TOP_BAR_H, S } from '../components/detail/detailStyles';
 import { buildCastMembers, type NormalizedCastMember } from '../components/detail/castSection';
-import { fetchYoutubeTrailerMetadata, youtubeVideoId, type TrailerMetadata } from '../components/detail/TrailerCarousel';
 import { type ProgressEntry } from '../components/detail/EpisodePanel';
 import { ModernDetailLayout } from '../components/detail/ModernDetailLayout';
 import { TraktCommentsDialog } from '../components/detail/TraktCommentsDialog';
@@ -73,7 +72,6 @@ export function DetailScreen({
   const [showSources, setShowSources] = useState(autoShowStreams ?? false);
   const [streamAddonCount, setStreamAddonCount] = useState(0);
   const [peopleImages, setPeopleImages] = useState<Record<string, string>>({});
-  const [trailerMetadata, setTrailerMetadata] = useState<TrailerMetadata>({});
   const [episodePlan, setEpisodePlan] = useState<{
     seasonNumbers?: number[];
     selectedSeason?: number;
@@ -263,29 +261,6 @@ export function DetailScreen({
     setSelectedEpisode(null);
     setShowSources(false);
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setTrailerMetadata({});
-    const youtubeTrailers = displayTrailers.filter((trailer) => youtubeVideoId(trailer.url));
-    if (youtubeTrailers.length === 0) return;
-    Promise.all(
-      youtubeTrailers.map(async (trailer) => {
-        const metadata = await fetchYoutubeTrailerMetadata(trailer.url);
-        return [trailer.url, metadata] as const;
-      }),
-    ).then((entries) => {
-      if (cancelled) return;
-      const next: TrailerMetadata = {};
-      for (const [url, metadata] of entries) {
-        if (metadata) next[url] = metadata;
-      }
-      setTrailerMetadata(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [displayTrailers]);
 
   useEffect(() => {
     if (!detailHeroAutoplayTrailer) return;
@@ -483,7 +458,6 @@ export function DetailScreen({
         episodePlan={episodePlan}
         similarItems={similarItems}
         displayTrailers={displayTrailers}
-        trailerMetadata={trailerMetadata}
         castMembers={castMembers}
         directorLinks={directorLinks}
         peopleImages={peopleImages}
