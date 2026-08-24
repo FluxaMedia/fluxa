@@ -398,7 +398,7 @@ function SourcesEmptyState({
   const action = hasAddons ? onRetry : onOpenSettings;
   const actionLabel = hasAddons ? t('sources.retry') : t('settings.open_addon_settings');
   return (
-    <div style={SS.center}>
+    <div style={{ ...SS.center, flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
       <p style={SS.emptyText}>{hasAddons ? t('auto.no_sources_found_3019f12c') : t('sources.no_stream_addons')}</p>
       <p style={{ color: color.textDim, fontSize: fontSize.sm, margin: '0.375rem 0 0', textAlign: 'center', maxWidth: '20rem' }}>
         {hasAddons ? t('sources.no_sources_hint') : t('sources.no_stream_addons_hint')}
