@@ -192,6 +192,7 @@ async function fetchPluginStreamsForDetail(
   id: string | undefined,
   detail: unknown,
   signal?: AbortSignal,
+  onScraperStreams?: (streams: Array<Record<string, unknown>>) => void,
 ): Promise<Array<Record<string, unknown>>> {
   if (!id) return [];
   try {
@@ -209,7 +210,7 @@ async function fetchPluginStreamsForDetail(
     ]);
     const pluginContentId = embeddedTmdbId || tmdbPlan?.tmdbId || parsed.imdb;
     if (!pluginContentId) return [];
-    return await fetchPluginStreams(contentType, pluginContentId, parsed.season, parsed.episode, signal);
+    return await fetchPluginStreams(contentType, pluginContentId, parsed.season, parsed.episode, signal, onScraperStreams);
   } catch {
     return [];
   }
@@ -228,43 +229,42 @@ export async function fetchDetailStreams(
 
   const partialDispatches: Promise<void>[] = [];
   const failedAddonNames = new Set<string>();
-  const pluginStreamsPromise = fetchPluginStreamsForDetail(contentType, idField, payload.detail, signal);
 
-  const values = await fetchPlannedResources(
-    { kind: 'streams', addons, contentType, requestIds },
-    onStateUpdate
-      ? (partialValue) => {
-          const partialStreams = (partialValue as { streams?: unknown[] })?.streams ?? [];
-          if (partialStreams.length === 0) return;
-          const partialAddons = [
-            ...new Set((partialStreams as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean)),
-          ] as string[];
-          partialDispatches.push(
-            dispatchAction(
-              JSON.stringify({
-                type: 'detailStreamsAppended',
-                streams: partialStreams,
-                availableAddons: partialAddons,
-                generation,
-              }),
-            )
-              .then((result) => {
-                if (result?.state) onStateUpdate(result.state);
-              })
-              .catch(() => {}),
-          );
-        }
-      : undefined,
-    signal,
-    (addonName) => failedAddonNames.add(addonName),
-  );
+  const append = (incoming: unknown[]) => {
+    if (!onStateUpdate || incoming.length === 0) return;
+    const names = [...new Set((incoming as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean))] as string[];
+    partialDispatches.push(
+      dispatchAction(
+        JSON.stringify({
+          type: 'detailStreamsAppended',
+          streams: incoming,
+          availableAddons: names,
+          generation,
+        }),
+      )
+        .then((result) => {
+          if (result?.state) onStateUpdate(result.state);
+        })
+        .catch(() => {}),
+    );
+  };
+
+  const pluginStreamsPromise = fetchPluginStreamsForDetail(contentType, idField, payload.detail, signal, append);
+
+  const [values, pluginStreams] = await Promise.all([
+    fetchPlannedResources(
+      { kind: 'streams', addons, contentType, requestIds },
+      (partialValue) => append((partialValue as { streams?: unknown[] })?.streams ?? []),
+      signal,
+      (addonName) => failedAddonNames.add(addonName),
+    ),
+    pluginStreamsPromise,
+  ]);
 
   // Ensure all partial dispatches complete before completeEffect runs
   await Promise.allSettled(partialDispatches);
 
   const streams = values.flatMap((value) => (value as { streams?: unknown[] })?.streams ?? []);
-
-  const pluginStreams = await pluginStreamsPromise;
   if (pluginStreams.length > 0) streams.push(...pluginStreams);
 
   const availableAddons = [...new Set((streams as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean))] as string[];

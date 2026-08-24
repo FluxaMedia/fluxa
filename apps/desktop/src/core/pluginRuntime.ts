@@ -53,6 +53,7 @@ export async function fetchPluginStreams(
   season: number | undefined,
   episode: number | undefined,
   signal?: AbortSignal,
+  onScraperStreams?: (streams: Array<Record<string, unknown>>) => void,
 ): Promise<Array<Record<string, unknown>>> {
   if (!tmdbId) {
     pluginDebug(`skipped without a plugin content id type=${contentType}`);
@@ -99,7 +100,9 @@ export async function fetchPluginStreams(
         );
         const streams = (await coreInvoke<Array<Record<string, unknown>>>('pluginStreamResultsToStreams', raw)) ?? [];
         pluginDebug(`completed scraper=${scraper.id} streams=${streams.length}`);
-        return streams.map((stream) => ({ ...stream, addonName: scraper.name }));
+        const named = streams.map((stream) => ({ ...stream, addonName: scraper.name }));
+        if (named.length > 0) onScraperStreams?.(named);
+        return named;
       } catch (error) {
         pluginDebug(`scraper failed scraper=${scraper.id} error=${error instanceof Error ? error.message : String(error)}`);
         return [];
