@@ -16,22 +16,31 @@ class SubtitleCoordinator(
     private val _cues = MutableStateFlow<List<TextCue>>(emptyList())
     val cues: StateFlow<List<TextCue>> = _cues
 
-    private var collectJob: Job? = null
+    private enum class Active { Sidecar, Embedded }
+
+    private var framesJob: Job? = null
+    private var cuesJob: Job? = null
+    private var active: Active? = null
 
     fun selectSidecar(source: SubtitleSource.Sidecar) {
         sidecar.load(source)
-        scope.launch { sidecar.cues.collect { _cues.value = it } }
-        collect(sidecar.frames)
+        if (active == Active.Sidecar) return
+        active = Active.Sidecar
+        bind(sidecar.frames, sidecar.cues)
     }
 
     fun selectEmbedded() {
-        scope.launch { embedded.cues.collect { _cues.value = it } }
-        collect(embedded.frames)
+        if (active == Active.Embedded) return
+        active = Active.Embedded
+        bind(embedded.frames, embedded.cues)
     }
 
     fun clear() {
-        collectJob?.cancel()
-        collectJob = null
+        framesJob?.cancel()
+        framesJob = null
+        cuesJob?.cancel()
+        cuesJob = null
+        active = null
         _frames.value = SubtitleFrame(emptyList(), null)
         _cues.value = emptyList()
     }
@@ -53,8 +62,10 @@ class SubtitleCoordinator(
 
     fun resetEmbedded() = embedded.reset()
 
-    private fun collect(source: StateFlow<SubtitleFrame>) {
-        collectJob?.cancel()
-        collectJob = scope.launch { source.collect { _frames.value = it } }
+    private fun bind(frames: StateFlow<SubtitleFrame>, cues: StateFlow<List<TextCue>>) {
+        framesJob?.cancel()
+        cuesJob?.cancel()
+        framesJob = scope.launch { frames.collect { _frames.value = it } }
+        cuesJob = scope.launch { cues.collect { _cues.value = it } }
     }
 }
