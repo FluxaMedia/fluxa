@@ -1,5 +1,5 @@
 import type React from 'react';
-import { color, fade, fontSize, heading, layout, lineHeight, radius, space, weight, z } from '../../design';
+import { color, fade, fontSize, heading, layout, lineHeight, radius, space, tracking, weight, z } from '../../design';
 
 export const NAV_RAIL_WIDTH = 6.5;
 export const TOP_BAR_H = 3.25;
@@ -97,7 +97,7 @@ export const S: Record<string, React.CSSProperties> = {
     maxWidth: '31.25rem',
     fontWeight: 600,
   },
-  castRow: { display: 'flex', gap: '1.125rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '0.375rem' },
+  castRow: { display: 'flex', gap: '1.125rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '0.75rem' },
   trailerSection: { position: 'relative', zIndex: 1, padding: '0.25rem 0 1.375rem' },
   trailerRail: { position: 'relative' },
   trailerList: {
@@ -611,13 +611,13 @@ export const MS: Record<string, React.CSSProperties> = {
   pageBgGradLeft: {
     position: 'absolute',
     inset: 0,
-    background: `linear-gradient(to right, ${fade.elevated(0.9)} 0%, ${fade.elevated(0.42)} 34%, ${fade.elevated(0.08)} 60%, transparent 100%)`,
+    background: `linear-gradient(to right, ${fade.elevated(0.95)} 0%, ${fade.elevated(0.6)} 34%, ${fade.elevated(0.2)} 62%, ${fade.elevated(0.05)} 100%)`,
   },
   pageBgGradBottom: {
     position: 'absolute',
     inset: 0,
     background:
-      `linear-gradient(to bottom, transparent 32%, ${fade.elevated(0.16)} 48%, ${fade.elevated(0.5)} 65%, ${fade.elevated(0.82)} 80%, ${fade.elevated(0.96)} 92%, ${color.bgElevated} 100%)`,
+      `linear-gradient(to bottom, ${fade.elevated(0.1)} 0%, ${fade.elevated(0.28)} 34%, ${fade.elevated(0.62)} 52%, ${fade.elevated(0.88)} 66%, ${color.bgElevated} 78%)`,
   },
   heroWrap: {
     position: 'relative',
@@ -749,6 +749,7 @@ export const MS: Record<string, React.CSSProperties> = {
     zIndex: 1,
     padding: '1.5rem 3.75rem 3.75rem 4.6875rem',
     marginTop: '-5rem',
+    background: `linear-gradient(to bottom, transparent 0rem, ${fade.elevated(0.55)} 4rem, ${fade.elevated(0.92)} 8rem, ${color.bgElevated} 12rem)`,
     display: 'grid',
     gridTemplateColumns: `minmax(0, 1fr) ${layout.detailRail}`,
     gap: '2.25rem',
@@ -997,7 +998,14 @@ export const MS: Record<string, React.CSSProperties> = {
   relatedGrid: { display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem', paddingBottom: '2.5rem' },
   detailsTab: { paddingBottom: '3.75rem' },
   detailsSection: { marginBottom: '1.875rem' },
-  detailsSectionTitle: { color: color.textPrimary, fontSize: fontSize.xl, fontWeight: 700, margin: '0 0 0.875rem' },
+  detailsSectionTitle: {
+    color: color.textDim,
+    fontSize: fontSize.xs,
+    fontWeight: weight.bold,
+    letterSpacing: tracking.wide,
+    textTransform: 'uppercase',
+    margin: '0 0 0.875rem',
+  },
   detailsText: { color: color.textBody, fontSize: fontSize.md, lineHeight: '1.375rem', margin: 0, maxWidth: '56.25rem' },
   overlayBackdrop: {
     position: 'fixed',

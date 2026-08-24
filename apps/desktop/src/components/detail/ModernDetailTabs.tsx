@@ -27,12 +27,6 @@ export function DetailsTabContent({
 }) {
   return (
     <div style={{ ...MS.detailsTab, minHeight: '12.5rem' }}>
-      {displayMeta.description && (
-        <div style={MS.detailsSection}>
-          <h3 style={MS.detailsSectionTitle}>{t('detail.summary')}</h3>
-          <p style={MS.detailsText}>{displayMeta.description}</p>
-        </div>
-      )}
       {displayMeta.awards && (
         <div style={MS.detailsSection}>
           <h3 style={MS.detailsSectionTitle}>{t('detail.awards')}</h3>

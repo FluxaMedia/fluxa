@@ -431,7 +431,6 @@ export function ModernDetailLayout({
 
         {!hidden.has('rail') && <ModernDetailRail
           displayMeta={displayMeta}
-          posterUrl={displayMeta.poster ?? meta.poster}
           mdblistRatings={mdblistRatings}
           omdbRatings={omdbRatings}
           castMembers={castMembers}

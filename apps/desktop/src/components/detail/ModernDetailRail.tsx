@@ -9,7 +9,7 @@ import type { NormalizedCastMember } from './castSection';
 import { formatEpDate } from './EpisodePanel';
 import { dedupedWatchProviders, WatchProviderLogo, openWatchProvidersLink } from './watchProvidersSection';
 
-type ScoreRow = { label: string; value: string; fill: number };
+type ScoreRow = { label: string; value: string };
 
 function buildScoreRows(
   displayMeta: Meta,
@@ -18,17 +18,13 @@ function buildScoreRows(
   const rows: ScoreRow[] = [];
   if (displayMeta.imdbRating) {
     const value = Number(displayMeta.imdbRating);
-    rows.push({ label: 'IMDb', value: value.toFixed(1), fill: Math.min(100, value * 10) });
+    rows.push({ label: 'IMDb', value: value.toFixed(1) });
   }
   if (omdbRatings?.rottenTomatoes) {
-    rows.push({
-      label: 'Rotten Tomatoes',
-      value: omdbRatings.rottenTomatoes,
-      fill: Math.min(100, parseInt(omdbRatings.rottenTomatoes, 10) || 0),
-    });
+    rows.push({ label: 'Rotten Tomatoes', value: omdbRatings.rottenTomatoes });
   }
   if (omdbRatings?.metascore) {
-    rows.push({ label: 'Metascore', value: omdbRatings.metascore, fill: Math.min(100, parseInt(omdbRatings.metascore, 10) || 0) });
+    rows.push({ label: 'Metascore', value: omdbRatings.metascore });
   }
   return rows;
 }
@@ -50,7 +46,6 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 export function ModernDetailRail({
   displayMeta,
-  posterUrl,
   mdblistRatings,
   omdbRatings,
   castMembers,
@@ -60,7 +55,6 @@ export function ModernDetailRail({
   onSeeAllCast,
 }: {
   displayMeta: Meta;
-  posterUrl?: string;
   mdblistRatings?: Record<string, number> | null;
   omdbRatings?: { rottenTomatoes?: string; metascore?: string } | null;
   castMembers: NormalizedCastMember[];
@@ -81,8 +75,6 @@ export function ModernDetailRail({
 
   return (
     <aside className="detail-rail" style={MS.railCol}>
-      {posterUrl && <img src={posterUrl} alt="" style={MS.railPoster} />}
-
       {(hasMdblistRatings || scoreRows.length > 0) && (
         <div style={MS.railGroup}>
           <SectionLabel>{t('detail.ratings')}</SectionLabel>
@@ -90,14 +82,9 @@ export function ModernDetailRail({
             <RatingsRow ratings={mdblistRatings} />
           ) : (
             scoreRows.map((row) => (
-              <div key={row.label} style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
-                <div style={MS.railRow}>
-                  <span style={MS.railKey}>{row.label}</span>
-                  <span style={MS.railScoreValue}>{row.value}</span>
-                </div>
-                <span style={MS.railTrack}>
-                  <span style={{ ...MS.railTrackFill, width: `${row.fill}%` }} />
-                </span>
+              <div key={row.label} style={MS.railRow}>
+                <span style={MS.railKey}>{row.label}</span>
+                <span style={MS.railScoreValue}>{row.value}</span>
               </div>
             ))
           )}
