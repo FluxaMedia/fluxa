@@ -123,11 +123,6 @@ const TrailerCard = React.memo(function TrailerCard({
           <span style={S.trailerThumbFallback}>{t('auto.trailer')}</span>
         )}
         <span style={S.trailerOverlay} />
-        <span style={S.trailerPlayButton}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        </span>
       </span>
       <span style={S.trailerCardTitle}>{title}</span>
     </button>

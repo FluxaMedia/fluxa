@@ -265,20 +265,24 @@ export function ModernDetailLayout({
   const modernMetaDetails: string[] = [];
   if (displayMeta.releaseInfo) modernMetaDetails.push(displayMeta.releaseInfo);
   if (isSeries && seasonNumbers.length > 0) modernMetaDetails.push(`${seasonNumbers.length} ${t('auto.seasons')}`);
-  if (displayMeta.runtime) modernMetaDetails.push(displayMeta.runtime);
+  if (displayMeta.runtime) modernMetaDetails.push(displayMeta.runtime.replace(/(\d\s*h)\s*(\d)/i, '$1 $2'));
 
   const heroLogo = fanartArtwork?.hdLogo || displayMeta.logo;
 
   const genres = Array.isArray(displayMeta.genres) ? displayMeta.genres.slice(0, 6) : [];
   const hasMdblistRatings = mdblistRatings != null && Object.keys(mdblistRatings).length > 0;
   const imdbScore = displayMeta.imdbRating ? Number(displayMeta.imdbRating) : null;
-  const ratingsNode = hasMdblistRatings ? <RatingsRow ratings={mdblistRatings} /> : null;
-  const scores: string[] = [];
-  if (!hasMdblistRatings) {
-    if (imdbScore) scores.push(`IMDb ${imdbScore.toFixed(1)}`);
-    if (omdbRatings?.rottenTomatoes) scores.push(`RT ${omdbRatings.rottenTomatoes}`);
-    if (omdbRatings?.metascore) scores.push(`Metascore ${omdbRatings.metascore}`);
-  }
+  const fallbackRatings: Record<string, number> = {};
+  if (imdbScore) fallbackRatings.imdb = imdbScore;
+  const tomatoScore = parseInt(omdbRatings?.rottenTomatoes ?? '', 10);
+  if (Number.isFinite(tomatoScore)) fallbackRatings.tomatoes = tomatoScore;
+  const metascore = parseInt(omdbRatings?.metascore ?? '', 10);
+  if (Number.isFinite(metascore)) fallbackRatings.metacritic = metascore;
+  const ratingsNode = hasMdblistRatings ? (
+    <RatingsRow ratings={mdblistRatings} />
+  ) : Object.keys(fallbackRatings).length > 0 ? (
+    <RatingsRow ratings={fallbackRatings} />
+  ) : null;
   const createdBy = nameList(displayMeta.createdBy);
   const creators = createdBy.length ? createdBy : nameList(displayMeta.director);
 
@@ -327,7 +331,6 @@ export function ModernDetailLayout({
           metaDetails={modernMetaDetails}
           description={displayMeta.description}
           genres={genres}
-          scores={scores}
           ratings={ratingsNode}
           onNavigateGenre={onNavigateGenre}
         />}

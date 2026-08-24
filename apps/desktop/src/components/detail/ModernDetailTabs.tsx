@@ -170,18 +170,19 @@ export function RelatedTabContent({
         <p style={MS.episodeCount}>{t('auto.no_similar_titles')}</p>
       ) : (
         <div className="detail-related-grid" style={MS.relatedGrid}>
-          {similarItems.slice(0, 24).map((item) => (
-            <MovieCard
-              key={`${item.type}:${item.id}`}
-              meta={item}
-              width={poster.width}
-              height={poster.height}
-              radius={poster.radius}
-              hideTitle={poster.hideTitles}
-              layout={poster.layout}
-              preview={poster.hoverPreview}
-              onClick={onNavigateDetail}
-            />
+          {similarItems.map((item) => (
+            <div key={`${item.type}:${item.id}`} style={{ flexShrink: 0 }}>
+              <MovieCard
+                meta={item}
+                width={poster.width}
+                height={poster.height}
+                radius={poster.radius}
+                hideTitle={poster.hideTitles}
+                layout={poster.layout}
+                preview={poster.hoverPreview}
+                onClick={onNavigateDetail}
+              />
+            </div>
           ))}
         </div>
       )}
