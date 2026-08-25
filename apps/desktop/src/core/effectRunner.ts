@@ -132,6 +132,20 @@ async function deriveNextProgressFromLastWatched(metaObj: Record<string, unknown
   );
 }
 
+async function dropNuvioWatchProgress(contentId: string): Promise<void> {
+  const profile = await loadActiveProfile();
+  const token = profile?.nuvioAccessToken;
+  if (!token || !contentId) return;
+  const profileId = profile.nuvioProfileIndex ?? 1;
+  const { nuvioPullWatchProgress, nuvioDeleteWatchProgressKey } = await import('./nuvioApi');
+  const rows = await nuvioPullWatchProgress(token, profileId).catch(() => []);
+  await Promise.all(
+    rows
+      .filter((row) => row.content_id === contentId && row.progress_key)
+      .map((row) => nuvioDeleteWatchProgressKey(token, profileId, row.progress_key).catch(() => undefined)),
+  );
+}
+
 async function runEffect(effect: Effect, onStateUpdate?: (state: Partial<AppState>) => void, signal?: AbortSignal): Promise<unknown> {
   const p = effect.payload;
   let value: unknown;
@@ -203,6 +217,7 @@ async function runEffect(effect: Effect, onStateUpdate?: (state: Partial<AppStat
       );
       if (plan) {
         await libraryProgressDelete(await effectRunnerLibraryKey(), plan.contentId);
+        await dropNuvioWatchProgress(plan.contentId);
         if (plan.removedExternalContinueWatching) {
           await libraryContinueWatchingDelete(await effectRunnerLibraryKey(), plan.contentId);
         }

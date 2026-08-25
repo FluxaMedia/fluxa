@@ -516,6 +516,10 @@ export async function nuvioDeleteWatchProgress(
   );
 }
 
+export async function nuvioDeleteWatchProgressKey(token: string, profileId: number, progressKey: string): Promise<void> {
+  return post('/rest/v1/rpc/sync_delete_watch_progress', { p_profile_id: profileId, p_progress_key: progressKey }, token);
+}
+
 export async function nuvioPullWatchHistory(token: string, profileId: number, pageSize = 500, page = 1): Promise<NuvioWatchedItem[]> {
   return post<NuvioWatchedItem[]>(
     '/rest/v1/rpc/sync_pull_watched_items',
