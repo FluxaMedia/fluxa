@@ -464,9 +464,12 @@ function useDesktopPlayer({
         void finalizeExternalPlayback(null);
         return;
       }
+      if (position === null) {
+        void finalizeExternalPlayback(null);
+        return;
+      }
       const duration = lastTotalDurationSecondsRef.current ?? 0;
-      const timePos = position ?? 0;
-      const status = { pause: 'no', timePos: String(timePos), duration: String(duration) } as EmbeddedMpvStatus;
+      const status = { pause: 'no', timePos: String(position), duration: String(duration) } as EmbeddedMpvStatus;
       lastPlaybackStatusRef.current = status;
       void finalizeExternalPlayback(duration > 0 ? status : null);
     },

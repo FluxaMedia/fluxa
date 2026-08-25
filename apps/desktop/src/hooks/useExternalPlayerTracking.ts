@@ -40,11 +40,13 @@ export function useExternalPlayerTracking({ session, onStatus, onCallback }: Opt
       }
       if (url.protocol !== 'fluxa:' || !['external-player', 'external-player-error'].includes(url.hostname)) return;
       if (url.searchParams.get('session') !== session.sessionId) return;
-      const position = Number(url.searchParams.get('position'));
+      const rawPosition = url.searchParams.get('position');
+      const parsed = rawPosition === null || rawPosition.trim() === '' ? Number.NaN : Number(rawPosition);
+      const position = Number.isFinite(parsed) ? parsed : null;
       debugLog(
-        `externalPlayerTracking: session=${session.sessionId} deep-link callback position=${position} failed=${url.hostname === 'external-player-error'}`,
+        `externalPlayerTracking: session=${session.sessionId} deep-link callback position=${position ?? 'unknown'} failed=${url.hostname === 'external-player-error'}`,
       );
-      onCallback(Number.isFinite(position) ? position : null, url.hostname === 'external-player-error');
+      onCallback(position, url.hostname === 'external-player-error');
     });
     if (session.tracking !== 'live') {
       return () => {
