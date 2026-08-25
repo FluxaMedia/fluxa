@@ -53,7 +53,6 @@ import type { AppState, Meta, Stream, Video, UserProfile } from './core/types';
 import { WebPlayerOverlay } from './components/WebPlayerOverlay';
 import { ExternalHandoffPrompt } from './components/ExternalHandoffPrompt';
 import { useExternalHandoff } from './hooks/useExternalHandoff';
-import { runtimeSeconds } from './core/externalSession';
 
 const settingsStateEqual = appStateSliceEqual('settings');
 const profileStateEqual = appStateSliceEqual('plugins');
@@ -213,9 +212,7 @@ export default function App() {
         target,
         startedAt: Date.now(),
         resumeAt: positionSeconds,
-        runtime: Number.isFinite(durationSeconds) && durationSeconds > 0
-          ? durationSeconds
-          : runtimeSeconds(meta, playerEpisode),
+        runtime: Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 0,
       });
     },
     [externalHandoff, playerEpisode, playingMetaRef, playingStreamRef],
