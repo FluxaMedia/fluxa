@@ -257,7 +257,6 @@ export async function readHomeBootstrap(payload: Record<string, unknown>, signal
   if (!payload.force) {
     const cached = await storageRead<HomeBootstrapCache>(cacheKey);
     if (cached) return { ...cached, stale: true };
-    return { stale: true };
   }
 
   const profile = await loadActiveProfile();
