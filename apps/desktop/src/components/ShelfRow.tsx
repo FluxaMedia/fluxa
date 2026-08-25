@@ -76,7 +76,11 @@ export const ShelfRow = React.memo(
     const updateViewport = useCallback(() => {
       const el = scrollRef.current;
       if (!el) return;
-      setViewport({ clientWidth: el.clientWidth, scrollLeft: el.scrollLeft });
+      setViewport((current) =>
+        current.clientWidth === el.clientWidth && current.scrollLeft === el.scrollLeft
+          ? current
+          : { clientWidth: el.clientWidth, scrollLeft: el.scrollLeft },
+      );
     }, []);
 
     useEffect(() => {

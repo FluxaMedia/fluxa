@@ -43,8 +43,14 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
     const node = scrollRef.current;
     if (!node) return;
     let raf: number | null = null;
+    // A fresh object here re-renders even when nothing moved, and the render
+    // feeds the ResizeObserver that triggered it — the pair spins at frame rate.
     const update = () => {
-      setViewport({ width: node.clientWidth, height: node.clientHeight, scrollTop: node.scrollTop });
+      setViewport((current) =>
+        current.width === node.clientWidth && current.height === node.clientHeight && current.scrollTop === node.scrollTop
+          ? current
+          : { width: node.clientWidth, height: node.clientHeight, scrollTop: node.scrollTop },
+      );
     };
     const onResize = () => {
       if (raf != null) cancelAnimationFrame(raf);
