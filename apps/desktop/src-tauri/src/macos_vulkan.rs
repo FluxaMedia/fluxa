@@ -26,8 +26,7 @@ type PfnCreateMetalSurfaceEXT = unsafe extern "system" fn(
     *mut VkSurfaceKHR,
 ) -> VkResult;
 
-fn find_moltenvk_path() -> PathBuf {
-    let names = ["libMoltenVK.dylib"];
+fn library_search_dirs() -> Vec<PathBuf> {
     let mut search_dirs: Vec<PathBuf> = Vec::new();
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
@@ -44,16 +43,63 @@ fn find_moltenvk_path() -> PathBuf {
     }
     search_dirs.push(PathBuf::from("/usr/local/lib"));
     search_dirs.push(PathBuf::from("/opt/homebrew/lib"));
+    search_dirs
+}
 
-    for dir in &search_dirs {
-        for name in &names {
-            let path = dir.join(name);
-            if path.exists() {
-                return path;
-            }
+fn find_moltenvk_path() -> PathBuf {
+    for dir in library_search_dirs() {
+        let path = dir.join("libMoltenVK.dylib");
+        if path.exists() {
+            return path;
         }
     }
     PathBuf::from("libMoltenVK.dylib")
+}
+
+fn find_vulkan_loader_path() -> Option<PathBuf> {
+    for dir in library_search_dirs() {
+        let exact = dir.join("libvulkan.1.dylib");
+        if exact.exists() {
+            return Some(exact);
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        let mut versioned: Vec<PathBuf> = entries
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| {
+                        name.starts_with("libvulkan.1.") && name.ends_with(".dylib")
+                    })
+            })
+            .collect();
+        versioned.sort();
+        if let Some(path) = versioned.pop() {
+            return Some(path);
+        }
+    }
+    None
+}
+
+// The Vulkan loader only accepts physical devices it handed out itself; libmpv
+// calls loader trampolines directly, so handing it MoltenVK's raw ICD handles
+// makes the loader abort() on an "invalid physicalDevice".
+fn point_loader_at_bundled_moltenvk(icd: &std::path::Path) -> Result<(), String> {
+    let manifest = std::env::temp_dir().join("fluxa-moltenvk-icd.json");
+    let contents = format!(
+        "{{\"file_format_version\":\"1.0.0\",\"ICD\":{{\"library_path\":\"{}\",\"api_version\":\"1.2.0\",\"is_portability_driver\":true}}}}",
+        icd.display()
+    );
+    std::fs::write(&manifest, contents).map_err(|e| e.to_string())?;
+    let value = manifest.as_os_str();
+    unsafe {
+        std::env::set_var("VK_DRIVER_FILES", value);
+        std::env::set_var("VK_ICD_FILENAMES", value);
+    }
+    Ok(())
 }
 
 fn dlopen_path(path: &std::path::Path) -> Option<isize> {
@@ -88,9 +134,27 @@ impl VulkanPlatform for MacosPlatform {
     }
 
     fn load_loader(&self) -> Result<PfnGetInstanceProcAddr, String> {
-        let path = find_moltenvk_path();
-        log::info!("macOS Vulkan: loading MoltenVK from {}", path.display());
-        let module = dlopen_path(&path)
+        let icd = find_moltenvk_path();
+        if let Some(loader) = find_vulkan_loader_path() {
+            match point_loader_at_bundled_moltenvk(&icd) {
+                Ok(()) => {
+                    if let Some(module) = dlopen_path(&loader) {
+                        log::info!(
+                            "macOS Vulkan: loading loader {} with ICD {}",
+                            loader.display(),
+                            icd.display()
+                        );
+                        return Ok(unsafe {
+                            std::mem::transmute(dlsym_typed(module, "vkGetInstanceProcAddr")?)
+                        });
+                    }
+                    log::warn!("macOS Vulkan: {} could not be loaded", loader.display());
+                }
+                Err(e) => log::warn!("macOS Vulkan: could not write the MoltenVK ICD manifest: {e}"),
+            }
+        }
+        log::info!("macOS Vulkan: loading MoltenVK from {}", icd.display());
+        let module = dlopen_path(&icd)
             .ok_or("libMoltenVK.dylib not found (bundle it alongside libmpv.dylib)")?;
         Ok(unsafe { std::mem::transmute(dlsym_typed(module, "vkGetInstanceProcAddr")?) })
     }

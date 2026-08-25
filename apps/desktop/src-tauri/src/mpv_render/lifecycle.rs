@@ -68,7 +68,11 @@ impl MpvClientHandle {
 
             // GPU decode — auto-safe tries every platform API (VAAPI/NVDEC/DXVA2/VideoToolbox)
             // and falls back to software decode silently if none is available.
-            client.set_option("hwdec", "auto-safe")?;
+            if cfg!(target_os = "macos") {
+                client.set_option("hwdec", "videotoolbox")?;
+            } else {
+                client.set_option("hwdec", "auto-safe")?;
+            }
             client.set_option("hwdec-codecs", "all")?;
 
             client.set_option("video-sync", "audio")?;
