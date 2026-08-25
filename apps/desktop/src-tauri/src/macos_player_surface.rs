@@ -26,6 +26,7 @@ unsafe extern "C" {
     fn objc_getClass(name: *const i8) -> Id;
     fn objc_msgSend(receiver: Id, sel: Id, ...) -> Id;
     fn sel_registerName(name: *const i8) -> Id;
+    fn object_getClassName(obj: Id) -> *const i8;
 }
 
 unsafe fn cls(name: &str) -> Id {
@@ -52,6 +53,24 @@ unsafe fn msg1_bool(obj: Id, sel_name: &str, b: i8) -> Id {
     let f: Fn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
     f(obj, sel(sel_name), b)
 }
+unsafe fn msg1_usize(obj: Id, sel_name: &str, v: usize) {
+    type Fn = unsafe extern "C" fn(Id, Id, usize);
+    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    unsafe { f(obj, sel(sel_name), v) }
+}
+
+unsafe fn msg1_usize_ret(obj: Id, sel_name: &str, v: usize) -> Id {
+    type Fn = unsafe extern "C" fn(Id, Id, usize) -> Id;
+    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    unsafe { f(obj, sel(sel_name), v) }
+}
+
+unsafe fn msg0_usize(obj: Id, sel_name: &str) -> usize {
+    type Fn = unsafe extern "C" fn(Id, Id) -> usize;
+    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    unsafe { f(obj, sel(sel_name)) }
+}
+
 unsafe fn msg1_f64(obj: Id, sel_name: &str, v: f64) {
     type Fn = unsafe extern "C" fn(Id, Id, f64);
     let f: Fn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
@@ -825,8 +844,17 @@ unsafe fn create_render_subview(
     };
     msg1_bool(view, "setWantsLayer:", 1);
 
-    // Insert at back (NSWindowBelow = -1), relative to nil = behind everything.
-    msg3_positioned(parent.0, view, -1, std::ptr::null_mut());
+    let host = host_view_for(parent.0);
+    match host {
+        HostView::Sibling { content_view, below } => {
+            msg3_positioned(content_view, view, -1, below);
+        }
+        HostView::Container(container) => {
+            msg3_positioned(container, view, -1, std::ptr::null_mut());
+        }
+    }
+    msg1_usize(view, "setAutoresizingMask:", 2 | 16);
+    make_webviews_transparent(parent.0);
 
     // Hidden until playback starts.
     msg1_bool(view, "setHidden:", 1);
@@ -878,6 +906,109 @@ unsafe fn msg0_size(obj: Id, sel_name: &str) -> NSSize {
     type Fn = unsafe extern "C" fn(Id, Id) -> NSSize;
     let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe { f(obj, sel(sel_name)) }
+}
+
+enum HostView {
+    Sibling { content_view: Id, below: Id },
+    Container(Id),
+}
+
+unsafe fn class_name(obj: Id) -> String {
+    if obj.is_null() {
+        return "nil".to_string();
+    }
+    unsafe {
+        let name = object_getClassName(obj);
+        if name.is_null() {
+            "?".to_string()
+        } else {
+            std::ffi::CStr::from_ptr(name).to_string_lossy().into_owned()
+        }
+    }
+}
+
+// Tauri hands back the WKWebView, not the window's content view. A subview of
+// the web view sits under its layer tree and its opaque backdrop, so the video
+// has to become a sibling underneath it instead.
+unsafe fn host_view_for(parent: Id) -> HostView {
+    unsafe {
+        let window = msg0(parent, "window");
+        let content_view = if window.is_null() {
+            std::ptr::null_mut()
+        } else {
+            msg0(window, "contentView")
+        };
+        log::info!(
+            "macos_player_surface: parent={} content_view={}",
+            class_name(parent),
+            class_name(content_view)
+        );
+        if !content_view.is_null() && content_view != parent {
+            let mut below = parent;
+            loop {
+                let superview = msg0(below, "superview");
+                if superview.is_null() || superview == content_view {
+                    break;
+                }
+                below = superview;
+            }
+            return HostView::Sibling {
+                content_view,
+                below,
+            };
+        }
+        HostView::Container(parent)
+    }
+}
+
+unsafe fn make_webviews_transparent(root: Id) {
+    unsafe {
+        let name = class_name(root);
+        if name.contains("WKWebView") {
+            msg1_bool(root, "setOpaque:", 0);
+            let clear = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
+            if !clear.is_null() {
+                msg1_id(root, "setBackgroundColor:", clear);
+                msg1_id(root, "setUnderPageBackgroundColor:", clear);
+            }
+            log::info!("macos_player_surface: made {name} non-opaque");
+            return;
+        }
+        let window = msg0(root, "window");
+        let start = if window.is_null() {
+            root
+        } else {
+            let content = msg0(window, "contentView");
+            if content.is_null() { root } else { content }
+        };
+        walk_and_clear(start);
+    }
+}
+
+unsafe fn walk_and_clear(view: Id) {
+    unsafe {
+        if view.is_null() {
+            return;
+        }
+        let name = class_name(view);
+        if name.contains("WKWebView") {
+            msg1_bool(view, "setOpaque:", 0);
+            let clear = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
+            if !clear.is_null() {
+                msg1_id(view, "setBackgroundColor:", clear);
+                msg1_id(view, "setUnderPageBackgroundColor:", clear);
+            }
+            log::info!("macos_player_surface: made {name} non-opaque");
+        }
+        let subviews = msg0(view, "subviews");
+        if subviews.is_null() {
+            return;
+        }
+        let count = msg0_usize(subviews, "count");
+        for i in 0..count {
+            walk_and_clear(msg1_usize_ret(subviews, "objectAtIndex:", i));
+        }
+    }
 }
 
 unsafe fn create_metal_layer(contents_scale: f64, w: i32, h: i32) -> Result<Id, String> {
