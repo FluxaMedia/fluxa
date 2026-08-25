@@ -6,6 +6,7 @@ import type { PosterPrefs } from '../core/posterPrefs';
 import { rpdbPosterUrl } from '../core/rpdb';
 import { cardImageUrl } from '../core/imageSizes';
 import { ContextMenu } from './ui/ContextMenu';
+import { useLongPress } from '../hooks/useLongPress';
 import { PosterPreviewCard } from './PosterPreviewCard';
 
 interface Props {
@@ -40,6 +41,10 @@ export const MovieCard = React.memo(
     const [imgLoaded, setImgLoaded] = useState(false);
     const [rpdbFailed, setRpdbFailed] = useState(false);
     const [menuPoint, setMenuPoint] = useState<{ x: number; y: number } | null>(null);
+    const longPress = useLongPress((point) => {
+      if (!onDispatch) return;
+      setMenuPoint(point);
+    });
     const [previewAnchor, setPreviewAnchor] = useState<DOMRect | null>(null);
     const previewTimerRef = useRef<number | null>(null);
 
@@ -136,9 +141,15 @@ export const MovieCard = React.memo(
               cursor: 'pointer',
               outline: 'none',
               flexShrink: 0,
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
               marginLeft: topTenRank != null ? Math.round(rankNumWidth - rankOverlap) : 0,
             }}
-            onClick={() => {
+            {...longPress}
+            onClick={(event) => {
+              longPress.onClick(event);
+              if (event.defaultPrevented) return;
               closePreview();
               onClick?.(meta);
             }}

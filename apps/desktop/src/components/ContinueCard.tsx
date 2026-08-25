@@ -4,6 +4,7 @@ import type { LibraryItem, Meta } from '../core/types';
 import { formatAirDay, formatReleaseCountdown, formatRemaining, formatWatched } from '../core/continueWatchingUtils';
 import { ContextMenu } from './ui/ContextMenu';
 import { usePosterSrc } from '../hooks/usePosterSrc';
+import { useLongPress } from '../hooks/useLongPress';
 import { t } from '../i18n';
 
 function resolveBadge(
@@ -65,6 +66,10 @@ export function ContinueCard({
 }) {
   const [hovered, setHovered] = React.useState(false);
   const [menuPoint, setMenuPoint] = React.useState<{ x: number; y: number } | null>(null);
+  const longPress = useLongPress((point) => {
+    if (dismissing || pending || hideActions) return;
+    setMenuPoint(point);
+  });
   const [imgError, setImgError] = React.useState(false);
   const [imgLoaded, setImgLoaded] = React.useState(false);
   const [artworkOverride, setArtworkOverride] = React.useState<string | null>(null);
@@ -150,6 +155,9 @@ export function ContinueCard({
       style={{
         ...(isHorizontal ? cwStyles.landscapeCard : cwStyles.posterCard),
         opacity: dismissing || pending ? 0 : 1,
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
         transform: dismissing ? 'translateX(-0.75rem)' : hovered ? 'translateY(-0.125rem)' : 'translateY(0)',
         transition: dismissing ? 'opacity 0.22s ease, transform 0.22s ease' : 'opacity 0.22s ease, transform 0.16s ease',
         boxShadow: hovered && !dismissing && !pending ? '0 0 0 0.125rem rgba(255,255,255,0.44)' : 'none',
@@ -159,7 +167,12 @@ export function ContinueCard({
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      onClick={() => !dismissing && !pending && onClick(meta)}
+      {...longPress}
+      onClick={(event) => {
+        longPress.onClick(event);
+        if (event.defaultPrevented) return;
+        if (!dismissing && !pending) onClick(meta);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
