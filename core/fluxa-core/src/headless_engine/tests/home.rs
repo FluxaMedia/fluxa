@@ -128,3 +128,37 @@ fn home_load_delivers_continue_watching_in_its_single_bootstrap_effect() {
     );
     assert!(destroy_headless_engine(handle));
 }
+
+#[test]
+fn a_cached_home_is_shown_and_then_refetched() {
+    let handle = create_headless_engine("{}");
+    let requested: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(
+            handle,
+            r#"{"type":"homeLoadRequested","profile":{"id":"p1"},"language":"tr"}"#,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(requested["effects"][0]["payload"]["force"], false);
+
+    let effect_id = requested["effects"][0]["id"].as_str().unwrap();
+    let completed: Value = serde_json::from_str(
+        &headless_engine_complete_effect_json(
+            handle,
+            &json!({
+                "effectId": effect_id,
+                "status": "ok",
+                "value": { "stale": true, "continueWatching": [{ "id": "tt1" }] }
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(completed["state"]["home"]["continueWatching"][0]["id"], "tt1");
+    assert_eq!(completed["effects"][0]["type"], "readHomeBootstrap");
+    assert_eq!(completed["effects"][0]["payload"]["force"], true);
+    assert_eq!(completed["effects"][0]["payload"]["language"], "tr");
+}

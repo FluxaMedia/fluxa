@@ -22,7 +22,6 @@ struct Entry {
     completed: bool,
     percent: Option<f64>,
     source: String,
-    raw: Value,
 }
 
 struct CompletedEpisode {
@@ -132,7 +131,6 @@ impl Entry {
                 .and_then(Value::as_str)
                 .unwrap_or("nuvio")
                 .to_string(),
-            raw: value.clone(),
         })
     }
 

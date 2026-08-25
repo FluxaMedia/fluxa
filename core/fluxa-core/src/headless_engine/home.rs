@@ -25,6 +25,8 @@ pub(super) struct HomeState {
     paging: HomePaging,
     error: Value,
     generation: u64,
+    #[serde(skip)]
+    language: String,
 }
 
 impl Default for HomeState {
@@ -44,6 +46,7 @@ impl Default for HomeState {
             paging: HomePaging::default(),
             error: Value::Null,
             generation: 0,
+            language: String::new(),
         }
     }
 }
@@ -175,6 +178,7 @@ pub(super) fn dispatch_load(
         };
     }
     let language_value = language.unwrap_or_else(|| "en".to_string());
+    engine.state.home.language = language_value.clone();
     vec![engine.effect(
         EffectKind::ReadHomeBootstrap,
         generation,
@@ -244,6 +248,26 @@ pub(super) fn dispatch_catalog_page(
     )]
 }
 
+// A stale bootstrap is the cached copy rendered while the real one is still
+// missing; without this follow-up the cache would be all the client ever sees.
+fn revalidate(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
+    let generation = engine.bump_generation(GenerationKey::Home);
+    let profile_value = engine.state.profile.active.clone();
+    let profile_id = active_profile_id(&engine.state, &profile_value);
+    let language = engine.state.home.language.clone();
+    engine.state.home.generation = generation;
+    vec![engine.effect(
+        EffectKind::ReadHomeBootstrap,
+        generation,
+        ReadHomeBootstrapPayload {
+            profile_id,
+            profile: profile_value,
+            language: if language.is_empty() { "en".to_string() } else { language },
+            force: true,
+        },
+    )]
+}
+
 pub(super) fn complete(
     engine: &mut HeadlessEngine,
     effect_type: &str,
@@ -287,6 +311,9 @@ pub(super) fn complete(
                     engine.state.home.is_stale = stale;
                     engine.state.home.is_loading = stale;
                     engine.state.home.error = Value::Null;
+                    if stale {
+                        return revalidate(engine);
+                    }
                 } else {
                     engine.state.home.is_loading = false;
                     engine.state.home.is_stale = false;
