@@ -53,6 +53,16 @@ impl MpvClientHandle {
         }
     }
 
+    pub fn set_log_level(&self, level: &str) -> Result<(), String> {
+        let c_level = CString::new(level).map_err(|error| error.to_string())?;
+        let result = unsafe { (self.api.mpv_request_log_messages)(self.handle, c_level.as_ptr()) };
+        if result < 0 {
+            Err(self.api.error_string(result))
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn set_option(&self, name: &str, value: &str) -> Result<(), String> {
         let c_name = CString::new(name).map_err(|error| error.to_string())?;
         let c_value = CString::new(value).map_err(|error| error.to_string())?;

@@ -439,6 +439,11 @@ fn install_with_backend(app_handle: AppHandle) -> Result<NativePlayerSurface, St
             }
         }
         if let Some(r) = render_guard.as_mut() {
+            if let Some(client) = client_guard.as_ref()
+                && let Err(e) = client.set_log_level("v")
+            {
+                log::warn!("mpv: could not raise log level for Vulkan init: {e}");
+            }
             let (instance, phys_device, device, queue_index, queue_count, get_proc_addr) =
                 vk_ctx.device_handles();
             let enabled_extensions = vk_ctx.enabled_device_extension_ptrs();
@@ -451,7 +456,15 @@ fn install_with_backend(app_handle: AppHandle) -> Result<NativePlayerSurface, St
                 get_proc_addr,
                 &enabled_extensions,
             )
-            .map_err(|e| format!("mpv Vulkan context failed: {e}"))?;
+            .map_err(|e| {
+                if let Some(client) = client_guard.as_mut() {
+                    let _ = client.poll_events();
+                }
+                format!("mpv Vulkan context failed: {e}")
+            })?;
+            if let Some(client) = client_guard.as_ref() {
+                let _ = client.set_log_level("info");
+            }
             if let Some(icc) = query_colorsync_icc_profile() {
                 if let Err(e) = r.set_icc_profile(&icc) {
                     log::warn!("failed to set ICC profile: {e}");

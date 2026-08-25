@@ -832,6 +832,7 @@ impl VulkanContext {
 
         let missing_features = [
             ("synchronization2", supported_sync2.synchronization2),
+            ("hostQueryReset", supported_vulkan12.host_query_reset),
             ("timelineSemaphore", supported_vulkan12.timeline_semaphore),
             ("bufferDeviceAddress", supported_vulkan12.buffer_device_address),
         ]
@@ -903,6 +904,7 @@ impl VulkanContext {
         let mut vulkan12_features = VkPhysicalDeviceVulkan12Features {
             s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             p_next: &mut synchronization2_features as *mut _ as *mut c_void,
+            host_query_reset: 1,
             timeline_semaphore: 1,
             buffer_device_address: 1,
             ..Default::default()
