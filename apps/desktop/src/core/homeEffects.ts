@@ -216,14 +216,25 @@ export async function continueWatchingForSelectedSource(
     for (const [id, detail] of fetchedMetadata) {
       if (detail) metaById[id] = { ...(metaById[id] as Record<string, unknown> | undefined), ...detail };
     }
-    return (
+    const rows =
       (await coreContinueWatchingForSource({
         source: 'nuvio',
         watchProgress: progressItems,
         metaById,
         prefs,
-      })) ?? []
-    );
+      })) ?? [];
+    void invoke('debug_log', {
+      msg: `cw-source: nuvio rows=${rows.length} raw=${progressItems.length} sample=${JSON.stringify(
+        rows.slice(0, 3).map((row) => ({
+          id: row.id,
+          episode: row.lastEpisodeName,
+          timeOffset: row.timeOffset,
+          duration: row.duration,
+          badge: row.continueWatchingBadge,
+        })),
+      )}`,
+    });
+    return rows;
   }
 
   if (provider) {
