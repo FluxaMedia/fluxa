@@ -1,10 +1,10 @@
-// Windows native player surface — libmpv OpenGL render API via ANGLE/EGL.
+// Windows native player surface — libmpv Vulkan or D3D11 render API.
 //
 // Architecture mirrors linux_player_surface.rs:
 //   • A child HWND (CS_OWNDC, no message loop needed) is created inside the
 //     Tauri window and placed at HWND_BOTTOM so it sits behind WebView2.
-//   • A dedicated render thread owns the ANGLE/EGL context (see windows_egl.rs)
-//     and calls mpv_render_context_render every 16 ms, then eglSwapBuffers.
+//   • A dedicated render thread owns the native GPU context and presents every
+//     16 ms.
 //   • A status-polling loop detects EOF / errors and emits Tauri events so
 //     the frontend can act identically to the Linux code path.
 //   • Player controls live in the WebView overlay (transparent background CSS).
@@ -13,7 +13,6 @@ use crate::mpv_render::VulkanTargetImage;
 use crate::playback_engine::{PlaybackEngine, PlayerEngine};
 use crate::render_backend::{read_render_backend, RenderBackend};
 use crate::windows_d3d11::D3d11Context;
-use crate::windows_egl::{self, EglContext};
 use crate::windows_vulkan::VulkanContext;
 use crate::DesktopState;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -47,35 +46,13 @@ fn hdr_output_enabled(app: &AppHandle) -> bool {
 }
 
 enum RenderContext {
-    Egl(EglContext),
     D3d11(D3d11Context),
     Vulkan(VulkanContext),
 }
 
 impl RenderContext {
-    fn poll_resize(&self) {
-        if let RenderContext::Egl(egl) = self {
-            egl.poll_resize();
-        }
-    }
-
-    fn warm_up_after_show(&self) {
-        if let RenderContext::Egl(egl) = self {
-            // ANGLE can create its window surface while the child HWND is hidden,
-            // but DXVA2/EGL interop on some drivers is not usable until that HWND
-            // has been presented once. Prime it before mpv starts decoding.
-            egl.poll_resize();
-            // Never let the one-time prime wait for a compositor/vblank. Some
-            // virtual display drivers can leave that wait pending indefinitely.
-            let _ = egl.set_swap_interval(0);
-            egl.swap_buffers();
-            let _ = egl.set_swap_interval(1);
-        }
-    }
-
     fn is_hdr(&self) -> bool {
         match self {
-            RenderContext::Egl(_) => false,
             RenderContext::D3d11(ctx) => ctx.is_hdr(),
             RenderContext::Vulkan(ctx) => ctx.is_hdr(),
         }
@@ -89,12 +66,6 @@ impl RenderContext {
         vsync_enabled: bool,
     ) -> Result<(), String> {
         match self {
-            RenderContext::Egl(egl) => {
-                let render_result = renderer.render_opengl_frame(width, height);
-                egl.swap_buffers();
-                renderer.report_swap();
-                render_result
-            }
             RenderContext::D3d11(ctx) => {
                 ctx.resize(width, height)?;
                 if renderer.needs_d3d11_context() {
@@ -236,11 +207,6 @@ fn ensure_renderer_for_surface(
             )
             .map_err(|e| format!("mpv init failed: {e}"))?;
         match backend {
-            RenderBackend::OpenGl => {
-                render
-                    .prepare_opengl_context()
-                    .map_err(|e| format!("mpv GL context failed: {e}"))?;
-            }
             RenderBackend::Vulkan => {
                 client
                     .set_option("gpu-api", "vulkan")
@@ -516,7 +482,7 @@ fn spawn_install_thread(
 
     std::thread::spawn(move || {
         log::info!("player surface: install thread starting");
-        // Register the OpenGL-capable window class once per process.
+        // Register the dedicated child-window class once per process.
         static CLASS_REGISTERED: OnceLock<()> = OnceLock::new();
         CLASS_REGISTERED.get_or_init(|| {
             let class_name: Vec<u16> = "FluxaPlayerGL\0".encode_utf16().collect();
@@ -586,19 +552,6 @@ fn spawn_install_thread(
         );
 
         let mut render_ctx = match backend {
-            RenderBackend::OpenGl => match windows_egl::create_window_context(child_hwnd) {
-                Ok(ctx) => RenderContext::Egl(ctx),
-                Err(e) => {
-                    log::error!("player surface: ANGLE/EGL context creation failed: {e}");
-                    crate::diagnostics::report(
-                        &app,
-                        format!("player surface: ANGLE/EGL context creation failed: {e}"),
-                        sentry::Level::Error,
-                    );
-                    let _ = setup_tx.send(Err(format!("ANGLE/EGL context creation failed: {e}")));
-                    return;
-                }
-            },
             RenderBackend::D3d11 => {
                 match D3d11Context::new(child_hwnd as isize, init_w, init_h, hdr_enabled) {
                     Ok(ctx) => RenderContext::D3d11(ctx),
@@ -634,18 +587,7 @@ fn spawn_install_thread(
             log::info!("player surface: HDR-capable swap chain in use");
         }
 
-        let vsync_enabled = match &render_ctx {
-            RenderContext::Egl(egl) => {
-                let enabled = egl.set_swap_interval(1);
-                if !enabled {
-                    log::warn!(
-                        "eglSwapInterval unavailable; falling back to timer-paced rendering"
-                    );
-                }
-                enabled
-            }
-            RenderContext::D3d11(_) | RenderContext::Vulkan(_) => true,
-        };
+        let vsync_enabled = true;
 
         let hdc = unsafe { GetDC(child_hwnd) };
 
@@ -673,7 +615,6 @@ fn spawn_install_thread(
         let mut last_size = (init_w, init_h);
         let mut last_render_error: Option<String> = None;
         let mut consecutive_render_errors = 0u32;
-        let mut surface_warmed_up = false;
 
         'render: loop {
             unsafe {
@@ -704,13 +645,6 @@ fn spawn_install_thread(
                                 SWP_NOACTIVATE,
                             )
                         };
-                        if !surface_warmed_up && backend == RenderBackend::OpenGl {
-                            render_ctx.warm_up_after_show();
-                            surface_warmed_up = true;
-                            log::info!(
-                                "player surface: OpenGL window surface warmed before first load"
-                            );
-                        }
                         visible = true;
                         let _ = app.emit("native-player-show", ());
                         let state = app.state::<DesktopState>();
@@ -884,7 +818,6 @@ fn spawn_install_thread(
                     }
                 }
 
-                render_ctx.poll_resize();
                 if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
                     std::thread::sleep(Duration::from_millis(16));
                     continue;

@@ -44,7 +44,6 @@ mod trailer_proxy;
 #[cfg(target_os = "windows")]
 mod windows_d3d11;
 #[cfg(target_os = "windows")]
-mod windows_egl;
 #[cfg(target_os = "windows")]
 mod windows_player_surface;
 #[cfg(target_os = "windows")]

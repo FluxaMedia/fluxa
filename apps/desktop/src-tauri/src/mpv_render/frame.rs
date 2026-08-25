@@ -122,61 +122,6 @@ impl MpvRenderState {
         })
     }
 
-    #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-    pub fn render_opengl_frame(&mut self, width: i32, height: i32) -> Result<(), String> {
-        if self.render_context.is_null() {
-            self.create_opengl_context()?;
-        }
-
-        let update_flags = unsafe { (self.api.mpv_render_context_update)(self.render_context) };
-
-        // Linux/GTK: query the offscreen FBO that GTK's GLArea binds.
-        // Windows/macOS: render into the default framebuffer (FBO 0).
-        #[cfg(target_os = "linux")]
-        let fbo_id = query_draw_fbo();
-        #[cfg(not(target_os = "linux"))]
-        let fbo_id: c_int = 0;
-
-        let mut fbo = MpvOpenGlFbo {
-            fbo: fbo_id,
-            width: width.max(2),
-            height: height.max(2),
-            internal_format: 0,
-        };
-        let mut flip_y: c_int = 1;
-        let mut params = [
-            MpvRenderParam {
-                param_type: MPV_RENDER_PARAM_OPENGL_FBO,
-                data: (&mut fbo as *mut MpvOpenGlFbo).cast(),
-            },
-            MpvRenderParam {
-                param_type: MPV_RENDER_PARAM_FLIP_Y,
-                data: (&mut flip_y as *mut c_int).cast(),
-            },
-            MpvRenderParam {
-                param_type: MPV_RENDER_PARAM_INVALID,
-                data: ptr::null_mut(),
-            },
-        ];
-
-        let result = unsafe {
-            (self.api.mpv_render_context_render)(self.render_context, params.as_mut_ptr())
-        };
-        if result < 0 {
-            return Err(format!(
-                "mpv_render_context_render failed: {}",
-                self.api.error_string(result)
-            ));
-        }
-        if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
-            self.frame_state.frames_rendered.fetch_add(1, Ordering::Relaxed);
-            self.frame_state
-                .frame_ready_to_restore_audio
-                .store(true, Ordering::Release);
-        }
-        Ok(())
-    }
-
     #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
     pub fn render_vulkan_frame(&mut self, image: &mut VulkanTargetImage) -> Result<(), String> {
         if self.render_context.is_null() {

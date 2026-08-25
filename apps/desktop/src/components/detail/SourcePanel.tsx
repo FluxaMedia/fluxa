@@ -362,7 +362,11 @@ export function MovieSourcePanel({
           </div>
         )}
         {!isLoading && visibleStreams.length === 0 && (
-          <SourcesEmptyState hasAddons={availableAddons.length > 0} onOpenSettings={onOpenSettings} onRetry={onRetryFailed} />
+          <SourcesEmptyState
+            hasAddons={streamAddonCount > 0 || availableAddons.length > 0}
+            onOpenSettings={onOpenSettings}
+            onRetry={onRetryFailed}
+          />
         )}
         {visibleStreams.length > 0 && (
           <div style={EP.inlineStreamList}>
@@ -586,7 +590,11 @@ export function InlineSourceList({
           </div>
         )}
         {!isLoading && visibleStreams.length === 0 && (
-          <SourcesEmptyState hasAddons={availableAddons.length > 0} onOpenSettings={onOpenSettings} onRetry={onRetryFailed} />
+          <SourcesEmptyState
+            hasAddons={streamAddonCount > 0 || availableAddons.length > 0}
+            onOpenSettings={onOpenSettings}
+            onRetry={onRetryFailed}
+          />
         )}
         {visibleStreams.length > 0 && (
           <div style={EP.inlineStreamList}>

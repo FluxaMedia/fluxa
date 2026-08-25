@@ -183,17 +183,7 @@ pub fn ensure_native_player_surface(
             }
         }
     }
-    let installed = macos_player_surface::install(app_handle.clone()).or_else(|error| {
-        if requested == RenderBackend::Vulkan {
-            log::warn!("macOS Vulkan initialization failed; retrying with OpenGL: {error}");
-            macos_player_surface::install_with_backend(
-                app_handle.clone(),
-                RenderBackend::OpenGl,
-            )
-        } else {
-            Err(error)
-        }
-    });
+    let installed = macos_player_surface::install(app_handle.clone());
     match installed {
         Ok(surface) => {
             let surface: std::sync::Arc<dyn crate::player_surface::PlayerSurface> =
@@ -202,7 +192,7 @@ pub fn ensure_native_player_surface(
             Some(surface)
         }
         Err(error) => {
-            log::warn!("native OpenGL player surface was not installed: {error}");
+            log::warn!("native Vulkan player surface was not installed: {error}");
             None
         }
     }

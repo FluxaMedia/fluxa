@@ -1,4 +1,4 @@
-// Linux native player surface — libmpv OpenGL render API via GLX/EGL.
+// Linux native player surface — libmpv Vulkan render API.
 //
 // Architecture:
 //   • A GtkGLArea is placed BEHIND the WebView inside a GtkOverlay.
@@ -59,6 +59,7 @@ struct VulkanShared {
     height: AtomicI32,
     hdr: AtomicBool,
     mpv_context_ready: AtomicBool,
+    load_in_progress: AtomicBool,
 }
 
 struct VulkanState {
@@ -86,6 +87,14 @@ fn spawn_vulkan_render_thread(app: AppHandle, mut ctx: VulkanContext, shared: Ar
                         std::thread::sleep(Duration::from_millis(100));
                         continue;
                     }
+                }
+                // The GTK thread must briefly take the same renderer mutex to
+                // issue a new load. Do not start another Vulkan render while
+                // that hand-off is in progress; otherwise the load can lose a
+                // few retries and be reported as "renderer busy".
+                if shared.load_in_progress.load(Ordering::Acquire) {
+                    std::thread::sleep(Duration::from_millis(2));
+                    continue;
                 }
                 let forced = last_present.elapsed() >= PRESENT_WATCHDOG_INTERVAL;
                 shared.hdr.store(ctx.is_hdr(), Ordering::Release);
@@ -570,10 +579,7 @@ impl SurfaceTick {
                         }
                         continue;
                     }
-                    if self.backend == RenderBackend::OpenGl {
-                        self.gl_area.set_auto_render(true);
-                        self.gl_area.show();
-                    } else if let Some(state) = self.vulkan_state.borrow().as_ref() {
+                    if let Some(state) = self.vulkan_state.borrow().as_ref() {
                         state.surface_handle.show();
                     }
                     self.visible.set(true);
@@ -590,12 +596,31 @@ impl SurfaceTick {
                     self.pending_load_retries = 0;
                     self.app.state::<DesktopState>().pending_hide
                         .store(true, std::sync::atomic::Ordering::Release);
-                    if self.backend == RenderBackend::OpenGl {
-                        self.gl_area.set_auto_render(false);
-                        self.gl_area.hide();
-                    } else if let Some(state) = self.vulkan_state.borrow().as_ref() {
+                    if let Some(state) = self.vulkan_state.borrow().as_ref() {
                         state.surface_handle.hide();
                     }
+                    self.webview_widget.queue_resize();
+                    self.webview_widget.queue_draw();
+                    if let Some(toplevel) = self.webview_widget.toplevel() {
+                        toplevel.queue_resize();
+                        toplevel.queue_draw();
+                    }
+                    let parent_alloc = self
+                        .webview_widget
+                        .parent()
+                        .map(|p| (p.allocated_width(), p.allocated_height()))
+                        .unwrap_or((-1, -1));
+                    log::warn!(
+                        "surface hide: backend={:?} gl_area_visible={} webview_visible={} webview_mapped={} webview_alloc={}x{} parent_alloc={}x{}",
+                        self.backend,
+                        self.gl_area.is_visible(),
+                        self.webview_widget.is_visible(),
+                        self.webview_widget.is_mapped(),
+                        self.webview_widget.allocated_width(),
+                        self.webview_widget.allocated_height(),
+                        parent_alloc.0,
+                        parent_alloc.1,
+                    );
                     let _ = self.app.emit("native-player-hide", ());
                     if let Ok(guard) = self.app.state::<DesktopState>().player_mpv_client.try_lock() {
                         if let Some(r) = guard.as_ref() {
@@ -633,28 +658,12 @@ impl SurfaceTick {
     // no user waiting) is better than doing it inside prepare_and_load when the
     // loading screen is shown.
     fn warm_up_render_context(&mut self) {
-        let warmup_ready = match self.backend {
-            RenderBackend::OpenGl => self.gl_area.is_realized(),
-            RenderBackend::Vulkan => self.gl_area
-                .toplevel()
-                .map(|t| t.is_realized())
-                .unwrap_or(false),
-        };
+        let warmup_ready = self.gl_area
+            .toplevel()
+            .map(|t| t.is_realized())
+            .unwrap_or(false);
         if self.pending_load.is_none() && warmup_ready {
-            match self.backend {
-                RenderBackend::OpenGl => {
-                    if let Ok(mut guard) = self.app.state::<DesktopState>().player_render_state.try_lock() {
-                        if let Some(renderer) = guard.as_mut() {
-                            if renderer.needs_opengl_context() {
-                                self.gl_area.make_current();
-                                if self.gl_area.error().is_none() {
-                                    let _ = renderer.prepare_opengl_context();
-                                }
-                            }
-                        }
-                    }
-                }
-                RenderBackend::Vulkan => {
+            {
                     if self.vulkan_state.borrow().is_none() {
                         let (w, h) = vulkan_surface_size(&self.gl_area, &self.webview_widget);
                         match create_vulkan_surface(&self.gl_area, w, h) {
@@ -666,6 +675,7 @@ impl SurfaceTick {
                                             height: AtomicI32::new(h),
                                             hdr: AtomicBool::new(false),
                                             mpv_context_ready: AtomicBool::new(false),
+                                            load_in_progress: AtomicBool::new(false),
                                         });
                                         spawn_vulkan_render_thread(
                                             self.app.clone(),
@@ -697,7 +707,6 @@ impl SurfaceTick {
                             }
                         }
                     }
-                }
             }
         }
     }
@@ -706,43 +715,53 @@ impl SurfaceTick {
         let Some((url, start_at)) = self.pending_load.clone() else {
             return;
         };
-        let state = self.app.state::<DesktopState>();
-        if state.player_mpv_client.try_lock().is_ok() {
-            match prepare_and_load(&self.app, &self.gl_area, self.backend, &self.vulkan_state, &url, start_at) {
-                Ok(()) => {
-                    self.pending_load = None;
-                    self.latch_grace_ticks = 10;
-                    let hide_pending = self.app.state::<DesktopState>()
-                        .pending_hide.load(std::sync::atomic::Ordering::Acquire);
-                    if hide_pending {
-                        self.visible.set(false);
-                        self.gl_area.hide();
-                    }
+        let load_gate = self
+            .vulkan_state
+            .borrow()
+            .as_ref()
+            .map(|state| state.shared.clone());
+        if let Some(shared) = load_gate.as_ref() {
+            shared.load_in_progress.store(true, Ordering::Release);
+        }
+        let result = prepare_and_load(&self.app, &self.gl_area, self.backend, &self.vulkan_state, &url, start_at);
+        if let Some(shared) = load_gate.as_ref() {
+            shared.load_in_progress.store(false, Ordering::Release);
+        }
+        match result {
+            Ok(()) => {
+                self.pending_load = None;
+                self.latch_grace_ticks = 10;
+                let hide_pending = self.app.state::<DesktopState>()
+                    .pending_hide.load(std::sync::atomic::Ordering::Acquire);
+                if hide_pending {
+                    self.visible.set(false);
+                    self.gl_area.hide();
                 }
-                Err(e) if e == VULKAN_CONTEXT_PENDING => {
-                    self.pending_load_retries += 1;
-                    if self.pending_load_retries > 300 {
-                        self.pending_load = None;
-                        self.visible.set(false);
-                        self.gl_area.hide();
-                        let _ = self.app.emit("native-player-error", e);
-                    }
-                }
-                Err(e) => {
+            }
+            Err(e) if e == VULKAN_CONTEXT_PENDING => {
+                self.pending_load_retries += 1;
+                if self.pending_load_retries > 300 {
                     self.pending_load = None;
                     self.visible.set(false);
                     self.gl_area.hide();
-                    log::warn!("native player load failed: {e}");
                     let _ = self.app.emit("native-player-error", e);
                 }
             }
-        } else {
-            self.pending_load_retries += 1;
-            if self.pending_load_retries > 300 {
+            Err(e) if e == "player renderer busy — load deferred" => {
+                self.pending_load_retries = self.pending_load_retries.saturating_add(1);
+                if self.pending_load_retries == 1 || self.pending_load_retries % 60 == 0 {
+                    log::debug!(
+                        "linux_player_surface: renderer busy while loading; retry={}",
+                        self.pending_load_retries
+                    );
+                }
+            }
+            Err(e) => {
                 self.pending_load = None;
                 self.visible.set(false);
                 self.gl_area.hide();
-                let _ = self.app.emit("native-player-error", "player renderer busy".to_string());
+                log::warn!("native player load failed: {e}");
+                let _ = self.app.emit("native-player-error", e);
             }
         }
     }
@@ -865,7 +884,8 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
                 return;
             };
 
-            // GLArea for mpv OpenGL rendering — initially hidden, shown only when playing.
+            // GTK widget used as the native-surface anchor; Vulkan presents to
+            // a Wayland subsurface/X11 child window attached to its toplevel.
             let gl_area = gtk::GLArea::new();
             gl_area.set_hexpand(true);
             gl_area.set_vexpand(true);
@@ -875,7 +895,7 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
             // no_show_all prevents parent show_all() from revealing the video prematurely.
             gl_area.set_no_show_all(true);
 
-            // Wrap in a GtkOverlay: GLArea (base/background) + WebView (overlay/foreground).
+            // Wrap in a GtkOverlay: anchor widget (base/background) + WebView (overlay/foreground).
             // The WebView is transparent when the player is active (see App.tsx + transparent=true
             // in tauri.conf.json), so the video shows through from the GLArea behind it.
             let video_overlay = gtk::Overlay::new();
@@ -899,62 +919,8 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
             reassert_webview_transparency(&webview_widget);
             video_overlay.queue_resize();
             video_overlay.queue_draw();
-            // gl_area stays hidden (no_show_all) until the first Load command.
-
-            // Render callback: called by GTK when gl_area.queue_render() is invoked.
-            if backend == RenderBackend::OpenGl {
-                let render_app = app_handle.clone();
-                let last_gl_render_error: RefCell<Option<String>> = RefCell::new(None);
-                gl_area.connect_render(move |area, _ctx| {
-                    let state = render_app.state::<DesktopState>();
-                    if state.pending_hide.load(std::sync::atomic::Ordering::Acquire) {
-                        // Returning Proceed (unhandled) with auto_render=false skips GTK's
-                        // gdk_cairo_draw_from_gl readback path — prevents a multi-second freeze
-                        // that occurs on some composited systems when the last video frame is read.
-                        area.set_auto_render(false);
-                        return glib::Propagation::Proceed;
-                    }
-                    area.make_current();
-                    if area.error().is_some() {
-                        return glib::Propagation::Stop;
-                    }
-                    let scale = area.scale_factor().max(1);
-                    let w = area.allocated_width().max(2) * scale;
-                    let h = area.allocated_height().max(2) * scale;
-                    let Ok(mut renderer) = state.player_render_state.try_lock() else {
-                        return glib::Propagation::Stop;
-                    };
-                    if let Some(r) = renderer.as_mut() {
-                        if let Err(e) = r.render_opengl_frame(w, h) {
-                            log::warn!("mpv OpenGL render failed: {e}");
-                            if last_gl_render_error.borrow().as_deref() != Some(e.as_str()) {
-                                crate::diagnostics::report(
-                                    &render_app,
-                                    format!("mpv OpenGL render failed: {e}"),
-                                    sentry::Level::Error,
-                                );
-                                *last_gl_render_error.borrow_mut() = Some(e.clone());
-                            }
-                        } else {
-                            *last_gl_render_error.borrow_mut() = None;
-                        }
-                        r.report_swap();
-                    }
-                    glib::Propagation::Stop
-                });
-            }
-
             let _ = setup_tx.send(Ok(()));
-            // Shared with the GdkFrameClock tick callback below, both on the GTK main thread.
             let visible = Rc::new(Cell::new(false));
-            let tick_visible = visible.clone();
-            let tick_gl_area = gl_area.clone();
-            gl_area.add_tick_callback(move |_area, _frame_clock| {
-                if tick_visible.get() && backend == RenderBackend::OpenGl {
-                    tick_gl_area.queue_render();
-                }
-                glib::ControlFlow::Continue
-            });
 
             let mut tick = SurfaceTick {
                 receiver,
@@ -997,10 +963,6 @@ fn prepare_and_load(
     url: &str,
     start_at: Option<u64>,
 ) -> Result<(), String> {
-    if backend == RenderBackend::OpenGl && !gl_area.is_realized() {
-        gl_area.realize();
-    }
-
     let state = app_handle.state::<DesktopState>();
     let mut render_guard = state
         .player_render_state
@@ -1025,13 +987,6 @@ fn prepare_and_load(
         .ok_or_else(|| "player renderer is not initialized".to_string())?;
 
     match backend {
-        RenderBackend::OpenGl => {
-            gl_area.make_current();
-            if let Some(error) = gl_area.error() {
-                return Err(format!("OpenGL player surface context error: {error}"));
-            }
-            render.prepare_opengl_context()?;
-        }
         RenderBackend::Vulkan => {
             let shared = vulkan_state
                 .borrow()

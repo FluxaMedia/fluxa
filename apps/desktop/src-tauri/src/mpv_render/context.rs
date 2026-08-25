@@ -1,19 +1,6 @@
 use super::*;
 
 impl MpvRenderState {
-    #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-    pub fn needs_opengl_context(&self) -> bool {
-        self.render_context.is_null()
-    }
-
-    #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-    pub fn prepare_opengl_context(&mut self) -> Result<(), String> {
-        if self.render_context.is_null() {
-            self.create_opengl_context()?;
-        }
-        Ok(())
-    }
-
     #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
     pub fn needs_vulkan_context(&self) -> bool {
         self.render_context.is_null()
@@ -93,58 +80,6 @@ impl MpvRenderState {
             ))
         } else if context.is_null() {
             Err("mpv software render context returned null".to_string())
-        } else {
-            self.render_context = context;
-            Ok(())
-        }
-    }
-
-    #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-    pub(super) fn create_opengl_context(&mut self) -> Result<(), String> {
-        let api_type = CString::new("opengl").unwrap();
-        let mut init_params = MpvOpenGlInitParams {
-            get_proc_address: Some(get_gl_proc_address),
-            get_proc_address_ctx: ptr::null_mut(),
-        };
-        let mut params = vec![
-            MpvRenderParam {
-                param_type: MPV_RENDER_PARAM_API_TYPE,
-                data: api_type.as_ptr() as *mut c_void,
-            },
-            MpvRenderParam {
-                param_type: MPV_RENDER_PARAM_OPENGL_INIT_PARAMS,
-                data: (&mut init_params as *mut MpvOpenGlInitParams).cast(),
-            },
-        ];
-        // Without one of these, mpv's gpu-next libmpv render backend has no way to
-        // open a VADisplay, so VAAPI hwdec silently never initializes (falls back to copy).
-        #[cfg(target_os = "linux")]
-        if let Some(display) = wl_display_ptr() {
-            params.push(MpvRenderParam {
-                param_type: MPV_RENDER_PARAM_WL_DISPLAY,
-                data: display,
-            });
-        } else if let Some(display) = x11_display_ptr() {
-            params.push(MpvRenderParam {
-                param_type: MPV_RENDER_PARAM_X11_DISPLAY,
-                data: display,
-            });
-        }
-        params.push(MpvRenderParam {
-            param_type: MPV_RENDER_PARAM_INVALID,
-            data: ptr::null_mut(),
-        });
-        let mut context: *mut MpvRenderContext = ptr::null_mut();
-        let result = unsafe {
-            (self.api.mpv_render_context_create)(&mut context, self.handle, params.as_mut_ptr())
-        };
-        if result < 0 {
-            Err(format!(
-                "mpv OpenGL render context failed: {}",
-                self.api.error_string(result)
-            ))
-        } else if context.is_null() {
-            Err("mpv OpenGL render context returned null".to_string())
         } else {
             self.render_context = context;
             Ok(())

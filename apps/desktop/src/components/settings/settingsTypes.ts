@@ -318,7 +318,7 @@ export const DEFAULT_PREFS: Prefs = {
   continueWatchingDays: '0',
   traktCommentsEnabled: false,
   searchSuggestionsOpenDetail: false,
-  renderBackend: 'opengl',
+  renderBackend: 'vulkan',
   hdrEnabled: false,
   hdrDetectionCompleted: false,
   playerEngine: 'mpv',

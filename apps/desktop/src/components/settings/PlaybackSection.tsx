@@ -396,7 +396,6 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
           title={t('settings.render_backend')}
           subtitle={t('settings.render_backend_desc')}
           options={[
-            { value: 'opengl', label: 'OpenGL' },
             { value: 'vulkan', label: 'Vulkan' },
             ...(isWindows ? [{ value: 'd3d11', label: 'D3D11' }] : []),
           ]}

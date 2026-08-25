@@ -7,31 +7,17 @@ use std::path::PathBuf;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-use std::sync::OnceLock;
 
 mod api;
 use api::MpvApi;
 
-#[cfg(target_os = "linux")]
-use std::ffi::{c_uchar, c_uint};
 
 type MpvHandle = c_void;
 type MpvRenderContext = c_void;
 
 const MPV_RENDER_PARAM_INVALID: c_int = 0;
 const MPV_RENDER_PARAM_API_TYPE: c_int = 1;
-#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-const MPV_RENDER_PARAM_OPENGL_INIT_PARAMS: c_int = 2;
-#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-const MPV_RENDER_PARAM_OPENGL_FBO: c_int = 3;
-#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-const MPV_RENDER_PARAM_FLIP_Y: c_int = 4;
 const MPV_RENDER_PARAM_ICC_PROFILE: c_int = 6;
-#[cfg(target_os = "linux")]
-const MPV_RENDER_PARAM_X11_DISPLAY: c_int = 8;
-#[cfg(target_os = "linux")]
-const MPV_RENDER_PARAM_WL_DISPLAY: c_int = 9;
 const MPV_RENDER_PARAM_SW_SIZE: c_int = 17;
 const MPV_RENDER_PARAM_SW_FORMAT: c_int = 18;
 const MPV_RENDER_PARAM_SW_STRIDE: c_int = 19;
@@ -152,23 +138,6 @@ fn audio_output_mode_for_policy(policy: MpvAudioPolicyState) -> &'static str {
 struct MpvRenderParam {
     param_type: c_int,
     data: *mut c_void,
-}
-
-#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-#[repr(C)]
-struct MpvOpenGlInitParams {
-    get_proc_address:
-        Option<unsafe extern "C" fn(ctx: *mut c_void, name: *const c_char) -> *mut c_void>,
-    get_proc_address_ctx: *mut c_void,
-}
-
-#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
-#[repr(C)]
-struct MpvOpenGlFbo {
-    fbo: c_int,
-    width: c_int,
-    height: c_int,
-    internal_format: c_int,
 }
 
 #[repr(C)]
@@ -576,23 +545,6 @@ mod context;
 mod frame;
 mod lifecycle;
 mod status;
-
-// Linux-only OpenGL proc address resolution
-
-#[cfg(target_os = "linux")]
-type GlProcFn = unsafe extern "C" fn(*const c_uchar) -> *mut c_void;
-
-#[cfg(target_os = "linux")]
-type GlGetIntegerv = unsafe extern "C" fn(pname: c_uint, params: *mut c_int);
-
-#[cfg(target_os = "linux")]
-const GL_DRAW_FRAMEBUFFER_BINDING: c_uint = 0x8CA6;
-
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
-mod platform_gl;
-
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
-use platform_gl::*;
 
 fn load_error(error: libloading::Error) -> String {
     error.to_string()

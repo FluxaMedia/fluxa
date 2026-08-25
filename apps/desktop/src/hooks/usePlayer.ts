@@ -534,7 +534,10 @@ function useDesktopPlayer({
             nextEpisode: playingNextEpisodeRef.current,
             timePos,
             duration,
-            playbackStarted: status.firstFramePresented,
+            // During a deferred mpv load, time-pos can still belong to the
+            // previous item. Do not let that stale position mark the queued
+            // episode as watched and advance Continue Watching.
+            playbackStarted: status.loaded === true && status.firstFramePresented === true,
             streamIndex: stateRef.current.player.currentStreamIndex ?? null,
             prefs: closePrefs,
           }),

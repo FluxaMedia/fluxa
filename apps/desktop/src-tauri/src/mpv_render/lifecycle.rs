@@ -57,8 +57,6 @@ impl MpvClientHandle {
             client.set_option("terminal", "no")?;
             client.set_option("config", "no")?;
             client.set_option("vo", "libmpv")?;
-            #[cfg(target_os = "windows")]
-            client.set_option("gpu-api", "opengl")?;
             client.set_option("idle", "yes")?;
             client.set_option("keep-open", "yes")?;
             if let Err(error) = client.set_option("osc", "no") {
