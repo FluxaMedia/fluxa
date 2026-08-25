@@ -961,19 +961,46 @@ unsafe fn host_view_for(parent: Id) -> HostView {
     }
 }
 
+// wry subclasses WKWebView as WryWebView, so match on the class hierarchy
+// rather than the name.
+unsafe fn is_kind_of(obj: Id, class: &str) -> bool {
+    unsafe {
+        let target = cls(class);
+        if obj.is_null() || target.is_null() {
+            return false;
+        }
+        type Fn = unsafe extern "C" fn(Id, Id, Id) -> i8;
+        let f: Fn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
+        f(obj, sel("isKindOfClass:"), target) != 0
+    }
+}
+
+unsafe fn nsstring(value: &str) -> Id {
+    unsafe {
+        let cls_str = cls("NSString");
+        let c = CString::new(value).unwrap();
+        type Fn = unsafe extern "C" fn(Id, Id, *const i8) -> Id;
+        let f: Fn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
+        f(cls_str, sel("stringWithUTF8String:"), c.as_ptr())
+    }
+}
+
+// WKWebView on macOS keeps painting its own backdrop until this private key is
+// cleared; setOpaque: alone is not enough.
+unsafe fn set_draws_background_off(view: Id) {
+    unsafe {
+        let number_cls = cls("NSNumber");
+        type NumFn = unsafe extern "C" fn(Id, Id, i8) -> Id;
+        let num: NumFn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
+        let no = num(number_cls, sel("numberWithBool:"), 0);
+        type SetFn = unsafe extern "C" fn(Id, Id, Id, Id) -> Id;
+        let set: SetFn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
+        set(view, sel("setValue:forKey:"), no, nsstring("drawsBackground"));
+    }
+}
+
 unsafe fn make_webviews_transparent(root: Id) {
     unsafe {
-        let name = class_name(root);
-        if name.contains("WKWebView") {
-            msg1_bool(root, "setOpaque:", 0);
-            let clear = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
-            if !clear.is_null() {
-                msg1_id(root, "setBackgroundColor:", clear);
-                msg1_id(root, "setUnderPageBackgroundColor:", clear);
-            }
-            log::info!("macos_player_surface: made {name} non-opaque");
-            return;
-        }
         let window = msg0(root, "window");
         let start = if window.is_null() {
             root
@@ -981,23 +1008,31 @@ unsafe fn make_webviews_transparent(root: Id) {
             let content = msg0(window, "contentView");
             if content.is_null() { root } else { content }
         };
-        walk_and_clear(start);
+        if !window.is_null() {
+            msg1_bool(window, "setOpaque:", 0);
+        }
+        walk_and_clear(start, 0);
     }
 }
 
-unsafe fn walk_and_clear(view: Id) {
+unsafe fn walk_and_clear(view: Id, depth: usize) {
     unsafe {
-        if view.is_null() {
+        if view.is_null() || depth > 6 {
             return;
         }
         let name = class_name(view);
-        if name.contains("WKWebView") {
+        let is_web = is_kind_of(view, "WKWebView");
+        log::info!(
+            "macos_player_surface: view tree depth={depth} class={name} is_webview={is_web}"
+        );
+        if is_web {
             msg1_bool(view, "setOpaque:", 0);
             let clear = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
             if !clear.is_null() {
                 msg1_id(view, "setBackgroundColor:", clear);
                 msg1_id(view, "setUnderPageBackgroundColor:", clear);
             }
+            set_draws_background_off(view);
             log::info!("macos_player_surface: made {name} non-opaque");
         }
         let subviews = msg0(view, "subviews");
@@ -1006,7 +1041,7 @@ unsafe fn walk_and_clear(view: Id) {
         }
         let count = msg0_usize(subviews, "count");
         for i in 0..count {
-            walk_and_clear(msg1_usize_ret(subviews, "objectAtIndex:", i));
+            walk_and_clear(msg1_usize_ret(subviews, "objectAtIndex:", i), depth + 1);
         }
     }
 }
