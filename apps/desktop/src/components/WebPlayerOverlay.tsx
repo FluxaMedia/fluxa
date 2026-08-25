@@ -67,7 +67,7 @@ interface Props {
   onPlayNextEpisode?: () => void;
   autoSkip?: boolean;
   autoPlayNext?: boolean;
-  onHandoff?: (target: string, positionSeconds: number) => void;
+  onHandoff?: (target: string, positionSeconds: number, durationSeconds: number) => void;
 }
 
 function formatTime(value: number) {
@@ -686,7 +686,11 @@ export function WebPlayerOverlay({
                       onClick={() => {
                         setHandoffOpen(false);
                         videoRef.current?.pause();
-                        onHandoff(target.id, Math.floor(videoRef.current?.currentTime ?? 0));
+                        onHandoff(
+                          target.id,
+                          Math.floor(videoRef.current?.currentTime ?? 0),
+                          Math.floor(videoRef.current?.duration ?? 0),
+                        );
                         window.location.href = target.href;
                       }}
                       style={{

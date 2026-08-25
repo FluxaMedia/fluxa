@@ -39,7 +39,7 @@ export function estimateSession(session: ExternalSession, now: number): { timePo
     return { timePos, duration: session.runtime, finished: timePos >= session.runtime * 0.9 };
   }
   const duration = session.resumeAt + away;
-  return { timePos: duration, duration, finished: true };
+  return { timePos: duration, duration, finished: false };
 }
 
 export function readExternalSession(): ExternalSession | null {

@@ -202,7 +202,7 @@ export default function App() {
   const externalHandoff = useExternalHandoff({ stateRef, activeProfile, updateState, onProfileUpdated: setActiveProfile });
 
   const handleExternalHandoff = useCallback(
-    (target: string, positionSeconds: number) => {
+    (target: string, positionSeconds: number, durationSeconds: number) => {
       const meta = playingMetaRef.current;
       if (!meta) return;
       externalHandoff.start({
@@ -213,7 +213,9 @@ export default function App() {
         target,
         startedAt: Date.now(),
         resumeAt: positionSeconds,
-        runtime: runtimeSeconds(meta, playerEpisode),
+        runtime: Number.isFinite(durationSeconds) && durationSeconds > 0
+          ? durationSeconds
+          : runtimeSeconds(meta, playerEpisode),
       });
     },
     [externalHandoff, playerEpisode, playingMetaRef, playingStreamRef],
