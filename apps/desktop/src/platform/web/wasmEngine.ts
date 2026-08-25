@@ -18,8 +18,9 @@ export async function coreInvoke(method: string, argsJson: string): Promise<stri
 
 export async function engineInit(initialJson: string): Promise<number> {
   const core = await loadCore();
-  engineHandle = core.engine_init(initialJson);
-  return engineHandle;
+  const handle = core.engine_init(initialJson);
+  engineHandle = handle;
+  return handle;
 }
 
 export async function engineDispatch(actionJson: string): Promise<string | null> {
