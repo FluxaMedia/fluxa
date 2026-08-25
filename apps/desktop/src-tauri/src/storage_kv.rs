@@ -28,13 +28,39 @@ pub fn storage_read(state: State<DesktopState>, key: String) -> Option<String> {
 
 #[cfg(target_os = "windows")]
 pub(crate) fn read_pref_bool(state: State<DesktopState>, field: &str) -> Option<bool> {
-    let raw = storage_read(state, "prefs".to_string())?;
+    let raw = read_prefs_document(state)?;
     let value: Value = serde_json::from_str(&raw).ok()?;
     value.get(field)?.as_bool()
 }
 
+// The app writes preferences per profile. Reading the unscoped key returns
+// whatever was last written before profiles existed, so settings the Rust side
+// reads -- render backend, player engine -- silently never change.
+fn read_prefs_document(state: State<DesktopState>) -> Option<String> {
+    let scoped = storage_read(state.clone(), "active_profile_id".to_string())
+        .and_then(|raw| serde_json::from_str::<String>(&raw).ok())
+        .map(|id| {
+            let owner: String = id
+                .chars()
+                .map(|c| {
+                    if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
+                        c
+                    } else {
+                        '_'
+                    }
+                })
+                .collect();
+            format!("prefs_{owner}")
+        })
+        .and_then(|key| storage_read(state.clone(), key));
+    match scoped {
+        Some(raw) => Some(raw),
+        None => storage_read(state, "prefs".to_string()),
+    }
+}
+
 pub fn read_pref_field(state: State<DesktopState>, field: &str) -> Option<String> {
-    let raw = storage_read(state, "prefs".to_string())?;
+    let raw = read_prefs_document(state)?;
     let value: Value = serde_json::from_str(&raw).ok()?;
     value.get(field)?.as_str().map(str::to_string)
 }
