@@ -230,6 +230,47 @@ mod tests {
     }
 
     #[test]
+    fn locally_advanced_up_next_is_not_advanced_again() {
+        let candidates = json!([{
+            "id": "s1",
+            "_id": "s1",
+            "type": "series",
+            "lastVideoId": "s1:2:9",
+            "lastEpisodeSeason": 2,
+            "lastEpisodeNumber": 9,
+            "timeOffset": 1200,
+            "duration": 1200,
+            "savedAt": "2020-02-01T00:00:00Z",
+        }]);
+        let videos_by_series = json!({
+            "s1": [
+                { "id": "s1:2:9", "season": 2, "episode": 9, "released": "2020-01-01T00:00:00Z" },
+                { "id": "s1:2:10", "season": 2, "episode": 10, "released": "2020-01-08T00:00:00Z" },
+                { "id": "s1:2:11", "season": 2, "episode": 11, "released": "2020-01-15T00:00:00Z" },
+            ],
+        });
+        let now_ms = chrono::DateTime::parse_from_rfc3339("2021-01-01T00:00:00Z")
+            .unwrap()
+            .timestamp_millis();
+        let advance = |candidates: &Value| {
+            compute_continue_watching_badges_json(
+                &candidates.to_string(),
+                &videos_by_series.to_string(),
+                "{}",
+                now_ms,
+            )
+            .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+            .expect("badges")
+        };
+
+        let first = advance(&candidates);
+        assert_eq!(first[0]["lastEpisodeNumber"], 10);
+
+        let second = advance(&first);
+        assert_eq!(second[0]["lastEpisodeNumber"], 10);
+    }
+
+    #[test]
     fn continue_watching_badges_count_only_released_episodes_ahead() {
         let candidates = json!([{
             "id": "s1",

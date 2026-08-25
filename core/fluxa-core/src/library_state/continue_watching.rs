@@ -403,6 +403,7 @@ fn apply_next_episode_badge(
             })
             .unwrap_or(Value::Null),
         "continueWatchingBadge": badge,
+        "continueWatchingEpisodeResolved": badge == "upNext",
         "newEpisodeReleasedAt": released_str,
         "savedAt": saved_at_new,
         "source": candidate.get("source").cloned().unwrap_or(Value::Null),
