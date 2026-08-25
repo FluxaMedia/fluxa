@@ -309,7 +309,9 @@ fn build_seed_candidates(entries: &[Entry], prefer_furthest: bool) -> Vec<Seed> 
         })
         .collect();
     candidates.sort_by(|a, b| {
-        (b.marked_at_ms, b.season, b.episode).cmp(&(a.marked_at_ms, a.season, a.episode))
+        (b.marked_at_ms, b.season, b.episode)
+            .cmp(&(a.marked_at_ms, a.season, a.episode))
+            .then_with(|| a.content_id.cmp(&b.content_id))
     });
     candidates
 }
@@ -636,12 +638,13 @@ pub(super) fn continue_watching_json(args_json: &str) -> Option<String> {
             .unwrap_or_default()
     };
 
-    let mut candidates: Vec<(i64, bool, Value)> = visible
+    let mut candidates: Vec<(i64, bool, String, Value)> = visible
         .iter()
         .map(|entry| {
             (
                 entry.last_updated_ms,
                 true,
+                entry.content_id.clone(),
                 in_progress_item(entry, metas.get(&entry.content_id)),
             )
         })
@@ -665,16 +668,17 @@ pub(super) fn continue_watching_json(args_json: &str) -> Option<String> {
         candidates.push((
             seed.marked_at_ms,
             false,
+            seed.content_id.clone(),
             next_up_item(seed, &next, metas.get(&seed.content_id)),
         ));
     }
 
-    candidates.sort_by(|a, b| (b.0, b.1).cmp(&(a.0, a.1)));
+    candidates.sort_by(|a, b| (b.0, b.1).cmp(&(a.0, a.1)).then_with(|| a.2.cmp(&b.2)));
 
     let mut seen: HashSet<String> = HashSet::new();
     let items: Vec<Value> = candidates
         .into_iter()
-        .filter_map(|(_, _, item)| {
+        .filter_map(|(_, _, _, item)| {
             let key = item
                 .get("id")
                 .and_then(Value::as_str)
@@ -791,6 +795,44 @@ mod tests {
         let time_offset = items[0]["timeOffset"].as_i64().unwrap();
         let duration = items[0]["duration"].as_i64().unwrap();
         assert_eq!((duration - time_offset) / 60, 21);
+    }
+
+    #[test]
+    fn rows_imported_in_the_same_batch_keep_a_stable_order() {
+        let now_ms = chrono::DateTime::parse_from_rfc3339("2021-01-01T00:00:00Z")
+            .unwrap()
+            .timestamp_millis();
+        let watched_at = 1_785_017_916_000i64;
+        let progress = json!([
+            { "content_id": "ttB", "content_type": "series", "video_id": "ttB:1:1", "season": 1, "episode": 1,
+              "position": 1000, "duration": 1000, "last_watched": watched_at },
+            { "content_id": "ttA", "content_type": "series", "video_id": "ttA:1:1", "season": 1, "episode": 1,
+              "position": 1000, "duration": 1000, "last_watched": watched_at },
+        ]);
+        let episodes = |id: &str| {
+            json!([
+                { "id": format!("{id}:1:1"), "season": 1, "episode": 1, "released": "2020-01-01T00:00:00Z" },
+                { "id": format!("{id}:1:2"), "season": 1, "episode": 2, "released": "2020-01-08T00:00:00Z" },
+            ])
+        };
+        let args = json!({
+            "watchProgress": progress,
+            "metaById": {
+                "ttA": { "name": "A", "type": "series", "videos": episodes("ttA") },
+                "ttB": { "name": "B", "type": "series", "videos": episodes("ttB") },
+            },
+            "nowMs": now_ms,
+        });
+
+        for _ in 0..8 {
+            let items: Vec<Value> =
+                serde_json::from_str(&continue_watching_json(&args.to_string()).unwrap()).unwrap();
+            let ids: Vec<&str> = items
+                .iter()
+                .filter_map(|item| item["id"].as_str())
+                .collect();
+            assert_eq!(ids, ["ttA", "ttB"]);
+        }
     }
 
     #[test]
