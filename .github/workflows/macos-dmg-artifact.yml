@@ -68,6 +68,16 @@ jobs:
 
       - name: Build universal macOS DMG
         uses: tauri-apps/tauri-action@v0
+        env:
+          FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+          FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+          FLUXA_MAL_CLIENT_ID: ${{ secrets.FLUXA_MAL_CLIENT_ID }}
+          FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+          FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
+          FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+          FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+          FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
         with:
           projectPath: apps/desktop
           args: --target universal-apple-darwin
