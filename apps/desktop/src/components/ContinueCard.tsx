@@ -113,6 +113,9 @@ export function ContinueCard({
     if (img?.complete && img.naturalWidth > 0) setImgLoaded(true);
   }, [artworkSrc]);
 
+  const episodeParts = episodeLine?.match(/^(S\d+:E\d+)\s+(.+)$/);
+  const episodeCode = episodeParts ? episodeParts[1] : episodeLine;
+  const episodeTitle = episodeParts ? episodeParts[2] : null;
   const timeOffset = typeof lib.timeOffset === 'number' && Number.isFinite(lib.timeOffset) ? lib.timeOffset : null;
   const duration = typeof lib.duration === 'number' && Number.isFinite(lib.duration) && lib.duration > 0 ? lib.duration : null;
   const hasProgress = timeOffset !== null && duration !== null;
@@ -248,7 +251,8 @@ export function ContinueCard({
       <div style={isHorizontal ? { ...cwStyles.footer, ...cwStyles.landscapeFooter } : cwStyles.footer}>
         <div style={cwStyles.metaStack}>
           <p style={cwStyles.name}>{meta.name}</p>
-          <p style={cwStyles.episodeName}>{episodeLine ?? (meta.type === 'series' ? t('auto.up_next') : '')}</p>
+          <p style={cwStyles.episodeName}>{episodeCode ?? (meta.type === 'series' ? t('auto.up_next') : '')}</p>
+          {episodeTitle && <p style={cwStyles.episodeTitle}>{episodeTitle}</p>}
         </div>
       </div>
       <ContextMenu
@@ -299,9 +303,9 @@ export function ContinueCard({
 const cwStyles: Record<string, React.CSSProperties> = {
   landscapeCard: {
     position: 'relative',
-    width: '19.875rem',
-    minWidth: '19.875rem',
-    height: '11.25rem',
+    width: '22.5rem',
+    minWidth: '22.5rem',
+    height: '12.65rem',
     borderRadius: '0.5rem',
     overflow: 'hidden',
     background: 'var(--fluxa-surface)',
@@ -368,8 +372,8 @@ const cwStyles: Record<string, React.CSSProperties> = {
     right: 0,
     bottom: 0,
     left: 0,
-    height: '4.25rem',
-    padding: '1.85rem 0.75rem 1rem',
+    height: '5rem',
+    padding: '2rem 0.85rem 1.5rem',
     alignItems: 'flex-end',
     background: 'linear-gradient(transparent, var(--fluxa-scrim))',
   },
@@ -392,9 +396,9 @@ const cwStyles: Record<string, React.CSSProperties> = {
   landscapeProgressBg: {
     position: 'absolute',
     zIndex: 2,
-    right: '0.75rem',
-    bottom: '0.38rem',
-    left: '0.75rem',
+    right: '0.85rem',
+    bottom: '0.55rem',
+    left: '0.85rem',
     height: '0.3125rem',
     borderRadius: '62.4375rem',
     background: 'var(--fluxa-fill-strong)',
@@ -438,16 +442,25 @@ const cwStyles: Record<string, React.CSSProperties> = {
 
   episodeName: {
     color: 'var(--fluxa-text-secondary)',
-    fontSize: '0.78rem',
+    fontSize: '0.84rem',
     fontWeight: 650,
-    margin: '0.38rem 0 0',
+    margin: '0.4rem 0 0',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  episodeTitle: {
+    color: 'var(--fluxa-text-secondary)',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    margin: '0.18rem 0 0',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
   name: {
     color: 'var(--fluxa-text-primary)',
-    fontSize: '0.95rem',
+    fontSize: '1.05rem',
     fontWeight: 800,
     margin: 0,
     overflow: 'hidden',

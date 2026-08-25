@@ -378,7 +378,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
   },
   scroll: {
     display: 'flex',
-    gap: '1.125rem',
+    gap: '0.75rem',
     overflowX: 'auto',
     paddingLeft: ROW_PADDING_LEFT,
     paddingRight: '2.5rem',

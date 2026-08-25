@@ -107,7 +107,7 @@ export const heroStyles: Record<string, React.CSSProperties> = {
   },
   panel: {
     position: 'absolute',
-    bottom: '12rem' as unknown as number,
+    bottom: '14.5rem' as unknown as number,
     left: PANEL_LEFT,
     maxWidth: '36.25rem',
     display: 'flex',
