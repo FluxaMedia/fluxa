@@ -54,8 +54,8 @@ export const ThisWeekRow = React.memo(function ThisWeekRow({
   const noop = React.useCallback(() => {}, []);
 
   return (
-    <div style={twStyles.section}>
-      <div style={twStyles.header}>
+    <div className="this-week-section" style={twStyles.section}>
+      <div className="this-week-header" style={twStyles.header}>
         <p style={twStyles.title}>{t('auto.this_week')}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
           {canScrollLeft && (
@@ -74,7 +74,7 @@ export const ThisWeekRow = React.memo(function ThisWeekRow({
           )}
         </div>
       </div>
-      <div ref={scrollRef} style={twStyles.scroll} {...dragScroll}>
+      <div ref={scrollRef} className="this-week-scroll" style={twStyles.scroll} {...dragScroll}>
         {items.map((meta) => (
           <ContinueCard
             key={meta.id}

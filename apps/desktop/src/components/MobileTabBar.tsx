@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookMarked, Calendar, Compass, Home, Settings } from 'lucide-react';
+import { BookMarked, Calendar, Compass, Home } from 'lucide-react';
 import { t } from '../i18n';
 import { hapticTap } from '../platform/haptics';
 import type { NavRoute } from './NavSidebar';
@@ -7,9 +7,8 @@ import type { NavRoute } from './NavSidebar';
 const TABS: { route: NavRoute; icon: React.ElementType; labelKey: string }[] = [
   { route: 'home', icon: Home, labelKey: 'nav.home' },
   { route: 'discover', icon: Compass, labelKey: 'nav.discover' },
-  { route: 'library', icon: BookMarked, labelKey: 'nav.library' },
   { route: 'calendar', icon: Calendar, labelKey: 'nav.calendar' },
-  { route: 'settings', icon: Settings, labelKey: 'nav.settings' },
+  { route: 'library', icon: BookMarked, labelKey: 'nav.library' },
 ];
 
 export const MobileTabBar = React.memo(function MobileTabBar({
@@ -28,7 +27,7 @@ export const MobileTabBar = React.memo(function MobileTabBar({
         return (
           <button
             key={route}
-            className="mobile-tabbar-item"
+            className={`mobile-tabbar-item${active ? ' is-active' : ''}`}
             aria-current={active ? 'page' : undefined}
             onClick={() => {
               hapticTap();

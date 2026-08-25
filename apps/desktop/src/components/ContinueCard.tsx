@@ -152,6 +152,7 @@ export function ContinueCard({
     <div
       role="button"
       tabIndex={0}
+      className={`continue-card ${isHorizontal ? 'continue-card-horizontal' : 'continue-card-poster'}`}
       style={{
         ...(isHorizontal ? cwStyles.landscapeCard : cwStyles.posterCard),
         opacity: dismissing || pending ? 0 : 1,

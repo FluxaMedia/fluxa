@@ -26,6 +26,16 @@ html[data-mobile="true"] .app-content {
   padding-bottom: calc(var(--mobile-tabbar-height) + var(--mobile-safe-bottom)) !important;
 }
 
+/* The phone shell follows the native app chrome: a quiet, inset top control row,
+   edge-to-edge content, and a raised bottom navigation surface. */
+html[data-mobile="true"] .app-content {
+  scrollbar-width: none;
+}
+
+html[data-mobile="true"] .app-content::-webkit-scrollbar {
+  display: none;
+}
+
 html[data-mobile="true"] .mobile-tabbar {
   position: fixed;
   left: 0;
@@ -36,8 +46,11 @@ html[data-mobile="true"] .mobile-tabbar {
   align-items: stretch;
   height: calc(var(--mobile-tabbar-height) + var(--mobile-safe-bottom));
   padding-bottom: var(--mobile-safe-bottom);
-  background: rgba(9, 11, 18, 0.98);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 16, 20, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 -0.75rem 2rem rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(1.25rem) saturate(140%);
+  -webkit-backdrop-filter: blur(1.25rem) saturate(140%);
 }
 
 .mobile-tabbar-item {
@@ -54,6 +67,28 @@ html[data-mobile="true"] .mobile-tabbar {
   font-size: 0.625rem;
   line-height: 1;
   -webkit-tap-highlight-color: transparent;
+  color: rgba(255,255,255,0.48);
+  transition: color 0.16s ease, background-color 0.16s ease;
+}
+
+html[data-mobile="true"] .mobile-tabbar-item.is-active {
+  color: var(--fluxa-accent) !important;
+}
+
+html[data-mobile="true"] .mobile-tabbar-item.is-active::before {
+  content: '';
+  position: absolute;
+  top: 0.375rem;
+  width: 2.75rem;
+  height: 0.1875rem;
+  border-radius: 999px;
+  background: var(--fluxa-accent);
+  box-shadow: 0 0 0.75rem var(--fluxa-accent-shadow);
+}
+
+html[data-mobile="true"] .mobile-tabbar-item {
+  position: relative;
+  padding-top: 0.4375rem;
 }
 
 .mobile-tabbar-item span {
@@ -68,10 +103,25 @@ html[data-mobile="true"] .mobile-tabbar {
 }
 
 html[data-mobile="true"] .app-topbar {
-  top: calc(0.625rem + var(--mobile-safe-top)) !important;
-  left: var(--mobile-gutter) !important;
+  display: none !important;
+  top: calc(0.75rem + var(--mobile-safe-top)) !important;
+  left: auto !important;
   right: var(--mobile-gutter) !important;
   justify-content: flex-end !important;
+  gap: 0.625rem !important;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgba(6, 6, 6, 0.32);
+  backdrop-filter: blur(0.75rem);
+  -webkit-backdrop-filter: blur(0.75rem);
+}
+
+html[data-mobile="true"] .app-topbar > * {
+  pointer-events: auto;
+}
+
+html[data-mobile="true"] .app-topbar button {
+  -webkit-tap-highlight-color: transparent;
 }
 
 html[data-mobile="true"] .global-search-expanded {
@@ -81,7 +131,8 @@ html[data-mobile="true"] .global-search-expanded {
 }
 
 html[data-mobile="true"] .home-screen {
-  --hero-height: clamp(24rem, 64vh, 32rem) !important;
+  --hero-height: clamp(25rem, 70svh, 34rem) !important;
+  padding-bottom: 1.25rem !important;
 }
 
 html[data-mobile="true"] .hero-indicators {
@@ -105,8 +156,30 @@ html[data-mobile="true"] .home-shelves {
 html[data-mobile="true"] .hero-panel {
   left: var(--mobile-gutter) !important;
   right: var(--mobile-gutter) !important;
-  bottom: 5rem !important;
+  bottom: 4.75rem !important;
   max-width: none !important;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+html[data-mobile="true"] .hero-panel .hero-logo {
+  object-position: center center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+html[data-mobile="true"] .hero-panel .hero-desc {
+  max-width: 22rem !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+html[data-mobile="true"] .hero-panel .hero-actions {
+  align-self: center !important;
+}
+
+html[data-mobile="true"] .hero-panel [style*="display: flex"] {
+  justify-content: center;
 }
 
 html[data-mobile="true"] .hero-panel h1 {
@@ -150,6 +223,7 @@ html[data-mobile="true"] .shelf-scroll {
   scroll-snap-type: x proximity;
   scroll-padding-left: var(--mobile-gutter);
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 html[data-mobile="true"] .shelf-scroll > * {
@@ -158,6 +232,66 @@ html[data-mobile="true"] .shelf-scroll > * {
 
 html[data-mobile="true"] .shelf-title {
   font-size: 0.9375rem !important;
+  font-weight: 700 !important;
+}
+
+html[data-mobile="true"] .shelf-row {
+  margin-bottom: 1.125rem !important;
+}
+
+html[data-mobile="true"] .continue-watching-header,
+html[data-mobile="true"] .this-week-header {
+  padding-left: var(--mobile-gutter) !important;
+  padding-right: var(--mobile-gutter) !important;
+}
+
+html[data-mobile="true"] .continue-watching-scroll,
+html[data-mobile="true"] .this-week-scroll {
+  gap: 0.625rem !important;
+  padding-left: var(--mobile-gutter) !important;
+  padding-right: var(--mobile-gutter) !important;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: var(--mobile-gutter);
+  -webkit-overflow-scrolling: touch;
+}
+
+html[data-mobile="true"] .continue-card-horizontal {
+  width: min(72vw, 11.5rem) !important;
+  min-width: min(72vw, 11.5rem) !important;
+  height: min(40.5vw, 6.5rem) !important;
+}
+
+html[data-mobile="true"] .continue-card-poster {
+  width: 7rem !important;
+  min-width: 7rem !important;
+  height: 11rem !important;
+}
+
+html[data-mobile="true"] .continue-card-poster > div:first-child {
+  height: 8.25rem !important;
+}
+
+html[data-mobile="true"] .continue-card {
+  scroll-snap-align: start;
+}
+
+html[data-mobile="true"] .continue-card .continue-card-image,
+html[data-mobile="true"] .continue-card > div:first-child {
+  min-width: 0;
+}
+
+html[data-mobile="true"] .continue-card .continue-card-name,
+html[data-mobile="true"] .continue-card p {
+  font-size: 0.6875rem !important;
+  line-height: 1.25 !important;
+}
+
+html[data-mobile="true"] .shelf-header {
+  margin-bottom: 0.625rem !important;
+}
+
+html[data-mobile="true"] .movie-card {
+  -webkit-tap-highlight-color: transparent;
 }
 
 html[data-mobile="true"] .detail-screen .detail-content {
@@ -293,6 +427,34 @@ html[data-mobile="true"] .settings-screen {
   padding-top: calc(3.75rem + var(--mobile-safe-top)) !important;
 }
 
+html[data-mobile="true"] .settings-screen {
+  display: block !important;
+  width: 100% !important;
+  padding-left: var(--mobile-gutter) !important;
+  padding-right: var(--mobile-gutter) !important;
+}
+
+html[data-mobile="true"] .settings-sidebar {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+html[data-mobile="true"] .settings-sidebar nav {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem !important;
+}
+
+html[data-mobile="true"] .settings-sidebar nav button {
+  min-height: 3.5rem;
+  border-radius: 0.875rem;
+  background: var(--fluxa-surface) !important;
+  border: 1px solid var(--fluxa-border) !important;
+}
+
 html[data-mobile="true"] .ui-popover:not(.ui-sheet) {
   max-width: calc(100vw - 1.5rem) !important;
 }
@@ -343,6 +505,38 @@ html[data-mobile="true"] .fluxa-seekbar {
 
 html[data-mobile="true"] .calendar-screen {
   padding: calc(3.5rem + var(--mobile-safe-top)) 0.75rem 2rem !important;
+}
+
+/* Tablet keeps the desktop information density but gets a stable rail and
+   enough breathing room for touch targets. */
+html[data-tier="tablet"] .app-content {
+  padding-left: 5.25rem !important;
+  padding-right: 1rem !important;
+}
+
+html[data-tier="tablet"] .shelf-header,
+html[data-tier="tablet"] .shelf-scroll {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+html[data-tier="tablet"] .home-screen {
+  --hero-height: clamp(25rem, 58vh, 34rem) !important;
+}
+
+html[data-tier="tablet"] .discover-screen,
+html[data-tier="tablet"] .library-screen,
+html[data-tier="tablet"] .category-screen {
+  width: 100% !important;
+  margin-left: 0 !important;
+}
+
+html[data-tier="tablet"] .discover-panel {
+  min-width: 18rem !important;
+}
+
+html[data-tier="tablet"] .movie-card {
+  touch-action: manipulation;
 }
 
 html[data-mobile="true"] .calendar-grid {

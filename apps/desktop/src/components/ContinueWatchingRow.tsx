@@ -197,11 +197,11 @@ export const ContinueWatchingRow = React.memo(
     };
 
     return (
-      <div style={cwStyles.section}>
-        <div style={cwStyles.header}>
+      <div className="continue-watching-section" style={cwStyles.section}>
+        <div className="continue-watching-header" style={cwStyles.header}>
           <p style={cwStyles.title}>{t('auto.continue_watching')}</p>
         </div>
-        <div ref={scrollRef} style={cwStyles.scroll} {...dragScroll}>
+        <div ref={scrollRef} className="continue-watching-scroll" style={cwStyles.scroll} {...dragScroll}>
           {visibleItems.map((meta) => (
             <ContinueCard
               key={meta.id}

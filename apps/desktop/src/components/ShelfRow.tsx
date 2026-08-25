@@ -54,7 +54,7 @@ export const ShelfRow = React.memo(
     const [canScrollRight, setCanScrollRight] = useState(false);
     const baseWidth = cardWidth ?? posterPrefs?.width ?? 156;
     const baseHeight = cardHeight ?? posterPrefs?.height ?? 234;
-    const width = isMobile ? Math.min(baseWidth, Math.round((window.innerWidth - 48) / 2.4)) : baseWidth;
+    const width = isMobile ? Math.min(baseWidth, Math.round((window.innerWidth - 48) / 2.75)) : baseWidth;
     const height = width === baseWidth ? baseHeight : Math.round(baseHeight * (width / baseWidth));
     const radius = posterPrefs?.radius ?? 12;
     const layout = posterPrefs?.layout ?? 'vertical';
