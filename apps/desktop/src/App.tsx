@@ -249,6 +249,13 @@ export default function App() {
   const nativePlayerActive = isWebTarget ? Boolean(playerUrl) : nativeEvents.nativePlayerActive;
   const softwareVideoActive = isWebTarget ? false : nativeEvents.softwareVideoActive;
 
+  // The transparent-background attribute is set from a native event, and a lost
+  // native-player-hide used to leave the whole window see-through with no way
+  // back. Closing the player is reason enough to paint again.
+  useEffect(() => {
+    if (!playerUrl) document.documentElement.removeAttribute('data-native-player-active');
+  }, [playerUrl]);
+
   const guardedPlay = useCallback(
     async (
       stream: Stream,

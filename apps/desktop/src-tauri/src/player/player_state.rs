@@ -87,10 +87,12 @@ pub fn player_hide(app: AppHandle, state: State<DesktopState>) {
     }
     #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
     if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+        log::warn!("player_hide: delegating to native surface");
         surface.hide();
         return;
     }
 
+    log::warn!("player_hide: no native surface, emitting native-player-hide directly");
     let _ = app.emit("native-player-hide", ());
 }
 
