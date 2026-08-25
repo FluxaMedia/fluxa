@@ -364,6 +364,19 @@ export async function coreNuvioResolveContinueWatching(
   return coreInvoke('nuvioResolveContinueWatching', JSON.stringify({ progress, addonMetas }));
 }
 
+export async function coreContinueWatchingForSource(args: {
+  source: string;
+  progress?: Record<string, unknown>;
+  providerWatching?: unknown[];
+  watchProgress?: unknown[];
+  metaById?: Record<string, unknown>;
+  hiddenContentIds?: string[];
+  prefs?: Record<string, unknown>;
+  nowMs?: number;
+}): Promise<Record<string, unknown>[] | null> {
+  return coreInvoke('continueWatchingForSource', JSON.stringify({ nowMs: Date.now(), ...args }));
+}
+
 export async function coreNuvioImportMergePlan(args: {
   progress: Record<string, unknown>;
   watched: Record<string, boolean>;

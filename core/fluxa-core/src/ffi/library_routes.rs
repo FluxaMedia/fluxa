@@ -134,6 +134,9 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
         "buildContinueWatchingFromProgress" => opt_json(
             library_state::build_continue_watching_from_progress_json(args_json),
         ),
+        "continueWatchingForSource" => {
+            opt_json(crate::continue_watching::continue_watching_json(args_json))
+        }
         "rememberLastWatchedEpisodes" => {
             let args = object(args_json)?;
             into_json(library_state::remember_last_watched_episodes_json(

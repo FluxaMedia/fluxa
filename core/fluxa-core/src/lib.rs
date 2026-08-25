@@ -85,6 +85,8 @@ pub mod log_sink;
 mod mdblist_plan;
 pub mod media_demux;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod continue_watching;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod nuvio_sync;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod nuvio_pin;

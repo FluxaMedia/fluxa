@@ -2,6 +2,7 @@ import {
   coreBuildHomeCollectionShelves,
   coreBuildMetadataFeedOptions,
   coreComputeContinueWatchingBadges,
+  coreContinueWatchingForSource,
   coreDiscoverCatalogOptions,
   coreEffectiveMetadataFeedSelection,
   coreInvoke,
@@ -188,49 +189,51 @@ export async function continueWatchingForSelectedSource(
   const provider = plan.provider;
   void invoke('debug_log', { msg: `cw-source: resolved plan source=${plan.source} provider=${provider ?? 'local'}` });
 
-  if (provider) {
-    if (provider === 'nuvio') {
-      if (!profile?.nuvioAccessToken) return [];
-      const profileId = profile.nuvioProfileIndex ?? 1;
-      const [libraryItems, progressItems] = await Promise.all([
-        nuvioPullLibrary(profile.nuvioAccessToken, profileId),
-        nuvioPullWatchProgress(profile.nuvioAccessToken, profileId),
-      ]);
-      const metadataNeeds = (await coreNuvioProgressMetaNeeds(progressItems, libraryItems)) ?? [];
-      const fetchedMetadata = await runWithConcurrency(metadataNeeds, 3, async (need) => {
-        const values = await fetchPlannedResources({
-          kind: 'metaDetail',
-          addons,
-          contentType: need.contentType,
-          id: need.contentId,
-        }).catch(() => []);
-        const result = values.find((value) => value && typeof value === 'object' && 'meta' in value) as
-          { meta?: Record<string, unknown> } | undefined;
-        return [need.contentId, result?.meta ?? null] as const;
-      });
-      const metadataById = new Map(fetchedMetadata.filter(([, detail]) => detail).map(([id, detail]) => [id, detail!]));
-      const resolvedProgress = await coreNuvioResolveContinueWatching(progressItems, Object.fromEntries(metadataById));
-      const mapped = await coreNuvioImportMergePlan({
-        progress: {},
-        watched: {},
-        library: libraryItems,
-        addonMetas: Object.fromEntries(metadataById),
-        watchProgress: resolvedProgress ?? [],
-        watchHistory: [],
-        categories: ['continueWatching'],
-      });
-      return (await buildContinueWatching(mapped?.progress ?? {})) as Record<string, unknown>[];
+  if (provider === 'nuvio') {
+    if (!profile?.nuvioAccessToken) return [];
+    const profileId = profile.nuvioProfileIndex ?? 1;
+    const [libraryItems, progressItems] = await Promise.all([
+      nuvioPullLibrary(profile.nuvioAccessToken, profileId),
+      nuvioPullWatchProgress(profile.nuvioAccessToken, profileId),
+    ]);
+    const metadataNeeds = (await coreNuvioProgressMetaNeeds(progressItems, libraryItems)) ?? [];
+    const fetchedMetadata = await runWithConcurrency(metadataNeeds, 3, async (need) => {
+      const values = await fetchPlannedResources({
+        kind: 'metaDetail',
+        addons,
+        contentType: need.contentType,
+        id: need.contentId,
+      }).catch(() => []);
+      const result = values.find((value) => value && typeof value === 'object' && 'meta' in value) as
+        { meta?: Record<string, unknown> } | undefined;
+      return [need.contentId, result?.meta ?? null] as const;
+    });
+    const metaById: Record<string, unknown> = Object.fromEntries(
+      libraryItems
+        .filter((item) => item.content_id)
+        .map((item) => [String(item.content_id), { name: item.name, poster: item.poster, background: item.background }]),
+    );
+    for (const [id, detail] of fetchedMetadata) {
+      if (detail) metaById[id] = { ...(metaById[id] as Record<string, unknown> | undefined), ...detail };
     }
+    return (
+      (await coreContinueWatchingForSource({
+        source: 'nuvio',
+        watchProgress: progressItems,
+        metaById,
+        prefs,
+      })) ?? []
+    );
+  }
+
+  if (provider) {
     void invoke('debug_log', { msg: `cw-source: loading provider library provider=${provider}` });
     const libraries = await loadProviderLibraries();
     const items = libraries[provider as LibraryProvider]?.watching ?? [];
     void invoke('debug_log', {
       msg: `cw-source: loaded provider library provider=${provider} count=${items.length} ids=${items.map((item) => item.id ?? item._id).join(',')}`,
     });
-    void invoke('debug_log', {
-      msg: `cw-source: provider library detail=${JSON.stringify(items.map((item) => ({ id: item.id ?? item._id, timeOffset: item.timeOffset, duration: item.duration, badge: item.continueWatchingBadge, poster: item.poster, background: item.background })))}`,
-    });
-    return items;
+    return (await coreContinueWatchingForSource({ source: provider, providerWatching: items })) ?? [];
   }
 
   return continueWatchingFromCompactProgress(library, addons);
