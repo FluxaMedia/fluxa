@@ -453,7 +453,38 @@ fn meta_field(meta: Option<&Value>, name: &str) -> Value {
         .unwrap_or(Value::Null)
 }
 
+fn episode_in(meta: Option<&Value>, season: Option<i64>, episode: Option<i64>) -> Option<Value> {
+    let (season, episode) = (season?, episode?);
+    meta?
+        .get("videos")?
+        .as_array()?
+        .iter()
+        .find(|video| {
+            video.get("season").and_then(Value::as_i64) == Some(season)
+                && video
+                    .get("episode")
+                    .or_else(|| video.get("number"))
+                    .and_then(Value::as_i64)
+                    == Some(episode)
+        })
+        .cloned()
+}
+
+fn episode_field(video: Option<&Value>, names: &[&str]) -> Value {
+    names
+        .iter()
+        .find_map(|name| {
+            video
+                .and_then(|video| video.get(*name))
+                .filter(|value| value.as_str().is_none_or(|text| !text.trim().is_empty()))
+                .filter(|value| !value.is_null())
+        })
+        .cloned()
+        .unwrap_or(Value::Null)
+}
+
 fn in_progress_item(entry: &Entry, meta: Option<&Value>) -> Value {
+    let video = episode_in(meta, entry.season, entry.episode);
     json!({
         "id": entry.content_id,
         "_id": entry.content_id,
@@ -462,13 +493,13 @@ fn in_progress_item(entry: &Entry, meta: Option<&Value>) -> Value {
         "poster": meta_field(meta, "poster"),
         "background": meta_field(meta, "background"),
         "logo": meta_field(meta, "logo"),
-        "timeOffset": (entry.position_ms / 1000.0).round() as i64,
-        "duration": (entry.duration_ms / 1000.0).round() as i64,
+        "timeOffset": (entry.position_ms / 1000.0).ceil() as i64,
+        "duration": (entry.duration_ms / 1000.0).floor() as i64,
         "lastVideoId": entry.video_id,
-        "lastEpisodeName": entry.raw.get("episode_title").cloned().unwrap_or(Value::Null),
+        "lastEpisodeName": episode_field(video.as_ref(), &["name", "title"]),
         "lastEpisodeSeason": entry.season,
         "lastEpisodeNumber": entry.episode,
-        "lastEpisodeThumbnail": entry.raw.get("episode_thumbnail").cloned().unwrap_or(Value::Null),
+        "lastEpisodeThumbnail": episode_field(video.as_ref(), &["thumbnail"]),
         "progressFraction": entry.fraction(),
         "continueWatchingBadge": Value::Null,
         "continueWatchingEpisodeResolved": Value::Null,
@@ -679,7 +710,7 @@ mod tests {
 
     fn videos() -> Value {
         json!([
-            { "id": "tt1:2:9", "season": 2, "episode": 9, "released": "2020-01-01T00:00:00Z" },
+            { "id": "tt1:2:9", "season": 2, "episode": 9, "name": "Three Ghosts", "released": "2020-01-01T00:00:00Z" },
             { "id": "tt1:2:10", "season": 2, "episode": 10, "released": "2020-01-08T00:00:00Z" },
             { "id": "tt1:2:11", "season": 2, "episode": 11, "released": "2020-01-15T00:00:00Z" },
         ])
@@ -705,6 +736,7 @@ mod tests {
         );
         assert_eq!(items.len(), 1);
         assert_eq!(items[0]["lastVideoId"], "tt1:2:9");
+        assert_eq!(items[0]["lastEpisodeName"], "Three Ghosts");
         assert_eq!(items[0]["continueWatchingBadge"], Value::Null);
     }
 
@@ -750,6 +782,17 @@ mod tests {
             "2020-01-05T00:00:00Z",
         );
         assert_eq!(items[0]["lastEpisodeNumber"], 10);
+    }
+
+    #[test]
+    fn the_remaining_minute_matches_a_millisecond_precise_countdown() {
+        let items = run(
+            json!([entry("tt1:2:9", 2, 9, 1_400.0, 1_321_000.0, 1_600_000_000_000)]),
+            "2021-01-01T00:00:00Z",
+        );
+        let time_offset = items[0]["timeOffset"].as_i64().unwrap();
+        let duration = items[0]["duration"].as_i64().unwrap();
+        assert_eq!((duration - time_offset) / 60, 21);
     }
 
     #[test]
