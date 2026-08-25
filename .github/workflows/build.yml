@@ -254,7 +254,7 @@ jobs:
 
       - name: Verify bundled macOS application libraries
         run: |
-          APP="apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Fluxa Desktop.app"
+          APP="src-tauri/target/universal-apple-darwin/release/bundle/macos/Fluxa Desktop.app"
           LIB_DIR="$APP/Contents/Resources/lib"
           test -d "$LIB_DIR"
           test -f "$LIB_DIR/libmpv.dylib"
