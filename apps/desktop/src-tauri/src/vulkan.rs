@@ -24,6 +24,7 @@ pub const VK_STRUCTURE_TYPE_APPLICATION_INFO: i32 = 0;
 pub const VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO: i32 = 1;
 pub const VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO: i32 = 2;
 pub const VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO: i32 = 3;
+pub const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: i32 = 2;
 pub const VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO: i32 = 9;
 pub const VK_STRUCTURE_TYPE_FENCE_CREATE_INFO: i32 = 8;
 pub const VK_FENCE_CREATE_SIGNALED_BIT: u32 = 1;
@@ -32,6 +33,7 @@ pub const VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR: i32 = 1000001000;
 pub const VK_STRUCTURE_TYPE_PRESENT_INFO_KHR: i32 = 1000001001;
 pub const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: i32 = 1000207000;
 pub const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: i32 = 1000314007;
+pub const VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: i32 = 51;
 pub const VK_STRUCTURE_TYPE_SUBMIT_INFO: i32 = 4;
 pub const VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO: i32 = 39;
 pub const VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO: i32 = 40;
@@ -53,6 +55,7 @@ pub const VK_PRESENT_MODE_FIFO_KHR: i32 = 2;
 pub const VK_API_VERSION_1_0: u32 = 1 << 22;
 pub const VK_API_VERSION_1_2: u32 = (1 << 22) | (2 << 12);
 pub const VK_API_VERSION_1_3: u32 = (1 << 22) | (3 << 12);
+pub const VK_API_VERSION_1_4: u32 = (1 << 22) | (4 << 12);
 pub const VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: i32 = 1000001002;
 pub const VK_IMAGE_ASPECT_COLOR_BIT: u32 = 0x1;
 pub const VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT: u32 = 0x00002000;
@@ -154,10 +157,77 @@ pub struct VkDeviceCreateInfo {
 }
 
 #[repr(C)]
+pub struct VkPhysicalDeviceFeatures2 {
+    pub s_type: i32,
+    pub p_next: *mut c_void,
+    // VkPhysicalDeviceFeatures is 55 VkBool32 fields. We do not need to
+    // inspect the legacy feature bits here, but the storage must be present
+    // so the pNext chain has the correct Vulkan ABI layout.
+    pub features: [u32; 55],
+}
+
+#[repr(C)]
 pub struct VkPhysicalDeviceTimelineSemaphoreFeatures {
     pub s_type: i32,
     pub p_next: *mut c_void,
     pub timeline_semaphore: u32,
+}
+
+// libplacebo imports the required timeline feature through the Vulkan 1.2
+// core feature chain. Keep this ABI-compatible with VkPhysicalDeviceVulkan12Features
+// instead of advertising the promoted extension struct alone.
+#[repr(C)]
+#[derive(Default)]
+pub struct VkPhysicalDeviceVulkan12Features {
+    pub s_type: i32,
+    pub p_next: *mut c_void,
+    pub sampler_mirror_clamp_to_edge: u32,
+    pub draw_indirect_count: u32,
+    pub storage_buffer8_bit_access: u32,
+    pub uniform_and_storage_buffer8_bit_access: u32,
+    pub storage_push_constant8: u32,
+    pub shader_buffer_int64_atomics: u32,
+    pub shader_shared_int64_atomics: u32,
+    pub shader_float16: u32,
+    pub shader_int8: u32,
+    pub descriptor_indexing: u32,
+    pub shader_input_attachment_array_dynamic_indexing: u32,
+    pub shader_uniform_texel_buffer_array_dynamic_indexing: u32,
+    pub shader_storage_texel_buffer_array_dynamic_indexing: u32,
+    pub shader_uniform_buffer_array_non_uniform_indexing: u32,
+    pub shader_sampled_image_array_non_uniform_indexing: u32,
+    pub shader_storage_buffer_array_non_uniform_indexing: u32,
+    pub shader_storage_image_array_non_uniform_indexing: u32,
+    pub shader_input_attachment_array_non_uniform_indexing: u32,
+    pub shader_uniform_texel_buffer_array_non_uniform_indexing: u32,
+    pub shader_storage_texel_buffer_array_non_uniform_indexing: u32,
+    pub descriptor_binding_uniform_buffer_update_after_bind: u32,
+    pub descriptor_binding_sampled_image_update_after_bind: u32,
+    pub descriptor_binding_storage_image_update_after_bind: u32,
+    pub descriptor_binding_storage_buffer_update_after_bind: u32,
+    pub descriptor_binding_uniform_texel_buffer_update_after_bind: u32,
+    pub descriptor_binding_storage_texel_buffer_update_after_bind: u32,
+    pub descriptor_binding_update_unused_while_pending: u32,
+    pub descriptor_binding_partially_bound: u32,
+    pub descriptor_binding_variable_descriptor_count: u32,
+    pub runtime_descriptor_array: u32,
+    pub sampler_filter_minmax: u32,
+    pub scalar_block_layout: u32,
+    pub imageless_framebuffer: u32,
+    pub uniform_buffer_standard_layout: u32,
+    pub shader_subgroup_extended_types: u32,
+    pub separate_depth_stencil_layouts: u32,
+    pub host_query_reset: u32,
+    pub timeline_semaphore: u32,
+    pub buffer_device_address: u32,
+    pub buffer_device_address_capture_replay: u32,
+    pub buffer_device_address_multi_device: u32,
+    pub vulkan_memory_model: u32,
+    pub vulkan_memory_model_device_scope: u32,
+    pub vulkan_memory_model_availability_visibility_chains: u32,
+    pub shader_output_viewport_index: u32,
+    pub shader_output_layer: u32,
+    pub subgroup_broadcast_dynamic_id: u32,
 }
 
 #[repr(C)]
@@ -282,6 +352,10 @@ pub type PfnDestroyInstance = unsafe extern "system" fn(VkInstance, *const c_voi
 pub type PfnEnumeratePhysicalDevices =
     unsafe extern "system" fn(VkInstance, *mut u32, *mut VkPhysicalDevice) -> VkResult;
 pub type PfnGetPhysicalDeviceProperties = unsafe extern "system" fn(VkPhysicalDevice, *mut c_void);
+pub type PfnGetPhysicalDeviceFeatures2 = unsafe extern "system" fn(
+    VkPhysicalDevice,
+    *mut VkPhysicalDeviceFeatures2,
+);
 pub type PfnEnumerateDeviceExtensionProperties = unsafe extern "system" fn(
     VkPhysicalDevice,
     *const i8,
@@ -539,7 +613,10 @@ impl VulkanContext {
                 (loader_version >> 12) & 0x3FF
             ));
         }
-        let api_version = loader_version.min(VK_API_VERSION_1_3);
+        // Request the highest loader version we understand. The actual
+        // physical-device feature/API support is still validated separately
+        // below; 1.4 is not forced on a device that only exposes 1.2/1.3.
+        let api_version = loader_version.min(VK_API_VERSION_1_4);
         log::info!(
             "{} Vulkan: loader reports {}.{}, requesting {}.{}",
             platform.label(),
@@ -625,6 +702,8 @@ impl VulkanContext {
             iproc!("vkEnumeratePhysicalDevices");
         let get_physical_device_properties: PfnGetPhysicalDeviceProperties =
             iproc!("vkGetPhysicalDeviceProperties");
+        let get_physical_device_features2: PfnGetPhysicalDeviceFeatures2 =
+            iproc!("vkGetPhysicalDeviceFeatures2");
         let enumerate_device_extension_properties: PfnEnumerateDeviceExtensionProperties =
             iproc!("vkEnumerateDeviceExtensionProperties");
         let get_queue_family_properties: PfnGetPhysicalDeviceQueueFamilyProperties =
@@ -729,6 +808,47 @@ impl VulkanContext {
             );
         };
 
+        // libplacebo's gpu-next import path requires the device to have been
+        // created with its required Vulkan features enabled. Query the
+        // selected physical device before creating the logical device so a
+        // MoltenVK feature mismatch becomes an explicit, actionable error
+        // instead of MPV_ERROR_UNSUPPORTED later in pl_vulkan_import().
+        let mut supported_sync2 = VkPhysicalDeviceSynchronization2Features {
+            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+            p_next: ptr::null_mut(),
+            synchronization2: 0,
+        };
+        let mut supported_vulkan12 = VkPhysicalDeviceVulkan12Features {
+            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            p_next: &mut supported_sync2 as *mut _ as *mut c_void,
+            ..Default::default()
+        };
+        let mut supported_features = VkPhysicalDeviceFeatures2 {
+            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            p_next: &mut supported_vulkan12 as *mut _ as *mut c_void,
+            features: [0; 55],
+        };
+        unsafe { get_physical_device_features2(phys_device, &mut supported_features) };
+
+        let missing_features = [
+            ("synchronization2", supported_sync2.synchronization2),
+            ("timelineSemaphore", supported_vulkan12.timeline_semaphore),
+            ("bufferDeviceAddress", supported_vulkan12.buffer_device_address),
+        ]
+        .into_iter()
+        .filter_map(|(name, supported)| (supported == 0).then_some(name))
+        .collect::<Vec<_>>();
+        if !missing_features.is_empty() {
+            unsafe {
+                destroy_surface_khr(instance, surface, ptr::null());
+                destroy_instance(instance, ptr::null());
+            }
+            return Err(format!(
+                "selected Vulkan device is missing libplacebo gpu-next required feature(s): {}",
+                missing_features.join(", ")
+            ));
+        }
+
         let mut dev_ext_count: u32 = 0;
         unsafe {
             enumerate_device_extension_properties(
@@ -780,14 +900,16 @@ impl VulkanContext {
             p_next: ptr::null_mut(),
             synchronization2: 1,
         };
-        let mut timeline_semaphore_features = VkPhysicalDeviceTimelineSemaphoreFeatures {
-            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
+        let mut vulkan12_features = VkPhysicalDeviceVulkan12Features {
+            s_type: VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             p_next: &mut synchronization2_features as *mut _ as *mut c_void,
             timeline_semaphore: 1,
+            buffer_device_address: 1,
+            ..Default::default()
         };
         let device_create_info = VkDeviceCreateInfo {
             s_type: VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            p_next: &mut timeline_semaphore_features as *mut _ as *const c_void,
+            p_next: &mut vulkan12_features as *mut _ as *const c_void,
             flags: 0,
             queue_create_info_count: 1,
             p_queue_create_infos: &queue_create_info,
