@@ -154,8 +154,18 @@ impl VulkanPlatform for MacosPlatform {
             return Err("selected Vulkan device does not expose VK_KHR_swapchain".to_string());
         }
         let mut extensions = vec![CString::new("VK_KHR_swapchain").unwrap()];
-        if available.iter().any(|e| e == "VK_KHR_portability_subset") {
-            extensions.push(CString::new("VK_KHR_portability_subset").unwrap());
+        // MoltenVK still reports a pre-1.3 device API, so the feature structs
+        // libplacebo requires are only legal with their KHR extensions enabled.
+        for name in [
+            "VK_KHR_portability_subset",
+            "VK_KHR_synchronization2",
+            "VK_KHR_timeline_semaphore",
+            "VK_EXT_host_query_reset",
+            "VK_KHR_buffer_device_address",
+        ] {
+            if available.iter().any(|e| e == name) {
+                extensions.push(CString::new(name).unwrap());
+            }
         }
         Ok(extensions)
     }

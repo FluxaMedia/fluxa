@@ -808,6 +808,22 @@ impl VulkanContext {
             );
         };
 
+        {
+            let mut props = [0u8; 1024];
+            unsafe { get_physical_device_properties(phys_device, props.as_mut_ptr() as *mut c_void) };
+            let device_api = u32::from_ne_bytes(props[0..4].try_into().unwrap());
+            let end = props[20..276].iter().position(|&c| c == 0).unwrap_or(0);
+            let name = String::from_utf8_lossy(&props[20..20 + end]).to_string();
+            log::info!(
+                "{} Vulkan device: {} api {}.{}.{}",
+                platform.label(),
+                name,
+                (device_api >> 22) & 0x7F,
+                (device_api >> 12) & 0x3FF,
+                device_api & 0xFFF
+            );
+        }
+
         // libplacebo's gpu-next import path requires the device to have been
         // created with its required Vulkan features enabled. Query the
         // selected physical device before creating the logical device so a
