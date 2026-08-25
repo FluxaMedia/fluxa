@@ -121,7 +121,7 @@ export function ContinueCard({
   const percentOnly = !hasProgress && resumePercent !== null;
   const progress = hasProgress ? timeOffset / duration : resumePercent;
   const isUpNext =
-    meta.type === 'series' && (lib.continueWatchingBadge === 'upNext' || (progress !== null && (progress < 0.005 || progress >= 0.995)));
+    meta.type === 'series' && (lib.continueWatchingBadge === 'upNext' || (progress !== null && (progress <= 0 || progress >= 0.995)));
   const remainingText =
     !isUpNext && progress !== null
       ? progressDirection === 'watched'

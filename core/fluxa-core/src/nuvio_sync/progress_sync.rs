@@ -2,7 +2,6 @@ use super::helpers::{iso_from_ms, parse, str_field};
 use serde_json::{Map, Value, json};
 use std::collections::HashSet;
 
-const RESOLVED_LOW_RATIO: f64 = 0.005;
 const RESOLVED_HIGH_RATIO: f64 = 0.995;
 const RESOLVED_MAX_POSITION_MS: f64 = 1000.0;
 pub(crate) fn library_to_watchlist_json(args_json: &str) -> Option<String> {
@@ -104,12 +103,10 @@ pub(crate) fn progress_meta_needs_json(args_json: &str) -> Option<String> {
 }
 
 fn is_resolved_up_next(position: f64, duration: f64) -> bool {
-    if duration <= 0.0 {
-        position <= RESOLVED_MAX_POSITION_MS
-    } else {
-        let ratio = position / duration;
-        !(RESOLVED_LOW_RATIO..RESOLVED_HIGH_RATIO).contains(&ratio)
+    if position < RESOLVED_MAX_POSITION_MS {
+        return true;
     }
+    duration > 0.0 && position / duration >= RESOLVED_HIGH_RATIO
 }
 
 fn video_episode_number(video: &Value) -> Option<i64> {

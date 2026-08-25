@@ -23,7 +23,7 @@ export function formatWatched(offset: number): string {
 
 export function formatRemaining(offset: number, duration: number): string {
   const remaining = Math.max(0, duration - offset);
-  const mins = Math.max(1, Math.ceil(remaining / 60));
+  const mins = Math.max(1, Math.floor(remaining / 60));
   if (mins < 60) return t('format.remaining_minutes', mins);
   const h = Math.floor(mins / 60);
   const m = mins % 60;
