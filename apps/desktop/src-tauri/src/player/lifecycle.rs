@@ -220,8 +220,18 @@ pub async fn player_load(
         if let Some(surface) = ensure_native_player_surface(&app, &state) {
             return surface.load(url, start_at, total_duration);
         }
-        return Err(
-            "macOS native player renderer is unavailable; playback was stopped".to_string(),
+        log::warn!(
+            "player_load: macOS native player surface unavailable, using software video rendering"
+        );
+        if let Ok(mut renderer) = state.player_render_state.lock() {
+            if let Some(renderer) = renderer.as_mut() {
+                renderer.reset_render_context();
+            }
+        }
+        let _ = app.emit("native-player-show", ());
+        let _ = app.emit(
+            "native-player-software-rendering",
+            "macOS native player surface is unavailable; using software video rendering",
         );
     }
 
