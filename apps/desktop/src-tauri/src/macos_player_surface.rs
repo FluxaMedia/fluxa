@@ -523,7 +523,10 @@ fn install_with_backend(app_handle: AppHandle) -> Result<NativePlayerSurface, St
                             continue;
                         }
                         let hdr = match &render_target {
-                            MacRenderTarget::Vulkan { ctx, .. } => ctx.is_hdr(),
+                            MacRenderTarget::Vulkan { ctx, metal_layer } => {
+                                unsafe { log_surface_geometry("load", rv, *metal_layer as Id) };
+                                ctx.is_hdr()
+                            }
                         };
                         let mut r = state.player_mpv_client.lock().unwrap();
                         if let Some(renderer) = r.as_mut() {
@@ -831,6 +834,52 @@ unsafe fn create_render_subview(
     Ok((SendId(view), layer))
 }
 
+unsafe extern "C" {
+    fn CGColorCreateGenericRGB(red: f64, green: f64, blue: f64, alpha: f64) -> *mut c_void;
+}
+
+unsafe fn msg0_rect(obj: Id, sel_name: &str) -> NSRect {
+    type Fn = unsafe extern "C" fn(Id, Id) -> NSRect;
+    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    unsafe { f(obj, sel(sel_name)) }
+}
+
+unsafe fn msg0_bool(obj: Id, sel_name: &str) -> bool {
+    type Fn = unsafe extern "C" fn(Id, Id) -> i8;
+    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    unsafe { f(obj, sel(sel_name)) != 0 }
+}
+
+pub(crate) unsafe fn log_surface_geometry(tag: &str, view: Id, layer: Id) {
+    unsafe {
+        let frame = msg0_rect(view, "frame");
+        let hidden = msg0_bool(view, "isHidden");
+        let superview = msg0(view, "superview");
+        let window = msg0(view, "window");
+        let drawable = msg0_size(layer, "drawableSize");
+        let opaque = msg0_bool(layer, "isOpaque");
+        log::info!(
+            "macos_player_surface[{tag}]: view frame={}x{}@{},{} hidden={} superview={} window={} layer_drawable={}x{} layer_opaque={}",
+            frame.size.width,
+            frame.size.height,
+            frame.origin.x,
+            frame.origin.y,
+            hidden,
+            !superview.is_null(),
+            !window.is_null(),
+            drawable.width,
+            drawable.height,
+            opaque
+        );
+    }
+}
+
+unsafe fn msg0_size(obj: Id, sel_name: &str) -> NSSize {
+    type Fn = unsafe extern "C" fn(Id, Id) -> NSSize;
+    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    unsafe { f(obj, sel(sel_name)) }
+}
+
 unsafe fn create_metal_layer(contents_scale: f64, w: i32, h: i32) -> Result<Id, String> {
     let layer_cls = cls("CAMetalLayer");
     if layer_cls.is_null() {
@@ -849,6 +898,10 @@ unsafe fn create_metal_layer(contents_scale: f64, w: i32, h: i32) -> Result<Id, 
             height: h as f64,
         },
     );
+    let magenta = unsafe { CGColorCreateGenericRGB(1.0, 0.0, 1.0, 1.0) };
+    if !magenta.is_null() {
+        msg1_id(layer, "setBackgroundColor:", magenta);
+    }
     Ok(layer)
 }
 
