@@ -468,6 +468,12 @@ function useDesktopPlayer({
         void finalizeExternalPlayback(null);
         return;
       }
+      const resumedAt = lastResumeAtSecondsRef.current ?? 0;
+      if (position < 30 && resumedAt > position) {
+        debugLog(`handleExternalPlayerCallback: keeping the stored ${resumedAt}s over a ${position}s return`);
+        void finalizeExternalPlayback(null);
+        return;
+      }
       const duration = lastTotalDurationSecondsRef.current ?? 0;
       const status = { pause: 'no', timePos: String(position), duration: String(duration) } as EmbeddedMpvStatus;
       lastPlaybackStatusRef.current = status;

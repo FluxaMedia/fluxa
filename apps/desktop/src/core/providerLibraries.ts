@@ -23,6 +23,10 @@ async function storageKey(profileKey?: string): Promise<string> {
   return (profileKey ?? (await effectRunnerLibraryKey())).replace(/^library_/, 'provider_libraries_');
 }
 
+function msToSeconds(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.round(value / 1000) : 0;
+}
+
 export async function loadProviderLibraries(profileKey?: string): Promise<ProviderLibraries> {
   const profile = await loadActiveProfile();
   if (profile) {
@@ -95,8 +99,8 @@ export async function loadProviderLibraries(profileKey?: string): Promise<Provid
                   description: libraryItem.description,
                   releaseInfo: libraryItem.release_info,
                   genres: libraryItem.genres,
-                  timeOffset: progressEntry.position,
-                  duration: progressEntry.duration,
+                  timeOffset: msToSeconds(progressEntry.position),
+                  duration: msToSeconds(progressEntry.duration),
                   videoId: progressEntry.video_id,
                   season: progressEntry.season,
                   episode: progressEntry.episode,
