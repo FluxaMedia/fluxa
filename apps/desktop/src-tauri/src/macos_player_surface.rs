@@ -522,10 +522,13 @@ fn install_with_backend(app_handle: AppHandle) -> Result<NativePlayerSurface, St
                             }
                             continue;
                         }
+                        let hdr = match &render_target {
+                            MacRenderTarget::Vulkan { ctx, .. } => ctx.is_hdr(),
+                        };
                         let mut r = state.player_mpv_client.lock().unwrap();
                         if let Some(renderer) = r.as_mut() {
                             if let Err(e) =
-                                crate::player::load_mpv_engine(renderer, &url, start_at, false)
+                                crate::player::load_mpv_engine(renderer, &url, start_at, hdr)
                             {
                                 drop(r);
                                 let _ = app.emit("native-player-error", e);
