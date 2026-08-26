@@ -1,11 +1,6 @@
 name: Player Kit
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/player-kit.yml"
-      - "apps/apple/FluxaPlayerKit/**"
-      - "apps/apple/scripts/build-ffmpeg-xcframework.sh"
   push:
     branches: [master]
     paths:
