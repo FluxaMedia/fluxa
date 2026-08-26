@@ -8,7 +8,7 @@
 
 pub mod ebml;
 
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+pub mod fmp4_mux;
 pub mod mkv_demux;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod webm_mux;
@@ -67,7 +67,11 @@ impl IncrementalRemuxSession {
                 .tracks
                 .iter()
                 .find(|t| t.kind == mkv_demux::TrackKind::Audio);
-            out.extend_from_slice(&webm_mux::write_init(self.demuxer.timestamp_scale, video, audio));
+            out.extend_from_slice(&webm_mux::write_init(
+                self.demuxer.timestamp_scale,
+                video,
+                audio,
+            ));
             self.init_written = true;
         }
         if self.init_written && !step.packets.is_empty() {
@@ -135,7 +139,11 @@ mod tests {
         write_ebml_element(&mut audio_entry, TRACK_TYPE, &[2]);
         write_ebml_element(&mut audio_entry, CODEC_ID, b"A_OPUS");
         let mut audio_params = Vec::new();
-        write_ebml_element(&mut audio_params, SAMPLING_FREQUENCY, &48_000f64.to_be_bytes());
+        write_ebml_element(
+            &mut audio_params,
+            SAMPLING_FREQUENCY,
+            &48_000f64.to_be_bytes(),
+        );
         write_ebml_element(&mut audio_params, CHANNELS, &[2]);
         write_ebml_element(&mut audio_entry, AUDIO, &audio_params);
 
@@ -227,7 +235,10 @@ mod tests {
         saw_tracks_ready |= tail.tracks_ready;
         packets.extend(tail.packets);
 
-        assert!(saw_tracks_ready, "tracks should become available before EOF");
+        assert!(
+            saw_tracks_ready,
+            "tracks should become available before EOF"
+        );
         assert_eq!(incremental.tracks.len(), whole.tracks.len());
         assert_eq!(incremental.timestamp_scale, whole.timestamp_scale);
         assert_eq!(packets.len(), whole.packets.len());
@@ -306,5 +317,83 @@ mod tests {
         assert_eq!(redemuxed.packets[0].data, vec![0xAA, 0xBB, 0xCC]);
         assert_eq!(redemuxed.packets[1].data, vec![0x11, 0x22]);
         assert_eq!(redemuxed.packets[2].data, vec![0xDD, 0xEE]);
+    }
+}
+
+/// Incremental MKV -> fragmented MP4 remux session, the AVFoundation-facing
+/// counterpart to [`IncrementalRemuxSession`]. Feed it the source bytes as
+/// they arrive and it hands back an fMP4 byte stream an AVPlayer can start
+/// playing before the download finishes.
+#[derive(Default)]
+pub struct IncrementalFmp4Session {
+    demuxer: mkv_demux::IncrementalDemuxer,
+    fragments: Option<fmp4_mux::FragmentWriter>,
+}
+
+impl IncrementalFmp4Session {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push(&mut self, chunk: &[u8]) -> Vec<u8> {
+        let step = self.demuxer.push(chunk);
+        self.drain(step)
+    }
+
+    pub fn finish(&mut self) -> Vec<u8> {
+        let step = self.demuxer.flush();
+        let mut out = self.drain(step);
+        if let Some(writer) = self.fragments.as_mut() {
+            if let Some(fragment) = writer.flush() {
+                out.extend_from_slice(&fragment);
+            }
+        }
+        out
+    }
+
+    /// `None` until the source's Tracks element has been parsed; afterwards,
+    /// whether the tracks are ones we can copy into MP4 without re-encoding.
+    pub fn is_supported(&self) -> Option<bool> {
+        if self.demuxer.tracks.is_empty() {
+            return None;
+        }
+        Some(
+            self.demuxer.tracks.iter().any(|track| {
+                track.kind == mkv_demux::TrackKind::Video && fmp4_mux::supports(track)
+            }),
+        )
+    }
+
+    fn drain(&mut self, step: mkv_demux::IncrementalStep) -> Vec<u8> {
+        let mut out = Vec::new();
+        if step.tracks_ready && self.fragments.is_none() {
+            let video = self.demuxer.tracks.iter().find(|track| {
+                track.kind == mkv_demux::TrackKind::Video && fmp4_mux::supports(track)
+            });
+            let audio = self.demuxer.tracks.iter().find(|track| {
+                track.kind == mkv_demux::TrackKind::Audio && fmp4_mux::supports(track)
+            });
+            if video.is_none() {
+                return out;
+            }
+            out.extend_from_slice(&fmp4_mux::write_init(
+                self.demuxer.timestamp_scale,
+                video,
+                audio,
+            ));
+            self.fragments = Some(fmp4_mux::FragmentWriter::new(
+                self.demuxer.timestamp_scale,
+                video,
+                audio,
+            ));
+        }
+        if let Some(writer) = self.fragments.as_mut() {
+            for packet in &step.packets {
+                if let Some(fragment) = writer.push(packet) {
+                    out.extend_from_slice(&fragment);
+                }
+            }
+        }
+        out
     }
 }
