@@ -53,6 +53,9 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
             return nil
         }
         localServerId = server.id
+        if shouldRemuxToFmp4(url) {
+            return proxyUrl.appendingPathComponent("remux")
+        }
         return proxyUrl
     }
 
@@ -91,6 +94,14 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
         return normalized.hasPrefix("magnet:") ||
             normalized.hasPrefix("stremio://torrent/") ||
             normalized.hasSuffix(".torrent")
+    }
+
+    private func shouldRemuxToFmp4(_ rawUrl: String) -> Bool {
+        guard let components = URLComponents(string: rawUrl),
+              let path = components.url?.path.lowercased() else {
+            return false
+        }
+        return path.hasSuffix(".mkv") || path.hasSuffix(".matroska")
     }
 
     private func withCStrings(

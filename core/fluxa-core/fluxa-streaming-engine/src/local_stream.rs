@@ -1,3 +1,4 @@
+use fluxa_core::media_demux::IncrementalFmp4Session;
 use serde_json::json;
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
@@ -287,7 +288,10 @@ async fn handle_async_local_stream(
     config: LocalStreamConfig,
     request: ParsedLocalRequest,
 ) {
-    if !request.path.starts_with(&format!("/stream/{}", config.id)) {
+    let stream_path = format!("/stream/{}", config.id);
+    let remux_path = format!("{stream_path}/remux");
+    let remux = request.path == remux_path;
+    if request.path != stream_path && !remux {
         let _ = stream
             .write_all(b"HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n")
             .await;
@@ -331,6 +335,9 @@ async fn handle_async_local_stream(
         "etag",
         "last-modified",
     ] {
+        if remux && (name == "content-type" || name == "content-length") {
+            continue;
+        }
         if let Some(value) = response
             .headers()
             .get(name)
@@ -342,13 +349,30 @@ async fn handle_async_local_stream(
             header.push_str("\r\n");
         }
     }
+    if remux {
+        header.push_str("content-type: video/mp4\r\n");
+    }
     header.push_str("Connection: close\r\n\r\n");
     if stream.write_all(header.as_bytes()).await.is_err() || request.method == "HEAD" {
         return;
     }
-    while let Ok(Some(chunk)) = response.chunk().await {
-        if stream.write_all(&chunk).await.is_err() {
-            break;
+    if remux {
+        let mut session = IncrementalFmp4Session::new();
+        while let Ok(Some(chunk)) = response.chunk().await {
+            let output = session.push(&chunk);
+            if !output.is_empty() && stream.write_all(&output).await.is_err() {
+                return;
+            }
+        }
+        let output = session.finish();
+        if !output.is_empty() {
+            let _ = stream.write_all(&output).await;
+        }
+    } else {
+        while let Ok(Some(chunk)) = response.chunk().await {
+            if stream.write_all(&chunk).await.is_err() {
+                break;
+            }
         }
     }
 }
