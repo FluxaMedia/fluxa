@@ -944,6 +944,26 @@ async fn stream_fname(
     }
 }
 
+fn magnet_info_hash(link: &str) -> Option<String> {
+    let marker = "xt=urn:btih:";
+    let start = link.find(marker)? + marker.len();
+    let hash: String = link[start..]
+        .chars()
+        .take_while(char::is_ascii_alphanumeric)
+        .collect();
+    (hash.len() == 40).then(|| hash.to_ascii_lowercase())
+}
+
+fn find_torrent_by_info_hash(state: &EngineState, hash: &str) -> Option<usize> {
+    state
+        .api
+        .api_torrent_list_ext(ApiTorrentListOpts { with_stats: false })
+        .torrents
+        .into_iter()
+        .find(|torrent| torrent.info_hash.eq_ignore_ascii_case(hash))
+        .and_then(|torrent| torrent.id)
+}
+
 async fn ensure_torrent(
     state: &EngineState,
     link: Option<&str>,
@@ -956,6 +976,19 @@ async fn ensure_torrent(
         .filter(|link| !link.is_empty())
         .ok_or_else(|| "missing torrent link".to_string())?;
     if let Some(id) = lookup_known_link(state, Some(link)) {
+        let details = state
+            .api
+            .api_torrent_details(TorrentIdOrHash::Id(id))
+            .map_err(|error| format!("{error:#}"))?;
+        return Ok((id, details));
+    }
+
+    // The link map only knows what this process added. A torrent restored from
+    // session persistence, or the same one behind a magnet with a different
+    // tracker list, would otherwise be resolved from peers all over again.
+    if let Some(id) = magnet_info_hash(link).and_then(|hash| find_torrent_by_info_hash(state, &hash))
+    {
+        remember_link(state, link, id);
         let details = state
             .api
             .api_torrent_details(TorrentIdOrHash::Id(id))
@@ -1743,7 +1776,8 @@ mod tests {
     use super::{
         ActiveTelemetrySession, CancellableReader, FileRole, PlaybackTelemetry, PlaybackWindow,
         TelemetryEvent, TelemetryState, TorrentFileFocus, TorrentLifecycle, apply_telemetry_event,
-        clear_telemetry_for_torrent, is_probe_for_window, parse_range, playback_buffer_targets,
+        clear_telemetry_for_torrent, is_probe_for_window, magnet_info_hash, parse_range,
+        playback_buffer_targets,
         should_deactivate_prewarm,
     };
     use axum::http::HeaderValue;
@@ -1897,6 +1931,20 @@ mod tests {
         assert_eq!(range("items=0-1", 1000), Err(()));
         assert_eq!(range("bytes=0-1,2-3", 1000), Err(()));
         assert_eq!(range("bytes=-0", 1000), Err(()));
+    }
+
+    #[test]
+    fn magnet_hash_survives_a_different_tracker_list() {
+        let with_trackers = "magnet:?xt=urn:btih:4B91C9289FD752522348D5A67A4E8157DD1B5DF2&dn=x&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337";
+        let bare = "magnet:?xt=urn:btih:4b91c9289fd752522348d5a67a4e8157dd1b5df2";
+
+        assert_eq!(magnet_info_hash(with_trackers), magnet_info_hash(bare));
+        assert_eq!(
+            magnet_info_hash(bare).as_deref(),
+            Some("4b91c9289fd752522348d5a67a4e8157dd1b5df2")
+        );
+        assert!(magnet_info_hash("magnet:?xt=urn:btih:tooshort").is_none());
+        assert!(magnet_info_hash("https://example.com/a.torrent").is_none());
     }
 
     #[test]
