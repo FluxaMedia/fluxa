@@ -35,6 +35,12 @@ final class FluxaFFmpegPipeline: @unchecked Sendable {
 
     func open(_ item: FluxaPlaybackItem) {
         demuxQueue.async { [self] in
+            // `close()` and `open()` are serialized on this queue, so reset
+            // per-stream state here before inspecting the new input. Without
+            // this, a format description from the previous item could make a
+            // new unsupported or audio-only stream look playable.
+            videoFormatDescription = nil
+            videoNeedsLengthPrefix = false
             do {
                 try demuxer.open(url: item.url, headers: item.headers)
             } catch {
