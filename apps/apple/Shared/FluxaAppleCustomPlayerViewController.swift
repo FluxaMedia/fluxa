@@ -69,7 +69,9 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
         scheduleHide()
     }
 
+    #if os(iOS)
     override var prefersStatusBarHidden: Bool { true }
+    #endif
 
     func setControlsEnabled(_ enabled: Bool) {
         chrome.controlsEnabled = enabled
