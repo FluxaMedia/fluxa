@@ -1,3 +1,4 @@
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod external_audio;
 mod language;
 mod magnet;
