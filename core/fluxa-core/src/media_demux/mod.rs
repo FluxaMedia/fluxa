@@ -371,16 +371,28 @@ impl IncrementalFmp4Session {
         if self.demuxer.tracks.is_empty() {
             return None;
         }
-        Some(
+        let video_supported =
             self.demuxer.tracks.iter().any(|track| {
                 track.kind == mkv_demux::TrackKind::Video && fmp4_mux::supports(track)
-            }),
-        )
+            });
+        let audio_supported =
+            self.demuxer.tracks.iter().all(|track| {
+                track.kind != mkv_demux::TrackKind::Audio || fmp4_mux::supports(track)
+            });
+        Some(video_supported && audio_supported)
     }
 
     fn drain(&mut self, step: mkv_demux::IncrementalStep) -> Vec<u8> {
         let mut out = Vec::new();
         if step.tracks_ready && self.fragments.is_none() {
+            // Never silently drop an encoded audio track. A video-only fMP4
+            // can look healthy to AVPlayer and prevent the decoder fallback
+            // from running, leaving the user with a silent movie.
+            if self.demuxer.tracks.iter().any(|track| {
+                track.kind == mkv_demux::TrackKind::Audio && !fmp4_mux::supports(track)
+            }) {
+                return out;
+            }
             let video = self.demuxer.tracks.iter().find(|track| {
                 track.kind == mkv_demux::TrackKind::Video && fmp4_mux::supports(track)
             });
