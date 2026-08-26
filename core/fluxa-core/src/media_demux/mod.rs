@@ -103,7 +103,12 @@ mod tests {
         assert!(err.is_err());
     }
 
-    fn build_synthetic_mkv() -> Vec<u8> {
+    fn build_synthetic_mkv_with_tracks(
+        video_codec: &[u8],
+        video_private: &[u8],
+        audio_codec: &[u8],
+        audio_private: &[u8],
+    ) -> Vec<u8> {
         const SEGMENT: u64 = 0x1853_8067;
         const INFO: u64 = 0x1549_A966;
         const TIMESTAMP_SCALE: u64 = 0x2AD7_B1;
@@ -128,7 +133,10 @@ mod tests {
         let mut video_entry = Vec::new();
         write_ebml_element(&mut video_entry, TRACK_NUMBER, &[1]);
         write_ebml_element(&mut video_entry, TRACK_TYPE, &[1]);
-        write_ebml_element(&mut video_entry, CODEC_ID, b"V_VP9");
+        write_ebml_element(&mut video_entry, CODEC_ID, video_codec);
+        if !video_private.is_empty() {
+            write_ebml_element(&mut video_entry, 0x63A2, video_private);
+        }
         let mut video_dims = Vec::new();
         write_ebml_element(&mut video_dims, PIXEL_WIDTH, &[0x05, 0x00]); // 1280
         write_ebml_element(&mut video_dims, PIXEL_HEIGHT, &[0x02, 0xD0]); // 720
@@ -137,7 +145,10 @@ mod tests {
         let mut audio_entry = Vec::new();
         write_ebml_element(&mut audio_entry, TRACK_NUMBER, &[2]);
         write_ebml_element(&mut audio_entry, TRACK_TYPE, &[2]);
-        write_ebml_element(&mut audio_entry, CODEC_ID, b"A_OPUS");
+        write_ebml_element(&mut audio_entry, CODEC_ID, audio_codec);
+        if !audio_private.is_empty() {
+            write_ebml_element(&mut audio_entry, 0x63A2, audio_private);
+        }
         let mut audio_params = Vec::new();
         write_ebml_element(
             &mut audio_params,
@@ -176,6 +187,19 @@ mod tests {
         let mut out = Vec::new();
         write_ebml_element(&mut out, SEGMENT, &segment_body);
         out
+    }
+
+    fn build_synthetic_mkv() -> Vec<u8> {
+        build_synthetic_mkv_with_tracks(b"V_VP9", &[], b"A_OPUS", &[])
+    }
+
+    fn build_supported_fmp4_mkv() -> Vec<u8> {
+        build_synthetic_mkv_with_tracks(
+            b"V_MPEG4/ISO/AVC",
+            &[1, 0x64, 0, 0x1F, 0xFF, 0xE1, 0, 4, 0x67, 0x64, 0, 0x1F],
+            b"A_AAC",
+            &[0x11, 0x90],
+        )
     }
 
     #[test]
@@ -327,6 +351,39 @@ mod tests {
 
         assert_eq!(session.is_supported(), Some(false));
         assert!(output.is_empty(), "unsupported tracks must not produce MP4");
+    }
+
+    #[test]
+    fn incremental_fmp4_remuxes_supported_tracks_in_small_chunks() {
+        let mkv = build_supported_fmp4_mkv();
+        let mut session = IncrementalFmp4Session::new();
+        let mut output = Vec::new();
+        for chunk in mkv.chunks(5) {
+            output.extend_from_slice(&session.push(chunk));
+        }
+        output.extend_from_slice(&session.finish());
+
+        assert_eq!(session.is_supported(), Some(true));
+        assert!(output.windows(4).any(|box_type| box_type == b"ftyp"));
+        assert!(output.windows(4).any(|box_type| box_type == b"moov"));
+        assert!(output.windows(4).any(|box_type| box_type == b"moof"));
+        assert!(output.windows(4).any(|box_type| box_type == b"mdat"));
+    }
+
+    #[test]
+    fn incremental_fmp4_rejects_unsupported_audio_without_partial_output() {
+        let mkv = build_synthetic_mkv_with_tracks(
+            b"V_MPEG4/ISO/AVC",
+            &[1, 0x64, 0, 0x1F, 0xFF, 0xE1, 0, 4, 0x67, 0x64, 0, 0x1F],
+            b"A_OPUS",
+            &[0x01],
+        );
+        let mut session = IncrementalFmp4Session::new();
+        let output = session.push(&mkv);
+
+        assert_eq!(session.is_supported(), Some(false));
+        assert!(output.is_empty());
+        assert!(session.finish().is_empty());
     }
 }
 
