@@ -108,6 +108,7 @@ mod tests {
         video_private: &[u8],
         audio_codec: &[u8],
         audio_private: &[u8],
+        second_video_keyframe: bool,
     ) -> Vec<u8> {
         const SEGMENT: u64 = 0x1853_8067;
         const INFO: u64 = 0x1549_A966;
@@ -174,7 +175,13 @@ mod tests {
         write_ebml_element(&mut cluster, TIMECODE, &[0]);
         simple_block(&mut cluster, 1, 0, true, &[0xAA, 0xBB, 0xCC]);
         simple_block(&mut cluster, 2, 0, true, &[0x11, 0x22]);
-        simple_block(&mut cluster, 1, 40, false, &[0xDD, 0xEE]);
+        simple_block(
+            &mut cluster,
+            1,
+            40,
+            second_video_keyframe,
+            &[0xDD, 0xEE],
+        );
         let _ = SIMPLE_BLOCK;
         let mut cluster_elem = Vec::new();
         write_ebml_element(&mut cluster_elem, CLUSTER, &cluster);
@@ -190,7 +197,7 @@ mod tests {
     }
 
     fn build_synthetic_mkv() -> Vec<u8> {
-        build_synthetic_mkv_with_tracks(b"V_VP9", &[], b"A_OPUS", &[])
+        build_synthetic_mkv_with_tracks(b"V_VP9", &[], b"A_OPUS", &[], false)
     }
 
     fn build_supported_fmp4_mkv() -> Vec<u8> {
@@ -199,6 +206,7 @@ mod tests {
             &[1, 0x64, 0, 0x1F, 0xFF, 0xE1, 0, 4, 0x67, 0x64, 0, 0x1F],
             b"A_AAC",
             &[0x11, 0x90],
+            true,
         )
     }
 
@@ -377,6 +385,7 @@ mod tests {
             &[1, 0x64, 0, 0x1F, 0xFF, 0xE1, 0, 4, 0x67, 0x64, 0, 0x1F],
             b"A_OPUS",
             &[0x01],
+            false,
         );
         let mut session = IncrementalFmp4Session::new();
         let output = session.push(&mkv);
@@ -384,6 +393,24 @@ mod tests {
         assert_eq!(session.is_supported(), Some(false));
         assert!(output.is_empty());
         assert!(session.finish().is_empty());
+    }
+
+    #[test]
+    fn incremental_fmp4_seek_starts_at_the_first_keyframe_after_start() {
+        let mkv = build_supported_fmp4_mkv();
+        dbg!(mkv_demux::demux(&mkv).unwrap().packets);
+        let mut session = IncrementalFmp4Session::new();
+        session.set_start_position(0.03);
+        let mut output = Vec::new();
+        for chunk in mkv.chunks(5) {
+            output.extend_from_slice(&session.push(chunk));
+        }
+        output.extend_from_slice(&session.finish());
+
+        assert_eq!(session.is_supported(), Some(true));
+        assert!(output.windows(2).any(|sample| sample == [0xDD, 0xEE]));
+        assert!(!output.windows(3).any(|sample| sample == [0xAA, 0xBB, 0xCC]));
+        assert!(!output.windows(2).any(|sample| sample == [0x11, 0x22]));
     }
 }
 
