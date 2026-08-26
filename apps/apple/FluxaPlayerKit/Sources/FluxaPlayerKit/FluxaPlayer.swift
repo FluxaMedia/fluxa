@@ -3,6 +3,7 @@ import Foundation
 
 public enum FluxaPlaybackBackend: String, Sendable {
     case avFoundation
+    case ffmpeg
 }
 
 @MainActor
@@ -12,6 +13,7 @@ public final class FluxaPlayer: ObservableObject {
     @Published public private(set) var backend: FluxaPlaybackBackend = .avFoundation
 
     public var onStateChange: ((FluxaPlaybackState) -> Void)?
+    public var forcedBackend: FluxaPlaybackBackend?
 
     public private(set) var item: FluxaPlaybackItem?
 
@@ -84,6 +86,12 @@ public final class FluxaPlayer: ObservableObject {
     }
 
     private func makeEngine(for item: FluxaPlaybackItem) -> FluxaPlaybackEngine {
+        #if FLUXA_FFMPEG
+        if forcedBackend == .ffmpeg {
+            backend = .ffmpeg
+            return FluxaFFmpegEngine()
+        }
+        #endif
         backend = .avFoundation
         return FluxaAVFoundationEngine()
     }
