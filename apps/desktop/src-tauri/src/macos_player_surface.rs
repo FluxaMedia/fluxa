@@ -975,6 +975,17 @@ unsafe fn is_kind_of(obj: Id, class: &str) -> bool {
     }
 }
 
+unsafe fn responds_to(obj: Id, sel_name: &str) -> bool {
+    unsafe {
+        if obj.is_null() {
+            return false;
+        }
+        type Fn = unsafe extern "C" fn(Id, Id, Id) -> i8;
+        let f: Fn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
+        f(obj, sel("respondsToSelector:"), sel(sel_name)) != 0
+    }
+}
+
 unsafe fn nsstring(value: &str) -> Id {
     unsafe {
         let cls_str = cls("NSString");
@@ -989,6 +1000,9 @@ unsafe fn nsstring(value: &str) -> Id {
 // cleared; setOpaque: alone is not enough.
 unsafe fn set_draws_background_off(view: Id) {
     unsafe {
+        if !responds_to(view, "setValue:forKey:") {
+            return;
+        }
         let number_cls = cls("NSNumber");
         type NumFn = unsafe extern "C" fn(Id, Id, i8) -> Id;
         let num: NumFn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
@@ -1008,7 +1022,7 @@ unsafe fn make_webviews_transparent(root: Id) {
             let content = msg0(window, "contentView");
             if content.is_null() { root } else { content }
         };
-        if !window.is_null() {
+        if !window.is_null() && responds_to(window, "setOpaque:") {
             msg1_bool(window, "setOpaque:", 0);
         }
         walk_and_clear(start, 0);
@@ -1026,11 +1040,14 @@ unsafe fn walk_and_clear(view: Id, depth: usize) {
             "macos_player_surface: view tree depth={depth} class={name} is_webview={is_web}"
         );
         if is_web {
-            msg1_bool(view, "setOpaque:", 0);
-            let clear = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
-            if !clear.is_null() {
-                msg1_id(view, "setBackgroundColor:", clear);
-                msg1_id(view, "setUnderPageBackgroundColor:", clear);
+            if responds_to(view, "setOpaque:") {
+                msg1_bool(view, "setOpaque:", 0);
+            }
+            if responds_to(view, "setUnderPageBackgroundColor:") {
+                let clear = msg0(cls("NSColor"), "clearColor");
+                if !clear.is_null() {
+                    msg1_id(view, "setUnderPageBackgroundColor:", clear);
+                }
             }
             set_draws_background_off(view);
             log::info!("macos_player_surface: made {name} non-opaque");
