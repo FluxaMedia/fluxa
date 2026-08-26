@@ -145,7 +145,11 @@ build_slice() {
     # metadata that are not part of the XCFramework. Those targets can fail
     # independently after the libraries were built; keep the artifact limited
     # to the libraries and public headers consumed by FluxaPlayerKit.
-    make install-libs install-headers
+    echo "Installing FFmpeg libraries for $name"
+    make install-libs
+    echo "Installing FFmpeg headers for $name"
+    make install-headers
+    echo "Finished FFmpeg install for $name"
     popd >/dev/null
 
     merge_slice "$name"
