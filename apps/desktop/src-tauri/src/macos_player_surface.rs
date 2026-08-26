@@ -844,6 +844,23 @@ unsafe fn create_render_subview(
     };
     msg1_bool(view, "setWantsLayer:", 1);
 
+    let mode = surface_mode();
+    log::info!("macos_player_surface: placement mode={mode}");
+    if mode == "above" || mode == "solid" {
+        let host = host_view_for(parent.0);
+        let container = match host {
+            HostView::Sibling { content_view, .. } => content_view,
+            HostView::Container(c) => c,
+        };
+        msg3_positioned(container, view, 1, std::ptr::null_mut());
+        msg1_usize(view, "setAutoresizingMask:", 2 | 16);
+        if mode == "solid" {
+            paint_layer(view, 0.0, 1.0, 0.0);
+        }
+        msg1_bool(view, "setHidden:", 1);
+        return Ok((SendId(view), layer));
+    }
+
     let host = host_view_for(parent.0);
     match host {
         HostView::Sibling { content_view, below } => {
@@ -854,7 +871,9 @@ unsafe fn create_render_subview(
         }
     }
     msg1_usize(view, "setAutoresizingMask:", 2 | 16);
-    make_webviews_transparent(parent.0);
+    if mode != "opaque" {
+        make_webviews_transparent(parent.0);
+    }
 
     // Hidden until playback starts.
     msg1_bool(view, "setHidden:", 1);
@@ -972,6 +991,23 @@ unsafe fn is_kind_of(obj: Id, class: &str) -> bool {
         type Fn = unsafe extern "C" fn(Id, Id, Id) -> i8;
         let f: Fn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
         f(obj, sel("isKindOfClass:"), target) != 0
+    }
+}
+
+fn surface_mode() -> String {
+    std::env::var("FLUXA_MAC_SURFACE").unwrap_or_else(|_| "below".to_string())
+}
+
+unsafe fn paint_layer(view: Id, r: f64, g: f64, b: f64) {
+    unsafe {
+        let layer = msg0(view, "layer");
+        if layer.is_null() {
+            return;
+        }
+        let color = CGColorCreateGenericRGB(r, g, b, 1.0);
+        if !color.is_null() {
+            msg1_id(layer, "setBackgroundColor:", color);
+        }
     }
 }
 
