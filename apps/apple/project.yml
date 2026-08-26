@@ -56,7 +56,6 @@ targets:
     platform: tvOS
     sources:
       - path: Shared/FluxaAppleCustomPlayerViewController.swift
-      - path: Shared/FluxaAppleAudioSessionCoordinator.swift
       - path: AppleCore
         excludes:
           - FluxaAppleAddonCatalogResolver.swift

@@ -109,6 +109,14 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
             guard let playbackUrl else {
                 return
             }
+            let fallbackURL: URL?
+            if playbackUrl.path.hasSuffix("/remux") {
+                // Remux failures must fall back to the local HTTP source. A
+                // magnet URI cannot be consumed by the FFmpeg engine.
+                fallbackURL = playbackUrl.deletingLastPathComponent()
+            } else {
+                fallbackURL = URL(string: originalUrl)
+            }
             let player = FluxaPlayer()
             self.activePlayer = player
             self.watchBridge.attachPlayback(
@@ -147,8 +155,8 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                     FluxaPlaybackItem(
                         url: playbackUrl,
                         title: title,
-                        fallbackURL: URL(string: originalUrl),
                         startPosition: Double(resumePositionMs) / 1000,
+                        fallbackURL: fallbackURL,
                         subtitleUrls: request.subtitleUrls.compactMap { URL(string: $0) }
                     )
                 )

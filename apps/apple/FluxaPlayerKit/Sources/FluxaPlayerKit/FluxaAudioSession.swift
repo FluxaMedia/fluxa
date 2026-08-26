@@ -3,6 +3,9 @@ import AVFoundation
 
 @MainActor
 final class FluxaAudioSession {
+    var onInterruptionBegan: (() -> Void)?
+    var onInterruptionEnded: ((Bool) -> Void)?
+
     private var observers: [NSObjectProtocol] = []
     private var active = false
 
@@ -41,8 +44,18 @@ final class FluxaAudioSession {
         ) { [weak self] notification in
             guard let typeValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
                   let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
-            guard type == .ended else { return }
-            MainActor.assumeIsolated { self?.reactivate() }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if type == .began {
+                    self.onInterruptionBegan?()
+                } else if type == .ended {
+                    let rawOptions = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+                    let shouldResume = AVAudioSession.InterruptionOptions(rawValue: rawOptions)
+                        .contains(.shouldResume)
+                    self.reactivate()
+                    self.onInterruptionEnded?(shouldResume)
+                }
+            }
         })
         observers.append(center.addObserver(
             forName: AVAudioSession.mediaServicesWereResetNotification,

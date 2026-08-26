@@ -125,6 +125,17 @@ private struct FluxaApplePlayerOverlay: View {
                 .contentShape(Rectangle())
                 .onTapGesture { onInteraction() }
             if player.state.isBuffering { ProgressView().tint(.white).scaleEffect(1.35) }
+            if let subtitleText = player.subtitleText, !subtitleText.isEmpty {
+                Text(subtitleText)
+                    .multilineTextAlignment(.center)
+                    .font(.title3.weight(.medium))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 8)
+                    .background(.black.opacity(0.72))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, chrome.controlsVisible ? 92 : 28)
+            }
             if let failure = player.state.failure {
                 Text(failure.reason).foregroundStyle(.white).padding(18).background(.black.opacity(0.7)).clipShape(RoundedRectangle(cornerRadius: 12))
             }

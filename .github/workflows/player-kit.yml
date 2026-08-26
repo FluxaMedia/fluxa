@@ -33,6 +33,10 @@ jobs:
         working-directory: apps/apple/FluxaPlayerKit
         run: swift build -v
 
+      - name: Test package
+        working-directory: apps/apple/FluxaPlayerKit
+        run: swift test -v
+
       - name: Build for iOS
         working-directory: apps/apple/FluxaPlayerKit
         run: >-
@@ -73,6 +77,10 @@ jobs:
       - name: Build for macOS
         working-directory: apps/apple/FluxaPlayerKit
         run: swift build -v
+
+      - name: Test package
+        working-directory: apps/apple/FluxaPlayerKit
+        run: swift test -v
 
       - name: Build for iOS
         working-directory: apps/apple/FluxaPlayerKit

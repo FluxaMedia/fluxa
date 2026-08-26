@@ -27,6 +27,13 @@ if hasFFmpeg {
     targets.append(.binaryTarget(name: "CFFmpeg", path: "Vendor/CFFmpeg.xcframework"))
 }
 
+targets.append(
+    .testTarget(
+        name: "FluxaPlayerKitTests",
+        dependencies: ["FluxaPlayerKit"]
+    )
+)
+
 let package = Package(
     name: "FluxaPlayerKit",
     platforms: [.iOS(.v17), .tvOS(.v17), .macOS(.v13)],

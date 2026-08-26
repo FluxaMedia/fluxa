@@ -75,7 +75,22 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
             URLQueryItem(name: "title", value: title)
         ]
         torrentServerRunning = true
-        return components.url
+        guard let torrentURL = components.url else { return nil }
+
+        // The torrent endpoint is a local HTTP source, so route it through the
+        // same proxy/remux implementation used for direct Matroska streams.
+        // This also gives FFmpeg a usable HTTP fallback instead of a magnet URI.
+        guard let response = withCStrings(
+            torrentURL.absoluteString,
+            "{}",
+            operation: fluxaStreamingStartLocalStreamServer
+        ),
+        let local = try? JSONDecoder().decode(LocalServerResponse.self, from: Data(response.utf8)),
+        let proxyURL = URL(string: local.url) else {
+            return torrentURL
+        }
+        localServerId = local.id
+        return proxyURL.appendingPathComponent("remux")
     }
 
     private func stopLocked() {
