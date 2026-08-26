@@ -1356,6 +1356,10 @@ async fn deactivate_torrent(state: &EngineState, torrent_id: usize) {
         .runtime
         .lock()
         .map(|mut runtime| {
+            // The focus cache short-circuits a repeat request for the same
+            // file, so leaving it behind means the next play never re-applies
+            // the file selection or the streaming window this call clears.
+            runtime.prioritized_files.remove(&torrent_id);
             let windows = &mut runtime.playback_windows;
             let files = windows
                 .keys()
@@ -1871,6 +1875,24 @@ mod tests {
         assert_eq!(range("items=0-1", 1000), Err(()));
         assert_eq!(range("bytes=0-1,2-3", 1000), Err(()));
         assert_eq!(range("bytes=-0", 1000), Err(()));
+    }
+
+    #[test]
+    fn replaying_the_same_file_reselects_it_after_deactivation() {
+        use crate::torrent_engine::http::update_file_focus;
+
+        let mut focus = TorrentFileFocus::default();
+        assert!(update_file_focus(&mut focus, 3, FileRole::Video).is_some());
+        assert!(
+            update_file_focus(&mut focus, 3, FileRole::Video).is_none(),
+            "a repeat request is skipped while the focus is cached"
+        );
+
+        let mut after_deactivation = TorrentFileFocus::default();
+        assert!(
+            update_file_focus(&mut after_deactivation, 3, FileRole::Video).is_some(),
+            "dropping the focus on deactivation is what lets the next play re-apply it"
+        );
     }
 
     #[test]
