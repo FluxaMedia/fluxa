@@ -19,7 +19,8 @@ private final class FluxaTvosStreamingAdapter {
     private var serverId: String?
 
     func prepare(_ url: URL) -> URL {
-        guard url.path.lowercased().hasSuffix(".mkv") else { return url }
+        let path = url.path.lowercased()
+        guard path.hasSuffix(".mkv") || path.hasSuffix(".matroska") else { return url }
         stop()
         let raw = url.absoluteString
         guard let response = raw.withCString({ target in
