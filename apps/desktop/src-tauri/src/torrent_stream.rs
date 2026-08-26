@@ -105,6 +105,10 @@ fn start_torrent_stream_inner(
         .get("selectedFileIdx")
         .and_then(Value::as_i64)
         .map(|v| v as usize);
+    log::info!(
+        "start_torrent_stream: requested_file_idx={requested_file_idx:?} selected_file_id={selected_file_id:?} preferred={preferred_filename:?} link={}",
+        &stats_link[..stats_link.len().min(80)]
+    );
     torrent_transport::add(&base_url, &stats_link, selected_file_id);
     Ok((
         stream_url,
