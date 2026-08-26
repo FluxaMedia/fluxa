@@ -111,7 +111,7 @@ impl MpvClientHandle {
             return Ok((client, render));
         }
 
-        let level = CString::new("v").unwrap();
+        let level = CString::new("info").unwrap();
         let log_result =
             unsafe { (client.api.mpv_request_log_messages)(client.handle, level.as_ptr()) };
         if log_result < 0 {

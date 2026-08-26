@@ -849,23 +849,6 @@ unsafe fn create_render_subview(
     };
     msg1_bool(view, "setWantsLayer:", 1);
 
-    let mode = surface_mode();
-    log::info!("macos_player_surface: placement mode={mode}");
-    if mode == "above" || mode == "solid" {
-        let host = host_view_for(parent.0);
-        let container = match host {
-            HostView::Sibling { content_view, .. } => content_view,
-            HostView::Container(c) => c,
-        };
-        msg3_positioned(container, view, 1, std::ptr::null_mut());
-        msg1_usize(view, "setAutoresizingMask:", 2 | 16);
-        if mode == "solid" {
-            paint_layer(view, 0.0, 1.0, 0.0);
-        }
-        msg1_bool(view, "setHidden:", 1);
-        return Ok((SendId(view), layer));
-    }
-
     let host = host_view_for(parent.0);
     match host {
         HostView::Sibling { content_view, below } => {
@@ -884,10 +867,6 @@ unsafe fn create_render_subview(
     msg1_bool(view, "setHidden:", 1);
 
     Ok((SendId(view), layer))
-}
-
-unsafe extern "C" {
-    fn CGColorCreateGenericRGB(red: f64, green: f64, blue: f64, alpha: f64) -> *mut c_void;
 }
 
 unsafe fn msg0_rect(obj: Id, sel_name: &str) -> NSRect {
@@ -999,23 +978,6 @@ unsafe fn is_kind_of(obj: Id, class: &str) -> bool {
     }
 }
 
-fn surface_mode() -> String {
-    std::env::var("FLUXA_MAC_SURFACE").unwrap_or_else(|_| "below".to_string())
-}
-
-unsafe fn paint_layer(view: Id, r: f64, g: f64, b: f64) {
-    unsafe {
-        let layer = msg0(view, "layer");
-        if layer.is_null() {
-            return;
-        }
-        let color = CGColorCreateGenericRGB(r, g, b, 1.0);
-        if !color.is_null() {
-            msg1_id(layer, "setBackgroundColor:", color);
-        }
-    }
-}
-
 unsafe fn responds_to(obj: Id, sel_name: &str) -> bool {
     unsafe {
         if obj.is_null() {
@@ -1076,11 +1038,7 @@ unsafe fn walk_and_clear(view: Id, depth: usize) {
             return;
         }
         let name = class_name(view);
-        let is_web = is_kind_of(view, "WKWebView");
-        log::info!(
-            "macos_player_surface: view tree depth={depth} class={name} is_webview={is_web}"
-        );
-        if is_web {
+        if is_kind_of(view, "WKWebView") {
             if responds_to(view, "setOpaque:") {
                 msg1_bool(view, "setOpaque:", 0);
             }
@@ -1122,10 +1080,6 @@ unsafe fn create_metal_layer(contents_scale: f64, w: i32, h: i32) -> Result<Id, 
             height: h as f64,
         },
     );
-    let magenta = unsafe { CGColorCreateGenericRGB(1.0, 0.0, 1.0, 1.0) };
-    if !magenta.is_null() {
-        msg1_id(layer, "setBackgroundColor:", magenta);
-    }
     Ok(layer)
 }
 
