@@ -76,7 +76,14 @@ jobs:
 
       - name: cargo check
         working-directory: apps/desktop/src-tauri
-        run: cargo check --lib --bins --tests
+        run: cargo check --lib --bins --tests --examples
+
+      # Runs the real AppKit/ObjC placement code. A selector that does not exist
+      # only fails at runtime, so compiling this file is not enough.
+      - name: macOS player surface smoke
+        if: matrix.name == 'macos'
+        working-directory: apps/desktop/src-tauri
+        run: cargo run --example macos_surface_smoke
 
       # Informational until the existing ~80 warnings are cleared; check/test are the hard gates.
       - name: cargo clippy

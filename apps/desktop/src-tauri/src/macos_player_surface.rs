@@ -1125,3 +1125,93 @@ unsafe fn create_metal_layer(contents_scale: f64, w: i32, h: i32) -> Result<Id, 
 }
 
 // Player event polling
+
+#[link(name = "WebKit", kind = "framework")]
+unsafe extern "C" {}
+
+unsafe fn msg0_bool_pub(obj: Id, sel_name: &str) -> bool {
+    unsafe { msg0_bool(obj, sel_name) }
+}
+
+unsafe fn msg_init_window(obj: Id, rect: NSRect, style: usize, backing: usize, defer: i8) -> Id {
+    type Fn = unsafe extern "C" fn(Id, Id, NSRect, usize, usize, i8) -> Id;
+    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    unsafe {
+        f(
+            obj,
+            sel("initWithContentRect:styleMask:backing:defer:"),
+            rect,
+            style,
+            backing,
+            defer,
+        )
+    }
+}
+
+unsafe fn msg_init_webview(obj: Id, rect: NSRect, config: Id) -> Id {
+    type Fn = unsafe extern "C" fn(Id, Id, NSRect, Id) -> Id;
+    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    unsafe { f(obj, sel("initWithFrame:configuration:"), rect, config) }
+}
+
+pub fn smoke_check_placement() -> Result<String, String> {
+    unsafe {
+        let app = msg0(cls("NSApplication"), "sharedApplication");
+        if app.is_null() {
+            return Err("NSApplication sharedApplication returned nil".into());
+        }
+        msg1_usize(app, "setActivationPolicy:", 1);
+
+        let rect = NSRect {
+            origin: NSPoint { x: 0.0, y: 0.0 },
+            size: NSSize {
+                width: 800.0,
+                height: 600.0,
+            },
+        };
+        let window = msg_init_window(msg0(cls("NSWindow"), "alloc"), rect, 15, 2, 0);
+        if window.is_null() {
+            return Err("NSWindow creation failed".into());
+        }
+        let content_view = msg0(window, "contentView");
+        if content_view.is_null() {
+            return Err("window has no contentView".into());
+        }
+
+        let config = msg0(msg0(cls("WKWebViewConfiguration"), "alloc"), "init");
+        let webview = msg_init_webview(msg0(cls("WKWebView"), "alloc"), rect, config);
+        if webview.is_null() {
+            return Err("WKWebView creation failed".into());
+        }
+        msg1_id(content_view, "addSubview:", webview);
+
+        let (view, layer) = create_render_subview(SendId(content_view), 800.0, 600.0, Some((2.0, 1600, 1200)))?;
+        msg1_bool(view.0, "setHidden:", 0);
+
+        let superview = msg0(view.0, "superview");
+        if superview != content_view {
+            return Err(format!(
+                "player view landed under {} instead of the window content view",
+                class_name(superview)
+            ));
+        }
+        if msg0_bool_pub(view.0, "isHiddenOrHasHiddenAncestor") {
+            return Err("player view is hidden after unhide".into());
+        }
+        if layer.is_none() {
+            return Err("player view has no CAMetalLayer".into());
+        }
+        if msg0_bool_pub(webview, "isOpaque") {
+            return Err("web view stayed opaque, video would be covered".into());
+        }
+        let draws = msg1_id(webview, "valueForKey:", nsstring("drawsBackground"));
+        if !draws.is_null() && msg0_bool_pub(draws, "boolValue") {
+            return Err("web view still draws its background".into());
+        }
+
+        Ok(format!(
+            "placement ok: view under {}, webview opaque=false drawsBackground=false, metal layer present",
+            class_name(content_view)
+        ))
+    }
+}

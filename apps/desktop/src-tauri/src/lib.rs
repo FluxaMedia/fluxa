@@ -19,7 +19,7 @@ mod linux_vulkan;
 mod linux_wayland_subsurface;
 mod local_media;
 #[cfg(target_os = "macos")]
-mod macos_player_surface;
+pub mod macos_player_surface;
 #[cfg(target_os = "macos")]
 mod macos_vulkan;
 mod mpv_render;
