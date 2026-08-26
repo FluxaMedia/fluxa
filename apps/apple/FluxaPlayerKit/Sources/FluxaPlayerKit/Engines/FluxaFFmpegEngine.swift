@@ -12,6 +12,7 @@ final class FluxaFFmpegEngine: FluxaPlaybackEngine {
     private var timeObserver: Any?
     private var desiredRate: Float = 1
     private var startPosition: TimeInterval = 0
+    private var wantsToPlay = false
 
     init() {
         pipeline.onLoaded = { [weak self] streams, duration, _ in
@@ -30,6 +31,7 @@ final class FluxaFFmpegEngine: FluxaPlaybackEngine {
         removeTimeObserver()
         pipeline.close()
         startPosition = item.startPosition
+        wantsToPlay = false
         state = FluxaPlaybackState()
         state.phase = .loading
         state.isBuffering = true
@@ -39,6 +41,7 @@ final class FluxaFFmpegEngine: FluxaPlaybackEngine {
 
     func play() {
         guard state.failure == nil else { return }
+        wantsToPlay = true
         desiredRate = state.rate == 0 ? 1 : state.rate
         pipeline.setRate(desiredRate, at: pipeline.currentTime)
         state.phase = .playing
@@ -46,6 +49,7 @@ final class FluxaFFmpegEngine: FluxaPlaybackEngine {
     }
 
     func pause() {
+        wantsToPlay = false
         pipeline.setRate(0, at: pipeline.currentTime)
         state.phase = .paused
         publishState()
@@ -115,6 +119,11 @@ final class FluxaFFmpegEngine: FluxaPlaybackEngine {
 
         installTimeObserver()
         pipeline.start(from: startPosition)
+        if wantsToPlay {
+            state.phase = .playing
+            pipeline.setRate(desiredRate, at: pipeline.currentTime)
+            publishState()
+        }
     }
 
     private func installTimeObserver() {

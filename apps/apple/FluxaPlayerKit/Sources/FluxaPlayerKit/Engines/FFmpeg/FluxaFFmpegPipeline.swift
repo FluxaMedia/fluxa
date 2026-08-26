@@ -48,8 +48,15 @@ final class FluxaFFmpegPipeline: @unchecked Sendable {
             }
             let audioStream = demuxer.streams.first { $0.index == demuxer.audioStreamIndex }
             let audioReady = audioStream.map { audioDecoder.open($0) } ?? false
+            let hasVideo = demuxer.videoStreamIndex >= 0
 
-            guard videoFormatDescription != nil || audioReady else {
+            // A video stream that has no sample-buffer format description is
+            // not playable by this compressed-sample path. Do not report a
+            // successful audio-only load for a movie and leave the user with
+            // a black screen; surface the failure so the caller can stop or
+            // choose another backend.
+            guard (!hasVideo || videoFormatDescription != nil),
+                  videoFormatDescription != nil || audioReady else {
                 onFailure?("No playable track in this stream")
                 return
             }
