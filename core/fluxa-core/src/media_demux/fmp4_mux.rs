@@ -15,6 +15,16 @@ pub fn supports(track: &Track) -> bool {
 }
 
 pub fn remux(demuxed: &DemuxResult) -> Option<Vec<u8>> {
+    // Never produce a playable-looking file with an encoded audio track
+    // silently omitted. The incremental path applies the same policy so a
+    // caller can recover through its original-source decoder instead.
+    if demuxed
+        .tracks
+        .iter()
+        .any(|track| track.kind == TrackKind::Audio && !supports(track))
+    {
+        return None;
+    }
     let video = demuxed
         .tracks
         .iter()
@@ -726,6 +736,24 @@ mod tests {
             channels: Some(2),
         };
         assert!(!supports(&audio));
+    }
+
+    #[test]
+    fn remux_rejects_unsupported_audio_instead_of_dropping_it() {
+        let (video, mut audio) = sample_tracks();
+        audio.codec_id = "A_OPUS".to_string();
+        let demuxed = DemuxResult {
+            timestamp_scale: 1_000_000,
+            tracks: vec![video, audio],
+            packets: vec![Packet {
+                track_number: 1,
+                timestamp: 0,
+                keyframe: true,
+                data: vec![0xAA],
+            }],
+        };
+
+        assert!(remux(&demuxed).is_none());
     }
 
     fn read_size(buffer: &[u8], offset: usize) -> usize {
