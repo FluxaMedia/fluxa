@@ -17,8 +17,9 @@ so Apple builds are validated in GitHub Actions.
 
 ## Already verified
 
-- Rust core tests: `569 passed`, including incremental and whole-buffer fMP4
-  supported-track output and unsupported-audio rejection coverage.
+- Rust core tests: `570 passed`, including incremental and whole-buffer fMP4
+  supported-track output, seek filtering, and unsupported-audio rejection
+  coverage.
 - Streaming-engine tests: `108 passed`.
 - FFmpeg fallback artifact CI job: passed.
 - Rust core XCFramework and Apple streaming bridge CI job: passed.
