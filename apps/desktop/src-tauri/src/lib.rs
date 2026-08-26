@@ -23,6 +23,8 @@ pub mod macos_player_surface;
 #[cfg(target_os = "macos")]
 mod macos_vulkan;
 mod mpv_render;
+mod thumbnail_helper;
+pub use thumbnail_helper::run as run_thumbnail_helper;
 mod net_guard;
 mod oauth;
 mod oauth_callbacks;
@@ -116,8 +118,8 @@ impl Default for PlayerOverlayState {
 pub struct ThumbnailRuntimeState {
     pub enabled: bool,
     pub url: Option<String>,
-    pub renderer: Option<mpv_render::MpvThumbnailRenderer>,
-    pub loaded_url: Option<String>,
+    pub renderer: Option<thumbnail_helper::ThumbnailProcess>,
+    pub cache: std::collections::VecDeque<(i64, String)>,
 }
 
 impl PlayerOverlayState {

@@ -47,12 +47,19 @@ impl MpvClientHandle {
                 log::warn!("set_option(osc, no) failed (mpv build without lua/OSC?): {error}");
             }
             client.set_option("osd-level", "0")?;
-            client.set_option("hr-seek", "yes")?;
+            // Thumbnail seeks favor responsiveness over exact frame accuracy.
+            // These are the same low-cost defaults used by ThumbFast's helper.
+            client.set_option("hr-seek", "no")?;
             client.set_option("pause", "yes")?;
+            client.set_option("hwdec", "no")?;
             client.set_option("cache", "yes")?;
-            client.set_option("cache-secs", "2")?;
-            client.set_option("demuxer-max-bytes", "8MiB")?;
-            client.set_option("demuxer-readahead-secs", "1")?;
+            client.set_option("cache-secs", "1")?;
+            client.set_option("demuxer-max-bytes", "128KiB")?;
+            client.set_option("demuxer-readahead-secs", "0")?;
+            client.set_option("vd-lavc-skiploopfilter", "all")?;
+            client.set_option("vd-lavc-fast", "yes")?;
+            client.set_option("vd-lavc-threads", "2")?;
+            client.set_option("sws-scaler", "fast-bilinear")?;
         } else {
             client.set_option("terminal", "no")?;
             client.set_option("config", "no")?;

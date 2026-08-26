@@ -12,6 +12,8 @@ impl MpvRenderState {
         let height = height.clamp(2, 1080);
         self.ensure_buffer(width, height);
 
+        unsafe { (self.api.mpv_render_context_update)(self.render_context) };
+
         let mut size = [width, height];
         let format = CString::new("rgb0").unwrap();
         let mut stride = (width as usize) * 4;

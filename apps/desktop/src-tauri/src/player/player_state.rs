@@ -311,7 +311,12 @@ pub fn player_get_seek_thumbnail(
     state: State<DesktopState>,
     time_pos: f64,
 ) -> Result<String, String> {
-    use base64::{Engine as _, engine::general_purpose};
+    if !time_pos.is_finite() || time_pos < 0.0 {
+        return Err("invalid thumbnail time".to_string());
+    }
+    // A thumbnail does not need frame-level precision. Quantizing also makes
+    // small pointer movements hit the cache instead of seeking/encoding again.
+    let cache_time = (time_pos * 2.0).round() as i64;
 
     let mut thumbnail = state.thumbnail.lock().unwrap();
     if !thumbnail.enabled {
@@ -319,53 +324,26 @@ pub fn player_get_seek_thumbnail(
     }
     let url = thumbnail.url.clone().ok_or_else(|| "no url".to_string())?;
 
-    if thumbnail.renderer.is_none() {
-        thumbnail.renderer = Some(mpv_render::MpvThumbnailRenderer::new()?);
+    if let Some((_, image)) = thumbnail.cache.iter().find(|(time, _)| *time == cache_time) {
+        return Ok(image.clone());
     }
-    let reload_thumbnail = thumbnail.loaded_url.as_deref() != Some(url.as_str());
-    if reload_thumbnail {
-        thumbnail.loaded_url = Some(url.clone());
+
+    if thumbnail.renderer.is_none() {
+        thumbnail.renderer = Some(crate::thumbnail_helper::ThumbnailProcess::spawn()?);
     }
     let renderer = thumbnail.renderer.as_mut().unwrap();
-
-    if reload_thumbnail {
-        renderer.load_thumbnail(&url)?;
-        for _ in 0..50 {
-            if renderer.query_property("duration").is_some() {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-    }
-
-    renderer.seek_to(time_pos)?;
-    let mut still_seeking = true;
-    for _ in 0..300 {
-        if renderer.query_property("seeking").as_deref() != Some("yes") {
-            still_seeking = false;
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(10));
-    }
-    if still_seeking {
-        return Err("thumbnail not ready".to_string());
-    }
-
-    let pixels = renderer.render_thumbnail(320, 180)?;
+    let image = renderer.request(&url, cache_time as f64 / 2.0)?;
     drop(thumbnail);
 
-    let img = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(320, 180, pixels)
-        .ok_or_else(|| "frame buffer mismatch".to_string())?;
-    let rgb = image::DynamicImage::ImageRgba8(img).to_rgb8();
-    let mut jpeg: Vec<u8> = Vec::new();
-    rgb.write_to(
-        &mut std::io::Cursor::new(&mut jpeg),
-        image::ImageFormat::Jpeg,
-    )
-    .map_err(|e| e.to_string())?;
+    // Keep a small hot cache for back-and-forth pointer movement. The native
+    // renderer remains protected by the mutex, but JPEG work happens outside it.
+    let mut thumbnail = state.thumbnail.lock().unwrap();
+    if thumbnail.enabled && thumbnail.url.as_deref() == Some(url.as_str()) {
+        thumbnail.cache.push_back((cache_time, image.clone()));
+        while thumbnail.cache.len() > 24 {
+            thumbnail.cache.pop_front();
+        }
+    }
 
-    Ok(format!(
-        "data:image/jpeg;base64,{}",
-        general_purpose::STANDARD.encode(&jpeg)
-    ))
+    Ok(image)
 }

@@ -1,5 +1,5 @@
 import { platformInvoke as invoke } from '../../platform/invoke';
-import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { fmtTime, type Chapter } from './PlayerOverlayPrimitives';
 
 export function SeekPreview({
@@ -15,6 +15,42 @@ export function SeekPreview({
   const [thumbImg, setThumbImg] = useState<string | null>(null);
   const thumbTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thumbRequestTimeRef = useRef<number | null>(null);
+  const thumbRequestInFlightRef = useRef(false);
+  const thumbLastRequestedAtRef = useRef(0);
+  const previewTimeRef = useRef<number | null>(null);
+
+  const requestThumbnail = useCallback((requestedTime: number) => {
+    if (thumbRequestInFlightRef.current || previewTimeRef.current !== requestedTime) return;
+
+    const remaining = Math.max(0, 300 - (Date.now() - thumbLastRequestedAtRef.current));
+    if (remaining > 0) {
+      if (thumbTimerRef.current) clearTimeout(thumbTimerRef.current);
+      thumbTimerRef.current = setTimeout(() => {
+        thumbTimerRef.current = null;
+        requestThumbnail(requestedTime);
+      }, remaining);
+      return;
+    }
+
+    thumbRequestInFlightRef.current = true;
+    thumbLastRequestedAtRef.current = Date.now();
+    invoke<string>('player_get_seek_thumbnail', { timePos: requestedTime })
+      .then((img) => {
+        if (img && thumbRequestTimeRef.current === requestedTime) setThumbImg(img);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        thumbRequestInFlightRef.current = false;
+        const latestTime = previewTimeRef.current;
+        if (latestTime != null && latestTime !== requestedTime) {
+          if (thumbTimerRef.current) clearTimeout(thumbTimerRef.current);
+          thumbTimerRef.current = setTimeout(() => {
+            thumbTimerRef.current = null;
+            requestThumbnail(latestTime);
+          }, 180);
+        }
+      });
+  }, []);
 
   useEffect(() => {
     const bar = barRef.current;
@@ -45,6 +81,7 @@ export function SeekPreview({
   }, [barRef, durRef, chaptersRef]);
 
   useEffect(() => {
+    previewTimeRef.current = preview?.time ?? null;
     if (!preview) {
       setThumbImg(null);
       return;
@@ -52,17 +89,15 @@ export function SeekPreview({
     const requestedTime = preview.time;
     thumbRequestTimeRef.current = requestedTime;
     if (thumbTimerRef.current) clearTimeout(thumbTimerRef.current);
+
     thumbTimerRef.current = setTimeout(() => {
-      invoke<string>('player_get_seek_thumbnail', { timePos: requestedTime })
-        .then((img) => {
-          if (img && thumbRequestTimeRef.current === requestedTime) setThumbImg(img);
-        })
-        .catch(() => undefined);
-    }, 120);
+      thumbTimerRef.current = null;
+      requestThumbnail(requestedTime);
+    }, 180);
     return () => {
       if (thumbTimerRef.current) clearTimeout(thumbTimerRef.current);
     };
-  }, [preview?.time]);
+  }, [preview?.time, requestThumbnail]);
 
   if (!preview) return null;
 
