@@ -19,6 +19,9 @@ public final class FluxaPlayer: ObservableObject {
 
     private var engine: FluxaPlaybackEngine?
     private weak var surface: FluxaPlayerSurfaceView?
+    #if FLUXA_FFMPEG
+    private var fallbackAttempted = false
+    #endif
     #if !os(macOS)
     private let audioSession = FluxaAudioSession()
     #endif
@@ -32,6 +35,9 @@ public final class FluxaPlayer: ObservableObject {
 
     public func load(_ item: FluxaPlaybackItem) {
         self.item = item
+        #if FLUXA_FFMPEG
+        fallbackAttempted = false
+        #endif
         #if !os(macOS)
         audioSession.activate()
         #endif
@@ -76,6 +82,9 @@ public final class FluxaPlayer: ObservableObject {
         engine?.tearDown()
         engine = nil
         item = nil
+        #if FLUXA_FFMPEG
+        fallbackAttempted = false
+        #endif
         surface?.unhost()
         tracks = []
         state = FluxaPlaybackState()
@@ -105,6 +114,36 @@ public final class FluxaPlayer: ObservableObject {
 extension FluxaPlayer: FluxaPlaybackEngineDelegate {
     func engine(_ engine: FluxaPlaybackEngine, didUpdate state: FluxaPlaybackState) {
         guard engine === self.engine else { return }
+        #if FLUXA_FFMPEG
+        if case .failed(let failure) = state.phase,
+           failure.isRecoverable,
+           !fallbackAttempted,
+           forcedBackend != .ffmpeg,
+           let currentItem = item,
+           let fallbackURL = currentItem.fallbackURL,
+           fallbackURL != currentItem.url {
+            fallbackAttempted = true
+            let fallbackItem = FluxaPlaybackItem(
+                url: fallbackURL,
+                fallbackURL: nil,
+                title: currentItem.title,
+                headers: currentItem.headers,
+                startPosition: max(currentItem.startPosition, state.position),
+                subtitleUrls: currentItem.subtitleUrls
+            )
+            engine.tearDown()
+            let fallbackEngine = FluxaFFmpegEngine()
+            fallbackEngine.delegate = self
+            self.engine = fallbackEngine
+            backend = .ffmpeg
+            if let surface {
+                fallbackEngine.attach(to: surface)
+            }
+            fallbackEngine.load(fallbackItem)
+            self.item = fallbackItem
+            return
+        }
+        #endif
         self.state = state
         onStateChange?(state)
     }
