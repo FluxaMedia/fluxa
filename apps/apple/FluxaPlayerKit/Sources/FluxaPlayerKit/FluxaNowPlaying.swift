@@ -4,9 +4,9 @@ import MediaPlayer
 @MainActor
 final class FluxaNowPlaying {
     func begin(title: String) {
-        var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-        info[MPMediaItemPropertyTitle] = title
+        let info: [String: Any] = [MPMediaItemPropertyTitle: title]
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        MPNowPlayingInfoCenter.default().playbackState = .paused
     }
 
     func update(_ state: FluxaPlaybackState) {
