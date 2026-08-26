@@ -125,11 +125,11 @@ extension FluxaPlayer: FluxaPlaybackEngineDelegate {
             fallbackAttempted = true
             let fallbackItem = FluxaPlaybackItem(
                 url: fallbackURL,
-                fallbackURL: nil,
                 title: currentItem.title,
                 headers: currentItem.headers,
                 startPosition: max(currentItem.startPosition, state.position),
-                subtitleUrls: currentItem.subtitleUrls
+                subtitleUrls: currentItem.subtitleUrls,
+                fallbackURL: nil
             )
             engine.tearDown()
             let fallbackEngine = FluxaFFmpegEngine()

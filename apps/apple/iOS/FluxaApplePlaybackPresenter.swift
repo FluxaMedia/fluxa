@@ -146,8 +146,8 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 player.load(
                     FluxaPlaybackItem(
                         url: playbackUrl,
-                        fallbackURL: URL(string: originalUrl),
                         title: title,
+                        fallbackURL: URL(string: originalUrl),
                         startPosition: Double(resumePositionMs) / 1000,
                         subtitleUrls: request.subtitleUrls.compactMap { URL(string: $0) }
                     )
