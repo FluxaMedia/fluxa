@@ -13,11 +13,11 @@ public struct FluxaPlaybackItem: Sendable, Equatable {
 
     public init(
         url: URL,
-        fallbackURL: URL? = nil,
         title: String = "",
         headers: [String: String] = [:],
         startPosition: TimeInterval = 0,
-        subtitleUrls: [URL] = []
+        subtitleUrls: [URL] = [],
+        fallbackURL: URL? = nil
     ) {
         self.url = url
         self.fallbackURL = fallbackURL
