@@ -34,7 +34,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: apple-${{ github.ref }}
+  # Delayed push events from an older SHA must not cancel an explicit
+  # validation run for the current master.
+  group: apple-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
