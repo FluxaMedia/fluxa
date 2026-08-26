@@ -140,6 +140,7 @@ extension FluxaPlayer: FluxaPlaybackEngineDelegate {
                 fallbackEngine.attach(to: surface)
             }
             fallbackEngine.load(fallbackItem)
+            fallbackEngine.setRate(state.rate)
             fallbackEngine.play()
             self.item = fallbackItem
             return

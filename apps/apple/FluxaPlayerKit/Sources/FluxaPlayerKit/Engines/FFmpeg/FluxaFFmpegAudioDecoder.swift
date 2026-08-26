@@ -11,6 +11,7 @@ final class FluxaFFmpegAudioDecoder {
     private var formatDescription: CMAudioFormatDescription?
     private var outputSampleRate: Int32 = 48000
     private var outputChannels: Int32 = 2
+    private var inputTimeBase: AVRational?
 
     func open(_ stream: FluxaFFmpegStream) -> Bool {
         close()
@@ -25,6 +26,7 @@ final class FluxaFFmpegAudioDecoder {
         }
 
         codecContext = context
+        inputTimeBase = stream.timeBase
         frame = av_frame_alloc()
         packet = av_packet_alloc()
         outputSampleRate = context.pointee.sample_rate > 0 ? context.pointee.sample_rate : 48000
@@ -45,6 +47,7 @@ final class FluxaFFmpegAudioDecoder {
         if packet != nil { av_packet_free(&packet) }
         if codecContext != nil { avcodec_free_context(&codecContext) }
         formatDescription = nil
+        inputTimeBase = nil
     }
 
     func flush() {
@@ -153,11 +156,19 @@ final class FluxaFFmpegAudioDecoder {
             }
         }
         guard converted > 0 else { return nil }
-        storage.removeSubrange((Int(converted) * bytesPerFrame)...)
+        let usedBytes = Int(converted) * bytesPerFrame
+        if usedBytes < storage.count {
+            storage.removeSubrange(usedBytes..<storage.count)
+        }
 
         let presentationTime: CMTime
-        if frame.pointee.pts != Int64.min {
-            presentationTime = CMTime(value: frame.pointee.pts, timescale: CMTimeScale(outputSampleRate))
+        if frame.pointee.pts != Int64.min,
+           let inputTimeBase,
+           inputTimeBase.den != 0 {
+            presentationTime = CMTime(
+                value: frame.pointee.pts * Int64(inputTimeBase.num),
+                timescale: CMTimeScale(inputTimeBase.den)
+            )
         } else {
             presentationTime = fallbackTime
         }
@@ -192,7 +203,10 @@ final class FluxaFFmpegAudioDecoder {
         ) == noErr, let contiguous else { return nil }
 
         var timing = CMSampleTimingInfo(
-            duration: CMTime(value: 1, timescale: CMTimeScale(outputSampleRate)),
+            duration: CMTime(
+                value: CMTimeValue(converted),
+                timescale: CMTimeScale(outputSampleRate)
+            ),
             presentationTimeStamp: presentationTime,
             decodeTimeStamp: .invalid
         )

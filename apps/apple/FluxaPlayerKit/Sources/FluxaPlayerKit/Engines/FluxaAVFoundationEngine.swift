@@ -71,6 +71,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     func play() {
         guard player.currentItem != nil else { return }
         player.play()
+        player.rate = state.rate
     }
 
     func pause() {
