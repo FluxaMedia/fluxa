@@ -109,8 +109,7 @@ base_flags=(
 
 slice_configure() {
     local arch="$1" sdk="$2" triple="$3" min_flag="$4"
-    local sdk_path cflags
-    local -a arch_flags=()
+    local sdk_path cflags arch_asm_flag=""
     sdk_path="$(xcrun --sdk "$sdk" --show-sdk-path)"
     cflags="-arch $arch -target $triple -isysroot $sdk_path $min_flag"
 
@@ -118,7 +117,7 @@ slice_configure() {
     # simulator/macOS-only, so keep them portable by disabling x86 assembly;
     # arm64 device slices retain their normal optimized code paths.
     if [[ "$arch" == "x86_64" ]]; then
-        arch_flags+=(--disable-x86asm)
+        arch_asm_flag="--disable-x86asm"
     fi
 
     echo "Configuring FFmpeg for $arch/$sdk ($triple)"
@@ -130,7 +129,7 @@ slice_configure() {
         --ranlib="$(xcrun --sdk "$sdk" --find ranlib)" \
         --extra-cflags="$cflags" \
         --extra-ldflags="-arch $arch -target $triple -isysroot $sdk_path $min_flag" \
-        "${arch_flags[@]}" \
+        $arch_asm_flag \
         "${base_flags[@]}" \
         "${components[@]}"
     echo "Finished configuring FFmpeg for $arch/$sdk"
