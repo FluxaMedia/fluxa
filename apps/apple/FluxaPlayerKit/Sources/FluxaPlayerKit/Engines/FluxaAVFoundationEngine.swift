@@ -13,6 +13,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     private var observations: [NSKeyValueObservation] = []
     private var endObserver: NSObjectProtocol?
     private var pendingStartPosition: TimeInterval = 0
+    private var loadedItem: FluxaPlaybackItem?
 
     override init() {
         super.init()
@@ -27,6 +28,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
 
     func load(_ item: FluxaPlaybackItem) {
         detachItemObservers()
+        loadedItem = item
         var options: [String: Any] = [:]
         if !item.headers.isEmpty {
             options["AVURLAssetHTTPHeaderFieldsKey"] = item.headers
@@ -57,6 +59,24 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
 
     func seek(to position: TimeInterval) {
         guard player.currentItem != nil else { return }
+        if let item = loadedItem, item.url.path.hasSuffix("/remux") {
+            let wasPlaying = player.timeControlStatus != .paused
+            var components = URLComponents(url: item.url, resolvingAgainstBaseURL: false)
+            components?.queryItems = (components?.queryItems ?? [])
+                .filter { $0.name != "start" }
+            components?.queryItems?.append(
+                URLQueryItem(name: "start", value: String(max(0, position)))
+            )
+            if let url = components?.url {
+                var restarted = item
+                restarted.url = url
+                load(restarted)
+                if wasPlaying {
+                    play()
+                }
+            }
+            return
+        }
         let time = CMTime(seconds: max(0, position), preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
         state.position = max(0, position)
@@ -87,6 +107,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
 
     func tearDown() {
         detachItemObservers()
+        loadedItem = nil
         player.pause()
         player.replaceCurrentItem(with: nil)
         playerLayer.player = nil
