@@ -4,7 +4,11 @@ fn main() {
     let magnet = std::env::args().nth(1).unwrap_or_else(|| {
         "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny".to_string()
     });
-    let cache = std::env::temp_dir().join("fluxa-peer-probe");
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    let cache = std::env::temp_dir().join(format!("fluxa-peer-probe-{unique}"));
     let Some(base) = fluxa_streaming_engine::start_torrent_server(
         cache.to_str().unwrap(),
         0,

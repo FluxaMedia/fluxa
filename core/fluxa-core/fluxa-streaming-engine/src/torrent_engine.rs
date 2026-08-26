@@ -315,6 +315,14 @@ pub fn start_torrent_server(
                 enable_upnp_port_forwarding: true,
                 disable_upload: true,
                 concurrent_init_limit: Some(concurrent_init_limit),
+                // librqbit defaults to 10s for both. Streaming cares about the
+                // peers that answer quickly, and a dead one holding a slot for
+                // ten seconds is a slot the swarm could have used three times.
+                peer_opts: Some(PeerConnectionOptions {
+                    connect_timeout: Some(Duration::from_secs(10)),
+                    read_write_timeout: Some(Duration::from_secs(10)),
+                    ..Default::default()
+                }),
                 trackers: [
                     "udp://tracker.opentrackr.org:1337/announce",
                     "udp://open.demonii.com:1337/announce",
@@ -591,11 +599,23 @@ async fn torrents(
                         // starts it. Adding it again is a play intent, so resume it
                         // here instead of waiting for the stream request that the
                         // player only issues once buffering has already progressed.
-                        activate_torrent(&state, id).await;
-                        let _ = state
-                            .api
-                            .api_torrent_action_start(TorrentIdOrHash::Id(id))
-                            .await;
+                        // Starting one that is already initializing restarts its
+                        // storage check and leaves the torrent in Error.
+                        let paused = matches!(
+                            state
+                                .api
+                                .api_stats_v1(TorrentIdOrHash::Id(id))
+                                .ok()
+                                .map(|stats| stats.state),
+                            Some(TorrentStatsState::Paused)
+                        );
+                        if paused {
+                            activate_torrent(&state, id).await;
+                            let _ = state
+                                .api
+                                .api_torrent_action_start(TorrentIdOrHash::Id(id))
+                                .await;
+                        }
                     } else {
                         let delayed_state = state.clone();
                         tokio::spawn(async move {
@@ -1299,7 +1319,7 @@ fn playback_buffer_targets(file_len: u64, duration_ms: Option<u64>) -> (u64, u64
         .filter(|duration| *duration > 0)
         .map(|duration| file_len.saturating_mul(8).saturating_mul(1000) / duration)
         .unwrap_or(8 * 1024 * 1024);
-    let startup_seconds = if bitrate >= 30 * 1024 * 1024 { 25 } else { 15 };
+    let startup_seconds = if bitrate >= 30 * 1024 * 1024 { 12 } else { 6 };
     let urgent = bitrate.saturating_mul(startup_seconds) / 8;
     let warm = bitrate.saturating_mul(45) / 8;
     (bitrate, urgent, warm)
@@ -1910,7 +1930,7 @@ mod tests {
         let (bitrate, urgent, warm) = playback_buffer_targets(1_000_000_000, Some(100_000));
 
         assert_eq!(bitrate, 80_000_000);
-        assert_eq!(urgent, 250_000_000);
+        assert_eq!(urgent, 120_000_000);
         assert_eq!(warm, 450_000_000);
     }
 
