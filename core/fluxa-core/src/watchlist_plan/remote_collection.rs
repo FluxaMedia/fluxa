@@ -164,6 +164,27 @@ pub(crate) fn remote_collection_request_plan_json(request_json: &str) -> Option<
     serde_json::to_string(&json!({"url": format!("https://api.themoviedb.org/{path}"), "params": params, "headers": {}, "responseKind": "tmdb", "sourceType": source_type, "mediaType": media_type, "requestedType": requested_type, "language": language})).ok()
 }
 
+fn first_image_url(images: Option<&Value>, field: &str) -> Option<String> {
+    images?
+        .get(field)?
+        .as_array()?
+        .iter()
+        .filter_map(Value::as_str)
+        .map(str::trim)
+        .find(|url| !url.is_empty())
+        .map(|url| {
+            if url.starts_with("//") {
+                format!("https:{url}")
+            } else if url.starts_with("http://") {
+                format!("https://{}", &url[7..])
+            } else if url.starts_with("trakt.tv/") || url.starts_with("images.trakt.tv/") {
+                format!("https://{url}")
+            } else {
+                url.to_string()
+            }
+        })
+}
+
 pub(crate) fn remote_collection_response_plan_json(request_json: &str) -> Option<String> {
     let request: Value = serde_json::from_str(request_json).ok()?;
     let plan = request.get("plan")?;
@@ -177,8 +198,29 @@ pub(crate) fn remote_collection_response_plan_json(request_json: &str) -> Option
             let value = item.get(if requested_type == "series" { "show" } else { "movie" })?;
             let title = value.get("title").and_then(Value::as_str)?;
             let ids = value.get("ids")?;
-            let id = ids.get("imdb").and_then(Value::as_str).map(str::to_string).or_else(|| ids.get("tmdb").and_then(Value::as_i64).map(|id| format!("tmdb:{id}")))?;
-            Some(json!({"id": id, "type": requested_type, "name": title, "releaseInfo": value.get("year").and_then(Value::as_i64).map(|year| year.to_string())}))
+            let id = ids
+                .get("imdb")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .or_else(|| ids.get("tmdb").and_then(Value::as_i64).map(|id| format!("tmdb:{id}")))
+                .or_else(|| ids.get("trakt").and_then(Value::as_i64).map(|id| format!("trakt:{id}")))?;
+            let images = value.get("images");
+            let poster = first_image_url(images, "poster").or_else(|| first_image_url(images, "fanart"));
+            let background = first_image_url(images, "fanart")
+                .or_else(|| first_image_url(images, "banner"))
+                .or_else(|| first_image_url(images, "thumb"))
+                .or_else(|| poster.clone());
+            let logo = first_image_url(images, "logo").or_else(|| first_image_url(images, "clearart"));
+            Some(json!({
+                "id": id,
+                "type": requested_type,
+                "name": title,
+                "poster": poster,
+                "background": background,
+                "logo": logo,
+                "description": value.get("overview"),
+                "releaseInfo": value.get("year").and_then(Value::as_i64).map(|year| year.to_string())
+            }))
         }).collect::<Vec<_>>();
         return serde_json::to_string(&metas).ok();
     }
