@@ -380,6 +380,14 @@ async fn handle_async_local_stream(
         }
         while let Ok(Some(chunk)) = response.chunk().await {
             let output = session.push(&chunk);
+            if session.is_supported() == Some(false) && !headers_sent {
+                let _ = stream
+                    .write_all(
+                        b"HTTP/1.1 415 Unsupported Media Type\r\nConnection: close\r\n\r\nsource cannot be adapted to fMP4",
+                    )
+                    .await;
+                return;
+            }
             if !output.is_empty() {
                 if !headers_sent {
                     if stream.write_all(header.as_bytes()).await.is_err() {

@@ -188,8 +188,6 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     private func handleStatus(_ item: AVPlayerItem) {
         switch item.status {
         case .readyToPlay:
-            startupTimeoutTask?.cancel()
-            startupTimeoutTask = nil
             if pendingStartPosition > 0 {
                 let target = pendingStartPosition
                 pendingStartPosition = 0
@@ -199,6 +197,10 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
             state.duration = finiteSeconds(item.duration)
             state.isSeekable = !item.seekableTimeRanges.isEmpty || state.duration > 0
             loadTracks(from: item)
+            if player.timeControlStatus == .paused {
+                state.phase = .paused
+                state.isBuffering = false
+            }
             handleTransportChange()
         case .failed:
             startupTimeoutTask?.cancel()
@@ -216,6 +218,8 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         if case .failed = state.phase { return }
         switch player.timeControlStatus {
         case .playing:
+            startupTimeoutTask?.cancel()
+            startupTimeoutTask = nil
             state.phase = .playing
             state.isBuffering = false
         case .waitingToPlayAtSpecifiedRate:

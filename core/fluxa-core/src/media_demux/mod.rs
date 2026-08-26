@@ -318,6 +318,16 @@ mod tests {
         assert_eq!(redemuxed.packets[1].data, vec![0x11, 0x22]);
         assert_eq!(redemuxed.packets[2].data, vec![0xDD, 0xEE]);
     }
+
+    #[test]
+    fn incremental_fmp4_rejects_unsupported_tracks_before_eof() {
+        let mkv = build_synthetic_mkv();
+        let mut session = IncrementalFmp4Session::new();
+        let output = session.push(&mkv);
+
+        assert_eq!(session.is_supported(), Some(false));
+        assert!(output.is_empty(), "unsupported tracks must not produce MP4");
+    }
 }
 
 /// Incremental MKV -> fragmented MP4 remux session, the AVFoundation-facing
