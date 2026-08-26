@@ -1,0 +1,90 @@
+name: Player Kit
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/player-kit.yml"
+      - "apps/apple/FluxaPlayerKit/**"
+      - "apps/apple/scripts/build-ffmpeg-xcframework.sh"
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/player-kit.yml"
+      - "apps/apple/FluxaPlayerKit/**"
+      - "apps/apple/scripts/build-ffmpeg-xcframework.sh"
+  workflow_dispatch:
+    inputs:
+      ffmpeg:
+        description: "Build the CFFmpeg xcframework and compile the FFmpeg engine"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  avfoundation:
+    name: AVFoundation engine
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build for macOS
+        working-directory: apps/apple/FluxaPlayerKit
+        run: swift build -v
+
+      - name: Build for iOS
+        working-directory: apps/apple/FluxaPlayerKit
+        run: >-
+          xcodebuild
+          -scheme FluxaPlayerKit
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Build for tvOS
+        working-directory: apps/apple/FluxaPlayerKit
+        run: >-
+          xcodebuild
+          -scheme FluxaPlayerKit
+          -destination 'generic/platform=tvOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+  ffmpeg:
+    name: FFmpeg engine
+    if: github.event_name == 'workflow_dispatch' && inputs.ffmpeg
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Restore CFFmpeg xcframework
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: apps/apple/FluxaPlayerKit/Vendor/CFFmpeg.xcframework
+          key: cffmpeg-${{ runner.os }}-${{ hashFiles('apps/apple/scripts/build-ffmpeg-xcframework.sh') }}
+
+      - name: Build CFFmpeg xcframework
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: apps/apple/scripts/build-ffmpeg-xcframework.sh
+
+      - name: Build for iOS
+        working-directory: apps/apple/FluxaPlayerKit
+        run: >-
+          xcodebuild
+          -scheme FluxaPlayerKit
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Build for tvOS
+        working-directory: apps/apple/FluxaPlayerKit
+        run: >-
+          xcodebuild
+          -scheme FluxaPlayerKit
+          -destination 'generic/platform=tvOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build
