@@ -13,6 +13,9 @@ settings:
     OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_core-ios-simulator -lfluxa_streaming_engine-ios-simulator"
     OTHER_LDFLAGS[sdk=appletvos*]: "-lfluxa_core-tvos"
     OTHER_LDFLAGS[sdk=appletvsimulator*]: "-lfluxa_core-tvos-simulator"
+packages:
+  FluxaPlayerKit:
+    path: FluxaPlayerKit
 targets:
   FluxaIos:
     type: application
@@ -37,6 +40,7 @@ targets:
       - sdk: UIKit.framework
       - sdk: AVFoundation.framework
       - sdk: AVKit.framework
+      - package: FluxaPlayerKit
     preBuildScripts:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh
@@ -66,6 +70,8 @@ targets:
       - path: Generated/FluxaRustCore.swift
     resources:
       - path: ../../shared/i18n
+    dependencies:
+      - package: FluxaPlayerKit
     preBuildScripts:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh

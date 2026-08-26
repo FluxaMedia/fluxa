@@ -1,4 +1,4 @@
-import AVFoundation
+import FluxaPlayerKit
 import UIKit
 
 /// tvOS entry point for the same custom transport surface used by iOS.
@@ -8,31 +8,28 @@ import UIKit
 final class FluxaTvosPlaybackPresenter: NSObject, UIAdaptivePresentationControllerDelegate {
     static let shared = FluxaTvosPlaybackPresenter()
 
-    private var activePlayer: AVPlayer?
+    private var activePlayer: FluxaPlayer?
     private weak var activeController: FluxaAppleCustomPlayerViewController?
-    private let audioSessionCoordinator = FluxaAppleAudioSessionCoordinator()
 
     func present(url: URL, title: String, resumePosition: Double = 0) {
         guard let presenter = topViewController() else { return }
-        audioSessionCoordinator.activate()
-        let player = AVPlayer(url: url)
+        let player = FluxaPlayer()
         let controller = FluxaAppleCustomPlayerViewController(player: player, title: title)
         activePlayer = player
         activeController = controller
         presenter.present(controller, animated: true) {
             controller.presentationController?.delegate = self
-            if resumePosition > 0 {
-                player.seek(to: CMTime(seconds: resumePosition, preferredTimescale: 600))
-            }
+            player.load(
+                FluxaPlaybackItem(url: url, title: title, startPosition: max(0, resumePosition))
+            )
             player.play()
         }
     }
 
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-        activePlayer?.pause()
+        activePlayer?.stop()
         activePlayer = nil
         activeController = nil
-        audioSessionCoordinator.deactivate()
     }
 
     private func topViewController() -> UIViewController? {

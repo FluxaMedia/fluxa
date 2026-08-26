@@ -1,5 +1,5 @@
-import AVFoundation
 import Foundation
+import FluxaPlayerKit
 import FluxaShared
 import UIKit
 
@@ -13,12 +13,10 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         let resumePositionMs: Int64
     }
 
-    private var activePlayer: AVPlayer?
-    private var timeObserver: Any?
+    private var activePlayer: FluxaPlayer?
     private var externalPlaybackContext: ExternalPlaybackContext?
     private var externalPlaybackRequest: ApplePlaybackRequestSnapshot?
     private weak var activePlayerController: FluxaAppleCustomPlayerViewController?
-    private let audioSessionCoordinator = FluxaAppleAudioSessionCoordinator()
     private var watchState: AppleWatchTogetherStateSnapshot?
     private var pendingWatchRoomPresentation = false
     private lazy var stateBridge = NativePlayerStateBridge(
@@ -27,9 +25,9 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 playing.boolValue ? self?.activePlayer?.play() : self?.activePlayer?.pause()
             },
             seekTo: { [weak self] positionMs in
-                self?.activePlayer?.seek(to: CMTime(seconds: Double(positionMs) / 1000, preferredTimescale: 600))
+                self?.activePlayer?.seek(to: Double(positionMs) / 1000)
             },
-            setVolume: { [weak self] volume in self?.activePlayer?.volume = volume.floatValue },
+            setVolume: { [weak self] volume in self?.activePlayer?.setVolume(volume.floatValue) },
             setSubtitleEnabled: { _ in },
             stop: { [weak self] in self?.activePlayer?.pause() }
         )
@@ -40,16 +38,10 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 playing.boolValue ? self?.activePlayer?.play() : self?.activePlayer?.pause()
             },
             seekTo: { [weak self] positionMs in
-                self?.activePlayer?.seek(
-                    to: CMTime(seconds: Double(positionMs) / 1000.0, preferredTimescale: 600),
-                    toleranceBefore: .zero,
-                    toleranceAfter: .zero
-                )
+                self?.activePlayer?.seek(to: Double(positionMs) / 1000.0)
             },
             setSpeed: { [weak self] speed in
-                guard let self, let player = self.activePlayer else { return }
-                let rate = speed.floatValue
-                if player.timeControlStatus == .playing { player.rate = rate }
+                self?.activePlayer?.setRate(speed.floatValue)
             },
             stateChanged: { [weak self] state in
                 self?.handleWatchState(state)
@@ -107,7 +99,6 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         let title = request.title
         let resumePositionMs = request.resumePositionMs
         Task {
-            self.activateAudioSession()
             let playbackUrl = await Task.detached {
                 FluxaAppleStreamingEngine.shared.prepare(
                     url: originalUrl,
@@ -118,8 +109,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
             guard let playbackUrl else {
                 return
             }
-            let asset = AVURLAsset(url: playbackUrl)
-            let player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+            let player = FluxaPlayer()
             self.activePlayer = player
             self.watchBridge.attachPlayback(
                 contentId: request.contentId.isEmpty ? originalUrl : request.contentId,
@@ -153,10 +143,14 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
             self.activePlayerController = controller
             presenter.present(controller, animated: true) {
                 controller.presentationController?.delegate = self
-                let position = CMTime(seconds: Double(resumePositionMs) / 1000, preferredTimescale: 600)
-                if resumePositionMs > 0 {
-                    player.seek(to: position)
-                }
+                player.load(
+                    FluxaPlaybackItem(
+                        url: playbackUrl,
+                        title: title,
+                        startPosition: Double(resumePositionMs) / 1000,
+                        subtitleUrls: request.subtitleUrls.compactMap { URL(string: $0) }
+                    )
+                )
                 player.play()
             }
         }
@@ -389,8 +383,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     }
 
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-        stopObserving()
-        deactivateAudioSession()
+        activePlayer?.stop()
         watchBridge.leaveRoom()
         watchBridge.detachPlayback()
         activePlayerController = nil
@@ -400,54 +393,29 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         FluxaAppleStreamingEngine.shared.stop()
     }
 
-    private func activateAudioSession() {
-        audioSessionCoordinator.activate()
-    }
-
-    private func deactivateAudioSession() {
-        audioSessionCoordinator.deactivate()
-    }
-
-    private func observe(_ player: AVPlayer) {
-        stopObserving()
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
-            queue: .main
-        ) { [weak self, weak player] time in
-            guard let self, let player else {
-                return
-            }
-            let durationSeconds = player.currentItem?.duration.seconds ?? 0
-            let bufferedSeconds = player.currentItem?.loadedTimeRanges.last?.timeRangeValue.end.seconds ?? 0
-            self.stateBridge.updatePlayback(
-                isPlaying: player.timeControlStatus == .playing,
-                isBuffering: player.timeControlStatus == .waitingToPlayAtSpecifiedRate,
-                positionMs: Int64(max(0, time.seconds) * 1000),
-                durationMs: Int64(max(0, durationSeconds.isFinite ? durationSeconds : 0) * 1000),
-                bufferedPositionMs: Int64(max(0, bufferedSeconds.isFinite ? bufferedSeconds : 0) * 1000),
-                errorKey: player.currentItem?.error == nil ? nil : "error.generic_message"
-            )
-            self.activePlayerController?.update(
-                position: max(0, time.seconds),
-                duration: max(0, durationSeconds.isFinite ? durationSeconds : 0),
-                buffered: max(0, bufferedSeconds.isFinite ? bufferedSeconds : 0),
-                isPlaying: player.timeControlStatus == .playing,
-                isBuffering: player.timeControlStatus == .waitingToPlayAtSpecifiedRate,
-                errorMessage: player.currentItem?.error == nil ? nil : "Unable to play this media."
-            )
-            self.watchBridge.updatePlayback(
-                positionMs: Int64(max(0, time.seconds) * 1000),
-                durationMs: Int64(max(0, durationSeconds.isFinite ? durationSeconds : 0) * 1000),
-                isPlaying: player.timeControlStatus == .playing,
-                isBuffering: player.timeControlStatus == .waitingToPlayAtSpecifiedRate
-            )
+    private func observe(_ player: FluxaPlayer) {
+        player.onStateChange = { [weak self] state in
+            self?.publish(state)
         }
     }
 
-    private func stopObserving() {
-        if let timeObserver, let activePlayer {
-            activePlayer.removeTimeObserver(timeObserver)
-        }
-        timeObserver = nil
+    private func publish(_ state: FluxaPlaybackState) {
+        let positionMs = Int64(state.position * 1000)
+        let durationMs = Int64(state.duration * 1000)
+        let bufferedMs = Int64(state.buffered * 1000)
+        stateBridge.updatePlayback(
+            isPlaying: state.isPlaying,
+            isBuffering: state.isBuffering,
+            positionMs: positionMs,
+            durationMs: durationMs,
+            bufferedPositionMs: bufferedMs,
+            errorKey: state.failure == nil ? nil : "error.generic_message"
+        )
+        watchBridge.updatePlayback(
+            positionMs: positionMs,
+            durationMs: durationMs,
+            isPlaying: state.isPlaying,
+            isBuffering: state.isBuffering
+        )
     }
 }

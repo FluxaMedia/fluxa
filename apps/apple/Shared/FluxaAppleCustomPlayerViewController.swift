@@ -1,37 +1,25 @@
-import AVFoundation
+import FluxaPlayerKit
 import SwiftUI
 import UIKit
 
 @MainActor
-final class FluxaAppleCustomPlayerState: ObservableObject {
-    @Published var position: Double = 0
-    @Published var duration: Double = 0
-    @Published var buffered: Double = 0
-    @Published var isPlaying = false
-    @Published var isBuffering = false
-    @Published var errorMessage: String?
+final class FluxaAppleCustomPlayerChrome: ObservableObject {
     @Published var controlsVisible = true
     @Published var controlsEnabled = true
 }
 
-final class FluxaApplePlayerLayerView: UIView {
-    override class var layerClass: AnyClass { AVPlayerLayer.self }
-
-    var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
-}
-
 @MainActor
 final class FluxaAppleCustomPlayerViewController: UIViewController {
-    let player: AVPlayer
+    let player: FluxaPlayer
     let titleText: String
-    let state = FluxaAppleCustomPlayerState()
+    let chrome = FluxaAppleCustomPlayerChrome()
     var onWatchParty: (() -> Void)?
 
-    private let videoView = FluxaApplePlayerLayerView()
+    private let videoView = FluxaPlayerSurfaceView()
     private var host: UIHostingController<FluxaApplePlayerOverlay>?
     private var hideTask: Task<Void, Never>?
 
-    init(player: AVPlayer, title: String) {
+    init(player: FluxaPlayer, title: String) {
         self.player = player
         self.titleText = title
         super.init(nibName: nil, bundle: nil)
@@ -45,8 +33,6 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .black
         videoView.translatesAutoresizingMaskIntoConstraints = false
-        videoView.playerLayer.player = player
-        videoView.playerLayer.videoGravity = .resizeAspect
         view.addSubview(videoView)
         NSLayoutConstraint.activate([
             videoView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -54,10 +40,12 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
             videoView.topAnchor.constraint(equalTo: view.topAnchor),
             videoView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        player.attach(to: videoView)
 
         let overlay = FluxaApplePlayerOverlay(
             title: titleText,
-            state: state,
+            player: player,
+            chrome: chrome,
             onPlayPause: { [weak self] in self?.togglePlayback() },
             onSeek: { [weak self] value in self?.seek(to: value) },
             onSkip: { [weak self] seconds in self?.skip(seconds: seconds) },
@@ -83,44 +71,35 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
 
     override var prefersStatusBarHidden: Bool { true }
 
-    func update(position: Double, duration: Double, buffered: Double, isPlaying: Bool, isBuffering: Bool, errorMessage: String?) {
-        state.position = max(0, position)
-        state.duration = max(0, duration)
-        state.buffered = max(0, buffered)
-        state.isPlaying = isPlaying
-        state.isBuffering = isBuffering
-        state.errorMessage = errorMessage
-    }
-
     func setControlsEnabled(_ enabled: Bool) {
-        state.controlsEnabled = enabled
+        chrome.controlsEnabled = enabled
     }
 
     private func togglePlayback() {
-        guard state.controlsEnabled else { return }
-        if state.isPlaying { player.pause() } else { player.play() }
+        guard chrome.controlsEnabled else { return }
+        player.togglePlayback()
         scheduleHide()
     }
 
     private func seek(to value: Double) {
-        guard state.controlsEnabled else { return }
-        player.seek(to: CMTime(seconds: value, preferredTimescale: 600))
+        guard chrome.controlsEnabled else { return }
+        player.seek(to: value)
         scheduleHide()
     }
 
     private func skip(seconds: Double) {
-        guard state.controlsEnabled else { return }
-        let target = min(max(0, player.currentTime().seconds + seconds), state.duration)
-        seek(to: target)
+        guard chrome.controlsEnabled else { return }
+        player.skip(by: seconds)
+        scheduleHide()
     }
 
     private func scheduleHide() {
-        state.controlsVisible = true
+        chrome.controlsVisible = true
         hideTask?.cancel()
         hideTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled else { return }
-            self?.state.controlsVisible = false
+            self?.chrome.controlsVisible = false
         }
     }
 
@@ -129,7 +108,8 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
 
 private struct FluxaApplePlayerOverlay: View {
     let title: String
-    @ObservedObject var state: FluxaAppleCustomPlayerState
+    @ObservedObject var player: FluxaPlayer
+    @ObservedObject var chrome: FluxaAppleCustomPlayerChrome
     let onPlayPause: () -> Void
     let onSeek: (Double) -> Void
     let onSkip: (Double) -> Void
@@ -142,11 +122,11 @@ private struct FluxaApplePlayerOverlay: View {
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { onInteraction() }
-            if state.isBuffering { ProgressView().tint(.white).scaleEffect(1.35) }
-            if let errorMessage = state.errorMessage {
-                Text(errorMessage).foregroundStyle(.white).padding(18).background(.black.opacity(0.7)).clipShape(RoundedRectangle(cornerRadius: 12))
+            if player.state.isBuffering { ProgressView().tint(.white).scaleEffect(1.35) }
+            if let failure = player.state.failure {
+                Text(failure.reason).foregroundStyle(.white).padding(18).background(.black.opacity(0.7)).clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            if state.controlsVisible {
+            if chrome.controlsVisible {
                 VStack(spacing: 0) {
                     topBar
                     Spacer()
@@ -180,13 +160,13 @@ private struct FluxaApplePlayerOverlay: View {
         HStack(spacing: 36) {
             Button { onSkip(-10) } label: { Image(systemName: "gobackward.10").font(.title2) }
             Button(action: onPlayPause) {
-                Image(systemName: state.isPlaying ? "pause.fill" : "play.fill").font(.system(size: 34, weight: .bold))
+                Image(systemName: player.state.isPlaying ? "pause.fill" : "play.fill").font(.system(size: 34, weight: .bold))
                     .frame(width: 72, height: 72).background(.white.opacity(0.16)).clipShape(Circle())
             }
             Button { onSkip(10) } label: { Image(systemName: "goforward.10").font(.title2) }
         }
         .buttonStyle(.plain)
-        .disabled(!state.controlsEnabled)
+        .disabled(!chrome.controlsEnabled)
     }
 
     private var bottomBar: some View {
@@ -196,24 +176,24 @@ private struct FluxaApplePlayerOverlay: View {
                     Capsule().fill(.white.opacity(0.25))
                     Capsule()
                         .fill(.white.opacity(0.42))
-                        .frame(width: proxy.size.width * progress(state.buffered))
-                    Slider(value: Binding(get: { state.position }, set: onSeek), in: 0...max(state.duration, 1))
-                        .tint(.white).disabled(!state.controlsEnabled)
+                        .frame(width: proxy.size.width * progress(player.state.buffered))
+                    Slider(value: Binding(get: { player.state.position }, set: onSeek), in: 0...max(player.state.duration, 1))
+                        .tint(.white).disabled(!chrome.controlsEnabled)
                 }
             }
             .frame(height: 22)
             HStack {
-                Text(formatTime(state.position))
+                Text(formatTime(player.state.position))
                 Spacer()
-                Text(formatTime(state.duration))
+                Text(formatTime(player.state.duration))
             }.font(.caption.monospacedDigit()).foregroundStyle(.white.opacity(0.86))
         }
         .padding(.horizontal, 28).padding(.bottom, 24)
     }
 
     private func progress(_ value: Double) -> CGFloat {
-        guard state.duration > 0 else { return 0 }
-        return CGFloat(min(1, max(0, value / state.duration)));
+        guard player.state.duration > 0 else { return 0 }
+        return CGFloat(min(1, max(0, value / player.state.duration)));
     }
 
     private func formatTime(_ seconds: Double) -> String {
