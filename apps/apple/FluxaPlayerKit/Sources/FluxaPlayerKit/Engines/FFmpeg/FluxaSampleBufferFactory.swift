@@ -2,6 +2,7 @@
 import CFFmpeg
 import CoreMedia
 import Foundation
+import VideoToolbox
 
 enum FluxaSampleBufferFactory {
     static func videoFormatDescription(for stream: FluxaFFmpegStream) -> CMVideoFormatDescription? {
@@ -10,8 +11,8 @@ enum FluxaSampleBufferFactory {
         let height = Int32(parameters.height)
         guard width > 0, height > 0 else { return nil }
 
-        let atomKey: String
         let codecType: CMVideoCodecType
+        let atomKey: String?
         switch stream.codecID {
         case AV_CODEC_ID_H264:
             atomKey = "avcC"
@@ -19,18 +20,31 @@ enum FluxaSampleBufferFactory {
         case AV_CODEC_ID_HEVC:
             atomKey = "hvcC"
             codecType = kCMVideoCodecType_HEVC
+        case AV_CODEC_ID_VP9:
+            guard VTIsHardwareDecodeSupported(kCMVideoCodecType_VP9) else { return nil }
+            atomKey = nil
+            codecType = kCMVideoCodecType_VP9
         default:
             return nil
         }
 
-        guard !stream.extradata.isEmpty else { return nil }
-        guard isLengthPrefixedExtradata(stream.extradata) else {
+        guard VTIsHardwareDecodeSupported(codecType) else { return nil }
+        if stream.codecID != AV_CODEC_ID_VP9, stream.extradata.isEmpty { return nil }
+        guard stream.codecID == AV_CODEC_ID_VP9 || isLengthPrefixedExtradata(stream.extradata) else {
             return parameterSetDescription(codecID: stream.codecID, annexB: stream.extradata)
         }
 
-        let extensions: [CFString: Any] = [
-            kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms: [atomKey: stream.extradata]
-        ]
+        let extensions: CFDictionary?
+        if let atomKey {
+            let atomExtensions: [CFString: Any] = [
+                kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms: [
+                    atomKey: stream.extradata
+                ]
+            ]
+            extensions = atomExtensions as CFDictionary
+        } else {
+            extensions = nil
+        }
 
         var description: CMVideoFormatDescription?
         let status = CMVideoFormatDescriptionCreate(
@@ -38,7 +52,7 @@ enum FluxaSampleBufferFactory {
             codecType: codecType,
             width: width,
             height: height,
-            extensions: extensions as CFDictionary,
+            extensions: extensions,
             formatDescriptionOut: &description
         )
         return status == noErr ? description : nil

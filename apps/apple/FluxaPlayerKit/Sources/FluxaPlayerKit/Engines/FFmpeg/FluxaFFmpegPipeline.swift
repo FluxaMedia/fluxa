@@ -50,7 +50,9 @@ final class FluxaFFmpegPipeline: @unchecked Sendable {
 
             if let videoStream = demuxer.streams.first(where: { $0.index == demuxer.videoStreamIndex }) {
                 videoFormatDescription = FluxaSampleBufferFactory.videoFormatDescription(for: videoStream)
-                videoNeedsLengthPrefix = !FluxaSampleBufferFactory.isLengthPrefixedExtradata(videoStream.extradata)
+                videoNeedsLengthPrefix =
+                    (videoStream.codecID == AV_CODEC_ID_H264 || videoStream.codecID == AV_CODEC_ID_HEVC) &&
+                    !FluxaSampleBufferFactory.isLengthPrefixedExtradata(videoStream.extradata)
             }
             let audioStream = demuxer.streams.first { $0.index == demuxer.audioStreamIndex }
             let audioReady = audioStream.map { audioDecoder.open($0) } ?? false
