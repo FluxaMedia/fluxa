@@ -586,6 +586,16 @@ async fn torrents(
                         if let Some(file_id) = focus {
                             prioritize_stream_file(&state, id, file_id, request.role).await;
                         }
+                        // A torrent restored from session persistence, or paused by
+                        // an earlier deactivation, stays paused until something
+                        // starts it. Adding it again is a play intent, so resume it
+                        // here instead of waiting for the stream request that the
+                        // player only issues once buffering has already progressed.
+                        activate_torrent(&state, id).await;
+                        let _ = state
+                            .api
+                            .api_torrent_action_start(TorrentIdOrHash::Id(id))
+                            .await;
                     } else {
                         let delayed_state = state.clone();
                         tokio::spawn(async move {

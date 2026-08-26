@@ -30,6 +30,22 @@ fn main() {
         Ok(r) => println!("add -> {} {}", r.status(), r.text().unwrap_or_default()),
         Err(e) => println!("add failed: {e}"),
     }
+    if std::env::var_os("PROBE_PAUSE_FIRST").is_some() {
+        std::thread::sleep(Duration::from_secs(8));
+        let _ = client
+            .post(format!("{}/torrents", base.trim_end_matches('/')))
+            .json(&serde_json::json!({ "action": "deactivate", "link": magnet }))
+            .timeout(Duration::from_secs(15))
+            .send();
+        println!("-- deactivated, re-adding like a second playback --");
+        std::thread::sleep(Duration::from_secs(4));
+        let re = client
+            .post(format!("{}/torrents", base.trim_end_matches('/')))
+            .json(&serde_json::json!({ "action": "add", "link": magnet, "file_id": 2 }))
+            .timeout(Duration::from_secs(60))
+            .send();
+        println!("re-add -> {}", re.map(|r| r.status().to_string()).unwrap_or_else(|e| e.to_string()));
+    }
     let started = Instant::now();
     while started.elapsed() < Duration::from_secs(90) {
         let response = client
