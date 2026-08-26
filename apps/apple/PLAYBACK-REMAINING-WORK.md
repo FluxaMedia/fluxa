@@ -11,10 +11,9 @@ The Player Kit also contains a compile-gated FFmpeg/VideoToolbox fallback for
 sources that AVPlayer cannot demux. Unsupported software video decoding is not
 used as a normal path.
 
-The latest Apple CI run was commit `8021ba7`. Its iOS host build failed because
-the playback-item call placed `fallbackURL` before `startPosition`; that call is
-now corrected locally. The local machine has no Swift/Xcode toolchain, so Apple
-builds are validated in GitHub Actions.
+The latest Apple CI run was commit `b64c3dc` and passed after correcting the
+playback-item argument ordering. The local machine has no Swift/Xcode toolchain,
+so Apple builds are validated in GitHub Actions.
 
 ## Already verified
 
@@ -28,16 +27,15 @@ builds are validated in GitHub Actions.
   `FluxaApplePlaybackPresenter.swift:151`; the failure was the named-argument
   ordering described above. The tvOS host result was not affected by that
   compiler diagnostic, but the workflow was red overall.
+- CI run `33024568322` passed for commit `b64c3dc`: macOS package build and
+  tests, iOS host build, tvOS host build, and FFmpeg package build all passed.
 
 ## Remaining work
 
-### 1. Finish the next Apple CI run
+### 1. Apple CI validation
 
-- Confirm the iOS host build passes after the playback-item argument ordering
-  fix.
-- Confirm the current tvOS host build remains green.
-- If another compiler error appears, collect related fixes and commit them as
-  one grouped change; do not commit every small correction separately.
+- The playback-item argument ordering fix is confirmed by CI run
+  `33024568322`.
 
 ### 2. Exercise the real playback fallback chain
 
