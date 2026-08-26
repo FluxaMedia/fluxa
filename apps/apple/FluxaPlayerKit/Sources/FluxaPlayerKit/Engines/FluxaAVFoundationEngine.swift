@@ -93,6 +93,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
             if let url = components?.url {
                 var restarted = item
                 restarted.url = url
+                restarted.startPosition = max(0, position)
                 load(restarted)
                 if wasPlaying {
                     play()

@@ -179,8 +179,17 @@ private struct FluxaApplePlayerOverlay: View {
                     Capsule()
                         .fill(.white.opacity(0.42))
                         .frame(width: proxy.size.width * progress(player.state.buffered))
-                    Slider(value: Binding(get: { player.state.position }, set: onSeek), in: 0...max(player.state.duration, 1))
-                        .tint(.white).disabled(!chrome.controlsEnabled)
+                    #if os(tvOS)
+                    ProgressView(value: player.state.position, total: max(player.state.duration, 1))
+                        .tint(.white)
+                    #else
+                    Slider(
+                        value: Binding(get: { player.state.position }, set: onSeek),
+                        in: 0...max(player.state.duration, 1)
+                    )
+                    .tint(.white)
+                    .disabled(!chrome.controlsEnabled)
+                    #endif
                 }
             }
             .frame(height: 22)
