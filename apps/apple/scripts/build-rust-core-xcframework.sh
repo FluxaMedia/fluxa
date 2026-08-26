@@ -89,17 +89,28 @@ build_rust_core() {
 }
 
 build_streaming_engine() {
-    local ios_deployment_target="${IPHONEOS_DEPLOYMENT_TARGET:-18.5}"
+    local target="${2:-}"
+    local deployment_var="IPHONEOS_DEPLOYMENT_TARGET"
+    local deployment_target="${IPHONEOS_DEPLOYMENT_TARGET:-18.5}"
+    if [[ "$target" == *apple-tvos* ]]; then
+        deployment_var="TVOS_DEPLOYMENT_TARGET"
+        deployment_target="${TVOS_DEPLOYMENT_TARGET:-17.0}"
+    fi
+    local deployment_env="${deployment_var}=${deployment_target}"
 
     if [[ "$profile" == "Release" ]]; then
-        IPHONEOS_DEPLOYMENT_TARGET="$ios_deployment_target" cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@" --release
+        env "$deployment_env" cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@" --release
     else
-        IPHONEOS_DEPLOYMENT_TARGET="$ios_deployment_target" cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@"
+        env "$deployment_env" cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@"
     fi
 }
 
 should_build_streaming_engine() {
-    [[ "${FLUXA_BUILD_STREAMING_ENGINE:-0}" == "1" ]] || [[ "${PLATFORM_NAME:-}" == "iphoneos" ]] || [[ "${PLATFORM_NAME:-}" == "iphonesimulator" ]]
+    [[ "${FLUXA_BUILD_STREAMING_ENGINE:-0}" == "1" ]] ||
+        [[ "${PLATFORM_NAME:-}" == "iphoneos" ]] ||
+        [[ "${PLATFORM_NAME:-}" == "iphonesimulator" ]] ||
+        [[ "${PLATFORM_NAME:-}" == "appletvos" ]] ||
+        [[ "${PLATFORM_NAME:-}" == "appletvsimulator" ]]
 }
 
 targets=(
@@ -135,7 +146,8 @@ for target in "${targets[@]}"; do
 done
 
 if should_build_streaming_engine; then
-    for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios; do
+    for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios \
+        aarch64-apple-tvos aarch64-apple-tvos-sim; do
         build_streaming_engine --target "$target"
     done
 fi
@@ -153,6 +165,8 @@ if should_build_streaming_engine; then
         "target/x86_64-apple-ios/$cargo_profile/libfluxa_streaming_engine.a" \
         -output "$output_dir/libfluxa_streaming_engine-ios-simulator.a"
     cp "target/aarch64-apple-ios/$cargo_profile/libfluxa_streaming_engine.a" "$output_dir/libfluxa_streaming_engine-ios.a"
+    cp "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_streaming_engine.a" "$output_dir/libfluxa_streaming_engine-tvos-simulator.a"
+    cp "target/aarch64-apple-tvos/$cargo_profile/libfluxa_streaming_engine.a" "$output_dir/libfluxa_streaming_engine-tvos.a"
 fi
 cp "$output_dir/FluxaRustCoreFFI.h" "$headers_dir/FluxaRustCoreFFI.h"
 cp "$output_dir/FluxaRustCoreFFI.modulemap" "$headers_dir/module.modulemap"
