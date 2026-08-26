@@ -113,6 +113,7 @@ slice_configure() {
     sdk_path="$(xcrun --sdk "$sdk" --show-sdk-path)"
     cflags="-arch $arch -target $triple -isysroot $sdk_path $min_flag"
 
+    echo "Configuring FFmpeg for $arch/$sdk ($triple)"
     "$source_dir/configure" \
         --prefix="$PWD/install" \
         --arch="$arch" \
@@ -122,7 +123,8 @@ slice_configure() {
         --extra-cflags="$cflags" \
         --extra-ldflags="-arch $arch -target $triple -isysroot $sdk_path $min_flag" \
         "${base_flags[@]}" \
-        "${components[@]}" >/dev/null
+        "${components[@]}"
+    echo "Finished configuring FFmpeg for $arch/$sdk"
 }
 
 build_slice() {
