@@ -137,8 +137,11 @@ build_slice() {
     mkdir -p "$slice_dir"
     pushd "$slice_dir" >/dev/null
     slice_configure "$arch" "$sdk" "$triple" "$min_flag"
-    make -j"$(sysctl -n hw.ncpu)" >/dev/null
-    make install >/dev/null
+    # FFmpeg has a large C translation-unit fan-out; keeping the default
+    # deliberately modest avoids runner memory pressure. Override this for a
+    # larger self-hosted builder with FLUXA_FFMPEG_JOBS.
+    make -j"${FLUXA_FFMPEG_JOBS:-2}"
+    make install
     popd >/dev/null
 
     merge_slice "$name"
@@ -151,7 +154,7 @@ merge_slice() {
         "$lib_dir/libavformat.a" \
         "$lib_dir/libavcodec.a" \
         "$lib_dir/libswresample.a" \
-        "$lib_dir/libavutil.a" 2>/dev/null
+        "$lib_dir/libavutil.a"
 }
 
 fetch_source() {
