@@ -5,7 +5,7 @@ if [[ "${FLUXA_SKIP_RUST_CORE_BUILD:-0}" == "1" ]]; then
     exit 0
 fi
 
-project_dir="$(cd "$(dirname "$0")/../.." && pwd)"
+project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 rust_dir="$(cd "$project_dir/../../core/fluxa-core" && pwd)"
 output_dir="$project_dir/Generated"
 headers_dir="$output_dir/FluxaRustCoreFFI"
