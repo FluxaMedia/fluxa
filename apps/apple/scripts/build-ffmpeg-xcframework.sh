@@ -141,7 +141,11 @@ build_slice() {
     # deliberately modest avoids runner memory pressure. Override this for a
     # larger self-hosted builder with FLUXA_FFMPEG_JOBS.
     make -j"${FLUXA_FFMPEG_JOBS:-2}"
-    make install
+    # The full install target also installs docs, examples and pkg-config
+    # metadata that are not part of the XCFramework. Those targets can fail
+    # independently after the libraries were built; keep the artifact limited
+    # to the libraries and public headers consumed by FluxaPlayerKit.
+    make install-libs install-headers
     popd >/dev/null
 
     merge_slice "$name"
