@@ -311,11 +311,20 @@ async fn handle_async_local_stream(
             .await;
         return;
     }
+    // A byte range into the Matroska source is not a valid input to the
+    // incremental demuxer: it would usually start after EBML/Tracks. For an
+    // adapted stream, restart from byte zero and let the fMP4 timeline handle
+    // the initial playback window. Direct streams retain normal range seeks.
+    let upstream_headers = if remux {
+        HashMap::new()
+    } else {
+        request.headers.clone()
+    };
     let Ok(mut response) = send_async_upstream_request(
         &config.async_client,
         &config,
         &request.method,
-        &request.headers,
+        &upstream_headers,
     )
     .await
     else {
