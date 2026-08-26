@@ -17,6 +17,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: player-kit-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   avfoundation:
     name: AVFoundation engine
@@ -65,6 +69,10 @@ jobs:
       - name: Build CFFmpeg xcframework
         if: steps.cache.outputs.cache-hit != 'true'
         run: apps/apple/scripts/build-ffmpeg-xcframework.sh
+
+      - name: Build for macOS
+        working-directory: apps/apple/FluxaPlayerKit
+        run: swift build -v
 
       - name: Build for iOS
         working-directory: apps/apple/FluxaPlayerKit

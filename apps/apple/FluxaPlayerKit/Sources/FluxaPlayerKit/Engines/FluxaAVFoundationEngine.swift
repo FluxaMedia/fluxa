@@ -14,6 +14,9 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     private var endObserver: NSObjectProtocol?
     private var pendingStartPosition: TimeInterval = 0
     private var loadedItem: FluxaPlaybackItem?
+    private var startupTimeoutTask: Task<Void, Never>?
+
+    private static let startupTimeoutNanoseconds: UInt64 = 10_000_000_000
 
     override init() {
         super.init()
@@ -28,6 +31,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
 
     func load(_ item: FluxaPlaybackItem) {
         detachItemObservers()
+        startupTimeoutTask?.cancel()
         loadedItem = item
         var options: [String: Any] = [:]
         if !item.headers.isEmpty {
@@ -46,6 +50,22 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         player.replaceCurrentItem(with: playerItem)
         attachItemObservers(playerItem)
         attachTimeObserver()
+        startupTimeoutTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: Self.startupTimeoutNanoseconds)
+            } catch {
+                return
+            }
+            guard let self, !Task.isCancelled, self.state.phase == .loading else { return }
+            self.state.phase = .failed(
+                FluxaPlaybackFailure(
+                    reason: "Playback did not become ready in time",
+                    isRecoverable: true
+                )
+            )
+            self.state.isBuffering = false
+            self.publishState()
+        }
     }
 
     func play() {
@@ -107,6 +127,8 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
 
     func tearDown() {
         detachItemObservers()
+        startupTimeoutTask?.cancel()
+        startupTimeoutTask = nil
         loadedItem = nil
         player.pause()
         player.replaceCurrentItem(with: nil)
@@ -166,6 +188,8 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     private func handleStatus(_ item: AVPlayerItem) {
         switch item.status {
         case .readyToPlay:
+            startupTimeoutTask?.cancel()
+            startupTimeoutTask = nil
             if pendingStartPosition > 0 {
                 let target = pendingStartPosition
                 pendingStartPosition = 0
@@ -177,6 +201,8 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
             loadTracks(from: item)
             handleTransportChange()
         case .failed:
+            startupTimeoutTask?.cancel()
+            startupTimeoutTask = nil
             let reason = item.error?.localizedDescription ?? "Unknown playback error"
             state.phase = .failed(FluxaPlaybackFailure(reason: reason, isRecoverable: true))
             state.isBuffering = false
