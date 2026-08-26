@@ -484,7 +484,12 @@ fn install_with_backend(app_handle: AppHandle) -> Result<NativePlayerSurface, St
             if let Some(client) = client_guard.as_ref() {
                 let _ = client.set_log_level("info");
             }
-            if let Some(icc) = query_colorsync_icc_profile() {
+            // libplacebo maps to the profile's measured black point, and the
+            // built-in display profiles report a lifted one, which washes the
+            // picture out. Opt-in until that is handled properly.
+            if std::env::var("FLUXA_MAC_ICC").is_ok()
+                && let Some(icc) = query_colorsync_icc_profile()
+            {
                 if let Err(e) = r.set_icc_profile(&icc) {
                     log::warn!("failed to set ICC profile: {e}");
                 }
