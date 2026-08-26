@@ -4,6 +4,8 @@ use axum::extract::Query;
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use bytes::Bytes;
+use futures_util::StreamExt;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::io;
@@ -293,6 +295,77 @@ pub async fn handle_transcode(Query(q): Query<TranscodeQuery>) -> Response {
     response
 }
 
+/// Streams a supported Matroska source as rolling fragmented MP4 without
+/// decoding or re-encoding its video. The input is normally the companion's
+/// loopback `/proxy` URL, so the endpoint can stay behind the same SSRF gate
+/// as `/transcode`.
+pub async fn handle_remux(Query(q): Query<TranscodeQuery>) -> Response {
+    if !is_allowed_stream_url(&q.url) {
+        return (
+            StatusCode::BAD_REQUEST,
+            "url must be http(s)://127.0.0.1 or localhost",
+        )
+            .into_response();
+    }
+
+    let response = match reqwest::Client::new().get(&q.url).send().await {
+        Ok(response) if response.status().is_success() => response,
+        Ok(response) => {
+            return (response.status(), "upstream source was not successful").into_response();
+        }
+        Err(error) => return (StatusCode::BAD_GATEWAY, error.to_string()).into_response(),
+    };
+
+    let input = response.bytes_stream();
+    let output = futures_util::stream::unfold(
+        (input, fluxa_core::media_demux::IncrementalFmp4Session::new(), false),
+        |(mut input, mut session, mut finished)| async move {
+            loop {
+                if finished {
+                    return None;
+                }
+                if let Some(chunk) = input.next().await {
+                    let chunk = match chunk {
+                        Ok(chunk) => chunk,
+                        Err(error) => {
+                            finished = true;
+                            return Some((
+                                Err(std::io::Error::other(error.to_string())),
+                                (input, session, finished),
+                            ));
+                        }
+                    };
+                    let bytes = session.push(&chunk);
+                    if !bytes.is_empty() {
+                        return Some((Ok(Bytes::from(bytes)), (input, session, finished)));
+                    }
+                } else {
+                    finished = true;
+                    let bytes = session.finish();
+                    if !bytes.is_empty() {
+                        return Some((Ok(Bytes::from(bytes)), (input, session, finished)));
+                    }
+                    if session.is_supported() == Some(false) {
+                        return Some((
+                            Err(std::io::Error::other(
+                                "source video codec cannot be remuxed to fMP4",
+                            )),
+                            (input, session, finished),
+                        ));
+                    }
+                    return None;
+                }
+            }
+        },
+    );
+    let mut output = Body::from_stream(output).into_response();
+    output.headers_mut().insert(
+        axum::http::header::CONTENT_TYPE,
+        HeaderValue::from_static("video/mp4"),
+    );
+    output
+}
+
 fn normalized_codec(codec: Option<&str>) -> Option<String> {
     let codec = codec?.to_ascii_lowercase();
     let normalized = if codec.contains("h264") || codec.contains("avc") {
@@ -410,6 +483,7 @@ async fn probe_hardware_encoder(encoder: &str) -> bool {
 pub fn router() -> Router {
     Router::new()
         .route("/transcode", get(handle_transcode))
+        .route("/remux", get(handle_remux))
         .route("/probe", get(handle_probe))
 }
 

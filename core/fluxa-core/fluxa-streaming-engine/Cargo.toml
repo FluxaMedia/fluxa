@@ -10,7 +10,9 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 default = ["native"]
 engine = [
     "dep:axum",
+    "dep:bytes",
     "dep:fluxa_core",
+    "dep:futures-util",
     "dep:librqbit",
     "dep:reqwest",
     "dep:tokio",
@@ -23,6 +25,8 @@ apple = ["engine"]
 
 [dependencies]
 axum = { version = "0.8", optional = true }
+bytes = { version = "1", optional = true }
+futures-util = { version = "0.3", optional = true }
 tower-http = { version = "0.6", features = ["cors"], optional = true }
 dolby_vision = { workspace = true }
 fluxa_core = { workspace = true, features = ["streaming-shared"], optional = true }
