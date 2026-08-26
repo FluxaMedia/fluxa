@@ -363,11 +363,13 @@ async fn handle_async_local_stream(
         header.push_str("content-type: video/mp4\r\n");
     }
     header.push_str("Connection: close\r\n\r\n");
-    if stream.write_all(header.as_bytes()).await.is_err() || request.method == "HEAD" {
-        return;
-    }
     if remux {
+        if request.method == "HEAD" {
+            let _ = stream.write_all(header.as_bytes()).await;
+            return;
+        }
         let mut session = IncrementalFmp4Session::new();
+        let mut headers_sent = false;
         if let Some(seconds) = query.split('&').find_map(|item| {
             let (name, value) = item.split_once('=')?;
             (name == "start")
@@ -378,15 +380,39 @@ async fn handle_async_local_stream(
         }
         while let Ok(Some(chunk)) = response.chunk().await {
             let output = session.push(&chunk);
-            if !output.is_empty() && stream.write_all(&output).await.is_err() {
-                return;
+            if !output.is_empty() {
+                if !headers_sent {
+                    if stream.write_all(header.as_bytes()).await.is_err() {
+                        return;
+                    }
+                    headers_sent = true;
+                }
+                if stream.write_all(&output).await.is_err() {
+                    return;
+                }
             }
         }
         let output = session.finish();
         if !output.is_empty() {
+            if !headers_sent {
+                if stream.write_all(header.as_bytes()).await.is_err() {
+                    return;
+                }
+                headers_sent = true;
+            }
             let _ = stream.write_all(&output).await;
         }
+        if !headers_sent {
+            let _ = stream
+                .write_all(
+                    b"HTTP/1.1 415 Unsupported Media Type\r\nConnection: close\r\n\r\nsource cannot be adapted to fMP4",
+                )
+                .await;
+        }
     } else {
+        if stream.write_all(header.as_bytes()).await.is_err() || request.method == "HEAD" {
+            return;
+        }
         while let Ok(Some(chunk)) = response.chunk().await {
             if stream.write_all(&chunk).await.is_err() {
                 break;
