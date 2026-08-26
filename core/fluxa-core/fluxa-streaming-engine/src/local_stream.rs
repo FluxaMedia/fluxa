@@ -290,8 +290,9 @@ async fn handle_async_local_stream(
 ) {
     let stream_path = format!("/stream/{}", config.id);
     let remux_path = format!("{stream_path}/remux");
-    let remux = request.path == remux_path;
-    if request.path != stream_path && !remux {
+    let (request_path, query) = request.path.split_once('?').unwrap_or((&request.path, ""));
+    let remux = request_path == remux_path;
+    if request_path != stream_path && !remux {
         let _ = stream
             .write_all(b"HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n")
             .await;
@@ -367,6 +368,14 @@ async fn handle_async_local_stream(
     }
     if remux {
         let mut session = IncrementalFmp4Session::new();
+        if let Some(seconds) = query.split('&').find_map(|item| {
+            let (name, value) = item.split_once('=')?;
+            (name == "start")
+                .then(|| value.parse::<f64>().ok())
+                .flatten()
+        }) {
+            session.set_start_position(seconds);
+        }
         while let Ok(Some(chunk)) = response.chunk().await {
             let output = session.push(&chunk);
             if !output.is_empty() && stream.write_all(&output).await.is_err() {

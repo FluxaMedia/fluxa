@@ -328,11 +328,25 @@ mod tests {
 pub struct IncrementalFmp4Session {
     demuxer: mkv_demux::IncrementalDemuxer,
     fragments: Option<fmp4_mux::FragmentWriter>,
+    start_seconds: Option<f64>,
+    started: bool,
 }
 
 impl IncrementalFmp4Session {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Requests a best-effort seek point for a remuxed stream. The demuxer
+    /// still reads from byte zero so Matroska headers and track metadata are
+    /// available; packets before the requested timestamp are discarded.
+    /// Callers should reopen the source for each seek.
+    pub fn set_start_position(&mut self, seconds: f64) {
+        if seconds <= 0.0 {
+            self.start_seconds = None;
+            return;
+        }
+        self.start_seconds = Some(seconds);
     }
 
     pub fn push(&mut self, chunk: &[u8]) -> Vec<u8> {
@@ -387,13 +401,44 @@ impl IncrementalFmp4Session {
                 audio,
             ));
         }
-        if let Some(writer) = self.fragments.as_mut() {
-            for packet in &step.packets {
+        for packet in &step.packets {
+            if !self.should_emit(packet) {
+                continue;
+            }
+            if let Some(writer) = self.fragments.as_mut() {
                 if let Some(fragment) = writer.push(packet) {
                     out.extend_from_slice(&fragment);
                 }
             }
         }
         out
+    }
+
+    fn should_emit(&mut self, packet: &mkv_demux::Packet) -> bool {
+        let Some(seconds) = self.start_seconds else {
+            return true;
+        };
+        let scale = if self.demuxer.timestamp_scale == 0 {
+            1_000_000
+        } else {
+            self.demuxer.timestamp_scale
+        } as f64;
+        let start = (seconds * 1_000_000_000.0 / scale).round() as i64;
+        if self.started {
+            return true;
+        }
+        let is_video = self.demuxer.tracks.iter().any(|track| {
+            track.number == packet.track_number && track.kind == mkv_demux::TrackKind::Video
+        });
+        if is_video {
+            if packet.timestamp < start || !packet.keyframe {
+                return false;
+            }
+            self.started = true;
+            return true;
+        }
+        // Do not enqueue audio before the first video keyframe. Once video
+        // starts, audio packets are allowed to establish the common clock.
+        false
     }
 }
