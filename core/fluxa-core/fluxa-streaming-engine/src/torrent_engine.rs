@@ -315,14 +315,6 @@ pub fn start_torrent_server(
                 enable_upnp_port_forwarding: true,
                 disable_upload: true,
                 concurrent_init_limit: Some(concurrent_init_limit),
-                // librqbit defaults to 10s for both. Streaming cares about the
-                // peers that answer quickly, and a dead one holding a slot for
-                // ten seconds is a slot the swarm could have used three times.
-                peer_opts: Some(PeerConnectionOptions {
-                    connect_timeout: Some(Duration::from_secs(10)),
-                    read_write_timeout: Some(Duration::from_secs(10)),
-                    ..Default::default()
-                }),
                 trackers: [
                     "udp://tracker.opentrackr.org:1337/announce",
                     "udp://open.demonii.com:1337/announce",
