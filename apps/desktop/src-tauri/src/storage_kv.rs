@@ -65,6 +65,13 @@ pub fn read_pref_field(state: State<DesktopState>, field: &str) -> Option<String
     value.get(field)?.as_str().map(str::to_string)
 }
 
+pub fn read_pref_flag(state: State<DesktopState>, field: &str, default: bool) -> bool {
+    read_prefs_document(state)
+        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+        .and_then(|value| value.get(field).and_then(Value::as_bool))
+        .unwrap_or(default)
+}
+
 #[tauri::command]
 pub fn storage_write(state: State<DesktopState>, key: String, value: String) -> bool {
     let _storage_lock = state.storage_lock.lock().unwrap();

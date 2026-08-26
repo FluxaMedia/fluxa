@@ -2,7 +2,7 @@ use crate::{DesktopState, torrent_transport};
 use fluxa_core::FluxaCore;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use tauri::State;
+use tauri::{Manager, State};
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -261,6 +261,40 @@ pub async fn stop_torrent_stream(state: State<'_, DesktopState>) -> Result<bool,
         });
     }
     Ok(was_playing)
+}
+
+// Stremio keeps its engine hot; ours used to boot inside the play click, so the
+// DHT bootstrap and the session restore were on the critical path.
+pub(crate) fn warm_up_torrent_engine(app: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        let state = app.state::<DesktopState>();
+        if !crate::storage::read_pref_flag(state.clone(), "p2pEnabled", true) {
+            return;
+        }
+        let Some(data_dir) = state.data_dir.lock().unwrap().clone() else {
+            return;
+        };
+        if state.torrent.lock().unwrap().server_base_url.is_some() {
+            return;
+        }
+        let cache_dir = data_dir.join("torrent-cache");
+        let Some(server_json) =
+            fluxa_streaming_engine::start_torrent_server(&cache_dir.to_string_lossy(), 0, "")
+        else {
+            log::warn!("torrent engine warm-up failed to start");
+            return;
+        };
+        let Ok(server) = serde_json::from_str::<Value>(&server_json) else {
+            return;
+        };
+        let Some(base_url) = server.get("url").and_then(Value::as_str) else {
+            return;
+        };
+        let mut torrent = state.torrent.lock().unwrap();
+        torrent.server_base_url = Some(base_url.to_string());
+        torrent.generation = server.get("generation").and_then(Value::as_u64);
+        log::info!("torrent engine warmed up at {base_url}");
+    });
 }
 
 #[tauri::command]

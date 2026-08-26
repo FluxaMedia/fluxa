@@ -24,8 +24,8 @@ pub use library_storage::{
     library_last_watched_upsert, library_progress_delete, library_progress_list,
     library_progress_read, library_progress_upsert, library_progress_upsert_many,
     library_status_list, library_status_set,
-    library_watched_list, library_watched_set, read_pref_field, storage_delete, storage_read,
-    storage_write,
+    library_watched_list, library_watched_set, read_pref_field, read_pref_flag, storage_delete,
+    storage_read, storage_write,
 };
 use library_storage_migrations::migrate_legacy_json_files;
 fn decrypt_json(dir: &Path, bytes: Vec<u8>) -> Result<Value, String> {

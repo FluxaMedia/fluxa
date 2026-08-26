@@ -470,6 +470,7 @@ pub fn run() {
             *state.data_dir.lock().unwrap() = Some(data_dir.clone());
             let _ = fs::create_dir_all(&data_dir);
             storage::initialize_storage(&data_dir).map_err(std::io::Error::other)?;
+            torrent_stream::warm_up_torrent_engine(app.handle().clone());
 
             if let Ok(cache_dir) = app.path().app_cache_dir() {
                 std::thread::spawn(move || {
