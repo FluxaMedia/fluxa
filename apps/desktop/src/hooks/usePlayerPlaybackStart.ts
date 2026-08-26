@@ -531,10 +531,17 @@ export function usePlayerPlaybackStart(options: any) {
             const prefs = appPrefs(stateRef.current);
             const needVideos = !nextEp && !!meta?.id && !!meta?.type && !!episode;
 
-            const [{ segments: segmentResult, coverage: segmentCoverage }, fetchedVideos] = await Promise.all([
-              skipSegmentsPromise,
-              needVideos ? fetchMetaVideos(meta!.id, meta!.type) : Promise.resolve([] as Video[]),
-            ]);
+            // Continue Watching hands over a library item with no episode list,
+            // so the episode panel and the next-episode button depend on this
+            // fetch. Keeping it in the same Promise.all as the skip segments
+            // meant one slow or failing addon took both of them down.
+            const videosPromise = needVideos
+              ? fetchMetaVideos(meta!.id, meta!.type).catch(() => [] as Video[])
+              : Promise.resolve([] as Video[]);
+            const segmentsPromise = skipSegmentsPromise.catch(() => ({ segments: [], coverage: {} }));
+
+            const fetchedVideos = await videosPromise;
+            const { segments: segmentResult, coverage: segmentCoverage } = await segmentsPromise;
             setSkipSegmentCoverage(segmentCoverage);
 
             if (fetchedVideos.length > 0) {
