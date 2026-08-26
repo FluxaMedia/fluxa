@@ -90,6 +90,8 @@ pub struct FragmentWriter {
     fragment_start: Option<i64>,
     video_decode_time: u64,
     audio_decode_time: u64,
+    video_decode_time_initialized: bool,
+    audio_decode_time_initialized: bool,
     max_span: i64,
 }
 
@@ -117,6 +119,8 @@ impl FragmentWriter {
             fragment_start: None,
             video_decode_time: 0,
             audio_decode_time: 0,
+            video_decode_time_initialized: false,
+            audio_decode_time_initialized: false,
             max_span: i64::from(timescale) * 2,
         }
     }
@@ -137,8 +141,21 @@ impl FragmentWriter {
                 emitted = self.flush();
             }
         }
+        let timestamp = packet.timestamp.max(0) as u64;
+        if is_video && !self.video_decode_time_initialized {
+            self.video_decode_time = timestamp;
+            self.video_decode_time_initialized = true;
+        } else if !is_video && !self.audio_decode_time_initialized {
+            self.audio_decode_time = timestamp;
+            self.audio_decode_time_initialized = true;
+        }
         if self.fragment_start.is_none() {
             self.fragment_start = Some(packet.timestamp);
+            if is_video {
+                self.video_decode_time = self.video_decode_time.max(timestamp);
+            } else {
+                self.audio_decode_time = self.audio_decode_time.max(timestamp);
+            }
         }
         let mut packet = packet.clone();
         if is_video && matches!(self.video_codec.as_deref(), Some(CODEC_AVC | CODEC_HEVC)) {
@@ -623,6 +640,56 @@ mod tests {
     }
 
     #[test]
+    fn first_track_timestamps_are_preserved_in_tfdt() {
+        let (video, audio) = sample_tracks();
+        let mut writer = FragmentWriter::new(1_000_000, Some(&video), Some(&audio));
+        writer.push(&Packet {
+            track_number: 1,
+            timestamp: 500,
+            keyframe: true,
+            data: vec![0xAA; 4],
+        });
+        writer.push(&Packet {
+            track_number: 2,
+            timestamp: 1_000,
+            keyframe: true,
+            data: vec![0xBB; 4],
+        });
+        let fragment = writer.flush().expect("fragment");
+        assert_eq!(tfdt_values(&fragment), vec![500, 1_000]);
+    }
+
+    #[test]
+    fn fragment_gap_advances_track_decode_time_to_next_packet() {
+        let (video, audio) = sample_tracks();
+        let mut writer = FragmentWriter::new(1_000_000, Some(&video), Some(&audio));
+        writer.push(&Packet {
+            track_number: 1,
+            timestamp: 0,
+            keyframe: true,
+            data: vec![0xAA; 4],
+        });
+        writer.push(&Packet {
+            track_number: 2,
+            timestamp: 0,
+            keyframe: true,
+            data: vec![0xBB; 4],
+        });
+        let first = writer
+            .push(&Packet {
+                track_number: 1,
+                timestamp: 3_000,
+                keyframe: true,
+                data: vec![0xCC; 4],
+            })
+            .expect("first fragment");
+        let second = writer.flush().expect("second fragment");
+
+        assert_eq!(tfdt_values(&first), vec![0, 0]);
+        assert_eq!(tfdt_values(&second), vec![3_000]);
+    }
+
+    #[test]
     fn annex_b_video_packets_are_converted_to_mp4_nal_lengths() {
         let (video, audio) = sample_tracks();
         let mut writer = FragmentWriter::new(1_000_000, Some(&video), Some(&audio));
@@ -663,5 +730,23 @@ mod tests {
 
     fn read_size(buffer: &[u8], offset: usize) -> usize {
         u32::from_be_bytes(buffer[offset..offset + 4].try_into().unwrap()) as usize
+    }
+
+    fn tfdt_values(fragment: &[u8]) -> Vec<u64> {
+        let moof_size = read_size(fragment, 0);
+        walk(&fragment[8..moof_size])
+            .into_iter()
+            .filter(|entry| entry.0 == "traf")
+            .map(|(_, offset, size)| {
+                let traf_start = 8 + offset;
+                let children = walk(&fragment[traf_start + 8..traf_start + size]);
+                let (_, tfdt_offset, _) = children
+                    .into_iter()
+                    .find(|entry| entry.0 == "tfdt")
+                    .expect("tfdt");
+                let value_start = traf_start + 8 + tfdt_offset + 12;
+                u64::from_be_bytes(fragment[value_start..value_start + 8].try_into().unwrap())
+            })
+            .collect()
     }
 }
