@@ -83,11 +83,13 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         if let item = loadedItem, item.url.path.hasSuffix("/remux") {
             let wasPlaying = player.timeControlStatus != .paused
             var components = URLComponents(url: item.url, resolvingAgainstBaseURL: false)
-            components?.queryItems = (components?.queryItems ?? [])
-                .filter { $0.name != "start" }
-            components?.queryItems?.append(
-                URLQueryItem(name: "start", value: String(max(0, position)))
-            )
+            var queryItems = components?.queryItems ?? []
+            queryItems.removeAll { $0.name == "start" }
+            queryItems.append(URLQueryItem(
+                name: "start",
+                value: String(max(0, position))
+            ))
+            components?.queryItems = queryItems
             if let url = components?.url {
                 var restarted = item
                 restarted.url = url
