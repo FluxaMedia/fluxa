@@ -73,9 +73,34 @@ jobs:
           path: apps/apple/Generated
           if-no-files-found: error
 
+  ffmpeg:
+    name: FFmpeg fallback artifact
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache FFmpeg build
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/apple/FluxaPlayerKit/Vendor/CFFmpeg.xcframework
+            apps/apple/Generated/ffmpeg
+          key: cffmpeg-${{ runner.os }}-${{ hashFiles('apps/apple/scripts/build-ffmpeg-xcframework.sh') }}
+
+      - name: Build FFmpeg XCFramework
+        run: apps/apple/scripts/build-ffmpeg-xcframework.sh
+
+      - name: Upload FFmpeg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-ffmpeg
+          path: apps/apple/FluxaPlayerKit/Vendor/CFFmpeg.xcframework
+          if-no-files-found: error
+
   ios:
     name: iOS simulator
-    needs: rust-core
+    needs: [rust-core, ffmpeg]
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -86,6 +111,12 @@ jobs:
         with:
           name: apple-rust-core
           path: apps/apple/Generated
+
+      - name: Download FFmpeg artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-ffmpeg
+          path: apps/apple/FluxaPlayerKit/Vendor
 
       - uses: actions/setup-java@v5
         with:
@@ -131,7 +162,7 @@ jobs:
 
   tvos:
     name: tvOS simulator
-    needs: rust-core
+    needs: [rust-core, ffmpeg]
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -142,6 +173,12 @@ jobs:
         with:
           name: apple-rust-core
           path: apps/apple/Generated
+
+      - name: Download FFmpeg artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-ffmpeg
+          path: apps/apple/FluxaPlayerKit/Vendor
 
       - uses: actions/setup-java@v5
         with:
