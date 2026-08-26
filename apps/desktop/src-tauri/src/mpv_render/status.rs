@@ -143,8 +143,7 @@ impl MpvClientHandle {
                         match msg.log_level {
                             10 | 20 => log::error!("mpv [{prefix}] [{level}]: {text}"),
                             30 => log::warn!("mpv [{prefix}] [{level}]: {text}"),
-                            40 => log::info!("mpv [{prefix}] [{level}]: {text}"),
-                            _ => log::debug!("mpv [{prefix}] [{level}]: {text}"),
+                            _ => log::info!("mpv [{prefix}] [{level}]: {text}"),
                         }
                         if self.log_ring.len() >= 40 {
                             self.log_ring.pop_front();

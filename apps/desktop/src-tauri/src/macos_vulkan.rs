@@ -233,7 +233,7 @@ impl VulkanPlatform for MacosPlatform {
     }
 
     fn prefer_hdr(&self) -> bool {
-        true
+        std::env::var("FLUXA_MAC_HDR").is_ok()
     }
 }
 
