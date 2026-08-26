@@ -1274,8 +1274,10 @@ name = "fluxa_streaming_engine"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "bytes",
  "dolby_vision",
  "fluxa_core",
+ "futures-util",
  "jni 0.21.1",
  "librqbit",
  "memchr",
