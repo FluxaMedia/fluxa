@@ -36,7 +36,7 @@ permissions:
 jobs:
   rust-core:
     name: Rust core artifact
-    runs-on: macos-26
+    runs-on: macos-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -72,7 +72,7 @@ jobs:
   ios:
     name: iOS simulator
     needs: rust-core
-    runs-on: macos-26
+    runs-on: macos-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -128,7 +128,7 @@ jobs:
   tvos:
     name: tvOS simulator
     needs: rust-core
-    runs-on: macos-26
+    runs-on: macos-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
