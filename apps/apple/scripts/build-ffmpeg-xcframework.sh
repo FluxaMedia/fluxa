@@ -158,11 +158,17 @@ build_slice() {
 merge_slice() {
     local name="$1"
     local lib_dir="$work_dir/build/$name/install/lib"
-    libtool -static -o "$work_dir/build/$name/libCFFmpeg.a" \
+    local output="$work_dir/build/$name/libCFFmpeg.a"
+    echo "Merging FFmpeg libraries for $name"
+    if ! libtool -static -no_warning_for_no_symbols -o "$output" \
         "$lib_dir/libavformat.a" \
         "$lib_dir/libavcodec.a" \
         "$lib_dir/libswresample.a" \
-        "$lib_dir/libavutil.a"
+        "$lib_dir/libavutil.a"; then
+        echo "libtool failed while merging $name" >&2
+        return 1
+    fi
+    echo "Finished FFmpeg merge for $name"
 }
 
 fetch_source() {
