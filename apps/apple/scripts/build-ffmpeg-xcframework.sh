@@ -8,12 +8,13 @@ work_dir="$project_dir/Generated/ffmpeg"
 source_dir="$work_dir/ffmpeg-$ffmpeg_version"
 headers_dir="$work_dir/include"
 xcframework="$vendor_dir/CFFmpeg.xcframework"
+bridge_dir="$project_dir/Generated/ffmpeg-bridge"
 
 if [[ "${FLUXA_SKIP_FFMPEG_BUILD:-0}" == "1" ]]; then
     exit 0
 fi
 
-if [[ -d "$xcframework" && "${FLUXA_FORCE_FFMPEG_BUILD:-0}" != "1" ]]; then
+if [[ -d "$xcframework" && -d "$bridge_dir" && "${FLUXA_FORCE_FFMPEG_BUILD:-0}" != "1" ]]; then
     exit 0
 fi
 
@@ -60,6 +61,7 @@ components=(
     --enable-decoder=pcm_s24le
     --enable-decoder=pcm_s32le
     --enable-decoder=pcm_f32le
+    --enable-encoder=alac
     --enable-decoder=h264
     --enable-decoder=hevc
     --enable-decoder=vp9
@@ -240,5 +242,16 @@ xcodebuild -create-xcframework \
     -library "$work_dir/build/tvos-sim/libCFFmpeg.a" -headers "$headers_dir" \
     -library "$work_dir/build/libCFFmpeg-macos.a" -headers "$headers_dir" \
     -output "$xcframework" >/dev/null
+
+# Keep the per-platform archives and headers available to the Rust static
+# library build. Swift Package Manager consumes the xcframework above, while
+# Rust's Apple streaming bridge needs the matching archive for each target.
+rm -rf "$bridge_dir"
+mkdir -p "$bridge_dir/include"
+cp -R "$headers_dir/"* "$bridge_dir/include/"
+for slice in ios-device ios-sim-arm64 ios-sim-x86_64 tvos-device tvos-sim macos-arm64 macos-x86_64; do
+    mkdir -p "$bridge_dir/$slice"
+    cp "$work_dir/build/$slice/libCFFmpeg.a" "$bridge_dir/$slice/"
+done
 
 echo "CFFmpeg.xcframework -> $xcframework"

@@ -97,11 +97,28 @@ build_streaming_engine() {
         deployment_target="${TVOS_DEPLOYMENT_TARGET:-17.0}"
     fi
     local deployment_env="${deployment_var}=${deployment_target}"
+    local ffmpeg_slice
+    case "$target" in
+        aarch64-apple-ios) ffmpeg_slice="ios-device" ;;
+        aarch64-apple-ios-sim) ffmpeg_slice="ios-sim-arm64" ;;
+        x86_64-apple-ios) ffmpeg_slice="ios-sim-x86_64" ;;
+        aarch64-apple-tvos) ffmpeg_slice="tvos-device" ;;
+        aarch64-apple-tvos-sim) ffmpeg_slice="tvos-sim" ;;
+        *) echo "Unknown Apple FFmpeg slice for $target" >&2; return 1 ;;
+    esac
+    local ffmpeg_include="$project_dir/Generated/ffmpeg-bridge/include"
+    local ffmpeg_lib="$project_dir/Generated/ffmpeg-bridge/$ffmpeg_slice"
 
     if [[ "$profile" == "Release" ]]; then
-        env "$deployment_env" cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@" --release
+        env "$deployment_env" \
+            "FLUXA_FFMPEG_BRIDGE_INCLUDE=$ffmpeg_include" \
+            "FLUXA_FFMPEG_BRIDGE_LIB=$ffmpeg_lib" \
+            cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@" --release
     else
-        env "$deployment_env" cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@"
+        env "$deployment_env" \
+            "FLUXA_FFMPEG_BRIDGE_INCLUDE=$ffmpeg_include" \
+            "FLUXA_FFMPEG_BRIDGE_LIB=$ffmpeg_lib" \
+            cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@"
     fi
 }
 

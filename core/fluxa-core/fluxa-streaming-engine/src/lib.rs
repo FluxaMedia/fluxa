@@ -1,14 +1,16 @@
 mod chapters;
 mod dv_rewrite;
-mod local_stream;
 #[cfg(feature = "native")]
 pub mod http_proxy;
+mod local_stream;
 mod torrent_engine;
 
 #[cfg(feature = "native")]
 pub mod companion_server;
-#[cfg(feature = "native")]
+#[cfg(any(feature = "native", feature = "apple"))]
 mod ffmpeg_locator;
+#[cfg(all(feature = "apple", fluxa_ffmpeg_bridge))]
+mod apple_ffmpeg;
 #[cfg(feature = "native")]
 pub mod oauth_proxy;
 #[cfg(feature = "native")]

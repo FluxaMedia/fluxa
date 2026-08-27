@@ -2,6 +2,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    println!("cargo:rustc-check-cfg=cfg(fluxa_ffmpeg_bridge)");
     println!("cargo:rerun-if-env-changed=FLUXA_FFMPEG_BRIDGE_INCLUDE");
     println!("cargo:rerun-if-env-changed=FLUXA_FFMPEG_BRIDGE_LIB");
 
@@ -11,6 +12,8 @@ fn main() {
     let Some(lib_dir) = env::var_os("FLUXA_FFMPEG_BRIDGE_LIB") else {
         return;
     };
+
+    println!("cargo:rustc-cfg=fluxa_ffmpeg_bridge");
 
     cc::Build::new()
         .file("bridge/fluxa_ffmpeg_remux.c")

@@ -1275,6 +1275,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "bytes",
+ "cc",
  "dolby_vision",
  "fluxa_core",
  "futures-util",
