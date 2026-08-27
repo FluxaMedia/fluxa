@@ -214,12 +214,27 @@ MODULEMAP
 
 fetch_source
 
-build_slice ios-device arm64 iphoneos arm64-apple-ios "-mios-version-min=$ios_min"
-build_slice ios-sim-arm64 arm64 iphonesimulator arm64-apple-ios-simulator "-mios-simulator-version-min=$ios_min"
-build_slice ios-sim-x86_64 x86_64 iphonesimulator x86_64-apple-ios-simulator "-mios-simulator-version-min=$ios_min"
-build_slice tvos-device arm64 appletvos arm64-apple-tvos "-mtvos-version-min=$tvos_min"
-build_slice tvos-sim arm64 appletvsimulator arm64-apple-tvos-simulator "-mtvos-simulator-version-min=$tvos_min"
-build_slice macos-arm64 arm64 macosx arm64-apple-macos "-mmacosx-version-min=$macos_min"
+# Each slice is independent. Run two slices at a time so the seven-target
+# artifact does not spend the whole workflow serially compiling FFmpeg, while
+# keeping the per-slice make parallelism modest enough for hosted runners.
+build_slice ios-device arm64 iphoneos arm64-apple-ios "-mios-version-min=$ios_min" &
+ios_device_pid=$!
+build_slice ios-sim-arm64 arm64 iphonesimulator arm64-apple-ios-simulator "-mios-simulator-version-min=$ios_min" &
+ios_sim_arm64_pid=$!
+wait "$ios_device_pid" "$ios_sim_arm64_pid"
+
+build_slice ios-sim-x86_64 x86_64 iphonesimulator x86_64-apple-ios-simulator "-mios-simulator-version-min=$ios_min" &
+ios_sim_x86_pid=$!
+build_slice tvos-device arm64 appletvos arm64-apple-tvos "-mtvos-version-min=$tvos_min" &
+tvos_device_pid=$!
+wait "$ios_sim_x86_pid" "$tvos_device_pid"
+
+build_slice tvos-sim arm64 appletvsimulator arm64-apple-tvos-simulator "-mtvos-simulator-version-min=$tvos_min" &
+tvos_sim_pid=$!
+build_slice macos-arm64 arm64 macosx arm64-apple-macos "-mmacosx-version-min=$macos_min" &
+macos_arm64_pid=$!
+wait "$tvos_sim_pid" "$macos_arm64_pid"
+
 build_slice macos-x86_64 x86_64 macosx x86_64-apple-macos "-mmacosx-version-min=$macos_min"
 
 stage_headers
