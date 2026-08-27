@@ -11,9 +11,9 @@ The Player Kit also contains a compile-gated FFmpeg/VideoToolbox fallback for
 sources that AVPlayer cannot demux. Unsupported software video decoding is not
 used as a normal path.
 
-The latest Apple CI run was commit `b64c3dc` and passed after correcting the
-playback-item argument ordering. The local machine has no Swift/Xcode toolchain,
-so Apple builds are validated in GitHub Actions.
+The latest Apple CI run was commit `71f1d99` and passed after the Player Kit
+cleanup fixes. The local machine has no Swift/Xcode toolchain, so Apple builds
+are validated in GitHub Actions.
 
 ## Already verified
 
@@ -31,6 +31,10 @@ so Apple builds are validated in GitHub Actions.
   compiler diagnostic, but the workflow was red overall.
 - CI run `33024568322` passed for commit `b64c3dc`: macOS package build and
   tests, iOS host build, tvOS host build, and FFmpeg package build all passed.
+- CI run `33025330485` passed for commit `71f1d99`: macOS package build and
+  tests (including the WebVTT parser test), iOS host build, and tvOS host build
+  all passed. The FFmpeg job was skipped because the workflow change filter did
+  not select it.
 
 ## Remaining work
 
