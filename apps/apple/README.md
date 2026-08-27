@@ -14,13 +14,6 @@ The Xcode build phase invokes Gradle with the active Xcode SDK and architecture,
 
 ## FluxaPlayerKit
 
-`FluxaPlayerKit` is a local Swift package holding the shared playback stack for iOS, tvOS and later the macOS Tauri shell. `FluxaPlayer` is the only type callers touch; behind it sit two interchangeable engines — `FluxaAVFoundationEngine` (AVPlayer, used whenever AVFoundation can play the stream natively) and `FluxaFFmpegEngine` (FFmpeg demux feeding `AVSampleBufferDisplayLayer` and `AVSampleBufferAudioRenderer` through a render synchronizer).
+`FluxaPlayerKit` is a local Swift package holding the shared playback stack for iOS, tvOS and later the macOS Tauri shell. `FluxaPlayer` is the only type callers touch, and `FluxaAVFoundationEngine` backed by AVPlayer is the sole playback engine.
 
-The FFmpeg engine is compiled only when `Vendor/CFFmpeg.xcframework` exists; without it the package builds AVFoundation-only and `FLUXA_FFMPEG` stays undefined. Build the framework once before enabling it:
-
-```bash
-cd apps/apple
-./scripts/build-ffmpeg-xcframework.sh
-```
-
-The script fetches an FFmpeg release, configures an LGPL-only static build with a trimmed demuxer/decoder set, and merges `avformat`/`avcodec`/`avutil`/`swresample` into a single `CFFmpeg` module covering iOS, tvOS, their simulators and macOS. It skips itself when the framework is already present; pass `FLUXA_FORCE_FFMPEG_BUILD=1` to rebuild. Re-run `xcodegen generate` afterwards so the package picks up the new binary target.
+FFmpeg is not a second renderer or a software video-player fallback. The Rust streaming layer uses FFmpeg/libavformat only as an AVPlayer compatibility filter: it probes sources, remuxes containers when necessary, repairs stream signaling, and performs selective elementary-stream conversion only when AVPlayer cannot consume that stream. Streams that AVPlayer already supports are copied without re-encoding, preserving the system HDR, Dolby Vision, VideoToolbox, Atmos, AirPlay and PiP pipeline.

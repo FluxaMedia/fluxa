@@ -71,8 +71,7 @@ final class FluxaTvosPlaybackPresenter: NSObject, UIAdaptivePresentationControll
                 FluxaPlaybackItem(
                     url: playbackURL,
                     title: title,
-                    startPosition: max(0, resumePosition),
-                    fallbackURL: playbackURL == url ? nil : url
+                    startPosition: max(0, resumePosition)
                 )
             )
             player.play()

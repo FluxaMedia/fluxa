@@ -21,7 +21,6 @@ builds are validated in GitHub Actions.
   supported-track output, seek filtering, and unsupported-audio rejection
   coverage.
 - Streaming-engine tests: `108 passed`.
-- FFmpeg fallback artifact CI job: passed.
 - Rust core XCFramework and Apple streaming bridge CI job: passed.
 - The previous CI run passed the tvOS shared-code, XcodeGen, and tvOS host
   build steps.
@@ -51,8 +50,8 @@ Validate on a real Apple device or simulator with representative media:
 
 1. Native AVPlayer URL (MP4/HLS, H.264/HEVC, supported audio).
 2. MKV/Matroska → rolling fMP4 remux → AVPlayer.
-3. Remux rejection for unsupported audio (for example DTS/TrueHD) →
-   recoverable AVPlayer failure → FFmpeg fallback.
+3. Unsupported audio (for example DTS/TrueHD) → selective lossless-compatible
+   audio conversion while the video stream remains untouched → AVPlayer.
 4. AVPlayer demux failure for a hardware-decodable video format (for example
    VP9) → compressed sample buffers through VideoToolbox.
 5. Unsupported video/device combination → clear non-recoverable failure; do
@@ -74,12 +73,12 @@ teardown.
 
 ### 4. Complete audio compatibility policy
 
-- Current policy: fMP4 adaptation is copy-only and accepts AAC audio. DTS,
-  TrueHD, and other unsupported audio tracks reject adaptation as a recoverable
-  failure so the FFmpeg fallback can handle the original local HTTP source;
-  they are never silently dropped.
-- Decide whether a future device/output policy should transcode those tracks
-  to AAC or AC-3/E-AC-3.
+- Current policy: fMP4 adaptation copies streams that AVPlayer can consume and
+  never silently drops unsupported audio. DTS, TrueHD, and other unsupported
+  audio tracks still need a selective lossless-compatible conversion path.
+- Do not default to AAC: preserve the original audio bitstream whenever
+  possible, and use a lossless-compatible representation when conversion is
+  unavoidable.
 - Ensure audio-only transcode keeps supported video bit-for-bit untouched.
 - Verify language/default/forced track metadata and user track selection after
   adaptation.
@@ -88,8 +87,8 @@ teardown.
 
 - The Apple adapter now routes the torrent server's local HTTP stream through
   the same local proxy/remux path used by direct Matroska sources.
-- The FFmpeg fallback receives the proxy's direct local HTTP URL rather than a
-  magnet URI, and the existing playback item preserves resume position.
+- AVPlayer receives the proxy's direct local HTTP URL rather than a magnet URI,
+  and the existing playback item preserves resume position.
 - Still validate on-device with MKV and non-MKV torrent files, including seek
   and remux rejection behavior.
 

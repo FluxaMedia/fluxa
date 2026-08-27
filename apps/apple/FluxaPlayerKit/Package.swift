@@ -1,38 +1,19 @@
 // swift-tools-version: 5.9
-import Foundation
 import PackageDescription
 
-let packageRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-let ffmpegFramework = packageRoot.appendingPathComponent("Vendor/CFFmpeg.xcframework")
-let hasFFmpeg = FileManager.default.fileExists(atPath: ffmpegFramework.path)
-
-var targets: [Target] = [
+let targets: [Target] = [
     .target(
         name: "FluxaPlayerKit",
-        dependencies: hasFFmpeg ? ["CFFmpeg"] : [],
-        swiftSettings: hasFFmpeg ? [.define("FLUXA_FFMPEG")] : [],
-        linkerSettings: hasFFmpeg ? [
-            .linkedLibrary("z"),
-            .linkedLibrary("bz2"),
-            .linkedLibrary("iconv"),
-            .linkedFramework("VideoToolbox"),
-            .linkedFramework("AudioToolbox"),
-            .linkedFramework("CoreMedia"),
-            .linkedFramework("CoreVideo")
-        ] : []
+        dependencies: []
     )
 ]
 
-if hasFFmpeg {
-    targets.append(.binaryTarget(name: "CFFmpeg", path: "Vendor/CFFmpeg.xcframework"))
-}
-
-targets.append(
+let allTargets = targets + [
     .testTarget(
         name: "FluxaPlayerKitTests",
         dependencies: ["FluxaPlayerKit"]
     )
-)
+]
 
 let package = Package(
     name: "FluxaPlayerKit",
@@ -40,5 +21,5 @@ let package = Package(
     products: [
         .library(name: "FluxaPlayerKit", targets: ["FluxaPlayerKit"])
     ],
-    targets: targets
+    targets: allTargets
 )

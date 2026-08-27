@@ -1,20 +1,12 @@
 import Combine
 import Foundation
 
-public enum FluxaPlaybackBackend: String, Sendable {
-    case avFoundation
-    case ffmpeg
-}
-
 @MainActor
 public final class FluxaPlayer: ObservableObject {
     @Published public private(set) var state = FluxaPlaybackState()
     @Published public private(set) var tracks: [FluxaTrack] = []
     @Published public private(set) var subtitleText: String?
-    @Published public private(set) var backend: FluxaPlaybackBackend = .avFoundation
-
     public var onStateChange: ((FluxaPlaybackState) -> Void)?
-    public var forcedBackend: FluxaPlaybackBackend?
 
     public private(set) var item: FluxaPlaybackItem?
 
@@ -26,9 +18,6 @@ public final class FluxaPlayer: ObservableObject {
     private var embeddedSubtitlesSuppressed = false
     private var shouldResumeAfterInterruption = false
     private weak var surface: FluxaPlayerSurfaceView?
-    #if FLUXA_FFMPEG
-    private var fallbackAttempted = false
-    #endif
     #if !os(macOS)
     private let audioSession = FluxaAudioSession()
     #endif
@@ -66,9 +55,6 @@ public final class FluxaPlayer: ObservableObject {
         self.item = item
         #if canImport(MediaPlayer)
         nowPlaying.begin(title: item.title)
-        #endif
-        #if FLUXA_FFMPEG
-        fallbackAttempted = false
         #endif
         #if !os(macOS)
         audioSession.activate()
@@ -143,9 +129,6 @@ public final class FluxaPlayer: ObservableObject {
         engine?.tearDown()
         engine = nil
         item = nil
-        #if FLUXA_FFMPEG
-        fallbackAttempted = false
-        #endif
         surface?.unhost()
         tracks = []
         state = FluxaPlaybackState()
@@ -159,13 +142,6 @@ public final class FluxaPlayer: ObservableObject {
     }
 
     private func makeEngine(for item: FluxaPlaybackItem) -> FluxaPlaybackEngine {
-        #if FLUXA_FFMPEG
-        if forcedBackend == .ffmpeg {
-            backend = .ffmpeg
-            return FluxaFFmpegEngine()
-        }
-        #endif
-        backend = .avFoundation
         return FluxaAVFoundationEngine()
     }
 
@@ -178,38 +154,6 @@ public final class FluxaPlayer: ObservableObject {
 extension FluxaPlayer: FluxaPlaybackEngineDelegate {
     func engine(_ engine: FluxaPlaybackEngine, didUpdate state: FluxaPlaybackState) {
         guard engine === self.engine else { return }
-        #if FLUXA_FFMPEG
-        if case .failed(let failure) = state.phase,
-           failure.isRecoverable,
-           !fallbackAttempted,
-           forcedBackend != .ffmpeg,
-           let currentItem = item,
-           let fallbackURL = currentItem.fallbackURL,
-           fallbackURL != currentItem.url {
-            fallbackAttempted = true
-            let fallbackItem = FluxaPlaybackItem(
-                url: fallbackURL,
-                title: currentItem.title,
-                headers: currentItem.headers,
-                startPosition: max(currentItem.startPosition, state.position),
-                subtitleUrls: currentItem.subtitleUrls,
-                fallbackURL: nil
-            )
-            engine.tearDown()
-            let fallbackEngine = FluxaFFmpegEngine()
-            fallbackEngine.delegate = self
-            self.engine = fallbackEngine
-            backend = .ffmpeg
-            if let surface {
-                fallbackEngine.attach(to: surface)
-            }
-            fallbackEngine.load(fallbackItem)
-            fallbackEngine.setRate(state.rate)
-            fallbackEngine.play()
-            self.item = fallbackItem
-            return
-        }
-        #endif
         if !externalSubtitleURLs.isEmpty,
            !embeddedSubtitlesSuppressed,
            state.phase != .loading {
