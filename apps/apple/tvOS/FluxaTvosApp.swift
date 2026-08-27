@@ -35,11 +35,8 @@ struct FluxaTvosApp: App {
                                 ScrollView(.horizontal) {
                                     LazyHStack(spacing: compactLayout ? 12 : 18) {
                                         ForEach(row.items) { item in
-                                            Button {
-                                                Task { @MainActor in
-                                                    let options = await homeModel.playbackOptions(for: item)
-                                                    FluxaTvosPlaybackPresenter.shared.present(options: options, title: item.title)
-                                                }
+                                            NavigationLink {
+                                                FluxaTvosDetailView(item: item, model: homeModel)
                                             } label: {
                                                 VStack(alignment: .leading, spacing: 8) {
                                                 AsyncImage(url: item.artworkUrl) { image in
@@ -77,6 +74,58 @@ struct FluxaTvosApp: App {
             .task {
                 await homeModel.load()
             }
+        }
+    }
+}
+
+private struct FluxaTvosDetailView: View {
+    let item: FluxaTvosHomeModel.Item
+    @ObservedObject var model: FluxaTvosHomeModel
+    @State private var detail: FluxaTvosHomeModel.Detail?
+    @State private var loading = true
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text(detail?.title ?? item.title)
+                    .font(.largeTitle.bold())
+                if let description = detail?.description, !description.isEmpty {
+                    Text(description)
+                        .font(.body)
+                }
+                if loading {
+                    ProgressView()
+                } else if let detail, !detail.episodes.isEmpty {
+                    ForEach(detail.episodes) { episode in
+                        Button {
+                            Task { @MainActor in
+                                let options = await model.playbackOptions(for: item, contentId: episode.id)
+                                FluxaTvosPlaybackPresenter.shared.present(options: options, title: episode.title)
+                            }
+                        } label: {
+                            HStack {
+                                Text(episode.title)
+                                if !episode.subtitle.isEmpty {
+                                    Text(episode.subtitle)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Button(item.title) {
+                        Task { @MainActor in
+                            let options = await model.playbackOptions(for: item)
+                            FluxaTvosPlaybackPresenter.shared.present(options: options, title: item.title)
+                        }
+                    }
+                }
+            }
+            .padding(48)
+        }
+        .task {
+            detail = await model.detail(for: item)
+            loading = false
         }
     }
 }

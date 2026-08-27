@@ -27,6 +27,18 @@ final class FluxaTvosHomeModel: ObservableObject {
         let subtitleUrls: [URL]
     }
 
+    struct Detail: Sendable {
+        let title: String
+        let description: String
+        let episodes: [Episode]
+    }
+
+    struct Episode: Identifiable, Sendable {
+        let id: String
+        let title: String
+        let subtitle: String
+    }
+
     @Published private(set) var rows: [Row] = []
     @Published private(set) var isLoading = false
 
@@ -59,16 +71,20 @@ final class FluxaTvosHomeModel: ObservableObject {
     }
 
     func playbackOptions(for item: Item) async -> [Playback] {
+        playbackOptions(for: item, contentId: item.id)
+    }
+
+    func playbackOptions(for item: Item, contentId: String) async -> [Playback] {
         guard let addon = item.addonTransportUrl else { return [] }
         guard let streams = try? await resourceLoader.loadDirectStreams(
             transportUrl: addon,
             contentType: item.type,
-            id: item.id
+            id: contentId
         ) else { return [] }
         let subtitles = (try? await resourceLoader.loadSubtitleUrls(
             transportUrl: addon,
             contentType: item.type,
-            id: item.id
+            id: contentId
         )) ?? []
         let subtitleUrls = subtitles.compactMap(URL.init(string:))
         return streams.compactMap { stream in
@@ -81,6 +97,42 @@ final class FluxaTvosHomeModel: ObservableObject {
                 subtitleUrls: subtitleUrls
             )
         }
+    }
+
+    func detail(for item: Item) async -> Detail? {
+        guard let addon = item.addonTransportUrl,
+              let meta = try? await resourceLoader.loadMeta(
+                  transportUrl: addon,
+                  contentType: item.type,
+                  id: item.id
+              ),
+              case .object(let object) = meta else {
+            return nil
+        }
+        let episodes: [Episode]
+        if case .array(let videos)? = object["videos"] {
+            episodes = videos.compactMap { value in
+                guard case .object(let video) = value,
+                      let id = text(video["id"]),
+                      !id.isEmpty else { return nil }
+                let name = text(video["name"]) ?? id
+                let season = number(video["season"])
+                let episode = number(video["number"])
+                let subtitle = if let season, let episode {
+                    "S\(season) E\(episode)"
+                } else {
+                    ""
+                }
+                return Episode(id: id, title: name, subtitle: subtitle)
+            }
+        } else {
+            episodes = []
+        }
+        return Detail(
+            title: text(object["name"]) ?? item.title,
+            description: text(object["description"]) ?? "",
+            episodes: episodes
+        )
     }
 
     private func rows(from result: FluxaAppleHeadlessResult) -> [Row] {
@@ -130,5 +182,10 @@ final class FluxaTvosHomeModel: ObservableObject {
             return nil
         }
         return text
+    }
+
+    private func number(_ value: FluxaAppleJsonValue?) -> Int? {
+        guard case .number(let value)? = value else { return nil }
+        return Int(value)
     }
 }
