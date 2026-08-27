@@ -158,8 +158,8 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                         title: title,
                         headers: requestHeaders,
                         startPosition: Double(resumePositionMs) / 1000,
-                        fallbackURL: fallbackURL,
-                        subtitleUrls: request.subtitleUrls.compactMap { URL(string: $0) }
+                        subtitleUrls: request.subtitleUrls.compactMap { URL(string: $0) },
+                        fallbackURL: fallbackURL
                     )
                 )
                 player.play()
