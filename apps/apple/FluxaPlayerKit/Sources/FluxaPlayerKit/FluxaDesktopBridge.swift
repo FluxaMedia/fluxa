@@ -124,29 +124,31 @@ public func fluxaDesktopAvplayerCommand(
     let parts = splitCommand(cString(command))
     do {
         try onMain {
-            guard let verb = parts.first else { return }
+            guard let first = parts.first else { return }
+            let verb = String(first)
+            let arguments = parts.dropFirst().map(String.init)
             switch verb {
             case "play": handle.player.play()
             case "pause": handle.player.pause()
             case "stop": handle.player.stop()
-            case "cycle" where parts.dropFirst().first == "pause": handle.player.togglePlayback()
+            case "cycle" where arguments.first == "pause": handle.player.togglePlayback()
             case "seek":
-                let amount = Double(parts.dropFirst().first ?? "0") ?? 0
-                if parts.contains("relative") { handle.player.skip(by: amount) }
+                let amount = Double(arguments.first ?? "0") ?? 0
+                if arguments.contains("relative") { handle.player.skip(by: amount) }
                 else { handle.player.seek(to: amount) }
-            case "set" where parts.dropFirst().first == "time-pos":
-                handle.player.seek(to: Double(parts.dropFirst(2).first ?? "0") ?? 0)
-            case "set" where parts.dropFirst().first == "speed":
-                handle.player.setRate(Float(parts.dropFirst(2).first ?? "1") ?? 1)
-            case "set" where parts.dropFirst().first == "volume":
-                handle.player.setVolume((Float(parts.dropFirst(2).first ?? "100") ?? 100) / 100)
-            case "set" where parts.dropFirst().first == "mute":
-                handle.player.setVolume(parts.dropFirst(2).first == "yes" ? 0 : 1)
-            case "set" where parts.dropFirst().first == "aid":
-                let id = String(parts.dropFirst(2).first ?? "")
+            case "set" where arguments.first == "time-pos":
+                handle.player.seek(to: Double(arguments.dropFirst().first ?? "0") ?? 0)
+            case "set" where arguments.first == "speed":
+                handle.player.setRate(Float(arguments.dropFirst().first ?? "1") ?? 1)
+            case "set" where arguments.first == "volume":
+                handle.player.setVolume((Float(arguments.dropFirst().first ?? "100") ?? 100) / 100)
+            case "set" where arguments.first == "mute":
+                handle.player.setVolume(arguments.dropFirst().first == "yes" ? 0 : 1)
+            case "set" where arguments.first == "aid":
+                let id = arguments.dropFirst().first ?? ""
                 handle.player.selectTrack(handle.player.tracks.first(where: { $0.id == "audio.\(id)" || $0.id == id }), kind: .audio)
-            case "set" where parts.dropFirst().first == "sid":
-                let value = String(parts.dropFirst(2).first ?? "")
+            case "set" where arguments.first == "sid":
+                let value = arguments.dropFirst().first ?? ""
                 if value == "no" { handle.player.selectTrack(nil, kind: .subtitle) }
                 else { handle.player.selectTrack(handle.player.tracks.first(where: { $0.id == "subtitle.\(value)" || $0.id == value }), kind: .subtitle) }
             default: break
