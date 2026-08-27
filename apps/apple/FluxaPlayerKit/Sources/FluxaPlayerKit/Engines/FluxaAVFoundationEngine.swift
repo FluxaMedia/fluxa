@@ -1,5 +1,9 @@
 import AVFoundation
 
+#if os(iOS)
+import AVKit
+#endif
+
 @MainActor
 final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     weak var delegate: FluxaPlaybackEngineDelegate?
@@ -143,6 +147,13 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         }
         item.select(trackOptions[track.id], in: group)
     }
+
+    #if os(iOS)
+    func makePictureInPictureController() -> AVPictureInPictureController? {
+        guard AVPictureInPictureController.isPictureInPictureSupported() else { return nil }
+        return AVPictureInPictureController(playerLayer: playerLayer)
+    }
+    #endif
 
     func tearDown() {
         detachItemObservers()

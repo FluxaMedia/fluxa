@@ -2,6 +2,10 @@ import FluxaPlayerKit
 import SwiftUI
 import UIKit
 
+#if os(iOS)
+import AVKit
+#endif
+
 @MainActor
 final class FluxaAppleCustomPlayerChrome: ObservableObject {
     @Published var controlsVisible = true
@@ -18,6 +22,9 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
     private let videoView = FluxaPlayerSurfaceView()
     private var host: UIHostingController<FluxaApplePlayerOverlay>?
     private var hideTask: Task<Void, Never>?
+    #if os(iOS)
+    private var pictureInPictureController: AVPictureInPictureController?
+    #endif
 
     init(player: FluxaPlayer, title: String) {
         self.player = player
@@ -41,6 +48,9 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
             videoView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         player.attach(to: videoView)
+        #if os(iOS)
+        pictureInPictureController = player.makePictureInPictureController()
+        #endif
 
         let overlay = FluxaApplePlayerOverlay(
             title: titleText,
@@ -51,6 +61,7 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
             onSkip: { [weak self] seconds in self?.skip(seconds: seconds) },
             onClose: { [weak self] in self?.dismiss(animated: true) },
             onWatchParty: { [weak self] in self?.onWatchParty?() },
+            onPictureInPicture: { [weak self] in self?.pictureInPictureController?.startPictureInPicture() },
             onInteraction: { [weak self] in self?.scheduleHide() }
         )
         let host = UIHostingController(rootView: overlay)
@@ -117,6 +128,7 @@ private struct FluxaApplePlayerOverlay: View {
     let onSkip: (Double) -> Void
     let onClose: () -> Void
     let onWatchParty: () -> Void
+    let onPictureInPicture: () -> Void
     let onInteraction: () -> Void
 
     var body: some View {
@@ -168,6 +180,9 @@ private struct FluxaApplePlayerOverlay: View {
             if !player.tracks(of: .subtitle).isEmpty {
                 trackMenu(kind: .subtitle, icon: "captions.bubble")
             }
+            #if os(iOS)
+            Button(action: onPictureInPicture) { Image(systemName: "pip.enter") }
+            #endif
             Button(action: onWatchParty) { Image(systemName: "person.2.fill") }
         }
         .buttonStyle(.plain)

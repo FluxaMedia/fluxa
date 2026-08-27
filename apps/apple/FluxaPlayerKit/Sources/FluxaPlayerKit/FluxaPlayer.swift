@@ -1,6 +1,10 @@
 import Combine
 import Foundation
 
+#if os(iOS)
+import AVKit
+#endif
+
 @MainActor
 public final class FluxaPlayer: ObservableObject {
     @Published public private(set) var state = FluxaPlaybackState()
@@ -118,6 +122,12 @@ public final class FluxaPlayer: ObservableObject {
         }
         engine?.selectTrack(track, kind: kind)
     }
+
+    #if os(iOS)
+    public func makePictureInPictureController() -> AVPictureInPictureController? {
+        engine?.makePictureInPictureController()
+    }
+    #endif
 
     public func tracks(of kind: FluxaTrackKind) -> [FluxaTrack] {
         tracks.filter { $0.kind == kind }

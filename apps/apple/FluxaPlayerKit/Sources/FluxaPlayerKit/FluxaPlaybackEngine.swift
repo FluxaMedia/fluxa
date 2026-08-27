@@ -1,5 +1,9 @@
 import Foundation
 
+#if os(iOS)
+import AVKit
+#endif
+
 @MainActor
 protocol FluxaPlaybackEngineDelegate: AnyObject {
     func engine(_ engine: FluxaPlaybackEngine, didUpdate state: FluxaPlaybackState)
@@ -18,5 +22,8 @@ protocol FluxaPlaybackEngine: AnyObject {
     func setRate(_ rate: Float)
     func setVolume(_ volume: Float)
     func selectTrack(_ track: FluxaTrack?, kind: FluxaTrackKind)
+#if os(iOS)
+    func makePictureInPictureController() -> AVPictureInPictureController?
+#endif
     func tearDown()
 }
