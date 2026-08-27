@@ -162,11 +162,45 @@ private struct FluxaApplePlayerOverlay: View {
             Button(action: onClose) { Image(systemName: "xmark").font(.title3.bold()) }
             Text(title).font(.headline).lineLimit(1)
             Spacer()
+            if !player.tracks(of: .audio).isEmpty {
+                trackMenu(kind: .audio, icon: "waveform")
+            }
+            if !player.tracks(of: .subtitle).isEmpty {
+                trackMenu(kind: .subtitle, icon: "captions.bubble")
+            }
             Button(action: onWatchParty) { Image(systemName: "person.2.fill") }
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 28)
         .padding(.top, 24)
+    }
+
+    @ViewBuilder
+    private func trackMenu(kind: FluxaTrackKind, icon: String) -> some View {
+        Menu {
+            ForEach(player.tracks(of: kind)) { track in
+                Button {
+                    player.selectTrack(track, kind: kind)
+                } label: {
+                    HStack {
+                        Text(track.label)
+                        if let languageCode = track.languageCode, !languageCode.isEmpty {
+                            Text(languageCode.uppercased())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            if kind == .subtitle {
+                Button {
+                    player.selectTrack(nil, kind: .subtitle)
+                } label: {
+                    Image(systemName: "nosign")
+                }
+            }
+        } label: {
+            Image(systemName: icon)
+        }
     }
 
     private var centerControls: some View {
