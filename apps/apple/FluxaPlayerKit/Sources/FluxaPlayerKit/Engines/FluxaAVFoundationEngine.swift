@@ -27,7 +27,9 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         super.init()
         player.automaticallyWaitsToMinimizeStalling = true
         player.allowsExternalPlayback = true
+        #if !os(macOS)
         player.usesExternalPlaybackWhileExternalScreenIsActive = true
+        #endif
         playerLayer.player = player
         playerLayer.videoGravity = .resizeAspect
     }
