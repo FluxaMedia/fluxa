@@ -96,6 +96,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         }
         let originalUrl = request.playableUrl
         let requestHeadersJson = request.requestHeadersJson
+        let requestHeaders = decodeHeaders(requestHeadersJson)
         let title = request.title
         let resumePositionMs = request.resumePositionMs
         Task {
@@ -155,6 +156,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                     FluxaPlaybackItem(
                         url: playbackUrl,
                         title: title,
+                        headers: requestHeaders,
                         startPosition: Double(resumePositionMs) / 1000,
                         fallbackURL: fallbackURL,
                         subtitleUrls: request.subtitleUrls.compactMap { URL(string: $0) }
@@ -227,6 +229,15 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 }
             }
         }
+    }
+
+    private func decodeHeaders(_ json: String) -> [String: String] {
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let values = object as? [String: Any] else {
+            return [:]
+        }
+        return values.compactMapValues { $0 as? String }
     }
 
     private func buildInfuseUrl(
