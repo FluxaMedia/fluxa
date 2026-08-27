@@ -102,6 +102,26 @@ fn build_macos_avplayer_bridge() {
     }
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=static=FluxaDesktopPlayer");
+    let swiftc = std::env::var("SWIFT_EXEC").ok().or_else(|| {
+        Command::new("xcrun")
+            .args(["--find", "swiftc"])
+            .output()
+            .ok()
+            .filter(|output| output.status.success())
+            .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+    });
+    if let Some(swiftc) = swiftc {
+        let swift_runtime = std::path::Path::new(&swiftc)
+            .parent()
+            .and_then(std::path::Path::parent)
+            .map(|usr| usr.join("lib/swift/macosx"));
+        if let Some(swift_runtime) = swift_runtime.filter(|path| path.is_dir()) {
+            println!(
+                "cargo:rustc-link-arg=-Wl,-rpath,{}",
+                swift_runtime.display()
+            );
+        }
+    }
     for framework in ["AVFoundation", "AppKit", "QuartzCore", "Combine", "WebKit", "MediaPlayer"] {
         println!("cargo:rustc-link-lib=framework={framework}");
     }
