@@ -1,7 +1,7 @@
 use crate::mpv_render::{PlayerStatus, PlayerTrackOption};
 use crate::player_surface::{Artwork, PlayerSurface};
 use std::ffi::{CStr, CString, c_char, c_void};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[link(name = "FluxaDesktopPlayer", kind = "static")]
 unsafe extern "C" {
@@ -120,8 +120,8 @@ impl PlayerSurface for NativePlayerSurface {
             path: None,
             media_title: None,
             time_pos: loaded.then(|| position.to_string()),
-            duration: (duration > 0).then(|| duration.to_string()),
-            percent_pos: (duration > 0)
+            duration: (duration > 0.0).then(|| duration.to_string()),
+            percent_pos: (duration > 0.0)
                 .then(|| (position / duration * 100.0).clamp(0.0, 100.0).to_string()),
             pause: loaded.then(|| if paused { "yes".into() } else { "no".into() }),
             mute: Some("no".into()),
