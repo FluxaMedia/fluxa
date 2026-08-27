@@ -13,6 +13,7 @@ public final class FluxaPlayer: ObservableObject {
     private var engine: FluxaPlaybackEngine?
     private var subtitleCues: [FluxaSubtitleCue] = []
     private var subtitleTask: Task<Void, Never>?
+    private var subtitleLoadGeneration = 0
     private var externalSubtitleURLs: [URL] = []
     private var subtitleHeaders: [String: String] = [:]
     private var embeddedSubtitlesSuppressed = false
@@ -44,8 +45,10 @@ public final class FluxaPlayer: ObservableObject {
     }
 
     public func load(_ item: FluxaPlaybackItem) {
+        engine?.tearDown()
         subtitleTask?.cancel()
         subtitleTask = nil
+        subtitleLoadGeneration += 1
         subtitleCues = []
         subtitleText = nil
         externalSubtitleURLs = item.subtitleUrls
@@ -89,7 +92,9 @@ public final class FluxaPlayer: ObservableObject {
         seek(to: state.position + seconds)
     }
 
-    public func setRate(_ rate: Float) { engine?.setRate(rate) }
+    public func setRate(_ rate: Float) {
+        engine?.setRate(rate.isFinite ? max(0, rate) : 1)
+    }
 
     public func setVolume(_ volume: Float) { engine?.setVolume(volume) }
 
@@ -107,6 +112,7 @@ public final class FluxaPlayer: ObservableObject {
             embeddedSubtitlesSuppressed = false
             subtitleTask?.cancel()
             subtitleTask = nil
+            subtitleLoadGeneration += 1
             subtitleCues = []
             subtitleText = nil
         }
@@ -120,6 +126,7 @@ public final class FluxaPlayer: ObservableObject {
     public func stop() {
         subtitleTask?.cancel()
         subtitleTask = nil
+        subtitleLoadGeneration += 1
         subtitleCues = []
         subtitleText = nil
         externalSubtitleURLs = []
@@ -146,6 +153,7 @@ public final class FluxaPlayer: ObservableObject {
     }
 
     private func clamp(_ position: TimeInterval) -> TimeInterval {
+        guard position.isFinite else { return 0 }
         guard state.duration > 0 else { return max(0, position) }
         return min(max(0, position), state.duration)
     }
@@ -175,6 +183,8 @@ extension FluxaPlayer: FluxaPlaybackEngineDelegate {
     private func loadExternalSubtitle(at index: Int) {
         guard externalSubtitleURLs.indices.contains(index) else { return }
         subtitleTask?.cancel()
+        subtitleLoadGeneration += 1
+        let generation = subtitleLoadGeneration
         subtitleCues = []
         subtitleText = nil
         let subtitleURL = externalSubtitleURLs[index]
@@ -187,8 +197,9 @@ extension FluxaPlayer: FluxaPlaybackEngineDelegate {
             guard !Task.isCancelled else { return }
             let cues = FluxaSubtitleParser.parse(data)
             guard !cues.isEmpty else { return }
-            self?.subtitleCues = cues
-            self?.updateSubtitleText(at: self?.state.position ?? 0)
+            guard let self, self.subtitleLoadGeneration == generation else { return }
+            self.subtitleCues = cues
+            self.updateSubtitleText(at: self.state.position)
         }
     }
 

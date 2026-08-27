@@ -7,7 +7,7 @@ mod torrent_engine;
 
 #[cfg(feature = "native")]
 pub mod companion_server;
-#[cfg(any(feature = "native", feature = "apple"))]
+#[cfg(any(feature = "native", all(feature = "apple", not(fluxa_ffmpeg_bridge))))]
 mod ffmpeg_locator;
 #[cfg(all(feature = "apple", fluxa_ffmpeg_bridge))]
 mod apple_ffmpeg;

@@ -48,14 +48,8 @@ const TRACK_TYPE_AUDIO: u64 = 2;
 const MAX_CLUSTER_TICKS: i64 = 30_000;
 
 pub fn remux(demuxed: &DemuxResult) -> Vec<u8> {
-    let video = demuxed
-        .tracks
-        .iter()
-        .find(|t| t.kind == TrackKind::Video);
-    let audio = demuxed
-        .tracks
-        .iter()
-        .find(|t| t.kind == TrackKind::Audio);
+    let video = demuxed.tracks.iter().find(|t| t.kind == TrackKind::Video);
+    let audio = demuxed.tracks.iter().find(|t| t.kind == TrackKind::Audio);
 
     let mut out = Vec::with_capacity(demuxed.packets.iter().map(|p| p.data.len()).sum());
     out.extend_from_slice(&write_init(demuxed.timestamp_scale, video, audio));
@@ -97,7 +91,12 @@ impl ClusterWriter {
     /// Feeds newly available packets in. Returns the bytes of any Clusters
     /// that were completed (and can be appended to the SourceBuffer) as a
     /// result — typically all but the last, still-open one.
-    pub fn push_packets(&mut self, packets: &[Packet], video: Option<&Track>, audio: Option<&Track>) -> Vec<u8> {
+    pub fn push_packets(
+        &mut self,
+        packets: &[Packet],
+        video: Option<&Track>,
+        audio: Option<&Track>,
+    ) -> Vec<u8> {
         let video_number = video.map(|t| t.number);
         let mut out = Vec::new();
 
@@ -112,13 +111,13 @@ impl ClusterWriter {
                 None => true,
                 Some(start) => {
                     let span = packet.timestamp - start;
-                    span >= MAX_CLUSTER_TICKS || span < 0 || (is_video && packet.keyframe && span > 0)
+                    span >= MAX_CLUSTER_TICKS
+                        || span < 0
+                        || (is_video && packet.keyframe && span > 0)
                 }
             };
 
-            if should_start_new_cluster
-                && let Some(start) = self.cluster_start
-            {
+            if should_start_new_cluster && let Some(start) = self.cluster_start {
                 flush_cluster(&mut out, start, &self.cluster_body);
                 self.cluster_body.clear();
                 self.cluster_start = Some(packet.timestamp);
@@ -169,10 +168,18 @@ fn build_info(timestamp_scale: u64) -> Vec<u8> {
 fn build_tracks(video: Option<&Track>, audio: Option<&Track>) -> Vec<u8> {
     let mut tracks = Vec::new();
     if let Some(t) = video {
-        write_ebml_element(&mut tracks, ID_TRACK_ENTRY, &build_track_entry(t, TRACK_TYPE_VIDEO));
+        write_ebml_element(
+            &mut tracks,
+            ID_TRACK_ENTRY,
+            &build_track_entry(t, TRACK_TYPE_VIDEO),
+        );
     }
     if let Some(t) = audio {
-        write_ebml_element(&mut tracks, ID_TRACK_ENTRY, &build_track_entry(t, TRACK_TYPE_AUDIO));
+        write_ebml_element(
+            &mut tracks,
+            ID_TRACK_ENTRY,
+            &build_track_entry(t, TRACK_TYPE_AUDIO),
+        );
     }
     tracks
 }
@@ -200,8 +207,16 @@ fn build_track_entry(track: &Track, track_type: u64) -> Vec<u8> {
         TRACK_TYPE_AUDIO => {
             let mut audio = Vec::new();
             let sampling_frequency = track.sampling_frequency.unwrap_or(48_000.0);
-            write_ebml_element(&mut audio, ID_SAMPLING_FREQUENCY, &f64_bytes(sampling_frequency));
-            write_ebml_element(&mut audio, ID_CHANNELS, &uint_bytes(track.channels.unwrap_or(2)));
+            write_ebml_element(
+                &mut audio,
+                ID_SAMPLING_FREQUENCY,
+                &f64_bytes(sampling_frequency),
+            );
+            write_ebml_element(
+                &mut audio,
+                ID_CHANNELS,
+                &uint_bytes(track.channels.unwrap_or(2)),
+            );
             write_ebml_element(&mut entry, ID_AUDIO, &audio);
         }
         _ => {}
@@ -211,13 +226,18 @@ fn build_track_entry(track: &Track, track_type: u64) -> Vec<u8> {
 
 fn flush_cluster(out: &mut Vec<u8>, start_timecode: i64, body: &[u8]) {
     let mut cluster = Vec::with_capacity(body.len() + 16);
-    write_ebml_element(&mut cluster, ID_TIMECODE, &uint_bytes(start_timecode.max(0) as u64));
+    write_ebml_element(
+        &mut cluster,
+        ID_TIMECODE,
+        &uint_bytes(start_timecode.max(0) as u64),
+    );
     cluster.extend_from_slice(body);
     write_ebml_element(out, ID_CLUSTER, &cluster);
 }
 
 fn write_simple_block(out: &mut Vec<u8>, packet: &Packet, cluster_start: i64) {
-    let relative = (packet.timestamp - cluster_start).clamp(i16::MIN as i64, i16::MAX as i64) as i16;
+    let relative =
+        (packet.timestamp - cluster_start).clamp(i16::MIN as i64, i16::MAX as i64) as i16;
     let mut payload = Vec::with_capacity(4 + packet.data.len());
     write_track_number_vint(&mut payload, packet.track_number);
     payload.extend_from_slice(&relative.to_be_bytes());

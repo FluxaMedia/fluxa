@@ -35,7 +35,13 @@ struct FluxaTvosApp: App {
                                 ScrollView(.horizontal) {
                                     LazyHStack(spacing: compactLayout ? 12 : 18) {
                                         ForEach(row.items) { item in
-                                            VStack(alignment: .leading, spacing: 8) {
+                                            Button {
+                                                Task { @MainActor in
+                                                    let options = await homeModel.playbackOptions(for: item)
+                                                    FluxaTvosPlaybackPresenter.shared.present(options: options, title: item.title)
+                                                }
+                                            } label: {
+                                                VStack(alignment: .leading, spacing: 8) {
                                                 AsyncImage(url: item.artworkUrl) { image in
                                                     image.resizable().scaledToFill()
                                                 } placeholder: {
@@ -55,6 +61,8 @@ struct FluxaTvosApp: App {
                                                 }
                                             }
                                             .frame(width: 190, alignment: .leading)
+                                            }
+                                            .buttonStyle(.plain)
                                         }
                                     }
                                 }

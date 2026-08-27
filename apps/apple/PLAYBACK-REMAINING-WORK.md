@@ -4,23 +4,31 @@ Last updated: 2026-08-27
 
 ## Current state
 
-The Apple playback path now has a single `FluxaPlayer` surface with an
-AVFoundation-first backend. MKV/Matroska sources can be adapted to rolling
-fragmented MP4 in the Rust streaming layer without re-encoding supported video.
-The Player Kit also contains a compile-gated FFmpeg/VideoToolbox fallback for
-sources that AVPlayer cannot demux. Unsupported software video decoding is not
-used as a normal path.
+The Apple playback path now has a single `FluxaPlayer` surface backed only by
+AVFoundation/AVPlayer. The compatibility policy is copy-first and delegates
+container/stream adaptation to FFmpeg's native demuxer/muxer without
+re-encoding supported video. The native/desktop route uses the FFmpeg process
+adapter. The Apple route now has the linked static-library adapter and
+incremental callback runtime-tested against local FFmpeg media on Linux, but
+it is not device-complete until the C bridge is linked and exercised in Apple
+CI. FFmpeg is not a
+second player: there is no software video renderer or playback fallback in
+Player Kit.
 
-The latest Player Kit CI run was commit `b5fc4b7` and passed after the Player
-Kit cleanup fixes. The local machine has no Swift/Xcode toolchain, so Apple
+The latest pushed Player Kit CI run is commit `70639d8` and passed after the
+AVPlayer-only cleanup. The local machine has no Swift/Xcode toolchain, so Apple
 builds are validated in GitHub Actions.
 
 ## Already verified
 
-- Rust core tests: `570 passed`, including incremental and whole-buffer fMP4
-  supported-track output, seek filtering, and unsupported-audio rejection
-  coverage.
-- Streaming-engine tests: `108 passed`.
+- Rust core tests: `570 passed`, including the shared media policy and
+  unsupported-audio coverage.
+- Streaming-engine tests: `109 passed`, including the FFmpeg copy-first audio
+  policy.
+- FFmpeg bridge runtime fixture: strict `clang` syntax checks passed; real
+  H.264/AAC MKV remux, keyframe seek, multi-audio language metadata, and
+  unsupported Opus-to-ALAC adaptation all produced valid fMP4 inspected by
+  `ffprobe`.
 - Rust core XCFramework and Apple streaming bridge CI job: passed.
 - The previous CI run passed the tvOS shared-code, XcodeGen, and tvOS host
   build steps.
@@ -39,23 +47,27 @@ builds are validated in GitHub Actions.
 
 ## Remaining work
 
-### 1. Apple CI validation
+### 1. Finish the Apple FFmpeg bridge
 
-- The playback-item argument ordering fix is confirmed by CI run
-  `33024568322`.
+- Link and runtime-test the callback on iOS, tvOS, and macOS with the actual
+  Apple-built FFmpeg slices; the Linux FFmpeg fixture is already passing.
+- Fix remaining FFmpeg encoder/layout edge cases, then verify the bridge
+  produces valid fragmented MP4 with stream-copied video and ALAC audio.
+- Run the actual iOS, tvOS, and macOS static-link workflow. iOS/tvOS must not
+  depend on an FFmpeg executable or process spawning.
+- Keep demuxing, muxing, timestamps, fragmentation, and codec signaling inside
+  FFmpeg; Swift/Rust should only pass requests, headers, and output chunks.
 
-### 2. Exercise the real playback fallback chain
+### 2. Exercise the real playback ladder
 
 Validate on a real Apple device or simulator with representative media:
 
 1. Native AVPlayer URL (MP4/HLS, H.264/HEVC, supported audio).
-2. MKV/Matroska → rolling fMP4 remux → AVPlayer.
+2. MKV/Matroska → incremental FFmpeg fMP4 remux → AVPlayer.
 3. Unsupported audio (for example DTS/TrueHD) → selective lossless-compatible
    audio conversion while the video stream remains untouched → AVPlayer.
-4. AVPlayer demux failure for a hardware-decodable video format (for example
-   VP9) → compressed sample buffers through VideoToolbox.
-5. Unsupported video/device combination → clear non-recoverable failure; do
-   not silently attempt expensive software video decoding.
+4. AVPlayer demux failure for a video format it cannot consume → clear
+   non-recoverable failure; do not silently start a software video player.
 
 Check startup, first-frame latency, seeking, resume position, pause/rate,
 track selection, HTTP headers, subtitles, audio session interruptions, and
@@ -71,17 +83,20 @@ teardown.
 - Add/keep an explicit response path for sources that cannot be adapted to
   fMP4, so AVPlayer does not receive a misleading silent or partial stream.
 
-### 4. Complete audio compatibility policy
+### 4. Complete and verify audio compatibility
 
 - Current policy: fMP4 adaptation copies streams that AVPlayer can consume and
   never silently drops unsupported audio. DTS, TrueHD, and other unsupported
-  audio tracks still need a selective lossless-compatible conversion path.
+  audio tracks are selectively decoded by FFmpeg and stored as lossless ALAC;
+  object metadata such as TrueHD Atmos cannot survive that representation.
 - Do not default to AAC: preserve the original audio bitstream whenever
   possible, and use a lossless-compatible representation when conversion is
   unavoidable.
 - Ensure audio-only transcode keeps supported video bit-for-bit untouched.
 - Verify language/default/forced track metadata and user track selection after
   adaptation.
+- Verify supported E-AC-3/Atmos, AAC, AC-3, MP3, ALAC, and FLAC paths are not
+  unnecessarily converted.
 
 ### 5. Cover torrent playback explicitly
 
@@ -91,8 +106,13 @@ teardown.
   and the existing playback item preserves resume position.
 - Still validate on-device with MKV and non-MKV torrent files, including seek
   and remux rejection behavior.
+- tvOS catalog cards now resolve direct streams with request headers and
+  external subtitles, offer all returned stream options, and enter the shared
+  `FluxaPlayer` surface. A full detail route is still required before tvOS
+  playback validation is complete. Magnet and `.torrent` streams now use the
+  tvOS torrent service plus the same local remux path.
 
-### 6. Finish Apple integration cleanup
+### 6. Finish Apple integration verification
 
 - Now Playing metadata (title, duration, position, rate, and playback state)
   is owned by `FluxaPlayerKit` and follows the shared player state.
@@ -109,6 +129,11 @@ teardown.
 - The obsolete `FluxaAppleAudioSessionCoordinator.swift` was removed after
   all references were eliminated.
 - Keep iOS and tvOS UI differences behind platform conditionals.
+- Complete the tvOS detail route around `FluxaTvosPlaybackPresenter`, then
+  verify headers, resume position, remux lifecycle, and dismissal cleanup.
+- Verify interruption, route changes, PiP, external playback, HDR/Dolby Vision,
+  subtitles, teardown, and resume on real hardware where simulator behavior is
+  insufficient.
 
 ### 7. Desktop/Tauri integration (later milestone)
 

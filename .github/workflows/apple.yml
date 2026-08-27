@@ -14,6 +14,7 @@ on:
       - "apps/android/gradle.properties"
       - "apps/android/settings.gradle.kts"
       - "apps/android/build.gradle.kts"
+      - "core/fluxa-core/**"
   push:
     branches: [master]
     paths:
@@ -28,6 +29,7 @@ on:
       - "apps/android/gradle.properties"
       - "apps/android/settings.gradle.kts"
       - "apps/android/build.gradle.kts"
+      - "core/fluxa-core/**"
   workflow_dispatch:
 
 permissions:
@@ -53,6 +55,14 @@ jobs:
         with:
           name: apple-ffmpeg-adaptation
           path: apps/apple
+
+      - name: Verify FFmpeg bridge C source
+        run: >-
+          clang -std=c11 -Wall -Wextra -Wpedantic -Werror
+          -Iapps/apple/Generated/ffmpeg-bridge/include
+          -Icore/fluxa-core/fluxa-streaming-engine/bridge
+          -fsyntax-only
+          core/fluxa-core/fluxa-streaming-engine/bridge/fluxa_ffmpeg_remux.c
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
@@ -109,6 +119,48 @@ jobs:
             apps/apple/Generated/ffmpeg-bridge
             apps/apple/FluxaPlayerKit/Vendor/CFFmpeg.xcframework
           if-no-files-found: error
+
+  macos-bridge:
+    name: macOS FFmpeg bridge
+    needs: [ffmpeg]
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download FFmpeg adaptation artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-ffmpeg-adaptation
+          path: apps/apple
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Build and test macOS bridge
+        working-directory: core/fluxa-core
+        run: |
+          case "$(uname -m)" in
+            arm64)
+              rust_target="aarch64-apple-darwin"
+              ffmpeg_slice="macos-arm64"
+              ;;
+            x86_64)
+              rust_target="x86_64-apple-darwin"
+              ffmpeg_slice="macos-x86_64"
+              ;;
+            *)
+              echo "Unsupported macOS runner architecture: $(uname -m)" >&2
+              exit 1
+              ;;
+          esac
+          rustup target add "$rust_target"
+          FLUXA_FFMPEG_BRIDGE_INCLUDE="$GITHUB_WORKSPACE/apps/apple/Generated/ffmpeg-bridge/include" \
+          FLUXA_FFMPEG_BRIDGE_LIB="$GITHUB_WORKSPACE/apps/apple/Generated/ffmpeg-bridge/$ffmpeg_slice" \
+          cargo test --target "$rust_target" -p fluxa_streaming_engine \
+            --no-default-features --features apple --lib -- --test-threads=1
 
   ios:
     name: iOS simulator

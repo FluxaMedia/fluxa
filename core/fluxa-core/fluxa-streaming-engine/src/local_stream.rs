@@ -1,10 +1,13 @@
-use fluxa_core::media_demux::IncrementalFmp4Session;
+#[cfg(not(all(feature = "apple", fluxa_ffmpeg_bridge)))]
+use crate::ffmpeg_locator;
 use serde_json::json;
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
+#[cfg(not(all(feature = "apple", fluxa_ffmpeg_bridge)))]
+use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
@@ -12,6 +15,8 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener as TokioTcpListener;
 use tokio::net::TcpStream as TokioTcpStream;
+#[cfg(not(all(feature = "apple", fluxa_ffmpeg_bridge)))]
+use tokio::process::Command;
 
 const PROXY_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const MAX_LOCAL_STREAM_CONNECTIONS: usize = 32;
@@ -312,15 +317,13 @@ async fn handle_async_local_stream(
             .await;
         return;
     }
-    // A byte range into the Matroska source is not a valid input to the
-    // incremental demuxer: it would usually start after EBML/Tracks. For an
-    // adapted stream, restart from byte zero and let the fMP4 timeline handle
-    // the initial playback window. Direct streams retain normal range seeks.
-    let upstream_headers = if remux {
-        HashMap::new()
-    } else {
-        request.headers.clone()
-    };
+    if remux {
+        handle_ffmpeg_remux(&mut stream, &config, &request, query).await;
+        return;
+    }
+    // Direct streams retain normal upstream byte-range seeks. Adapted streams
+    // return above and let FFmpeg apply the requested output-side seek.
+    let upstream_headers = request.headers.clone();
     let Ok(mut response) = send_async_upstream_request(
         &config.async_client,
         &config,
@@ -345,9 +348,6 @@ async fn handle_async_local_stream(
         "etag",
         "last-modified",
     ] {
-        if remux && (name == "content-type" || name == "content-length") {
-            continue;
-        }
         if let Some(value) = response
             .headers()
             .get(name)
@@ -359,74 +359,225 @@ async fn handle_async_local_stream(
             header.push_str("\r\n");
         }
     }
-    if remux {
-        header.push_str("content-type: video/mp4\r\n");
-    }
     header.push_str("Connection: close\r\n\r\n");
-    if remux {
-        if request.method == "HEAD" {
-            let _ = stream.write_all(header.as_bytes()).await;
-            return;
+    if stream.write_all(header.as_bytes()).await.is_err() || request.method == "HEAD" {
+        return;
+    }
+    while let Ok(Some(chunk)) = response.chunk().await {
+        if stream.write_all(&chunk).await.is_err() {
+            break;
         }
-        let mut session = IncrementalFmp4Session::new();
-        let mut headers_sent = false;
-        if let Some(seconds) = query.split('&').find_map(|item| {
+    }
+}
+
+#[cfg(all(feature = "apple", fluxa_ffmpeg_bridge))]
+async fn handle_ffmpeg_remux(
+    stream: &mut TokioTcpStream,
+    config: &LocalStreamConfig,
+    request: &ParsedLocalRequest,
+    query: &str,
+) {
+    if request.method == "HEAD" {
+        let _ = stream
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n")
+            .await;
+        return;
+    }
+
+    let headers = config
+        .headers
+        .iter()
+        .map(|(name, value)| format!("{name}: {value}\r\n"))
+        .collect::<String>();
+    let start_microseconds = query
+        .split('&')
+        .find_map(|item| {
             let (name, value) = item.split_once('=')?;
             (name == "start")
                 .then(|| value.parse::<f64>().ok())
                 .flatten()
-        }) {
-            session.set_start_position(seconds);
-        }
-        while let Ok(Some(chunk)) = response.chunk().await {
-            let output = session.push(&chunk);
-            if session.is_supported() == Some(false) && !headers_sent {
-                let _ = stream
-                    .write_all(
-                        b"HTTP/1.1 415 Unsupported Media Type\r\nConnection: close\r\n\r\nsource cannot be adapted to fMP4",
-                    )
-                    .await;
-                return;
-            }
-            if !output.is_empty() {
-                if !headers_sent {
-                    if stream.write_all(header.as_bytes()).await.is_err() {
-                        return;
-                    }
-                    headers_sent = true;
-                }
-                if stream.write_all(&output).await.is_err() {
+        })
+        .filter(|seconds| *seconds > 0.0)
+        .map(|seconds| (seconds * 1_000_000.0) as i64)
+        .unwrap_or(0);
+    let mut output = crate::apple_ffmpeg::start_remux(
+        config.target_url.clone(),
+        headers,
+        start_microseconds,
+    );
+    let Some(crate::apple_ffmpeg::RemuxMessage::Chunk(first_chunk)) = output.recv().await else {
+        let _ = stream
+            .write_all(
+                b"HTTP/1.1 415 Unsupported Media Type\r\nConnection: close\r\n\r\nsource cannot be adapted to fMP4",
+            )
+            .await;
+        return;
+    };
+    if stream
+        .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n")
+        .await
+        .is_err()
+    {
+        return;
+    }
+    if stream.write_all(&first_chunk).await.is_err() {
+        return;
+    }
+    while let Some(message) = output.recv().await {
+        match message {
+            crate::apple_ffmpeg::RemuxMessage::Chunk(chunk) => {
+                if stream.write_all(&chunk).await.is_err() {
                     return;
                 }
             }
+            crate::apple_ffmpeg::RemuxMessage::Finished(_) => return,
         }
-        let output = session.finish();
-        if !output.is_empty() {
-            if !headers_sent {
-                if stream.write_all(header.as_bytes()).await.is_err() {
-                    return;
-                }
-                headers_sent = true;
-            }
-            let _ = stream.write_all(&output).await;
-        }
-        if !headers_sent {
+    }
+}
+
+#[cfg(not(all(feature = "apple", fluxa_ffmpeg_bridge)))]
+async fn handle_ffmpeg_remux(
+    stream: &mut TokioTcpStream,
+    config: &LocalStreamConfig,
+    request: &ParsedLocalRequest,
+    query: &str,
+) {
+    if request.method == "HEAD" {
+        let _ = stream
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n")
+            .await;
+        return;
+    }
+
+    let audio_codec = probe_audio_codec(config).await;
+    let audio_args: &[&str] = match audio_codec.as_deref() {
+        // If probing fails, preserve the elementary stream and let FFmpeg
+        // report a real muxing error instead of silently dropping audio.
+        None => &["-c:a", "copy"],
+        Some("aac" | "ac3" | "eac3" | "mp3" | "alac" | "flac") => &["-c:a", "copy"],
+        // Preserve decoded samples without introducing AAC/MP3 loss. Codec
+        // object metadata (for example TrueHD Atmos) cannot survive PCM/ALAC.
+        Some(_) => &["-c:a", "alac"],
+    };
+    let mut command = Command::new(ffmpeg_locator::resolve("ffmpeg"));
+    command.args(["-hide_banner", "-loglevel", "error"]);
+    if !config.headers.is_empty() {
+        let headers = config
+            .headers
+            .iter()
+            .map(|(name, value)| format!("{name}: {value}\r\n"))
+            .collect::<String>();
+        command.args(["-headers", &headers]);
+    }
+    command.args(["-i", &config.target_url]);
+    if let Some(seconds) = query.split('&').find_map(|item| {
+        let (name, value) = item.split_once('=')?;
+        (name == "start")
+            .then(|| value.parse::<f64>().ok())
+            .flatten()
+    }) {
+        command.args(["-ss", &seconds.to_string()]);
+    }
+    command
+        .args(["-map", "0:v:0", "-map", "0:a:0?"])
+        .args(["-c:v", "copy"])
+        .args(audio_args)
+        .args([
+            "-map_metadata",
+            "0",
+            "-sn",
+            "-avoid_negative_ts",
+            "make_zero",
+            "-movflags",
+            "frag_keyframe+empty_moov+default_base_moof",
+            "-f",
+            "mp4",
+            "-",
+        ])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+
+    let Ok(mut child) = command.spawn() else {
+        let _ = stream
+            .write_all(b"HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\nffmpeg unavailable")
+            .await;
+        return;
+    };
+    let Some(mut stdout) = child.stdout.take() else {
+        let _ = stream
+            .write_all(b"HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\nffmpeg produced no output")
+            .await;
+        return;
+    };
+    // Do not send a misleading 200 response when FFmpeg rejects the source
+    // or cannot mux its tracks into fMP4. The first stdout read is the
+    // adaptation gate for this local Apple endpoint.
+    let mut first_chunk = vec![0; 64 * 1024];
+    let first_size = match stdout.read(&mut first_chunk).await {
+        Ok(0) => {
+            let _ = child.wait().await;
             let _ = stream
                 .write_all(
                     b"HTTP/1.1 415 Unsupported Media Type\r\nConnection: close\r\n\r\nsource cannot be adapted to fMP4",
                 )
                 .await;
-        }
-    } else {
-        if stream.write_all(header.as_bytes()).await.is_err() || request.method == "HEAD" {
             return;
         }
-        while let Ok(Some(chunk)) = response.chunk().await {
-            if stream.write_all(&chunk).await.is_err() {
-                break;
-            }
+        Ok(size) => size,
+        Err(_) => {
+            let _ = child.kill().await;
+            let _ = stream
+                .write_all(b"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\nffmpeg output failed")
+                .await;
+            return;
         }
+    };
+    if stream
+        .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n")
+        .await
+        .is_err()
+    {
+        let _ = child.kill().await;
+        return;
     }
+    if stream.write_all(&first_chunk[..first_size]).await.is_err() {
+        let _ = child.kill().await;
+        return;
+    }
+    let _ = tokio::io::copy(&mut stdout, stream).await;
+    let _ = child.wait().await;
+}
+
+async fn probe_audio_codec(config: &LocalStreamConfig) -> Option<String> {
+    let mut command = Command::new(ffmpeg_locator::resolve("ffprobe"));
+    command.args([
+        "-v",
+        "error",
+        "-select_streams",
+        "a:0",
+        "-show_entries",
+        "stream=codec_name",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+    ]);
+    if !config.headers.is_empty() {
+        let headers = config
+            .headers
+            .iter()
+            .map(|(name, value)| format!("{name}: {value}\r\n"))
+            .collect::<String>();
+        command.args(["-headers", &headers]);
+    }
+    let output = command
+        .arg(&config.target_url)
+        .stdin(Stdio::null())
+        .output()
+        .await
+        .ok()?;
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|codec| codec.trim().to_ascii_lowercase())
 }
 
 async fn handle_shared_async_stream(stream: TokioTcpStream) {

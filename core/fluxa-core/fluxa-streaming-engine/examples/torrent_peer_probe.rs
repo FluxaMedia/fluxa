@@ -9,11 +9,9 @@ fn main() {
         .map(|d| d.as_nanos())
         .unwrap_or_default();
     let cache = std::env::temp_dir().join(format!("fluxa-peer-probe-{unique}"));
-    let Some(base) = fluxa_streaming_engine::start_torrent_server(
-        cache.to_str().unwrap(),
-        0,
-        "probe",
-    ) else {
+    let Some(base) =
+        fluxa_streaming_engine::start_torrent_server(cache.to_str().unwrap(), 0, "probe")
+    else {
         eprintln!("engine did not start");
         std::process::exit(1);
     };
@@ -48,7 +46,11 @@ fn main() {
             .json(&serde_json::json!({ "action": "add", "link": magnet, "file_id": 2 }))
             .timeout(Duration::from_secs(60))
             .send();
-        println!("re-add -> {}", re.map(|r| r.status().to_string()).unwrap_or_else(|e| e.to_string()));
+        println!(
+            "re-add -> {}",
+            re.map(|r| r.status().to_string())
+                .unwrap_or_else(|e| e.to_string())
+        );
     }
     let started = Instant::now();
     while started.elapsed() < Duration::from_secs(90) {
@@ -60,9 +62,15 @@ fn main() {
         match response {
             Ok(r) => match r.json::<serde_json::Value>() {
                 Ok(value) => println!("{:>5.1}s {}", started.elapsed().as_secs_f32(), value),
-                Err(e) => println!("{:>5.1}s decode failed: {e}", started.elapsed().as_secs_f32()),
+                Err(e) => println!(
+                    "{:>5.1}s decode failed: {e}",
+                    started.elapsed().as_secs_f32()
+                ),
             },
-            Err(e) => println!("{:>5.1}s request failed: {e}", started.elapsed().as_secs_f32()),
+            Err(e) => println!(
+                "{:>5.1}s request failed: {e}",
+                started.elapsed().as_secs_f32()
+            ),
         }
         std::thread::sleep(Duration::from_secs(3));
     }

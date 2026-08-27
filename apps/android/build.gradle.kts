@@ -408,9 +408,7 @@ tasks.register("checkAppleTvosKmpBoundary") {
         val requiredProjectTokens = listOf(
             ":core:embedAndSignAppleFrameworkForXcode",
             ":data:embedAndSignAppleFrameworkForXcode",
-            ":player:embedAndSignAppleFrameworkForXcode",
-            "FluxaAppleAddonCatalogResolver.swift",
-            "FluxaAppleCatalogLoader.swift"
+            ":player:embedAndSignAppleFrameworkForXcode"
         )
         val requiredHandlerTokens = listOf(
             "import FluxaData",

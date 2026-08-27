@@ -36,6 +36,12 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
             if isTorrent(url) {
                 return startTorrentLocked(link: url, title: title)
             }
+            // AVPlayer can consume ordinary HTTP(S) media directly and the
+            // playback item carries its request headers. Only sources that
+            // need the local transport adapter should be proxied.
+            if !shouldRemuxToFmp4(url) {
+                return URL(string: url)
+            }
             return startLocalProxyLocked(url: url, requestHeadersJson: requestHeadersJson)
         }
     }

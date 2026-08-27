@@ -986,7 +986,8 @@ async fn ensure_torrent(
     // The link map only knows what this process added. A torrent restored from
     // session persistence, or the same one behind a magnet with a different
     // tracker list, would otherwise be resolved from peers all over again.
-    if let Some(id) = magnet_info_hash(link).and_then(|hash| find_torrent_by_info_hash(state, &hash))
+    if let Some(id) =
+        magnet_info_hash(link).and_then(|hash| find_torrent_by_info_hash(state, &hash))
     {
         remember_link(state, link, id);
         let details = state
@@ -1777,8 +1778,7 @@ mod tests {
         ActiveTelemetrySession, CancellableReader, FileRole, PlaybackTelemetry, PlaybackWindow,
         TelemetryEvent, TelemetryState, TorrentFileFocus, TorrentLifecycle, apply_telemetry_event,
         clear_telemetry_for_torrent, is_probe_for_window, magnet_info_hash, parse_range,
-        playback_buffer_targets,
-        should_deactivate_prewarm,
+        playback_buffer_targets, should_deactivate_prewarm,
     };
     use axum::http::HeaderValue;
     use std::collections::HashMap;

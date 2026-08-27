@@ -69,6 +69,7 @@ export const CORE_METHODS = [
   'contentWarningUrl',
   'contentWatchedKeysBatch',
   'continueWatchingCardFields',
+  'continueWatchingForSource',
   'continueWatchingSourcePlan',
   'core.drainErrorLog',
   'coreCapabilities',

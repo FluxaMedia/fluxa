@@ -4,8 +4,6 @@ use axum::extract::Query;
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use bytes::Bytes;
-use futures_util::StreamExt;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::io;
@@ -55,9 +53,9 @@ impl AsyncRead for ChildStdoutGuarded {
 #[derive(Deserialize)]
 pub struct TranscodeQuery {
     url: String,
-    /// Input-side seek in seconds. The transcode itself isn't byte-range
-    /// seekable (it's a live ffmpeg pipe), so the player seeks by re-opening
-    /// this endpoint with a new `start` instead.
+    /// Output-side packet seek in seconds. The adaptation itself isn't
+    /// byte-range seekable (it's a live ffmpeg pipe), so the player seeks by
+    /// re-opening this endpoint with a new `start` instead.
     start: Option<f64>,
     #[serde(rename = "hwEncoder")]
     hw_encoder: Option<String>,
@@ -123,22 +121,22 @@ async fn probe(url: &str) -> ProbedCodecs {
     let mut codecs = ProbedCodecs::default();
     if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
         for stream in streams {
-        let kind = stream.get("codec_type").and_then(|v| v.as_str());
-        let name = stream
+            let kind = stream.get("codec_type").and_then(|v| v.as_str());
+            let name = stream
                 .get("codec_name")
                 .and_then(|v| v.as_str())
                 .map(str::to_string);
-        match kind {
-            Some("video") if codecs.video.is_none() => codecs.video = name,
-            Some("audio") if codecs.audio.is_none() => {
-                codecs.audio = name;
-                codecs.audio_channels = stream
-                    .get("channels")
-                    .and_then(|value| value.as_u64())
-                    .and_then(|value| u32::try_from(value).ok());
+            match kind {
+                Some("video") if codecs.video.is_none() => codecs.video = name,
+                Some("audio") if codecs.audio.is_none() => {
+                    codecs.audio = name;
+                    codecs.audio_channels = stream
+                        .get("channels")
+                        .and_then(|value| value.as_u64())
+                        .and_then(|value| u32::try_from(value).ok());
+                }
+                _ => {}
             }
-            _ => {}
-        }
         }
     }
     codecs.duration = json
@@ -177,10 +175,10 @@ pub async fn handle_probe(Query(q): Query<ProbeQuery>) -> Response {
     .into_response()
 }
 
-/// Remuxes (stream-copy) when the source codecs are already browser-playable,
-/// and falls back to a real transcode only for the tracks that aren't —
-/// most addon releases are h264+aac in an mkv container, so this is a cheap
-/// container rewrite rather than a full re-encode in the common case.
+/// Adapts a source for AVPlayer with FFmpeg's own demuxer/muxer. The default
+/// policy is stream-copy: a source is never silently turned into H.264/AAC.
+/// Explicit codec requests are the only way to ask for a video transcode;
+/// unsupported audio is converted to ALAC so decoded samples remain lossless.
 pub async fn handle_transcode(Query(q): Query<TranscodeQuery>) -> Response {
     if !is_allowed_stream_url(&q.url) {
         return (
@@ -190,24 +188,20 @@ pub async fn handle_transcode(Query(q): Query<TranscodeQuery>) -> Response {
             .into_response();
     }
     let codecs = probe(&q.url).await;
-    let hw_encoder = resolve_hw_encoder(q.hw_encoder.as_deref()).await;
-
-    let requested_video = normalized_codec(q.video_codec.as_deref()).or_else(|| codecs.video.clone().filter(|codec| codec == "h264"));
-    let video_codec = requested_video.as_deref().unwrap_or("h264");
-    let video_args = if codecs.video.as_deref() == Some(video_codec) {
+    let requested_video = normalized_codec(q.video_codec.as_deref());
+    let video_codec = requested_video
+        .as_deref()
+        .or(codecs.video.as_deref())
+        .unwrap_or("");
+    let video_args = if requested_video.is_none() || codecs.video.as_deref() == Some(video_codec) {
         vec!["-c:v", "copy"]
     } else if video_codec == "h264" {
-        hardware_video_args(hw_encoder)
-            .unwrap_or_else(|| vec![
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
-            ])
+        let hw_encoder = resolve_hw_encoder(q.hw_encoder.as_deref()).await;
+        hardware_video_args(hw_encoder).unwrap_or_else(|| {
+            vec![
+                "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+            ]
+        })
     } else if video_codec == "vp9" {
         vec!["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0"]
     } else if video_codec == "vp8" {
@@ -215,22 +209,31 @@ pub async fn handle_transcode(Query(q): Query<TranscodeQuery>) -> Response {
     } else if video_codec == "av1" {
         vec!["-c:v", "libaom-av1", "-crf", "30", "-b:v", "0"]
     } else {
-        vec!["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p"]
+        vec!["-c:v", "copy"]
     };
-    let audio_bitrate = match codecs.audio_channels.unwrap_or(2) {
-        1..=2 => "320k",
-        3..=6 => "448k",
-        _ => "512k",
-    };
-    let requested_audio = normalized_codec(q.audio_codec.as_deref()).or_else(|| codecs.audio.clone().filter(|codec| codec == "aac"));
-    let audio_codec = requested_audio.as_deref().unwrap_or("aac");
+    let requested_audio = normalized_codec(q.audio_codec.as_deref());
+    let audio_codec = requested_audio
+        .as_deref()
+        .or(codecs.audio.as_deref())
+        .unwrap_or("");
     let audio_args: Vec<&str> = match codecs.audio.as_deref() {
-        None => vec!["-an"],
-        Some(source) if source == audio_codec => vec!["-c:a", "copy"],
+        // Probe failure must not turn into silent audio loss. The optional
+        // map below naturally omits this option when the source has no audio.
+        None => vec!["-c:a", "copy"],
+        Some(source) if requested_audio.is_none() && is_mp4_audio_copy_safe(source) => {
+            vec!["-c:a", "copy"]
+        }
+        Some(source) if requested_audio.is_none() && source == audio_codec => {
+            vec!["-c:a", "copy"]
+        }
+        Some(_) if audio_codec == "aac" => vec!["-c:a", "aac"],
         Some(_) if audio_codec == "opus" => vec!["-c:a", "libopus", "-b:a", "256k"],
         Some(_) if audio_codec == "vorbis" => vec!["-c:a", "libvorbis", "-q:a", "8"],
-        Some(_) if audio_codec == "mp3" => vec!["-c:a", "libmp3lame", "-b:a", audio_bitrate],
-        Some(_) => vec!["-c:a", "aac", "-b:a", audio_bitrate],
+        Some(_) if audio_codec == "mp3" => vec!["-c:a", "libmp3lame", "-q:a", "0"],
+        // Decode the unsupported source to PCM and store those exact samples
+        // losslessly. This intentionally drops object metadata such as
+        // TrueHD Atmos; native E-AC-3/JOC remains on the copy path above.
+        Some(_) => vec!["-c:a", "alac"],
     };
     let container = match q.container.as_deref() {
         Some("webm")
@@ -244,17 +247,27 @@ pub async fn handle_transcode(Query(q): Query<TranscodeQuery>) -> Response {
 
     let ffmpeg = ffmpeg_locator::resolve("ffmpeg");
     let mut cmd = Command::new(ffmpeg);
+    cmd.arg("-i").arg(&q.url);
     if let Some(start) = q.start.filter(|s| *s > 0.0) {
         cmd.args(["-ss", &start.to_string()]);
     }
-    cmd.arg("-i")
-        .arg(&q.url)
+    cmd
         .args(["-map", "0:v:0"])
         .args(["-map", "0:a:0?"])
         .args(video_args)
         .args(audio_args)
-        .args(["-map_metadata", "0", "-sn", "-avoid_negative_ts", "make_zero"])
-        .args(if container == "mp4" { vec!["-movflags", "frag_keyframe+empty_moov+default_base_moof"] } else { Vec::new() })
+        .args([
+            "-map_metadata",
+            "0",
+            "-sn",
+            "-avoid_negative_ts",
+            "make_zero",
+        ])
+        .args(if container == "mp4" {
+            vec!["-movflags", "frag_keyframe+empty_moov+default_base_moof"]
+        } else {
+            Vec::new()
+        })
         .args(["-f", container, "-"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -290,80 +303,23 @@ pub async fn handle_transcode(Query(q): Query<TranscodeQuery>) -> Response {
     let mut response = (StatusCode::OK, body).into_response();
     response.headers_mut().insert(
         axum::http::header::CONTENT_TYPE,
-        HeaderValue::from_static(if container == "webm" { "video/webm" } else { "video/mp4" }),
+        HeaderValue::from_static(if container == "webm" {
+            "video/webm"
+        } else {
+            "video/mp4"
+        }),
     );
     response
 }
 
-/// Streams a supported Matroska source as rolling fragmented MP4 without
-/// decoding or re-encoding its video. The input is normally the companion's
-/// loopback `/proxy` URL, so the endpoint can stay behind the same SSRF gate
-/// as `/transcode`.
+/// Adapts a source through FFmpeg's native Matroska demuxer and fragmented
+/// MP4 muxer. No custom PTS/moof/trun writer is involved.
 pub async fn handle_remux(Query(q): Query<TranscodeQuery>) -> Response {
-    if !is_allowed_stream_url(&q.url) {
-        return (
-            StatusCode::BAD_REQUEST,
-            "url must be http(s)://127.0.0.1 or localhost",
-        )
-            .into_response();
-    }
+    handle_transcode(Query(q)).await
+}
 
-    let response = match reqwest::Client::new().get(&q.url).send().await {
-        Ok(response) if response.status().is_success() => response,
-        Ok(response) => {
-            return (response.status(), "upstream source was not successful").into_response();
-        }
-        Err(error) => return (StatusCode::BAD_GATEWAY, error.to_string()).into_response(),
-    };
-
-    let input = response.bytes_stream();
-    let output = futures_util::stream::unfold(
-        (input, fluxa_core::media_demux::IncrementalFmp4Session::new(), false),
-        |(mut input, mut session, mut finished)| async move {
-            loop {
-                if finished {
-                    return None;
-                }
-                if let Some(chunk) = input.next().await {
-                    let chunk = match chunk {
-                        Ok(chunk) => chunk,
-                        Err(error) => {
-                            finished = true;
-                            return Some((
-                                Err(std::io::Error::other(error.to_string())),
-                                (input, session, finished),
-                            ));
-                        }
-                    };
-                    let bytes = session.push(&chunk);
-                    if !bytes.is_empty() {
-                        return Some((Ok(Bytes::from(bytes)), (input, session, finished)));
-                    }
-                } else {
-                    finished = true;
-                    let bytes = session.finish();
-                    if !bytes.is_empty() {
-                        return Some((Ok(Bytes::from(bytes)), (input, session, finished)));
-                    }
-                    if session.is_supported() == Some(false) {
-                        return Some((
-                            Err(std::io::Error::other(
-                                "source video codec cannot be remuxed to fMP4",
-                            )),
-                            (input, session, finished),
-                        ));
-                    }
-                    return None;
-                }
-            }
-        },
-    );
-    let mut output = Body::from_stream(output).into_response();
-    output.headers_mut().insert(
-        axum::http::header::CONTENT_TYPE,
-        HeaderValue::from_static("video/mp4"),
-    );
-    output
+fn is_mp4_audio_copy_safe(codec: &str) -> bool {
+    matches!(codec, "aac" | "ac3" | "eac3" | "mp3" | "alac" | "flac")
 }
 
 fn normalized_codec(codec: Option<&str>) -> Option<String> {
@@ -489,7 +445,10 @@ pub fn router() -> Router {
 
 #[cfg(test)]
 mod tests {
-    use super::{hardware_video_args, is_allowed_stream_url, normalized_codec, stream_buffer_size};
+    use super::{
+        hardware_video_args, is_allowed_stream_url, is_mp4_audio_copy_safe, normalized_codec,
+        stream_buffer_size,
+    };
 
     #[test]
     fn hardware_encoder_args_are_complete() {
@@ -539,9 +498,22 @@ mod tests {
 
     #[test]
     fn requested_codecs_are_normalized_to_safe_encoder_names() {
-        assert_eq!(normalized_codec(Some("avc1.640028")), Some("h264".to_string()));
+        assert_eq!(
+            normalized_codec(Some("avc1.640028")),
+            Some("h264".to_string())
+        );
         assert_eq!(normalized_codec(Some("hevc")), Some("hevc".to_string()));
         assert_eq!(normalized_codec(Some("opus")), Some("opus".to_string()));
         assert_eq!(normalized_codec(Some("unsupported")), None);
+    }
+
+    #[test]
+    fn avplayer_audio_policy_copies_native_mp4_codecs_without_aac_fallback() {
+        for codec in ["aac", "ac3", "eac3", "mp3", "alac", "flac"] {
+            assert!(is_mp4_audio_copy_safe(codec), "{codec} should be copied");
+        }
+        for codec in ["dts", "truehd", "opus", "vorbis"] {
+            assert!(!is_mp4_audio_copy_safe(codec), "{codec} needs adaptation");
+        }
     }
 }

@@ -58,11 +58,8 @@ targets:
       - path: Shared/FluxaAppleCustomPlayerViewController.swift
       - path: AppleCore
         excludes:
-          - FluxaAppleAddonCatalogResolver.swift
-          - FluxaAppleAddonResourceLoader.swift
           - FluxaAppleAddonStoreManager.swift
           - FluxaAppleCatalogBootstrap.swift
-          - FluxaAppleCatalogLoader.swift
           - FluxaAppleDownloadManager.swift
           - FluxaApplePluginRepositoryManager.swift
       - path: tvOS

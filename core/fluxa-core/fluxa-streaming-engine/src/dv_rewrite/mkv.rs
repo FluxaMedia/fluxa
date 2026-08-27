@@ -6,8 +6,8 @@ use std::borrow::Cow;
 // `write_id` keeps its old local name here via an alias to avoid touching
 // every call site below.
 pub(crate) use fluxa_core::media_demux::ebml::{
-    ebml_id_width, ebml_vint_width, parse_ebml_id, parse_ebml_vint, try_parse_ebml_header, write_ebml_element,
-    write_ebml_id as write_id, write_ebml_vint,
+    ebml_id_width, ebml_vint_width, parse_ebml_id, parse_ebml_vint, try_parse_ebml_header,
+    write_ebml_element, write_ebml_id as write_id, write_ebml_vint,
 };
 #[cfg(test)]
 pub(crate) use fluxa_core::media_demux::ebml::{encode_ebml_element, encode_ebml_vint};

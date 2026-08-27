@@ -1,4 +1,5 @@
 import Foundation
+import FluxaCore
 import SwiftUI
 
 @MainActor
@@ -11,15 +12,26 @@ final class FluxaTvosHomeModel: ObservableObject {
 
     struct Item: Identifiable {
         let id: String
+        let type: String
         let title: String
         let subtitle: String
         let artworkUrl: URL?
+        let addonTransportUrl: String?
+    }
+
+    struct Playback: Sendable {
+        let url: URL
+        let title: String
+        let streamTitle: String
+        let headers: [String: String]
+        let subtitleUrls: [URL]
     }
 
     @Published private(set) var rows: [Row] = []
     @Published private(set) var isLoading = false
 
     private let coordinator: FluxaAppleHeadlessCoordinator
+    private let resourceLoader = FluxaAppleAddonResourceLoader()
 
     init(runtime: FluxaAppleHeadlessRuntime) {
         let configurationStore = FluxaAppleAddonConfigurationStore()
@@ -43,6 +55,31 @@ final class FluxaTvosHomeModel: ObservableObject {
             rows = rows(from: result)
         } catch {
             rows = []
+        }
+    }
+
+    func playbackOptions(for item: Item) async -> [Playback] {
+        guard let addon = item.addonTransportUrl else { return [] }
+        guard let streams = try? await resourceLoader.loadDirectStreams(
+            transportUrl: addon,
+            contentType: item.type,
+            id: item.id
+        ) else { return [] }
+        let subtitles = (try? await resourceLoader.loadSubtitleUrls(
+            transportUrl: addon,
+            contentType: item.type,
+            id: item.id
+        )) ?? []
+        let subtitleUrls = subtitles.compactMap(URL.init(string:))
+        return streams.compactMap { stream in
+            guard let url = URL(string: stream.playableUrl) else { return nil }
+            return Playback(
+                url: url,
+                title: item.title,
+                streamTitle: stream.title,
+                headers: decodeHeaders(stream.requestHeadersJson),
+                subtitleUrls: subtitleUrls
+            )
         }
     }
 
@@ -72,10 +109,20 @@ final class FluxaTvosHomeModel: ObservableObject {
         }
         return Item(
             id: id,
+            type: text(meta["type"]) ?? "movie",
             title: title,
             subtitle: text(meta["releaseInfo"]) ?? "",
-            artworkUrl: text(meta["poster"]).flatMap { URL(string: $0) }
+            artworkUrl: text(meta["poster"]).flatMap { URL(string: $0) },
+            addonTransportUrl: text(meta["addonTransportUrl"])
         )
+    }
+
+    private func decodeHeaders(_ json: String) -> [String: String] {
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return [:]
+        }
+        return object.compactMapValues { $0 as? String }
     }
 
     private func text(_ value: FluxaAppleJsonValue?) -> String? {

@@ -88,6 +88,10 @@ mod tests {
     use std::ffi::{CStr, CString};
 
     #[test]
+    #[cfg_attr(
+        target_os = "linux",
+        ignore = "Linux sandbox may deny loopback listener creation"
+    )]
     fn local_proxy_lifecycle_is_available_through_the_apple_bridge() {
         let target_url = CString::new("https://example.invalid/video.mp4").unwrap();
         let headers = CString::new("{}").unwrap();

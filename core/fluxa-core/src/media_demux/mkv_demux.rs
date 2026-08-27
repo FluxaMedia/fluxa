@@ -100,8 +100,13 @@ pub fn demux(input: &[u8]) -> Result<DemuxResult, DemuxError> {
         };
         let content_start = pos + hlen;
         let content_end = if size == EBML_UNKNOWN_SIZE {
-            find_unknown_size_end(segment, content_start, &[ID_CLUSTER, ID_INFO, ID_TRACKS], true)
-                .unwrap_or(segment.len())
+            find_unknown_size_end(
+                segment,
+                content_start,
+                &[ID_CLUSTER, ID_INFO, ID_TRACKS],
+                true,
+            )
+            .unwrap_or(segment.len())
         } else {
             (content_start + size as usize).min(segment.len())
         };
@@ -162,7 +167,12 @@ fn find_segment(input: &[u8]) -> Option<&[u8]> {
 /// Returns `None` when no boundary is found yet and `is_eof` is false — the
 /// caller should wait for more bytes rather than guessing. At EOF, an
 /// unresolved unknown-size element simply ends at the end of the buffer.
-fn find_unknown_size_end(buf: &[u8], start: usize, sibling_ids: &[u64], is_eof: bool) -> Option<usize> {
+fn find_unknown_size_end(
+    buf: &[u8],
+    start: usize,
+    sibling_ids: &[u64],
+    is_eof: bool,
+) -> Option<usize> {
     let mut i = start;
     while i < buf.len() {
         if let Some((id, _, _)) = try_parse_ebml_header(&buf[i..])
@@ -331,8 +341,7 @@ fn parse_cluster(buf: &[u8], tracks: &[Track], packets: &mut Vec<Packet>) {
         match id {
             ID_TIMECODE => cluster_timecode = be_bytes_to_u64(content) as i64,
             ID_SIMPLE_BLOCK => {
-                if let Some(packet) = parse_block_payload(content, cluster_timecode, tracks, None)
-                {
+                if let Some(packet) = parse_block_payload(content, cluster_timecode, tracks, None) {
                     packets.push(packet);
                 }
             }
@@ -493,7 +502,12 @@ impl IncrementalDemuxer {
 
             let content_start = hlen;
             let Some(end) = (if size == EBML_UNKNOWN_SIZE {
-                find_unknown_size_end(&self.buf, content_start, &[ID_CLUSTER, ID_INFO, ID_TRACKS], is_eof)
+                find_unknown_size_end(
+                    &self.buf,
+                    content_start,
+                    &[ID_CLUSTER, ID_INFO, ID_TRACKS],
+                    is_eof,
+                )
             } else {
                 Some(content_start + size as usize)
             }) else {

@@ -13,6 +13,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     private var observations: [NSKeyValueObservation] = []
     private var endObserver: NSObjectProtocol?
     private var pendingStartPosition: TimeInterval = 0
+    private var timelineOffset: TimeInterval = 0
     private var loadedItem: FluxaPlaybackItem?
     private var startupTimeoutTask: Task<Void, Never>?
 
@@ -32,14 +33,26 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     func load(_ item: FluxaPlaybackItem) {
         detachItemObservers()
         startupTimeoutTask?.cancel()
-        loadedItem = item
-        var options: [String: Any] = [:]
-        if !item.headers.isEmpty {
-            options["AVURLAssetHTTPHeaderFieldsKey"] = item.headers
+        var effectiveItem = item
+        if isRemuxURL(item.url), item.startPosition > 0 {
+            var components = URLComponents(url: item.url, resolvingAgainstBaseURL: false)
+            var queryItems = components?.queryItems ?? []
+            queryItems.removeAll { $0.name == "start" }
+            queryItems.append(URLQueryItem(name: "start", value: String(item.startPosition)))
+            components?.queryItems = queryItems
+            if let url = components?.url {
+                effectiveItem.url = url
+            }
         }
-        let asset = AVURLAsset(url: item.url, options: options)
+        loadedItem = effectiveItem
+        timelineOffset = remuxStart(from: effectiveItem.url)
+        var options: [String: Any] = [:]
+        if !effectiveItem.headers.isEmpty {
+            options["AVURLAssetHTTPHeaderFieldsKey"] = effectiveItem.headers
+        }
+        let asset = AVURLAsset(url: effectiveItem.url, options: options)
         let playerItem = AVPlayerItem(asset: asset)
-        pendingStartPosition = item.startPosition
+        pendingStartPosition = timelineOffset > 0 ? 0 : effectiveItem.startPosition
         tracks = []
         trackOptions = [:]
         state = FluxaPlaybackState()
@@ -80,7 +93,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
 
     func seek(to position: TimeInterval) {
         guard player.currentItem != nil else { return }
-        if let item = loadedItem, item.url.path.hasSuffix("/remux") {
+        if let item = loadedItem, isRemuxURL(item.url) {
             let wasPlaying = player.timeControlStatus != .paused
             var components = URLComponents(url: item.url, resolvingAgainstBaseURL: false)
             var queryItems = components?.queryItems ?? []
@@ -134,6 +147,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         startupTimeoutTask?.cancel()
         startupTimeoutTask = nil
         loadedItem = nil
+        timelineOffset = 0
         player.pause()
         player.replaceCurrentItem(with: nil)
         playerLayer.player = nil
@@ -192,13 +206,17 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     private func handleStatus(_ item: AVPlayerItem) {
         switch item.status {
         case .readyToPlay:
+            let initialPosition: TimeInterval
             if pendingStartPosition > 0 {
                 let target = pendingStartPosition
                 pendingStartPosition = 0
                 player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
-                state.position = target
+                initialPosition = target
+            } else {
+                initialPosition = timelineOffset
             }
-            state.duration = finiteSeconds(item.duration)
+            state.duration = timelineOffset + finiteSeconds(item.duration)
+            state.position = initialPosition
             state.isSeekable = !item.seekableTimeRanges.isEmpty || state.duration > 0
             loadTracks(from: item)
             if player.timeControlStatus == .paused {
@@ -241,10 +259,24 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
 
     private func handleTick(_ time: CMTime) {
         guard let item = player.currentItem else { return }
-        state.position = max(0, finiteSeconds(time))
-        state.duration = finiteSeconds(item.duration)
-        state.buffered = finiteSeconds(item.loadedTimeRanges.last?.timeRangeValue.end ?? .zero)
+        state.position = timelineOffset + finiteSeconds(time)
+        state.duration = timelineOffset + finiteSeconds(item.duration)
+        state.buffered = timelineOffset + finiteSeconds(item.loadedTimeRanges.last?.timeRangeValue.end ?? .zero)
         publishState()
+    }
+
+    private func isRemuxURL(_ url: URL) -> Bool {
+        url.path.hasSuffix("/remux")
+    }
+
+    private func remuxStart(from url: URL) -> TimeInterval {
+        guard isRemuxURL(url),
+              let start = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                .first(where: { $0.name == "start" })?.value,
+              let seconds = Double(start), seconds.isFinite else {
+            return 0
+        }
+        return max(0, seconds)
     }
 
     private func loadTracks(from item: AVPlayerItem) {
