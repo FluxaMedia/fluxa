@@ -58,3 +58,25 @@ func skipsWebVttNoteBlocksThatContainTimingMarkers() {
         FluxaSubtitleCue(start: 1, end: 2, text: "Actual cue")
     ])
 }
+
+@Test
+func skipsWebVttStyleAndRegionBlocks() {
+    let source = """
+    WEBVTT
+
+    STYLE
+    ::cue { color: white; }
+
+    REGION
+    id:bottom
+    lines:3
+
+    00:00:01.000 --> 00:00:02.000
+    Actual cue
+    """
+
+    let cues = FluxaSubtitleParser.parse(Data(source.utf8))
+    #expect(cues == [
+        FluxaSubtitleCue(start: 1, end: 2, text: "Actual cue")
+    ])
+}

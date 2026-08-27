@@ -28,7 +28,8 @@ enum FluxaSubtitleParser {
                 continue
             }
             let uppercasedLine = line.uppercased()
-            if uppercasedLine == "NOTE" || uppercasedLine.hasPrefix("NOTE ") {
+            if uppercasedLine == "NOTE" || uppercasedLine.hasPrefix("NOTE ")
+                || uppercasedLine == "STYLE" || uppercasedLine == "REGION" {
                 index += 1
                 while index < lines.count,
                       !lines[index].trimmingCharacters(in: .whitespaces).isEmpty {
