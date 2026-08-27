@@ -34,7 +34,11 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
         lock.withLock {
             stopLocked()
             if isTorrent(url) {
-                return startTorrentLocked(link: url, title: title)
+                return startTorrentLocked(
+                    link: url,
+                    title: title,
+                    requestHeadersJson: requestHeadersJson
+                )
             }
             // AVPlayer can consume ordinary HTTP(S) media directly and the
             // playback item carries its request headers. Only sources that
@@ -55,24 +59,37 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
     private func startLocalProxyLocked(url: String, requestHeadersJson: String) -> URL? {
         guard let response = withCStrings(url, requestHeadersJson, operation: fluxaStreamingStartLocalStreamServer),
               let server = try? JSONDecoder().decode(LocalServerResponse.self, from: Data(response.utf8)),
-              let proxyUrl = URL(string: server.url) else {
+              !server.id.isEmpty else {
             return nil
         }
         localServerId = server.id
+        guard let proxyUrl = URL(string: server.url) else {
+            stopLocked()
+            return nil
+        }
         if shouldRemuxToFmp4(url) {
             return proxyUrl.appendingPathComponent("remux")
         }
         return proxyUrl
     }
 
-    private func startTorrentLocked(link: String, title: String) -> URL? {
+    private func startTorrentLocked(
+        link: String,
+        title: String,
+        requestHeadersJson: String
+    ) -> URL? {
         let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
             .first?
             .appendingPathComponent("fluxa_torrent_cache", isDirectory: true)
             .path ?? ""
         guard let response = withCStrings(cacheDirectory, "", operation: fluxaStreamingStartTorrentServer),
-              let server = try? JSONDecoder().decode(TorrentServerResponse.self, from: Data(response.utf8)),
+              !response.isEmpty else {
+            return nil
+        }
+        torrentServerRunning = true
+        guard let server = try? JSONDecoder().decode(TorrentServerResponse.self, from: Data(response.utf8)),
               var components = URLComponents(string: server.url) else {
+            stopLocked()
             return nil
         }
         components.path = components.path.appending("/stream/fname")
@@ -80,22 +97,29 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
             URLQueryItem(name: "link", value: link),
             URLQueryItem(name: "title", value: title)
         ]
-        torrentServerRunning = true
-        guard let torrentURL = components.url else { return nil }
+        guard let torrentURL = components.url else {
+            stopLocked()
+            return nil
+        }
 
         // The torrent endpoint is a local HTTP source, so route it through the
         // same proxy/remux implementation used for direct Matroska streams.
         // This also gives FFmpeg a usable HTTP fallback instead of a magnet URI.
         guard let response = withCStrings(
             torrentURL.absoluteString,
-            "{}",
+            requestHeadersJson,
             operation: fluxaStreamingStartLocalStreamServer
         ),
         let local = try? JSONDecoder().decode(LocalServerResponse.self, from: Data(response.utf8)),
-        let proxyURL = URL(string: local.url) else {
-            return torrentURL
+        !local.id.isEmpty else {
+            stopLocked()
+            return nil
         }
         localServerId = local.id
+        guard let proxyURL = URL(string: local.url) else {
+            stopLocked()
+            return nil
+        }
         return proxyURL.appendingPathComponent("remux")
     }
 

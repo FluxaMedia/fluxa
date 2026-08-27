@@ -394,6 +394,9 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     }
 
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        if activePlayerController?.isPictureInPictureActive == true {
+            return
+        }
         activePlayer?.stop()
         watchBridge.leaveRoom()
         watchBridge.detachPlayback()

@@ -24,6 +24,10 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
     private var hideTask: Task<Void, Never>?
     #if os(iOS)
     private var pictureInPictureController: AVPictureInPictureController?
+
+    var isPictureInPictureActive: Bool {
+        pictureInPictureController?.isPictureInPictureActive == true
+    }
     #endif
 
     init(player: FluxaPlayer, title: String) {
@@ -50,6 +54,7 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
         player.attach(to: videoView)
         #if os(iOS)
         pictureInPictureController = player.makePictureInPictureController()
+        pictureInPictureController?.delegate = self
         #endif
 
         let overlay = FluxaApplePlayerOverlay(
@@ -118,6 +123,20 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
 
     deinit { hideTask?.cancel() }
 }
+
+#if os(iOS)
+extension FluxaAppleCustomPlayerViewController: AVPictureInPictureControllerDelegate {
+    func pictureInPictureControllerDidStopPictureInPicture(
+        _ pictureInPictureController: AVPictureInPictureController
+    ) {
+        // Returning from PiP must leave the in-app player running. Only tear
+        // it down when the custom controller was dismissed while PiP owned
+        // the playback surface.
+        guard presentingViewController == nil, viewIfLoaded?.window == nil else { return }
+        player.stop()
+    }
+}
+#endif
 
 private struct FluxaApplePlayerOverlay: View {
     let title: String
