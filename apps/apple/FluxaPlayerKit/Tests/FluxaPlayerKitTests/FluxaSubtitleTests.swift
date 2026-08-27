@@ -40,3 +40,21 @@ func parsesSrtCommaMillisecondsAndSkipsInvalidCues() {
         FluxaSubtitleCue(start: 5, end: 6, text: "Second line")
     ])
 }
+
+@Test
+func skipsWebVttNoteBlocksThatContainTimingMarkers() {
+    let source = """
+    WEBVTT
+
+    NOTE
+    this note mentions --> but is not a cue
+
+    00:00:01.000 --> 00:00:02.000
+    Actual cue
+    """
+
+    let cues = FluxaSubtitleParser.parse(Data(source.utf8))
+    #expect(cues == [
+        FluxaSubtitleCue(start: 1, end: 2, text: "Actual cue")
+    ])
+}

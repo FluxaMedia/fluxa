@@ -23,8 +23,17 @@ enum FluxaSubtitleParser {
 
         while index < lines.count {
             let line = lines[index].trimmingCharacters(in: .whitespaces)
-            if line.isEmpty || line.uppercased() == "WEBVTT" || line.hasPrefix("NOTE") {
+            if line.isEmpty || line.uppercased() == "WEBVTT" {
                 index += 1
+                continue
+            }
+            let uppercasedLine = line.uppercased()
+            if uppercasedLine == "NOTE" || uppercasedLine.hasPrefix("NOTE ") {
+                index += 1
+                while index < lines.count,
+                      !lines[index].trimmingCharacters(in: .whitespaces).isEmpty {
+                    index += 1
+                }
                 continue
             }
 
