@@ -22,6 +22,8 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     override init() {
         super.init()
         player.automaticallyWaitsToMinimizeStalling = true
+        player.allowsExternalPlayback = true
+        player.usesExternalPlaybackWhileExternalScreenIsActive = true
         playerLayer.player = player
         playerLayer.videoGravity = .resizeAspect
     }
@@ -228,7 +230,10 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
             startupTimeoutTask?.cancel()
             startupTimeoutTask = nil
             let reason = item.error?.localizedDescription ?? "Unknown playback error"
-            state.phase = .failed(FluxaPlaybackFailure(reason: reason, isRecoverable: true))
+            // AVPlayer has rejected this source. The Apple surface has no
+            // software-video fallback, so callers must choose another source
+            // or report a terminal playback failure.
+            state.phase = .failed(FluxaPlaybackFailure(reason: reason, isRecoverable: false))
             state.isBuffering = false
             publishState()
         default:

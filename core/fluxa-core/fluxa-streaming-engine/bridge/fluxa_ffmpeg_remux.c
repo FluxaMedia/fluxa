@@ -355,6 +355,9 @@ int fluxa_ffmpeg_remux_url(
         result = result < 0 ? result : AVERROR(EINVAL);
         goto cleanup;
     }
+    if (input->metadata) {
+        av_dict_copy(&output->metadata, input->metadata, 0);
+    }
 
     output_io = avio_alloc_context(
         av_malloc(64 * 1024),
