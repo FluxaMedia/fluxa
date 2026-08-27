@@ -58,7 +58,6 @@ fn build_macos_avplayer_bridge() {
         "5",
         "-emit-library",
         "-static",
-        "-static-stdlib",
         "-module-name",
         "FluxaDesktopPlayer",
         "-target",
