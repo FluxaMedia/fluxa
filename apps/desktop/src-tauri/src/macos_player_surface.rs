@@ -859,9 +859,7 @@ unsafe fn create_render_subview(
         }
     }
     msg1_usize(view, "setAutoresizingMask:", 2 | 16);
-    if mode != "opaque" {
-        make_webviews_transparent(parent.0);
-    }
+    make_webviews_transparent(parent.0);
 
     // Hidden until playback starts.
     msg1_bool(view, "setHidden:", 1);
