@@ -53,10 +53,14 @@ private final class FluxaDesktopPlayerHandle {
 
 private func onMain<T>(_ body: @MainActor () throws -> T) rethrows -> T {
     if Thread.isMainThread {
-        return try MainActor.assumeIsolated(body)
+        return try MainActor.assumeIsolated {
+            try body()
+        }
     }
     return try DispatchQueue.main.sync {
-        try MainActor.assumeIsolated(body)
+        try MainActor.assumeIsolated {
+            try body()
+        }
     }
 }
 
