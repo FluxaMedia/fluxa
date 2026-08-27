@@ -15,9 +15,10 @@ CI. FFmpeg is not a
 second player: there is no software video renderer or playback fallback in
 Player Kit.
 
-The latest pushed Player Kit CI run is commit `70639d8` and passed after the
-AVPlayer-only cleanup. The local machine has no Swift/Xcode toolchain, so Apple
-builds are validated in GitHub Actions.
+The latest completed Player Kit CI run is commit `70639d8` and passed after the
+AVPlayer-only cleanup. The current Apple playback validation runs are tracking
+the linked bridge and tvOS detail route on `e0d1e4f`. The local machine has no
+Swift/Xcode toolchain, so Apple builds are validated in GitHub Actions.
 
 ## Already verified
 
@@ -106,11 +107,11 @@ teardown.
   and the existing playback item preserves resume position.
 - Still validate on-device with MKV and non-MKV torrent files, including seek
   and remux rejection behavior.
-- tvOS catalog cards now resolve direct streams with request headers and
-  external subtitles, offer all returned stream options, and enter the shared
-  `FluxaPlayer` surface. A full detail route is still required before tvOS
-  playback validation is complete. Magnet and `.torrent` streams now use the
-  tvOS torrent service plus the same local remux path.
+- tvOS catalog cards now open a detail route that loads metadata, lists series
+  episodes, resolves direct streams with request headers and external
+  subtitles, offers all returned stream options, and enters the shared
+  `FluxaPlayer` surface. Magnet and `.torrent` streams now use the tvOS torrent
+  service plus the same local remux path. On-device validation remains.
 
 ### 6. Finish Apple integration verification
 
