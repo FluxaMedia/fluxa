@@ -152,7 +152,45 @@ pub async fn player_load(
     log::info!("player_load: url={url} start_at={start_at:?} total_duration={total_duration:?}");
 
     let pending_headers = std::mem::take(&mut *state.pending_stream_headers.lock().unwrap());
-    let url = if !pending_headers.is_empty()
+    let engine = playback_engine::read_player_engine(&app);
+    *state.active_player_engine.lock().unwrap() = engine;
+
+    #[cfg(target_os = "macos")]
+    let mut avplayer_adapter_applied = false;
+
+    #[cfg(target_os = "macos")]
+    if engine == PlayerEngine::AvPlayer {
+        let headers = pending_headers.iter().cloned().collect::<std::collections::HashMap<_, _>>();
+        let needs_adapter = !headers.is_empty() || avplayer_needs_remux(&url);
+        if needs_adapter && (url.starts_with("http://") || url.starts_with("https://")) {
+            if let Some(previous_id) = state.avplayer_local_stream_id.lock().unwrap().take() {
+                let _ = fluxa_streaming_engine::stop_local_stream_server(&previous_id);
+            }
+            let headers_json = serde_json::to_string(&headers).unwrap_or_else(|_| "{}".to_string());
+            let local = fluxa_streaming_engine::start_local_stream_server(&url, &headers_json, 0)
+                .ok_or_else(|| "could not start AVPlayer local stream adapter".to_string())?;
+            let payload: serde_json::Value = serde_json::from_str(&local)
+                .map_err(|error| format!("invalid AVPlayer local stream response: {error}"))?;
+            let id = payload.get("id").and_then(serde_json::Value::as_str)
+                .ok_or_else(|| "AVPlayer local stream response has no id".to_string())?;
+            let base_url = payload.get("url").and_then(serde_json::Value::as_str)
+                .ok_or_else(|| "AVPlayer local stream response has no url".to_string())?;
+            *state.avplayer_local_stream_id.lock().unwrap() = Some(id.to_string());
+            url = if avplayer_needs_remux(&url) {
+                format!("{base_url}/remux")
+            } else {
+                base_url.to_string()
+            };
+            avplayer_adapter_applied = true;
+            log::info!("player_load: AVPlayer adapter url={url}");
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    let adapter_applied = avplayer_adapter_applied;
+    #[cfg(not(target_os = "macos"))]
+    let adapter_applied = false;
+    let url = if !adapter_applied && !pending_headers.is_empty()
         && (url.starts_with("http://") || url.starts_with("https://"))
     {
         match crate::stream_proxy::register(&stream_proxy_state, url.clone(), pending_headers).await
@@ -171,8 +209,6 @@ pub async fn player_load(
 
     state.thumbnail.lock().unwrap().url = Some(url.clone());
 
-    let engine = playback_engine::read_player_engine(&app);
-    *state.active_player_engine.lock().unwrap() = engine;
     #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
     if engine == PlayerEngine::Vlc {
         {
@@ -271,6 +307,12 @@ pub async fn player_load(
         .as_mut()
         .ok_or_else(|| "player renderer is not initialized".to_string())?
         .load(&url, start_at)
+}
+
+#[cfg(target_os = "macos")]
+fn avplayer_needs_remux(url: &str) -> bool {
+    let path = url.split(['?', '#']).next().unwrap_or(url).to_ascii_lowercase();
+    path.ends_with(".mkv") || path.ends_with(".matroska")
 }
 
 #[tauri::command]

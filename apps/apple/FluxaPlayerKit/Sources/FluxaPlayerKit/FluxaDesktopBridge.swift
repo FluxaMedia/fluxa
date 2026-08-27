@@ -10,6 +10,7 @@ import WebKit
 private final class FluxaDesktopPlayerHandle {
     let player: FluxaPlayer
     let surface: FluxaPlayerSurfaceView
+    let snapshot = FluxaDesktopPlayerSnapshot()
 
     init(parentPointer: UnsafeMutableRawPointer, width: Double, height: Double) {
         let parent = Unmanaged<NSView>.fromOpaque(parentPointer).takeUnretainedValue()
@@ -33,6 +34,13 @@ private final class FluxaDesktopPlayerHandle {
 
         self.surface = surface
         player = FluxaPlayer()
+        let snapshot = self.snapshot
+        player.onStateChange = { [weak snapshot] state in
+            snapshot?.update(state)
+        }
+        player.onTracksChange = { [weak snapshot] tracks in
+            snapshot?.updateTracks(tracks)
+        }
     }
 
     func load(url: String, title: String, start: Double, subtitles: [URL] = []) throws {
@@ -48,6 +56,74 @@ private final class FluxaDesktopPlayerHandle {
             subtitleUrls: subtitles
         ))
         player.play()
+    }
+}
+
+/// Thread-safe state mirror used by Rust telemetry polling. Reading AVPlayer
+/// state synchronously on the main actor can deadlock with WebKit's custom
+/// scheme handler, which may itself be waiting on a Tokio task.
+private final class FluxaDesktopPlayerSnapshot: @unchecked Sendable {
+    private let lock = NSLock()
+    private var phaseValue: Int32 = 0
+    private var positionValue = 0.0
+    private var durationValue = 0.0
+    private var tracksValue = "[]"
+
+    func update(_ state: FluxaPlaybackState) {
+        let phase: Int32
+        switch state.phase {
+        case .idle: phase = 0
+        case .loading: phase = 1
+        case .playing: phase = 2
+        case .paused: phase = 3
+        case .ended: phase = 4
+        case .failed: phase = 5
+        }
+        lock.lock()
+        phaseValue = phase
+        positionValue = state.position
+        durationValue = state.duration
+        lock.unlock()
+    }
+
+    func updateTracks(_ tracks: [FluxaTrack]) {
+        let values: [[String: Any]] = tracks.map { track in
+            [
+                "id": track.id,
+                "label": track.label,
+                "selected": false,
+                "lang": track.languageCode ?? "",
+                "source": NSNull(),
+                "external": track.kind == .subtitle,
+                "format": NSNull(),
+            ]
+        }
+        guard JSONSerialization.isValidJSONObject(values),
+              let data = try? JSONSerialization.data(withJSONObject: values),
+              let json = String(data: data, encoding: .utf8) else { return }
+        lock.lock()
+        tracksValue = json
+        lock.unlock()
+    }
+
+    func phase() -> Int32 {
+        lock.lock(); defer { lock.unlock() }
+        return phaseValue
+    }
+
+    func position() -> Double {
+        lock.lock(); defer { lock.unlock() }
+        return positionValue
+    }
+
+    func duration() -> Double {
+        lock.lock(); defer { lock.unlock() }
+        return durationValue
+    }
+
+    func tracksJSON() -> String {
+        lock.lock(); defer { lock.unlock() }
+        return tracksValue
     }
 }
 
@@ -194,49 +270,25 @@ public func fluxaDesktopAvplayerHide(_ pointer: UnsafeMutableRawPointer?) {
 @_cdecl("fluxa_desktop_avplayer_position")
 public func fluxaDesktopAvplayerPosition(_ pointer: UnsafeMutableRawPointer?) -> Double {
     guard let handle = handle(pointer) else { return 0 }
-    return (try? onMain { handle.player.state.position }) ?? 0
+    return handle.snapshot.position()
 }
 
 @_cdecl("fluxa_desktop_avplayer_duration")
 public func fluxaDesktopAvplayerDuration(_ pointer: UnsafeMutableRawPointer?) -> Double {
     guard let handle = handle(pointer) else { return 0 }
-    return (try? onMain { handle.player.state.duration }) ?? 0
+    return handle.snapshot.duration()
 }
 
 @_cdecl("fluxa_desktop_avplayer_phase")
 public func fluxaDesktopAvplayerPhase(_ pointer: UnsafeMutableRawPointer?) -> Int32 {
     guard let handle = handle(pointer) else { return 0 }
-    return (try? onMain {
-        switch handle.player.state.phase {
-        case .idle: return 0
-        case .loading: return 1
-        case .playing: return 2
-        case .paused: return 3
-        case .ended: return 4
-        case .failed: return 5
-        }
-    }) ?? 0
+    return handle.snapshot.phase()
 }
 
 @_cdecl("fluxa_desktop_avplayer_tracks_json")
 public func fluxaDesktopAvplayerTracksJSON(_ pointer: UnsafeMutableRawPointer?) -> UnsafeMutablePointer<CChar>? {
     guard let handle = handle(pointer) else { return strdup("[]") }
-    let json = (try? onMain {
-        let values: [[String: Any]] = handle.player.tracks.map { track in
-            [
-                "id": track.id,
-                "label": track.label,
-                "selected": false,
-                "lang": track.languageCode ?? "",
-                "source": NSNull(),
-                "external": track.kind == .subtitle,
-                "format": NSNull(),
-            ]
-        }
-        let data = try JSONSerialization.data(withJSONObject: values)
-        return String(data: data, encoding: .utf8) ?? "[]"
-    }) ?? "[]"
-    return strdup(json)
+    return strdup(handle.snapshot.tracksJSON())
 }
 
 @_cdecl("fluxa_desktop_avplayer_free_string")

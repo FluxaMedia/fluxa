@@ -11,6 +11,7 @@ public final class FluxaPlayer: ObservableObject {
     @Published public private(set) var tracks: [FluxaTrack] = []
     @Published public private(set) var subtitleText: String?
     public var onStateChange: ((FluxaPlaybackState) -> Void)?
+    public var onTracksChange: (([FluxaTrack]) -> Void)?
 
     public private(set) var item: FluxaPlaybackItem?
 
@@ -241,5 +242,6 @@ extension FluxaPlayer: FluxaPlaybackEngineDelegate {
     func engine(_ engine: FluxaPlaybackEngine, didUpdate tracks: [FluxaTrack]) {
         guard engine === self.engine else { return }
         self.tracks = tracks + externalSubtitleTracks()
+        onTracksChange?(self.tracks)
     }
 }

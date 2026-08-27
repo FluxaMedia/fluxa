@@ -166,6 +166,8 @@ pub struct DesktopState {
     pub main_window_size: std::sync::atomic::AtomicU64,
     pub downloads: downloads::DownloadsState,
     pub pending_stream_headers: Mutex<Vec<(String, String)>>,
+    #[cfg(target_os = "macos")]
+    pub avplayer_local_stream_id: Mutex<Option<String>>,
     pub torrent: Mutex<TorrentRuntimeState>,
     pub close_flush_done: AtomicBool,
     pub sleep_inhibitor: Mutex<sleep_inhibitor::SleepInhibitor>,
@@ -194,6 +196,8 @@ impl Default for DesktopState {
             main_window_size: std::sync::atomic::AtomicU64::new(0),
             downloads: downloads::DownloadsState::default(),
             pending_stream_headers: Mutex::new(Vec::new()),
+            #[cfg(target_os = "macos")]
+            avplayer_local_stream_id: Mutex::new(None),
             torrent: Mutex::new(TorrentRuntimeState::default()),
             close_flush_done: AtomicBool::new(false),
             sleep_inhibitor: Mutex::new(sleep_inhibitor::SleepInhibitor::default()),

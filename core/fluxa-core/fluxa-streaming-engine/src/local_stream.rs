@@ -642,7 +642,7 @@ fn shared_local_port(preferred_port: u16) -> Result<u16, String> {
         .clone()
 }
 
-pub(crate) fn start_local_stream_server(
+pub fn start_local_stream_server(
     target_url: &str,
     headers_json: &str,
     preferred_port: i32,
@@ -672,7 +672,7 @@ pub(crate) fn start_local_stream_server(
     .ok()
 }
 
-pub(crate) fn stop_local_stream_server(id: &str) -> bool {
+pub fn stop_local_stream_server(id: &str) -> bool {
     if crate::dv_rewrite::remove_shared_dv_config(id) {
         return true;
     }
