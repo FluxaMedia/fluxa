@@ -39,3 +39,6 @@ serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "io-util", "sync", "process", "fs", "macros"], optional = true }
 tokio-util = { version = "0.7", features = ["io", "rt"], optional = true }
 url = { version = "2", optional = true }
+
+[build-dependencies]
+cc = "1.2"
