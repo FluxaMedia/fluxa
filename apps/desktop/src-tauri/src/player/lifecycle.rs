@@ -23,32 +23,34 @@ pub async fn player_init(app: AppHandle, state: State<'_, DesktopState>) -> Resu
         }
     }
 
-    let app_for_headless = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        let state = app_for_headless.state::<DesktopState>();
-        if state.player_mpv_client.lock().unwrap().is_none() {
-            match mpv_render::MpvClientHandle::new_with_scripts(crate::player::mpv_script_paths(
-                &app_for_headless,
-            )) {
-                Ok((client, render)) => {
-                    *state.player_render_state.lock().unwrap() = Some(render);
-                    *state.player_mpv_client.lock().unwrap() = Some(client);
-                }
-                Err(error) => {
-                    log::error!("player_init: MpvClientHandle::new failed: {error}");
-                    crate::diagnostics::report(
-                        &app_for_headless,
-                        format!("MpvClientHandle::new failed: {error}"),
-                        sentry::Level::Error,
-                    );
-                    return Err(error);
+    if playback_engine::read_player_engine(&app) != PlayerEngine::AvPlayer {
+        let app_for_headless = app.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let state = app_for_headless.state::<DesktopState>();
+            if state.player_mpv_client.lock().unwrap().is_none() {
+                match mpv_render::MpvClientHandle::new_with_scripts(
+                    crate::player::mpv_script_paths(&app_for_headless),
+                ) {
+                    Ok((client, render)) => {
+                        *state.player_render_state.lock().unwrap() = Some(render);
+                        *state.player_mpv_client.lock().unwrap() = Some(client);
+                    }
+                    Err(error) => {
+                        log::error!("player_init: MpvClientHandle::new failed: {error}");
+                        crate::diagnostics::report(
+                            &app_for_headless,
+                            format!("MpvClientHandle::new failed: {error}"),
+                            sentry::Level::Error,
+                        );
+                        return Err(error);
+                    }
                 }
             }
-        }
-        Ok(())
-    })
-    .await
-    .map_err(|e| e.to_string())??;
+            Ok(())
+        })
+        .await
+        .map_err(|e| e.to_string())??;
+    }
 
     log::info!("player_init: ok");
     start_telemetry_publisher(app, &state);
@@ -104,6 +106,19 @@ fn start_telemetry_publisher(app: AppHandle, state: &DesktopState) {
                                 position_due.then(|| status.position_status()),
                             )
                         })
+                    })
+                    .unwrap_or((None, None)),
+                PlayerEngine::AvPlayer => state
+                    .native_player_surface
+                    .lock()
+                    .unwrap()
+                    .as_ref()
+                    .and_then(|surface| surface.status().ok())
+                    .map(|status| {
+                        (
+                            Some(status.static_status()),
+                            position_due.then(|| status.position_status()),
+                        )
                     })
                     .unwrap_or((None, None)),
             };
@@ -246,9 +261,8 @@ pub async fn player_load(
     }
 
     if state.player_mpv_client.lock().unwrap().is_none() {
-        let (client, render) = mpv_render::MpvClientHandle::new_with_scripts(
-            crate::player::mpv_script_paths(&app),
-        )?;
+        let (client, render) =
+            mpv_render::MpvClientHandle::new_with_scripts(crate::player::mpv_script_paths(&app))?;
         *state.player_render_state.lock().unwrap() = Some(render);
         *state.player_mpv_client.lock().unwrap() = Some(client);
     }

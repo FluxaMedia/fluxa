@@ -8,7 +8,7 @@ use crate::libvlc_render;
 use crate::mpv_render;
 use crate::playback_engine::{self, PlaybackEngine, PlayerEngine};
 #[cfg(target_os = "macos")]
-use crate::render_backend::{read_render_backend, RenderBackend};
+use crate::render_backend::{RenderBackend, read_render_backend};
 use fluxa_core::FluxaCore;
 use serde_json::{Value, json};
 use std::path::PathBuf;
@@ -20,6 +20,8 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 #[cfg(target_os = "linux")]
 use crate::linux_player_surface;
+#[cfg(target_os = "macos")]
+use crate::macos_avplayer;
 #[cfg(target_os = "macos")]
 use crate::macos_player_surface;
 #[cfg(target_os = "windows")]
@@ -158,7 +160,9 @@ pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
 ) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
-    cache_native_player_surface(state, || windows_player_surface::install(app_handle.clone()))
+    cache_native_player_surface(state, || {
+        windows_player_surface::install(app_handle.clone())
+    })
 }
 
 #[cfg(target_os = "macos")]
@@ -166,6 +170,29 @@ pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
 ) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
+    if playback_engine::read_player_engine(app_handle) == PlayerEngine::AvPlayer {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
+            if surface.backend_name() == "avplayer" {
+                return Some(surface);
+            }
+            let old = state.native_player_surface.lock().unwrap().take();
+            if let Some(old) = old {
+                let _ = old.shutdown();
+            }
+        }
+        return match macos_avplayer::install(app_handle.clone()) {
+            Ok(surface) => {
+                let surface: std::sync::Arc<dyn crate::player_surface::PlayerSurface> =
+                    std::sync::Arc::new(surface);
+                *state.native_player_surface.lock().unwrap() = Some(surface.clone());
+                Some(surface)
+            }
+            Err(error) => {
+                log::warn!("FluxaPlayerKit AVPlayer surface was not installed: {error}");
+                None
+            }
+        };
+    }
     let requested = read_render_backend(app_handle);
     if let Some(surface) = state.native_player_surface.lock().unwrap().clone() {
         if surface.backend_name() == requested.name() {
@@ -338,6 +365,9 @@ where
                     return Ok(None);
                 }
             }
+            PlayerEngine::AvPlayer => {
+                return Err("AVPlayer uses its native surface directly".to_string());
+            }
         }
         std::thread::sleep(Duration::from_millis(5));
     }
@@ -370,6 +400,9 @@ where
                     }
                     return Ok(None);
                 }
+            }
+            PlayerEngine::AvPlayer => {
+                return Err("AVPlayer uses its native surface directly".to_string());
             }
         }
         std::thread::sleep(Duration::from_millis(5));

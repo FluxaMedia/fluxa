@@ -3,13 +3,13 @@ mod artwork;
 mod cast;
 mod cast_proxy;
 mod chromecast;
-mod fcast;
 mod core_commands;
 mod custom_fonts;
 mod diagnostics;
 mod discord_presence;
 mod downloads;
 mod external_player;
+mod fcast;
 mod libvlc_render;
 #[cfg(target_os = "linux")]
 mod linux_player_surface;
@@ -18,6 +18,8 @@ mod linux_vulkan;
 #[cfg(target_os = "linux")]
 mod linux_wayland_subsurface;
 mod local_media;
+#[cfg(target_os = "macos")]
+mod macos_avplayer;
 #[cfg(target_os = "macos")]
 pub mod macos_player_surface;
 #[cfg(target_os = "macos")]
@@ -29,10 +31,9 @@ mod net_guard;
 mod oauth;
 mod oauth_callbacks;
 mod playback_engine;
+mod player;
 mod player_surface;
 mod player_surface_events;
-mod vulkan;
-mod player;
 mod plugin_executor;
 mod poster_cache;
 mod render_backend;
@@ -43,6 +44,7 @@ mod stream_proxy;
 mod torrent_stream;
 mod torrent_transport;
 mod trailer_proxy;
+mod vulkan;
 #[cfg(target_os = "windows")]
 mod windows_d3d11;
 #[cfg(target_os = "windows")]
@@ -55,12 +57,12 @@ use airplay::*;
 use cast::*;
 use cast_proxy::*;
 use chromecast::*;
-use fcast::*;
 use core_commands::*;
 use custom_fonts::*;
 use discord_presence::*;
 use downloads::*;
 use external_player::*;
+use fcast::*;
 use local_media::*;
 use oauth::*;
 use oauth_callbacks::{PendingOAuthCallbacks, queue_oauth_callback, take_oauth_callback};
@@ -153,8 +155,7 @@ pub struct DesktopState {
     pub player_renderer_vlc: Mutex<Option<libvlc_render::LibvlcPlayer>>,
     pub active_player_engine: Mutex<playback_engine::PlayerEngine>,
     pub pending_player_options: Mutex<Vec<(String, String)>>,
-    pub native_player_surface:
-        Mutex<Option<std::sync::Arc<dyn player_surface::PlayerSurface>>>,
+    pub native_player_surface: Mutex<Option<std::sync::Arc<dyn player_surface::PlayerSurface>>>,
     pub player_overlay: Mutex<PlayerOverlayState>,
     pub thumbnail: Mutex<ThumbnailRuntimeState>,
     pub pending_hide: AtomicBool,
@@ -208,7 +209,9 @@ fn start_companion_server() {
     tauri::async_runtime::spawn(async {
         match fluxa_streaming_engine::companion_server::serve(COMPANION_PORT).await {
             Ok(()) => log::info!("companion server stopped"),
-            Err(error) => log::warn!("companion server unavailable on 127.0.0.1:{COMPANION_PORT}: {error}"),
+            Err(error) => {
+                log::warn!("companion server unavailable on 127.0.0.1:{COMPANION_PORT}: {error}")
+            }
         }
     });
 }

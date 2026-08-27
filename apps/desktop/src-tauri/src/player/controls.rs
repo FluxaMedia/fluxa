@@ -15,6 +15,11 @@ pub fn player_add_subtitle(
     title: Option<String>,
     language: Option<String>,
 ) -> Result<(), String> {
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::AvPlayer {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+            return surface.add_subtitle(url, title, language);
+        }
+    }
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             return surface.add_subtitle(url, title, language);
@@ -53,6 +58,14 @@ pub fn player_set_anime4k_enabled(
     quality: Option<String>,
     mode: Option<String>,
 ) -> Result<(), String> {
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::AvPlayer {
+        state.player_overlay.lock().unwrap().anime4k_enabled = false;
+        let _ = app.emit(
+            "player-anime4k-state",
+            serde_json::json!({ "enabled": false }),
+        );
+        return Ok(());
+    }
     let commands: Vec<Vec<String>> = if enabled {
         let chain_path = resolve_anime4k_chain(
             Some(&app),
@@ -173,6 +186,11 @@ pub fn player_command(
         state.player_overlay.lock().unwrap().eof_next_fired = true;
     }
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+            return surface.command(command);
+        }
+    }
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::AvPlayer {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             return surface.command(command);
         }

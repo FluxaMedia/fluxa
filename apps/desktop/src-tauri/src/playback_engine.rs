@@ -70,6 +70,7 @@ impl PlaybackEngine for MpvClientHandle {
 pub enum PlayerEngine {
     Mpv,
     Vlc,
+    AvPlayer,
 }
 
 pub fn read_player_engine(app: &tauri::AppHandle) -> PlayerEngine {
@@ -77,6 +78,7 @@ pub fn read_player_engine(app: &tauri::AppHandle) -> PlayerEngine {
     let state = app.state::<crate::DesktopState>();
     match crate::storage::read_pref_field(state, "playerEngine").as_deref() {
         Some("libvlc") => PlayerEngine::Vlc,
+        Some("avplayer") if cfg!(target_os = "macos") => PlayerEngine::AvPlayer,
         _ => PlayerEngine::Mpv,
     }
 }

@@ -136,12 +136,18 @@ teardown.
   subtitles, teardown, and resume on real hardware where simulator behavior is
   insufficient.
 
-### 7. Desktop/Tauri integration (later milestone)
+### 7. Desktop/Tauri macOS AVPlayer integration
 
-- Integrate the Player Kit surface into macOS/Tauri only after the Apple kit
-  and fallback behavior are stable.
-- Keep existing desktop mpv/libvlc paths intact until the new path is proven.
-- Do not modify `src-tauri` as part of the current Apple-only milestone.
+- The macOS desktop shell now has a native `FluxaPlayerKit` bridge selected by
+  the `AVPlayer` player-engine setting. It hosts `AVPlayerLayer` in a native
+  `NSView` behind the existing React overlay.
+- Existing mpv/libVLC surfaces remain separate and unchanged; selecting either
+  engine does not load the AVPlayer bridge.
+- The bridge forwards load, play/pause, seek, rate, volume, track selection,
+  external subtitles, status polling, and teardown through a C ABI handle.
+- Remaining validation is on a macOS build: universal-arch Swift linking,
+  native surface placement, HDR/Dolby Vision, track/subtitle behavior, and
+  error/teardown behavior with representative media.
 
 ## Validation commands
 

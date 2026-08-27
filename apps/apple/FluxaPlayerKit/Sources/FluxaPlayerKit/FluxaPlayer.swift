@@ -133,6 +133,15 @@ public final class FluxaPlayer: ObservableObject {
         tracks.filter { $0.kind == kind }
     }
 
+    public func addExternalSubtitle(_ url: URL) {
+        guard !externalSubtitleURLs.contains(url) else { return }
+        externalSubtitleURLs.append(url)
+        tracks = tracks.filter { !$0.id.hasPrefix("external.subtitle.") } + externalSubtitleTracks()
+        embeddedSubtitlesSuppressed = true
+        engine?.selectTrack(nil, kind: .subtitle)
+        loadExternalSubtitle(at: externalSubtitleURLs.count - 1)
+    }
+
     public func stop() {
         subtitleTask?.cancel()
         subtitleTask = nil

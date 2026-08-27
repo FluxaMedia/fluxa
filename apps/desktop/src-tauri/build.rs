@@ -1,8 +1,115 @@
 fn main() {
     load_dot_env();
+    build_macos_avplayer_bridge();
     copy_bundled_libmpv_files();
     tauri_build::build()
 }
+
+#[cfg(target_os = "macos")]
+fn build_macos_avplayer_bridge() {
+    use std::process::Command;
+
+    let manifest = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let source_dir = manifest.join("../../../apps/apple/FluxaPlayerKit/Sources/FluxaPlayerKit");
+    let mut sources = Vec::new();
+    let mut pending = vec![source_dir.clone()];
+    while let Some(path) = pending.pop() {
+        let Ok(entries) = std::fs::read_dir(&path) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.extension().is_some_and(|ext| ext == "swift") {
+                println!("cargo:rerun-if-changed={}", path.display());
+                sources.push(path);
+            }
+        }
+    }
+    sources.sort();
+    if sources.is_empty() {
+        panic!("FluxaPlayerKit Swift sources were not found");
+    }
+
+    let target = std::env::var("TARGET").unwrap_or_default();
+    let swift_target = if target.starts_with("aarch64-") {
+        "arm64-apple-macosx13.0"
+    } else {
+        "x86_64-apple-macosx13.0"
+    };
+    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let profile_dir = out_dir
+        .ancestors()
+        .find(|path| {
+            path.file_name()
+                .is_some_and(|name| name == "debug" || name == "release")
+        })
+        .unwrap_or(out_dir.as_path())
+        .to_path_buf();
+    let lib_dir = profile_dir.join("lib");
+    std::fs::create_dir_all(&lib_dir).expect("create Swift bridge library directory");
+    let output = lib_dir.join("libFluxaDesktopPlayer.a");
+
+    let mut command = Command::new("swiftc");
+    command.args([
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-emit-library",
+        "-static",
+        "-static-stdlib",
+        "-module-name",
+        "FluxaDesktopPlayer",
+        "-target",
+        swift_target,
+        "-o",
+    ]);
+    command.arg(&output);
+    command.args([
+        "-Xlinker",
+        "-framework",
+        "-Xlinker",
+        "AVFoundation",
+        "-Xlinker",
+        "-framework",
+        "-Xlinker",
+        "AppKit",
+        "-Xlinker",
+        "-framework",
+        "-Xlinker",
+        "QuartzCore",
+        "-Xlinker",
+        "-framework",
+        "-Xlinker",
+        "Combine",
+        "-Xlinker",
+        "-framework",
+        "-Xlinker",
+        "WebKit",
+        "-Xlinker",
+        "-framework",
+        "-Xlinker",
+        "MediaPlayer",
+        "-Xlinker",
+        "-framework",
+        "-Xlinker",
+        "Foundation",
+    ]);
+    command.args(sources);
+    let status = command.status().expect("run swiftc for FluxaPlayerKit");
+    if !status.success() {
+        panic!("Swift AVPlayer bridge compilation failed");
+    }
+    println!("cargo:rustc-link-search=native={}", lib_dir.display());
+    println!("cargo:rustc-link-lib=static=FluxaDesktopPlayer");
+    for framework in ["AVFoundation", "AppKit", "QuartzCore", "Combine", "WebKit", "MediaPlayer"] {
+        println!("cargo:rustc-link-lib=framework={framework}");
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn build_macos_avplayer_bridge() {}
 
 fn load_dot_env() {
     // Pass .env values to the crate via cargo:rustc-env.

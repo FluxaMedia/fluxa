@@ -2260,7 +2260,7 @@
   "settings.render_backend": "Görüntü İşleme Motoru",
   "settings.render_backend_desc": "mpv'nin görüntüleri işlerken kullandığı GPU API'si. OpenGL kararlı varsayılan seçenektir; Vulkan/D3D11 deneyseldir ve etkili olması için uygulamanın yeniden başlatılması gerekir. D3D11 yalnızca Windows'ta geçerlidir.",
   "settings.player_engine": "Oynatıcı Motoru",
-  "settings.player_engine_desc": "Videoyu işleyecek oynatma motorunu seçin. libVLC, çalışma zamanı dosyaları kurulduğunda Fluxa içinde görüntülenir.",
+  "settings.player_engine_desc": "Videoyu oynatacak motoru seçin. AVPlayer macOS'ta sistem medya altyapısını kullanır.",
   "settings.preferred_player": "Oynatma hedefi",
   "settings.preferred_player_desc": "Videoyu Fluxa içinde oynatın veya her akışı harici oynatıcıya gönderin.",
   "settings.player_internal": "Fluxa oynatıcısı",

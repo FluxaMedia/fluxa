@@ -2,6 +2,11 @@ export function isBrowserTarget(): boolean {
   return import.meta.env.VITE_FLUXA_TARGET === 'web' || import.meta.env.VITE_FLUXA_TARGET === 'webos';
 }
 
+export function isMacDesktop(): boolean {
+  if (isBrowserTarget() || typeof navigator === 'undefined') return false;
+  return /Macintosh|Mac OS X/.test(navigator.userAgent) && navigator.maxTouchPoints <= 1;
+}
+
 export type UnlistenFn = () => void;
 
 export async function platformOpenExternal(url: string): Promise<void> {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { platformInvoke as invoke } from '../../platform/invoke';
-import { isBrowserTarget, platformOpenDialog } from '../../platform/browser';
+import { isBrowserTarget, isMacDesktop, platformOpenDialog } from '../../platform/browser';
 import { Type, X } from 'lucide-react';
 import { t } from '../../i18n';
 import {
@@ -29,6 +29,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
   const [scriptsDirCopied, setScriptsDirCopied] = useState(false);
   const [externalPlayers, setExternalPlayers] = useState<Array<{ id: string; label: string }>>([]);
   const browserTarget = isBrowserTarget();
+  const macDesktop = isMacDesktop();
   useEffect(() => {
     if (browserTarget) return;
     void invoke<Array<{ id: string; label: string }>>('external_player_options')
@@ -408,6 +409,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
           options={[
             { value: 'mpv', label: 'mpv' },
             { value: 'libvlc', label: 'libVLC' },
+            ...(macDesktop ? [{ value: 'avplayer', label: 'AVPlayer' }] : []),
           ]}
           selected={prefs.playerEngine}
           onSelect={(v) => setPref('playerEngine', v)}

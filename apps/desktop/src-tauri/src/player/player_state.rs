@@ -98,6 +98,9 @@ pub fn player_hide(app: AppHandle, state: State<DesktopState>) {
 
 #[tauri::command]
 pub fn player_title(state: State<DesktopState>) -> Option<String> {
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::AvPlayer {
+        return None;
+    }
     with_renderer_retry(&state, 20, |renderer| Ok(renderer.title()))
         .ok()
         .flatten()
@@ -109,6 +112,15 @@ pub fn player_status(
     app: AppHandle,
     state: State<DesktopState>,
 ) -> Result<mpv_render::PlayerStatus, String> {
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::AvPlayer {
+        return state
+            .native_player_surface
+            .lock()
+            .unwrap()
+            .as_ref()
+            .ok_or_else(|| "AVPlayer surface is not initialized".to_string())?
+            .status();
+    }
     if let Ok(mut guard) = state.player_renderer_vlc.try_lock() {
         if let Some(renderer) = guard.as_mut() {
             for event in renderer.poll_events() {
@@ -171,6 +183,15 @@ pub fn player_track_options(
     track_type: String,
 ) -> Vec<mpv_render::PlayerTrackOption> {
     log::warn!("player_track_options invoked: track_type={track_type:?}");
+    if *state.active_player_engine.lock().unwrap() == PlayerEngine::AvPlayer {
+        return state
+            .native_player_surface
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(|surface| surface.track_options(track_type).ok())
+            .unwrap_or_default();
+    }
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Mpv {
         if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
             return match surface.track_options(track_type.clone()) {
