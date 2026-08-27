@@ -145,7 +145,7 @@ pub async fn player_load(
     app: AppHandle,
     state: State<'_, DesktopState>,
     stream_proxy_state: State<'_, crate::stream_proxy::StreamProxyState>,
-    url: String,
+    mut url: String,
     start_at: Option<u64>,
     total_duration: Option<u64>,
 ) -> Result<(), String> {
