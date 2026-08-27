@@ -111,11 +111,7 @@ fn build_macos_avplayer_bridge() {
             .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
     });
     if let Some(swiftc) = swiftc {
-        let swift_root = std::path::Path::new(&swiftc)
-            .parent()
-            .and_then(std::path::Path::parent)
-            .map(|usr| usr.join("lib/swift"));
-        if let Some(swift_runtime) = swift_root.as_deref().and_then(find_swift_runtime_directory) {
+        for swift_runtime in swift_runtime_paths(&swiftc) {
             println!(
                 "cargo:rustc-link-arg=-Wl,-rpath,{}",
                 swift_runtime.display()
@@ -135,23 +131,31 @@ fn build_macos_avplayer_bridge() {
 }
 
 #[cfg(target_os = "macos")]
-fn find_swift_runtime_directory(root: &std::path::Path) -> Option<std::path::PathBuf> {
-    let entries = std::fs::read_dir(root).ok()?;
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path
-            .file_name()
-            .is_some_and(|name| name == "libswift_Concurrency.dylib")
-        {
-            return path.parent().map(std::path::Path::to_path_buf);
-        }
-        if path.is_dir() {
-            if let Some(found) = find_swift_runtime_directory(&path) {
-                return Some(found);
-            }
-        }
+fn swift_runtime_paths(swiftc: &str) -> Vec<std::path::PathBuf> {
+    let Ok(output) = std::process::Command::new(swiftc)
+        .args(["-print-target-info"])
+        .output()
+    else {
+        return Vec::new();
+    };
+    if !output.status.success() {
+        return Vec::new();
     }
-    None
+    let text = String::from_utf8_lossy(&output.stdout);
+    let Some(start) = text.find("\"runtimeLibraryPaths\"") else {
+        return Vec::new();
+    };
+    let Some(end) = text[start..].find(']') else {
+        return Vec::new();
+    };
+    let section = &text[start..start + end];
+    section
+        .split('"')
+        .skip(1)
+        .step_by(2)
+        .filter(|path| path.starts_with('/'))
+        .map(std::path::PathBuf::from)
+        .collect()
 }
 
 #[cfg(not(target_os = "macos"))]
