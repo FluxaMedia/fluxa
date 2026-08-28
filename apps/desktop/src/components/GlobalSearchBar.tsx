@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search as SearchIcon, X, Clock, Trash2 } from 'lucide-react';
+import { Search as SearchIcon, X, Clock } from 'lucide-react';
 import { t, getLanguage } from '../i18n';
-import { addRecentSearch, loadRecentSearches, clearRecentSearches, removeRecentSearch, type RecentSearch } from '../core/searchHistory';
+import { addRecentSearch, loadRecentSearches, removeRecentSearch, type RecentSearch } from '../core/searchHistory';
 import { addSearchPartialHandler } from '../core/catalogEffects';
 import { appPrefs, prefBool } from '../core/appPrefs';
 import { coreInvoke } from '../core/engine';
@@ -219,10 +219,6 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
     onSearch(recent.query);
   };
 
-  const handleClearHistory = () => {
-    void clearRecentSearches().then(setRecentSearches);
-  };
-
   const handleRemoveRecent = (value: string) => {
     void removeRecentSearch(value, recentSearches).then(setRecentSearches);
   };
@@ -340,18 +336,6 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
         >
           {!inputValue.trim() && recentSearches.length > 0 && (
             <>
-              <div style={{ ...dropdownStyles.sectionHeader, padding: '0.45rem 0.625rem 0.7rem' }}>
-                <button
-                  title={t('search.clear_history')}
-                  style={dropdownStyles.clearBtn}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleClearHistory();
-                  }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
               {recentSearches.map((item, index) => (
                 <div
                   key={item.query}
@@ -425,27 +409,6 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
 }
 
 const dropdownStyles: Record<string, React.CSSProperties> = {
-  sectionHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '0.75rem',
-    borderBottom: '1px solid rgba(255,255,255,0.09)',
-    marginBottom: '0.35rem',
-  },
-  clearBtn: {
-    background: 'transparent',
-    border: 'none',
-    borderRadius: 0,
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    padding: '0.25rem',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   row: {
     display: 'flex',
     alignItems: 'center',

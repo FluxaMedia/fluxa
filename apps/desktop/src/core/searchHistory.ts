@@ -15,7 +15,10 @@ export async function normalizeRecentSearches(value: unknown): Promise<RecentSea
 export async function loadRecentSearches(): Promise<RecentSearch[]> {
   try {
     const items = await storageRead<unknown[]>(RECENT_SEARCHES_KEY);
-    return await normalizeRecentSearches(items);
+    const normalized = await normalizeRecentSearches(items);
+    // Persist the normalized list so older installs are trimmed to the same limit.
+    void storageWrite(RECENT_SEARCHES_KEY, normalized);
+    return normalized;
   } catch {
     return [];
   }

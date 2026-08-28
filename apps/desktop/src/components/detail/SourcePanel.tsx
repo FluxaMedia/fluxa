@@ -531,29 +531,35 @@ export function InlineSourceList({
   const epNum = episode.episode ?? episode.number ?? '';
   const seasonNum = episode.season ?? 1;
   const epTitle = episode.title?.trim() || episode.name?.trim() || t('format.episode_number', epNum);
-  const episodeMeta = [
-    `${t('format.season_abbrev')}${seasonNum} ${t('format.episode_abbrev')}${epNum}`,
-    episode.released ? formatEpDate(episode.released) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const episodeLine = `${t('format.season_abbrev')}${seasonNum}, ${t('format.episode_abbrev')}${epNum}: ${epTitle}`;
+  const episodeDate = episode.released ? formatEpDate(episode.released) : '';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-      <div style={{ padding: '0.625rem 1rem 0.875rem', flexShrink: 0 }}>
-        <button style={EP.backToEpisodesBtn} onClick={onBack} title={t('auto.episodes')} aria-label={t('auto.episodes')}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-          </svg>
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
+      <div style={{ flexShrink: 0 }}>
+        <div style={EP.sourceHero}>
           {episode.thumbnail && (
-            <img src={episode.thumbnail} alt="" style={EP.sourceEpisodeThumb} onError={(e) => (e.currentTarget.style.display = 'none')} />
+            <img src={episode.thumbnail} alt="" style={EP.sourceHeroImage} onError={(e) => (e.currentTarget.style.display = 'none')} />
           )}
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={EP.sourceKicker}>{meta.name ?? meta.id}</p>
-            <h3 style={EP.sourceTitle}>{epTitle}</h3>
-            <p style={EP.sourceSubtitle}>{episodeMeta}</p>
+          <div style={EP.sourceHeroShade} />
+          <button style={{ ...EP.backToEpisodesBtn, ...EP.sourceHeroBack }} onClick={onBack} title={t('auto.episodes')} aria-label={t('auto.episodes')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+          </button>
+          <div style={EP.sourceHeroContent}>
+            {meta.logo ? (
+              <img
+                src={meta.logo}
+                alt={meta.name ?? meta.id}
+                style={EP.sourceSeriesLogo}
+                onError={(e) => (e.currentTarget.style.display = 'none')}
+              />
+            ) : (
+              <p style={EP.sourceKicker}>{meta.name ?? meta.id}</p>
+            )}
+            <p style={EP.sourceEpisodeLine}>{episodeLine}</p>
+            {episodeDate && <p style={EP.sourceSubtitle}>{episodeDate}</p>}
           </div>
         </div>
         {episode.overview && <p style={EP.sourceOverview}>{episode.overview}</p>}

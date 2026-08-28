@@ -202,6 +202,8 @@ pub(crate) fn merge_search_sources_json(sources_json: &str) -> Option<String> {
 }
 
 pub(crate) fn recent_searches_plan_json(request_json: &str) -> Option<String> {
+    const MAX_RECENT_SEARCHES: usize = 10;
+
     let request: Value = serde_json::from_str(request_json).ok()?;
     let operation = request
         .get("operation")
@@ -265,7 +267,7 @@ pub(crate) fn recent_searches_plan_json(request_json: &str) -> Option<String> {
                 None => json!({"query": query}),
             })
         })
-        .take(8)
+        .take(MAX_RECENT_SEARCHES)
         .collect::<Vec<_>>();
     serde_json::to_string(&normalized).ok()
 }
