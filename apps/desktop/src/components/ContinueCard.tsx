@@ -203,7 +203,7 @@ export function ContinueCard({
           <img
             ref={artworkImgRef}
             src={artworkSrc}
-            alt={meta.name}
+            alt={meta.name ?? ''}
             loading="lazy"
             decoding="async"
             draggable={false}
@@ -216,7 +216,7 @@ export function ContinueCard({
           />
         ) : (
           <div style={cwStyles.thumbPlaceholder}>
-            <span style={cwStyles.placeholderText}>{meta.name.slice(0, 1).toUpperCase()}</span>
+            <span style={cwStyles.placeholderText}>{String(meta.name ?? '').slice(0, 1).toUpperCase()}</span>
           </div>
         )}
         {isHorizontal && <div style={cwStyles.landscapeShade} />}

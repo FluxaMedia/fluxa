@@ -19,7 +19,7 @@ export const WatchProviderLogo = React.memo(function WatchProviderLogo({
   onClick,
   size = '3.25rem',
 }: {
-  name: string;
+  name: string | null | undefined;
   logo?: string;
   onClick: () => void;
   size?: string;
@@ -29,7 +29,7 @@ export const WatchProviderLogo = React.memo(function WatchProviderLogo({
   return (
     <button
       onClick={onClick}
-      title={name}
+      title={name ?? ''}
       style={{
         width: size,
         height: size,
@@ -48,12 +48,12 @@ export const WatchProviderLogo = React.memo(function WatchProviderLogo({
       {showImage ? (
         <img
           src={logo}
-          alt={name}
+          alt={name ?? ''}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           onError={() => setImageFailed(true)}
         />
       ) : (
-        <span style={{ color: color.textBody, fontSize: fontSize.xs, fontWeight: 700 }}>{name.slice(0, 2).toUpperCase()}</span>
+        <span style={{ color: color.textBody, fontSize: fontSize.xs, fontWeight: 700 }}>{String(name ?? '').slice(0, 2).toUpperCase()}</span>
       )}
     </button>
   );

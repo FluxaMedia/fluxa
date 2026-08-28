@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { initDiagnosticsSentry } from './core/sentryRuntime';
 import { loadPrefs } from './core/libraryOps';
 import { prefBool } from './core/appPrefs';
+import { t } from './i18n';
 import { startViewportFlags } from './platform/viewport';
 import { startInputMethodTracking } from './core/inputMethod';
 import { startPwa } from './platform/browser/pwa';
@@ -41,9 +42,9 @@ async function bootstrap() {
     );
   } catch (err) {
     const root = document.getElementById('root')!;
-    root.style.cssText =
-      'background:#0a0a0a;color:#ff4444;padding:1.5rem;font-family:monospace;font-size:0.8125rem;white-space:pre-wrap;overflow:auto';
-    root.textContent = 'React mount error:\n' + (err instanceof Error ? err.stack : String(err));
+    void err;
+    root.style.cssText = 'background:#0a0a0a;color:#fff;padding:2rem;font-family:system-ui,sans-serif;text-align:center';
+    root.textContent = `${t('error.generic_title')}\n\n${t('error.generic_message')}`;
   }
 }
 

@@ -284,12 +284,12 @@ const FolderTileCard = React.memo(function FolderTileCard({
             ) : addonIcon ? (
               <img src={addonIcon} alt="" style={{ width: '48%', height: '48%', objectFit: 'contain', opacity: 0.35 }} />
             ) : (
-              <span style={collStyles.namePlaceholderText}>{folder.name.slice(0, 1).toUpperCase()}</span>
+              <span style={collStyles.namePlaceholderText}>{String(folder.name ?? '').slice(0, 1).toUpperCase()}</span>
             )}
           </div>
         )}
       </div>
-      {!folder.hideTitle && <p style={collStyles.folderName}>{folder.name}</p>}
+      {!folder.hideTitle && <p style={collStyles.folderName}>{folder.name ?? ''}</p>}
     </div>
   );
 });

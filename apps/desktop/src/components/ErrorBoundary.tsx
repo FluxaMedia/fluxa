@@ -2,6 +2,7 @@ import { Component } from 'react';
 import type { ReactNode } from 'react';
 import { platformInvoke as invoke } from '../platform/invoke';
 import { getSentryModule } from '../core/sentryRuntime';
+import { t } from '../i18n';
 
 interface Props {
   children: ReactNode;
@@ -37,42 +38,46 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      return (
+        return (
         <div
           style={{
             background: '#0a0a0a',
-            color: '#ff4444',
-            padding: '1.5rem',
-            fontFamily: 'monospace',
-            fontSize: '0.8125rem',
-            whiteSpace: 'pre-wrap',
-            overflow: 'auto',
+            color: '#fff',
+            padding: '2rem',
             height: '100%',
             minHeight: '100vh',
+            display: 'grid',
+            placeItems: 'center',
           }}
         >
-          {this.props.onReset && (
+          <div style={{ maxWidth: '32rem', textAlign: 'center' }}>
+            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.35rem' }}>{t('error.generic_title')}</h2>
+            <p style={{ margin: '0 0 1.5rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
+              {t('error.generic_message')}
+            </p>
             <button
               onClick={() => {
-                this.props.onReset?.();
-                this.setState({ error: null });
+                if (this.props.onReset) {
+                  this.props.onReset();
+                  this.setState({ error: null });
+                  return;
+                }
+                window.location.reload();
               }}
               style={{
-                marginBottom: '1rem',
-                padding: '0.5rem 1rem',
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: '#fff',
-                borderRadius: '0.25rem',
-                fontFamily: 'inherit',
-                fontSize: 'inherit',
+                padding: '0.65rem 1rem',
+                background: '#fff',
+                border: 0,
+                color: '#0a0a0a',
+                borderRadius: '0.5rem',
+                fontSize: '0.9rem',
+                fontWeight: 700,
                 cursor: 'pointer',
               }}
             >
-              Go back
+              {this.props.onReset ? t('common.back') : t('common.retry')}
             </button>
-          )}
-          {'React render error: ' + this.state.error.message + '\n\n' + this.state.error.stack}
+          </div>
         </div>
       );
     }
