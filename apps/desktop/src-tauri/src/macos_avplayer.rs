@@ -1,6 +1,8 @@
 use crate::mpv_render::{PlayerStatus, PlayerTrackOption};
 use crate::player_surface::{Artwork, PlayerSurface};
 use std::ffi::{CStr, CString, c_char, c_void};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 
 #[link(name = "FluxaDesktopPlayer", kind = "static")]
@@ -27,6 +29,7 @@ unsafe extern "C" {
 pub struct NativePlayerSurface {
     handle: usize,
     app: AppHandle,
+    shown: Arc<AtomicBool>,
 }
 
 unsafe impl Send for NativePlayerSurface {}
@@ -64,6 +67,7 @@ impl PlayerSurface for NativePlayerSurface {
         start_at: Option<u64>,
         _total_duration: Option<u64>,
     ) -> Result<(), String> {
+        self.shown.store(false, Ordering::Release);
         let url = CString::new(url).map_err(|_| "AVPlayer URL contains NUL".to_string())?;
         let title = CString::new("Fluxa").expect("static title");
         let result = self.call_string(unsafe {
@@ -74,13 +78,11 @@ impl PlayerSurface for NativePlayerSurface {
                 start_at.unwrap_or(0) as f64,
             )
         });
-        if result.is_ok() {
-            let _ = self.app.emit("native-player-show", ());
-        }
         result
     }
 
     fn hide(&self) {
+        self.shown.store(false, Ordering::Release);
         unsafe { fluxa_desktop_avplayer_hide(self.handle()) };
         let _ = self.app.emit("native-player-hide", ());
     }
@@ -111,6 +113,9 @@ impl PlayerSurface for NativePlayerSurface {
 
     fn status(&self) -> Result<PlayerStatus, String> {
         let phase = unsafe { fluxa_desktop_avplayer_phase(self.handle()) };
+        if phase == 2 && !self.shown.swap(true, Ordering::AcqRel) {
+            let _ = self.app.emit("native-player-show", ());
+        }
         let position = unsafe { fluxa_desktop_avplayer_position(self.handle()) };
         let duration = unsafe { fluxa_desktop_avplayer_duration(self.handle()) };
         let loaded = phase != 0;
@@ -227,5 +232,6 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
     Ok(NativePlayerSurface {
         handle: handle as usize,
         app: app_handle,
+        shown: Arc::new(AtomicBool::new(false)),
     })
 }

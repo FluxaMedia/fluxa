@@ -68,7 +68,7 @@ export function PlaybackHost({
 
   return (
     <>
-      {loading && (
+      {loading && !active && (
         <PlayerLoadingOverlay
           background={loading.background}
           logo={loading.logo}
