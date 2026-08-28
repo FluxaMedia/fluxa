@@ -1,5 +1,6 @@
 import {
   coreDetailSeriesLookupId,
+  coreStreamRequestIds,
   coreParseVideoId,
   coreTmdbImageUrl,
   coreTmdbBulkMetas,
@@ -269,9 +270,22 @@ export async function fetchDetailStreams(
 ): Promise<unknown> {
   const perf = startPerfSpan('detail.streams', { requestIds: payload.requestIds, contentType: payload.contentType });
   const startedAt = performance.now();
-  const requestIds = (payload.requestIds as string[] | undefined) ?? (typeof payload.id === 'string' ? [payload.id] : []);
-  const idField = (typeof payload.id === 'string' ? payload.id : undefined) ?? requestIds[0];
-  console.debug('[fluxa:streams:effect:start]', JSON.stringify({ requestIds, contentType: payload.contentType }));
+  const requestedIds = (payload.requestIds as string[] | undefined) ?? (typeof payload.id === 'string' ? [payload.id] : []);
+  const idField = (typeof payload.id === 'string' ? payload.id : undefined) ?? requestedIds[0];
+  const detailRecord = payload.detail && typeof payload.detail === 'object' && !Array.isArray(payload.detail)
+    ? payload.detail as Record<string, unknown>
+    : {};
+  const detailId = typeof detailRecord.id === 'string' ? detailRecord.id : undefined;
+  const currentSeriesLookupId = detailId && payload.contentType === 'series'
+    ? await coreDetailSeriesLookupId(detailId)
+    : undefined;
+  const requestIds = [...new Set((await Promise.all(requestedIds.map((id) => coreStreamRequestIds({
+    contentType: String(payload.contentType ?? ''),
+    id,
+    detailId,
+    currentSeriesLookupId,
+  })))).flat())];
+  console.debug('[fluxa:streams:effect:start]', JSON.stringify({ requestedIds, requestIds, contentType: payload.contentType }));
   const addons = await loadEnabledAddons();
   console.debug('[fluxa:streams:addons:ready]', JSON.stringify({ requestIds, addons: addons.map((addon) => addon.name), ms: Math.round(performance.now() - startedAt) }));
   const contentType = payload.contentType as string;

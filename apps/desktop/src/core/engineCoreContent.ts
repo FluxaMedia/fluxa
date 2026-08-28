@@ -62,6 +62,16 @@ export async function coreDetailSeriesLookupId(rawId: string): Promise<string> {
   return (await coreInvoke<string>('detailSeriesLookupId', JSON.stringify({ id: rawId }))) ?? rawId;
 }
 
+export async function coreStreamRequestIds(request: {
+  contentType: string;
+  id: string;
+  detailId?: string;
+  currentSeriesLookupId?: string;
+  canonicalBaseId?: string;
+}): Promise<string[]> {
+  return (await coreInvoke<string[]>('streamRequestIds', JSON.stringify(request))) ?? [request.id];
+}
+
 export async function coreDetailSeasonLoadPlan(request: unknown): Promise<unknown | null> {
   return coreInvoke('detailSeasonLoadPlan', JSON.stringify(request));
 }
